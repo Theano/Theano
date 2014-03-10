@@ -10,7 +10,7 @@ import theano.sandbox.cuda as cuda_ndarray
 from theano.tensor.basic import _allclose
 from theano.tests import unittest_tools as utt
 
-if cuda_ndarray.cuda_available == False:
+if not cuda_ndarray.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
 
@@ -29,13 +29,26 @@ def advantage(cpu_dt, gpu_dt):
     else:
         return cpu_dt / gpu_dt
 
+
 def test_host_to_device():
-    print >>sys.stdout, 'starting test_host_to_dev'
-    for shape in ((), (3,), (2,3), (3,4,5,6)):
+    #print >>sys.stdout, 'starting test_host_to_dev'
+    for shape in ((), (3,), (2, 3), (3, 4, 5, 6)):
         a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
         c = numpy.asarray(b)
         assert numpy.all(a == c)
+
+        # test with float32 dtype
+        d = numpy.asarray(b, dtype='float32')
+        assert numpy.all(a == d)
+
+        # test with not float32 dtype
+        try:
+            numpy.asarray(b, dtype='int8')
+            assert False
+        except TypeError:
+            pass
+
 
 def test_add_iadd_idiv():
     for shapes in (
@@ -51,8 +64,18 @@ def test_add_iadd_idiv():
                   (3,34,35,36,37),
                   (33,34,3,36,37),
                   (33,34,35,36,3),
+                  (0,0,0,0,0,0),
+                  (3,34,35,36,37,2),
+                  (33,34,3,36,37,2),
+                  (33,34,35,36,3,2),
+                  (3,4,5,6,7,1025),
+                  (3,4,5,6,1025,7),
+                  (3,4,5,1025,6,7),
+                  (3,4,1025,5,6,7),
+                  (3,1025,4,5,6,7),
+                  (1025,3,4,5,6,7),
                   ):
-        if isinstance(shapes,tuple):
+        if isinstance(shapes, tuple):
             shape = shapes
             shape2 = shapes
             a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
@@ -84,14 +107,14 @@ def test_add_iadd_idiv():
             asum = a0 + a1
             t1 = time.time()
             cpu_dt = t1 - t0
-            print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+            #print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
             assert numpy.allclose(asum,  numpy.asarray(bsum))
 
         #test not contiguous version.
         #should raise not implemented.
         a0 = a0_orig.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
-        if len(shape)==0:
+        if len(shape) == 0:
             continue
         elif len(shape) == 1:
             _b = b1[::-1]
@@ -103,6 +126,10 @@ def test_add_iadd_idiv():
             _b = b1[::, ::, ::, ::-1]
         elif len(shape) == 5:
             _b = b1[::, ::, ::, ::, ::-1]
+        elif len(shape) == 6:
+            _b = b1[::, ::, ::, ::, ::, ::-1]
+        else:
+            raise Exception("You need to modify this case!")
         # TODO: b0[...,::-1] don't work
 
         if shape == shape2:
@@ -122,7 +149,7 @@ def test_add_iadd_idiv():
         a0 += a1
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding inplace', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+        #print shape, 'adding inplace', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         assert numpy.allclose(a0, numpy.asarray(b0))
         assert numpy.allclose(a0, a0_orig + a1)
 
@@ -141,11 +168,15 @@ def test_add_iadd_idiv():
         b0 /= _b
         a0 /= a1[..., ::-1]
         assert numpy.allclose(a0, numpy.asarray(b0))
-        assert numpy.allclose(a0, ((a0_orig+a1)/a1+a1[..., ::-1])/a1[..., ::-1])
+        assert numpy.allclose(a0, ((a0_orig + a1) / a1 +
+                                   a1[..., ::-1]) / a1[..., ::-1])
+
 
 def test_exp():
-    print >>sys.stdout, 'starting test_exp'
-    for shape in ((), (3,), (2,3), (1,10000000),(10,1000000), (100,100000),(1000,10000),(10000,1000)):
+    #print >>sys.stdout, 'starting test_exp'
+    for shape in ((), (3,), (2, 3),
+                  (1, 10000000), (10, 1000000),
+                  (100, 100000), (1000, 10000), (10000, 1000)):
         a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
@@ -158,33 +189,34 @@ def test_exp():
         asum = numpy.exp(a1)
         t1 = time.time()
         cpu_dt = t1 - t0
-        print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
+        #print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         #c = numpy.asarray(b0+b1)
         if asum.shape:
             assert numpy.allclose(asum, numpy.asarray(bsum))
 
 
 def test_copy():
-    print >>sys.stdout, 'starting test_copy'
+    #print >>sys.stdout, 'starting test_copy'
     shape = (500,499)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
-    print >>sys.stdout, '.. creating device object'
+    #print >>sys.stdout, '.. creating device object'
     b = cuda_ndarray.CudaNdarray(a)
 
-    print >>sys.stdout, '.. copy'
+    #print >>sys.stdout, '.. copy'
     c = copy.copy(b)
-    print >>sys.stdout, '.. deepcopy'
+    #print >>sys.stdout, '.. deepcopy'
     d = copy.deepcopy(b)
 
-    print >>sys.stdout, '.. comparisons'
+    #print >>sys.stdout, '.. comparisons'
     assert numpy.allclose(a, numpy.asarray(b))
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
-    b+=b
+    b += b
     assert numpy.allclose(a+a, numpy.asarray(b))
     assert numpy.allclose(a+a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
+
 
 def test_nvcc_bug():
     """
@@ -192,21 +224,22 @@ def test_nvcc_bug():
     is not well compiled with nvcc 3.0 and 3.1 beta. We found a workaround, so it
     sould work correctly. Without the workaround, this test fail.
     """
-    shape = (5,4)
+    shape = (5, 4)
     aa = theano._asarray(numpy.random.rand(*shape), dtype='float32')
-    a = aa[::,::-1]
+    a = aa[::, ::-1]
 
-    b = cuda_ndarray.CudaNdarray(aa)[::,::-1]
+    b = cuda_ndarray.CudaNdarray(aa)[::, ::-1]
     c = copy.copy(b)
     d = copy.deepcopy(b)
 
     assert numpy.allclose(a, numpy.asarray(b))
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
-    b+=b
+    b += b
     assert numpy.allclose(a+a, numpy.asarray(b))
     assert numpy.allclose(a+a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
+
 
 class test_DimShuffle(unittest.TestCase):
     def test_dimshuffle(self):
@@ -214,61 +247,77 @@ class test_DimShuffle(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         # 2d -> 0d
-        a = theano._asarray(rng.randn(1,1), dtype='float32')
+        a = theano._asarray(rng.randn(1, 1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,()))
+        assert numpy.allclose(numpy.transpose(a),
+                              cuda_ndarray.dimshuffle(b, ()))
 
         # Test when we drop a axis that don't have shape 1
-        a = theano._asarray(rng.randn(2,1), dtype='float32')
+        a = theano._asarray(rng.randn(2, 1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        self.assertRaises(ValueError, cuda_ndarray.dimshuffle, b,())
+        self.assertRaises(ValueError, cuda_ndarray.dimshuffle, b, ())
 
         # Test that we can't take a dimensions multiple time
-        a = theano._asarray(rng.randn(2,1), dtype='float32')
+        a = theano._asarray(rng.randn(2, 1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        self.assertRaises(ValueError, cuda_ndarray.dimshuffle, b,(1,1))
+        self.assertRaises(ValueError, cuda_ndarray.dimshuffle, b, (1, 1))
 
         # 1d
         a = theano._asarray(rng.randn(3,), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,(0,)))
-        assert numpy.allclose(a[None,:,None], cuda_ndarray.dimshuffle(b,(-1,0,-1)))
+        assert numpy.allclose(numpy.transpose(a),
+                              cuda_ndarray.dimshuffle(b, (0,)))
+        assert numpy.allclose(a[None, :, None],
+                              cuda_ndarray.dimshuffle(b, (-1, 0, -1)))
 
         # 2d
-        a = theano._asarray(rng.randn(3,11), dtype='float32')
+        a = theano._asarray(rng.randn(3, 11), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(numpy.transpose(a), cuda_ndarray.dimshuffle(b,(1,0)))
-        assert numpy.allclose(numpy.transpose(a)[None,:,None,:,None], cuda_ndarray.dimshuffle(b,(-1,1,-1,0,-1)))
+        assert numpy.allclose(numpy.transpose(a),
+                              cuda_ndarray.dimshuffle(b, (1, 0)))
+        assert numpy.allclose(numpy.transpose(a)[None, :, None, :, None],
+                              cuda_ndarray.dimshuffle(b, (-1, 1, -1, 0, -1)))
 
         # 2d -> 1d
-        a = theano._asarray(rng.randn(1,11), dtype='float32')
+        a = theano._asarray(rng.randn(1, 11), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(a[:,], cuda_ndarray.dimshuffle(b,(1,)))
-        a = theano._asarray(rng.randn(11,1), dtype='float32')
+        assert numpy.allclose(a[:],
+                              cuda_ndarray.dimshuffle(b, (1,)))
+        a = theano._asarray(rng.randn(11, 1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(a.reshape((11,)), cuda_ndarray.dimshuffle(b,(0,)))
+        assert numpy.allclose(a.reshape((11,)),
+                              cuda_ndarray.dimshuffle(b, (0,)))
 
         # 3d
-        a = theano._asarray(rng.randn(3,4,5), dtype='float32')
+        a = theano._asarray(rng.randn(3, 4, 5), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(a, cuda_ndarray.dimshuffle(b,(0,1,2)))
-        assert numpy.allclose(numpy.swapaxes(a,0,1), cuda_ndarray.dimshuffle(b,(1,0,2)))
-        assert numpy.allclose(numpy.swapaxes(a,0,2), cuda_ndarray.dimshuffle(b,(2,1,0)))
-        assert numpy.allclose(numpy.swapaxes(a,1,2), cuda_ndarray.dimshuffle(b,(0,2,1)))
-        assert numpy.allclose(numpy.swapaxes(a,1,2)[None,:,None,:,:,None], cuda_ndarray.dimshuffle(b,(-1,0,-1,2,1,-1)))
+        assert numpy.allclose(a, cuda_ndarray.dimshuffle(b, (0, 1, 2)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 1),
+                              cuda_ndarray.dimshuffle(b, (1, 0, 2)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 2),
+                              cuda_ndarray.dimshuffle(b, (2, 1, 0)))
+        assert numpy.allclose(numpy.swapaxes(a, 1, 2),
+                              cuda_ndarray.dimshuffle(b, (0, 2, 1)))
+        assert numpy.allclose(numpy.swapaxes(a, 1, 2)[None, :, None, :, :, None],
+                              cuda_ndarray.dimshuffle(b, (-1, 0, -1, 2, 1, -1)))
 
         # 4d
-        a = theano._asarray(rng.randn(3,11,4,5), dtype='float32')
+        a = theano._asarray(rng.randn(3, 11, 4, 5), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
-        assert numpy.allclose(numpy.swapaxes(a,0,1), cuda_ndarray.dimshuffle(b,(1,0,2,3)))
-        assert numpy.allclose(numpy.swapaxes(a,0,2), cuda_ndarray.dimshuffle(b,(2,1,0,3)))
-        assert numpy.allclose(numpy.swapaxes(a,0,3), cuda_ndarray.dimshuffle(b,(3,1,2,0)))
-        assert numpy.allclose(numpy.swapaxes(a,0,3), cuda_ndarray.dimshuffle(b,(3,1,2,0)))
-        assert numpy.allclose(numpy.swapaxes(a,0,3)[None,:,None,:,:,:], cuda_ndarray.dimshuffle(b,(-1,3,-1,1,2,0)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 1),
+                              cuda_ndarray.dimshuffle(b, (1, 0, 2, 3)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 2),
+                              cuda_ndarray.dimshuffle(b, (2, 1, 0, 3)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 3),
+                              cuda_ndarray.dimshuffle(b, (3, 1, 2, 0)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 3),
+                              cuda_ndarray.dimshuffle(b, (3, 1, 2, 0)))
+        assert numpy.allclose(numpy.swapaxes(a, 0, 3)[None, :, None, :, :, :],
+                              cuda_ndarray.dimshuffle(b, (-1, 3, -1, 1, 2, 0)))
 
 
 def test_dot():
-    print >>sys.stdout, 'starting test_dot'
+    #print >>sys.stdout, 'starting test_dot'
 
     utt.seed_rng()
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -281,66 +330,72 @@ def test_dot():
 
     assert _allclose(numpy.dot(a0, a1), cuda_ndarray.dot(b0, b1))
 
-
     a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
     b1 = cuda_ndarray.CudaNdarray(a1)
 
     numpy_version = numpy.dot(a0, a1.T)
-    transposed = cuda_ndarray.dimshuffle(b1,(1,0))
-    cuda_version  =  cuda_ndarray.dot(b0,  transposed)
+    transposed = cuda_ndarray.dimshuffle(b1, (1, 0))
+    cuda_version = cuda_ndarray.dot(b0,  transposed)
 
     assert _allclose(numpy_version, cuda_version)
 
     a1 = theano._asarray(rng.randn(7, 6), dtype='float32')
     b1 = cuda_ndarray.CudaNdarray(a1)
 
-
     a0 = theano._asarray(rng.randn(7, 4), dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
 
     assert _allclose(numpy.dot(a0.T, a1),
-            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0,(1,0)), b1))
+            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0, (1, 0)), b1))
 
     a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
     b1 = cuda_ndarray.CudaNdarray(a1)
 
     assert _allclose(numpy.dot(a0.T, a1.T),
-            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0,(1,0)),
-                             cuda_ndarray.dimshuffle(b1,(1,0))))
+            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0, (1, 0)),
+                             cuda_ndarray.dimshuffle(b1, (1, 0))))
 
 
 def test_sum():
-    shape = (2,3)
-    a0 = theano._asarray(numpy.arange(shape[0]*shape[1]).reshape(shape), dtype='float32')
+    shape = (2, 3)
+    a0 = theano._asarray(numpy.arange(shape[0] * shape[1]).reshape(shape),
+                         dtype='float32')
 
     b0 = cuda_ndarray.CudaNdarray(a0)
 
-    assert numpy.allclose(a0.sum(), numpy.asarray(b0.reduce_sum([1,1])))
+    assert numpy.allclose(a0.sum(),
+                          numpy.asarray(b0.reduce_sum([1, 1])))
 
     a0sum = a0.sum(axis=0)
-    b0sum = b0.reduce_sum([1,0])
+    b0sum = b0.reduce_sum([1, 0])
 
-    print 'asum\n',a0sum
-    print 'bsum\n',numpy.asarray(b0sum)
+    #print 'asum\n',a0sum
+    #print 'bsum\n',numpy.asarray(b0sum)
 
-    assert numpy.allclose(a0.sum(axis=0), numpy.asarray(b0.reduce_sum([1,0])))
-    assert numpy.allclose(a0.sum(axis=1), numpy.asarray(b0.reduce_sum([0,1])))
-    assert numpy.allclose(a0, numpy.asarray(b0.reduce_sum([0,0])))
+    assert numpy.allclose(a0.sum(axis=0),
+                          numpy.asarray(b0.reduce_sum([1, 0])))
+    assert numpy.allclose(a0.sum(axis=1),
+                          numpy.asarray(b0.reduce_sum([0, 1])))
+    assert numpy.allclose(a0, numpy.asarray(b0.reduce_sum([0, 0])))
 
-    shape = (3,4,5,6,7,8)
-    a0 = theano._asarray(numpy.arange(3*4*5*6*7*8).reshape(shape), dtype='float32')
+    shape = (3, 4, 5, 6, 7, 8)
+    a0 = theano._asarray(numpy.arange(3 * 4 * 5 * 6 * 7 * 8).reshape(shape),
+                         dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
-    assert numpy.allclose(a0.sum(axis=5).sum(axis=3).sum(axis=0), numpy.asarray(b0.reduce_sum([1,0,0,1,0,1])))
+    assert numpy.allclose(a0.sum(axis=5).sum(axis=3).sum(axis=0),
+                          numpy.asarray(b0.reduce_sum([1, 0, 0, 1, 0, 1])))
 
-    shape = (16,2048)
-    a0 = theano._asarray(numpy.arange(16*2048).reshape(shape), dtype='float32')
+    shape = (16, 2048)
+    a0 = theano._asarray(numpy.arange(16 * 2048).reshape(shape),
+                         dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
-    assert numpy.allclose(a0.sum(axis=0), numpy.asarray(b0.reduce_sum([1,0])))
+    assert numpy.allclose(a0.sum(axis=0), numpy.asarray(b0.reduce_sum([1, 0])))
 
-    shape = (16,10)
+    shape = (16, 10)
     a0 = theano._asarray(numpy.arange(160).reshape(shape), dtype='float32')
     b0 = cuda_ndarray.CudaNdarray(a0)
-    assert numpy.allclose(a0.sum(), numpy.asarray(b0.reduce_sum([1,1])))
+    assert numpy.allclose(a0.sum(), numpy.asarray(b0.reduce_sum([1, 1])))
+
 
 def test_reshape():
     shapelist = [
@@ -380,6 +435,7 @@ def test_reshape():
         #print n_bb
 
         assert numpy.all(aa == n_bb)
+        assert aa.shape == n_bb.shape
 
         # Test the not contiguous case
         shape_1_2x = (shape_1[0] * 2,) + shape_1[1:]
@@ -396,6 +452,7 @@ def test_reshape():
         #print n_bb
 
         assert numpy.all(aa == n_bb)
+        assert aa.shape == n_bb.shape
 
     def bad_subtest(shape_1, shape_2, rng):
         a = theano._asarray(rng.randn(*shape_1), dtype='float32')
@@ -932,12 +989,39 @@ def test_base():
 
     c = a[0]
     d = c[:,0]
-    print d.shape
+    #print d.shape
     assert c.base is a
     assert d.base is a
 
     e = b.reshape((5,2,2,3))
     assert e.base is a
+
+
+def test_set_strides():
+    a = cuda_ndarray.CudaNdarray.zeros((5, 5))
+
+    # Test with tuple
+    new_strides = (a.strides[1], a.strides[0])
+    a.strides = new_strides
+    assert a.strides == new_strides
+
+    # Test with list
+    new_strides = (a.strides[1], a.strides[0])
+    a.strides = [a.strides[1], a.strides[0]]
+    assert a.strides == new_strides
+
+    try:
+        a.strides = (a.strides[1],)
+        assert False
+    except ValueError:
+        pass
+
+    try:
+        a.strides = (1, 1, 1)
+        assert False
+    except ValueError:
+        pass
+
 
 def test_is_c_contiguous():
     a = cuda_ndarray.CudaNdarray.zeros((3,4,5))

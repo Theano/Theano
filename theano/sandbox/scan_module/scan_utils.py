@@ -24,7 +24,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar
 from theano.gof.python25 import all
-from theano.tensor.basic import get_constant_value
+from theano.tensor.basic import get_scalar_constant_value
 
 
 # Logging function for sending warning or info
@@ -305,14 +305,14 @@ def infer_shape(outs, inputs, input_shapes):
     '''
     # We use a ShapeFeature because it has all the necessary logic
     # inside.  We don't use the full ShapeFeature interface, but we
-    # let it initialize itself with an empty env, otherwise we will
+    # let it initialize itself with an empty fgraph, otherwise we will
     # need to do it manually
     for inp, inp_shp in izip(inputs, input_shapes):
         if inp_shp is not None and len(inp_shp) != inp.ndim:
             assert len(inp_shp) == inp.ndim
 
     shape_feature = tensor.opt.ShapeFeature()
-    shape_feature.on_attach(theano.gof.Env([], []))
+    shape_feature.on_attach(theano.gof.FunctionGraph([], []))
 
     # Initialize shape_of with the input shapes
     for inp, inp_shp in izip(inputs, input_shapes):
@@ -335,10 +335,10 @@ def infer_shape(outs, inputs, input_shapes):
                 if not inp in shape_feature.shape_of:
                     local_traverse(inp)
 
-            # shape_feature.on_import does not actually use an env
+            # shape_feature.on_import does not actually use an fgraph
             # It will call infer_shape and set_shape appropriately
-            dummy_env = None
-            shape_feature.on_import(dummy_env, out.owner)
+            dummy_fgraph = None
+            shape_feature.on_import(dummy_fgraph, out.owner, reason="dummy")
 
     ret = []
     for o in outs:

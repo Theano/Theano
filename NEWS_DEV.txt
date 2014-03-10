@@ -1,0 +1,50 @@
+.. _NEWS:
+
+===================
+DRAFT Release Notes
+===================
+
+git log -p rel-0.6rc3... |grep Merge|grep '#' |cut -f 8 -d ' ' | replace "#" "* https://github.com/Theano/Theano/pull/"
+
+git shortlog -sn rel-0.6rc3..
+
+Done up to PR 1608
+* https://github.com/Theano/Theano/pull/1608
+
+* https://github.com/Theano/Theano/pull/1591 # need info
+
+
+Theano Development version
+==========================
+
+NEWS.txt:
+
+We recommend that everybody update to this version.
+
+Highlights:
+
+
+Committers for this dev version only:
+
+
+A total of X people contributed to this release.
+People with a "+" by their names contributed a patch for the first time.
+
+Installation:
+
+Bug fixes:
+
+Interface Deprecation (a warning is printed):
+
+Interface Changes:
+
+New Interface (reuses existing functionality):
+
+Speed-ups:
+
+Crash/no return fixes:
+
+Others:
+
+Todo for the final release:
+ * update the NEWS.txt file.

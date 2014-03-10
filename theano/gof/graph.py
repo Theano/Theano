@@ -12,15 +12,35 @@ __docformat__ = "restructuredtext en"
 from copy import copy
 
 import theano
+import warnings
 from theano.gof import utils
-from theano.gof.python25 import deque
+from theano.gof.python25 import any, deque
+from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
 is_same_graph_with_merge = None
 equal_computations = None
 
 
-class Apply(utils.object2):
+class Node(utils.object2):
+    """A Node in a theano graph.
+    Graphs contain two kinds of Nodes--
+    Variable and Apply.
+    Edges in the graph are not explicitly represented.
+    Instead each Node keeps track of its parents via
+    Variable.owner / Apply.inputs and its children
+    via Variable.clients / Apply.outputs.
+    """
+
+    def get_parents(self):
+        """ Return a list of the parents of this node.
+        Should return a copy--i.e., modifying the return
+        value should not modify the graph structure."""
+
+        raise NotImplementedError()
+
+
+class Apply(Node):
     """
     An :term:`Apply` instance is a node in an expression graph which represents the application
     of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
@@ -70,9 +90,10 @@ class Apply(utils.object2):
         self.inputs = []
         self.tag = utils.scratchpad()
 
-        if not isinstance(inputs,(list,tuple)):
+        if not isinstance(inputs, (list, tuple)):
             raise TypeError("The inputs of an Apply must be a list or tuple")
-        if not isinstance(outputs,(list,tuple)):
+
+        if not isinstance(outputs, (list, tuple)):
             raise TypeError("The output of an Apply must be a list or tuple")
 
         ## filter inputs to make sure each element is a Variable
@@ -119,8 +140,25 @@ class Apply(utils.object2):
             raise AttributeError("%s.default_output is out of range." % self.op)
         return self.outputs[do]
 
+    def env_getter(self):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel=2)
+        return self.fgraph
+
+    def env_setter(self, value):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel=2)
+        self.fgraph = value
+
+    def env_deleter(self):
+        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel=2)
+        del self.fgraph
+
+    env = property(env_getter, env_setter, env_deleter)
+
     out = property(default_output,
-                   doc = "alias for self.default_output()")
+                   doc="alias for self.default_output()")
     """Alias for self.default_output()"""
 
     def __str__(self):
@@ -145,7 +183,7 @@ class Apply(utils.object2):
         cp.tag = copy(self.tag)
         return cp
 
-    def clone_with_new_inputs(self, inputs, strict = True):
+    def clone_with_new_inputs(self, inputs, strict=True):
         """Duplicate this Apply instance in a new graph.
 
         :param inputs: list of Variable instances to use as inputs.
@@ -183,19 +221,22 @@ class Apply(utils.object2):
             new_node.inputs = new_inputs
         return new_node
 
+    def get_parents(self):
+        return list(self.inputs)
+
     #convenience properties
-    nin = property(lambda self: len(self.inputs), doc = 'same as len(self.inputs)')
+    nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
     """property: Number of inputs"""
 
-    nout = property(lambda self: len(self.outputs), doc = 'same as len(self.outputs)')
+    nout = property(lambda self: len(self.outputs), doc='same as len(self.outputs)')
     """property: Number of outputs"""
 
 
-class Variable(utils.object2):
+class Variable(Node):
     """
     A :term:`Variable` is a node in an expression graph that represents a variable.
 
-    The inputs and outputs of every `Apply` are `Variable` instances.
+    The inputs and outputs of every `Apply` (theano.gof.Apply) are `Variable` instances.
     The input and output arguments to create a `function` are also `Variable` instances.
     A `Variable` is like a strongly-typed variable in some other languages; each `Variable` contains a
     reference to a `Type` instance that defines the kind of value the `Variable` can take in a
@@ -217,12 +258,26 @@ class Variable(utils.object2):
 
     - `Variable` (this base type) is typically the output of a symbolic computation,
 
-    - `Value` (a subclass) adds a default :literal:`value`, and requires that owner is None
-
     - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
       requires that owner is None
 
-    A Variable which is the output of a symbolic computation will have an owner != None.
+    - `TensorVariable` subclass of Variable that represents a numpy.ndarray object
+
+    - `SharedTensorVariable` Shared version of TensorVariable
+
+    - `SparseVariable` subclass of Variable that represents a scipy.sparse.{csc,csr}_matrix object
+
+    - `CudaNdarrayVariable` subclass of Variable that represents our object on the GPU that is a subset of numpy.ndarray
+
+    - `RandomVariable`
+
+    A Variable which is the output of a symbolic computation will have an owner
+    not equal to None.
+
+    Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
+    from an output all the way to the inputs. The opposite direction is not possible until an
+    FunctionGraph has annotated the Variables with the clients field, ie, before the compilation process
+    has begun a Variable does not know which Apply nodes take it as input.
 
     **Code Example**
 
@@ -256,7 +311,7 @@ class Variable(utils.object2):
 
     """
     #__slots__ = ['type', 'owner', 'index', 'name']
-    def __init__(self, type, owner = None, index = None, name = None):
+    def __init__(self, type, owner=None, index=None, name=None):
         """Initialize type, owner, index, name.
 
         :type type: a Type instance
@@ -284,6 +339,7 @@ class Variable(utils.object2):
         if name is not None and not isinstance(name, basestring):
             raise TypeError("name must be a string", name)
         self.name = name
+
     def __str__(self):
         """WRITEME"""
         if self.name is not None:
@@ -296,8 +352,10 @@ class Variable(utils.object2):
                 return str(self.owner.op) + "." + str(self.index)
         else:
             return "<%s>" % str(self.type)
+
     def __repr__(self):
         return str(self)
+
     def clone(self):
         """Return a new Variable like self.
 
@@ -312,36 +370,82 @@ class Variable(utils.object2):
         cp.tag = copy(self.tag)
         return cp
 
-    def __lt__(self,other):
+    def __lt__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __lt__',
                                   self.__class__.__name__)
-    def __le__(self,other):
+
+    def __le__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __le__',
                                   self.__class__.__name__)
-    def __gt__(self,other):
+
+    def __gt__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __gt__',
                                   self.__class__.__name__)
-    def __ge__(self,other):
+
+    def __ge__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __ge__',
                                   self.__class__.__name__)
 
-class Value(Variable):
+    def get_parents(self):
+        if self.owner is not None:
+            return [self.owner]
+        return []
+
+    def env_getter(self):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel=2)
+        return self.fgraph
+
+    def env_setter(self, value):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel=2)
+        self.fgraph = value
+
+    def env_deleter(self):
+        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
+                stacklevel=2)
+        del self.fgraph
+
+    def eval(self, inputs_to_values=None):
+        """ Evaluates this variable.
+
+        inputs_to_values: a dictionary mapping theano Variables to values.
+        """
+
+        if inputs_to_values is None:
+            inputs_to_values = {}
+
+        if not hasattr(self, '_fn_cache'):
+            self._fn_cache = dict()
+
+        inputs = tuple(sorted(inputs_to_values.keys(), key=id))
+        if not inputs in self._fn_cache:
+            self._fn_cache[inputs] = theano.function(inputs, self)
+        args = [inputs_to_values[param] for param in inputs]
+
+        rval = self._fn_cache[inputs](*args)
+
+        return rval
+
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d.pop("_fn_cache", None)
+        return d
+    env = property(env_getter, env_setter, env_deleter)
+
+
+class Constant(Variable):
     """
-    A :term:`Value` is a `Variable` with a default value.
+    A :term:`Constant` is a `Variable` with a `value` field that cannot be changed at runtime.
 
-    Its owner field is always None. And since it has a default value, a `Value` instance need
-    not be named as an input to `compile.function`.
-
-    This kind of node is useful because when a value is known at compile time, more
-    optimizations are possible.
-
+    Constant nodes make eligible numerous optimizations: constant inlining in C code, constant folding, etc.
     """
     #__slots__ = ['data']
-    def __init__(self, type, data, name = None):
+    def __init__(self, type, data, name=None):
         """Initialize self.
 
         :note:
-            The data field is filtered by what is provided in the constructor for the Value's
+            The data field is filtered by what is provided in the constructor for the Constant's
             type field.
 
         WRITEME
@@ -349,45 +453,14 @@ class Value(Variable):
         """
         Variable.__init__(self, type, None, None, name)
         self.data = type.filter(data)
-    def __str__(self):
-        """WRITEME"""
-        if self.name is not None:
-            return self.name
-        return "<" + str(self.data) + ">" #+ "::" + str(self.type)
-    def clone(self):
-        """WRITEME"""
-        #return copy(self)
-        cp = self.__class__(self.type, copy(self.data), self.name)
-        cp.tag = copy(self.tag)
-        return cp
-    def __set_owner(self, value):
-        """WRITEME
 
-        :Exceptions:
-         - `ValueError`: if `value` is not `None`
-        """
-        if value is not None:
-            raise ValueError("Value instances cannot have an owner.")
-    owner = property(lambda self: None, __set_owner)
-    value = property(lambda self: self.data,
-            doc='read-only data access method')
-
-    # index is not defined, because the `owner` attribute must necessarily be None
-
-class Constant(Value):
-    """
-    A :term:`Constant` is a `Value` that cannot be changed at runtime.
-
-    Constant nodes make eligible numerous optimizations: constant inlining in C code, constant folding, etc.
-    """
-    #__slots__ = ['data']
-    def __init__(self, type, data, name = None):
-        Value.__init__(self, type, data, name)
     def equals(self, other):
         # this does what __eq__ should do, but Variable and Apply should always be hashable by id
         return isinstance(other, Constant) and self.signature() == other.signature()
+
     def signature(self):
         return (self.type, self.data)
+
     def __str__(self):
         if self.name is not None:
             return self.name
@@ -396,6 +469,7 @@ class Constant(Value):
             if len(name) > 20:
                 name = name[:10] + '...' + name[-10]
             return 'Constant{%s}' % name
+
     def clone(self):
         """
         We clone this object, but we don't clone the data to lower memory requirement
@@ -405,22 +479,37 @@ class Constant(Value):
         cp.tag = copy(self.tag)
         return cp
 
+    def __set_owner(self, value):
+        """WRITEME
 
-def stack_search(start, expand, mode='bfs', build_inv = False):
+        :Exceptions:
+         - `ValueError`: if `value` is not `None`
+        """
+        if value is not None:
+            raise ValueError("Constant instances cannot have an owner.")
+
+    owner = property(lambda self: None, __set_owner)
+    value = property(lambda self: self.data,
+            doc='read-only data access method')
+
+    # index is not defined, because the `owner` attribute must necessarily be None
+
+
+def stack_search(start, expand, mode='bfs', build_inv=False):
     """Search through a graph, either breadth- or depth-first
 
     :type start: deque
     :param start: search from these nodes
     :type expand: callable
     :param expand:
-        when we get to a node, add expand(node) to the list of nodes to visit.  This function
-        should return a list, or None
+        when we get to a node, add expand(node) to the list of nodes to visit.
+        This function should return a list, or None
     :rtype: list of `Variable` or `Apply` instances (depends on `expend`)
     :return: the list of nodes in order of traversal.
 
     :note:
-        a node will appear at most once in the return value, even if it appears multiple times
-        in the start parameter.
+        a node will appear at most once in the return value, even if it
+        appears multiple times in the start parameter.
 
     :postcondition: every element of start is transferred to the returned list.
     :postcondition: start is empty.
@@ -467,9 +556,7 @@ def ancestors(variable_list, blockers=None):
     """
     def expand(r):
         if r.owner and (not blockers or r not in blockers):
-            l = list(r.owner.inputs)
-            l.reverse()
-            return l
+            return reversed(r.owner.inputs)
     dfs_variables = stack_search(deque(variable_list), expand, 'dfs')
     return dfs_variables
 
@@ -558,73 +645,86 @@ def orphans(i, o):
     return variables_and_orphans(i, o)[1]
 
 
-def clone(i, o, copy_inputs = True):
-    """ WRITEME
+def clone(i, o, copy_inputs=True):
+    """
+    Copies the subgraph contained between i and o.
 
     :type i: list
     :param i: input L{Variable}s
     :type o: list
     :param o: output L{Variable}s
     :type copy_inputs: bool
-    :param copy_inputs: if True, the inputs will be copied (defaults to False)
+    :param copy_inputs: if True, the inputs will be copied (defaults to True)
 
-    Copies the subgraph contained between i and o and returns the
-    outputs of that copy (corresponding to o).
+    Returns the inputs and outputs of that copy.
     """
     equiv = clone_get_equiv(i, o, copy_inputs)
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(i, o, copy_inputs_and_orphans = True):
-    """ WRITEME
+def clone_get_equiv(inputs, outputs,
+        copy_inputs_and_orphans=True,
+        memo=None):
+    """
+    Return a dictionary that maps from Variable and Apply nodes in the
+    original graph to a new node (a clone) in a new graph.
 
-    :type i: list
-    :param i: input L{Variable}s
-    :type o: list
-    :param o: output L{Variable}s
-    :type copy_inputs_and_orphans: bool
-    :param copy_inputs_and_orphans:
-        if True, the inputs and the orphans will be replaced in the cloned graph by copies
-        available in the equiv dictionary returned by the function (copy_inputs_and_orphans
-        defaults to True)
+    This function works by recursively cloning inputs... rebuilding a directed
+    graph from the bottom (inputs) up to eventually building new outputs.
 
-    :rtype: a dictionary
-    :return:
-        equiv mapping each L{Variable} and L{Op} in the graph delimited by i and o to a copy
-        (akin to deepcopy's memo).
+    Parameters
+    ----------
+    inputs: a list of Variables
+    outputs: a list of Variables
+    copy_inputs_and_orphans: bool
+        True means to create the cloned graph from new input and constant
+            nodes (the bottom of a feed-upward graph),
+        False means to clone a graph that is rooted at the original input
+            nodes.
+    memo: None or dict
+        Optionally start with a partly-filled dictionary for the return value.
+        If a dictionary is passed, this function will work in-place on that
+        dictionary and return it.
+
     """
 
-    d = {}
-    for input in i:
+    if memo is None:
+        memo = {}
+
+    # clone the inputs if necessary
+    for input in inputs:
         if copy_inputs_and_orphans:
             cpy = input.clone()
             cpy.owner = None
             cpy.index = None
-            d[input] = cpy
+            memo.setdefault(input, cpy)
         else:
-            d[input] = input
+            memo.setdefault(input, input)
 
-    for apply in io_toposort(i, o):
+    # go through the inputs -> outputs graph cloning as we go
+    for apply in io_toposort(inputs, outputs):
         for input in apply.inputs:
-            if input not in d:
+            if input not in memo:
                 if copy_inputs_and_orphans:
                     cpy = input.clone()
-                    d[input] = cpy
+                    memo[input] = cpy
                 else:
-                    d[input] = input
+                    memo[input] = input
 
-        new_apply = apply.clone_with_new_inputs([d[i] for i in apply.inputs])
-        d[apply] = new_apply
+        new_apply = apply.clone_with_new_inputs([memo[i] for i in apply.inputs])
+        memo.setdefault(apply, new_apply)
         for output, new_output in zip(apply.outputs, new_apply.outputs):
-            d[output] = new_output
+            memo.setdefault(output, new_output)
 
-    for output in o:
-        if output not in d:
-            d[output] = output.clone()
+    # finish up by cloning any remaining outputs (it can happen)
+    for output in outputs:
+        if output not in memo:
+            memo[output] = output.clone()
 
-    return d
+    return memo
 
-def general_toposort(r_out, deps, debug_print = False):
+
+def general_toposort(r_out, deps, debug_print=False):
     """WRITEME
 
     :note:
@@ -637,10 +737,14 @@ def general_toposort(r_out, deps, debug_print = False):
         The order of the return value list is determined by the order of nodes returned by the deps() function.
     """
     deps_cache = {}
+
     def _deps(io):
         if io not in deps_cache:
             d = deps(io)
             if d:
+                if not isinstance(d, (list, OrderedSet)):
+                    raise TypeError("Non-deterministic collections here make"
+                            " toposort non-deterministic.")
                 deps_cache[io] = list(d)
             else:
                 deps_cache[io] = d
@@ -650,7 +754,7 @@ def general_toposort(r_out, deps, debug_print = False):
 
     assert isinstance(r_out, (tuple, list, deque))
 
-    reachable, clients = stack_search( deque(r_out), _deps, 'dfs', True)
+    reachable, clients = stack_search(deque(r_out), _deps, 'dfs', True)
     sources = deque([r for r in reachable if not deps_cache.get(r, None)])
 
     rset = set()
@@ -675,26 +779,41 @@ def general_toposort(r_out, deps, debug_print = False):
     return rlist
 
 
-def io_toposort(i, o, orderings=None):
+def io_toposort(inputs, outputs, orderings=None):
     """WRITEME
+
+    inputs: a list or tuple of Variable instances
+    outputs: a list or tuple of Variable instances
+
+    orderings: a dictionary
+                key: Apply instance
+                value: list of Apply instance
+
+                it is important that the value be
+                a container with a deterministic iteration
+                order. no sets allowed!
+
     """
     if orderings is None:
         orderings = {}
+
     #the inputs are used only here in the function that decides what 'predecessors' to explore
-    iset = set(i)
+    iset = set(inputs)
+
     def deps(obj):
         rval = []
         if obj not in iset:
             if isinstance(obj, Variable):
                 if obj.owner:
                     rval = [obj.owner]
-            if isinstance(obj, Apply):
+            elif isinstance(obj, Apply):
                 rval = list(obj.inputs)
             rval.extend(orderings.get(obj, []))
         else:
             assert not orderings.get(obj, [])
         return rval
-    topo = general_toposort(o, deps)
+
+    topo = general_toposort(outputs, deps)
     return [o for o in topo if isinstance(o, Apply)]
 
 
@@ -771,9 +890,11 @@ def is_same_graph(var1, var2, givens=None, debug=False):
         all_vars = [set(variables(v_i, v_o))
                     for v_i, v_o in ((inputs_var[0], [var1]),
                                      (inputs_var[1], [var2]))]
+
         def in_var(x, k):
             # Return True iff `x` is in computation graph of variable `vark`.
             return x in all_vars[k - 1]
+
         for to_replace, replace_by in givens.iteritems():
             # Map a substitution variable to the computational graphs it
             # belongs to.
@@ -810,16 +931,16 @@ def is_same_graph(var1, var2, givens=None, debug=False):
 
 
 def op_as_string(i, op,
-                 leaf_formatter = default_leaf_formatter,
-                 node_formatter = default_node_formatter):
+                 leaf_formatter=default_leaf_formatter,
+                 node_formatter=default_node_formatter):
     """WRITEME"""
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
 
 
 def as_string(i, o,
-              leaf_formatter = default_leaf_formatter,
-              node_formatter = default_node_formatter):
+              leaf_formatter=default_leaf_formatter,
+              node_formatter=default_node_formatter):
     """WRITEME
 
     :type i: list
@@ -915,3 +1036,12 @@ def view_roots(r):
             return [r]
     else:
         return [r]
+
+
+def list_of_nodes(inputs, outputs):
+    """ Return the apply nodes of the graph between inputs and outputs """
+    return stack_search(
+            deque([o.owner for o in outputs]),
+            lambda o: [inp.owner for inp in o.inputs
+                           if inp.owner
+                           and not any(i in inp.owner.outputs for i in inputs)])

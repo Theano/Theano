@@ -1,0 +1,95 @@
+# Prevent git from showing duplicate names with commands like "git shortlog"
+# # See the manpage of git-shortlog for details.
+# # The syntax is:
+# # Name that should be used <email that should be used> Bad name <bad email>
+# #
+# # You can skip Bad name if it is the same as the one that should be used, and is unique.
+# #
+# # This file is up-to-date if the command git log --format="%aN <%aE>" | sort -u
+# # gives no duplicates.
+Jörg Bornschein <jb@capsec.org> Joerg Bornschein <bornschein@fias.uni-frankfurt.de>
+Eric Hunsberger <hunse@ctn> hunse <hunse@ctn>
+Jan Schlüter <github@jan-schlueter.de> f0k <github@jan-schlueter.de>
+Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
+Arnaud Bergeron <abergeron@gmail.com> <abergeron@gmail.com>
+<abergeron@gmail.com> <anakha@kami.(none)>
+David Warde-Farley <wardefar@iro.umontreal.ca> David Warde-Farley <dwf@cs.toronto.edu>
+David Warde-Farley <wardefar@iro.umontreal.ca> David Warde Farley <dwf@cs.toronto.edu>
+Douglas Eck <douglas.eck@gmail.com> eckdoug@localhost <eckdoug@localhost>
+Douglas Eck <douglas.eck@gmail.com> eckdoug@waits.local <eckdoug@waits.local>
+Dumitru Erhan <dumitru.erhan@gmail.com> dumitru@deepnets.mtv.corp.google.com <dumitru@deepnets.mtv.corp.google.com>
+Dumitru Erhan <dumitru.erhan@gmail.com> erhandum@bikat.iro.umontreal.ca <erhandum@bikat.iro.umontreal.ca>
+Francois Savard <devnull@localhost> fsavard <devnull@localhost>
+Steven Pigeon <pigeon@iro.umontreal.ca> steven-pigeon <pigeon@iro.umontreal.ca>
+#     5	Firstname Lastname <firstname.lastname@example.net>
+#     4	Laboratoire d'Informatique des Systemes Adaptatifs <lisa@iro.umontreal.ca>
+#     6	Li Yao <yaoli@iro>
+#     1	olivier@ordinateur-de-olivier.local <olivier@ordinateur-de-olivier.local>
+#     2	onze <onzeonline@gmail.com>
+#    25	projects@lgcm <projects@lgcm>
+#     1	tutorial/debug_faq.txt <devnull@localhost>
+Bogdan Budescu <bbudescu@gmail.com> bbudescu <bbudescu@gmail.com>
+Sebastian Berg <sebastian@sipsolutions.net> seberg <sebastian@sipsolutions.net>
+Huy Nguyen <huy@huyng.com> huyng <huy@huyng.com>
+Wei Li <kuantkid@gmail.com> kuantkid <kuantkid@gmail.com>
+Ethan Buchman <ebuchman@uoguelph.ca> ebuchman <ebuchman@uoguelph.ca>
+Frederic Bastien <nouiz@nouiz.org> Frederic Bastien <bastienf@briaree1.rqchp.qc.ca>
+Frederic Bastien <nouiz@nouiz.org> Frederic Bastien <bastienf@iro.umontreal.ca>
+Frederic Bastien <nouiz@nouiz.org> Frédéric Bastien <nouiz@nouiz.org>
+Frederic Bastien <nouiz@nouiz.org> Nouiz <nouiz@Nouiz-lap-ub.(none)>
+Frederic Bastien <nouiz@nouiz.org> Nouiz <nouiz@nouiz.org>
+Frederic Bastien <nouiz@nouiz.org> bastienf@bikat.iro.umontreal.ca <bastienf@bikat.iro.umontreal.ca>
+Frederic Bastien <nouiz@nouiz.org> bastienf@ldapk3.scinet.utoronto.ca <bastienf@ldapk3.scinet.utoronto.ca>
+Frederic Bastien <nouiz@nouiz.org> nouiz <nouiz@nouiz.org>
+Frederic Bastien <nouiz@nouiz.org> Frederic <nouiz@nouiz.org>
+Grégoire <gregoire.mesnil@gmail.com> Grégoire <gregoire.mesnil@laposte.net>
+Guillaume Desjardins <guillaume.desjardins@gmail.com> desjagui <devnull@localhost>
+Guillaume Desjardins <guillaume.desjardins@gmail.com> desjagui@atchoum.iro.umontreal.ca <desjagui@atchoum.iro.umontreal.ca>
+Guillaume Desjardins <guillaume.desjardins@gmail.com> desjagui@opale.iro.umontreal.ca <desjagui@opale.iro.umontreal.ca>
+Guillaume Desjardins <guillaume.desjardins@gmail.com> gdesjardins <devnull@localhost>
+Hani Almousli <hani.mousli@gmail.com> Hani <hani.mousli@gmail.com>
+Hani Almousli <hani.mousli@gmail.com> HaniAlmousli <hani.mousli@gmail.com>
+Ian Goodfellow <goodfellow.ian@gmail.com> Ian Goodfellow <devnull@localhost>
+Ian Goodfellow <goodfellow.ian@gmail.com> goodfeli <goodfellow.ian@gmail.com>
+James Bergstra <james.bergstra@gmail.com> James Bergstra <bergstrj@iro.umontreal.ca>
+James Bergstra <james.bergstra@gmail.com> bergstra@ip05.m <bergstra@ip05.m>
+James Bergstra <james.bergstra@gmail.com> bergstra@mlp4.ais.sandbox <bergstra@mlp4.ais.sandbox>
+James Bergstra <james.bergstra@gmail.com> bergstra@tikuanyin <bergstra@tikuanyin>
+James Bergstra <james.bergstra@gmail.com> bergstrj@iro.umontreal.ca <bergstrj@iro.umontreal.ca>
+James Bergstra <james.bergstra@gmail.com> bergstrj@lgcm <bergstrj@lgcm>
+James Bergstra <james.bergstra@gmail.com> james@X40 <james@X40>
+James Bergstra <james.bergstra@gmail.com> james@crane <james@crane>
+James Bergstra <james.bergstra@gmail.com> james@mackie <james@mackie>
+James Bergstra <james.bergstra@gmail.com> james@x40.unstable <james@x40.unstable>
+James Bergstra <james.bergstra@gmail.com> test_rng_mrg.py <devnull@localhost>
+John Salvatier <jsalvatier@gmail.com> jsalvatier <jsalvatier@gmail.com>
+John Salvatier <jsalvatier@gmail.com> john salvatier <jsalvatier@gmail.com>
+Joseph Turian <turian@iro.umontreal.ca> Joseph Turian <turian@gmail.com>
+Joseph Turian <turian@iro.umontreal.ca> turian@grenat.iro.umontreal.ca <turian@grenat.iro.umontreal.ca>
+Joseph Turian <turian@iro.umontreal.ca> turian@lgcm <turian@lgcm>
+Joseph Turian <turian@iro.umontreal.ca> turian@lsvm.iro.umontreal.ca <turian@lsvm.iro.umontreal.ca>
+Joseph Turian <turian@iro.umontreal.ca> turian@rubis.iro.umontreal.ca <turian@rubis.iro.umontreal.ca>
+Joseph Turian <turian@iro.umontreal.ca> turianjo@is23.m <turianjo@is23.m>
+Josh Bleecher Snyder <josharian@gmail.com> Josh Bleecher Snyder <josharian+github@gmail.com>
+Olivier Breuleux <breuleux@gmail.com> Olivier Breuleux <breuleuo@iro.umontreal.ca>
+Olivier Breuleux <breuleux@gmail.com> olivier@olivier-desktop <olivier@olivier-desktop>
+Olivier Delalleau <delallea@iro> Olivier Delalleau <delallea@iro.umontreal.ca>
+Olivier Delalleau <delallea@iro> delallea <delallea@iro.umontreal.ca>
+Olivier Delalleau <delallea@iro> delallea@valhalla.apstat.com <delallea@valhalla.apstat.com>
+Nicolas Boulanger-Lewandowski <nicolas_boulanger@hotmail.com> boulanni <nicolas_boulanger@hotmail.com>
+Pascal Lamblin <lamblinp@iro.umontreal.ca> lamblin <lamblinp@iro.umontreal.ca>
+Pascal Lamblin <lamblinp@iro.umontreal.ca> lamblinp@lgcm <lamblinp@lgcm>
+Philippe Hamel <hamel.phil@gmail.com> Philippe  Hamel <hamel.phil@gmail.com>
+Philippe Hamel <hamel.phil@gmail.com> Philippe Hamel <higgsbosonh@hotmail.com>
+Pierre-Antoine Manzagol <pierre.antoine.manzagol@gmail.com> Pierre-Antoine Manzagol <manzagop@iro>
+Raul Chandias Ferrari <devnull@localhost> chandiar <devnull@localhost>
+Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <pascanur@iro>
+Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <rman@rman-Dell-System-XPS-L502X.(none)>
+Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <rman@rman-pad.(none)>
+Razvan Pascanu <r.pascanu@gmail.com> pascanur@simplet.iro.umontreal.ca <pascanur@simplet.iro.umontreal.ca>
+Razvan Pascanu <r.pascanu@gmail.com> rman@rpad <rman@rpad>
+Sander Dieleman <sanderdieleman@gmail.com> benanne <sanderdieleman@gmail.com>
+Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa <glorotxa@iro.umontreal.ca>
+Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa@timide.iro.umontreal.ca <glorotxa@timide.iro.umontreal.ca>
+Yoshua Bengio <bengioy@iro.umontreal.ca> bengioy@bengio-mac.local <bengioy@bengio-mac.local>
+Sina Honari <honaris@iro.umontreal.ca> SinaHonari <sina2222@gmail.com>

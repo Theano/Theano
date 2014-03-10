@@ -6,22 +6,23 @@ Debugging Theano: FAQ and Troubleshooting
 =========================================
 
 There are many kinds of bugs that might come up in a computer program.
-This page is structured as an FAQ.  It should provide recipes to tackle common
-problems, and introduce some of the tools that we use to find problems in our
-Theano code, and even (it happens) in Theano's internals, such as
+This page is structured as a FAQ.  It provides recipes to tackle common
+problems, and introduces some of the tools that we use to find problems in our
+own Theano code, and even (it happens) in Theano's internals, in
 :ref:`using_debugmode`.
 
-Isolating the problem/Testing Theano compiler
+Isolating the Problem/Testing Theano Compiler
 ---------------------------------------------
 
-You can run your Theano function in a DebugMode(:ref:`using_debugmode`). This test the Theano optimizations and help to find where NaN, inf and other problem come from.
+You can run your Theano function in a :ref:`DebugMode<using_debugmode>`.
+This tests the Theano optimizations and helps to find where NaN, inf and other problems come from.
 
 
 Using Test Values
 -----------------
 
 As of v.0.4.0, Theano has a new mechanism by which graphs are executed
-on-the-fly, before a theano.function is ever compiled. Since optimizations
+on-the-fly, before a ``theano.function`` is ever compiled. Since optimizations
 haven't been applied at this stage, it is easier for the user to locate the
 source of some bug. This functionality is enabled through the config flag
 ``theano.config.compute_test_value``. Its use is best shown through the
@@ -34,35 +35,35 @@ following example.
     theano.config.compute_test_value = 'off'
 
     # configure shared variables
-    W1val = numpy.random.rand(2,10,10).astype(theano.config.floatX)
+    W1val = numpy.random.rand(2, 10, 10).astype(theano.config.floatX)
     W1 = theano.shared(W1val, 'W1')
-    W2val = numpy.random.rand(15,20).astype(theano.config.floatX)
+    W2val = numpy.random.rand(15, 20).astype(theano.config.floatX)
     W2 = theano.shared(W2val, 'W2')
 
     # input which will be of shape (5,10)
     x  = T.matrix('x')
 
     # transform the shared variable in some way. Theano does not
-    # know off hand that the matrix func_of_W1 has shape (20,10)
-    func_of_W1 = W1.dimshuffle(2,0,1).flatten(2).T
+    # know off hand that the matrix func_of_W1 has shape (20, 10)
+    func_of_W1 = W1.dimshuffle(2, 0, 1).flatten(2).T
 
     # source of error: dot product of 5x10 with 20x10
-    h1 = T.dot(x,func_of_W1)  
+    h1 = T.dot(x, func_of_W1)
 
     # do more stuff
-    h2 = T.dot(h1,W2.T)  
+    h2 = T.dot(h1, W2.T)
 
     # compile and call the actual function
     f = theano.function([x], h2)
-    f(numpy.random.rand(5,10))
-   
+    f(numpy.random.rand(5, 10))
+
 Running the above code generates the following error message:
 
 .. code-block:: bash
 
-    Definition in: 
+    Definition in:
       File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 1102, in apply
-        lopt_change = self.process_node(env, node, lopt)
+        lopt_change = self.process_node(fgraph, node, lopt)
       File "/u/desjagui/workspace/PYTHON/theano/gof/opt.py", line 882, in process_node
         replacements = lopt.transform(node)
       File "/u/desjagui/workspace/PYTHON/Theano/theano/tensor/blas.py", line 1030, in local_dot_to_dot22
@@ -82,13 +83,13 @@ Running the above code generates the following error message:
         thunk()
       File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/cc.py", line 1111, in execute
         raise exc_type, exc_value, exc_trace
-    ValueError: ('Shape mismatch: x has 10 cols but y has 20 rows', 
-    _dot22(x, <TensorType(float64, matrix)>), [_dot22.0], 
+    ValueError: ('Shape mismatch: x has 10 cols but y has 20 rows',
+    _dot22(x, <TensorType(float64, matrix)>), [_dot22.0],
     _dot22(x, InplaceDimShuffle{1,0}.0), 'Sequence id of Apply node=4')
 
-Needless to say the above is not very informative and does not provide much in
+Needless to say, the above is not very informative and does not provide much in
 the way of guidance. However, by instrumenting the code ever so slightly, we
-can get Theano to give us the exact source of the error.
+can get Theano to reveal the exact source of the error.
 
 .. code-block:: python
 
@@ -97,56 +98,56 @@ can get Theano to give us the exact source of the error.
 
     ...
 
-    # input which will be of shape (5,10)
+    # input which will be of shape (5, 10)
     x  = T.matrix('x')
     # provide Theano with a default test-value
-    x.tag.test_value = numpy.random.rand(5,10)
+    x.tag.test_value = numpy.random.rand(5, 10)
 
-In the above, we're tagging the symbolic matrix ``x`` with a special test
+In the above, we are tagging the symbolic matrix *x* with a special test
 value. This allows Theano to evaluate symbolic expressions on-the-fly (by
-calling the ``perform`` method of each Op), as they are being defined. Sources
+calling the ``perform`` method of each op), as they are being defined. Sources
 of error can thus be identified with much more precision and much earlier in
 the compilation pipeline. For example, running the above code yields the
-following error message, which properly identifies line 23 as the culprit.
+following error message, which properly identifies *line 23* as the culprit.
 
 .. code-block:: bash
 
     Traceback (most recent call last):
       File "test2.py", line 23, in <module>
-        h1 = T.dot(x,func_of_W1)  
+        h1 = T.dot(x,func_of_W1)
       File "/u/desjagui/workspace/PYTHON/Theano/theano/gof/op.py", line 360, in __call__
         node.op.perform(node, input_vals, output_storage)
       File "/u/desjagui/workspace/PYTHON/Theano/theano/tensor/basic.py", line 4458, in perform
         z[0] = numpy.asarray(numpy.dot(x, y))
     ValueError: ('matrices are not aligned', (5, 10), (20, 10))
 
-The compute_test_value mechanism works as follows:
+The ``compute_test_value`` mechanism works as follows:
 
-* Theano Constants and SharedVariable are used as is. No need to instrument them.
-* A Theano ``Variable`` (i.e. ``dmatrix``, ``vector``, etc.) should be
+* Theano ``constants`` and ``shared`` variables are used as is. No need to instrument them.
+* A Theano *variable* (i.e. ``dmatrix``, ``vector``, etc.) should be
   given a special test value through the attribute ``tag.test_value``.
 * Theano automatically instruments intermediate results. As such, any quantity
-  derived from ``x`` will be given a `tag.test_value` automatically.
+  derived from *x* will be given a ``tag.test_value`` automatically.
 
-`compute_test_value` can take the following values:
+``compute_test_value`` can take the following values:
 
-* ``off``: default behavior. This debugging mechanism is inactive.
-* ``raise``: compute test values on the fly. Any variable for which a test
+* ``off``: Default behavior. This debugging mechanism is inactive.
+* ``raise``: Compute test values on the fly. Any variable for which a test
   value is required, but not provided by the user, is treated as an error. An
   exception is raised accordingly.
-* ``warn``: idem, but a warning is issued instead of an Exception.
-* ``ignore``: silently ignore the computation of intermediate test values, if a
+* ``warn``: Idem, but a warning is issued instead of an *Exception*.
+* ``ignore``: Silently ignore the computation of intermediate test values, if a
   variable is missing a test value.
 
 .. note::
-  This feature is currently not compatible with ``Scan`` and also with Ops
+  This feature is currently incompatible with ``Scan`` and also with ops
   which do not implement a ``perform`` method.
 
 
-How do I print an intermediate value in a Function/Method?
-----------------------------------------------------------
+"How do I Print an Intermediate Value in a Function/Method?"
+------------------------------------------------------------
 
-Theano provides a 'Print' Op to do this.
+Theano provides a 'Print' op to do this.
 
 .. code-block:: python
 
@@ -158,97 +159,180 @@ Theano provides a 'Print' Op to do this.
     f_with_print = theano.function([x], x_printed * 5)
 
     #this runs the graph without any printing
-    assert numpy.all( f([1,2,3]) == [5, 10, 15])
+    assert numpy.all( f([1, 2, 3]) == [5, 10, 15])
 
     #this runs the graph with the message, and value printed
-    assert numpy.all( f_with_print([1,2,3]) == [5, 10, 15])
+    assert numpy.all( f_with_print([1, 2, 3]) == [5, 10, 15])
 
 
 Since Theano runs your program in a topological order, you won't have precise
-control over the order in which multiple Print() Ops are evaluted.  For a more
-precise inspection of what's being computed where, when, and how, see the
-:ref:`faq_wraplinker`.
+control over the order in which multiple ``Print()`` ops are evaluted.  For a more
+precise inspection of what's being computed where, when, and how, see the discussion
+:ref:`faq_monitormode`.
+
+.. warning::
+
+    Using this ``Print`` Theano Op can prevent some Theano
+    optimization from being applied. This can also happen with
+    stability optimization. So if you use this Print and have nan, try
+    to remove them to know if this is the cause or not.
 
 
-How do I print a graph (before or after compilation)?
-----------------------------------------------------------
+"How do I Print a Graph?" (before or after compilation)
+-------------------------------------------------------
+
+.. TODO: dead links in the next paragraph
 
 Theano provides two functions (:func:`theano.pp` and
 :func:`theano.printing.debugprint`) to print a graph to the terminal before or after
 compilation.  These two functions print expression graphs in different ways:
 :func:`pp` is more compact and math-like, :func:`debugprint` is more verbose.
-Theano also provides :func:`pydotprint` that creates a png image of the function.
+Theano also provides :func:`theano.printing.pydotprint` that creates a png image of the function.
 
 You can read about them in :ref:`libdoc_printing`.
 
 
 
-The function I compiled is too slow, what's up?
------------------------------------------------
-First, make sure you're running in FAST_RUN mode.  
-FAST_RUN is the default mode, but make sure by passing ``mode='FAST_RUN'``
+"The Function I Compiled is Too Slow, what's up?"
+-------------------------------------------------
+
+First, make sure you're running in ``FAST_RUN`` mode. Even though
+``FAST_RUN`` is the default mode, insist by passing ``mode='FAST_RUN'``
 to ``theano.function`` (or ``theano.make``) or by setting :attr:`config.mode`
 to ``FAST_RUN``.
 
-Second, try the theano :ref:`using_profilemode`.  This will tell you which
-Apply nodes, and which Ops are eating up your CPU cycles.
+Second, try the Theano :ref:`using_profilemode`.  This will tell you which
+``Apply`` nodes, and which ops are eating up your CPU cycles.
 
 Tips:
 
-* use the flags floatX=float32 to use float32 instead of float64 for the theano type matrix(),vector(),...(if you used dmatrix, dvector() they stay at float64).
-* Check that in the profile mode that there is no Dot operation and you're multiplying two matrices of the same type. Dot should be optimized to dot22 when the inputs are matrices and of the same type. This can happen when using floatX=float32 and something in the graph makes one of the inputs float64.
+* Use the flags ``floatX=float32`` to require type *float32* instead of *float64*;
+  Use the Theano constructors matrix(),vector(),... instead of dmatrix(), dvector(),...
+  since they respectively involve the default types *float32* and *float64*.
+* Check in the ``profile`` mode that there is no ``Dot`` op in the post-compilation
+  graph while you are multiplying two matrices of the same type. ``Dot`` should be
+  optimized to ``dot22`` when the inputs are matrices and of the same type. This can
+  still happen when using ``floatX=float32`` when one of the inputs of the graph is
+  of type *float64*.
 
-.. _faq_wraplinker:
 
-How do I step through a compiled function with the WrapLinker?
---------------------------------------------------------------
+.. _faq_monitormode:
 
-This is not exactly an FAQ, but the doc is here for now...
-It's pretty easy to roll-your-own evaluation mode.
-Check out this one:
+"How do I Step through a Compiled Function?"
+--------------------------------------------
+
+You can use ``MonitorMode`` to inspect the inputs and outputs of each
+node being executed when the function is called. The code snipped below
+shows how to print all inputs and outputs:
 
 .. code-block:: python
 
-    class PrintEverythingMode(Mode):
-        def __init__(self):
-            def print_eval(i, node, fn):
-                print i, node, [input[0] for input in fn.inputs],
-                fn()
-                print [output[0] for output in fn.outputs]
-            wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()], [print_eval])
-            super(PrintEverythingMode, self).__init__(wrap_linker, optimizer='fast_run')
+    import theano
 
-When you use ``mode=PrintEverythingMode()`` as the mode for Function or Method,
-then you should see [potentially a lot of] output.  Every Apply node will be printed out,
-along with its position in the graph, the arguments to the ``perform`` or
-``c_code`` and the output it computed.  
+    def inspect_inputs(i, node, fn):
+        print i, node, "input(s) value(s):", [input[0] for input in fn.inputs],
 
->>> x = T.dscalar('x')
->>> f = function([x], [5*x], mode=PrintEverythingMode())
->>> f(3)
->>> # print: 0 Elemwise{mul,no_inplace}(5, x) [array(5, dtype=int8), array(3.0)] [array(15.0)]
->>> # print: [array(15.0)]
+    def inspect_outputs(i, node, fn):
+        print "output(s) value(s):", [output[0] for output in fn.outputs]
 
+    x = theano.tensor.dscalar('x')
+    f = theano.function([x], [5 * x],
+                        mode=theano.compile.MonitorMode(
+                            pre_func=inspect_inputs,
+                            post_func=inspect_outputs))
+    f(3)
+
+    # The code will print the following:
+    #   0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) [array(5.0), array(3.0)] [array(15.0)]
+
+When using these ``inspect_inputs`` and ``inspect_outputs`` functions
+with ``MonitorMode``, you should see [potentially a lot of] printed output.
+Every ``Apply`` node will be printed out,
+along with its position in the graph, the arguments to the functions ``perform`` or
+``c_code`` and the output it computed.
 Admittedly, this may be a huge amount of
 output to read through if you are using big tensors... but you can choose to
-put logic inside of the print_eval function  that would, for example, only
-print something out if a certain kind of Op was used, at a certain program
-position, or if a particular value shows up in one of the inputs or outputs.
-Use your imagination :)
+add logic that would, for instance, print
+something out only if a certain kind of op were used, at a certain program
+position, or only if a particular value showed up in one of the inputs or outputs.
+A typical example is to detect when NaN values are added into computations, which
+can be achieved as follows:
+
+.. code-block:: python
+
+    import numpy
+
+    import theano
+
+    def detect_nan(i, node, fn):
+        for output in fn.outputs:
+            if numpy.isnan(output[0]).any():
+                print '*** NaN detected ***'
+                theano.printing.debugprint(node)
+                print 'Inputs : %s' % [input[0] for input in fn.inputs]
+                print 'Outputs: %s' % [output[0] for output in fn.outputs]
+                break
+
+    x = theano.tensor.dscalar('x')
+    f = theano.function([x], [theano.tensor.log(x) * x],
+                        mode=theano.compile.MonitorMode(
+                            post_func=detect_nan))
+    f(0)  # log(0) * 0 = -inf * 0 = NaN
+
+    # The code above will print:
+    #   *** NaN detected ***
+    #   Elemwise{Composite{[mul(log(i0), i0)]}} [@A] ''
+    #    |x [@B]
+    #   Inputs : [array(0.0)]
+    #   Outputs: [array(nan)]
+
+To help understand what is happening in your graph, you can
+disable the ``local_elemwise_fusion`` and all ``inplace``
+optimizations. The first is a speed optimization that merges elemwise
+operations together. This makes it harder to know which particular
+elemwise causes the problem. The second optimization makes some ops'
+outputs overwrite their inputs. So, if an op creates a bad output, you
+will not be able to see the input that was overwriten in the ``post_func``
+function. To disable those optimizations (with a Theano version after
+0.6rc3), define the MonitorMode like this:
+
+.. code-block:: python
+
+   mode = theano.compile.MonitorMode(post_func=detect_nan).excluding(
+       'local_elemwise_fusion', 'inplace)
+    f = theano.function([x], [theano.tensor.log(x) * x],
+                        mode=mode)
+
+.. note::
+
+    The Theano flags ``optimizer_including``, ``optimizer_excluding``
+    and ``optimizer_requiring`` aren't used by the MonitorMode, they
+    are used only by the ``default`` mode. You can't use the ``default``
+    mode with MonitorMode, as you need to define what you monitor.
+
+To be sure all inputs of the node are available during the call to
+``post_func``, you must also disable the garbage collector. Otherwise,
+the execution of the node can garbage collect its inputs that aren't
+needed anymore by the Theano function. This can be done with the Theano
+flag:
+
+.. code-block:: cfg
+
+   allow_gc=False
+
+
 
 .. TODO: documentation for link.WrapLinkerMany
 
-This can be a really powerful debugging tool.
-Note the call to ``fn`` inside the call to ``print_eval``; without it, the graph wouldn't get computed at all!
 
-How to use pdb ?
-----------------
+How to Use pdb
+--------------
 
 In the majority of cases, you won't be executing from the interactive shell
 but from a set of Python scripts. In such cases, the use of the Python
 debugger can come in handy, especially as your models become more complex.
 Intermediate results don't necessarily have a clear name and you can get
-exceptions which are hard to decipher, due to the "compiled" nature of
+exceptions which are hard to decipher, due to the "compiled" nature of the
 functions.
 
 Consider this example script ("ex.py"):
@@ -262,16 +346,16 @@ Consider this example script ("ex.py"):
         a = T.dmatrix('a')
         b = T.dmatrix('b')
 
-        f = theano.function([a,b], [a*b])
+        f = theano.function([a, b], [a * b])
 
         # matrices chosen so dimensions are unsuitable for multiplication
-        mat1 = numpy.arange(12).reshape((3,4))
-        mat2 = numpy.arange(25).reshape((5,5))
+        mat1 = numpy.arange(12).reshape((3, 4))
+        mat2 = numpy.arange(25).reshape((5, 5))
 
         f(mat1, mat2)
 
 This is actually so simple the debugging could be done easily, but it's for
-illustrative purposes. As the matrices can't be element-wise multiplied
+illustrative purposes. As the matrices can't be multiplied element-wise
 (unsuitable shapes), we get the following exception:
 
 .. code-block:: text
@@ -283,12 +367,12 @@ illustrative purposes. As the matrices can't be element-wise multiplied
     File "/u/username/Theano/theano/gof/link.py", line 267, in streamline_default_f
     File "/u/username/Theano/theano/gof/cc.py", line 1049, in execute ValueError: ('Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)', Elemwise{mul,no_inplace}(a, b), Elemwise{mul,no_inplace}(a, b))
 
-The call stack contains a few useful informations to trace back the source
+The call stack contains some useful information to trace back the source
 of the error. There's the script where the compiled function was called --
 but if you're using (improperly parameterized) prebuilt modules, the error
 might originate from ops in these modules, not this script. The last line
-tells us about the Op that caused the exception. In thise case it's a "mul"
-involving Variables name "a" and "b". But suppose we instead had an
+tells us about the op that caused the exception. In this case it's a "mul"
+involving variables with names "a" and "b". But suppose we instead had an
 intermediate result to which we hadn't given a name.
 
 After learning a few things about the graph structure in Theano, we can use
@@ -321,7 +405,7 @@ explore around the graph.
 
 That graph is purely symbolic (no data, just symbols to manipulate it
 abstractly). To get information about the actual parameters, you explore the
-"thunks" objects, which bind the storage for the inputs (and outputs) with
+"thunk" objects, which bind the storage for the inputs (and outputs) with
 the function itself (a "thunk" is a concept related to closures). Here, to
 get the current node's first input's shape, you'd therefore do "p
 thunk.inputs[0][0].shape", which prints out "(3, 4)".

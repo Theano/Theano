@@ -1,10 +1,9 @@
-from pkg_resources import parse_version as V
 import sys
 
 try:
     import scipy
-    enable_sparse = V(scipy.__version__) >= V('0.7')
-
+    scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+    enable_sparse = bool(scipy_ver >= [0, 7])
     if not enable_sparse:
         sys.stderr.write("WARNING: scipy version = %s."
                 " We request version >=0.7.0 for the sparse code as it has"
@@ -14,8 +13,10 @@ except ImportError:
     sys.stderr.write("WARNING: scipy can't be imported."
             " We disable the sparse matrix code.")
 
+from theano.sparse.type import *
+
 if enable_sparse:
-    from basic import *
-    import opt
-    import sharedvar
-    from sharedvar import sparse_constructor as shared
+    from theano.sparse.basic import *
+    from theano.sparse import opt
+    from theano.sparse import sharedvar
+    from theano.sparse.sharedvar import sparse_constructor as shared

@@ -1,0 +1,12 @@
+===================================================================
+:mod:`tensor.utils` --  Tensor Utils
+===================================================================
+
+.. module:: tensor.utils
+   :platform: Unix, Windows
+   :synopsis: Tensor Utils
+.. moduleauthor:: LISA
+
+.. automodule:: theano.tensor.utils
+    :members:
+

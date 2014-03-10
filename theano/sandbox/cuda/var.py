@@ -36,14 +36,14 @@ class _operators(tensor.basic._tensor_py_operators):
     ndim = property(lambda s:s.type.ndim)
 
 
-class CudaNdarrayVariable(Variable, _operators):
+class CudaNdarrayVariable(_operators, Variable):
     pass
 CudaNdarrayType.Variable = CudaNdarrayVariable
 
 class CudaNdarrayConstantSignature(tensor.TensorConstantSignature):
     pass
 
-class CudaNdarrayConstant(Constant, _operators):
+class CudaNdarrayConstant(_operators, Constant):
     def signature(self):
         return CudaNdarrayConstantSignature((self.type, numpy.asarray(self.data)))
     def __str__(self):
@@ -52,7 +52,7 @@ class CudaNdarrayConstant(Constant, _operators):
         return "CudaNdarrayConstant{"+str(numpy.asarray(self.data))+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
-class CudaNdarraySharedVariable(SharedVariable, _operators):
+class CudaNdarraySharedVariable(_operators, SharedVariable):
     """
     Shared Variable interface to CUDA-allocated arrays
     """

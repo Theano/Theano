@@ -1,30 +1,30 @@
 .. _shape_info:
 
-============================================
-How shape informations are handled by Theano
-============================================
+==========================================
+How Shape Information is Handled by Theano
+==========================================
 
-It is not possible to enforce strict shape into a Theano variable when
-building a graph. The given parameter of theano.function can change the
-shape any TheanoVariable in a graph.
+It is not possible to strictly enforce the shape of a Theano variable when
+building a graph since the particular value provided at run-time for a parameter of a
+Theano function may condition the shape of the Theano variables in its graph.
 
-Currently shape informations are used for 2 things in Theano:
+Currently, information regarding shape is used in two ways in Theano:
 
-- When the exact shape is known, we use it to generate faster c code for
-  the 2d convolution on the cpu and gpu.
+- To generate faster C code for the 2d convolution on the CPU and the GPU,
+  when the exact output shape is known in advance.
 
 - To remove computations in the graph when we only want to know the
   shape, but not the actual value of a variable. This is done with the
   `Op.infer_shape <http://deeplearning.net/software/theano/extending/cop.html#Op.infer_shape>`_
   method.
 
-  ex:
+  Example:
 
   .. code-block:: python
 
      import theano
      x = theano.tensor.matrix('x')
-     f = theano.function([x], (x**2).shape)
+     f = theano.function([x], (x ** 2).shape)
      theano.printing.debugprint(f)
      #MakeVector [@43860304] ''   2
      # |Shape_i{0} [@43424912] ''   1
@@ -32,15 +32,15 @@ Currently shape informations are used for 2 things in Theano:
      # |Shape_i{1} [@43797968] ''   0
      # | |x [@43423568]
 
-The output of this compiled function do not contain any multiplication
+The output of this compiled function does not contain any multiplication
 or power. Theano has removed them to compute directly the shape of the
 output.
 
-Shape inference problem
+Shape Inference Problem
 =======================
 
-Theano propagates shape information in the graph. Sometimes this
-can lead to errors. For example:
+Theano propagates information about shape in the graph. Sometimes this
+can lead to errors. Consider this example:
 
 .. code-block:: python
 
@@ -48,9 +48,9 @@ can lead to errors. For example:
    import theano
    x = theano.tensor.matrix('x')
    y = theano.tensor.matrix('y')
-   z = theano.tensor.join(0,x,y)
-   xv = numpy.random.rand(5,4)
-   yv = numpy.random.rand(3,3)
+   z = theano.tensor.join(0, x, y)
+   xv = numpy.random.rand(5, 4)
+   yv = numpy.random.rand(3, 3)
 
    f = theano.function([x,y], z.shape)
    theano.printing.debugprint(f)
@@ -83,61 +83,61 @@ can lead to errors. For example:
    # |y [@44540304]
 
    f(xv,yv)
-   # Raise a dimensions mismatch error.
+   # Raises a dimensions mismatch error.
 
-As you see, when you ask for the shape of some computation (join in the
-example), we sometimes compute an inferred shape directly, without executing
-the computation itself (there is no join in the first output or debugprint).
+As you can see, when asking only for the shape of some computation (``join`` in the
+example), an inferred shape is computed directly, without executing
+the computation itself (there is no ``join`` in the first output or debugprint).
 
-This makes the computation of the shape faster, but it can hide errors. In
-the example, the computation of the shape of join is done on the first
-theano variable in the join, not on the other.
+This makes the computation of the shape faster, but it can also hide errors. In
+this example, the computation of the shape of the output of ``join`` is done only
+based on the first input Theano variable, which leads to an error.
 
-This can probably happen with many other op as elemwise, dot, ...
-Indeed, to make some optimizations (for speed or stability, for instance),
-Theano can assume that the computation is correct and consistent
-in the first place, this is the case here.
+This might happen with other ops such as ``elemwise`` and ``dot``, for example.
+Indeed, to perform some optimizations (for speed or stability, for instance),
+Theano assumes that the computation is correct and consistent
+in the first place, as it does here.
 
-You can detect those problem by running the code without this
-optimization, with the Theano flag
-`optimizer_excluding=local_shape_to_shape_i`. You can also have the
-same effect by running in the mode FAST_COMPILE (it will not apply this
-optimization, nor most other optimizations) or DEBUG_MODE (it will test
+You can detect those problems by running the code without this
+optimization, using the Theano flag
+``optimizer_excluding=local_shape_to_shape_i``. You can also obtain the
+same effect by running in the modes ``FAST_COMPILE`` (it will not apply this
+optimization, nor most other optimizations) or ``DebugMode`` (it will test
 before and after all optimizations (much slower)).
 
 
-Specifing exact shape
+Specifing Exact Shape
 =====================
 
-Currently, specifying a shape is not as easy as we want. We plan some
-upgrade, but this is the current state of what can be done.
+Currently, specifying a shape is not as easy and flexible as we wish and we plan some
+upgrade.  Here is the current state of what can be done:
 
-- You can pass the shape info directly to the `ConvOp` created
-  when calling conv2d. You must add the parameter image_shape
-  and filter_shape to that call. They but most be tuple of 4
-  elements. Ex:
+- You can pass the shape info directly to the ``ConvOp`` created
+  when calling ``conv2d``. You simply set the parameters ``image_shape``
+  and ``filter_shape`` inside the call. They must be tuples of 4
+  elements. For example:
 
 .. code-block:: python
 
-    theano.tensor.nnet.conv2d(..., image_shape=(7,3,5,5), filter_shape=(2,3,4,4))
+    theano.tensor.nnet.conv2d(..., image_shape=(7, 3, 5, 5), filter_shape=(2, 3, 4, 4))
 
-- You can use the SpecifyShape op to add shape anywhere in the
-  graph. This allows to do some optimizations. In the following example,
-  this allows to precompute the Theano function to a constant.
+- You can use the ``SpecifyShape`` op to add shape information anywhere in the
+  graph. This allows to perform some optimizations. In the following example,
+  this makes it possible to precompute the Theano function to a constant.
 
 .. code-block:: python
 
    import theano
    x = theano.tensor.matrix()
-   x_specify_shape = theano.tensor.specify_shape(x, (2,2))
-   f = theano.function([x], (x_specify_shape**2).shape)
+   x_specify_shape = theano.tensor.specify_shape(x, (2, 2))
+   f = theano.function([x], (x_specify_shape ** 2).shape)
    theano.printing.debugprint(f)
    # [2 2] [@72791376]
 
-Future plans
+Future Plans
 ============
 
-- Add the parameter "constant shape" to theano.shared(). This is probably
-  the most frequent use case when we will use it. This will make the code
-  simpler and we will be able to check that the shape does not change when
-  we update the shared variable.
+  The parameter "constant shape" will be added to ``theano.shared()``. This is probably
+  the most frequent occurrence with ``shared`` variables. It will make the code
+  simpler and will make it possible to check that the shape does not change when
+  updating the ``shared`` variable.

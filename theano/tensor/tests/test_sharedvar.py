@@ -139,7 +139,7 @@ def makeSharedTester(shared_constructor_,
             total = self.theano_fct(x_shared)
 
             f = theano.function([],x_shared.shape)
-            topo = f.maker.env.toposort()
+            topo = f.maker.fgraph.toposort()
 
             assert numpy.all(f()==(2,4))
             if theano.config.mode!='FAST_COMPILE':
@@ -162,7 +162,7 @@ def makeSharedTester(shared_constructor_,
             total = self.theano_fct(x_shared)
 
             f = theano.function([],x_shared.shape[1])
-            topo = f.maker.env.toposort()
+            topo = f.maker.fgraph.toposort()
 
             assert numpy.all(f()==(4))
             if theano.config.mode!='FAST_COMPILE':
@@ -402,7 +402,7 @@ def makeSharedTester(shared_constructor_,
             assert numpy.allclose(self.ref_fct(x1_shared.get_value(borrow=True)),
                     self.ref_fct( x1_2))
             shape_op_fct = theano.function([],x1_shared.shape)
-            topo = shape_op_fct.maker.env.toposort()
+            topo = shape_op_fct.maker.fgraph.toposort()
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo)==3
                 assert isinstance(topo[0].op,tensor.opt.Shape_i)
@@ -413,13 +413,13 @@ def makeSharedTester(shared_constructor_,
             specify_shape_fct = theano.function([],x1_specify_shape)
             assert numpy.all(self.ref_fct(specify_shape_fct())==
                              self.ref_fct(x1_2))
-            topo_specify = specify_shape_fct.maker.env.toposort()
+            topo_specify = specify_shape_fct.maker.fgraph.toposort()
             assert len(topo_specify)==2
 
             #Test that we put the shape info into the graph
             shape_constant_fct = theano.function([],x1_specify_shape.shape)
             assert numpy.all(shape_constant_fct()==shape_op_fct())
-            topo_cst = shape_constant_fct.maker.env.toposort()
+            topo_cst = shape_constant_fct.maker.fgraph.toposort()
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo_cst)==1
                 topo_cst[0].op == theano.compile.function_module.deep_copy_op
@@ -432,7 +432,7 @@ def makeSharedTester(shared_constructor_,
             else:
                 shape_grad = tensor.grad(x1_specify_shape.sum(), x1_shared)
                 shape_constant_fct_grad = theano.function([], shape_grad)
-                theano.printing.debugprint(shape_constant_fct_grad)
+                #theano.printing.debugprint(shape_constant_fct_grad)
                 shape_constant_fct_grad()
 
             #Test that we can replace with values of the different shape
@@ -471,7 +471,7 @@ def makeSharedTester(shared_constructor_,
                     self.ref_fct(x1_shared.get_value(borrow=True)),
                     self.ref_fct( x1_2))
             shape_op_fct = theano.function([],x1_shared.shape)
-            topo = shape_op_fct.maker.env.toposort()
+            topo = shape_op_fct.maker.fgraph.toposort()
             shape_op_fct()
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo)==3
@@ -485,7 +485,7 @@ def makeSharedTester(shared_constructor_,
             #theano.printing.debugprint(specify_shape_fct)
             assert numpy.all(self.ref_fct(specify_shape_fct())
                              ==self.ref_fct(x1_2))
-            topo_specify = specify_shape_fct.maker.env.toposort()
+            topo_specify = specify_shape_fct.maker.fgraph.toposort()
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo_specify)==4
 
@@ -493,7 +493,7 @@ def makeSharedTester(shared_constructor_,
             shape_constant_fct = theano.function([],x1_specify_shape.shape)
             #theano.printing.debugprint(shape_constant_fct)
             assert numpy.all(shape_constant_fct()==shape_op_fct())
-            topo_cst = shape_constant_fct.maker.env.toposort()
+            topo_cst = shape_constant_fct.maker.fgraph.toposort()
             if theano.config.mode!='FAST_COMPILE':
                 assert len(topo_cst)==2
 
@@ -526,9 +526,9 @@ def makeSharedTester(shared_constructor_,
             s = self.cast_value(s)
             s_shared = self.shared_constructor(s)
             f = theano.function([],
-                                updates={s_shared:theano.dot(a_shared,b_shared)
-                                         +s_shared})
-            topo=f.maker.env.toposort()
+                                updates=[(s_shared, theano.dot(a_shared,b_shared)
+                                         +s_shared)])
+            topo=f.maker.fgraph.toposort()
             f()
             #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
             if theano.config.mode!='FAST_COMPILE':
@@ -541,9 +541,9 @@ def makeSharedTester(shared_constructor_,
 
             #now test with the specify shape op in the output
             f = theano.function([], s_shared.shape,
-                                updates={s_shared:theano.dot(a_shared,b_shared)
-                                         +s_shared_specify})
-            topo=f.maker.env.toposort()
+                                updates=[(s_shared, theano.dot(a_shared,b_shared)
+                                         +s_shared_specify)])
+            topo=f.maker.fgraph.toposort()
             shp=f()
             assert numpy.all(shp == (40,40))
             if theano.config.mode!='FAST_COMPILE':
@@ -557,9 +557,9 @@ def makeSharedTester(shared_constructor_,
                     b_shared.get_value(borrow=True).shape)
 
             f = theano.function([], s_shared.shape,
-                                updates={s_shared:theano.dot(a_shared,b_shared)
-                                         +s_shared_specify})
-            topo=f.maker.env.toposort()
+                                updates=[(s_shared, theano.dot(a_shared,b_shared)
+                                         +s_shared_specify)])
+            topo=f.maker.fgraph.toposort()
             shp=f()
             assert numpy.all(shp == (40,40))
             if theano.config.mode!='FAST_COMPILE':

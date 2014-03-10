@@ -5,27 +5,71 @@ Documentation Documentation AKA Meta-Documentation
 ==================================================
 
 
-How to link from Sphinx to API documentation
+How to build documentation
+--------------------------
+
+Let's say you are writing documentation, and want to see the `sphinx
+<http://sphinx.pocoo.org/>`__ output before you push it.
+The documentation will be generated in the ``html`` directory.
+
+.. code-block:: bash
+
+    cd Theano/
+    python ./doc/scripts/docgen.py
+
+If you don't want to generate the pdf, do the following:
+
+.. code-block:: bash
+
+    cd Theano/
+    python ./doc/scripts/docgen.py --nopdf
+
+
+For more details:
+
+.. code-block:: bash
+
+   $ python doc/scripts/docgen.py --help
+   Usage: doc/scripts/docgen.py [OPTIONS]
+     -o <dir>: output the html files in the specified dir
+     --rst: only compile the doc (requires sphinx)
+     --nopdf: do not produce a PDF file from the doc, only HTML
+     --help: this help
+
+Use ReST for documentation
+--------------------------
+
+ * `ReST <http://docutils.sourceforge.net/rst.html>`__ is standardized.
+   epydoc is not. trac wiki-markup is not.
+   This means that ReST can be cut-and-pasted between epydoc, code, other
+   docs, and TRAC.  This is a huge win!
+ * ReST is extensible: we can write our own roles and directives to automatically link to WIKI, for example.
+ * ReST has figure and table directives, and can be converted (using a standard tool) to latex documents.
+ * No text documentation has good support for math rendering, but ReST is closest: it has three renderer-specific solutions (render latex, use latex to build images for html, use itex2mml to generate MathML)
+
+
+How to link to class/function documentations
 --------------------------------------------
 
-Link from Sphinx to epydoc this way::
+Link to the generated doc of a function this way::
 
-    :api:`linkname <path-to-symbol>`
+    :func:`perform`
 
 For example::
 
-    :api:`function <theano.compile.function>`
+    of the :func:`perform` function.
 
-You can also use ``:api:\`path-to-symbol\``` directly.
+Link to the generated doc of a class this way::
 
-If you are lazy, you can try::
+    :class:`RopLop_checker`
 
-    :api:`<function>`
+For example::
 
-However, if the link target is ambiguous, Sphinx will generate errors.
+    The class :class:`RopLop_checker`, give the functions
 
-NB the ``:api:`` reference is special magic by Olivier, in
-./doc/scripts/docgen.py.
+
+However, if the link target is ambiguous, Sphinx will generate warning or errors.
+
 
 How to add TODO comments in Sphinx documentation
 -------------------------------------------------
@@ -42,59 +86,6 @@ It will not appear in the output generated.
     .. TODO: Check it out, this won't appear.
     .. Nor will this.
 
-How to write API documentation
----------------------------------------
-
-API documentation is processed by `epydoc
-<http://epydoc.sourceforge.net/>`__ and should be written in
-`reStructuredText <http://docutils.sourceforge.net/rst.html>`__. See `here
-<http://epydoc.sourceforge.net/manual-othermarkup.html#restructuredtext>`__
-for details about how to use reST with epydoc documentation.
-
-Use ReST for API and Sphinx documentation
------------------------------------------
-
- * ReST is standardized. epydoc is not. trac wiki-markup is not.
-   This means that ReST can be cut-and-pasted between epydoc, code, other
-   docs, and TRAC.  This is a huge win!
- * ReST is extensible: we can write our own roles and directives to automatically link to WIKI, for example.
- * ReST has figure and table directives, and can be converted (using a standard tool) to latex documents.
- * No text documentation has good support for math rendering, but ReST is closest: it has three renderer-specific solutions (render latex, use latex to build images for html, use itex2mml to generate MathML)
-
-How to build documentation
----------------------------------------
-
-Let's say you are writing documentation, and want to see
-the `epydoc <http://epydoc.sourceforge.net/>`__ and `sphinx
-<http://sphinx.pocoo.org/>`__ output before you push it.
-
-The following technique uses Olivier's code to insert :api: links:
-
-.. code-block:: bash
-
-    cd Theano/
-    python ./doc/scripts/docgen.py
-
-If you don't want to rerun epydoc, do the following:
-
-.. code-block:: bash
-
-    cd Theano/
-    python ./doc/scripts/docgen.py --rst
-
-
-For more details:
-
-.. code-block:: bash
-
-   $ python doc/scripts/docgen.py --help
-   Usage: doc/scripts/docgen.py [OPTIONS]
-     -o <dir>: output the html files in the specified dir
-     --rst: only compile the doc (requires sphinx)
-     --nopdf: do not produce a PDF file from the doc, only HTML
-     --epydoc: only compile the api documentation (requires epydoc)
-     --help: this help
-
 
 How documentation is built on deeplearning.net
 ----------------------------------------------
@@ -107,7 +98,7 @@ newly generated ones.
 Note that the server will most definitely use a different version of sphinx
 than yours so formatting could be slightly off, or even wrong. If you're
 getting unxpected results and/or the auto-build of the documentation seems
-broken, please contact theano-dev@ (or Dumitru, or Fred directly).
+broken, please contact theano-dev@.
 
 In the future, we might go back to the system of auto-refresh on push (though
 that might increase the load of the server quite significantly).
@@ -132,10 +123,11 @@ The user ``lisa`` runs a cronjob on the computer ``ceylon``,  this
 happens nightly. (To have the crontab executed, the ``lisa`` user must
 be logged into ``ceylon``, Fred leaves a shell open for that.)
 
-The cronjob executes the scripts
-``~/nightly_build/do_nightly_build_{theano,pylearn,deeplearning}``.
-These scripts perform an update of theano (and pylearn, and
-DeepLearningTutorials too), and execute nosetests (in various settings).
+The cronjob executes a script that download/update the repo of Theano,
+Pylearn, Pylearn2 and the Deep Learning Tutorial, then run their tests
+script under ``*/misc/do_nightly_build``. Those script tests the
+project under various condition. The cron job also run some tests in
+Python 2.4 and Python 3.3 for Theano.
 
 The output is emailed automatically to the `theano-buildbot`_ mailing list.
 
@@ -147,8 +139,5 @@ TO WRITE
 
 *There is other stuff to document here, e.g.:*
 
- * where the documentation is getting built, and epy.
- * How epydoc and sphinx are integrated
- * Explain the special magic in ./doc/scripts/docgen.py
- * We also want examples of good documentation, to show people how to write sphinx,
+ * We also want examples of good documentation, to show people how to write ReST.
 

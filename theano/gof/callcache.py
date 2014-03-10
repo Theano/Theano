@@ -1,4 +1,4 @@
-import cPickle, logging, sys
+import cPickle, logging
 
 _logger=logging.getLogger("theano.gof.callcache")
 
@@ -8,7 +8,7 @@ class CallCache(object):
         try:
             if filename is None:
                 raise IOError('bad filename') #just goes to except
-            f = file(filename, 'r')
+            f = open(filename, 'r')
             self.cache = cPickle.load(f)
             f.close()
         except IOError:
@@ -20,7 +20,7 @@ class CallCache(object):
 
         #backport
         #filename = self.filename if filename is None else filename
-        f = file(filename, 'w')
+        f = open(filename, 'w')
         cPickle.dump(self.cache, f)
         f.close()
 

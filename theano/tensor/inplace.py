@@ -1,10 +1,7 @@
-
-from basic import _scal_elemwise #, _transpose_inplace
 from theano import scalar as scal
 import elemwise
 from theano import printing
 from theano.printing import pprint
-from theano.gof.python25 import any
 
 def _scal_inplace(symbol):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
@@ -89,6 +86,14 @@ def exp_inplace(a):
     """e^`a` (inplace on `a`)"""
 
 @_scal_inplace
+def exp2_inplace(a):
+    """2^`a` (inplace on `a`)"""
+
+@_scal_inplace
+def expm1_inplace(a):
+    """e^`a` - 1 (inplace on `a`)"""
+
+@_scal_inplace
 def neg_inplace(a):
     """-a (inplace on a)"""
 
@@ -125,6 +130,10 @@ def floor_inplace(a):
     """floor of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def trunc_inplace(a):
+    """trunc of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def round_half_to_even_inplace(a):
     """round_half_to_even_inplace(a) (inplace on `a`)"""
 
@@ -141,6 +150,14 @@ def sqrt_inplace(a):
     """square root of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def deg2rad_inplace(a):
+    """convert degree `a` to radian(inplace on `a`)"""
+
+@_scal_inplace
+def rad2deg_inplace(a):
+    """convert radian `a` to degree(inplace on `a`)"""
+
+@_scal_inplace
 def cos_inplace(a):
     """cosine of `a` (inplace on `a`)"""
 
@@ -153,20 +170,44 @@ def sin_inplace(a):
     """sine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arcsin_inplace(a):
+    """arcsine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def tan_inplace(a):
     """tangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arctan_inplace(a):
+    """arctangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arctan2_inplace(a, b):
+    """arctangent of `a` / `b` (inplace on `a`)"""
 
 @_scal_inplace
 def cosh_inplace(a):
     """hyperbolic cosine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arccosh_inplace(a):
+    """hyperbolic arc cosine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def sinh_inplace(a):
     """hyperbolic sine of `a` (inplace on `a`)"""
 
 @_scal_inplace
+def arcsinh_inplace(a):
+    """hyperbolic arc sine of `a` (inplace on `a`)"""
+
+@_scal_inplace
 def tanh_inplace(a):
     """hyperbolic tangent of `a` (inplace on `a`)"""
+
+@_scal_inplace
+def arctanh_inplace(a):
+    """hyperbolic arc tangent of `a` (inplace on `a`)"""
 
 @_scal_inplace
 def erf_inplace(a):
@@ -175,6 +216,22 @@ def erf_inplace(a):
 @_scal_inplace
 def erfc_inplace(a):
     """complementary error function"""
+
+@_scal_inplace
+def gamma_inplace(a):
+    """gamma function"""
+
+@_scal_inplace
+def gammaln_inplace(a):
+    """log gamma function"""
+
+@_scal_inplace
+def psi_inplace(a):
+    """derivative of log gamma function"""
+
+@_scal_inplace
+def chi2sf_inplace(x, k):
+    """chi squared survival function"""
 
 @_scal_inplace
 def second_inplace(a):
@@ -219,6 +276,10 @@ def mod_inplace(a, b):
 @_scal_inplace
 def pow_inplace(a, b):
     """elementwise power (inplace on `a`)"""
+
+@_scal_inplace
+def conj_inplace(a):
+    """elementwise conjugate (inplace on `a`)"""
 
 pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))

@@ -27,7 +27,7 @@ More precisely, if *A* is a tensor you want to compute
   for i in xrange(k):
     result = result * A
 
-There are three thing here that we need to handle: the initial value
+There are three things here that we need to handle: the initial value
 assigned to ``result``, the accumulation of results in ``result``, and
 the unchanging variable ``A``. Unchanging variables are passed to scan as
 ``non_sequences``. Initialization occurs in ``outputs_info``, and the accumulation
@@ -67,7 +67,7 @@ Next we initialize the output as a tensor with same shape and dtype as ``A``,
 filled with ones. We give ``A`` to scan as a non sequence parameter and
 specify the number of steps ``k`` to iterate over our lambda expression.
 
-Scan return a tuples, containing our result (``result``) and a
+Scan returns a tuple containing our result (``result``) and a
 dictionary of updates (empty in this case). Note that the result
 is not a matrix, but a 3D tensor containing the value of ``A**k`` for
 each step. We want the last value (after ``k`` steps) so we compile
@@ -133,29 +133,44 @@ This makes it safe to pass a very long arange, which we need to do for generalit
 arange must have its length specified at creation time.
 
 
-Simple accumulation into a scalar, ditching lamba
--------------------------------------------------
+Simple accumulation into a scalar, ditching lambda
+--------------------------------------------------
 
-This should be fairly self-explanatory.
+Although this example would seem almost self-explanatory, it stresses a
+pitfall to be careful of: the initial output state that is supplied, that is 
+``output_info``, must be of a **shape similar to that of the output variable**
+generated at each iteration and moreover, it **must not involve an implicit
+downcast** of the latter. 
 
 .. code-block:: python
+
+
+    import numpy as np
+    import theano
+    import theano.tensor as T
 
     up_to = T.iscalar("up_to")
 
     # define a named function, rather than using lambda
     def accumulate_by_adding(arange_val, sum_to_date):
         return sum_to_date + arange_val
+    seq = T.arange(up_to)
 
+    # An unauthorized implicit downcast from the dtype of 'seq', to that of
+    # 'T.as_tensor_variable(0)' which is of dtype 'int8' by default would occur
+    # if this instruction were to be used instead of the next one:
+    # outputs_info = T.as_tensor_variable(0)
+
+    outputs_info = T.as_tensor_variable(np.asarray(0, seq.dtype))
     scan_result, scan_updates = theano.scan(fn=accumulate_by_adding,
-                                            outputs_info=T.as_tensor_variable(0),
-                                            sequences=T.arange(up_to))
+                                            outputs_info=outputs_info,
+                                            sequences=seq)
     triangular_sequence = theano.function(inputs=[up_to], outputs=scan_result)
 
     # test
     some_num = 15
     print triangular_sequence(some_num)
     print [n * (n + 1) // 2 for n in xrange(some_num)]
-
 
 
 Another simple example
@@ -280,34 +295,35 @@ the following:
 
 .. code-block:: python
 
- W = theano.shared ( W_values ) # we assume that ``W_values`` contains the
-                                # initial values of your weight matrix
+ W = theano.shared(W_values) # we assume that ``W_values`` contains the
+                             # initial values of your weight matrix
 
- bvis = theano.shared( bvis_values)
- bhid = theano.shared( bhid_values)
+ bvis = theano.shared(bvis_values)
+ bhid = theano.shared(bhid_values)
 
  trng = T.shared_randomstreams.RandomStreams(1234)
 
- def OneStep( vsample) :
-    hmean   = T.nnet.sigmoid( theano.dot( vsample, W) + bhid)
-    hsample = trng.binomial( size = hmean.shape, n = 1, prob = hmean)
-    vmean   = T.nnet.sigmoid( theano.dot( hsample. W.T) + bvis)
-    return trng.binomial( size = vsample.shape, n = 1, prob = vsample)
+ def OneStep(vsample) :
+    hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+    hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+    vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+    return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                         dtype=theano.config.floatX)
 
  sample = theano.tensor.vector()
 
- values, updates = theano.scan( OneStep, outputs_info = sample, n_steps = 10 )
+ values, updates = theano.scan(OneStep, outputs_info=sample, n_steps=10)
 
- gibbs10 = theano.function([sample], values[-1], updates = updates)
+ gibbs10 = theano.function([sample], values[-1], updates=updates)
 
 
 Note that if we use shared variables ( ``W``, ``bvis``, ``bhid``) but
-we do not iterate over them ( so scan doesn't really need to know
+we do not iterate over them (so scan doesn't really need to know
 anything in particular about them, just that they are used inside the
 function applied at each step) you do not need to pass them as
-arguments. Scan will find them on its on and add them to the graph. Of
+arguments. Scan will find them on its own and add them to the graph. Of
 course, if you wish to (and it is good practice) you can add them, when
-you call scan (they would be in the list of non sequence inputs).
+you call scan (they would be in the list of non-sequence inputs).
 
 The second, and probably most crucial observation is that the updates
 dictionary becomes important in this case. It links a shared variable
@@ -320,7 +336,7 @@ afterwards. Look at this example :
 .. code-block:: python
 
  a = theano.shared(1)
- values,updates = theano.scan( lambda : {a:a+1}, n_steps = 10 )
+ values, updates = theano.scan(lambda: {a: a+1}, n_steps=10)
 
 In this case the lambda expression does not require any input parameters
 and returns an update dictionary which tells how ``a`` should be updated
@@ -328,9 +344,9 @@ after each step of scan. If we write :
 
 .. code-block:: python
 
-  b = a+1
+  b = a + 1
   c = updates[a] + 1
-  f = theano.function([], [b,c], updates = updates)
+  f = theano.function([], [b, c], updates=updates)
 
   print b
   print c

@@ -32,7 +32,6 @@ you should check the strides and alignment.
 .. code-block:: python
 
   class Fibby(theano.Op):
-
     """
     An arbitrarily generalized Fibbonacci sequence
     """
@@ -45,6 +44,7 @@ you should check the strides and alignment.
 
     def make_node(self, x):
       x_ = tensor.as_tensor_variable(x)
+      assert x_.ndim == 1
       return theano.Apply(self, 
         inputs=[x_],
         outputs=[x_.type()])
@@ -53,7 +53,7 @@ you should check the strides and alignment.
     def perform(self, node, inputs, output_storage):
       x, = inputs
       y = output_storage[0][0] = x.copy()
-      for i in range(2,len(x)):
+      for i in range(2, len(x)):
         y[i] = y[i-1] * y[i-2] + x[i]
 
     def c_code(self, node, name, inames, onames, sub):
@@ -63,13 +63,19 @@ you should check the strides and alignment.
       return """
         Py_XDECREF(%(y)s);
         %(y)s = (PyArrayObject*)PyArray_FromArray(
-                    %(x)s, 0, NPY_ENSURECOPY);
-        if (!(%y)s) %(fail)s;
-        dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data; 
-        dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data; 
-        for (int i = 2; i < %(x)s->dimensions[0]; ++i)
-          y[i] = y[i-1]*y[i-2] + x[i];
+                    %(x)s, 0, NPY_ARRAY_ENSURECOPY);
+        if (!%(y)s)
+            %(fail)s;
+        {//New scope needed to make compilation work
+            dtype_%(y)s * y = (dtype_%(y)s*)PyArray_DATA(%(y)s);
+            dtype_%(x)s * x = (dtype_%(x)s*)PyArray_DATA(%(x)s);
+            for (int i = 2; i < PyArray_DIMS(%(x)s)[0]; ++i)
+                y[i] = y[i-1]*y[i-2] + x[i];
+        }
       """ % locals()
+
+    def c_code_cache_version(self):
+      return (1,)
 
   fibby = Fibby()
 
@@ -147,7 +153,7 @@ the correct size for the output. This is essentially simulating the line
 
     Py_XDECREF(%(y)s);
     %(y)s = (PyArrayObject*)PyArray_FromArray(
-        %(x)s, 0, NPY_ENSURECOPY);
+        %(x)s, 0, NPY_ARRAY_ENSURECOPY);
 
 The first line reduces the reference count of the data that y originally
 pointed to. The second line allocates the new data and makes y point to it.
@@ -168,7 +174,7 @@ not modify any of the inputs.
 TODO: EXPLAIN DESTROYMAP and VIEWMAP BETTER AND GIVE EXAMPLE.
 
 When developing an Op, you should run computations in DebugMode, by using
-argument ``mode='DEBUG_MODE'`` to ``theano.function``. DebugMode is
+argument ``mode='DebugMode'`` to ``theano.function``. DebugMode is
 slow, but it can catch many common violations of the Op contract.
 
 TODO: Like what? How? Talk about Python vs. C too.
@@ -208,7 +214,7 @@ TODO: talk about OPTIMIZATION STAGES
 
 .. code-block:: python
 
-  from theano.tensor.opt import get_constant_value
+  from theano.tensor.opt import get_scalar_constant_value, NotScalarConstantError
 
   # Remove any fibby(zeros(...))
   @theano.tensor.opt.register_specialize
@@ -217,9 +223,9 @@ TODO: talk about OPTIMIZATION STAGES
     if node.op == fibby:
       x = node.inputs[0]
       try:
-        if numpy.all(0 == get_constant_value(x)):
+        if numpy.all(0 == get_scalar_constant_value(x)):
           return [x]
-      except TypeError:
+      except NotScalarConstantError:
         pass
 
 The ``register_specialize`` decorator is what activates our optimization, and
@@ -229,6 +235,40 @@ function.  The ``[fibby]`` argument is a hint that our optimizer works on nodes
 whose ``.op`` attribute equals ``fibby``.
 The function here (``fibby_of_zero``) expects an ``Apply`` instance as an
 argument for parameter ``node``. It tests using
-function ``get_constant_value``, which determines if a
+function ``get_scalar_constant_value``, which determines if a
 Variable (``x``) is guaranteed to be a constant, and if so, what constant.
 
+Test the optimization
+=====================
+
+Here is some code to test that the optimization is applied only when needed.
+
+.. code-block:: python
+
+        # Test it does not apply when not needed
+        x = T.dvector()
+        f = function([x], fibby(x))
+        #theano.printing.debugprint(f)
+
+        # We call the function to make sure it runs.
+        # If you run in DebugMode, it will compare the C and Python outputs.
+        f(numpy.random.rand(5))
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, Fibby)
+
+        # Test that the optimization gets applied.
+        f_zero = function([], fibby(T.zeros([5])))
+        #theano.printing.debugprint(f_zero)
+
+        # If you run in DebugMode, it will compare the output before
+        # and after the optimization.
+        f_zero()
+
+        # Check that the optimization removes the Fibby Op.
+        # For security, the Theano memory interface ensures that the output
+        # of the function is always memory not aliased to the input.
+        # That is why there is a DeepCopyOp op.
+        topo = f_zero.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)

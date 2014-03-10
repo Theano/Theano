@@ -138,9 +138,9 @@ def asarrayX(value):
 
 
 def clone_optimized_graph(f):
-    maker_ins = [x for x in f.maker.env.inputs
+    maker_ins = [x for x in f.maker.fgraph.inputs
                  if not isinstance(x, theano.tensor.sharedvar.SharedVariable)]
-    inps, outs, _ = rebuild_collect_shared(f.maker.env.outputs,
+    inps, outs, _ = rebuild_collect_shared(f.maker.fgraph.outputs,
                                            maker_ins,
                                            copy_inputs_over=False)
     ins = [x for x in inps

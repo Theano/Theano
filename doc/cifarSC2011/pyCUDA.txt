@@ -75,7 +75,7 @@ Exercise 6
 - Modify and execute it to work for a matrix of 20 x 10
 
 
-.. _pyCUDA_theano:
+.. _cifar2011_pyCUDA_theano:
 
 Theano + PyCUDA
 ---------------

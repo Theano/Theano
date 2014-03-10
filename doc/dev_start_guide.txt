@@ -51,7 +51,10 @@ Clone your fork locally with
 
 .. code-block:: bash
 
-    git clone git@github.com:your_github_login/Theano.git
+    git clone git@github.com:YOUR_GITHUB_LOGIN/Theano.git
+
+For this URL to work, you must set your public ssh keys inside your
+`github account setting <https://github.com/settings/ssh>`_.
 
 From your local repository, your own fork on GitHub will be called "origin".
 
@@ -328,7 +331,7 @@ To install it on Linux, you can do like this:
 .. code-block:: bash
 
    cd
-   git clone https://github.com/gabrielelanaro/emacs-for-python.git .emacs.d/emacs-for-python
+   git clone https://github.com/gabrielelanaro/emacs-for-python.git ~/.emacs.d/emacs-for-python
 
 
 Then in your ``~/.emacs`` file, add this:
@@ -345,6 +348,8 @@ Then in your ``~/.emacs`` file, add this:
    (require 'epy-python) ;; If you want the python facilities [optional]
    (require 'epy-completion) ;; If you want the autocompletion settings [optional]
    (require 'epy-editing) ;; For configurations related to editing [optional]
+   ;; [newer version of emacs-for-python]
+   (require 'epy-nose) ;; For shortcut to call nosetests [optional]
 
    ;; Define f10 to previous error
    ;; Define f11 to next error
@@ -359,7 +364,17 @@ Then in your ``~/.emacs`` file, add this:
    (epy-setup-checker "pyflakes %f") ;; For python syntax check
    (epy-setup-checker "pep8 -r %f") ;; For pep8 check
 
+.. note::
 
+   The script highlights problematic lines. This can make part of the
+   line not readable depending on the background. To replace the line
+   highlight by an underline, add this to your emacs configuration
+   file:
+
+   ;; Make lines readable when there is an warning [optional]
+   (custom-set-faces
+   '(flymake-errline ((((class color)) (:underline "red"))))
+   '(flymake-warnline ((((class color)) (:underline "yellow")))))
 
 Unit tests
 ----------
@@ -479,3 +494,17 @@ a specific branch (REMOTE_BRANCH_NAME) from the remote repository
 .. code-block:: bash
 
    git checkout -b LOCAL_BRANCH_NAME REPO_NAME/REMOTE_BRANCH_NAME
+
+
+Other tools that can help you
+=============================
+
+ * `cProfile <http://docs.python.org/library/profile.html>`_: time profiler that work at function level.
+ * `Yep <http://pypi.python.org/pypi/yep>`_: A module for profiling compiled extensions.
+ * `autopep8 <http://pypi.python.org/pypi/autopep8/>`_: A tool that automatically formats Python code to conform to the PEP 8 style guide.
+ * `line_profiler <http://pypi.python.org/pypi/line_profiler/>`_: Line-by-line profiler.
+ * `memory_profiler <http://fseoane.net/blog/2012/line-by-line-report-of-memory-usage/>`_: memory profiler
+ * `runsnake <http://www.vrplumber.com/programming/runsnakerun/>`_: Gui for cProfile(time profiler) and Meliae(memory profiler)
+ * `Guppy <https://pypi.python.org/pypi/guppy/>`_: Supports object and heap memory sizing, profiling and debugging.
+ * `hub <https://github.com/defunkt/hub>`_: A tool that adds github commands to the git command line.
+ * `git pull-requests <http://www.splitbrain.org/blog/2011-06/19-automate_github_pull_requests>`_: Another tool for git/github command line.

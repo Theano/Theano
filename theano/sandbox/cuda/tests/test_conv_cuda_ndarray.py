@@ -17,6 +17,9 @@ except ImportError:
     pass
 
 import theano
+from theano import tensor
+from theano.gof.python25 import any
+from theano.tests.unittest_tools import seed_rng
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda_ndarray
@@ -393,7 +396,7 @@ def get_valid_shapes():
             , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1)) # layer 1 backprop to weights
             , ((60,20,28,28), (10,20,5,5), (1, 1), (2,2), (1, 1))#added a test case that fail from test_nnet.py.test_conv_nnet2
             , ((10,5,28,28), (10,5,5,5), (1, 1), (2,2), (1, 1))#test precedent but reduced that triger the error
-            #Test more then maxThreadsDim0
+            #Test more than maxThreadsDim0
             , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             ]
@@ -413,6 +416,7 @@ def get_valid_shapes():
 
 
 def test_valid_0_2():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [0, 2]
     verbose = 0
@@ -444,6 +448,7 @@ def test_valid_0_2():
 
 
 def test_valid_1_3_11_12():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [1, 3, 11, 12]
     verbose = 0
@@ -473,6 +478,7 @@ def test_valid_1_3_11_12():
 
 
 def test_valid_4():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [4]
     verbose = 0
@@ -504,6 +510,7 @@ def test_valid_4():
 
 
 def test_valid_5():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [5]
     verbose = 0
@@ -535,6 +542,7 @@ def test_valid_5():
 
 
 def test_valid_7_8_13():
+    seed_rng()
     shapes = get_valid_shapes()
     # This is to test the "new" lower shared memory usage.
     shapes.append(((10, 30, 60, 60), (20, 30, 40, 40),
@@ -569,6 +577,7 @@ def test_valid_7_8_13():
 
 
 def test_valid_9_10():
+    seed_rng()
     shapes = get_valid_shapes()
     version = [9, 10]
     verbose = 0
@@ -599,6 +608,7 @@ def test_valid_9_10():
 
 
 def test_valid():
+    seed_rng()
     shapes = get_valid_shapes()
 
     #shapes=shapes[400:426]
@@ -619,6 +629,7 @@ def test_valid():
 
 
 def test_full():
+    seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
     #test image stride
@@ -665,9 +676,10 @@ def test_full():
             , ((10,30,23,23),(20,30,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
 #            , ((20,10,29,29),(30,10,23,23), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 1
 #            , ((1,10,64,64),(20,10,58,58), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 2
-            #Test more then maxThreadsDim0
+            #Test more than maxThreadsDim0
             , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
             , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
+            , ((1,1,44800,1), (6,1,1,1), (1, 1), (1, 1), (1, 1))#This caused crash
             ]
 
 #    shapes=shapes[:277]
@@ -680,6 +692,7 @@ def test_full():
 
 
 def test_subsample():
+    seed_rng()
     # implement when
     shapes = [((1, 1, 1, 1), (1, 1, 1, 1), (1, 1), (1, 1), (1, 1)),
               ((1, 1, 1, 1), (1, 1, 1, 1), (2, 2), (1, 1), (1, 1)),
@@ -707,19 +720,48 @@ def test_subsample():
     exec_conv(version_full, shapes, verbose, random, 'full',
               print_=print_, ones=ones)
 
-## See #616
-#def test_logical_shapes():
-#    # implement when
-#    print >> sys.stderr, ("WARNING TODO: test_logical_shapes not implemented"
-#    " (i.e. imshp_logical, kshp_logical, kshp_logical_top_aligned)")
-
 
 class TestConv2DGPU(unittest.TestCase):
+    def test_logical_shapes(self):
+        seed_rng()
+        for stride in range(1, 4):
+            kshp = (10, 2, 10, 10)
+            featshp = (3, 10, 11, 11)
+
+            a = tensor.ftensor4()
+            A = tensor.ftensor4()
+
+            # Need to transpose first two dimensions of kernel, and reverse
+            # index kernel image dims (for correlation)
+            kernel_rotated = tensor.transpose(A, axes=[1, 0, 2, 3])
+
+            featshp_logical = (featshp[0], featshp[1], featshp[2] * stride,
+                               featshp[3] * stride)
+            kshp_rotated = (kshp[1], kshp[0], kshp[2], kshp[3])
+            #print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
+            image_estimate = tensor.nnet.conv2d(a, kernel_rotated,
+                                                border_mode='full',
+                                                image_shape=featshp,
+                                                filter_shape=kshp_rotated,
+                                                imshp_logical=featshp_logical[1:],
+                                                kshp_logical=kshp[2:])
+
+            func = theano.function([a, A], image_estimate, mode=theano_mode)
+            #theano.printing.debugprint(func,)
+            assert any([isinstance(node.op, theano.sandbox.cuda.blas.GpuConv)
+                        for node in func.maker.fgraph.toposort()])
+
+            a_in = numpy.random.randn(*featshp).astype("float32")
+            A_in = numpy.random.randn(*kshp).astype("float32")
+
+            func(a_in, A_in)
+
     def test_invalid_input_shape(self):
         """
         Tests that when the shape gived at build time is not the same as
         run time we raise an error
         """
+        seed_rng()
         verbose = 0
         random = True
         print_ = False
@@ -831,6 +873,7 @@ def benchmark():
 
 
 def test_stack_rows_segfault_070312():
+    seed_rng()
     # 07/03/2012
     # Running this unittest with cuda-memcheck exposes an illegal read.
     # THEANO_FLAGS=device=gpu cuda-memcheck nosetests \
@@ -840,5 +883,5 @@ def test_stack_rows_segfault_070312():
     out = theano.shared(numpy.random.rand(1, 2, 2, 3).astype('float32'))
     op = theano.tensor.nnet.conv.ConvOp(imshp=(80, 96, 96), kshp=(9, 9),
             nkern=1, bsize=1)
-    f = theano.function([], [], updates={out: op(img, kern)})
+    f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)
     f()

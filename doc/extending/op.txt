@@ -19,12 +19,14 @@ following methods:
 .. function:: make_node(*inputs)
 
   This method is responsible for creating output Variables of a
-  suitable Type to serve as the outputs of this Op's application.
-  This method should put these outputs into an Apply instance, and
-  return the Apply instance.
+  suitable symbolic Type to serve as the outputs of this Op's application.
+  The Variables found in ``*inputs`` must be operated on using Theano's
+  symbolic language to compute the symbolic output Variables. This method
+  should put these outputs into an Apply instance, and return the
+  Apply instance.
 
   This method creates an Apply node representing the application of
-  the Op on the inputs provided. If the Op cannot be applied on
+  the Op on the inputs provided. If the Op cannot be applied to
   these inputs, it must raise an appropriate exception.
 
   The inputs of the Apply instance returned by this call must be
@@ -33,25 +35,27 @@ following methods:
 
 .. function:: perform(node, inputs, output_storage)
 
-  This method computes the function associated to this Op. The
-  ``node`` is an Apply node created by the Op's ``make_node``
-  method, ``inputs`` is a list of references to data to operate on,
-  and ``output_storage`` is a list of storage cells where the
-  variables of the computation must be put. More specifically:
+  This method computes the function associated to this Op. ``node`` is an Apply node created by the Op's ``make_node``
+  method. ``inputs`` is a list of references to data to operate on using non-symbolic statements, 
+  (i.e., statements in Python, Numpy and C languages). ``output_storage`` is a list of storage cells where the
+  variables of the computation must be put.
+
+  More specifically:
 
     - ``node``: This is a reference to an Apply node which was previously
       obtained via the ``Op``'s ``make_node`` method. It is typically not
       used in simple Ops, but it contains symbolic information that
       could be required for complex Ops.
 
-    - ``inputs``: This is a list of data.
+    - ``inputs``: This is a list of data from which the values stored in ``output_storage``
+      are to be computed using non-symbolic language.
 
-    - ``output_storage``: This is a list of storage cells.
+    - ``output_storage``: This is a list of storage cells where the output is to be stored.
       A storage cell is a one-element list. It is forbidden to change
       the length of the list(s) contained in ``output_storage``.  There is
       one storage cell for each output of the Op.
 
-      The data you put in ``output_storage`` must match the type of the
+      The data put in ``output_storage`` must match the type of the
       symbolic output. This is a situation where the ``node`` argument
       can come in handy.
 
@@ -94,48 +98,216 @@ following methods:
   lifetime of self.  Op instances should be immutable in this
   sense.
 
+.. function:: connection_pattern( node ):
+
+  Optional method; sometimes needed for gradient.grad to
+  work correctly.
+
+  Returns a list of list of bools.
+
+  Op.connection_pattern[input_idx][output_idx] is true if the
+  elements of inputs[input_idx] have an effect on the elements of
+  outputs[output_idx].
+
+  The ``node`` parameter is needed to determine the number of
+  inputs. Some ops such as Subtensor take a variable number of
+  inputs.
+
+  If no connection_pattern is specified, gradient.grad will
+  assume that all inputs have some elements connected to some
+  elements of all outputs.
+
+  This method conveys two pieces of information that are otherwise
+  not part of the theano graph:
+
+  1) Which of the op's inputs are truly ancestors of each of the
+     op's outputs. Suppose an op has two inputs, x and y, and
+     outputs f(x) and g(y). y is not really an ancestor of f, but
+     it appears to be so in the theano graph.
+  2) Whether the actual elements of each input/output are relevant
+     to a computation.
+     For example, the shape op does not read its input's elements,
+     only its shape metadata. d shape(x) / dx should thus raise
+     a disconnected input exception (if these exceptions are
+     enabled).
+     As another example, the elements of the Alloc op's outputs
+     are not affected by the shape arguments to the Alloc op.
+
+  Failing to implement this function for an op that needs it can
+  result in two types of incorrect behavior:
+  
+  1) gradient.grad erroneously raising a TypeError reporting that
+     a gradient is undefined.
+  2) gradient.grad failing to raise a ValueError reporting that
+     an input is disconnected.
+
+  Even if connection_pattern is not implemented correctly,
+  if gradient.grad returns an expression, that expression will
+  be numerically correct.
+
 .. function:: grad(inputs, output_gradients)
 
-  Optional (but needed if you want to have it work with {tensor,sparse}.grad())
+  Optional (but needed to have it work with gradient.grad()).
 
-  If the Op you are defining is differentiable, you can define its
-  gradient symbolically in this method.
+  If the Op being defined is differentiable, its gradient may be specified 
+  symbolically in this method. Both ``inputs`` and ``output_gradients``
+  are lists of symbolic Theano Variables and those must be operated on using 
+  Theano's symbolic language. The grad method must return a list containing 
+  one Variable for each input. Each returned Variable represents 
+  the gradient with respect to that input computed based on the symbolic gradients with
+  respect to each output.
 
-  Both the ``inputs`` and ``output_gradients`` will be list of Theano
-  Variables. This method must return a list containing one Variable
-  (or ``None``) for each input. Each returned Variable represents the
-  gradient with respect to that input given the symbolic gradients
-  with respect to each output.
+  If the output is not differentiable with respect to an input
+  then this method should be defined to return a variable of type
+  NullType for that input. Likewise, if you have not implemented the
+  grad computation for some input, you may return a variable of type
+  NullType for that input. theano.gradient contains convenience methods
+  that can construct the variable for you: :func:`theano.gradient.grad_undefined` and
+  :func:`theano.gradient.grad_not_implemented`, respectively.
 
-  If the output is not differentiable with respect to any inputs,
-  then this method should be defined to return ``[None for i in
-  inputs]``.
+  If an element of output_gradient is of type theano.gradient.DisconnectedType,
+  it means that the cost is not a function of this output. If any of the
+  op's inputs participate in the computation of only disconnected outputs,
+  then Op.grad should return DisconnectedType variables for those inputs.
 
-  If this method is not defined, then Theano assumes it has been
+  If the grad method is not defined, then Theano assumes it has been
   forgotten.  Symbolic differentiation will fail on a graph that
   includes this Op.
 
-  It is important to understand that this is not meant to return
-  the gradient of the Op's output but rather the gradient of some
-  other criterion C with respect to the Op's input.
+  It must be understood that the Op's grad method is not meant to return the
+  gradient of the Op's output. theano.tensor.grad computes gradients; Op.grad
+  is a helper function that computes terms that appear in gradients.
+  
+  If an Op has a single vector-valued output y and a single vector-valued input x,
+  then the grad method will be passed x and a second vector z. Define J to be
+  the Jacobian of y with respect to x. The Op's grad method should return
+  dot(J.T,z). When theano.tensor.grad calls the grad method, it will set z to
+  be the gradient of the cost C with respect to y. If this op is the only op
+  that acts on x, then dot(J.T,z) is the gradient of C with respect to x.
+  If there are other ops that act on x, theano.tensor.grad will have to add up
+  the terms of x's gradient contributed by the other op's grad method.
 
-  If the outputs of your op are :math:`[ f_1, ... f_n]`, then
-  ``output_gradients`` is
-  :math:`[ grad_{f_1}(C), grad_{f_2}(C), ... , grad_{f_n}(C) ]`.
-  If the inputs of your op are :math:`[x_1, ..., x_m]`, then your Op.grad
-  should return :math:`[ grad_{x_1}(C), grad_{x_2}(C), ..., grad_{x_m}(C) ]`,
-  where :math:`(grad_{y} z)_i = \frac{\partial z}{\partial y_i}`
-  (and :math:`i` can have any number of dimensions).
-  (Note: in the case where i is 2 dimensional, this definition of grad
-  is different from the standard mathematical definition of the gradient
-  of a scalar with respect to a matrix, where you transpose the indices.)
+  In practice, an op's input and output are rarely implemented as single vectors.
+  Even if an op's output consists of a list containing a scalar, a sparse matrix,
+  and a 4D tensor, you can think of these objects as being formed by rearranging
+  a vector. Likewise for the input. In this view, the values computed by the grad
+  method still represent a Jacobian-vector product.
 
+  In practice, it is probably not a good idea to explicitly construct the Jacobian,
+  which might be very large and very sparse. However, the returned value should
+  be equal to the Jacobian-vector product.
+
+  So long as you implement this product correctly, you need not understand what
+  theano.tensor.grad is doing, but for the curious the mathematical justification
+  is as follows:
+
+  In essence, the grad method must simply implement through symbolic Variables
+  and operations the chain rule of differential calculus. The chain rule
+  is the mathematical procedure that allows one to calculate the total derivative
+  :math:`\frac{d C}{d x}` of the final scalar symbolic Variable C with respect to a
+  primitive symbolic Variable x found in the list ``inputs``.
+  The grad method does this using ``output_gradients`` which provides the total
+  derivative :math:`\frac{d C}{d f}` of C with respect to a symbolic Variable
+  that is returned by the Op (this is provided
+  in ``output_gradients``), as well as the knowledge of the total derivative :math:`\frac{d f}{d x}` of the
+  latter with respect to the primitive Variable (this has to be computed).
+
+  In mathematics, the total derivative of a scalar variable (C) with respect to a vector of
+  scalar variables (x), i.e. the gradient, is customarily represented as the
+  row vector of the partial derivatives, whereas the total derivative of a vector of
+  scalar variables (f) with respect to another (x), is customarily represented by the matrix of
+  the partial derivatives, i.e.the jacobian matrix. In this convenient setting,
+  the chain rule instructs that the gradient of the final scalar variable C with respect
+  to the primitive scalar variables in x through those in f is simply given by the matrix product: 
+  :math:`\frac{d C}{d x} = \frac{d C}{d f} * \frac{d f}{d x}`.
+
+  Here, the chain rule must be implemented in a similar but slightly more complex
+  setting: Theano provides in the list ``output_gradients`` one gradient for each
+  of the Variables returned by the Op. Where f is one such particular Variable,
+  the corresponding gradient found in ``output_gradients`` and representing
+  :math:`\frac{d C}{d f}` is provided with a shape similar to f and thus not
+  necessarily as a row vector of scalars.  Furthermore, for each Variable x of 
+  the Op's list of input variables ``inputs``, the returned gradient representing
+  :math:`\frac{d C}{d x}` must have a shape similar to that of Variable x.
+
+  If the output list of the op is :math:`[f_1, ... f_n]`, then the list 
+  ``output_gradients`` is :math:`[grad_{f_1}(C), grad_{f_2}(C), ... , grad_{f_n}(C)]`.
+  If ``inputs`` consists of the list :math:`[x_1, ..., x_m]`, then Op.grad
+  should return the list :math:`[grad_{x_1}(C), grad_{x_2}(C), ..., grad_{x_m}(C)]`,
+  where :math:`(grad_{y}(Z))_i = \frac{\partial Z}{\partial y_i}` (and :math:`i` can stand for multiple dimensions).
+ 
   In other words, :func:`grad` does not return
-  :math:`\frac{\partial f_i}{\partial x_j}`, but
-  :math:`\frac{\partial C}{\partial x_j} =
-  \frac{\partial C}{\partial f_i} \cdot \frac{\partial f_i}{\partial x_j}`.
-  Both the partial derivation and that multiplication have to be done by
+  :math:`\frac{d f_i}{d x_j}`, but instead the appropriate dot product specified by the chain rule:  
+  :math:`\frac{d C}{d x_j} =
+  \frac{d C}{d f_i} \cdot \frac{d f_i}{d x_j}`.
+  Both the partial differentiation and the multiplication have to be performed by
   :func:`grad`.
+
+
+  Theano currently imposes the following constraints on the values returned by the grad method:
+  
+  1) They must be Variable instances.
+  2) When they are types that have dtypes, they must never have an integer dtype.
+
+  The output gradients passed *to* Op.grad will also obey these constraints.
+
+  Integers are a tricky subject. Integers are the main reason for having DisconnectedType,
+  NullType or zero gradient. When you have an integer as an argument to your grad method,
+  recall the definition of a derivative to help you decide what value to return:
+
+  :math:`\frac{d f}{d x} = \lim_{\epsilon \rightarrow 0} (f(x+\epsilon)-f(x))/\epsilon`.
+
+  Suppose your function f has an integer-valued output. For most functions you're likely
+  to implement in theano, this means your gradient should be zero, because f(x+epsilon)
+  = f(x) for almost all x. (The only other option is that the gradient could be undefined,
+  if your function is discontinuous everywhere, like the rational indicator function)
+
+  Suppose your function f has an integer-valued input. This is a little trickier, because
+  you need to think about what you mean mathematically when you make a variable integer-valued
+  in theano. Most of the time in machine learning we mean "f is a function of a real-valued
+  x, but we are only going to pass in integer-values of x". In this case, f(x+epsilon) exists,
+  so the gradient through f should be the same whether x is an integer or a floating point
+  variable. Sometimes what we mean is "f is a function of an integer-valued x, and f is only
+  defined where x is an integer." Since f(x+epsilon) doesn't exist, the gradient is undefined.
+  Finally, many times in theano, integer valued inputs don't actually affect the elements of
+  the output, only its shape.
+
+  If your function f has both an integer-valued input and an
+  integer-valued output, then both rules have to be combined:
+
+  - If f is defined at (x+epsilon), then the input gradient is
+    defined. Since f(x+epsilon) would be equal to f(x) almost
+    everywhere, the gradient should be 0 (first rule).
+
+  - If f is only defined where x is an integer, then the gradient
+    is undefined, regardless of what the gradient with respect to the
+    output is.
+
+  Examples:
+
+  1) f(x,y) = dot product between x and y. x and y are integers.
+        Since the output is also an integer, f is a step function.
+        Its gradient is zero almost everywhere, so Op.grad should return
+        zeros in the shape of x and y.
+  2) f(x,y) = dot product between x and y. x is floating point and y is an integer.
+        In this case the output is floating point. It doesn't matter that y is an integer.
+        We consider f to still be defined at f(x,y+epsilon). The gradient is exactly the
+        same as if y were floating point.
+  3) f(x,y) = argmax of x along axis y.
+        The gradient with respect to y is undefined, because f(x,y) is not defined for
+        floating point y. How could you take an argmax along a fraActional axis?
+        The gradient with respect to x is 0, because f(x+epsilon, y) = f(x) almost
+        everywhere.
+  4) f(x,y) = a vector with y elements, each of which taking on the value x
+        The grad method should return DisconnectedType()() for y, because the elements of
+        f don't depend on y. Only the shape of f depends on y. You probably also want to
+        implement a connection_pattern method to encode this.
+  5) f(x) = int(x) converts float x into an int. g(y) = float(y) converts an integer y into a float.
+        If the final cost C = 0.5 * g(y) = 0.5 g(f(x)), then the
+        gradient with respect to y will be 0.5, even if y is an
+        integer. However, the gradient with respect to x will be 0,
+        because the output of f is integer-valued.
+
 
 .. function:: infer_shape(node, shapes)
 
@@ -157,6 +329,16 @@ following methods:
    Implementing this method will allow Theano to compute the output's
    shape without computing the output itself, potentially sparing you
    a costly recomputation.
+
+.. function:: flops(inputs, outputs)
+
+   Optional.
+
+   It is only used to have more information printed by the memory
+   profiler.  It makes it print the mega flops and giga flops per
+   second for each apply node. It takes as inputs two lists: one for the
+   inputs and one for the outputs. They contain tuples that are the
+   shapes of the corresponding inputs/outputs.
 
 .. function:: make_thunk(node, storage_map, compute_map, no_recycling)
 

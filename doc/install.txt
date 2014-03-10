@@ -1,4 +1,3 @@
-
 .. _install:
 
 
@@ -18,7 +17,7 @@ to be installed (MacOS and Windows users should refer to platform-specific
 instructions below for detailed installation steps):
 
     Linux, Mac OS X or Windows operating system
-        We develop mainly on 64-bit Linux machines. 32-bit architectures are
+        We develop mainly on 64-bit Linux machines. other architectures are
         not well-tested.
 
     Python_ >= 2.4
@@ -29,16 +28,19 @@ instructions below for detailed installation steps):
         Not technically required but *highly* recommended, in order to compile
         generated C code. Theano `can` fall back on a NumPy-based Python execution
         model, but a C compiler allows for vastly faster execution.
+        g++ >= 4.2 (for openmp that is currently always used)
+        more recent version recommended!
 
-    `NumPy <http://numpy.scipy.org/>`_ >= 1.3.0
-        Earlier versions have memory leaks.
+    `NumPy <http://numpy.scipy.org/>`_ >= 1.5.0
+        Earlier versions could work, but we don't test it.
 
     `SciPy <http://scipy.org>`_
         Only currently required for sparse matrix and special functions
         support, but *highly* recommended. We recommend SciPy
-        >=0.7 if you are using sparse matrices, because ``scipy.sparse``
+        >=0.8 if you are using sparse matrices, because ``scipy.sparse``
         is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
-        bug with singleton dimensions, there may be more bugs).
+        bug with singleton dimensions, there may be more bugs) and we do not
+        run tests with 0.7.
 
     A `BLAS`_ installation (with Level 3 functionality)
         Including the development headers (``-dev``, ``-devel``, depending on
@@ -86,12 +88,14 @@ implementation of BLAS.
 
 .. Cent OS 6
 
-Alternative installation on Ubuntu with PPA
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ubuntu
+~~~~~~
 
-Benjamin J. McCann provides `installation documentation
-<http://www.benmccann.com/dev-blog/installing-cuda-and-theano/>`_ for
-Ubuntu 11.04 with CUDA 4.0 PPA.
+:ref:`install_ubuntu` provides instructions on how to install Theano
+on Ubuntu. It covers how to install Theano with the
+distribution-packaged OpenBlas or ATLAS. Both are free fast
+implementation of BLAS.
+
 
 Alternative installation on Gentoo
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,6 +103,8 @@ Alternative installation on Gentoo
 Brian Vandenberg emailed `installation instructions on Gentoo
 <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
 focusing on how to install the appropriate dependencies.
+
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
 
 Alternative installation on Mandriva 2010.2
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,28 +129,19 @@ by typing
 
 You may need to add ``sudo``  before this command to install into your
 system's ``site-packages`` directory. If you do not have administrator access
-to your machine, you can install to an alternate prefix using
+to your machine, you can install Theano locally (to ~/.local) using
 
 .. code-block:: bash
 
-    pip install Theano --install-option='--prefix=YOURPREFIX'
-
-e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
-install Theano into ``.local/lib/python2.4/site-packages`` inside your home
-directory on Mac OS X or Unix/Linux (this ``site-packages`` directory must be
-listed in your ``PYTHONPATH`` environment variable; for Python 2.6 and later,
-``~/.local`` is
-automatically searched and does *not* need to be explicitly included in
-``PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
+    pip install Theano --user
 
 Alternatively you can use virtualenv_ to create an isolated ``site-packages``
 directory; see the `virtualenv documentation`_ for details.
 
 .. note::
 
-    Theano *can* be installed with easy_install_, however we recommend pip_ as
-    a long-standing bug in ``easy_install`` prevents ``theano.test()`` from
-    running the Theano test suite; ``pip`` offers many other benefits over
+    Theano *can* be installed with easy_install_, however we recommend pip_.
+    ``pip`` offers many benefits over
     ``easy_install`` such as more intelligent dependency management, better
     error messages and a ``pip uninstall`` command for easily removing
     packages.
@@ -159,7 +156,7 @@ directory; see the `virtualenv documentation`_ for details.
 .. _virtualenv documentation: http://virtualenv.openplans.org/
 .. _pip: http://pypi.python.org/pypi/pip
 
-.. _install_bleeding_edge:
+.. _updating:
 
 Updating Theano
 ~~~~~~~~~~~~~~~
@@ -193,26 +190,32 @@ the Theano cache like this:
 
     theano-cache clear
 
+.. _install_bleeding_edge:
 
 Bleeding-edge install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Master Tests Status:
+
+.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
+    :target: http://travis-ci.org/Theano/Theano/builds
+
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 If you want the bleeding-edge without developing the code you can use pip for
-this with the command line below. Note that it will also try to download and
-upgrade Theano's dependencies (like numpy and scipy). If you do not wish to do
-so, add the ``--no-deps`` switch to it.
+this with the command line below. Note that it will also try to install Theano's dependencies 
+(like numpy and scipy), but not upgrade them. If you wish to upgrade them,
+remove the ``--no-deps`` switch to it, but go see a previous warning before doing this.
 
 .. code-block:: bash
 
-    pip install --upgrade git+git://github.com/Theano/Theano.git
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
-or (if you want to install to a custom directory):
+or (if you want to install it for the current user only):
 
 .. code-block:: bash
 
-    pip install --upgrade git+git://github.com/Theano/Theano.git --install-option='--prefix=YOURPREFIX'
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user
 
 The following are general instructions that will set you up with the
 bleeding-edge version of Theano and allow you to hack it. First,
@@ -222,12 +225,17 @@ get the code using `Git <http://git-scm.com>`__:
 
     git clone git://github.com/Theano/Theano.git
 
-From here, the easiest way to get started is
+From here, the easiest way to get started is (this requires setuptools_ or distribute_ to be installed):
 
 .. code-block:: bash
 
     cd Theano
     python setup.py develop
+
+.. note::
+
+   "python setup.py develop ..." don't work on Python 3 as it don't call
+   the converter from Python2 code to Python 3 code.
 
 This will install a ``.pth`` file in your ``site-packages`` directory that
 tells Python where to look for your Theano installation (i.e. in the
@@ -241,7 +249,7 @@ can specify an alternative installation prefix using
 
 .. code-block:: bash
 
-    python setup.py develop --prefix=YOURPREFIX
+    python setup.py develop --prefix=~/.local
 
 A common choice is ``~/.local`` which is automatically searched for Python >=
 2.6; for earlier Python versions and other installation prefixes, the prefix
@@ -310,14 +318,26 @@ You can also run them in-place from the Git checkout directory by typing
 
 .. code-block:: bash
 
-    nosetests
+    theano-nose
+
+You should be able to execute it if you followed the instructions above.
+If ``theano-nose`` is not found by your shell, you will need to add
+``Theano/bin`` to your ``PATH`` environment variable.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call ``nosetests`` instead
+    of ``theano-nose``. In that case, some tests will fail by raising
+    the KnownFailureTest Exception, and will be considered as errors,
+    but they are nothing to worry about.
 
 .. note::
 
     The tests should be run with the configuration option :attr:`~config.device`
     set to ``cpu`` (default). If you need to change this value,
     you can do that by setting the :envvar:`THEANO_FLAGS` environment variable,
-    by prefixing the ``nosetests`` command with ``THEANO_FLAGS=device=cpu``.
+    by prefixing the ``theano-nose`` command with ``THEANO_FLAGS=device=cpu``.
     If you have a GPU, it will automatically be used to run GPU-related tests.
 
     If you want GPU-related tests to run on a specific GPU device, and not
@@ -327,9 +347,9 @@ You can also run them in-place from the Git checkout directory by typing
     See :ref:`libdoc_config` for more information on how to change these
     configuration options.
 
-All tests should pass except those marked as ``KnownFailureTest``. If some
-test fails on your machine, you are encouraged to tell us what went wrong on
-the ``theano-users@googlegroups.com`` mailing list.
+All tests should pass (skipped tests and known failures are normal). If
+some test fails on your machine, you are encouraged to tell us what went
+wrong on the ``theano-users@googlegroups.com`` mailing list.
 
 
 Troubleshooting: Make sure you have a BLAS library
@@ -412,6 +432,14 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
     This might be just a problem with the way Theano passes compilation
     arguments to g++, but the problem is not fixed yet.
 
+.. note::
+
+    If you have problems linking with MKL, `Intel Line Advisor
+    <http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor>`_
+    and the `MKL User Guide
+    <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
+    can help you find the correct flags to use.
+
 .. _gpu_linux:
 
 Using the GPU
@@ -434,6 +462,20 @@ Any one of them is enough.
 * Define a $CUDA_ROOT environment variable to equal the cuda root directory, as in ``CUDA_ROOT=/path/to/cuda/root``, or
 * add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
 * add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
+
+.. note::
+
+    On Debian, you can ask the software package manager to install it
+    for you. We have a user report that this works for Debian Wheezy
+    (7.0). When you install it this way, you won't always have the
+    latest version, but we were told that it gets updated
+    regularly. One big advantage is that it will be updated
+    automatically. You can try the ``sudo apt-get install
+    nvidia-cuda-toolkit`` command to install it.
+
+    :ref:`Ubuntu instructions <install_ubuntu_gpu>`.
+
+
 
 Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
 computer, and set the default floating point computations to float32.
@@ -474,14 +516,115 @@ everything is working properly.
     (`libdoc_config`).
 
 
+.. _Graphviz: http://www.graphviz.org/Download_windows.php
+
 MacOS
 -----
 
 There are various ways to install Theano dependencies on a Mac.
-Here we describe the process in details using MacPorts, but if you did
+Here we describe the process in detail with EPD, Anaconda or with MacPorts, but if you did
 it differently and it worked, please let us know the details on the
 `theano-users`_ mailing-list, so that we can add alternate instructions
 here.
+
+
+In academia: Enthought Python Distribution (EPD)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working in academia, the easiest way to install most of the
+dependencies is to install
+`Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
+If you are affiliated with a university (as student or employee), you can
+download the installer for free.
+
+EPD installation includes in particular Python (and the development headers),
+numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+necessary for it to work) and the MKL implementation of blas. The Mac OS and
+Linux version do not include g++.
+
+pip is not included in EPD. After the installation of EPD,
+you can simply install it with::
+
+    .. code-block:: bash
+
+        $ sudo easy_install pip
+
+Then in a terminal execute this command to install the latest Theano release:
+
+    .. code-block:: bash
+
+        $ sudo pip install Theano
+
+If you want the bleeding edge version, `download
+and install git <http://git-scm.com/downloads>`_. Then in a
+terminal excute this command:
+
+.. code-block:: bash
+
+    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
+See the section `install_bleeding_edge`_ for more
+information on the bleading edge version.
+
+Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+
+.. note::
+
+   If you use the trunk or version 0.6 or later of Theano, we try to
+   automaticaly link with the EPD blas version.  Due to Mac OS
+   peculiarities, we need a user intervention to do it.  We detect
+   if the user did the modification and if not, we tell him how to do
+   it.
+
+Anaconda 1.5
+~~~~~~~~~~~~
+
+An easy way to install most of the dependencies is to install
+`Anaconda <http://continuum.io/downloads.html>`_. There is a free
+version available to everybody. If you install their ``MKL
+Optimizations`` product (free for academic, ~30$ otherwise) Theano
+will also be optimized as we will reuse the faster BLAS version
+automatically.
+
+Anaconda installation includes in particular Python (and the development headers),
+numpy, scipy, nose, sphinx, pip, and a acceptable BLAS version. The Mac OS and
+Linux version do not include g++.
+
+After installing Anaconda, in a terminal execute this command to
+install the latest Theano release:
+
+    .. code-block:: bash
+
+        $ pip install Theano
+
+To install the missing Theano optional dependency (pydot):
+
+    .. code-block:: bash
+
+        $ conda install pydot
+
+If you want the bleeding edge version, `download
+and install git <http://git-scm.com/downloads>`_. Then in a
+terminal excute this command:
+
+.. code-block:: bash
+
+    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
+See the section `install_bleeding_edge`_ for more
+information on the bleading edge version.
+
+Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+
+.. note::
+
+   If you use the trunk or a version after 0.6rc3 of Theano, we try to
+   automaticaly link with the python library.  Due to Mac OS
+   peculiarities, we need a user intervention to do it.  We detect
+   if the user did the modification and if not, we tell him how to do
+   it.
+
+.. _macports:
 
 MacPorts
 ~~~~~~~~
@@ -492,6 +635,8 @@ Theano dependencies is easy, but be aware that it will take a long time
 
 - MacPorts requires installing XCode first (which can be found in the
   Mac App Store), if you do not have it already.
+  If you can't install it from the App Store, look in your MacOS X installation
+  DVD for an old version. Then update your Mac to update XCode.
 
 - Download and install `MacPorts <http://www.macports.org/>`__, then
   ensure its package list is up-to-date with ``sudo port selfupdate``.
@@ -574,6 +719,14 @@ Theano dependencies is easy, but be aware that it will take a long time
 
         $ python -c "import theano; theano.test()"
 
+Homebrew
+~~~~~~~~
+
+There are some `instructions
+<https://github.com/samueljohn/homebrew-python>`__ by Samuel John on how to install
+Theano dependencies with Homebrew instead of MacPort.
+
+
 .. _gpu_macos:
 
 Using the GPU
@@ -643,12 +796,17 @@ Windows
 Installing Dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. note::
+
+    Command lines listed below are assumed to be run in a Windows prompt:
+    click ``Start`` and type the ``cmd`` command to launch a command window.
+
 In academia: EPD
 ################
 
 If you are working in academia, the easiest way to install most of the
-dependencies is to install `Enthought Python Distribution (EPD) <epd>`_.
-If you are affiliated to a university (as student or employee), you can
+dependencies is to install `Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
+If you are affiliated with a university (as student or employee), you can
 download the installation for free.
 
 EPD installation includes in particular Python (and the development headers),
@@ -680,16 +838,53 @@ pip is not included in EPD, but you can simply install it with::
 
     easy_install pip
 
-.. _epd: http://enthought.com/products/epd.php
-.. _Graphviz: http://www.graphviz.org/Download_windows.php
+You can then proceed to the :ref:`windows_basic` or the :ref:`windows_bleeding_edge`.
+
+
+
+Alternative: Canopy
+###################
+
+Another software from Enthought that installs all Theano dependencies.
+If you are affiliated with a university (as student or employee), you
+can download the installation for free.
+
+- Install Canopy x64, and update it to the latest version (`Help /
+  Software updates...`), as older Canopy versions have trouble installing
+  `pip`.
+- Then install `pip` from Canopy Package Manager.
+- In the Windows shell (type `cmd` in the Windows start menu to bring it up),
+  type `pip install theano`.
+- In Canopy Package Manager, search and install packages "mingw 4.5.2" and "libpython 1.2"
+- (Needed only for Theano 0.6rc3 or earlier)
+  The "libpython 1.2" package installs files `libpython27.a` and `libmsvcr90.a` to
+  `C:\\Users\\<USER>\\AppData\\Local\\Enthought\\Canopy\\User\\libs`. Copy the two files to
+  `C:\\Users\\<USER>\\AppData\\Local\\Enthought\\Canopy\\App\\appdata\\canopy-1.0.0.1160.win-x86_64\libs`.
+- (Needed only for Theano 0.6rc3 or earlier) Set the Theano flags
+  ``blas.ldflags=-LC:\Users\<USER>\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.0.0.1160.win-x86_64\Scripts -lmk2_core -lmk2_intel_thread -lmk2_rt``.
+
+
+
+Alternative: AnacondaCE
+#######################
+
+ContinuumIO_ is providing a free Python distribution for Windows (32-bit
+and 64-bit), including all dependencies of Theano. If you are not
+eligible for a download of EPD or Canopy (via a commercial, or free academic
+licence), this is the easiest way to install
+Theano's dependencies. Simply download and execute the installer from
+`AnacondaCE downlowad page <http://continuum.io/anacondace.html>`__,
+then download and execute the :ref:`windows_anaconda`.
+
+.. _ContinuumIO: http://continuum.io
 
 Alternative: Python(x,y)
 ########################
 
-If you are not eligible to a free download of EPD, and
-neither Python nor MinGW is installed on your computer, the easiest way to
-install most dependencies is to install
-`Python(x,y) <http://www.pythonxy.com>`__.
+If you do not have a commercial licence of EPD, and are not eligible to a free
+academic licence, and neither
+Python nor MinGW is installed on your computer, you can install most
+dependencies of Theano with `Python(x,y) <http://www.pythonxy.com>`__.
 It is a single installation
 file that contains additional packages like NumPy, SciPy, IPython, Matplotlib,
 MinGW, Nose, etc.
@@ -709,9 +904,8 @@ MinGW, but this has not been tested yet.
 
 - For 32 bit MinGW: from `the MinGW files <http://sourceforge.net/projects/mingw/files/>`__,
   download the latest version of the ``Automated MinGW Installer``
-  (``mingw-get-inst``) and install it with all optional components (although
-  you probably do not need them all: if you feel like figuring out exactly
-  which ones are required, let us know!).
+  (``mingw-get-inst``) and install it (you should install all optional components,
+  except the Objective C and Ada compilers which are not needed).
 
 - For 64 bit MinGW (**note that manual installation for 64 bit is experimental**):
   download the latest version of MinGW-w64 from the project's
@@ -725,7 +919,7 @@ MinGW, but this has not been tested yet.
 
    .. code-block:: bash
 
-        sh /postinstall/pi.sh
+       sh /postinstall/pi.sh
 
   and answer the few questions so that MSYS is properly linked to your MinGW install.
 
@@ -734,7 +928,7 @@ MinGW, but this has not been tested yet.
   in a Windows command prompt vs. a MSYS shell. One way to do this without
   setting a global Windows ``HOME`` environment variable (which may affect
   other programs) is to edit your ``msys.bat`` file (found e.g. under
-  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys) and add the following line at
+  ``C:\MinGW\msys\1.0`` or ``C:\mingw64\msys``) and add the following line at
   the beginning (note that you may need to use e.g. Wordpad to edit this file,
   since Notepad gets confused by Unix-style line breaks):
 
@@ -791,9 +985,73 @@ should have MinGW, Python, Numpy, Scipy and Nose installed.
 Installing Theano
 ~~~~~~~~~~~~~~~~~
 
-It is possible to install Theano with ``pip`` as described in
-:ref:`linux_basic`. However, if you want to get the latest development version,
-or edit the code, you should follow the instructions below.
+Once the dependencies are installed, you can download and install
+Theano. The easiest way is to install the latest released version
+(see :ref:`windows_basic`).  However, if you want to get the latest
+development version, or edit the code, you should follow the
+instructions in :ref:`windows_bleeding_edge`.
+
+.. _windows_anaconda:
+
+Windows installer for AnacondaCE
+################################
+
+.. note::
+
+   This don't work with current Anaconda. Help needed to repair this.
+
+If you installed AnacondaCE, the simplest way to install and configure
+Theano is to download and execute this `Windows installer
+for Theano on AnacondaCE for Windows
+<https://github.com/Theano/Theano-wininstaller/raw/master/bin/theano_installer_latest.msi>`__.
+
+
+.. note::
+
+    It is possible that you need to logout/login or restart the
+    computer after installing AnacondaCE and before running Theano
+    installer. Otherwise, sometimes the Theano installer while trying
+    to find pip.
+
+.. note::
+
+    This installer was tested on Windows 7, 64-bit edition, and AnacondaCE
+    version 1.3.1. Please get back to us if you experience trouble with it.
+
+This installer will:
+
+- Copy MinGW runtime DLLs into ``C:\\Anaconda\\``, so they are in the ``PATH``;
+- Call ``pip install theano``, installing the latest released version;
+- Set up a default configuration file for Theano,
+  ``theanorc_default.txt``, and set it up as your ``.theanorc.txt`` if it
+  does not exist. It contains:
+
+.. code-block:: cfg
+
+    [global]
+    openmp=False
+
+    [blas]
+    ldflags=
+
+When uninstalling, it will call ``pip uninstall Theano``, and remove the
+compilation cache as well as ``theanorc_default.txt``.
+
+
+.. _windows_basic:
+
+Basic user installation
+#######################
+
+The easiest way to obtain the released version of Theano is from PyPI using
+pip_ by typing, in a Windows command prompt:
+
+.. code-block:: bash
+
+    pip install Theano
+
+
+.. _windows_bleeding_edge:
 
 Bleeding-edge installation
 ##########################
@@ -811,8 +1069,11 @@ used within an MSYS Shell (not available if you only installed Python(x,y)).
   installed, then rename the unzipped folder to ``Theano``.
 
 - The second option is to use Git, which you can get
-  `here <http://git-scm.com/download>`__ (download the latest version of the
-  "Full installer for official Git" from the ``msysgit`` download page).
+  `here <http://git-scm.com/download>`__: download the latest version of the
+  "Full installer for official Git" from the ``msysgit`` download page.
+  We recommend that you select the following options:
+  "Run Git from the Windows Command Prompt" / 'Use Git Bash only",
+  then "Checkout as is, commit Unix-style endings".
   Navigate into the directory you want Theano to be installed in, and download
   it with
 
@@ -834,7 +1095,8 @@ used within an MSYS Shell (not available if you only installed Python(x,y)).
 Configure Theano
 ################
 
-If you installed Python through EPD, you should be all set by now. Otherwise,
+If you installed Python through EPD, or through the installation script for
+Anaconda, you should be all set by now. Otherwise,
 whether you installed Theano through pip or git, you should follow these
 steps.
 
@@ -878,18 +1140,27 @@ Testing your installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Currently, due to memory fragmentation issue in Windows, the
-test-suite breaks at some point when using ``nosetests``, with many error
+test-suite breaks at some point when using ``theano-nose``, with many error
 messages looking
 like: ``DLL load failed: Not enough storage is available to process this
 command``. As a workaround, you can instead run:
 
     .. code-block:: bash
 
-        python theano/tests/run_tests_in_batch.py
+        theano-nose --batch
 
 This will run tests in batches of 100, which should avoid memory errors.
 Note that this script calls ``nosetests``, which may require being run from
 within an MSYS shell if you installed Nose manually as described above.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call this command instead:
+
+    .. code-block:: bash
+
+        python theano/tests/run_tests_in_batch.py
 
 Editing code in Visual Studio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -910,48 +1181,41 @@ MKL library included in EPD, so you should not need to compile your own BLAS.
 
 .. note::
 
-   GotoBLAS is no longer maintained and has been released under the BSD
-   license. `OpenBLAS
-   <https://github.com/xianyi/OpenBLAS>`_ is a new project that
-   continues GotoBLAS: it has a better installation process and implements
-   additional functions (not currently used by Theano).
-   We did not try OpenBLAS on Windows. When installed, you probably need to
-   use this Theano flags: ``theano.config.blas.ldflags = "-lopenblas"``
-
-.. note::
-
    The instructions below have not been tested in a Windows 64 bit environment.
 
 If you want a faster and/or multithreaded BLAS library, you can
-compile GotoBLAS2 (ATLAS may work too, but was not tested, and is
+compile OpenBLAS (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
 on Windows).
-GotoBLAS2 can be downloaded
-`here <http://www.tacc.utexas.edu/tacc-projects/gotoblas2>`__
-(we tested v1.13).
-To compile it, you will also need MSYS and Perl (installation steps are
+OpenBLAS can be downloaded as a zip file from
+`its website <http://xianyi.github.io/OpenBLAS/>`__
+(we tested v0.2.6).
+To compile it, you will also need MSYS and wget (installation steps are
 described below).
-The GotoBLAS makefiles actually expect a full UNIX environment (like
-Cygwin) but the BLAS compilation seems to work with only MSYS and Perl
-(LAPACK compilation fails, but Theano does not need it).
 
-If you installed MinGW manually as described above, you should already
-have MSYS included in your MinGW install, and should be able to start a
-shell (Start / MinGW / MinGW Shell), in which case you can skip the MSYS
-installation.
-If instead you installed Python(x,y), you will need to install MSYS on
-top of the MinGW installation included within Python(x,y), as follows:
+If you already have a full install of MinGW, you should
+have MSYS included in it, and thus should be able to start a MinGW shell.
+If that is the case, you can skip the following MSYS installation steps.
+Note that these steps were written for Python(x,y), but should also work
+for other bundle Python distributions like EPD (changing paths accordingly,
+for instance in EPD 7.3.2 the MinGW folder is
+``EPD7.3.2\EGG-INFO\mingw\usr\i686-w64-mingw32``).
+To install MSYS on top of the MinGW installation included within Python(x,y),
+do as follows:
 
 - Download the `mingw-get command-line installer binary
-  <http://sourceforge.net/projects/mingw/files/Automated%20MinGW%20Installer/mingw-get/>`_.
+  <http://sourceforge.net/projects/mingw/files/Installer/mingw-get/>`__.
 
-- Unpack it into your ``pythonxy\mingw`` directory.
+- Unpack its content into your ``pythonxy\mingw`` directory.
 
 - In a prompt (``cmd``), install MSYS with
 
     .. code-block:: bash
 
         mingw-get install msys-base
+
+  If ``mingw-get`` cannot be found automatically, just navigate first into the
+  folder were it was extracted (it is found in the ``bin`` subfolder).
 
 - Edit ``pythonxy\mingw\msys\1.0\msys.bat`` (e.g. in Wordpad) and add as first
   line ``set HOME=%USERPROFILE%``. Then create an easily accessible shortcut
@@ -963,56 +1227,56 @@ top of the MinGW installation included within Python(x,y), as follows:
         /postinstall/pi.sh
 
   It will ask for your MinGW installation directory (e.g.
-  ``c:/pythonxy/mingw``).
+  ``c:/pythonxy/mingw``; note the forward slashes).
 
 Once you have a working MinGW/MSYS shell environment, you can go on as
 follows:
 
-  a) Download `ActivePerl <http://www.activestate.com/activeperl/downloads>`_ and
-     install it (other Perl interpreters should also work, but were not
-     tested). In a MSYS shell, type ``perl --version`` just to make sure the Perl
-     executable is found automatically. If this is not the case, you may need to
-     restart your MSYS shell, or even restart your computer if that is not enough.
+  a) Install ``wget`` by running the setup program you can download on the
+     `wget website <http://gnuwin32.sourceforge.net/packages/wget.htm>`__.
+     Note that this setup does not add ``wget`` into the system PATH, so you
+     will need to modify the ``PATH`` environment variable accordingly (either in
+     Windows or in a ``.profile`` startup file in your MinGW home). Once this is done,
+     type ``wget --version`` in a MinGW shell to verify that it is working
+     properly. Note also that if you are behind a proxy, you should set up your
+     ``HTTP_PROXY`` environment variable, or use a custom ``wgetrc`` config file
+     for wget to be able to download files.
 
-  b) Unpack GotoBLAS2, either using `7-zip <http://www.7-zip.org/>`__ or in
-     a shell with:
+  b) Unzip OpenBLAS and, in a MinGW shell, go into the corresponding directory.
 
-    .. code-block:: bash
-
-        tar zxvf /path/to/GotoBLAS2-1.13.tar.gz
-
-  c) In a MSYS shell, go into the GotoBLAS2 directory that was unpacked.
-
-  d) Compile GotoBLAS2 with:
+  c) Compile OpenBLAS with:
 
     .. code-block:: bash
 
       quickbuild.win32 1>log.txt 2>err.txt
 
-    Compilation should take a few minutes. Afterwards, you will probably
-    find many error messages in err.txt, but there should be an ``exports``
-    folder containing in particular ``libgoto2.dll``.
+    (use ``quickbuild.win64`` for 64-bit Windows).
+    Compilation can take a while, so now is a good time to take a break.
+    When it is done, you should have ``libopenblas.dll`` in your OpenBLAS
+    folder. If that is not the case, check the ``err.txt`` log for build errors.
 
-  e) Copy ``libgoto2.dll`` from the ``exports`` folder to both your ``bin`` and
-     ``lib`` subdirectories of your MinGW installation (which may be under
-     ``pythonxy\mingw`` if you used Python(x,y)).
+  d) Make sure that ``libopenblas.dll`` is in a folder that is in your ``PATH``.
 
-  f) Modify your .theanorc (or .theanorc.txt) with ``ldflags = -lgoto2``.
+  e) Modify your .theanorc (or .theanorc.txt) with
+     ``ldflags = -LX:\\YYY\\ZZZ -lopenblas`` where ``X:\\YYY\\ZZZ`` is the path
+     to the folder containing ``libopenblas.dll``.
      This setting can also be changed in Python for testing purpose (in which
      case it will remain only for the duration of your Python session):
 
     .. code-block:: python
 
-        theano.config.blas.ldflags = "-lgoto2"
+        theano.config.blas.ldflags = "-LX:\\YYY\\YYY -lopenblas"
 
-  g) To test the BLAS performance, you can run the script
+  f) To test the BLAS performance, you can run the script
      ``theano/misc/check_blas.py``.
-     Note that you may control the number of threads used by GotoBLAS2 with
-     the ``GOTO_NUM_THREADS`` environment variable (default behavior is to use
+     Note that you may control the number of threads used by OpenBLAS with
+     the ``OPENBLAS_NUM_THREADS`` environment variable (default behavior is to use
      all available cores).
      Here are some performance results on an Intel Core2 Duo 1.86 GHz,
      compared to using Numpy's BLAS or the un-optimized standard BLAS
-     (compiled manually from its source code):
+     (compiled manually from its source code).
+     Note that we report here results for GotoBLAS2 which is the ancestor of
+     OpenBLAS (this benchmark still needs to be updated with OpenBLAS results):
 
          * GotoBLAS2 (2 threads): 16s
          * NumPy (1 thread): 48s
@@ -1022,6 +1286,16 @@ follows:
         * The unoptimized standard BLAS is very slow and should not be used.
         * The Windows binaries of NumPy were compiled with ATLAS and are surprisingly fast.
         * GotoBLAS2 is even faster, in particular if you can use multiple cores.
+
+.. note::
+
+   If you get a ``DLL load failed`` error message, it typically means that
+   a required DLL was not found in the PATH. If it happens only when you are
+   using OpenBLAS, it means it is either ``libopenblas.dll`` itself or one of its
+   dependencies. In the case where it is a dependency, you can use the
+   `Dependency Walker <http://www.dependencywalker.com/>`__ utility to figure out
+   which one.
+
 
 .. _gpu_windows:
 

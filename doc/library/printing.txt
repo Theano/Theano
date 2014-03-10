@@ -12,18 +12,18 @@
 Guide
 ======
 
-Symbolic printing: the Print() Op
-----------------------------------
+Printing during execution
+-------------------------
 
 Intermediate values in a computation cannot be printed in
 the normal python way with the print statement, because Theano has no *statements*.
-Instead there is the `Print` Op.
+Instead there is the :class:`Print` Op.
 
 >>> x = T.dvector()
->>> hello_world_op = Print('hello world')
+>>> hello_world_op = printing.Print('hello world')
 >>> printed_x = hello_world_op(x)
 >>> f = function([x], printed_x)
->>> f([1,2,3])
+>>> f([1, 2, 3])
 >>> # output: "hello world __str__ = [ 1.  2.  3.]"
 
 If you print more than one thing in a function like `f`, they will not
@@ -39,26 +39,26 @@ Printing graphs
 ---------------
 
 Theano provides two functions (:func:`theano.pp` and
-:func:`theano.debugprint`) to print a graph to the terminal before or after
+:func:`theano.printing.debugprint`) to print a graph to the terminal before or after
 compilation.  These two functions print expression graphs in different ways:
 :func:`pp` is more compact and math-like, :func:`debugprint` is more verbose.
-Theano also provides :func:`pydotprint` that creates a png image of the function.
+Theano also provides :func:`theano.printing.pydotprint` that creates a png image of the function.
 
-1) The first is :func:`theano.pp`. 
+1) The first is :func:`theano.pp`.
 
 >>> x = T.dscalar('x') 
->>> y = x**2
+>>> y = x ** 2
 >>> gy = T.grad(y, x)
 >>> pp(gy)  # print out the gradient prior to optimization
 '((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
 >>> f = function([x], gy)
->>> pp(f.maker.env.outputs[0])
+>>> pp(f.maker.fgraph.outputs[0])
 '(2.0 * x)'
 
 The parameter in T.dscalar('x') in the first line is the name of this variable 
 in the graph. This name is used when printing the graph to make it more readable.
-If no name is provided the variable x is printed as its type as. In this example
-<TensorType(float64, scalar)>. 
+If no name is provided the variable x is printed as its type as returned by
+x.type(). In this example - <TensorType(float64, scalar)>. 
 
 The name parameter can be any string. There are no naming restrictions: 
 in particular, you can have many variables with the same name. 
@@ -71,58 +71,65 @@ iteration number or other kinds of information in the name.
     To make graphs legible, :func:`pp` hides some Ops that are actually in the graph.  For example,
     automatic DimShuffles are not shown.
 
-2) The second function to print a graph is :func:`theano.printing.debugprint(variable_or_function, depth=-1)`
 
->>> theano.printing.debugprint(f.maker.env.outputs[0])
- Elemwise{mul,no_inplace} 46950805397392
-   2.0 46950805310800
-   x 46950804895504
+2) The second function to print a graph is :func:`theano.printing.debugprint`
+
+
+>>> theano.printing.debugprint(f.maker.fgraph.outputs[0])
+Elemwise{mul,no_inplace} [@A] ''
+ |TensorConstant{2.0} [@B]
+ |x [@C]
 
 Each line printed represents a Variable in the graph.
-The line ``   x 46950804895504`` means the variable named 'x' at memory
-location 46950804895504.  If you accidentally have two variables called 'x' in
-your graph, their different memory locations will be your clue.
+The line ``|x [@C`` means the variable named ``x`` with debugprint identifier
+[@C] is an input of the Elemwise.  If you accidentally have two variables called ``x`` in
+your graph, their different debugprint identifier will be your clue.
 
-The line ``   2.0 46950805310800`` means that there is a constant 2.0 at the
-given memory location.
+The line ``|TensorConstant{2.0} [@B]`` means that there is a constant 2.0
+with this debugprint identifier.
 
-The line `` Elemwise{mul,no_inplace} 46950805397392`` is indented less than
+The line ``Elemwise{mul,no_inplace} [@A] ''`` is indented less than
 the other ones, because it means there is a variable computed by multiplying
-the other (more indented) ones together. 
+the other (more indented) ones together.
+
+The ``|`` symbol are just there to help read big graph. The group
+together inputs to a node.
 
 Sometimes, you'll see a Variable but not the inputs underneath.  That can
 happen when that Variable has already been printed.  Where else has it been
-printed?  Look for the memory address using the Find feature of your text
+printed?  Look for debugprint identifier using the Find feature of your text
 editor.
 
 >>> theano.printing.debugprint(gy)
- Elemwise{mul} 46950804894224
-   Elemwise{mul} 46950804735120
-     Elemwise{second,no_inplace} 46950804626128
-       Elemwise{pow,no_inplace} 46950804625040
-         x 46950658736720
-         2 46950804039760
-       1.0 46950804625488
-     2 46950804039760
-   Elemwise{pow} 46950804737616
-     x 46950658736720
-     Elemwise{sub} 46950804736720
-       2 46950804039760
-       InplaceDimShuffle{} 46950804736016
-         1 46950804735760
->>> theano.printing.debugprint(gy, depth=2)
- Elemwise{mul} 46950804894224
-   Elemwise{mul} 46950804735120
-   Elemwise{pow} 46950804737616
+Elemwise{mul} [@A] ''
+ |Elemwise{mul} [@B] ''
+ | |Elemwise{second,no_inplace} [@C] ''
+ | | |Elemwise{pow,no_inplace} [@D] ''
+ | | | |x [@E]
+ | | | |TensorConstant{2} [@F]
+ | | |TensorConstant{1.0} [@G]
+ | |TensorConstant{2} [@F]
+ |Elemwise{pow} [@H] ''
+   |x [@E]
+   |Elemwise{sub} [@I] ''
+     |TensorConstant{2} [@F]
+     |InplaceDimShuffle{} [@J] ''
+       |TensorConstant{1} [@K]
 
-If the depth parameter is provided, it limits the nuber of levels that are
+>>> theano.printing.debugprint(gy, depth=2)
+Elemwise{mul} [@A] ''   
+ |Elemwise{mul} [@B] ''   
+ |Elemwise{pow} [@C] ''   
+
+If the depth parameter is provided, it limits the number of levels that are
 shown.
 
 
 
-3) The function :func:`theano.printing.pydotprint(fct, outfile=SOME_DEFAULT_VALUE)` will print a compiled theano function to a png file.
+3) The function :func:`theano.printing.pydotprint` will print a compiled theano function to a png file.
 
-In the image, Apply nodes (the applications of ops) are shown as boxes and variables are shown as ovals.
+
+In the image, Apply nodes (the applications of ops) are shown as ellipses and variables are shown as boxes.
 The number at the end of each label indicates graph position.  
 Boxes and ovals have their own set of positions, so you can have apply #1 and also a
 variable #1.
@@ -170,10 +177,13 @@ Reference
         running the function will print the value that `x` takes in the graph.
 
 
-.. function:: theano.printing.pp(*args)
-
-    TODO
-    
-
 .. autofunction:: theano.printing.debugprint
+
+.. function:: theano.pp(*args)
+
+   Just a shortcut to :func:`theano.printing.pp`
+
+.. autofunction:: theano.printing.pp(*args)
+
+.. autofunction:: theano.printing.pydotprint
 

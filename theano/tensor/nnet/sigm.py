@@ -10,11 +10,10 @@ import numpy
 
 import theano
 from theano import config, gof, printing, scalar
-from theano.compile import optdb
 from theano.configparser import AddConfigVar, BoolParam
-from theano.printing import pprint, debugprint
+from theano.printing import pprint
 from theano.tensor import basic as tensor
-from theano.tensor import elemwise, opt
+from theano.tensor import elemwise, opt, NotScalarConstantError
 
 
 ############
@@ -23,6 +22,9 @@ from theano.tensor import elemwise, opt
 #
 
 class ScalarSigmoid(scalar.UnaryScalarOp):
+    """
+    This is just speed opt. Not for stability.
+    """
     @staticmethod
     def st_impl(x):
         if x < -30.0:
@@ -30,42 +32,265 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         if x > 30.0:
             return 1.0
         return 1.0 / (1.0 + numpy.exp(-x))
+
     def impl(self, x):
         return ScalarSigmoid.st_impl(x)
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         y = scalar_sigmoid(x)
-        return [gz * y * (1.0 - y)]
+        rval = gz * y * (1.0 - y)
+
+        assert rval.type.dtype.find('float') != -1
+
+        return [rval]
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
+        # We add boundary checks prevent exp from generating inf or
+        # 0. The reset of the logic always generate 0 or 1 in those
+        # cases. This is a speed optimization.
+        # The constants were obtained by looking at the output of python commands like:
+        """
+import numpy, theano
+dt='float32'  # or float64
+for i in xrange(750):
+    print i, repr(theano._asarray(1.0, dtype=dt) /
+                              (theano._asarray(1.0, dtype=dt) +
+                              numpy.exp(-theano._asarray([i,-i], dtype=dt))))
+        """
         if node.inputs[0].type == scalar.float32:
-            # These constants were obtained by looking at the output of python commands like:
-            #  for i in xrange(750):
-            #      print i, repr( theano._asarray(1.0, dtype=dt) / (theano._asarray(1.0, dtype=dt) + numpy.exp(-theano._asarray([i,-i], dtype=dt))))
-            # the boundary checks prevent us from generating inf
             return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
         elif node.inputs[0].type == scalar.float64:
             return """%(z)s = %(x)s < -709.0 ? 0.0 : %(x)s > 19.0 ? 1.0 : 1.0 /(1.0+exp(-%(x)s));""" % locals()
         else:
             raise NotImplementedError('only floatingpoint is implemented')
+
     def c_code_cache_version(self):
         v = super(ScalarSigmoid, self).c_code_cache_version()
         if v:
             return (2,) + v
         else:
             return v
+
+    # This fct is disabled as it is slower then the normal code!
+    def c_code_contiguous_disabled(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if (not theano.config.lib.amdlibm or
+            node.inputs[0].dtype != node.outputs[0].dtype):
+            raise theano.gof.utils.MethodNotDefined()
+        dtype = node.inputs[0].dtype
+        if dtype == 'float32' and self.amd_float32 is not None:
+            dtype = 'float'
+            fct = "amd_vrsa_expf"
+        elif dtype == 'float64' and self.amd_float64 is not None:
+            dtype = 'double'
+            fct = "amd_vrda_exp"
+        else:
+            raise theano.gof.utils.MethodNotDefined()
+        return """
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        // We block to keep the data in l1
+        // normal l1 size = 32k: 32k/2(input + output)/8(nb bytes of double)=2k
+        // We stay bellow the 2k limit to let space for
+        // This is faster than the not blocking version
+        for(int i=0;i<n;i+=2048){
+            npy_intp nb = (n-i<2048)?n-i:2048;
+            for(int j=0;j<nb;j++){
+                z[i+j] = -x[i+j];
+            }
+            %(fct)s(nb, z+i, z+i);
+            for(int j=0;j<nb;j++){
+                z[i+j] = 1.0 /(1.0+z[i+j]);
+            }
+        }
+        """ % locals()
+        raise theano.gof.utils.MethodNotDefined()
+
+    @staticmethod
+    def gen_graph():
+        """
+        This method was used to generate the graph: sigmoid_prec.png in the doc
+        """
+        import matplotlib
+        data = numpy.arange(-15, 15, .1)
+        val = 1/(1+numpy.exp(-data))
+
+        def hard_sigmoid(x):
+            return theano.tensor.nnet.hard_sigmoid(x)
+
+        def ultra_fast_sigmoid(x):
+            return theano.tensor.nnet.ultra_fast_sigmoid(x)
+
+        val_hard = hard_sigmoid(data).eval()
+        val_ultra = ultra_fast_sigmoid(data).eval()
+
+        import matplotlib.pyplot as plt
+        import os
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(data, val)  # , 'o-')
+        ax.plot(data, val_ultra)  # , '-')
+        ax.plot(data, val_hard)  # , '-')
+        ax.grid(True)
+        ax.legend(("sigmoid", "ultra_fast", "hard"), "upper left")
+        fname = os.path.join(os.path.dirname(theano.__file__), '..',
+                             'doc', 'library', 'tensor', 'nnet',
+                             'sigmoid_prec.png')
+        plt.savefig(fname)
+        print "New picture saved at", fname
+        print val_ultra.max()
+        print val_ultra.min()
+
+
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
 sigmoid_inplace = elemwise.Elemwise(
         ScalarSigmoid(scalar.transfer_type(0)),
-        inplace_pattern={0:0},
+        inplace_pattern={0: 0},
         name='sigmoid_inplace',
         )
 
 pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
+
+
+class UltraFastScalarSigmoid(scalar.UnaryScalarOp):
+    """
+    This is just speed opt. Not for stability.
+    """
+    @staticmethod
+    def st_impl(x):
+        x = 0.5 * x
+        # The if is a tanh approximate.
+        if x >= 0:
+            if x < 1.7:
+                z = (1.5 * x / (1 + x))
+            elif x < 3:
+                z = (0.935409070603099 + 0.0458812946797165 * (x - 1.7))
+            else:
+                z = 0.99505475368673
+        else:
+            xx = -x
+            if xx < 1.7:
+                z = (1.5 * xx / (1 + xx))
+            elif xx < 3:
+                z = (0.935409070603099 + 0.0458812946797165 * (xx - 1.7))
+            else:
+                z = 0.99505475368673
+            z = -z
+
+        return 0.5 * (z + 1.)
+
+    def impl(self, x):
+        return UltraFastScalarSigmoid.st_impl(x)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        dtype = node.outputs[0].type.dtype_specs()[1]
+
+        return """
+        %(dtype)s x = 0.5 * %(x)s;
+   // The if is a tanh approximate.
+   if(x>=0) {
+        %(z)s = (x<1.7 ? (1.5*x/(1+x)) :
+                         (x<3 ? (0.935409070603099 + 0.0458812946797165*(x-1.7)):
+                         0.99505475368673));
+    } else {
+        %(dtype)s xx = -x;
+        %(z)s = -(xx<1.7 ? (1.5*xx/(1+xx)) :
+                           (xx<3 ? (0.935409070603099 + 0.0458812946797165*(xx-1.7)):
+                                   0.99505475368673));
+    }
+
+        //%(z)s = 0.5*(ultrafasttanh(0.5*x)+1.);
+        %(z)s = 0.5*(%(z)s+1.);
+        """ % locals()
+
+ultra_fast_scalar_sigmoid = UltraFastScalarSigmoid(
+    scalar.upgrade_to_float, name='ultra_fast_scalar_sigmoid')
+ultra_fast_sigmoid = elemwise.Elemwise(ultra_fast_scalar_sigmoid,
+                                       name='ultra_fast_sigmoid')
+
+ultra_fast_sigmoid_inplace = elemwise.Elemwise(
+    UltraFastScalarSigmoid(scalar.transfer_type(0)),
+    inplace_pattern={0: 0},
+    name='ultra_fast_sigmoid_inplace',
+)
+
+pprint.assign(ultra_fast_sigmoid,
+              printing.FunctionPrinter('ultra_fast_sigmoid'))
+
+
+#@opt.register_uncanonicalize
+@gof.local_optimizer([sigmoid])
+def local_ultra_fast_sigmoid(node):
+    """
+    When enabled, change all sigmoid to ultra_fast_sigmoid.
+
+    For example do mode.including('local_ultra_fast_sigmoid')
+    or use the Theano flag optimizer_including=local_ultra_fast_sigmoid
+
+    This speeds up the sigmoid op by using an approximation.
+
+    This is done after the stabilization and specialize phases
+    to avoid interacting with them.
+
+    """
+    if (isinstance(node.op, tensor.Elemwise) and
+            node.op.scalar_op == scalar_sigmoid):
+        out = ultra_fast_sigmoid(node.inputs[0])
+
+        def values_eq_approx_remove_low_prec(a, b):
+            # atol is found by trial/error.
+            # Other test could fail without good reason.
+            return tensor.TensorType.values_eq_approx(a, b, atol=0.02)
+        # Let DebugMode know that there this opt approx the values.
+        out.values_eq_approx = values_eq_approx_remove_low_prec
+        return [out]
+theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
+                                                local_ultra_fast_sigmoid)
+
+
+def hard_sigmoid(x):
+    """An approximation of sigmoid.
+
+    More approximate and faster than ultra_fast_sigmoid.
+
+    Approx in 3 parts: 0, scaled linear, 1
+
+    Removing the slope and shift does not make it faster.
+
+    """
+    slope = 0.2
+    shift = 0.5
+    x = (x * slope) + shift
+    x = tensor.clip(x, 0, 1)
+    return x
+
+
+#@opt.register_uncanonicalize
+@gof.local_optimizer([sigmoid])
+def local_hard_sigmoid(node):
+    if (isinstance(node.op, tensor.Elemwise) and
+            node.op.scalar_op == scalar_sigmoid):
+        out = hard_sigmoid(node.inputs[0])
+
+        def values_eq_approx_remove_low_prec(a, b):
+            # atol is found by trial/error.
+            # Other test could fail without good reason.
+            return tensor.TensorType.values_eq_approx(a, b, atol=0.1)
+        # Let DebugMode know that there this opt approx the values.
+        out.values_eq_approx = values_eq_approx_remove_low_prec
+        return [out]
+theano.compile.optdb['uncanonicalize'].register("local_hard_sigmoid",
+                                                local_hard_sigmoid)
 
 
 class ScalarSoftplus(scalar.UnaryScalarOp):
@@ -76,12 +301,15 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
         if x > 30.0:
             return x
         return numpy.log1p(numpy.exp(x))
+
     def impl(self, x):
         return ScalarSoftplus.static_impl(x)
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         return [gz * scalar_sigmoid(x)]
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
@@ -95,27 +323,30 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
             return """%(z)s = %(x)s < -745.0 ? 0.0 : %(x)s > 16.0 ? %(x)s : log1p(exp(%(x)s));""" % locals()
         else:
             raise NotImplementedError('only floatingpoint is implemented')
+
     def c_code_cache_version(self):
         v = super(ScalarSoftplus, self).c_code_cache_version()
         if v:
             return (2,) + v
         else:
             return v
-scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float, name='scalar_softplus')
+scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float,
+                                 name='scalar_softplus')
 softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
 
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 
+
 def _skip_mul_1(r):
     if r.owner and r.owner.op == tensor.mul:
-        not_is_1 = [i for i in r.owner.inputs if not _is_1(i) ]
-        if len(not_is_1)==1:
+        not_is_1 = [i for i in r.owner.inputs if not _is_1(i)]
+        if len(not_is_1) == 1:
             return not_is_1[0]
 
 logsigm_to_softplus = gof.PatternSub(
     (tensor.log, (sigmoid, 'x')),
     (tensor.neg, (softplus, (tensor.neg, 'x'))),
-    allow_multiple_clients = True,
+    allow_multiple_clients=True,
     skip_identities_fn=_skip_mul_1)
 
 
@@ -123,29 +354,30 @@ def _is_1(expr):
     """rtype bool. True iff expr is a constant close to 1
     """
     try:
-        v = opt.get_constant_value(expr)
+        v = opt.get_scalar_constant_value(expr)
         return numpy.allclose(v, 1)
-    except TypeError:
+    except tensor.NotScalarConstantError:
         return False
 
 log1msigm_to_softplus = gof.PatternSub(
     (tensor.log,
         (tensor.sub,
-            dict(pattern='y', constraint = _is_1),
+            dict(pattern='y', constraint=_is_1),
             (sigmoid, 'x'))),
     (tensor.neg, (softplus, 'x')),
-    allow_multiple_clients = True,
+    allow_multiple_clients=True,
     skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
     (tensor.log1p,
      (tensor.exp, 'x')),
     (softplus, 'x'),
-    allow_multiple_clients = True)
+    allow_multiple_clients=True)
 
-opt.register_stabilize(logsigm_to_softplus, name = 'logsigm_to_softplus')
-opt.register_stabilize(log1msigm_to_softplus, name = 'log1msigm_to_softplus')
-opt.register_stabilize(log1pexp_to_softplus, name = 'log1pexp_to_softplus')
+opt.register_stabilize(logsigm_to_softplus, name='logsigm_to_softplus')
+opt.register_stabilize(log1msigm_to_softplus, name='log1msigm_to_softplus')
+opt.register_stabilize(log1pexp_to_softplus, name='log1pexp_to_softplus')
+
 
 def is_1pexp(t):
     """
@@ -239,7 +471,7 @@ def partition_num_or_denom(r, f):
         else:
             neg_t, f_t = f_t
             f_terms.append(f_t)
-            neg ^= neg_t #bit flip if neg_t is true
+            neg ^= neg_t  # bit flip if neg_t is true
     return f_terms, rest, neg
 
 
@@ -261,9 +493,9 @@ def is_neg(var):
     if apply.op == tensor.mul and len(apply.inputs) >= 2:
         for idx, mul_input in enumerate(apply.inputs):
             try:
-                constant = opt.get_constant_value(mul_input)
+                constant = opt.get_scalar_constant_value(mul_input)
                 is_minus_1 = numpy.allclose(constant, -1)
-            except TypeError:
+            except NotScalarConstantError:
                 is_minus_1 = False
             if is_minus_1:
                 # Found a multiplication by -1.
@@ -291,7 +523,8 @@ def local_exp_over_1_plus_exp(node):
         #find all the exp() terms in the numerator
         num, denom = node.inputs
         num_exp_x, num_rest, num_neg = partition_num_or_denom(num, is_exp)
-        denom_1pexp, denom_rest, denom_neg = partition_num_or_denom(denom, is_1pexp)
+        denom_1pexp, denom_rest, \
+            denom_neg = partition_num_or_denom(denom, is_1pexp)
 
         sigmoids = []
         for t in denom_1pexp:
@@ -303,7 +536,7 @@ def local_exp_over_1_plus_exp(node):
                 # case: 1/(1+exp(x))
                 sigmoids.append(sigmoid(-t))
 
-        if not sigmoids: # we didn't find any.  abort
+        if not sigmoids:  # we didn't find any.  abort
             return
         # put the new numerator together
         new_num = sigmoids + [tensor.exp(t) for t in num_exp_x] + num_rest
@@ -321,6 +554,7 @@ def local_exp_over_1_plus_exp(node):
             return [new_num / denom_rest[0]]
         else:
             return [new_num / tensor.mul(*denom_rest)]
+
 
 def parse_mul_tree(root):
     """
@@ -504,7 +738,7 @@ def perform_sigm_times_exp(tree, exp_x=None, exp_minus_x=None, sigm_x=None,
         sigm_minus_x = []
     if full_tree is None:
         full_tree = tree
-    if False: # Debug code.
+    if False:  # Debug code.
         print '<perform_sigm_times_exp>'
         print '  full_tree   = %s' % full_tree
         print '  tree        = %s' % tree
@@ -613,10 +847,13 @@ def local_inv_1_plus_exp(node):
                 if nonconsts[0].owner and nonconsts[0].owner.op == tensor.exp:
                     if scalars and numpy.allclose(numpy.sum(scalars), 1):
                         return opt._fill_chain(
-                                sigmoid(tensor.neg(nonconsts[0].owner.inputs[0])),
+                                sigmoid(
+                                    tensor.neg(nonconsts[0].owner.inputs[0])),
                                 scalar_inputs)
 
 # Registration is below, and conditional.
+
+
 @gof.local_optimizer([tensor.sub])
 def local_1msigmoid(node):
     """
@@ -625,10 +862,10 @@ def local_1msigmoid(node):
     if node.op == tensor.sub:
         sub_l, sub_r = node.inputs
         if len(sub_r.clients) > 1:
-            return # graph is using both sigm and 1-sigm
+            return  # graph is using both sigm and 1-sigm
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
-                val_l = opt.get_constant_value(sub_l)
+                val_l = opt.get_scalar_constant_value(sub_l)
             except Exception, e:
                 return
             if numpy.allclose(numpy.sum(val_l), 1):
@@ -678,13 +915,14 @@ if 0:
                         assert t0.owner.op == div
                         t0top, t0bot = t0.owner.inputs
                         t1top, t1bot = t1.owner.inputs
-                        rval.append(div(mul(*(t0top+t1top)), mul(*(t0bot+t1bot))))
+                        rval.append(div(mul(*(
+                            t0top + t1top)), mul(*(t0bot + t1bot))))
 
                         if len(rval) > 100:
                             # This loop can be exponentially long.
                             # aborting
                             return []
-        elif len(node.outputs)>1:
+        elif len(node.outputs) > 1:
             return []
         else:
             return [node.outputs[0]]

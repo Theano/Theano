@@ -3,7 +3,7 @@ from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
 from theano.gof.opt import *
-from theano.gof.env import Env
+from theano.gof.fg import FunctionGraph as Env
 from theano.gof.toolbox import *
 
 
@@ -360,7 +360,7 @@ class TestEquilibrium(object):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
-        print g
+        #print g
         opt = EquilibriumOptimizer(
             [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
              PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
@@ -368,14 +368,14 @@ class TestEquilibrium(object):
              ],
             max_use_ratio = 10)
         opt.optimize(g)
-        print g
+        #print g
         assert str(g) == '[Op2(x, y)]'
 
     def test_2(self):
         x, y, z = map(MyVariable, 'xyz')
         e = op1(op1(op3(x, y)))
         g = Env([x, y, z], [e])
-        print g
+        #print g
         opt = EquilibriumOptimizer(
             [PatternSub((op1, (op2, 'x', 'y')), (op4, 'x', 'y')),
              PatternSub((op3, 'x', 'y'), (op4, 'x', 'y')),
@@ -391,7 +391,7 @@ class TestEquilibrium(object):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
-        print 'before', g
+        #print 'before', g
         # display pesky warnings along with stdout
         # also silence logger for 'theano.gof.opt'
         _logger = logging.getLogger('theano.gof.opt')
@@ -403,9 +403,9 @@ class TestEquilibrium(object):
                  PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
                  PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
                  ],
-                max_use_ratio = 1. / len(g.nodes)) # each opt can only be applied once
+                max_use_ratio = 1. / len(g.apply_nodes)) # each opt can only be applied once
             opt.optimize(g)
         finally:
             _logger.setLevel(oldlevel)
-        print 'after', g
+        #print 'after', g
         assert str(g) == '[Op1(x, y)]'

@@ -18,13 +18,14 @@ import logging
 from itertools import izip
 
 import numpy
+import warnings
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar
-from theano.gof.python25 import all
-from theano.tensor.basic import get_constant_value
+from theano.gof.python25 import all, OrderedDict
+from theano.tensor.basic import get_scalar_constant_value
 
 
 ################ Utility Functions and Classes #######################
@@ -33,7 +34,7 @@ from theano.tensor.basic import get_constant_value
 _logger = logging.getLogger('theano.scan_utils')
 
 
-def safe_new(x, tag=''):
+def safe_new(x, tag='', dtype=None):
     """
     Internal function that constructs a new variable from x with the same
     type, but with a different name (old name + tag). This function is used
@@ -46,12 +47,21 @@ def safe_new(x, tag=''):
     else:
         nw_name = None
     if isinstance(x, theano.Constant):
-        return x.clone()
+        if dtype and x.dtype != dtype:
+            casted_x = x.astype(dtype)
+            nwx = x.__class__(casted_x.type, x.data, x.name)
+            nwx.tag = copy(x.tag)
+            return nwx
+        else:
+            return x.clone()
     # Note, as_tensor_variable will convert the Scalar into a
     # TensorScalar that will require a ScalarFromTensor op,
     # making the pushout optimization fail
     elif isinstance(x, scalar.ScalarVariable):
-        nw_x = x.type()
+        if dtype:
+            nw_x = scalar.get_scalar_type(dtype=dtype)()
+        else:
+            nw_x = x.type()
         nw_x.name = nw_name
         return nw_x
     else:
@@ -63,6 +73,8 @@ def safe_new(x, tag=''):
             # ndarrays
             pass
     nw_x = x.type()
+    if dtype and nw_x.dtype != dtype:
+        nw_x = nw_x.astype(dtype).type()
     nw_x.name = nw_name
     # Preserve test values so that the 'compute_test_value' option can be used.
     # The test value is deep-copied to ensure there can be no interactions
@@ -74,6 +86,7 @@ def safe_new(x, tag=''):
         except AttributeError:
             # This means `x` has no test value.
             pass
+
     return nw_x
 
 
@@ -94,7 +107,7 @@ class until(object):
         assert self.condition.ndim == 0
 
 
-def traverse(out, x, x_copy, d):
+def traverse(out, x, x_copy, d, visited=None):
     ''' Function used by scan to parse the tree and figure out which nodes
     it needs to replace. There are two options :
         1) x and x_copy or on host, then you would replace x with x_copy
@@ -103,6 +116,15 @@ def traverse(out, x, x_copy, d):
     This happens because initially shared variables are on GPU .. which is
     fine for the main computational graph but confuses things a bit for the
     inner graph of scan '''
+    # ``visited`` is a set of nodes that are already known and don't need to be
+    # checked again, speeding up the traversal of multiply-connected graphs.
+    # if a ``visited`` set is given, it will be updated in-place so the callee
+    # knows which nodes we have seen.
+    if visited is None:
+        visited = set()
+    if out in visited:
+        return d
+    visited.add(out)
     import theano.sandbox.cuda as cuda
     if out == x:
         d[out] = cuda.gpu_from_host(x_copy)
@@ -116,7 +138,7 @@ def traverse(out, x, x_copy, d):
         return d
     else:
         for inp in out.owner.inputs:
-            d = traverse(inp, x, x_copy, d)
+            d = traverse(inp, x, x_copy, d, visited)
         return d
 
 
@@ -151,24 +173,52 @@ def clone(output,
     :type replace: dict
     :param replace: dictionary describing which subgraphs should be
                     replaced by what
-    """
 
-    inps, outs, other_stuff = rebuild_collect_shared(output,
-                                                     [],
-                                                     replace,
-                                                     [],
-                                                     strict,
-                                                     copy_inputs
-                                                     )
+    :type copy_inputs: bool
+    :param copy_inputs: If True, use the same inputs (and shared variables)
+        as the original graph. If False, clone them. Note that cloned
+        shared variables still use the same underlying storage, so they
+        will always have the same value.
+    """
+    if isinstance(replace, dict):
+        items = replace.items()
+    elif isinstance(replace, (list, tuple)):
+        items = replace
+    elif replace is None:
+        items = []
+    else:
+        raise ValueError(("replace is neither a dictionary, list, "
+                          "tuple or None ! The value provided is %s,"
+                          "of type %s")%(str(replace), str(type(replace))))
+    tmp_replace = [(x, x.type()) for x, y in items]
+    new_replace = [(x, y) for ((_, x), (_, y)) in zip(tmp_replace,
+                                                           items)]
+    _, _outs, _ = rebuild_collect_shared(output,
+                                         [],
+                                         tmp_replace,
+                                         [],
+                                         strict,
+                                         copy_inputs)
+
+    _, outs, _ = rebuild_collect_shared(_outs,
+                                        [],
+                                        new_replace,
+                                        [],
+                                        strict,
+                                        copy_inputs)
+
     return outs
 
 
 def get_updates_and_outputs(ls):
     """
-    This function tries to recognize the updates dictionary, the
+    This function tries to recognize the updates OrderedDict, the
     list of outputs and the stopping condition returned by the
     lambda expression and arrange them in a predefined order
 
+    WRITEME: what is the type of ls? how is it formatted?
+            if it's not in the predefined order already, how does
+            this function know how to put it in that order?
 
     """
     def is_outputs(elem):
@@ -181,6 +231,12 @@ def get_updates_and_outputs(ls):
 
     def is_updates(elem):
         if isinstance(elem, dict):
+            # Make sure the updates will be applied in a deterministic order
+            if (not isinstance(elem, gof.python25.OrderedDict) and
+                len(elem) > 1):
+                warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
+                        + str(type(elem)) + ". This can make your script non-"
+                        "deterministic.")
             return True
         # Dictionaries can be given as lists of tuples
         if (isinstance(elem, (list, tuple)) and
@@ -224,12 +280,12 @@ def get_updates_and_outputs(ls):
                 'variables (or `theano.scan_module.until` objects for '
                 'conditions). In particular if you need to use constant '
                 'values, you can use `tensor.constant` to turn them into '
-                'Theano variables.')
+                 'Theano variables.')
 
     if is_outputs(ls):
-        return None, _list(ls), {}
+        return None, _list(ls), OrderedDict()
     if is_updates(ls):
-        return None, [], dict(ls)
+        return None, [], OrderedDict(ls)
     error_msg = ('Scan cannot parse the return value of your lambda '
                  'expression, which is: %s' % (ls,))
     if not isinstance(ls, (list, tuple)):
@@ -242,16 +298,16 @@ def get_updates_and_outputs(ls):
     if len(ls) == 2:
         if is_outputs(ls[0]):
             if is_updates(ls[1]):
-                return (None, _list(ls[0]), dict(ls[1]))
+                return (None, _list(ls[0]), OrderedDict(ls[1]))
             elif is_condition(ls[1]):
-                return (ls[1].condition, _list(ls[0]), {})
+                return (ls[1].condition, _list(ls[0]), OrderedDict())
             else:
                 raise ValueError(error_msg)
         elif is_updates(ls[0]):
             if is_outputs(ls[1]):
                 raise ValueError(deprecation_msg)
             elif is_condition(ls[1]):
-                return (ls[1].condition, [], dict(ls[0]))
+                return (ls[1].condition, [], OrderedDict(ls[0]))
             else:
                 raise ValueError(error_msg)
         else:
@@ -260,7 +316,7 @@ def get_updates_and_outputs(ls):
         if is_outputs(ls[0]):
             if is_updates(ls[1]):
                 if is_condition(ls[2]):
-                    return (ls[2].condition, _list(ls[0]), dict(ls[1]))
+                    return (ls[2].condition, _list(ls[0]), OrderedDict(ls[1]))
                 else:
                     raise ValueError(error_msg)
             else:
@@ -283,7 +339,7 @@ def isNaN_or_Inf_or_None(x):
         isStr = False
     if not isNaN and not isInf:
         try:
-            val = get_constant_value(x)
+            val = get_scalar_constant_value(x)
             isInf = numpy.isinf(val)
             isNaN = numpy.isnan(val)
         except Exception:
@@ -361,7 +417,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
             elif (isinstance(dx, tensor.Constant) and
                   isinstance(dy, tensor.Constant)):
                 if not (numpy.all(dx.data == dy.data) and
-                        dx.dtype == dy.dtype and
+                        dx.type.dtype == dy.type.dtype and
                         dx.data.shape == dy.data.shape):
                     return False
                 else:
@@ -385,7 +441,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
                         if (isinstance(dx, tensor.Constant) and
                             isinstance(dy, tensor.Constant)):
                             if not (numpy.all(dx.data == dy.data) and
-                                dx.dtype == dy.dtype and
+                                dx.type.dtype == dy.type.dtype and
                                 dx.data.shape == dy.data.shape):
                                 return False
                             else:
@@ -411,14 +467,14 @@ def infer_shape(outs, inputs, input_shapes):
     '''
     # We use a ShapeFeature because it has all the necessary logic
     # inside.  We don't use the full ShapeFeature interface, but we
-    # let it initialize itself with an empty env, otherwise we will
+    # let it initialize itself with an empty fgraph, otherwise we will
     # need to do it manually
     for inp, inp_shp in izip(inputs, input_shapes):
         if inp_shp is not None and len(inp_shp) != inp.ndim:
             assert len(inp_shp) == inp.ndim
 
     shape_feature = tensor.opt.ShapeFeature()
-    shape_feature.on_attach(theano.gof.Env([], []))
+    shape_feature.on_attach(theano.gof.FunctionGraph([], []))
 
     # Initialize shape_of with the input shapes
     for inp, inp_shp in izip(inputs, input_shapes):
@@ -441,10 +497,10 @@ def infer_shape(outs, inputs, input_shapes):
                 if not inp in shape_feature.shape_of:
                     local_traverse(inp)
 
-            # shape_feature.on_import does not actually use an env
+            # shape_feature.on_import does not actually use an fgraph
             # It will call infer_shape and set_shape appropriately
-            dummy_env = None
-            shape_feature.on_import(dummy_env, out.owner)
+            dummy_fgraph = None
+            shape_feature.on_import(dummy_fgraph, out.owner, reason="dummy")
 
     ret = []
     for o in outs:
@@ -467,7 +523,7 @@ class Validator(object):
         if invalid is None:
             invalid = []
         if valid_equivalent is None:
-            valid_equivalent = {}
+            valid_equivalent = OrderedDict()
 
         # Nodes that are valid to have in the graph computing outputs
         self.valid = set(valid)
@@ -580,7 +636,7 @@ def compress_outs(op, not_required, inputs):
     means removing its inputs from the inner funciton and from the
     node inputs, and changing the dictionary.
     '''
-    info = {}
+    info = OrderedDict()
     info['tap_array'] = []
     info['n_seqs'] = op.info['n_seqs']
     info['n_mit_mot'] = 0
@@ -592,7 +648,6 @@ def compress_outs(op, not_required, inputs):
     info['n_nit_sot'] = 0
     info['truncate_gradient'] = op.info['truncate_gradient']
     info['name'] = op.info['name']
-    info['inplace'] = op.info['inplace']
     info['gpu'] = op.info['gpu']
     info['mode'] = op.info['mode']
     info['as_while'] = op.info['as_while']
@@ -601,7 +656,7 @@ def compress_outs(op, not_required, inputs):
     op_inputs = op.inputs[:op.n_seqs]
     op_outputs = []
     node_inputs = inputs[:op.n_seqs + 1]
-    map_old_new = {}
+    map_old_new = OrderedDict()
 
     offset = 0
     ni_offset = op.n_seqs + 1
@@ -736,7 +791,7 @@ def reconstruct_graph(inputs, outputs, tag=None):
     if tag is None:
         tag = ''
     nw_inputs = [safe_new(x, tag) for x in inputs]
-    givens = {}
+    givens = OrderedDict()
     for nw_x, x in izip(nw_inputs, inputs):
         givens[x] = nw_x
     allinputs = theano.gof.graph.inputs(outputs)
@@ -856,10 +911,11 @@ class scan_args(object):
         p += n_shared_outs
         q += n_shared_outs
 
-        self.other_info = dict()
-        for k in ('truncate_gradient', 'name', 'mode', 'inplace',
+        self.other_info = OrderedDict()
+        for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
                   'gpu', 'as_while', 'profile'):
-            self.other_info[k] = info[k]
+            if k in info:
+                self.other_info[k] = info[k]
 
     inner_inputs = property(lambda self: (self.inner_in_seqs +
                                           sum(self.inner_in_mit_mot, []) +
@@ -889,7 +945,7 @@ class scan_args(object):
                                            self.outer_out_nit_sot +
                                            self.outer_out_shared))
 
-    info = property(lambda self: dict(
+    info = property(lambda self: OrderedDict(
             n_seqs=len(self.outer_in_seqs),
             n_mit_mot=len(self.outer_in_mit_mot),
             n_mit_sot=len(self.outer_in_mit_sot),
@@ -924,3 +980,40 @@ class scan_args(object):
                          'mit_sot_in_slices')):
                 getattr(res, attr).extend(getattr(other, attr))
         return res
+
+
+def forced_replace(out, x, y):
+    """
+    :param out: Theano Variable
+    :param x: Theano Variable
+    :param y: Theano Variable
+
+    This function checks all internal values of the graph that computes the
+    variable ``out`` for occurances of values identical with ``x``. If such
+    occurances are encountered then they are replaced with variable ``y``.
+    For example:
+        out := sigmoid(wu)*(1-sigmoid(wu))
+        x := sigmoid(wu)
+        forced_replace(out, x, y) := y*(1-y)
+    """
+    if out is None:
+        return None
+
+    # ``visited`` is a set of nodes that are already known and don't need to be
+    # checked again, speeding up the traversal of multiply-connected graphs.
+    visited = set()
+    def local_traverse(graph, x):
+        if graph in visited:
+            return []
+        visited.add(graph)
+        if equal_computations([graph], [x]):
+            return [graph]
+        elif not graph.owner:
+            return []
+        else:
+            rval = []
+            for inp in graph.owner.inputs:
+                rval += local_traverse(inp, x)
+            return rval
+    to_replace = local_traverse(out, x)
+    return clone(out, replace=OrderedDict((v, y) for v in to_replace))

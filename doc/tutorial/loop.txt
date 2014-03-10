@@ -4,4 +4,94 @@
 Loop
 ====
 
-You can use :ref:`Scan <lib_scan>` to do all type of loop in Theano. All the documentation about it is in the library for now.
+
+Scan
+====
+
+- A general form of *recurrence*, which can be used for looping.
+- *Reduction* and *map* (loop over the leading dimensions) are special cases of ``scan``.
+- You ``scan`` a function along some input sequence, producing an output at each time-step.
+- The function can see the *previous K time-steps* of your function.
+- ``sum()`` could be computed by scanning the *z + x(i)* function over a list, given an initial state of *z=0*.
+- Often a *for* loop can be expressed as a ``scan()`` operation, and ``scan`` is the closest that Theano comes to looping.
+- Advantages of using ``scan`` over *for* loops:
+  
+  - Number of iterations to be part of the symbolic graph.
+  - Minimizes GPU transfers (if GPU is involved).
+  - Computes gradients through sequential steps.
+  - Slightly faster than using a *for* loop in Python with a compiled Theano function.
+  - Can lower the overall memory usage by detecting the actual amount of memory needed.
+
+The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
+
+**Scan Example: Computing pow(A,k)**
+
+.. code-block:: python
+
+  import theano
+  import theano.tensor as T
+  theano.config.warn.subtensor_merge_bug = False
+
+  k = T.iscalar("k")
+  A = T.vector("A")
+
+  def inner_fct(prior_result, B):
+      return prior_result * B
+
+  # Symbolic description of the result
+  result, updates = theano.scan(fn=inner_fct,
+                              outputs_info=T.ones_like(A),
+                              non_sequences=A, n_steps=k)
+
+  # Scan has provided us with A ** 1 through A ** k.  Keep only the last
+  # value. Scan notices this and does not waste memory saving them.
+  final_result = result[-1]
+  
+  power = theano.function(inputs=[A, k], outputs=final_result,
+                        updates=updates)
+  
+  print power(range(10),2)
+  #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
+
+
+**Scan Example: Calculating a Polynomial**
+
+.. code-block:: python
+
+  import numpy
+  import theano
+  import theano.tensor as T
+  theano.config.warn.subtensor_merge_bug = False
+
+  coefficients = theano.tensor.vector("coefficients")
+  x = T.scalar("x")
+  max_coefficients_supported = 10000
+
+  # Generate the components of the polynomial
+  full_range=theano.tensor.arange(max_coefficients_supported)
+  components, updates = theano.scan(fn=lambda coeff, power, free_var:
+                                     coeff * (free_var ** power),
+                                  outputs_info=None,
+                                  sequences=[coefficients, full_range],
+                                  non_sequences=x)
+
+  polynomial = components.sum()
+  calculate_polynomial = theano.function(inputs=[coefficients, x],
+                                       outputs=polynomial)
+
+  test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
+  print calculate_polynomial(test_coeff, 3)
+  # 19.0
+
+
+
+
+Exercise
+========
+
+Run both examples.
+
+Modify and execute the polynomial example to have the reduction done by ``scan``.
+
+
+:download:`Solution<loop_solution_1.py>`

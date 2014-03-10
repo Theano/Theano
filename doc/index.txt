@@ -6,7 +6,7 @@ Theano is a Python library that allows you to define, optimize, and
 evaluate mathematical expressions involving multi-dimensional
 arrays efficiently. Theano features:
 
-* **tight integration with numpy** -- Use `numpy.ndarray` in Theano-compiled functions.
+* **tight integration with NumPy** -- Use `numpy.ndarray` in Theano-compiled functions.
 * **transparent use of a GPU** -- Perform data-intensive calculations up to 140x faster than with CPU.(float32 only)
 * **efficient symbolic differentiation** -- Theano does your derivatives for function with one or many inputs.
 * **speed and stability optimizations** -- Get the right answer for ``log(1+x)`` even when ``x`` is really tiny.
@@ -17,11 +17,20 @@ Theano has been powering large-scale computationally intensive scientific invest
 since 2007.  But it is also approachable enough to be used in the classroom
 (IFT6266 at the University of Montreal).
 
+News
+====
+
+* Theano 0.6rc3 was released. Everybody is encouraged to update.
+
+* New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
+  However, please keep citing the other paper below in scientific work involving Theano.
+
+* `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_.
+  We included a few fixes discovered while doing the Tutorial.
+
 .. image:: images/talk2010.png
     :scale: 75%
     :align: left
-
-**NEW!** `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_. I included a few fix discovered while doing the Tutorial.
 
 You can watch a quick (20 minute) introduction to Theano given as a talk at `SciPy 2010 <http://conference.scipy.org/scipy2010/>`_ via streaming (or downloaded) video:
 
@@ -34,8 +43,8 @@ Download
 ========
 
 Theano is now `available on PyPI`_, and can be installed via ``easy_install
-Theano``, or by downloading and unpacking the tarball and typing ``python
-setup.py install``.
+Theano``, ``pip install Theano`` or by downloading and unpacking the tarball
+and typing ``python setup.py install``.
 
 Those interested in bleeding-edge features should obtain the latest development
 version, available via::
@@ -48,7 +57,22 @@ directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
 
+Status
+======
+
+.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
+    :target: http://travis-ci.org/Theano/Theano/builds
+
+.. image:: https://pypip.in/v/Theano/badge.png
+    :target: https://crate.io/packages/Theano/
+    :alt: Latest PyPI version
+
+.. image:: https://pypip.in/d/Theano/badge.png
+    :target: https://crate.io/packages/Theano/
+    :alt: Number of PyPI downloads
+
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
+.. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
 
 Citing Theano
 ==============
@@ -84,6 +108,8 @@ Roughly in order of what you'll want to check out:
 * :ref:`developer` -- Primarily of interest to developers of Theano
 * :ref:`internal` -- How to maintain Theano, LISA-specific tips, and more...
 * :ref:`release` -- How our release should work.
+* :ref:`acknowledgement` -- What we took from other projects.
+* `Related Projects`_ -- link to other projects that implement new functionalities on top of Theano
 
 You can download the latest `PDF documentation <http://deeplearning.net/software/theano/theano.pdf>`_, rather than reading it online.
 
@@ -116,9 +142,11 @@ Community
 
 * Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
 
-* We try to stay organized with `Assembla's tickets <http://www.assembla.com/spaces/theano/tickets>`__
+* We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
+  (however, some old tickets can still be found on
+  `Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
 
-* Come visit us in Montreal!  Most of the developers are students in the LISA_ group at the `University of Montreal`_.
+* Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
 
 .. toctree::
    :maxdepth: 1
@@ -131,11 +159,13 @@ Community
    library/index
    optimizations
    extending/index
+   dev_start_guide
    glossary
    links
    internal/index
    examples/index
    proposals/index
+   acknowledgement
    LICENSE
 
 

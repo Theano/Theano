@@ -5,13 +5,9 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano import tensor
 
-from theano.ifelse import ifelse
-from theano import sparse
-from theano.tensor import TensorType
-from theano.tests import unittest_tools as utt
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
 from theano.sandbox.cuda import CudaNdarrayType, cuda_available
-
+import theano.sandbox.cuda as cuda
 # Skip test if cuda_ndarray is not available.
 if cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -64,7 +60,11 @@ class T_updates(unittest.TestCase):
         data = numpy.float32([1, 2, 3, 4])
         x = f32sc(data)
         y = x ** 2
-        f = theano.function([], y, updates={x: x + 1})
+        f = theano.function([], y, updates=[(x, x + 1)])
+        f()
+
+        # Test that we can update with a CudaVariable
+        f = theano.function([], y, updates=[(x, cuda.gpu_from_host(x + 1))])
         f()
 
     def test_2(self):
@@ -74,94 +74,48 @@ class T_updates(unittest.TestCase):
                 value=numpy.zeros((10, 10), 'float32'))
 
         x = tensor.fmatrix('x')
-        output_updates = {output_var: x ** 2}
+        output_updates = [(output_var, x ** 2)]
         output_givens = {x: data}
         output_func = theano.function(inputs=[], outputs=[],
                 updates=output_updates, givens=output_givens)
         output_func()
 
-    def test_3(self):
-        # Test that broadcastable dimensions don't screw up
-        # update expressions.
+    def test_err_ndim(self):
+        # Test that we raise a good error message when we don't
+        # have the same number of dimensions.
         data = numpy.random.rand(10, 10).astype('float32')
         output_var = f32sc(name="output", value=data)
 
         # the update_var has type matrix, and the update expression
-        # is a broadcasted scalar, and that should be allowed.
+        # is a broadcasted scalar, and that should not be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                          updates=[(output_var,
+                                   output_var.sum())])
+
+    def test_err_broadcast(self):
+        # Test that we raise a good error message when we don't
+        # have the same number of dimensions.
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = f32sc(name="output", value=data)
+
+        # the update_var has type matrix, and the update expression
+        # is a broadcasted scalar, and that should not be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                          updates=[(output_var,
+                                   output_var.sum().dimshuffle('x', 'x'))])
+
+    def test_broadcast(self):
+        # Test that we can rebroadcast
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = f32sc(name="output", value=data)
+
+        up = tensor.unbroadcast(output_var.sum().dimshuffle('x', 'x'), 0, 1)
         output_func = theano.function(inputs=[], outputs=[],
-                updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+                                      updates=[(output_var, up)])
         output_func()
 
-
-class T_ifelse(unittest.TestCase):
-    def setUp(self):
-        utt.seed_rng()
-        self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
-
-    def test_cuda_tensor(self):
-        data = self.rng.rand(4).astype('float32')
-        x = f32sc(data)
-        y = x + 1
-        cond = theano.tensor.iscalar('cond')
-
-        assert isinstance(x.type, CudaNdarrayType)
-        assert isinstance(y.type, TensorType)
-
-        out1 = ifelse(cond, x, y)
-        out2 = ifelse(cond, y, x)
-
-        assert isinstance(out1.type, TensorType)
-        assert isinstance(out2.type, TensorType)
-
-        f = theano.function([cond], out1)
-        g = theano.function([cond], out2)
-
-        assert numpy.all(f(0) == data + 1)
-        assert numpy.all(f(1) == data)
-        assert numpy.all(g(0) == data)
-        assert numpy.all(g(1) == data + 1)
-
-    def test_dtype_mismatch(self):
-        data = self.rng.rand(5).astype('float32')
-        x = f32sc(data)
-        y = tensor.cast(x, 'float64')
-        cond = theano.tensor.iscalar('cond')
-
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-
-    def test_ndim_mismatch(self):
-        data = self.rng.rand(5).astype('float32')
-        x = f32sc(data)
-        y = tensor.fcol('y')
-        cond = theano.tensor.iscalar('cond')
-
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-
-    def test_broadcast_mismatch(self):
-        data = self.rng.rand(2, 3).astype('float32')
-        x = f32sc(data)
-        print x.broadcastable
-        y = tensor.frow('y')
-        print y.broadcastable
-        cond = theano.tensor.iscalar('cond')
-
-        self.assertRaises(TypeError, ifelse, cond, x, y)
-        self.assertRaises(TypeError, ifelse, cond, y, x)
-
-    def test_sparse_tensor_error(self):
-        data = self.rng.rand(2, 3).astype('float32')
-        x = f32sc(data)
-        y = sparse.matrix('csc', dtype='float32', name='y')
-        z = sparse.matrix('csr', dtype='float32', name='z')
-        cond = theano.tensor.iscalar('cond')
-
-        # Right now (2012-01-19), a ValueError gets raised, but I thing
-        # a TypeError (like in the other cases) would be fine.
-        self.assertRaises((TypeError, ValueError), ifelse, cond, x, y)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, y, x)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, x, z)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, z, x)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, y, z)
-        self.assertRaises((TypeError, ValueError), ifelse, cond, z, y)
+        up = tensor.patternbroadcast(output_var.sum().dimshuffle('x', 'x'),
+                                     output_var.type.broadcastable)
+        output_func = theano.function(inputs=[], outputs=[],
+                                      updates=[(output_var, up)])
+        output_func()

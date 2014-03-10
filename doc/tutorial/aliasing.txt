@@ -5,53 +5,52 @@
 Understanding Memory Aliasing for Speed and Correctness
 =======================================================
 
-The aggressive reuse of memory is one of the ways Theano makes code fast, and
-it's important for the correctness and speed of your program that you understand
-which buffers Theano might alias to which others.
+The aggressive reuse of memory is one of the ways through which Theano makes code fast, and
+it is important for the correctness and speed of your program that you understand
+how Theano might alias buffers.
 
-This file describes the principles for how Theano treats memory, and explains
-when you might want to change the default behaviour of some functions and
+This section describes the principles based on which Theano handles memory, and explains
+when you might want to alter the default behaviour of some functions and
 methods for faster performance.
 
 
-The memory model: 2 spaces
-==========================
+The Memory Model: Two Spaces
+============================
 
-There are some simple principles that guide Theano's treatment of memory.  The
+There are some simple principles that guide Theano's handling of memory.  The
 main idea is that there is a pool of memory managed by Theano, and Theano tracks
 changes to values in that pool.
 
- 1. Theano manages its own memory space, which typically does not overlap with
-    the memory of normal python variables that non-Theano code creates.
+* Theano manages its own memory space, which typically does not overlap with
+  the memory of normal Python variables that non-Theano code creates.
 
- 1. Theano Functions only modify buffers that are in Theano's memory space.
+* Theano functions only modify buffers that are in Theano's memory space.
 
- 1. Theano's memory space includes the buffers allocated to store shared
-    variables and the temporaries used to evaluate Functions.
+* Theano's memory space includes the buffers allocated to store ``shared``
+  variables and the temporaries used to evaluate functions.
 
- 1. Physically, Theano's memory space may be spread across the host, a GPU
-    device(s), and in the future may even include objects on a remote machine.
+* Physically, Theano's memory space may be spread across the host, a GPU
+  device(s), and in the future may even include objects on a remote machine.
 
- 1. The memory allocated for a shared variable buffer is unique: it is never
-    aliased to another shared variable.
+* The memory allocated for a ``shared`` variable buffer is unique: it is never
+  aliased to another ``shared`` variable.
 
- 1. Theano's managed memory is constant while Theano Functions are not running
-    and Theano library code is not running.
+* Theano's managed memory is constant while Theano functions are not running
+  and Theano's library code is not running.
 
- 1. The default behaviour of Function is to return user-space values for
-    outputs, and to expect user-space values for inputs.
+* The default behaviour of a function is to return user-space values for
+  outputs, and to expect user-space values for inputs.
     
 The distinction between Theano-managed memory and user-managed memory can be
-broken down by some Theano functions (e.g. shared, get_value and the
-constructors for In and Out) by using
-a ``borrow=True`` flag.  This can make those methods faster (by avoiding copy
-operations) at the expense of risking subtle bugs in the overall program (by
-aliasing memory).
+broken down by some Theano functions (e.g. ``shared``, ``get_value`` and the
+constructors for ``In`` and ``Out``) by using a ``borrow=True`` flag. 
+This can make those methods faster (by avoiding copy operations) at the expense 
+of risking subtle bugs in the overall program (by aliasing memory).
 
 The rest of this section is aimed at helping you to understand when it is safe
-to use the ``borrow=True`` argument and reap the benefit of faster code.
+to use the ``borrow=True`` argument and reap the benefits of faster code.
 
-Borrowing when creating shared variables
+Borrowing when Creating Shared Variables
 ========================================
 
 A ``borrow`` argument can be provided to the shared-variable constructor.
@@ -69,9 +68,9 @@ A ``borrow`` argument can be provided to the shared-variable constructor.
     s_false   = theano.shared(np_array, borrow=False)
     s_true    = theano.shared(np_array, borrow=True)
 
-By default (``s_default``) and when explicitly setting ``borrow=False``, the
-shared variable we construct gets a [deep] copy of ``np_array``.  So changes we
-subsequently make to ``np_array`` have no effect on our shared variable.
+By default (*s_default*) and when explicitly setting ``borrow=False``, the
+shared variable we construct gets a [deep] copy of *np_array*.  So changes we
+subsequently make to *np_array* have no effect on our shared variable.
 
 .. code-block:: python
 
@@ -82,40 +81,40 @@ subsequently make to ``np_array`` have no effect on our shared variable.
     s_true.get_value()     # -> array([2.0, 2.0])
 
 If we are running this with the CPU as the device,
-then changes we make to np_array *right away* will show up in
+then changes we make to *np_array* *right away* will show up in
 ``s_true.get_value()``
-because numpy arrays are mutable, and ``s_true`` is using the ``np_array``
+because NumPy arrays are mutable, and *s_true* is using the *np_array*
 object as it's internal buffer.
 
-However, this aliasing of ``np_array`` and ``s_true`` is not guaranteed to occur,
+However, this aliasing of *np_array* and *s_true* is not guaranteed to occur,
 and may occur only temporarily even if it occurs at all.
 It is not guaranteed to occur because if Theano is using a GPU device, then the
-borrow flag has no effect.
-It may occur only temporarily because
-if we call a Theano function that updates the value of ``s_true`` the aliasing
+``borrow`` flag has no effect. It may occur only temporarily because
+if we call a Theano function that updates the value of *s_true* the aliasing
 relationship *may* or *may not* be broken (the function is allowed to 
-update the shared variable by modifying its buffer, which will preserve
+update the ``shared`` variable by modifying its buffer, which will preserve
 the aliasing, or by changing which buffer the variable points to, which
 will terminate the aliasing).
 
 *Take home message:*
 
-It is safe practice (and a good idea) to use ``borrow=True`` in a shared
-variable constructor when the shared variable stands for a large object (in
+It is a safe practice (and a good idea) to use ``borrow=True`` in a ``shared``
+variable constructor when the ``shared`` variable stands for a large object (in
 terms of memory footprint) and you do not want to create copies of it in
 memory.
 
-It is not a reliable technique to use ``borrow=True`` to modify shared variables
-by side-effect, because with some devices (e.g. GPU devices) this technique will
+It is not a reliable technique to use ``borrow=True`` to modify ``shared`` variables
+through side-effect, because with some devices (e.g. GPU devices) this technique will
 not work.
 
-Borrowing when accessing value of shared variables
+Borrowing when Accessing Value of Shared Variables
 ==================================================
 
 Retrieving
 ----------
 
-A ``borrow`` argument can also be used to control how a shared variable's value is retrieved.
+A ``borrow`` argument can also be used to control how a ``shared`` variable's value is 
+retrieved.
 
 
 .. If you modify this code, also change :
@@ -136,16 +135,16 @@ When ``borrow=True`` is passed to ``get_value``, it means that the return value
 But both of these calls might create copies of the internal memory.
 
 The reason that ``borrow=True`` might still make a copy is that the internal
-representation of a shared variable might not be what you expect.  When you
-create a shared variable by passing a numpy array for example, then ``get_value()``
-must return a numpy array too.  That's how Theano can make the GPU use
-transparent.  But when you are using a GPU (or in future perhaps a remote machine), then the numpy.ndarray
-is not the internal representation of your data.
+representation of a ``shared`` variable might not be what you expect.  When you
+create a ``shared`` variable by passing a NumPy array for example, then ``get_value()``
+must return a NumPy array too.  That's how Theano can make the GPU use
+transparent.  But when you are using a GPU (or in the future perhaps a remote machine), 
+then the numpy.ndarray is not the internal representation of your data. 
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
 ``get_value``.  It will never cast the internal object (always return in
 constant time), but might return various datatypes depending on contextual
-factors (e.g. the compute device, the dtype of the numpy array).
+factors (e.g. the compute device, the dtype of the NumPy array).
 
 .. code-block:: python
 
@@ -156,28 +155,28 @@ It is possible to use ``borrow=False`` in conjunction with
 This is primarily for internal debugging, not for typical use.
 
 For the transparent use of different type of optimization Theano can make,
-there is the policy that get_value() always return by default the same object type
-it received when the shared variable was created. So if you created manually data on
-the gpu and create a shared variable on the gpu with this data, get_value will always
-return gpu data even when return_internal_type=False.
+there is the policy that ``get_value()`` always return by default the same object type
+it received when the ``shared`` variable was created. So if you created manually data on
+the gpu and create a ``shared`` variable on the gpu with this data, ``get_value`` will always
+return gpu data even when ``return_internal_type=False``.
 
 *Take home message:*
 
 It is safe (and sometimes much faster) to use ``get_value(borrow=True)`` when
-your code does not modify the return value.  *Do not use this to modify a shared
+your code does not modify the return value.  *Do not use this to modify a ``shared``
 variable by side-effect* because it will make your code device-dependent.
-Modification of GPU variables by this sort of side-effect is impossible.
+Modification of GPU variables through this sort of side-effect is impossible.
 
 Assigning
 ---------
 
-Shared variables also have a ``set_value`` method that can accept an optional ``borrow=True`` argument.
-The semantics are similar to those of creating a new shared variable -
-``borrow=False`` is the default and ``borrow=True`` means that Theano *may*
-reuse the buffer you provide as the internal storage for the variable.
+``Shared`` variables also have a ``set_value`` method that can accept an optional
+``borrow=True`` argument. The semantics are similar to those of creating a new 
+``shared`` variable - ``borrow=False`` is the default and ``borrow=True`` means 
+that Theano *may* reuse the buffer you provide as the internal storage for the variable.
 
-A standard pattern for manually updating the value of a shared variable is as
-follows.
+A standard pattern for manually updating the value of a ``shared`` variable is as
+follows:
 
 .. code-block:: python
 
@@ -185,60 +184,44 @@ follows.
         some_inplace_fn(s.get_value(borrow=True)),
         borrow=True)
 
-This pattern works regardless of the compute device, and when the compute device
+This pattern works regardless of the computing device, and when the latter
 makes it possible to expose Theano's internal variables without a copy, then it
-goes as fast as an in-place update.
+proceeds as fast as an in-place update.
 
 
-When shared variables are allocated on the GPU, the transfers to and from GPU device memory can
+When ``shared`` variables are allocated on the GPU, the transfers to and from the GPU device memory can
 be costly.  Here are a few tips to ensure fast and efficient use of GPU memory and bandwidth:
 
-* Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This meant that sometimes,
+* Prior to Theano 0.3.1, ``set_value`` did not work in-place on the GPU. This meant that, sometimes,
   GPU memory for the new value would be allocated before the old memory was released. If you're
   running near the limits of GPU memory, this could cause you to run out of GPU memory
-  unnecessarily.  *Solution*: update to a newer version of Theano.
+  unnecessarily.
 
-* If you are going to swap several chunks of data in and out of a shared variable repeatedly,
+  *Solution*: update to a newer version of Theano.
+
+* If you are going to swap several chunks of data in and out of a ``shared`` variable repeatedly,
   you will want to reuse the memory that you allocated the first time if possible - it is both
   faster and more memory efficient.
+
   *Solution*: upgrade to a recent version of Theano (>0.3.0) and consider padding your source
   data to make sure that every chunk is the same size.
 
 * It is also worth mentioning that, current GPU copying routines support only contiguous memory.
-  So Theano must make the ``value`` you provide ``c_contiguous`` prior to copying it.
-  This can require an extra copy of the data on the host.  *Solution*: make sure that the value
-  you assign to a CudaNdarraySharedVariable is *already*  ``c_contiguous``.
+  So Theano must make the value you provide *C-contiguous* prior to copying it.
+  This can require an extra copy of the data on the host.
 
-(Further remarks on the current implementation of the GPU version of set_value() can be found
+  *Solution*: make sure that the value
+  you assign to a CudaNdarraySharedVariable is *already*  *C-contiguous*.
+
+(Further information on the current implementation of the GPU version of ``set_value()`` can be found
 here: :ref:`libdoc_cuda_var`)
 
 
-Retrieving and assigning via the .value property
-------------------------------------------------
-
-Shared variables have a ``.value`` property that is connected to ``get_value``
-and ``set_value``.  The borrowing behaviour of the property is controlled by a
-boolean configuration variable ``config.shared.value_borrows``, which currently
-defaults to ``True``.  If that variable is ``True`` then an assignment like ``s.value=v``
-is equivalent to ``s.set_value(v, borrow=True)``, and a retrieval like ``print
-s.value`` is equivalent to ``print s.get_value(borrow=True)``.  Likewise, 
-if ``config.shared.value_borrows`` is ``False``, then the borrow parameter that the ``.value`` property 
-passes to ``set_value`` and ``get_value`` is ``False``.
-
-The ``True`` default value of ``config.shared.value_borrows`` means that
-aliasing can sometimes happen and sometimes not, which can be confusing. 
-Be aware that the default value may be changed to ``False`` sometime in the
-not-to-distant future. This change will create more copies, and potentially slow
-down code that accesses ``.value`` attributes inside tight loops.  To avoid this
-potential impact on your code, use the ``.get_value`` and ``.set_value`` methods
-directly with appropriate flags.
-
-
-Borrowing when constructing Function objects
+Borrowing when Constructing Function Objects
 ============================================
 
 A ``borrow`` argument can also be provided to the ``In`` and ``Out`` objects
-that control how ``theano.function`` handles its arguments and return value[s]. 
+that control how ``theano.function`` handles its argument[s] and return value[s]. 
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_3
@@ -248,7 +231,7 @@ that control how ``theano.function`` handles its arguments and return value[s].
     import theano, theano.tensor
 
     x = theano.tensor.matrix()
-    y = 2*x
+    y = 2 * x
     f = theano.function([theano.In(x, borrow=True)], theano.Out(y, borrow=True))
 
 Borrowing an input means that Theano will treat the argument you provide as if
@@ -259,28 +242,29 @@ course of evaluating that function (e.g. ``f``).
 
 Borrowing an output means that Theano will not insist on allocating a fresh
 output buffer every time you call the function.  It will possibly reuse the same one as
-a previous call, and overwrite the old contents.  Consequently, it may overwrite
-old return values by side effect.
+on a previous call, and overwrite the old content.  Consequently, it may overwrite
+old return values through side-effect.
 Those return values may also be overwritten in
 the course of evaluating *another compiled function* (for example, the output
-may be aliased to a shared variable).  So be careful to use a borrowed return
+may be aliased to a ``shared`` variable).  So be careful to use a borrowed return
 value right away before calling any more Theano functions.
 The default is of course to *not borrow* internal results.
 
-It is also possible to pass an ``return_internal_type=True`` flag to the ``Out``
+It is also possible to pass a ``return_internal_type=True`` flag to the ``Out``
 variable which has the same interpretation as the ``return_internal_type`` flag
-to the shared variable's ``get_value`` function.  Unlike ``get_value()``, the
+to the ``shared`` variable's ``get_value`` function.  Unlike ``get_value()``, the
 combination of ``return_internal_type=True`` and ``borrow=True`` arguments to
 ``Out()`` are not guaranteed to avoid copying an output value.  They are just
 hints that give more flexibility to the compilation and optimization of the
 graph.
 
 *Take home message:*
-When an input ``x`` to a function is not needed after the function returns and you
+
+When an input *x* to a function is not needed after the function returns and you
 would like to make it available to Theano as additional workspace, then consider
 marking it with ``In(x, borrow=True)``.  It may make the function faster and
 reduce its memory requirement.
-When a return value ``y`` is large (in terms of memory footprint), and you only need to read from it once, right
+When a return value *y* is large (in terms of memory footprint), and you only need to read from it once, right
 away when it's returned, then consider marking it with an ``Out(y,
 borrow=True)``.
 

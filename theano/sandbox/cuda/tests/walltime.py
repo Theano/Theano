@@ -11,7 +11,7 @@ def compare_fns(fns, input, reps=10):
     for implname, impl in fns.iteritems():
         try:
             print 'TOPOSORT', implname
-            for i, n in enumerate(impl.maker.env.toposort()):
+            for i, n in enumerate(impl.maker.fgraph.toposort()):
                 print i, n
         except Exception:
             pass

@@ -36,32 +36,32 @@ Here is an overview of the various steps that are done with the
 computation graph in the compilation phase:
 
 
-Step 1 - Create an Env
-^^^^^^^^^^^^^^^^^^^^^^
+Step 1 - Create a FunctionGraph
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The subgraph given by the end user is wrapped in a structure called
-*Env*. That structure defines several hooks on adding and
+*FunctionGraph*. That structure defines several hooks on adding and
 removing (pruning) nodes as well as on modifying links between nodes
 (for example, modifying an input of an :ref:`apply` node) (see the
-article about :ref:`libdoc_gof_env` for more information).
+article about :ref:`libdoc_gof_fgraph` for more information).
 
-Env provides a method to change the input of an Apply node from one
+FunctionGraph provides a method to change the input of an Apply node from one
 Variable to another and a more high-level method to replace a Variable
 with another. This is the structure that :ref:`Optimizers
 <optimization>` work on.
 
-Some relevant :ref:`Features <libdoc_gof_envfeature>` are typically added to the
-Env, namely to prevent any optimization from operating inplace on
+Some relevant :ref:`Features <libdoc_gof_fgraphfeature>` are typically added to the
+FunctionGraph, namely to prevent any optimization from operating inplace on
 inputs declared as immutable.
 
 
 Step 2 - Execute main Optimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once the Env is made, an :term:`optimizer` is produced
+Once the FunctionGraph is made, an :term:`optimizer` is produced
 by the :term:`mode` passed to ``function`` or to the Method/Module's
 ``make`` (the Mode basically has two important fields, ``linker`` and
-``optimizer``). That optimizer is applied on the Env using its
+``optimizer``). That optimizer is applied on the FunctionGraph using its
 optimize() method.
 
 The optimizer is typically obtained through :attr:`optdb`.
@@ -71,7 +71,8 @@ Step 3 - Execute linker to obtain a thunk
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the computation graph is optimized, the :term:`linker` is
-extracted from the Mode. It is then called with the Env as argument to
+extracted from the Mode. It is then called with the FunctionGraph as
+argument to
 produce a ``thunk``, which is a function with no arguments that
 returns nothing. Along with the thunk, one list of input containers (a
 theano.gof.Container is a sort of object that wraps another and does

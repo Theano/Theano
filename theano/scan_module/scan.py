@@ -52,12 +52,14 @@ from theano import gof
 from theano.tensor import opt
 from theano import tensor
 from theano import config
-from theano.updates import Updates
+from theano.updates import OrderedUpdates
+from theano.compile import ops
+from theano.gof.python25 import OrderedDict
 
 
-import scan_op
-import scan_utils
-from scan_utils import safe_new, traverse
+from theano.scan_module import scan_op
+from theano.scan_module import scan_utils
+from theano.scan_module.scan_utils import safe_new, traverse
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')
@@ -99,7 +101,7 @@ def scan(fn,
 
         The order of the sequences is the same as the one in the list
         `sequences` given to scan. The order of the outputs is the same
-        as the order of ``output_info``. For any sequence or output the
+        as the order of ``outputs_info``. For any sequence or output the
         order of the time slices is the same as the one in which they have
         been given as taps. For example if one writes the following :
 
@@ -111,7 +113,7 @@ def scan(fn,
                    , outputs_info = [ dict(initial =  Output1, taps = [-3,-5])
                                     , dict(initial = Output2, taps = None)
                                     , Output3 ]
-                   , non_sequences = [ Argument1, Argument 2])
+                   , non_sequences = [ Argument1, Argument2])
 
         ``fn`` should expect the following arguments in this given order:
 
@@ -129,7 +131,7 @@ def scan(fn,
         The list of ``non_sequences`` can also contain shared variables
         used in the function, though ``scan`` is able to figure those
         out on its own so they can be skipped. For the clarity of the
-        code we recommand though to provide them to scan. To some extend
+        code we recommend though to provide them to scan. To some extend
         ``scan`` can also figure out other ``non sequences`` (not shared)
         even if not passed to scan (but used by `fn`). A simple example of
         this would be :
@@ -197,11 +199,12 @@ def scan(fn,
 
         * ``initial`` -- Theano variable that represents the initial
           state of a given output. In case the output is not computed
-          recursively (think of a map) and does not require a initial
-          state this field can be skiped. Given that only the previous
-          time step of the output is used by ``fn`` the initial state
-          should have the same shape as the output. If multiple time
-          taps are used, the initial state should have one extra
+          recursively (think of a map) and does not require an initial
+          state this field can be skipped. Given that (only) the previous
+          time step of the output is used by ``fn``, the initial state
+          **should have the same shape** as the output and **should not
+          involve a downcast** of the data type of the output. If multiple
+          time taps are used, the initial state should have one extra
           dimension that should cover all the possible taps. For example
           if we use ``-5``, ``-2`` and ``-1`` as past taps, at step 0,
           ``fn`` will require (by an abuse of notation) ``output[-5]``,
@@ -259,7 +262,7 @@ def scan(fn,
         outputs will have *0 rows*. If the value is negative, ``scan``
         will run backwards in time. If the ``go_backwards`` flag is already
         set and also ``n_steps`` is negative, ``scan`` will run forward
-        in time. If n stpes is not provided, ``scan`` will figure
+        in time. If n_steps is not provided, ``scan`` will figure
         out the amount of steps it should run given its input sequences.
 
 
@@ -360,8 +363,8 @@ def scan(fn,
         n_fixed_steps = int(n_steps)
     else:
         try:
-            n_fixed_steps = opt.get_constant_value(n_steps)
-        except (TypeError, AttributeError):
+            n_fixed_steps = opt.get_scalar_constant_value(n_steps)
+        except tensor.basic.NotScalarConstantError:
             n_fixed_steps = None
 
     # Check n_steps is an int
@@ -374,14 +377,14 @@ def scan(fn,
     n_seqs = len(seqs)
     n_outs = len(outs_info)
 
-    return_steps = {}
+    return_steps = OrderedDict()
     # wrap sequences in a dictionary if they are not already dictionaries
     for i in xrange(n_seqs):
         if not isinstance(seqs[i], dict):
-            seqs[i] = dict(input=seqs[i], taps=[0])
-        elif seqs[i].get('taps', None):
+            seqs[i] = OrderedDict([('input', seqs[i]), ('taps', [0])])
+        elif seqs[i].get('taps', None) is not None:
             seqs[i]['taps'] = wrap_into_list(seqs[i]['taps'])
-        elif seqs[i].get('taps', True) is None:
+        elif seqs[i].get('taps', None) is None:
             # seqs dictionary does not have the ``taps`` key
             seqs[i]['taps'] = [0]
 
@@ -390,7 +393,7 @@ def scan(fn,
         if outs_info[i] is not None:
             if isinstance(outs_info[i], dict):
                 # DEPRECATED :
-                if outs_info[i].get('return_steps', None):
+                if outs_info[i].get('return_steps', None) is not None:
                     raise ValueError(
                             "Using `return_steps` has been deprecated. "
                             "Simply select the entries you need using a "
@@ -400,15 +403,15 @@ def scan(fn,
 
             if not isinstance(outs_info[i], dict):
                 # by default any output has a tap value of -1
-                outs_info[i] = dict(initial=outs_info[i], taps=[-1])
-            elif (not outs_info[i].get('initial', None) and
-                    outs_info[i].get('taps', None)):
+                outs_info[i] = OrderedDict([('initial', outs_info[i]), ('taps', [-1])])
+            elif (outs_info[i].get('initial', None) is None and
+                    outs_info[i].get('taps', None) is not None):
                 # ^ no initial state but taps provided
                 raise ValueError(('If you are using slices of an output '
                                   'you need to provide a initial state '
                                   'for it'), outs_info[i])
-            elif (outs_info[i].get('initial', None) and
-                  not outs_info[i].get('taps', None)):
+            elif (outs_info[i].get('initial', None) is not None and
+                  outs_info[i].get('taps', None) is None):
                 # ^ initial state but taps not provided
                 if 'taps' in outs_info[i]:
                     # ^ explicitly provided a None for taps
@@ -419,8 +422,8 @@ def scan(fn,
                 outs_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
-            # with an empty dict() to simplify handling
-            outs_info[i] = dict()
+            # with an empty OrdereDict() to simplify handling
+            outs_info[i] = OrderedDict()
 
     ##
     ###   Step 2. Generate inputs and outputs of the inner functions
@@ -492,7 +495,10 @@ def scan(fn,
                 else:
                     offset = 0
                 if maxtap == mintap and maxtap != 0:
-                    nw_seq = seq['input'][:abs(maxtap)]
+                    if maxtap < 0:
+                        nw_seq = seq['input'][:maxtap]
+                    else:
+                        nw_seq = seq['input'][maxtap:]
                 elif maxtap - k != 0:
                     nw_seq = seq['input'][offset + k - mintap: -(maxtap - k)]
                 else:
@@ -560,7 +566,7 @@ def scan(fn,
     mit_sot_inner_inputs = []
     mit_sot_inner_slices = []
     mit_sot_inner_outputs = []
-    mit_sot_return_steps = {}
+    mit_sot_return_steps = OrderedDict()
     mit_sot_tap_array = []
     mit_sot_rightOrder = []
 
@@ -569,7 +575,7 @@ def scan(fn,
     sit_sot_inner_inputs = []
     sit_sot_inner_slices = []
     sit_sot_inner_outputs = []
-    sit_sot_return_steps = {}
+    sit_sot_return_steps = OrderedDict()
     sit_sot_rightOrder = []
 
     # go through outputs picking up time slices as needed
@@ -772,15 +778,14 @@ def scan(fn,
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
     fake_outputs = scan_utils.clone(outputs,
-                                    replace=dict(zip(non_seqs,
+                                    replace=OrderedDict(zip(non_seqs,
                                                      fake_nonseqs)))
     all_inputs = itertools.ifilter(
         lambda x: (isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant)),
         gof.graph.inputs(fake_outputs))
-    extra_inputs = filter(lambda x: x not in args + fake_nonseqs,
-                                    all_inputs)
+    extra_inputs = [x for x in all_inputs if x not in args + fake_nonseqs]
     non_seqs += extra_inputs
     ## Note we do not use all_inputs directly since the order of variables
     ## in args is quite important
@@ -794,7 +799,8 @@ def scan(fn,
                        updates=updates,
                        mode=compile.mode.Mode(linker='py',
                                               optimizer=None),
-                       on_unused_input='ignore')
+                       on_unused_input='ignore',
+                       profile=False)
 
     ##
     ### Step 5. Re-arange inputs of scan into a more strict order
@@ -811,7 +817,7 @@ def scan(fn,
     if as_while:
         tmp_dummy_f_outs -= 1
     if not (tmp_dummy_f_outs == n_outs or outs_info == []):
-        raise ValueError('Please provide None as output_info for '
+        raise ValueError('Please provide None as outputs_info for '
                          'any output that does not feed back into '
                          'scan (i.e. it behaves like a map) ')
 
@@ -819,7 +825,7 @@ def scan(fn,
         n_outs = len(dummy_f.maker.outputs)
         if as_while:
             n_outs = n_outs - 1
-        outs_info = [dict() for x in xrange(n_outs)]
+        outs_info = [OrderedDict() for x in xrange(n_outs)]
 
     ## Step 5.1 Outputs with taps different then -1
 
@@ -833,26 +839,47 @@ def scan(fn,
             sit_sot_inner_outputs.append(outputs[i])
 
     ## Step 5.3 Outputs that correspond to update rules of shared variables
-    givens = {}
+    givens = OrderedDict()
     n_shared_outs = 0
     shared_scan_inputs = []
     shared_inner_inputs = []
     shared_inner_outputs = []
+    sit_sot_shared = []
     for input in dummy_f.maker.expanded_inputs:
         if isinstance(input.variable, SharedVariable) and input.update:
             new_var = safe_new(input.variable)
             if getattr(input.variable, 'name', None) is not None:
                 new_var.name = input.variable.name + '_copy'
-            shared_inner_inputs.append(new_var)
-            shared_scan_inputs.append(input.variable)
-            shared_inner_outputs.append(input.update)
-            givens[input.variable] = new_var
-            n_shared_outs += 1
+            if isinstance(new_var.type, ops.expandable_types):
+                sit_sot_inner_inputs.append(new_var)
+                sit_sot_scan_inputs.append(
+                    scan_utils.expand(
+                        tensor.unbroadcast(
+                            tensor.shape_padleft(input.variable), 0),
+                        actual_n_steps))
+                sit_sot_inner_outputs.append(input.update)
+                # Not that pos is not a negative index. The sign of pos is used
+                # as a flag to indicate if this output should be part of the
+                # update rules or part of the standard outputs of scan.
+                # If `pos` is positive than it corresponds to the standard
+                # outputs of scan and it refers to output of index `pos`. If `pos`
+                # is negative that it corresponds to update rules of scan and it
+                # refers to update rule of index -1 - `pos`.
+                sit_sot_rightOrder.append(-1 - len(sit_sot_shared))
+                sit_sot_shared.append(input.variable)
+                givens[input.variable] = new_var
 
+            else:
+                shared_inner_inputs.append(new_var)
+                shared_scan_inputs.append(input.variable)
+                shared_inner_outputs.append(input.update)
+                givens[input.variable] = new_var
+                n_shared_outs += 1
+    n_sit_sot = len(sit_sot_inner_inputs)
     ## Step 5.4 Outputs with no taps used in the input
     n_nit_sot = 0
     nit_sot_inner_outputs = []
-    nit_sot_return_steps = {}
+    nit_sot_return_steps = OrderedDict()
     nit_sot_rightOrder = []
     for i, out in enumerate(outs_info):
         if not 'taps' in out:
@@ -875,7 +902,7 @@ def scan(fn,
                          if (not isinstance(arg, SharedVariable) and
                              not isinstance(arg, tensor.Constant))]
 
-    givens.update(dict(zip(other_scan_args, other_inner_args)))
+    givens.update(OrderedDict(zip(other_scan_args, other_inner_args)))
     other_shared_scan_args = [arg.variable for arg
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
@@ -884,7 +911,7 @@ def scan(fn,
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
                             not arg.update)]
-    givens.update(dict(zip(other_shared_scan_args,
+    givens.update(OrderedDict(zip(other_shared_scan_args,
                            other_shared_inner_args)))
 
     ##
@@ -916,7 +943,7 @@ def scan(fn,
         # replace w with w_copy, where w is CudaNdarray
         # and w_copy is TensorType. This is caused because shared
         # variables are put on GPU right aways >:| ,
-        new_givens = {}
+        new_givens = OrderedDict()
 
         for w, w_copy in givens.iteritems():
             if (isinstance(w.type, cuda.CudaNdarrayType)
@@ -935,7 +962,7 @@ def scan(fn,
     ##
 
     tap_array = mit_sot_tap_array + [[-1] for x in xrange(n_sit_sot)]
-    info = {}
+    info = OrderedDict()
 
     info['tap_array'] = tap_array
     info['n_seqs'] = n_seqs
@@ -949,8 +976,7 @@ def scan(fn,
     info['truncate_gradient'] = truncate_gradient
     info['name'] = name
     info['mode'] = mode
-    info['inplace'] = -1
-    info['destroy_map'] = {}
+    info['destroy_map'] = OrderedDict()
     info['gpu'] = False
     info['as_while'] = as_while
     info['profile'] = profile
@@ -986,7 +1012,7 @@ def scan(fn,
     ###         and so on ...
     ##
 
-    update_map = Updates()
+    update_map = OrderedUpdates()
 
     def remove_dimensions(outs, steps_return, offsets=None):
         out_ls = []
@@ -1037,10 +1063,20 @@ def scan(fn,
                   nit_sot_rightOrder)
     scan_out_list = [None] * len(rightOrder)
     for idx, pos in enumerate(rightOrder):
-        scan_out_list[pos] = _scan_out_list[idx]
+        if pos >= 0:
+            scan_out_list[pos] = _scan_out_list[idx]
+        else:
+            # Not that pos is not a negative index. The sign of pos is used
+            # as a flag to indicate if this output should be part of the
+            # update rules or part of the standard outputs of scan.
+            # If `pos` is positive than it corresponds to the standard
+            # outputs of scan and it refers to output of index `pos`. If `pos`
+            # is negative that it corresponds to update rules of scan and it
+            # refers to update rule of index -1 - `pos`.
+            update_map[sit_sot_shared[abs(pos) - 1]] = _scan_out_list[idx][-1]
+    scan_out_list = [x for x in scan_out_list if x is not None]
     if len(scan_out_list) == 1:
         scan_out_list = scan_out_list[0]
     elif len(scan_out_list) == 0:
         scan_out_list = None
-
     return (scan_out_list, update_map)

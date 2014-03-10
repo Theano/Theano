@@ -2,10 +2,13 @@ import numpy as N
 from theano.tensor import basic as T
 from theano.misc import strutil
 import theano
+from theano.gradient import grad_undefined
+from theano.gradient import DisconnectedType
+
 
 class ConvTransp3D(theano.Op):
     """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
-    def __eq__(self,other):
+    def __eq__(self, other):
         return type(self) == type(other)
 
     def __hash__(self):
@@ -14,7 +17,7 @@ class ConvTransp3D(theano.Op):
     def c_code_cache_version(self):
         return (3,)
 
-    def make_node(self, W, b, d, H, RShape = None):
+    def make_node(self, W, b, d, H, RShape=None):
         """
         :param W: Weights, filter
         :param b: bias, shape == (W.shape[0],)
@@ -28,63 +31,61 @@ class ConvTransp3D(theano.Op):
         if RShape:
             RShape_ = T.as_tensor_variable(RShape)
         else:
-            RShape_ = T.as_tensor_variable([-1,-1,-1])
+            RShape_ = T.as_tensor_variable([-1, -1, -1])
 
         return theano.Apply(self, inputs=[W_,b_,d_,H_, RShape_], outputs = [ T.TensorType(H_.dtype, (False,False,False,False,False))() ] )
 
-    def c_compile_args(self):
-        flags = ['-Werror']
-        return flags
-
-
     def infer_shape(self, node, input_shapes):
-        W,b,d,H,RShape = node.inputs
+        W, b, d, H, RShape = node.inputs
         W_shape, b_shape, d_shape, H_shape, RShape_shape = input_shapes
         return [(H_shape[0],  RShape[0], RShape[1], RShape[2], W_shape[4])]
 
-    def grad(self,inputs, output_gradients):
-        W,b,d,H, RShape = inputs
-        dCdR ,= output_gradients
-        dCdH = conv3D( dCdR, W, T.zeros_like(H[0,0,0,0,:]), d)
-        WShape = W.shape
-        dCdW = convGrad3D(dCdR,d,WShape,H)
-        dCdb = T.sum(dCdR,axis=(0,1,2,3))
-        dCdd = None #not differentiable, since d is not continuous
-        dCdRShape = None #not differentiable, since RShape is not continuous
+    def connection_pattern(self, node):
+        return [[True], [True], [True], [True], [False]]
 
+    def grad(self, inputs, output_gradients):
+        W, b, d, H, RShape = inputs
+        dCdR, = output_gradients
+        dCdH = conv3D(dCdR, W, T.zeros_like(H[0, 0, 0, 0, :]), d)
+        WShape = W.shape
+        dCdW = convGrad3D(dCdR, d, WShape, H)
+        dCdb = T.sum(dCdR, axis=(0, 1, 2, 3))
+        # not differentiable, since d affects the output elements
+        dCdd = grad_undefined(self, 2, d)
+        # disconnected, since RShape just determines the output shape
+        dCdRShape = DisconnectedType()()
 
         if 'name' in dir(dCdR) and dCdR.name is not None:
             dCdR_name = dCdR.name
         else:
-            dCdR_name = 'anon'
+            dCdR_name = 'anon_dCdR'
 
         if 'name' in dir(H) and H.name is not None:
             H_name = H.name
         else:
-            H_name = 'anon'
+            H_name = 'anon_H'
 
         if 'name' in dir(W) and W.name is not None:
             W_name = W.name
         else:
-            W_name = 'anon'
+            W_name = 'anon_W'
 
         if 'name' in dir(b) and b.name is not None:
             b_name = b.name
         else:
-            b_name = 'anon'
+            b_name = 'anon_b'
 
 
         dCdW.name = 'ConvTransp3D_dCdW.H='+H_name+',dCdR='+dCdR_name+',W='+W_name
         dCdb.name = 'ConvTransp3D_dCdb.H='+H_name+',dCdR='+dCdR_name+',W='+W_name+',b='+b_name
-        dCdH.name = 'ConvTransp3D_dCdH.H='+H_name+',dCdR='+dCdR_name
+        dCdH.name = 'ConvTransp3D_dCdH.H=' + H_name + ',dCdR=' + dCdR_name
 
-        return [ dCdW,  dCdb, dCdd, dCdH, dCdRShape ]
-
+        return [dCdW,  dCdb, dCdd, dCdH, dCdRShape]
 
     def perform(self, node, inputs, output_storage):
         W, b, d, H, RShape = inputs
-        print "\t\t\t\tConvTransp3D python code"
-        output_storage[0][0] = computeR(W,b,d,H,RShape)
+#        print "\t\t\t\tConvTransp3D python code"
+        output_storage[0][0] = computeR(W, b, d, H, RShape)
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         W, b, d, H, RShape = inputs
@@ -98,34 +99,36 @@ class ConvTransp3D(theano.Op):
                     //printf("\t\t\t\tConvTransp3D c code\\n");
 
                     //Check dimensionality of inputs
-                    if (%(H)s->nd != 5)
+                    if (PyArray_NDIM(%(H)s) != 5)
                     {
-                        PyErr_Format(PyExc_ValueError, "H must be a 5-D tensor but it is %%i-D",%(H)s->nd);
+                        PyErr_Format(PyExc_ValueError,
+                                     "H must be a 5-D tensor but it is %%i-D",
+                                     PyArray_NDIM(%(H)s));
                         %(fail)s
                     }
 
-                    if (%(W)s->nd != 5)
+                    if (PyArray_NDIM(%(W)s) != 5)
                     {
                          PyErr_Format(PyExc_ValueError, "ConvTransp3D: W must be a 5-D tensor");
                 %(fail)s
                     }
 
-                    if (%(b)s->nd != 1)
+                    if (PyArray_NDIM(%(b)s) != 1)
                     {
                          PyErr_Format(PyExc_ValueError, "ConvTransp3D: b must be a vector");
                          %(fail)s
                     }
 
-                    if (%(d)s->nd != 1)
+                    if (PyArray_NDIM(%(d)s) != 1)
                     {
                          PyErr_Format(PyExc_ValueError, "ConvTransp3D: d must be a vector");
                          %(fail)s
                     }
 
                     //Read and check stride arguments
-                    if (%(d)s->dimensions[0] != 3)
+                    if (PyArray_DIMS(%(d)s)[0] != 3)
                     {
-                         PyErr_Format(PyExc_ValueError, "ConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", (long)%(d)s->dimensions[0] );
+                         PyErr_Format(PyExc_ValueError, "ConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", (long)PyArray_DIMS(%(d)s)[0] );
                          %(fail)s
                     }
 
@@ -144,33 +147,33 @@ class ConvTransp3D(theano.Op):
                          //Read and check sizes of inputs
 
                         { // for fail 2
-                            const int batchSize = %(H)s->dimensions[0];
-                            const int outputChannels =  %(W)s->dimensions[0];
+                            const int batchSize = PyArray_DIMS(%(H)s)[0];
+                            const int outputChannels =  PyArray_DIMS(%(W)s)[0];
 
-                            if (%(H)s->dimensions[4] != outputChannels)
+                            if (PyArray_DIMS(%(H)s)[4] != outputChannels)
                             {
-                                PyErr_Format(PyExc_ValueError, "W produces a %%i channel image but the image has %%li channels. W.shape: (%%li, %%li, %%li, %%li, %%li) H.shape: (%%li, %%li, %%li, %%li, %%li)", outputChannels, (long)%(H)s->dimensions[4], (long)%(W)s->dimensions[0], (long)%(W)s->dimensions[1], (long)%(W)s->dimensions[2], (long)%(W)s->dimensions[3], (long)%(W)s->dimensions[4], (long)%(H)s->dimensions[0], (long)%(H)s->dimensions[1], (long)%(H)s->dimensions[2], (long)%(H)s->dimensions[3], (long)%(H)s->dimensions[4]);
+                                PyErr_Format(PyExc_ValueError, "W produces a %%i channel image but the image has %%li channels. W.shape: (%%li, %%li, %%li, %%li, %%li) H.shape: (%%li, %%li, %%li, %%li, %%li)", outputChannels, (long)PyArray_DIMS(%(H)s)[4], (long)PyArray_DIMS(%(W)s)[0], (long)PyArray_DIMS(%(W)s)[1], (long)PyArray_DIMS(%(W)s)[2], (long)PyArray_DIMS(%(W)s)[3], (long)PyArray_DIMS(%(W)s)[4], (long)PyArray_DIMS(%(H)s)[0], (long)PyArray_DIMS(%(H)s)[1], (long)PyArray_DIMS(%(H)s)[2], (long)PyArray_DIMS(%(H)s)[3], (long)PyArray_DIMS(%(H)s)[4]);
                                 %(fail)s
                             }
 
                             { // for fail 3
 
-                                const int inputChannels = %(W)s->dimensions[4];
+                                const int inputChannels = PyArray_DIMS(%(W)s)[4];
 
-                                if (%(b)s->dimensions[0] != inputChannels)
+                                if (PyArray_DIMS(%(b)s)[0] != inputChannels)
                                 {
-                                    PyErr_Format(PyExc_ValueError, "ConvTransp3D: b operates on a %%li channel image but the image has %%i channels", (long)%(b)s->dimensions[0], inputChannels );
+                                    PyErr_Format(PyExc_ValueError, "ConvTransp3D: b operates on a %%li channel image but the image has %%i channels", (long)PyArray_DIMS(%(b)s)[0], inputChannels );
                                     %(fail)s
                                 }
 
                                 { // for fail 4
 
-                                const int filterHeight = %(W)s->dimensions[1];
-                                const int filterWidth = %(W)s->dimensions[2];
-                                const int filterDur = %(W)s->dimensions[3];
-                                const int outputHeight = %(H)s->dimensions[1];
-                                const int outputWidth = %(H)s->dimensions[2];
-                                const int outputDur = %(H)s->dimensions[3];
+                                const int filterHeight = PyArray_DIMS(%(W)s)[1];
+                                const int filterWidth = PyArray_DIMS(%(W)s)[2];
+                                const int filterDur = PyArray_DIMS(%(W)s)[3];
+                                const int outputHeight = PyArray_DIMS(%(H)s)[1];
+                                const int outputWidth = PyArray_DIMS(%(H)s)[2];
+                                const int outputDur = PyArray_DIMS(%(H)s)[3];
 
                                 int videoHeight = (outputHeight-1) * dr + filterHeight;
                                 int videoWidth = (outputWidth-1) * dc + filterWidth;
@@ -178,13 +181,13 @@ class ConvTransp3D(theano.Op):
 
                                 if (%(RShape)s)
                                 {
-                                    if (%(RShape)s->nd != 1)
+                                    if (PyArray_NDIM(%(RShape)s) != 1)
                                     {
                                         PyErr_Format(PyExc_ValueError, "ConvTransp3D: RShape must be a vector");
                                         %(fail)s
                                     }
 
-                                    if (%(RShape)s->dimensions[0] != 3)
+                                    if (PyArray_DIMS(%(RShape)s)[0] != 3)
                                     {
                                         PyErr_Format(PyExc_ValueError, "RShape must specify a 3D shape ( [height,width,duration] )");
                                         %(fail)s
@@ -218,14 +221,14 @@ class ConvTransp3D(theano.Op):
                                    dims[2] = videoWidth;
                                    dims[3] = videoDur;
 
-                                   if(!(%(R)s) || %(R)s->dimensions[0]!=dims[0] ||
-                                    %(R)s->dimensions[1]!=dims[1] ||
-                                    %(R)s->dimensions[2]!=dims[2] ||
-                                    %(R)s->dimensions[3]!=dims[3] ||
-                                    %(R)s->dimensions[4]!=dims[4])
+                                   if(!(%(R)s) || PyArray_DIMS(%(R)s)[0]!=dims[0] ||
+                                    PyArray_DIMS(%(R)s)[1]!=dims[1] ||
+                                    PyArray_DIMS(%(R)s)[2]!=dims[2] ||
+                                    PyArray_DIMS(%(R)s)[3]!=dims[3] ||
+                                    PyArray_DIMS(%(R)s)[4]!=dims[4])
                                    {
                                        Py_XDECREF(%(R)s);
-                                       %(R)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, %(H)s->descr->type_num);
+                                       %(R)s = (PyArrayObject *) PyArray_SimpleNew(5, dims, PyArray_DESCR(%(H)s)->type_num);
                                        if (!(%(R)s)) {
                                            PyErr_Format(PyExc_MemoryError, "ConvTransp3D: could not allocate R");
                                            %(fail)s
@@ -234,17 +237,17 @@ class ConvTransp3D(theano.Op):
 
                                    { // for fail 6
 
-                                       #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( x->data + (i)*x->strides[0]+(j)*x->strides[1]+(k)*x->strides[2]+(l)*x->strides[3]+(m)*x->strides[4] )
-                                       #define ELEM_AT(x, i) * ( dtype_ ## x *) ( x->data + (i) )
+                                       #define ELEM5(x, i,j,k,l,m) * ( dtype_ ## x *) ( PyArray_BYTES(x) + (i)*PyArray_STRIDES(x)[0]+(j)*PyArray_STRIDES(x)[1]+(k)*PyArray_STRIDES(x)[2]+(l)*PyArray_STRIDES(x)[3]+(m)*PyArray_STRIDES(x)[4] )
+                                       #define ELEM_AT(x, i) * ( dtype_ ## x *) ( PyArray_BYTES(x) + (i) )
 
 
 
-                                       dtype_%(b)s * b = (dtype_%(b)s *) %(b)s->data;
+                                       dtype_%(b)s * b = (dtype_%(b)s *) PyArray_DATA(%(b)s);
 
-                                       int rs4 = %(R)s->strides[4];
-                                       int ws0 = %(W)s->strides[0];
-                                       int ws4 = %(W)s->strides[4];
-                                       int hs4 = %(H)s->strides[4];
+                                       int rs4 = PyArray_STRIDES(%(R)s)[4];
+                                       int ws0 = PyArray_STRIDES(%(W)s)[0];
+                                       int ws4 = PyArray_STRIDES(%(W)s)[4];
+                                       int hs4 = PyArray_STRIDES(%(H)s)[4];
 
                                        // Compute R
                                        // R[i,r,c,t,j] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, rk, ck, tk,j] * H[i,rc,cc,tc,k]
@@ -257,7 +260,7 @@ class ConvTransp3D(theano.Op):
                                           for (int t = 0; t < videoDur; t++) {
                                            const int ftc = (int)std::max(0.0f, ceilf(float(t-filterDur +1)  /float(dt)));
 
-                                           long long Rpost = i * %(R)s->strides[0] + r * %(R)s->strides[1] + c * %(R)s->strides[2] + t * %(R)s->strides[3];
+                                           long long Rpost = i * PyArray_STRIDES(%(R)s)[0] + r * PyArray_STRIDES(%(R)s)[1] + c * PyArray_STRIDES(%(R)s)[2] + t * PyArray_STRIDES(%(R)s)[3];
 
                                            long long Rpos = Rpost;
                                            for (int j = 0; j < inputChannels; j++)
@@ -281,8 +284,8 @@ class ConvTransp3D(theano.Op):
                                               const int tk = t - tc * dt;
                                               if (tk < 0) break;
 
-                                              int Wpos = rk * %(W)s->strides[1] +  ck * %(W)s->strides[2] + tk * %(W)s->strides[3];
-                                              int Hpostc = i * %(H)s->strides[0] +      rc * %(H)s->strides[1] +  cc * %(H)s->strides[2] + tc * %(H)s->strides[3];
+                                              int Wpos = rk * PyArray_STRIDES(%(W)s)[1] +  ck * PyArray_STRIDES(%(W)s)[2] + tk * PyArray_STRIDES(%(W)s)[3];
+                                              int Hpostc = i * PyArray_STRIDES(%(H)s)[0] +      rc * PyArray_STRIDES(%(H)s)[1] +  cc * PyArray_STRIDES(%(H)s)[2] + tc * PyArray_STRIDES(%(H)s)[3];
                                               Rpos = Rpost;
                                               for (int j = 0; j < inputChannels; j++)
                                               {
@@ -321,33 +324,35 @@ class ConvTransp3D(theano.Op):
                ///////////// < /code generated by ConvTransp3D >
                      """
 
-        return strutil.renderString(codeSource,locals())
+        return strutil.render_string(codeSource, locals())
 
 
 convTransp3D = ConvTransp3D()
 
 #If the input size wasn't a multiple of D we may need to cause some automatic padding to get the right size of reconstruction
-def computeR(W,b,d,H,Rshape = None):
+
+
+def computeR(W, b, d, H, Rshape=None):
     assert len(W.shape) == 5
     assert len(H.shape) == 5
     assert len(b.shape) == 1
     assert len(d) == 3
 
-
-    outputChannels,  filterHeight, filterWidth, filterDur, inputChannels = W.shape
-    batchSize, outputHeight, outputWidth, outputDur, outputChannelsAgain = H.shape
+    outputChannels,  filterHeight, filterWidth, filterDur, \
+        inputChannels = W.shape
+    batchSize, outputHeight, outputWidth, outputDur, \
+        outputChannelsAgain = H.shape
     assert outputChannelsAgain == outputChannels
     assert b.shape[0] == inputChannels
 
-
-    dr,dc,dt = d
+    dr, dc, dt = d
     assert dr > 0
     assert dc > 0
     assert dt > 0
 
-    videoHeight = (outputHeight-1) * dr + filterHeight
-    videoWidth = (outputWidth-1) * dc + filterWidth
-    videoDur = (outputDur-1) * dt + filterDur
+    videoHeight = (outputHeight - 1) * dr + filterHeight
+    videoWidth = (outputWidth - 1) * dc + filterWidth
+    videoDur = (outputDur - 1) * dt + filterDur
 
     if Rshape is not None and Rshape[0] != -1:
         if Rshape[0] < videoHeight:
@@ -364,24 +369,27 @@ def computeR(W,b,d,H,Rshape = None):
 
     #print "video size: "+str((videoHeight, videoWidth, videoDur))
 
-    R =  N.zeros( (batchSize, videoHeight,
-            videoWidth, videoDur, inputChannels ) , dtype=H.dtype)
+    R = N.zeros((batchSize, videoHeight,
+            videoWidth, videoDur, inputChannels), dtype=H.dtype)
 
     #R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
-    for i in xrange(0,batchSize):
+    for i in xrange(0, batchSize):
         #print '\texample '+str(i+1)+'/'+str(batchSize)
-        for j in xrange(0,inputChannels):
+        for j in xrange(0, inputChannels):
             #print '\t\tfeature map '+str(j+1)+'/'+str(inputChannels)
-            for r in xrange(0,videoHeight):
+            for r in xrange(0, videoHeight):
                 #print '\t\t\trow '+str(r+1)+'/'+str(videoHeight)
-                for c in xrange(0,videoWidth):
-                    for t in xrange(0,videoDur):
-                        R[i,r,c,t,j] = b[j]
+                for c in xrange(0, videoWidth):
+                    for t in xrange(0, videoDur):
+                        R[i, r, c, t, j] = b[j]
 
-                        ftc = max([0, int(N.ceil(float(t-filterDur +1  )/float(dt))) ])
-                        fcc = max([0, int(N.ceil(float(c-filterWidth +1)/float(dc))) ])
+                        ftc = max([0, int(N.ceil(
+                            float(t - filterDur + 1) / float(dt)))])
+                        fcc = max([0, int(N.ceil(
+                            float(c - filterWidth + 1) / float(dc)))])
 
-                        rc =  max([0, int(N.ceil(float(r-filterHeight+1)/float(dr))) ])
+                        rc = max([0, int(N.ceil(
+                            float(r - filterHeight + 1) / float(dr)))])
                         while rc < outputHeight:
                             rk = r - rc * dr
                             if rk < 0:
@@ -399,20 +407,21 @@ def computeR(W,b,d,H,Rshape = None):
                                     if tk < 0:
                                         break
 
-                                    R[i,r,c,t,j] += N.dot(W[:,rk,ck,tk,j], H[i,rc,cc,tc,:] )
+                                    R[
+                                        i,r,c,t,j] += N.dot(W[:,rk,ck,tk,j], H[i,rc,cc,tc,:] )
 
                                     tc += 1
-                                "" #close loop over tc
+                                ""  # close loop over tc
                                 cc += 1
-                            "" #close loop over cc
+                            ""  # close loop over cc
 
                             rc += 1
-                        "" #close loop over rc
-                    "" #close loop over t
-                "" #close loop over c
-            "" #close loop over r
-        "" #close loop over j
-    "" #close loop over i
+                        ""  # close loop over rc
+                    ""  # close loop over t
+                ""  # close loop over c
+            ""  # close loop over r
+        ""  # close loop over j
+    ""  # close loop over i
 
     return R
 

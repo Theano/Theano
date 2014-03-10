@@ -8,16 +8,83 @@ Frequently Asked Questions
 TypeError: object of type 'TensorVariable' has no len()
 -------------------------------------------------------
 
-If you receive this error:
+If you receive the following error, it is because the Python function *__len__* cannot 
+be implemented on Theano variables:
 
 .. code-block:: python
 
    TypeError: object of type 'TensorVariable' has no len()
 
-We can't implement the __len__ function on Theano Variables. This is
-because Python requires that this function returns an integer, but we
-can't do this as we are working with symbolic variables. You can use
-`var.shape[0]` as a workaround.
+Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
 
-Also we can't change the above error message into a more explicit one
-because of some other Python internal behavior that can't be modified.
+This error message cannot be made more explicit because the relevant aspects of Python's 
+internals cannot be modified.
+
+
+Faster gcc optimization
+-----------------------
+
+You can enable faster gcc optimization with the ``cxxflags`` option.
+This list of flags was suggested on the mailing list::
+
+    -O3 -ffast-math -ftree-loop-distribution -funroll-loops -ftracer
+
+Use it at your own risk. Some people warned that the ``-ftree-loop-distribution`` optimization resulted in wrong results in the past.
+
+In the past we said that if the ``compiledir`` was not shared by multiple
+computers, you could add the ``-march=native`` flag. Now we recommend
+to remove this flag as Theano does it automatically and safely,
+even if the ``compiledir`` is shared by multiple computers with different
+CPUs. In fact, Theano asks g++ what are the equivalent flags it uses, and re-uses
+them directly.
+
+
+Faster Theano function
+----------------------
+
+You can set the Theano flag `allow_gc` to `False` to get a speed-up by using
+more memory. By default, Theano frees intermediate results when we don't need
+them anymore. Doing so prevents us from reusing this memory. So disabling the
+garbage collection will keep all intermediate results' memory space to allow to
+reuse them during the next call to the same Theano function, if they are of the
+correct shape. The shape could change if the shapes of the inputs change.
+
+Faster Small Theano function
+----------------------------
+
+.. note::
+
+   For Theano 0.6 and up.
+
+For Theano functions that don't do much work, like a regular logistic
+regression, the overhead of checking the input can be significant. You
+can disable it by setting ``f.trust_input`` to True.
+Make sure the types of arguments you provide match those defined when
+the function was compiled.
+
+Also, for small Theano functions, you can remove more Python overhead by
+making a Theano function that does not take any input. You can use shared
+variables to achieve this. Then you can call it like this: ``f.fn()`` or
+``f.fn(n_calls=N)`` to speed it up. In the last case, only the last
+function output (out of N calls) is returned.
+
+Related Projects
+----------------
+
+We try to list in this `wiki page <https://github.com/Theano/Theano/wiki/Related-projects>`_ other Theano related projects.
+
+
+"What are Theano's Limitations?"
+--------------------------------
+
+Theano offers a good amount of flexibility, but has some limitations too.
+You must answer for yourself the following question: How can my algorithm be cleverly written 
+so as to make the most of what Theano can do?
+
+Here is a list of some of the known limitations:
+
+- *While*- or *for*-Loops within an expression graph are supported, but only via
+  the :func:`theano.scan` op (which puts restrictions on how the loop body can
+  interact with the rest of the graph).
+
+- Neither *goto* nor *recursion* is supported or planned within expression graphs.

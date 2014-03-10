@@ -1,70 +1,281 @@
 
 .. _libdoc_sparse:
 
-===========================================================
-:mod:`sparse` -- Symbolic Sparse Matrices [doc TODO]
-===========================================================
+=========================================
+:mod:`sparse` -- Symbolic Sparse Matrices
+=========================================
 
-The sparse module has been used in:
+In the tutorial section, you can find a :ref:`sparse tutorial
+<tutsparse>`.
+
+The sparse submodule is not loaded when we import Theano. You must
+import ``theano.sparse`` to enable it.
+
+The sparse module provides the same functionality as the tensor
+module. The difference lies under the covers because sparse matrices
+do not store data in a contiguous array. Note that there are no GPU
+implementations for sparse matrices in Theano. The sparse module has
+been used in:
 
 - NLP: Dense linear transformations of sparse vectors.
+- Audio: Filterbank in the Fourier domain.
 
-- Audio: Filterbank in Fourier domain.
+Compressed Sparse Format
+========================
 
-The sparse module is less mature than the tensor module.
-This documentation is also not mature.
+This section tries to explain how information is stored for the two
+sparse formats of SciPy supported by Theano. There are more formats
+that can be used with SciPy and some documentation about them may be
+found `here
+<http://deeplearning.net/software/theano/sandbox/sparse.html>`_.
 
-The sparse submodule is not loaded when we import theano. You must import theano.sparse to enable it.
+.. Changes to this section should also result in changes to tutorial/sparse.txt.
 
-The sparse module provides two kinds of sparse tensors are supported: CSC matrices and CSR matrices.
-Operations that are implemented:
+Theano supports two *compressed sparse formats* ``csc`` and ``csr``,
+respectively based on columns and rows. They have both the same
+attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
 
-grad?
+  * The ``data`` attribute is a one-dimentionnal ``ndarray`` which
+    contains all the non-zero elements of the sparse matrix.
 
-- conversion from sparse <-> dense 
-    - theano.sparse.{dense_from_sparse,dense_from_sparse}
-    - 
+  * The ``indices`` and ``indptr`` attributes are used to store the
+    position of the data in the sparse matrix.
 
-- [un]packing of sparse matrices from indexlists and nonzero elements.
-    - packing: theano.sparse.{CRC,CSR}
-    - unpacking: theano.sparse.csm_properties
+  * The ``shape`` attribute is exactly the same as the ``shape``
+    attribute of a dense (i.e. generic) matrix. It can be explicitly
+    specified at the creation of a sparse matrix if it cannot be
+    infered from the first three attributes.
 
-- transpose
-    - theano.sparse.transpose
 
-- negation
-    - neg
+CSC Matrix
+----------
 
-- addition/multiplication (elemwise)
-    - theano.sparse.{add,mul}
-    - sparse + sparse, sparse + dense, dense + sparse
-    - sparse * sparse, sparse * dense, dense * sparse
+In the *Compressed Sparse Column* format, ``indices`` stands for
+indexes inside the column vectors of the matrix and ``indptr`` tells
+where the column starts in the ``data`` and in the ``indices``
+attributes. ``indptr`` can be thought of as giving the slice which
+must be applied to the other attribute in order to get each column of
+the matrix. In other words, ``slice(indptr[i], indptr[i+1])``
+corresponds to the slice needed to find the i-th column of the matrix
+in the ``data`` and ``indices`` fields.
 
-- StructuredDot
-    - with gradient defined such that sparsity pattern is
-      constant.  This function is called "structured_dot"
-    - theano.sparse.structured_dot and its grad (structured_dot_grad)
-    - theano.dot call it.
-    - dot(sparse, dense) and dot(dense, sparse), dot(sparse, sparse)
+The following example builds a matrix and returns its columns. It
+prints the i-th column, i.e. a list of indices in the column and their
+corresponding value in the second list.
 
-- Dot
-    - performs the true dot without special semantics.
-    - dot(sparse, dense), dot(dense, sparse), dot(sparse, sparse)
-    - When the operation has the form dot(csr_matrix, dense) the gradient of
-      this operation can be performed inplace by UsmmCscDense. This leads to
-      significant speed-ups.
-- Subtensor
-    - sparse_variable[N, N], return a tensor scalar
-    - sparse_variable[M:N, O:P], return a sparse matrix
-    - Don't support [M, N:O] and [M:N, O] as we don't support sparse vector
-      and returning a sparse matrix would break the numpy interface.
-      Use [M:M+1, N:O] and [M:N, O:O+1] instead.
+>>> data = np.asarray([7, 8, 9])
+>>> indices = np.asarray([0, 1, 2])
+>>> indptr = np.asarray([0, 2, 3, 3])
+>>> m = sp.csc_matrix((data, indices, indptr), shape=(3, 3))
+>>> print m.toarray()
+[[7 0 0]
+ [8 0 0]
+ [0 9 0]]
+>>> i = 0
+>>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
+[0, 1] [7, 8]
+>>> i = 1
+>>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
+[2] [9]
+>>> i = 2
+>>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
+[] []
 
-There are no GPU implementations for sparse matrices implemented in Theano.
+CSR Matrix
+----------
 
-Some documentation for sparse has been written
-`here <http://deeplearning.net/software/theano/sandbox/sparse.html>`_.
+In the *Compressed Sparse Row* format, ``indices`` stands for indexes
+inside the row vectors of the matrix and ``indptr`` tells where the
+row starts in the ``data`` and in the ``indices``
+attributes. ``indptr`` can be thought of as giving the slice which
+must be applied to the other attribute in order to get each row of the
+matrix. In other words, ``slice(indptr[i], indptr[i+1])`` corresponds
+to the slice needed to find the i-th row of the matrix in the ``data``
+and ``indices`` fields.
 
+The following example builds a matrix and returns its rows. It prints
+the i-th row, i.e. a list of indices in the row and their
+corresponding value in the second list.
+
+>>> data = np.asarray([7, 8, 9])
+>>> indices = np.asarray([0, 1, 2])
+>>> indptr = np.asarray([0, 2, 3, 3])
+>>> m = sp.csr_matrix((data, indices, indptr), shape=(3, 3))
+>>> print m.toarray()
+[[7 8 0]
+ [0 0 9]
+ [0 0 0]]
+>>> i = 0
+>>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
+[0, 1] [7, 8]
+>>> i = 1
+>>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
+[2] [9]
+>>> i = 2
+>>> print m.indices[m.indptr[i]:m.indptr[i+1]], m.data[m.indptr[i]:m.indptr[i+1]]
+[] []
+
+List of Implemented Operations
+==============================
+
+- Moving from and to sparse
+    - :class:`DenseFromSparse <theano.sparse.basic.DenseFromSparse>` and ``dense_from_sparse``.
+      Both grads are implemented. Structured by default.
+    - :class:`SparseFromDense <theano.sparse.basic.SparseFromDense>` and ``csr_from_dense``, ``csc_from_dense``.
+      The grad implemented is structured.
+    - Theano SparseVariable object have a method ``toarray()`` that is the same as ``dense_from_sparse``.
+
+- Construction of Sparses and their Properties
+    - :class:`CSM <theano.sparse.basic.CSM>` and ``CSC``, ``CSR`` to construct a matrix.
+      The grad implemented is regular.
+    - :class:`CSMProperties <theano.sparse.basic.CSMProperties>` and ``csm_properties(x)``
+      to get the properties of a sparse matrix.
+      The grad implemented is regular.
+    - csm_indices(x), csm_indptr(x), csm_data(x) and csm_shape(x) or x.shape.
+    - :func:`sp_ones_like <theano.sparse.basic.sp_ones_like>`.
+      The grad implemented is regular.
+    - :func:`sp_zeros_like <theano.sparse.basic.sp_zeros_like>`.
+      The grad implemented is regular.
+    - :class:`SquareDiagonal <theano.sparse.basic.SquareDiagonal>` and ``square_diagonal``.
+      The grad implemented is regular.
+    - :class:`ConstructSparseFromList <theano.sparse.basic.ConstructSparseFromList>` and ``construct_sparse_from_list``.
+      The grad implemented is regular.
+
+- Cast
+    - :class:`Cast <theano.sparse.basic.Cast>` with ``bcast``, ``wcast``, ``icast``, ``lcast``,
+      ``fcast``, ``dcast``, ``ccast``, and ``zcast``.
+      The grad implemented is regular.
+
+- Transpose
+    - :class:`Transpose <theano.sparse.basic.Transpose>` and ``transpose``.
+      The grad implemented is regular.
+
+- Basic Arithmetic
+    - :class:`Neg <theano.sparse.basic.Neg>`.
+      The grad implemented is regular.
+    - :func:`add <theano.sparse.basic.add>`.
+      The grad implemented is regular.
+    - :func:`sub <theano.sparse.basic.sub>`.
+      The grad implemented is regular.
+    - :func:`mul <theano.sparse.basic.mul>`.
+      The grad implemented is regular.
+    - :func:`col_scale <theano.sparse.basic.col_scale>` to multiply by a vector along the columns.
+      The grad implemented is structured.
+    - :func:`row_slace <theano.sparse.basic.row_scale>` to multiply by a vector along the rows.
+      The grad implemented is structured.
+
+- Monoid (Element-wise operation with only one sparse input).
+    `They all have a structured grad.`
+
+    - ``structured_sigmoid``
+    - ``structured_exp``
+    - ``structured_log``
+    - ``structured_pow``
+    - ``structured_minimum``
+    - ``structured_maximum``
+    - ``structured_add``
+    - ``sin``
+    - ``arcsin``
+    - ``tan``
+    - ``arctan``
+    - ``sinh``
+    - ``arcsinh``
+    - ``tanh``
+    - ``arctanh``
+    - ``rad2deg``
+    - ``deg2rad``
+    - ``rint``
+    - ``ceil``
+    - ``floor``
+    - ``trunc``
+    - ``sgn``
+    - ``log1p``
+    - ``expm1``
+    - ``sqr``
+    - ``sqrt``
+
+- Dot Product
+    - :class:`Dot <theano.sparse.basic.Dot>` and
+      :func:`dot <theano.sparse.basic.dot>`.
+
+        - One of the inputs must be sparse, the other sparse or dense.
+        - The grad implemented is regular.
+        - No C code for perform and no C code for grad.
+        - Returns a dense for perform and a dense for grad.
+    - :class:`StructuredDot <theano.sparse.basic.StructuredDot>`
+      and :func:`structured_dot <theano.sparse.basic.structured_dot>`.
+
+        - The first input is sparse, the second can be sparse or dense.
+        - The grad implemented is structured.
+        - C code for perform and grad.
+        - It returns a sparse output if both inputs are sparse and
+          dense one if one of the inputs is dense.
+        - Returns a sparse grad for sparse inputs and dense grad for
+          dense inputs.
+    - :class:`TrueDot <theano.sparse.basic.TrueDot>` and
+      :func:`true_dot <theano.sparse.basic.true_dot>`.
+
+        - The first input is sparse, the second can be sparse or dense.
+        - The grad implemented is regular.
+        - No C code for perform and no C code for grad.
+        - Returns a Sparse.
+        - The gradient returns a Sparse for sparse inputs and by
+          default a dense for dense inputs. The parameter
+          ``grad_preserves_dense`` can be set to False to return a
+          sparse grad for dense inputs.
+    - :class:`SamplingDot <theano.sparse.basic.SamplingDot>` and
+      ``sampling_dot``.
+
+        - Both inputs must be dense.
+        - The grad implemented is structured for `p`.
+        - Sample of the dot and sample of the gradient.
+        - C code for perform but not for grad.
+        - Returns sparse for perform and grad.
+    - :class:`Usmm <theano.sparse.basic.Usmm>` and ``usmm``.
+
+        - You *shouldn't* insert this op yourself!
+           - There is an optimization that transform a
+             :class:`Dot <theano.sparse.basic.Dot>` to ``Usmm`` when possible.
+
+        - This op is the equivalent of gemm for sparse dot.
+        - There is no grad implemented for this op.
+        - One of the inputs must be sparse, the other sparse or dense.
+        - Returns a dense from perform.
+
+- Slice Operations
+    - sparse_variable[N, N], returns a tensor scalar.
+      There is no grad implemented for this operation.
+    - sparse_variable[M:N, O:P], returns a sparse matrix
+      There is no grad implemented for this operation.
+    - Sparse variables don't support [M, N:O] and [M:N, O] as we don't
+      support sparse vectors and returning a sparse matrix would break
+      the numpy interface.  Use [M:M+1, N:O] and [M:N, O:O+1] instead.
+    - :class:`Diag <theano.sparse.basic.Diag>` and ``diag``.
+      The grad implemented is regular.
+
+- Concatenation
+    - :class:`HStack <theano.sparse.basic.HStack>` and ``hstack``.
+      The grad implemented is regular.
+    - :class:`VStack <theano.sparse.basic.VStack>` and ``vstack``.
+      The grad implemented is regular.
+
+- Probability
+    `There is no grad implemented for these operations.`
+
+    - :class:`Poisson <theano.sparse.basic.Poisson>` and ``poisson``
+    - :class:`Binomial <theano.sparse.basic.Binomial>` and ``csc_fbinomial``, ``csc_dbinomial``
+      ``csr_fbinomial``, ``csr_dbinomial``
+    - :class:`Multinomial <theano.sparse.basic.Multinomial>` and ``multinomial``
+
+- Internal Representation
+    `They all have a regular grad implemented.`
+
+    - :class:`EnsureSortedIndices <theano.sparse.basic.EnsureSortedIndices>` and ``ensure_sorted_indices``
+    - :class:`Remove0 <theano.sparse.basic.Remove0>` and ``remove0``
+    - :func:`clean <theano.sparse.basic.clean>` to resort indices and remove zeros
+
+- To help testing
+    - :func:`theano.sparse.tests.test_basic.sparse_random_inputs`
 
 ===================================================================
 :mod:`sparse` --  Sparse Op
@@ -78,3 +289,4 @@ Some documentation for sparse has been written
 .. automodule:: theano.sparse.basic
     :members:
 
+.. autofunction:: theano.sparse.tests.test_basic.sparse_random_inputs

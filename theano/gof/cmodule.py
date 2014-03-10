@@ -5,10 +5,9 @@ import cPickle
 import logging
 import operator
 import os
+import re
 import shutil
 import stat
-import StringIO
-import struct
 import subprocess
 import sys
 import tempfile
@@ -16,15 +15,25 @@ import time
 
 import distutils.sysconfig
 
+importlib = None
+try:
+    import importlib
+except ImportError:
+    pass
+
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
+from theano.compat import any, PY3, next, decode, decode_iter
+from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
+from theano.misc.windows import call_subprocess_Popen
 
 # we will abuse the lockfile mechanism when reading and writing the registry
-import compilelock
+from theano.gof import compilelock
+from theano.gof.compiledir import gcc_version_str, local_bitwidth
 
 from theano.configparser import AddConfigVar, BoolParam
 
@@ -38,37 +47,33 @@ AddConfigVar('cmodule.warn_no_version',
              "with C code that can't be cached because there is no "
              "c_code_cache_version() function associated to at least one of "
              "those Ops.",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('cmodule.remove_gxx_opt',
+             "If True, will remove the -O* parameter passed to g++."
+             "This is useful to debug in gdb modules compiled by Theano."
+             "The parameter -g is passed by default to g++",
              BoolParam(False))
 
+AddConfigVar('cmodule.compilation_warning',
+             "If True, will print compilation warnings.",
+             BoolParam(False))
 
-def local_bitwidth():
-    """
-    Return 32 for 32bit arch, 64 for 64bit arch
-
-    By "architecture", we mean the size of memory pointers (size_t in C),
-    *not* the size of long int, as it can be different.
-    """
-    # Note that according to Python documentation, `platform.architecture()` is
-    # not reliable on OS X with universal binaries.
-    # Also, sys.maxsize does not exist in Python < 2.6.
-    # 'P' denotes a void*, and the size is expressed in bytes.
-    return struct.calcsize('P') * 8
-
-
-def python_int_bitwidth():
-    """
-    Return the bit width of Python int (C long int).
-
-    Note that it can be different from the size of a memory pointer.
-    """
-    # 'l' denotes a C long int, and the size is expressed in bytes.
-    return struct.calcsize('l') * 8
 
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
 
 METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"
+
+
+class MissingGXX(Exception):
+    """
+    This error is raised when we try to generate c code,
+    but g++ is not available
+    """
+    pass
 
 
 def debug_counter(name, every=1):
@@ -123,17 +128,22 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name=None):
+        assert name is None, ("The 'name' parameter of DynamicModule"
+                " cannot be specified anymore. Instead, 'code_hash'"
+                " will be automatically computed and can be used as"
+                " the module's name.")
+        # While the module is not finalized, we can call add_...
+        # when it is finalized, a hash is computed and used instead of
+        # the placeholder, and as module name.
+        self.finalized = False
+        self.code_hash = None
+        self.hash_placeholder = '<<<<HASH_PLACEHOLDER>>>>'
+
         self.support_code = []
         self.functions = []
         self.includes = ["<Python.h>", "<iostream>"]
-
-        #TODO: this should come from TensorType
-        self.includes.append('<numpy/arrayobject.h>')
-
-        #TODO: from TensorType
-        self.init_blocks = ['import_array();']
+        self.init_blocks = []
 
     def print_methoddef(self, stream):
         print >> stream, "static PyMethodDef MyMethods[] = {"
@@ -143,28 +153,50 @@ class DynamicModule(object):
         print >> stream, "};"
 
     def print_init(self, stream):
-        print >> stream, "PyMODINIT_FUNC init%s(void){" % self.name
-        for b in self.init_blocks:
-            print >> stream, '  ', b
-        print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
-                % self.name)
+        if PY3:
+            print >> stream, """\
+static struct PyModuleDef moduledef = {{
+      PyModuleDef_HEAD_INIT,
+      "{name}",
+      NULL,
+      -1,
+      MyMethods,
+}};
+""".format(name=self.hash_placeholder)
+            print >> stream, ("PyMODINIT_FUNC PyInit_%s(void) {" %
+                              self.hash_placeholder)
+            for block in self.init_blocks:
+                print >> stream, '  ', block
+            print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
+            print >> stream, "    return m;"
+        else:
+            print >> stream, ("PyMODINIT_FUNC init%s(void){" %
+                              self.hash_placeholder)
+            for block in self.init_blocks:
+                print >> stream, '  ', block
+            print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
+                                    % self.hash_placeholder)
         print >> stream, "}"
 
     def add_include(self, str):
+        assert not self.finalized
         self.includes.append(str)
 
     def add_init_code(self, code):
+        assert not self.finalized
         self.init_blocks.append(code)
 
     def add_support_code(self, code):
+        assert not self.finalized
         if code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
     def add_function(self, fn):
+        assert not self.finalized
         self.functions.append(fn)
 
     def code(self):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         for inc in self.includes:
             if not inc:
                 continue
@@ -191,7 +223,14 @@ class DynamicModule(object):
         self.print_methoddef(sio)
         self.print_init(sio)
 
-        return sio.getvalue()
+        rval = sio.getvalue()
+        self.code_hash = hash_from_code(rval)
+        rval = re.sub(self.hash_placeholder, self.code_hash, rval)
+        # Finalize the Module, so no support code or function
+        # can be added
+        self.finalized = True
+
+        return rval
 
     def list_code(self, ofile=sys.stdout):
         """Print out the code with line numbers to `ofile` """
@@ -239,6 +278,9 @@ def dlimport(fullpath, suffix=None):
 
     sys.path[0:0] = [workdir]  # insert workdir at beginning (temporarily)
     try:
+        if importlib is not None:
+            if hasattr(importlib, "invalidate_caches"):
+                importlib.invalidate_caches()
         rval = __import__(module_name, {}, {}, [module_name])
         if not rval:
             raise Exception('__import__ failed', fullpath)
@@ -266,12 +308,13 @@ def last_access_time(path):
     return os.stat(path)[stat.ST_ATIME]
 
 
-def module_name_from_dir(dirname, err=True):
+def module_name_from_dir(dirname, err=True, files=None):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
     """
-    files = os.listdir(dirname)
+    if files is None:
+        files = os.listdir(dirname)
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -314,12 +357,13 @@ def get_module_hash(src_code, key):
         2. The version part of the key.
         3. The compiler options defined in `key` (command line parameters and
            libraries to link against).
+        4. The NumPy ABI version.
     """
     # `to_hash` will contain any element such that we know for sure that if
     # it changes, then the module hash should be different.
     # We start with the source code itself (stripping blanks might avoid
     # recompiling after a basic indentation fix for instance).
-    to_hash = map(str.strip, src_code.split('\n'))
+    to_hash = [l.strip() for l in src_code.split('\n')]
     # Get the version part of the key (ignore if unversioned).
     if key[0]:
         to_hash += map(str, key[0])
@@ -347,6 +391,9 @@ def get_module_hash(src_code, key):
                 # This is the md5 hash of the config options. We can stop
                 # here.
                 break
+            elif (key_element.startswith('NPY_ABI_VERSION=0x') or
+                  key_element.startswith('c_compiler_str=')):
+                to_hash.append(key_element)
             else:
                 raise AssertionError(error_msg)
         else:
@@ -427,7 +474,7 @@ class KeyData(object):
                          protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
-                    self.keys)
+                            self.keys)
             os.remove(self.key_pkl)
             raise
 
@@ -594,26 +641,29 @@ class ModuleCache(object):
             time_now = time.time()
             # Go through directories in alphabetical order to ensure consistent
             # behavior.
-            root_dirs_files = sorted(os.walk(self.dirname),
-                                     key=operator.itemgetter(0))
-            for root, dirs, files in root_dirs_files:
+            subdirs = sorted(os.listdir(self.dirname))
+            for root in subdirs:
+                root = os.path.join(self.dirname, root)
                 key_pkl = os.path.join(root, 'key.pkl')
                 if key_pkl in self.loaded_key_pkl:
                     continue
-                elif 'delete.me' in files or not files:
+                if not os.path.isdir(root):
+                    continue
+                files = os.listdir(root)
+                if 'delete.me' in files or not files:
                     _rmtree(root, ignore_nocleanup=True,
                             msg="delete.me found in dir")
                 elif 'key.pkl' in files:
                     try:
-                        entry = module_name_from_dir(root)
+                        entry = module_name_from_dir(root, files=files)
                     except ValueError:  # there is a key but no dll!
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
                             # os. So it is normal that this happens from time
                             # to time.
                             _logger.warning("ModuleCache.refresh() Found key "
-                                    "without dll in cache, deleting it. %s",
-                                    key_pkl)
+                                            "without dll in cache, deleting it. %s",
+                                            key_pkl)
                         _rmtree(root, ignore_nocleanup=True,
                                 msg="missing module file", level=logging.INFO)
                         continue
@@ -622,7 +672,7 @@ class ModuleCache(object):
 
                         def unpickle_failure():
                             _logger.info("ModuleCache.refresh() Failed to "
-                                    "unpickle cache file %s", key_pkl)
+                                         "unpickle cache file %s", key_pkl)
 
                         try:
                             key_data = cPickle.load(open(key_pkl, 'rb'))
@@ -634,6 +684,12 @@ class ModuleCache(object):
                                     msg='broken cache directory [EOF]',
                                     level=logging.WARNING)
                             continue
+                        except ValueError:
+                            # This can happen when we have bad config value
+                            # in the cuda.nvcc_compiler.py file.
+                            # We should not hide it here, as this will cause
+                            # an unrelated error to appear.
+                            raise
                         except Exception:
                             unpickle_failure()
                             if delete_if_problem:
@@ -721,9 +777,9 @@ class ModuleCache(object):
                                         level=logging.DEBUG)
                             else:
                                 _logger.debug('Found duplicated module not '
-                                        'old enough yet to be deleted '
-                                        '(age: %s): %s',
-                                        age, entry)
+                                              'old enough yet to be deleted '
+                                              '(age: %s): %s',
+                                              age, entry)
                             continue
 
                         # Remember the map from a module's hash to the KeyData
@@ -750,6 +806,9 @@ class ModuleCache(object):
                                     "directory to fix this.",
                                     self.entry_from_key[key],
                                     entry)
+                        # Clean up the name space to prevent bug.
+                        if key_data.keys:
+                            del key
                         self.loaded_key_pkl.add(key_pkl)
                     else:
                         too_old_to_use.append(entry)
@@ -757,6 +816,9 @@ class ModuleCache(object):
                 # If the compilation failed, no key.pkl is in that
                 # directory, but a mod.* should be there.
                 # We do nothing here.
+
+            # Clean up the name space to prevent bug.
+            del root, files, subdirs
 
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
@@ -768,6 +830,7 @@ class ModuleCache(object):
                     gone = False
                 except IOError:
                     gone = True
+
                 if gone:
                     # Assert that we did not have one of the deleted files
                     # loaded up and in use.
@@ -784,13 +847,13 @@ class ModuleCache(object):
                     _logger.info("deleting ModuleCache entry %s", entry)
                     key_data.delete_keys_from(self.entry_from_key)
                     del self.module_hash_to_key_data[module_hash]
-                    if key[0]:
+                    if key_data.keys and list(key_data.keys)[0][0]:
                         # this is a versioned entry, so should have been on
                         # disk. Something weird happened to cause this, so we
                         # are responding by printing a warning, removing
                         # evidence that we ever saw this mystery key.
                         pkl_file_to_remove = key_data.key_pkl
-                        if not root.startswith("/tmp"):
+                        if not key_data.key_pkl.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
                             # os. So it is normal that this happen from time to
                             # time.
@@ -804,7 +867,7 @@ class ModuleCache(object):
             compilelock.release_lock()
 
         _logger.debug('Time needed to refresh cache: %s',
-                (time.time() - start_time))
+                      (time.time() - start_time))
 
         return too_old_to_use
 
@@ -852,10 +915,11 @@ class ModuleCache(object):
             hash_key = hash(key)
             key_data = None
             # We have never seen this key before.
-            # Acquire lock before creating things in the compile cache,
-            # to avoid that other processes remove the compile dir while it
-            # is still empty.
-            compilelock.get_lock()
+
+            # We acquire the lock later only if we were able to
+            # generate C code. Otherwise, we would take the lock for ops
+            # that have only a perform().
+            lock_taken = False
             # This try/finally block ensures that the lock is released once we
             # are done writing in the cache file or after raising an exception.
             try:
@@ -867,8 +931,8 @@ class ModuleCache(object):
                     _logger.error(e)
                     if e.errno == 31:
                         _logger.error('There are %i files in %s',
-                                len(os.listdir(config.compiledir)),
-                                config.compiledir)
+                                      len(os.listdir(config.compiledir)),
+                                      config.compiledir)
                     raise
                 try:
                     compile_steps = fn(location=location).__iter__()
@@ -877,11 +941,21 @@ class ModuleCache(object):
                     # If we do, then there is no need to even compile it.
                     duplicated_module = False
                     # The first compilation step is to yield the source code.
-                    src_code = compile_steps.next()
+                    src_code = next(compile_steps)
                     module_hash = get_module_hash(src_code, key)
+
+                    # The op has c_code, so take the lock.
+                    compilelock.get_lock()
+                    lock_taken = True
+
+                    if not os.path.exists(location):
+                        # Temporary fix, we should make sure it don't
+                        # get deleted by the clear*() fct.
+                        os.makedirs(location)
+
                     if module_hash in self.module_hash_to_key_data:
                         _logger.debug("Duplicated module! Will re-use the "
-                                "previous one")
+                                      "previous one")
                         duplicated_module = True
                         # Load the already existing module.
                         key_data = self.module_hash_to_key_data[module_hash]
@@ -889,7 +963,7 @@ class ModuleCache(object):
                         # should not be used considering that the module should
                         # already be compiled.
                         module = self.module_from_key(key=None,
-                                key_data=key_data)
+                                                      key_data=key_data)
                         name = module.__file__
                         # Add current key to the set of keys associated to the
                         # same module. We only save the KeyData object of
@@ -922,7 +996,7 @@ class ModuleCache(object):
                             try:
                                 # The module should be returned by the last
                                 # step of the compilation.
-                                module = compile_steps.next()
+                                module = next(compile_steps)
                             except StopIteration:
                                 break
 
@@ -930,7 +1004,7 @@ class ModuleCache(object):
                         name = module.__file__
 
                         _logger.debug("Adding module to cache %s %s",
-                                key, name)
+                                      key, name)
                         assert name.startswith(location)
                         assert name not in self.module_from_name
                         # Changing the hash of the key is not allowed during
@@ -1000,7 +1074,7 @@ class ModuleCache(object):
 
             finally:
                 # Release lock if needed.
-                if not keep_lock:
+                if not keep_lock and lock_taken:
                     compilelock.release_lock()
 
             # Update map from key to module name for all keys associated to
@@ -1174,7 +1248,7 @@ class ModuleCache(object):
         compilelock.get_lock()
         try:
             for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
-                    'scan_perform'):
+                             'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:
@@ -1189,7 +1263,7 @@ class ModuleCache(object):
                         shutil.move(to_rename, to_delete)
                     except Exception:
                         _logger.warning('Could not move %s to %s',
-                                to_rename, to_delete)
+                                        to_rename, to_delete)
         finally:
             compilelock.release_lock()
 
@@ -1293,7 +1367,7 @@ class ModuleCache(object):
         finally:
             compilelock.release_lock()
         _logger.debug('Time spent checking keys: %s',
-                self.time_spent_in_check_key)
+                      self.time_spent_in_check_key)
 
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
@@ -1314,14 +1388,14 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
     except Exception, e:
         # If parent still exists, mark it for deletion by a future refresh()
         _logger.debug('In _rmtree, encountered exception: %s(%s)',
-                type(e), e)
+                      type(e), e)
         if os.path.exists(parent):
             try:
                 _logger.info('placing "delete.me" in %s', parent)
                 open(os.path.join(parent, 'delete.me'), 'w').close()
             except Exception, ee:
                 _logger.warning("Failed to remove or mark cache directory %s "
-                        "for removal %s", parent, ee)
+                                "for removal %s", parent, ee)
 
 _module_cache = None
 
@@ -1339,7 +1413,7 @@ def get_module_cache(dirname, init_args=None):
         atexit.register(_module_cache._on_atexit)
     elif init_args:
         _logger.warning('Ignoring init arguments for module cache because it '
-                'was created prior to this call')
+                        'was created prior to this call')
     if _module_cache.dirname != dirname:
         _logger.warning("Returning module cache instance with different "
                 "dirname (%s) than you requested (%s)",
@@ -1378,17 +1452,39 @@ def std_lib_dirs_and_libs():
         libname = 'python' + python_version.replace('.', '')
         # Also add directory containing the Python library to the library
         # directories.
-        python_lib_dir = os.path.join(os.path.dirname(python_inc), 'libs')
-        return [libname], [python_lib_dir]
+        python_lib_dirs = [os.path.join(os.path.dirname(python_inc), 'libs')]
+        if "Canopy" in python_lib_dirs[0]:
+            # Canopy stores libpython27.a and libmsccr90.a in this directory.
+            # For some reason, these files are needed when compiling Python
+            # modules, even when libpython27.lib and python27.dll are
+            # available, and the *.a files have to be found earlier than
+            # the other ones.
 
-    # DSE Patch 2 for supporting OSX frameworks.
-    # Suppress -lpython2.x when frameworks are present
+            #When Canopy is installed for the user:
+            #sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
+            #sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            #When Canopy is installed for all users:
+            #sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            #sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
+            #So we need to use sys.prefix as it support both cases.
+            #sys.base_prefix support only one case
+            libdir = os.path.join(sys.prefix, 'libs')
+
+            for f, lib in [('libpython27.a', 'libpython 1.2'),
+                           ('libmsvcr90.a', 'mingw 4.5.2')]:
+                if not os.path.exists(os.path.join(libdir, f)):
+                    print ("Your Python version is from Canopy. " +
+                           "You need to install the package '" + lib +
+                           "' from Canopy package manager."
+                           )
+            python_lib_dirs.insert(0, libdir)
+
+        return [libname], python_lib_dirs
+
+    # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
+    # makes it unnecessary.
     elif sys.platform == 'darwin':
-        if python_inc.count('Python.framework'):
-            return [], []
-        else:
-            libname = os.path.basename(python_inc)
-            return [libname], []
+        return [], []
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
@@ -1403,39 +1499,374 @@ def std_lib_dirs():
     return std_lib_dirs_and_libs()[1]
 
 
-# Using the dummy file descriptors below is a workaround for a crash
-# experienced in an unusual Python 2.4.4 Windows environment with the default
-# None values.
-dummy_in = open(os.devnull)
-dummy_err = open(os.devnull, 'w')
-p = None
-try:
-    p = subprocess.Popen(['g++', '-dumpversion'], stdout=subprocess.PIPE,
-                         stdin=dummy_in.fileno(), stderr=dummy_err.fileno())
-    p.wait()
-    gcc_version_str = p.stdout.readline().strip()
-except OSError:
-    # Typically means gcc cannot be found.
-    gcc_version_str = 'GCC_NOT_FOUND'
-del p
-del dummy_in
-del dummy_err
-
-
 def gcc_version():
     return gcc_version_str
 
 
+def gcc_llvm():
+    """ Detect if the g++ version used is the llvm one or not.
+
+    It don't support all g++ parameters even if it support many of them.
+    """
+    if gcc_llvm.is_llvm is None:
+        pass
+        p = None
+        try:
+            p = call_subprocess_Popen(['g++', '--version'],
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+            p.wait()
+            output = p.stdout.read() + p.stderr.read()
+        except OSError:
+            # Typically means g++ cannot be found.
+            # So it is not an llvm compiler.
+
+            # Normally this should not happen as we should not try to
+            # compile when g++ is not available. If this happen, it
+            # will crash later so supposing it is not llvm is "safe".
+            output = b('')
+        del p
+        gcc_llvm.is_llvm = b("llvm") in output
+    return gcc_llvm.is_llvm
+gcc_llvm.is_llvm = None
+
+
 class GCC_compiler(object):
+    # The equivalent flags of --march=native used by g++.
+    march_flags = None
+
+    @staticmethod
+    def version_str():
+        return "g++ " + gcc_version_str
+
     @staticmethod
     def compile_args():
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
+
+        # Add the equivalent of -march=native flag.  We can't use
+        # -march=native as when the compiledir is shared by multiple
+        # computers (for example, if the home directory is on NFS), this
+        # won't be optimum or cause crash depending if the file is compiled
+        # on an older or more recent computer.
+        # Those URL discuss how to find witch flags are used by -march=native.
+        # http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
+        # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
+        detect_march = GCC_compiler.march_flags is None
+        if detect_march:
+            for f in cxxflags:
+                #If the user give an -march=X parameter, don't add one ourself
+                if ((f.startswith("--march=") or f.startswith("-march="))):
+                    _logger.warn(
+                        "WARNING: your Theano flags `gcc.cxxflags` specify"
+                        " an `-march=X` flags.\n"
+                        "         It is better to let Theano/g++ find it"
+                        " automatically, but we don't do it now")
+                    detect_march = False
+                    GCC_compiler.march_flags = []
+                    break
+
+        if detect_march:
+            GCC_compiler.march_flags = []
+
+            def get_lines(cmd, parse=True):
+                p = call_subprocess_Popen(cmd,
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE,
+                                          stdin=subprocess.PIPE,
+                                          shell=True)
+                # For mingw64 with GCC >= 4.7, passing os.devnull
+                # as stdin (which is the default) results in the process
+                # waiting forever without returning. For that reason,
+                # we use a pipe, and use the empty string as input.
+                (stdout, stderr) = p.communicate(input=b(''))
+                if p.returncode != 0:
+                    return None
+
+                lines = BytesIO(stdout + stderr).readlines()
+                lines = decode_iter(lines)
+                if parse:
+                    selected_lines = []
+                    for line in lines:
+                        if ("COLLECT_GCC_OPTIONS=" in line or
+                            "CFLAGS=" in line or
+                            "CXXFLAGS=" in line or
+                            "-march=native" in line):
+                            continue
+                        elif "-march=" in line:
+                            selected_lines.append(line.strip())
+                        elif "-mtune=" in line:
+                            selected_lines.append(line.strip())
+                        elif "-target-cpu" in line:
+                            selected_lines.append(line.strip())
+                    lines = list(set(selected_lines))  # to remove duplicate
+
+                return lines
+
+            # The '-' at the end is needed. Otherwise, g++ do not output
+            # enough information.
+            native_lines = get_lines("g++ -march=native -E -v -")
+            if native_lines is None:
+                _logger.info("Call to 'g++ -march=native' failed,"
+                             "not setting -march flag")
+                detect_march = False
+            else:
+                _logger.info("g++ -march=native selected lines: %s",
+                             native_lines)
+
+        if detect_march:
+            if len(native_lines) != 1:
+                if len(native_lines) == 0:
+                    # That means we did not select the right lines, so
+                    # we have to report all the lines instead
+                    reported_lines = get_lines("g++ -march=native -E -v -",
+                                               parse=False)
+                else:
+                    reported_lines = native_lines
+                _logger.warn(
+                    "OPTIMIZATION WARNING: Theano was not able to find the"
+                    " g++ parameters that tune the compilation to your "
+                    " specific CPU. This can slow down the execution of Theano"
+                    " functions. Please submit the following lines to"
+                    " Theano's mailing list so that we can fix this"
+                    " problem:\n %s",
+                    reported_lines)
+            else:
+                default_lines = get_lines("g++ -E -v -")
+                _logger.info("g++ default lines: %s", default_lines)
+                if len(default_lines) < 1:
+                    _logger.warn(
+                        "OPTIMIZATION WARNING: Theano was not able to find the"
+                        " default g++ parameters. This is needed to tune"
+                        " the compilation to your specific"
+                        " CPU. This can slow down the execution of Theano"
+                        " functions. Please submit the following lines to"
+                        " Theano's mailing list so that we can fix this"
+                        " problem:\n %s",
+                        get_lines("g++ -E -v -", parse=False))
+                else:
+                    # Some options are actually given as "-option value",
+                    # we want to treat them as only one token when comparing
+                    # different command lines.
+                    # Heuristic: tokens not starting with a dash should be
+                    # joined with the previous one.
+                    def join_options(init_part):
+                        new_part = []
+                        for i in range(len(init_part)):
+                            p = init_part[i]
+                            if p.startswith('-'):
+                                p_list = [p]
+                                while ((i + 1 < len(init_part)) and
+                                       not init_part[i + 1].startswith('-')):
+                                    # append that next part to p_list
+                                    p_list.append(init_part[i + 1])
+                                    i += 1
+                                new_part.append(' '.join(p_list))
+                            elif i == 0:
+                                # The first argument does not usually start
+                                # with "-", still add it
+                                new_part.append(p)
+                            # Else, skip it, as it was already included
+                            # with the previous part.
+                        return new_part
+
+                    part = join_options(native_lines[0].split())
+
+                    for line in default_lines:
+                        if line.startswith(part[0]):
+                            part2 = [p for p in join_options(line.split())
+                                     if (not 'march' in p and
+                                         not 'mtune' in p and
+                                         not 'target-cpu' in p)]
+                            new_flags = [p for p in part if p not in part2]
+                            # Replace '-target-cpu value', which is an option
+                            # of clang, with '-march=value', for g++
+                            for i, p in enumerate(new_flags):
+                                if 'target-cpu' in p:
+                                    opt = p.split()
+                                    if len(opt) == 2:
+                                        opt_name, opt_val = opt
+                                        new_flags[i] = '-march=%s' % opt_val
+
+                            # Some versions of GCC report the native arch
+                            # as "corei7-avx", but it generates illegal
+                            # instructions, and should be "corei7" instead.
+                            # Affected versions are:
+                            # - 4.6 before 4.6.4
+                            # - 4.7 before 4.7.3
+                            # - 4.8 before 4.8.1
+                            # Earlier versions did not have arch "corei7-avx"
+                            for i, p in enumerate(new_flags):
+                                if 'march' not in p:
+                                    continue
+                                opt = p.split('=')
+                                if len(opt) != 2:
+                                    # Inexpected, but do not crash
+                                    continue
+                                opt_val = opt[1]
+                                if not opt_val.endswith('-avx'):
+                                    # OK
+                                    continue
+                                # Check the version of GCC
+                                version = gcc_version_str.split('.')
+                                if len(version) != 3:
+                                    # Unexpected, but should not be a problem
+                                    continue
+                                mj, mn, patch = [int(vp) for vp in version]
+                                if (((mj, mn) == (4, 6) and patch < 4) or
+                                        ((mj, mn) == (4, 7) and patch < 3) or
+                                        ((mj, mn) == (4, 8) and patch < 1)):
+                                    new_flags[i] = p.rstrip('-avx')
+
+                            # Go back to split arguments, like
+                            # ["-option", "value"],
+                            # as this is the way g++ expects them split.
+                            split_flags = []
+                            for p in new_flags:
+                                split_flags.extend(p.split())
+
+                            GCC_compiler.march_flags = split_flags
+                            break
+                    _logger.info("g++ -march=native equivalent flags: %s",
+                                 GCC_compiler.march_flags)
+
+        #Add the detected -march=native equivalent flags
+        cxxflags.extend(GCC_compiler.march_flags)
+
+        #NumPy 1.7 Deprecate the old API. I updated most of the places
+        #to use the new API, but not everywhere. When finished, enable
+        #the following macro to assert that we don't bring new code
+        #that use the old API.
+        cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        # numpy 1.7 deprecated the following macro but the new one didn't
+        # existed in the past
+        if bool(numpy_ver < [1, 7]):
+            cxxflags.append("-D NPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
+            cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+
+        # Platform-specific flags.
+        # We put them here, rather than in compile_str(), so they en up
+        # in the key of the compiled module, avoiding potential conflicts.
+
+        # Figure out whether the current Python executable is 32
+        # or 64 bit and compile accordingly. This step is ignored for ARM
+        # architectures in order to make Theano compatible with the Raspberry
+        # Pi.
+        if any([not 'arm' in flag for flag in cxxflags]):
+            n_bits = local_bitwidth()
+            cxxflags.append('-m%d' % n_bits)
+            _logger.debug("Compiling for %s bit architecture", n_bits)
+
+        if sys.platform != 'win32':
+            # Under Windows it looks like fPIC is useless. Compiler warning:
+            # '-fPIC ignored for target (all code is position independent)'
+            cxxflags.append('-fPIC')
+
+        if sys.platform == 'win32' and local_bitwidth() == 64:
+            # Under 64-bit Windows installation, sys.platform is 'win32'.
+            # We need to define MS_WIN64 for the preprocessor to be able to
+            # link with libpython.
+            cxxflags.append('-DMS_WIN64')
+
+        if sys.platform == 'darwin':
+            # Use the already-loaded python symbols.
+            cxxflags.extend(['-undefined', 'dynamic_lookup'])
+
         return cxxflags
+
+    @staticmethod
+    def try_compile_tmp(src_code, tmp_prefix='', flags=(), try_run=False):
+        """Try to compile (and run) a test program.
+
+        This is useful in various occasions, to check if libraries
+        or compilers are behaving as expected.
+
+        If try_run is True, the src_code is assumed to be executable,
+        and will be run.
+
+        If try_run is False, returns the compilation status.
+        If try_run is True, returns a (compile_status, run_status) pair.
+        """
+        if not theano.config.cxx:
+            return False
+
+        flags = list(flags)
+        compilation_ok = True
+        run_ok = False
+        try:
+            fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
+            exe_path = path[:-2]
+            try:
+                # Python3 compatibility: try to cast Py3 strings as Py2 strings
+                try:
+                    src_code = b(src_code)
+                except:
+                    pass
+                os.write(fd, src_code)
+                os.close(fd)
+                fd = None
+                proc = call_subprocess_Popen(
+                        ['g++', path, '-o', exe_path] + flags,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
+                proc.wait()
+                if proc.returncode != 0:
+                    compilation_ok = False
+                elif try_run:
+                    # Try to execute the program
+                    try:
+                        proc = call_subprocess_Popen([exe_path],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+                        proc.wait()
+                        run_ok = (proc.returncode == 0)
+                    finally:
+                        os.remove(exe_path)
+            finally:
+                try:
+                    if fd is not None:
+                        os.close(fd)
+                finally:
+                    os.remove(path)
+
+        except OSError, e:
+            compilation_ok = False
+
+        if not try_run:
+            return compilation_ok
+        else:
+            return (compilation_ok, run_ok)
+
+    @staticmethod
+    def try_flags(flag_list):
+        '''
+        Try to compile a dummy file with these flags.
+
+        Returns True if compilation was successful, False if there
+        were errors.
+        '''
+        if not theano.config.cxx:
+            return False
+
+        code = b("""
+        int main(int argc, char** argv)
+        {
+            return 0;
+        }
+        """)
+        return GCC_compiler.try_compile_tmp(code, tmp_prefix='try_flags_',
+                flags=flag_list, try_run=False)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None):
+                    preargs=None, py_module=True):
         """
         :param module_name: string (this has been embedded in the src_code
 
@@ -1455,9 +1886,16 @@ class GCC_compiler(object):
 
         :param preargs: a list of extra compiler arguments
 
+        :param py_module: if False, compile to a shared library, but do not
+            import it as a Python module.
+
         :returns: dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
         """
         #TODO: Do not do the dlimport in this function
+
+        if not theano.config.cxx:
+            raise MissingGXX("g++ not available! We can't compile c code.")
 
         if include_dirs is None:
             include_dirs = []
@@ -1470,53 +1908,21 @@ class GCC_compiler(object):
         else:
             preargs = list(preargs)
 
-        if sys.platform != 'win32':
-            # Under Windows it looks like fPIC is useless. Compiler warning:
-            # '-fPIC ignored for target (all code is position independent)'
-            preargs.append('-fPIC')
-
-        if sys.platform == 'win32' and local_bitwidth() == 64:
-            # Under 64-bit Windows installation, sys.platform is 'win32'.
-            # We need to define MS_WIN64 for the preprocessor to be able to
-            # link with libpython.
-            preargs.append('-DMS_WIN64')
-            # We also add "-m64", in case the installed gcc is 32-bit
-            preargs.append('-m64')
-
-        no_opt = False
-
         include_dirs = include_dirs + std_include_dirs()
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
 
-        #DSE Patch 1 for supporting OSX frameworks; add -framework Python
-        if sys.platform == 'darwin':
-            preargs.extend(['-undefined', 'dynamic_lookup'])
-            python_inc = distutils.sysconfig.get_python_inc()
-            # link with the framework library *if specifically requested*
-            # config.mac_framework_link is by default False, since on some mac
-            # installs linking with -framework causes a Bus Error
-            if (python_inc.count('Python.framework') > 0 and
-                config.cmodule.mac_framework_link):
-                preargs.extend(['-framework', 'Python'])
-
-            # Figure out whether the current Python executable is 32
-            # or 64 bit and compile accordingly.
-            n_bits = local_bitwidth()
-            preargs.extend(['-m%s' % n_bits])
-            _logger.debug("OS X: compiling for %s bit architecture", n_bits)
-
         # sometimes, the linker cannot find -lpython so we need to tell it
         # explicitly where it is located
         # this returns somepath/lib/python2.x
-        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                        standard_lib=1)
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                        standard_lib=1)
         python_lib = os.path.dirname(python_lib)
         if python_lib not in lib_dirs:
             lib_dirs.append(python_lib)
 
         cppfilename = os.path.join(location, 'mod.cpp')
-        cppfile = file(cppfilename, 'w')
+        cppfile = open(cppfilename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cppfilename)
 
@@ -1527,11 +1933,12 @@ class GCC_compiler(object):
         cppfile.close()
 
         lib_filename = os.path.join(location, '%s.%s' %
-                (module_name, get_lib_extension()))
+                                    (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = ['g++', get_gcc_shared_library_arg(), '-g']
-        if no_opt:
+
+        if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
@@ -1551,8 +1958,8 @@ class GCC_compiler(object):
             print >> sys.stderr, ' '.join(cmd)
 
         try:
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
-            compile_stderr = p.communicate()[1]
+            p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
+            compile_stderr = decode(p.communicate()[1])
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
             print_command_line_error()
@@ -1574,10 +1981,15 @@ class GCC_compiler(object):
             # difficult to read.
             raise Exception('Compilation failed (return status=%s): %s' %
                             (status, compile_stderr.replace('\n', '. ')))
+        elif config.cmodule.compilation_warning and compile_stderr:
+            # Print errors just below the command line.
+            print compile_stderr
 
-        #touch the __init__ file
-        file(os.path.join(location, "__init__.py"), 'w').close()
-        return dlimport(lib_filename)
+        if py_module:
+            #touch the __init__ file
+            open(os.path.join(location, "__init__.py"), 'w').close()
+            assert os.path.isfile(lib_filename)
+            return dlimport(lib_filename)
 
 
 def icc_module_compile_str(*args):

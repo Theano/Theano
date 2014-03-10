@@ -2,11 +2,9 @@
 
 __docformat__ = "restructuredtext en"
 
-import copy
-import utils
-from utils import MethodNotDefined, object2
-import graph
-from theano import config
+from theano.gof import utils
+from theano.gof.utils import MethodNotDefined, object2
+from theano.gof import graph
 
 ########
 # Type #
@@ -345,6 +343,15 @@ class PureType(object):
         """
         return self.values_eq(a, b)
 
+#    def get_shape_info(self, obj):
+        """
+        Optional function. See TensorType().get_shape_info for definition
+        """
+
+#    def get_size(self, shape_info):
+        """
+        Optional function. See TensorType().get_size for definition
+        """
 
 _nothing = """
        """

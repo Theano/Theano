@@ -29,7 +29,7 @@ DebugMode can be used as follows:
 
     x = tensor.dvector('x')
 
-    f = theano.function([x], 10*x, mode='DEBUG_MODE')
+    f = theano.function([x], 10*x, mode='DebugMode')
 
     f(5) 
     f(0) 
@@ -42,7 +42,7 @@ It can also be used by passing a DebugMode instance as the mode, as in
 
 If any problem is detected, DebugMode will raise an exception according to
 what went wrong, either at call time (``f(5)``) or compile time (
-``f = theano.function(x, 10*x, mode='DEBUG_MODE')``). These exceptions
+``f = theano.function(x, 10*x, mode='DebugMode')``). These exceptions
 should *not* be ignored; talk to your local Theano guru or email the
 users list if you cannot make the exception go away.
 
@@ -51,7 +51,7 @@ In the example above, there is no way to guarantee that a future call to say,
 ``f(-1)`` won't cause a problem.  DebugMode is not a silver bullet.
 
 If you instantiate DebugMode using the constructor ``compile.DebugMode``
-rather than the keyword ``DEBUG_MODE`` you can configure its behaviour via
+rather than the keyword ``DebugMode`` you can configure its behaviour via
 constructor arguments. 
 
 Reference
@@ -63,7 +63,10 @@ Reference
 
     This mode catches several kinds of internal error:
 
-    - inconsistent c_code and perform implementations (see `BadCLinkerOutput`)
+    - inconsistent outputs when calling the same Op twice with the same
+      inputs, for instance if c_code and perform implementations, are
+      inconsistent, or in case of incorrect handling of output memory
+      (see `BadThunkOutput`)
 
     - a variable replacing another when their runtime values don't match.  This is a symptom of
       an incorrect optimization step, or faulty Op implementation (raises `BadOptimization`)
@@ -130,7 +133,7 @@ Reference
 
 
 
-The keyword version of DebugMode (which you get by using ``mode='DEBUG_MODE``)
+The keyword version of DebugMode (which you get by using ``mode='DebugMode``)
 is quite strict, and can raise several different Exception types.
 There following are DebugMode exceptions you might encounter:
 
@@ -144,11 +147,17 @@ There following are DebugMode exceptions you might encounter:
 
 
 
-.. class:: BadCLinkerOutput(DebugModeError)
+.. class:: BadThunkOutput(DebugModeError)
 
-    This exception means that python (``perform``) and c (``c_code``) for an Op
-    didn't compute the same thing like they were supposed to.
-    The problem might be a bug in either ``perform`` or ``c_code`` (or both).
+    This exception means that different calls to the same Op with the same
+    inputs did not compute the same thing like they were supposed to.
+    For instance, it can happen if the python (``perform``) and c (``c_code``)
+    implementations of the Op are inconsistent (the problem might be a bug in
+    either ``perform`` or ``c_code`` (or both)).  It can also happen if
+    ``perform`` or ``c_code`` does not handle correctly output memory that
+    has been preallocated (for instance, if it did not clear the memory before
+    accumulating into it, or if it assumed the memory layout was C-contiguous
+    even if it is not).
 
 
 
@@ -191,7 +200,7 @@ There following are DebugMode exceptions you might encounter:
     in the same order when run several times in a row.  This can happen if any
     steps are ordered by ``id(object)`` somehow, such as via the default object
     hash function.  A Stochastic optimization invalidates the pattern of work
-    whereby we debug in DEBUG_MODE and then run the full-size jobs in FAST_RUN.
+    whereby we debug in DebugMode and then run the full-size jobs in FAST_RUN.
 
 
 .. class:: InvalidValueError(DebugModeError)

@@ -1,0 +1,191 @@
+.. complex_grad_proposal:
+
+===========================================
+Proposal for gradient wrt complex variables
+===========================================
+
+This is a proposal to handle gradients of a scalar, real variable
+(usually, a cost) with respect to tensor variables, of complex (and
+real) type, in an optimization perspective.
+
+Derivative of complex variables is usually studied only for so-called
+*analytical* complex functions, which have a particular structure in
+their partial derivatives. However, we do not want to limit ourselves
+to analytical functions, and we make other assumptions (that the final
+cost is real-valued, for instance), so **we will adopt a different
+convention** for gradients than what is usually used in the literature.
+
+
+Gradient (re-)definition
+========================
+
+We are interested in the case where we have a final real-valued
+cost, :math:`C`, and a graph of mathematical expressions, including
+real-valued and complex-valued variables (scalars, vectors, matrices,
+higher-order tensors), and we want to compute the gradient of :math:`C`,
+wrt some variables in that graph, using gradient back-propagation.
+In the case where some variables are complex, the usual chain rule
+cannot be applied, except in some cases.
+
+For each real-valued variable :math:`r` (not necessarily scalar,
+it could be a matrix, for instance), in particular :math:`\Re
+v` and :math:`\Im v`, *partial derivatives* can be defined:
+:math:`\frac{\partial C}{\partial r}` has the same number of dimensions
+and shape as :math:`r`. We will limit that notation to real-valued
+variables only, this way, the partial derivative itself will be
+real-valued too. We will **not** use that notation for the complex
+derivative of analytical complex functions.
+
+For any real-valued intermediate variable :math:`t`, the usual chain
+rule applies:
+
+.. math::
+
+    \frac{\partial C}{\partial r} = \frac{\partial C}{\partial t} \frac{\partial t}{\partial r}
+
+If :math:`z` is a complex variable, with :math:`\Re z = x` and
+:math:`\Im z = y`, we can consider :math:`x` and :math:`y` as free
+variables, and then:
+
+.. math::
+
+    \frac{\partial C}{\partial r} = \frac{\partial C}{\partial x} \frac{\partial x}{\partial r} + \frac{\partial C}{\partial y} \frac{\partial y}{\partial r}
+
+If we want to use an algorithm similar to gradient backpropagation,
+we can see that, here, we need to have both :math:`\frac{\partial
+C}{\partial \Re t}` and :math:`\frac{\partial C}{\partial \Im t}`, in order
+to compute :math:`\frac{\partial C}{\partial r}`.
+
+For each variable :math:`v` in the expression graph, let us denote
+:math:`\nabla_C(v)` the *gradient* of :math:`C` with respect to
+:math:`v`. It is a tensor with the same dimensions as :math:`v`, and can
+be complex-valued. We define:
+
+.. math::
+
+    \nabla_C(v) = \frac{\partial C}{\partial \Re v} + i \frac{\partial C}{\partial \Im v}
+
+This is the tensor that we are going to back-propagate through the
+computation graph.
+
+
+Generalized chain rule
+======================
+
+Using the definition above, if we have two complex variables :math:`z = x + iy` and :math:`t = r + is` (with :math:`x, y, r, s` all real-valued):
+
+.. math::
+
+    \nabla_C(z) &= \frac{\partial C}{\partial \Re z} + i \frac{\partial C}{\partial \Im z} \\
+                &= \frac{\partial C}{\partial x} + i \frac{\partial C}{\partial y}
+
+    \nabla_C(t) &= \frac{\partial C}{\partial \Re t} + i \frac{\partial C}{\partial \Im t} \\
+                &= \frac{\partial C}{\partial r} + i \frac{\partial C}{\partial s} \\
+                &=   \left(\frac{\partial C}{\partial x} \frac{\partial x}{\partial r} +
+                             \frac{\partial C}{\partial y} \frac{\partial y}{\partial r}\right) +
+                   i \left(\frac{\partial C}{\partial x} \frac{\partial x}{\partial s} +
+                             \frac{\partial C}{\partial y} \frac{\partial y}{\partial s}\right) \\
+                &= \frac{\partial C}{\partial x} \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right) +
+                   \frac{\partial C}{\partial y} \left(\frac{\partial y}{\partial r} + i \frac{\partial y}{\partial s}\right) \\
+                &= \Re \left(\nabla_C(z)\right) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right) +
+                   \Im \left(\nabla_C(z)\right) \left(\frac{\partial y}{\partial r} + i \frac{\partial y}{\partial s}\right)
+
+
+This formula can be used whether or not :math:`C` is an analytical
+function of :math:`z` or :math:`t`, and whether or not :math:`z` is an
+analytical function of :math:`t`.
+
+
+Special cases
+=============
+
+Real-valued input variable
+--------------------------
+
+If variable :math:`x` is defined as real-valued, it can sometimes
+be useful to have the value of :math:`\nabla_C(z)` instead of only
+:math:`\frac{\partial C}{\partial x}`, because the imaginary part
+contains information on how the cost would change if :math:`y` was not
+constrained to be 0.
+
+
+Real-valued intermediate variable
+---------------------------------
+
+When :math:`x` is an intermediate variable, however, the gradient of
+:math:`C` wrt :math:`t` must not be backpropagated through :math:`y`.
+Therefore, we have:
+
+.. math::
+
+    \nabla_C(t) &= \frac{\partial C}{\partial r} + i \frac{\partial C}{\partial s} \\
+                &=   \frac{\partial C}{\partial x} \frac{\partial x}{\partial r} +
+                   i \frac{\partial C}{\partial x} \frac{\partial x}{\partial s} \\
+                &= \Re \left(\nabla_C(z)\right) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right)
+
+The imaginary part of :math:`\nabla_C(z)` is ignored, because
+:math:`\Im z` is constrained to be 0.
+
+
+Analytic functions
+------------------
+
+If :math:`z` is the output of an analytic function of :math:`t`, some
+simplifications are possible. Analytic functions include, for instance,
+polynomial functions, the exponential function. Most complex functions,
+however, are not: absolute value, real part, imaginary part, complex
+conjugate, etc.
+
+Analytic (or holomorphic) functions satisfy the Cauchy-Riemann equations:
+
+.. math::
+
+    \frac{\partial \Re z}{\partial \Re t} = \frac{\partial \Im z}{\partial \Im t} \text{ and } \frac{\partial \Re z}{\partial \Im t} = - \frac{\partial \Im z}{\partial \Re t}
+
+Or, in our case:
+
+.. math::
+
+    \frac{\partial x}{\partial r} = \frac{\partial y}{\partial t} \text{ and } \frac{\partial x}{\partial s} = - \frac{\partial y}{\partial r}
+
+This leads to:
+
+.. math::
+
+    \nabla_C(t) &= \Re \left(\nabla_C(z)\right) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right) +
+                   \Im \left(\nabla_C(z)\right) \left(\frac{\partial y}{\partial r} + i \frac{\partial y}{\partial s}\right) \\
+                &= \Re \left(\nabla_C(z)\right) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right) +
+                   \Im \left(\nabla_C(z)\right) \left(- \frac{\partial x}{\partial s} + i \frac{\partial x}{\partial r}\right) \\
+                &= \Re \left(\nabla_C(z)\right) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right) +
+                   i \Im \left(\nabla_C(z)\right) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right) \\
+    \nabla_C(t) &= \nabla_C(z) \left(\frac{\partial x}{\partial r} + i \frac{\partial x}{\partial s}\right)
+                = - i \nabla_C(z) \left(\frac{\partial y}{\partial r} + i \frac{\partial y}{\partial s}\right)
+
+
+Finite differences
+==================
+
+In order to verify that the mathematical formula for a gradient, or its
+implementation, is correct, we usually use a finite-differenciation
+approach.  If :math:`C` is our real scalar cost, and :math:`x` a
+real-valued scalar variable, then:
+
+.. math::
+
+    \frac{\partial C}{\partial x} \approx \frac{C(x + \varepsilon) - C(x)}{\varepsilon}
+
+where :math:`\varepsilon` is also a real scalar, of small magnitude
+(typically :math:`10^{-6}` to :math:`10^{-4}`). If :math:`x` is a
+tensor, then this approximation has to be made for each element
+:math:`x_i` independently (a different :math:`\varepsilon_i` could be used
+each time, but usually they are all equal to :math:`\varepsilon`).
+
+For a complex scalar variable :math:`z = x + iy`:
+
+.. math::
+
+    \nabla_C(z) &= \frac{\partial C}{\partial x} + i \frac{\partial C}{\partial y}\\
+    \nabla_C(z) &\approx \frac{C(z + \delta) - C(z)}{\delta} + i \frac{C(z + i \varepsilon) - C(z)}{\varepsilon}
+
+Both partial derivative have to be estimated independently, using
+generally :math:`\delta = \varepsilon`.

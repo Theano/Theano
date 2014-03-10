@@ -154,7 +154,7 @@ class SharedVariable(Variable):
                         " instead.")
 
     # We keep this just to raise an error
-    value = property(_value_get, _value_set),
+    value = property(_value_get, _value_set)
 
 
 def shared_constructor(ctor, remove=False):
@@ -179,19 +179,34 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
            `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
 
     """
-    for ctor in reversed(shared.constructors):
-        try:
-            return ctor(value, name=name, strict=strict,
-                    allow_downcast=allow_downcast, **kwargs)
-        except TypeError:
-            continue
-    # This may happen when kwargs were supplied
-    # if kwargs were given, the generic_constructor won't be callable.
-    #
-    # This was done on purpose, the rationale being that if kwargs
-    # were supplied, the user didn't want them to be ignored.
-    raise TypeError('No suitable SharedVariable constructor could be found',
+
+    try:
+        if isinstance(value, Variable):
+            raise TypeError(" Shared variable constructor needs numeric values and not symbolic variables.")
+
+        for ctor in reversed(shared.constructors):
+            try:
+                return ctor(value, name=name, strict=strict,
+                            allow_downcast=allow_downcast, **kwargs)
+            except TypeError:
+                continue
+            # This may happen when kwargs were supplied
+            # if kwargs were given, the generic_constructor won't be callable.
+            #
+            # This was done on purpose, the rationale being that if kwargs
+            # were supplied, the user didn't want them to be ignored.
+
+    except MemoryError, e:
+        e.args = e.args + ('you might consider'
+                           ' using \'theano.shared(..., borrow=True)\'',)
+        raise
+
+    raise TypeError('No suitable SharedVariable constructor could be found.'
+                    ' Are you sure all kwargs are supported?'
+                    ' We do not support the parameter dtype or type.'
+                    ' value="%s". parameters="%s"' %
                     (value, kwargs))
+
 shared.constructors = []
 
 

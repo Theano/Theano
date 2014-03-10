@@ -17,12 +17,6 @@ Easy Installation of an optimized Theano on CentOS 6
 
 .. note::
 
-    These instructions will result in Theano using only 1 thread for all BLAS
-    function calls. See the note above; other BLAS implementations can employ
-    multithreading to speed up computation.
-
-.. note::
-
    If you are behind a proxy, you must do some extra configuration steps
    before starting the installation. You must set the environment
    variable ``http_proxy`` to the proxy address. Using bash this is
@@ -100,3 +94,8 @@ If you want to also update NumPy/SciPy, you can run this:
 
     sudo pip install --upgrade theano
 
+Bleeding edge
+~~~~~~~~~~~~~
+
+Do like in the section "Updating Theano", but use
+``git+git://github.com/Theano/Theano.git`` instead of ``theano``.

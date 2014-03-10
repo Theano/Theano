@@ -1,3 +1,6 @@
+
+.. _libdoc_compile_mode:
+
 ======================================
 :mod:`mode` -- controlling compilation
 ======================================
@@ -17,9 +20,10 @@ Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
-- ``'DEBUG_MODE'``: Verify the correctness of all optimizations, and compare C and python 
-    implementations. This mode can take much longer than the other modes, 
-    but can identify many kinds of problems.
+- ``'DebugMode'``: A mode for debuging. See :ref:`DebugMode <debugmode>` for details.
+- ``'ProfileMode'``: Deprecated, use the Theano flag :attr:`config.profile`.
+- ``'DEBUG_MODE'``: Deprecated. Use the string DebugMode.
+- ``'PROFILE_MODE'``: Deprecated. Use the string ProfileMode.
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via the
 configuration variable :attr:`config.mode`, which can be
@@ -37,10 +41,6 @@ Reference
 .. attribute:: FAST_COMPILE
 
 .. attribute:: FAST_RUN
-
-.. attribute:: DEBUG_MODE
-
-.. attribute:: PROFILE_MODE
 
 .. class:: Mode(object)
 

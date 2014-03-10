@@ -1,79 +1,64 @@
 """
 This file implement specialization optimization that break the canonization form of the graph.
 
-Currently their is problem with the order of optimization and the definition of definition of canonized graph.
+Currently there is problem with the order of optimization and the definition of definition of
+canonized graph.
 
-Right now their is a canonization optimization phase that try to make all equivalent graph identical. This is not always the case, but it do many of the basic stuff canonical. We need to extend the definition of canonization to make this true more often.
+Right now there is a canonization optimization phase that try to make all equivalent graph
+identical. This is not always the case, but it do many of the basic stuff canonical. We
+need to extend the definition of canonization to make this true more often.
 
-The problem this file indent to fix in the future is that in the "Equilibrium" specialization optimization phase, there is optimization that request that the graph is canonical, some other request that this is not true, and some other that break the canonicalization for some optimization. As we can't control the order of those optimization, their is case that some optimization requesting a canonical graph won't be applied as optimization that break the canonicalization form of the graph executed before.
+The problem this file indent to fix in the future is that in the "Equilibrium" specialization
+optimization phase, there is optimization that request that the graph is canonical, some other
+request that this is not true, and some other that break the canonicalization for
+some optimization. As we can't control the order of those optimization, there is case that some
+optimization requesting a canonical graph won't be applied as optimization that break the
+canonicalization form of the graph executed before.
 
 To fix this, we need to split the specialization phase into a phase where optimization can't break the canonicalization form and one where this is allowed. This is also needed for the stabilized optimization phase, but as it happen before the specialization phase, this cause less problem.
 
-Also, we should make the env refuse optimization that break the canonization of the graph in the optimizations phases where the graph is supposed to be canonical.
+Also, we should make the fgraph refuse optimization that break the canonization of the graph in the optimizations phases where the graph is supposed to be canonical.
 """
 
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
-
-
-
 import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
-import operator
-import itertools
-import sys
-
-import theano
 from theano import gof
-from elemwise import CAReduce
-import basic as T
+from theano.compat.python2x import deque
+from theano.tensor.elemwise import CAReduce
+from theano.tensor import basic as T
 
-from theano.gof.python25 import any, all
-from theano.gof.opt import Optimizer
-from theano.gof import InconsistencyError, toolbox
-
-from basic import get_constant_value
+from theano.tensor.basic import (get_scalar_constant_value,
+                                 NotScalarConstantError)
 from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
 
-class MaxAndArgmaxOptimizer(Optimizer):
-    """Replace MaxAndArgmax by CAReduce when the argmax is not used
-
-       This is faster as MaxAndArgmax don't have c code and execute it
-       in two pass.
-    """
-
-    def add_requirements(self, env):
-        env.extend(toolbox.ReplaceValidate())
-
-    def apply(self, env):
-        did_something = True
-        while did_something:
-            nodelist = env.toposort()
-            did_something = False
-            for node in nodelist:
-                if node.op == T._max_and_argmax:
-                    if len(node.outputs[1].clients)==0:
-                        try:
-                            axis=get_constant_value(node.inputs[1])
-                        except (ValueError, TypeError), e:
-                            return False
-
-                        new = CAReduce(scal.maximum,axis)(node.inputs[0])
-                        try:
-                            env.replace_all_validate(
-                                ((node.outputs[0],new),),
-                                reason = self.__class__.__name__)
-                            did_something = True
-                            break
-                        except InconsistencyError, e:
-                            pass
-
-register_uncanonicalize(MaxAndArgmaxOptimizer(),name='MaxAndArgmaxOptimizer')
 
 @register_uncanonicalize
-@gof.local_optimizer([T._shape])
+@gof.local_optimizer([T._max_and_argmax])
+def local_max_and_argmax(node):
+    """
+    If we don't use the argmax, change it to a max only.
+    """
+    if node.op == T._max_and_argmax:
+        if len(node.outputs[1].clients) == 0:
+            #MaxAndArgmax support variable axis,
+            #but CAReduce support only constant axis.
+            if node.inputs[1].data is None:
+                axis = None
+            else:
+                try:
+                    axis = get_scalar_constant_value(node.inputs[1])
+                except NotScalarConstantError:
+                    return False
+
+            new = CAReduce(scal.maximum, axis)(node.inputs[0])
+            return [new, None]
+
+@register_uncanonicalize
+@gof.local_optimizer([T.neg])
 def local_max_to_min(node):
     """
     change -(max(-x)) to min
@@ -85,9 +70,12 @@ def local_max_to_min(node):
     """
     if node.op == T.neg and node.inputs[0].owner:
         max = node.inputs[0]
-        if max.owner and isinstance(max.owner.op, CAReduce) and max.owner.op.scalar_op==scal.maximum:
+        if (max.owner and
+            isinstance(max.owner.op, CAReduce)
+            and max.owner.op.scalar_op == scal.maximum):
             neg = max.owner.inputs[0]
             if neg.owner and neg.owner.op == T.neg:
-                return [CAReduce(scal.minimum,max.owner.op.axis)(neg.owner.inputs[0])]
+                return [CAReduce(scal.minimum,
+                                 max.owner.op.axis)(neg.owner.inputs[0])]
 
     return False

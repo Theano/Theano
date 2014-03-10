@@ -1,3 +1,5 @@
+import numpy
+
 import theano
 from theano import Op, Apply
 import theano.tensor as T
@@ -10,22 +12,28 @@ if cuda_available:
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt
 
+
 class MultinomialFromUniform(Op):
     '''Converts samples from a uniform into sample from a multinomial.'''
     def __init__(self, odtype):
-        self.odtype=odtype
+        self.odtype = odtype
+
     def __eq__(self, other):
-        return type(self) == type(other) and self.odtype==other.odtype
+        return type(self) == type(other) and self.odtype == other.odtype
+
     def __hash__(self):
         return hash((type(self), self.odtype))
+
     def __str__(self):
-        return '%s{%s}'%(self.__class__.__name__, self.odtype)
+        return '%s{%s}' % (self.__class__.__name__, self.odtype)
+
     def __setstate__(self, dct):
         self.__dict__.update(dct)
         try:
             self.odtype
         except AttributeError:
-            self.odtype='auto'
+            self.odtype = 'auto'
+
     def make_node(self, pvals, unis):
         pvals = T.as_tensor_variable(pvals)
         unis = T.as_tensor_variable(unis)
@@ -33,16 +41,17 @@ class MultinomialFromUniform(Op):
             raise NotImplementedError('pvals ndim should be 2', pvals.ndim)
         if unis.ndim != 1:
             raise NotImplementedError('unis ndim should be 1', unis.ndim)
-        if self.odtype=='auto':
+        if self.odtype == 'auto':
             odtype = pvals.dtype
         else:
             odtype = self.odtype
-        return Apply(self, [pvals, unis], [T.matrix(dtype=odtype)])
+        out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
+        return Apply(self, [pvals, unis], [out])
 
     def grad(self, ins, outgrads):
         pvals, unis = ins
         (gz,) = outgrads
-        return [None, None]
+        return [T.zeros_like(x) for x in ins]
 
     def c_code_cache_version(self):
         return (5,)
@@ -53,31 +62,31 @@ class MultinomialFromUniform(Op):
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
         }
 
-        if (%(unis)s->dimensions[0] != %(pvals)s->dimensions[0])
+        if (PyArray_DIMS(%(unis)s)[0] != PyArray_DIMS(%(pvals)s)[0])
         {
             PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[0]");
             %(fail)s;
         }
 
         if ((NULL == %(z)s)
-            || ((%(z)s->dimensions)[0] != (%(pvals)s->dimensions)[0])
-            || ((%(z)s->dimensions)[1] != (%(pvals)s->dimensions)[1])
+            || ((PyArray_DIMS(%(z)s))[0] != (PyArray_DIMS(%(pvals)s))[0])
+            || ((PyArray_DIMS(%(z)s))[1] != (PyArray_DIMS(%(pvals)s))[1])
         )
         {
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject*) PyArray_ZEROS(2,
-                %(pvals)s->dimensions,
+                PyArray_DIMS(%(pvals)s),
                 type_num_%(z)s,
                 0);
             if (!%(z)s)
@@ -89,8 +98,8 @@ class MultinomialFromUniform(Op):
 
         { // NESTED SCOPE
 
-        const int nb_multi = %(pvals)s->dimensions[0];
-        const int nb_outcomes = %(pvals)s->dimensions[1];
+        const int nb_multi = PyArray_DIMS(%(pvals)s)[0];
+        const int nb_outcomes = PyArray_DIMS(%(pvals)s)[1];
 
         //
         // For each multinomial, loop over each possible outcome
@@ -120,6 +129,34 @@ class MultinomialFromUniform(Op):
         } // END NESTED SCOPE
         """ % locals()
 
+    def perform(self, node, ins, outs):
+        (pvals, unis) = ins
+        (z,) = outs
+
+        if unis.shape[0] != pvals.shape[0]:
+            raise ValueError("unis.shape[0] != pvals.shape[0]",
+                             unis.shape[0], pvals.shape[0])
+        if z[0] is None or z[0].shape != pvals.shape:
+            z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
+
+        nb_multi = pvals.shape[0]
+        nb_outcomes = pvals.shape[1]
+
+        # For each multinomial, loop over each possible outcome
+        for n in range(nb_multi):
+            waiting = True
+            cummul = 0
+            unis_n = unis[n]
+
+            for m in range(nb_outcomes):
+                z_nm = z[0][n, m]
+                cummul += pvals[n, m]
+                if (waiting and (cummul > unis_n)):
+                    z[0][n, m] = 1
+                    waiting = False
+                else:
+                    z[0][n, m] = 0
+
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     """
@@ -136,15 +173,23 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
             raise TypeError('pvals must be cudandarray', pvals)
         if not isinstance(unis.type, CudaNdarrayType):
             raise TypeError('unis must be cudandarray', unis)
-        if self.odtype=='auto':
+        if self.odtype == 'auto':
             odtype = pvals.dtype
         else:
             odtype = self.odtype
         if odtype != pvals.dtype:
             raise NotImplementedError(
-                    'GpuMultinomialFromUniform works only if '
-                    'self.odtype == pvals.dtype', odtype, pvals.dtype)
-        return Apply(self, [pvals, unis], [pvals.type()])
+                'GpuMultinomialFromUniform works only if '
+                'self.odtype == pvals.dtype', odtype, pvals.dtype)
+        br = (pvals.broadcastable[1], pvals.broadcastable[0])
+        out = CudaNdarrayType(broadcastable=br)()
+        return Apply(self, [pvals, unis], [out])
+
+    def perform(self, node, ins, outs):
+        #The perform from parent don't work with CudaNdarray.  We
+        #don't need it as DebugMode will test again it as an
+        #optimization insert the GPU op.
+        return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):
         return (8,)
@@ -191,19 +236,18 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
         """ % locals()
 
-
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
         (z,) = outs
 
         fail = sub['fail']
         return """
-        if (%(pvals)s->nd != 2)
+        if (PyArray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (%(unis)s->nd != 1)
+        if (PyArray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
@@ -292,25 +336,30 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         } // END NESTED SCOPE
         """ % locals()
 
-@local_optimizer()
+
+@local_optimizer([MultinomialFromUniform])
 def local_gpu_multinomial(node):
     if type(node.op) is MultinomialFromUniform:
         p, u = node.inputs
         m, = node.outputs
         if (p.dtype == u.dtype == m.dtype == 'float32' and
-            any([i.owner and isinstance(i.owner.op, theano.sandbox.cuda.HostFromGpu)
+            any([i.owner and isinstance(i.owner.op,
+                                        theano.sandbox.cuda.HostFromGpu)
                  for i in node.inputs])):
             gpu_op = GpuMultinomialFromUniform(node.op.odtype)
-            return [host_from_gpu(gpu_op(*[gpu_from_host(i) for i in node.inputs])).T]
+            return [host_from_gpu(gpu_op(*[gpu_from_host(i)
+                                           for i in node.inputs])).T]
     if (isinstance(node.op, theano.sandbox.cuda.GpuFromHost) and
-        node.inputs[0].owner and type(node.inputs[0].owner.op) is MultinomialFromUniform):
+        node.inputs[0].owner and type(node.inputs[0].owner.op)
+        is MultinomialFromUniform):
         multi = node.inputs[0].owner
         p, u = multi.inputs
         m, = multi.outputs
         if (p.dtype == u.dtype == m.dtype == 'float32'):
             gpu_op = GpuMultinomialFromUniform(multi.op.odtype)
             ret = gpu_op(*[gpu_from_host(i) for i in multi.inputs]).T
-            # The dimshuffle is on the cpu, but will be moved to the gpu by an opt.
+            # The dimshuffle is on the cpu, but will be moved to the
+            # gpu by an opt.
             return [gpu_from_host(ret)]
 
 if cuda_available:

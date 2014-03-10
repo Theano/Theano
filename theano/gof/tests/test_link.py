@@ -4,11 +4,10 @@ from theano.gof import graph
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.type import Type
 from theano.gof.op import Op
-from theano.gof import env
-from theano.gof import toolbox
+from theano.gof import fg
 
 from theano.gof.link import *
-
+from theano.compat import cmp
 
 def as_variable(x):
     assert isinstance(x, Variable)
@@ -69,13 +68,13 @@ def inputs():
     return x, y, z
 
 
-def perform_linker(env):
-    lnk = PerformLinker().accept(env)
+def perform_linker(fgraph):
+    lnk = PerformLinker().accept(fgraph)
     return lnk
 
 
-def Env(inputs, outputs):
-    e = env.Env(inputs, outputs)
+def FunctionGraph(inputs, outputs):
+    e = fg.FunctionGraph(inputs, outputs)
     return e
 
 
@@ -83,7 +82,7 @@ class TestPerformLinker(unittest.TestCase):
     def test_thunk(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        fn, i, o = perform_linker(Env([x, y, z], [e])).make_thunk()
+        fn, i, o = perform_linker(FunctionGraph([x, y, z], [e])).make_thunk()
         i[0].data = 1
         i[1].data = 2
         fn()
@@ -92,26 +91,26 @@ class TestPerformLinker(unittest.TestCase):
     def test_function(self):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
-        fn = perform_linker(Env([x, y, z], [e])).make_function()
+        fn = perform_linker(FunctionGraph([x, y, z], [e])).make_function()
         assert fn(1.0, 2.0, 3.0) == 1.5
 
     def test_constant(self):
         x, y, z = inputs()
         y = Constant(tdouble, 2.0)
         e = mul(add(x, y), div(x, y))
-        fn = perform_linker(Env([x], [e])).make_function()
+        fn = perform_linker(FunctionGraph([x], [e])).make_function()
         assert fn(1.0) == 1.5
 
     def test_input_output_same(self):
         x, y, z = inputs()
-        fn = perform_linker(Env([x], [x])).make_function()
+        fn = perform_linker(FunctionGraph([x], [x])).make_function()
         assert 1.0 is fn(1.0)
 
     def test_input_dependency0(self):
         x, y, z = inputs()
         a, d = add(x, y), div(x, y)
         e = mul(a, d)
-        fn = perform_linker(Env(*graph.clone([x, y, a], [e]))).make_function()
+        fn = perform_linker(FunctionGraph(*graph.clone([x, y, a], [e]))).make_function()
         assert fn(1.0, 2.0, 9.0) == 4.5
 
     def test_skiphole(self):
@@ -119,12 +118,12 @@ class TestPerformLinker(unittest.TestCase):
         a = add(x, y)
         r = raise_err(a)
         e = add(r, a)
-        fn = perform_linker(Env(*graph.clone([x, y, r], [e]))).make_function()
+        fn = perform_linker(FunctionGraph(*graph.clone([x, y, r], [e]))).make_function()
         assert fn(1.0, 2.0, 4.5) == 7.5
 
 
-def wrap_linker(env, linkers, wrapper):
-    lnk = WrapLinker(linkers, wrapper).accept(env)
+def wrap_linker(fgraph, linkers, wrapper):
+    lnk = WrapLinker(linkers, wrapper).accept(fgraph)
     return lnk
 
 
@@ -138,7 +137,7 @@ class TestWrapLinker(unittest.TestCase):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
         fn, i, o = wrap_linker(
-                Env([x, y, z], [e]),
+                FunctionGraph([x, y, z], [e]),
                 [PerformLinker(allow_gc=False)], wrap).make_thunk()
         i[0].data = 1
         i[1].data = 2
@@ -156,10 +155,26 @@ class TestWrapLinker(unittest.TestCase):
         x, y, z = inputs()
         e = mul(add(x, y), div(x, y))
         fn, i, o = wrap_linker(
-                Env([x, y, z], [e]),
+                FunctionGraph([x, y, z], [e]),
                 [PerformLinker(allow_gc=False)], wrap).make_thunk()
         i[0].data = 1
         i[1].data = 2
         fn()
         assert nodes == [div, add, mul]
         assert o[0].data == 1.5
+
+def test_sort_schedule_fn():
+    import theano
+    from theano.gof.sched import sort_schedule_fn, make_depends
+    x = theano.tensor.matrix('x')
+    y = theano.tensor.dot(x[:5]*2, x.T+1).T
+    str_cmp = lambda a, b: cmp(str(a), str(b)) # lexicographical sort
+    linker = theano.OpWiseCLinker(schedule=sort_schedule_fn(str_cmp))
+    mode = theano.Mode(linker=linker)
+    f = theano.function((x,), (y,), mode=mode)
+
+    nodes = f.maker.linker.make_all()[-1]
+    depends = make_depends()
+    for a, b in zip(nodes[:-1], nodes[1:]):
+        if not depends((b,a)):
+            assert str(a) < str(b)

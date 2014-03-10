@@ -24,7 +24,7 @@ class DebugLinker(gof.WrapLinker):
                                 linkers = linkers,
                                 wrapper = self.wrapper)
 
-        self.env = None
+        self.fgraph = None
 
         self.compare_fn = compare_fn
 
@@ -46,11 +46,11 @@ class DebugLinker(gof.WrapLinker):
         if compare_variables is not None:
             self.debug_post.append(self.compare_variables)
 
-    def accept(self, env, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
             no_recycling = []
         return gof.WrapLinker.accept(self,
-                                     env=env,
+                                     fgraph=fgraph,
                                      no_recycling=no_recycling)
 
     def store_value(self, i, node, *thunks):
@@ -103,19 +103,19 @@ class DebugLinker(gof.WrapLinker):
                     raise exc
 
     def pre(self, f, inputs, order, thunk_groups):
-        env = f.env
-        for r in env.variables:
+        fgraph = f.fgraph
+        for r in fgraph.variables:
             if r.owner is None:
                 r.step = "value" # this will be overwritten if r is an input
             else:
                 r.step = None
             r.value = None
             r.original_value = None
-            if r.owner is None and r not in env.inputs:
+            if r.owner is None and r not in fgraph.inputs:
                 r.value = r.data
                 if self.copy_originals:
                     r.original_value = copy(r.data)
-        for idx, (i, r) in enumerate(zip(inputs, env.inputs)):
+        for idx, (i, r) in enumerate(zip(inputs, fgraph.inputs)):
             r.step = "input %i" % idx
             r.value = i
             if self.copy_originals:
@@ -155,7 +155,13 @@ def print_from(i, node, *thunks):
     print "parents:", ", ".join(str(input.step) for input in node.inputs)
 
 def print_input_shapes(i, node, *thunks):
-    print "input shapes:", ", ".join(str(input.value.shape) if hasattr(input.value, 'shape') else 'N/A' for input in node.inputs)
+    shapes = []
+    for input in node.inputs:
+        if hasattr(input.value, 'shape'):
+            shapes.append(str(input.value.shape))
+        else:
+            shapes.append('N/A')
+    print "input shapes:", ", ".join(shapes)
 
 def print_input_types(i, node, *thunks):
     print "input types:", ", ".join(str(type(input.value)) for input in node.inputs)

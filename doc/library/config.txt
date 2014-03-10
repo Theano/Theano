@@ -13,7 +13,7 @@
 Guide
 =====
 
-The config module contains many attributes that modify Theano's behavior.  Many of these
+The config module contains many ``attributes`` that modify Theano's behavior.  Many of these
 attributes are consulted during the import of the ``theano`` module and many are assumed to be
 read-only.
 
@@ -60,7 +60,9 @@ Environment Variables
 .. envvar:: THEANORC
 
     The location[s] of the .theanorc file[s] in ConfigParser format.
-    It defaults to ``$HOME/.theanorc``.
+    It defaults to ``$HOME/.theanorc``. On Windows, it defaults to
+    ``$HOME/.theanorc:$HOME/.theanorc.txt`` to make Windows users' life
+    easier.
 
     Here is the .theanorc equivalent to the THEANO_FLAGS in the example above:
 
@@ -115,14 +117,22 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
+    Do not use upper case letters, only lower case even if NVIDIA use
+    capital letters.
+
 .. attribute:: force_device
 
     Bool value: either ``True`` or ``False``
 
     Default: ``False``
 
-    If ``True``, we raise an error if we cannot use the specified :attr:`device`.
-    If ``False``, we fall back to the CPU.
+    If ``True`` and ``device=gpu*``, we raise an error if we cannot
+    use the specified :attr:`device`. If ``True`` and ``device=cpu``,
+    we disable the GPU.  If ``False`` and ``device=gpu*``, and if the
+    specified device cannot be used, we warn and fall back to the CPU.
+
+    This is useful to run Theano's tests on a computer with a GPU, but
+    without running the GPU tests.
 
     This flag's value cannot be modified during the program execution.
 
@@ -142,6 +152,28 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
+.. attribute:: config.pycuda.init
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``False``
+
+    If True, always initialize PyCUDA when Theano want to initialize
+    the GPU.  With PyCUDA version 2011.2.2 or earlier, PyCUDA must
+    initialize the GPU before Theano does it.  Setting
+    this flag to True, ensure that, but always import PyCUDA.  It can
+    be done manually by importing theano.misc.pycuda_init before
+    Theano initialize the GPU device.  Newer version of PyCUDA
+    (currently only in the trunk) don't have this restriction.
+
+.. attribute:: config.print_active_device
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``True``
+
+    Print active device at when the GPU device is initialized.
+
 .. attribute:: floatX
 
     String value: either 'float64' or 'float32'
@@ -151,6 +183,40 @@ import theano and print the config variable, as in:
     This sets the default dtype returned by tensor.matrix(), tensor.vector(),
     and similar functions.  It also sets the default theano bit width for
     arguments passed as Python floating-point numbers.
+
+.. attribute:: allow_gc
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``True``
+
+    This sets the default for the use of the Theano garbage collector
+    for intermediate results. To use less memory, Theano frees the
+    intermediate results as soon as they are no longer needed.
+    Disabling Theano garbage collection allows Theano to reuse buffers
+    for intermediate results between function calls. This speeds up
+    Theano by no longer spending time reallocating space. This gives
+    significant speed up on functions with many ops that are fast to
+    execute, but this increases Theano's memory usage.
+
+.. attribute:: openmp
+
+    Bool value: either True or False
+
+    Default: True if the environment variable OMP_NUM_THREADS!=1 or
+             if we detect more than 1 CPU core. Otherwise False.
+
+    Enable or not parallel computation on the CPU with OpenMP.
+    It is the default value used when creating an Op that support it.
+    The best is to define it via Theano configuration
+    file or with the environment variable THEANO_FLAGS.
+
+.. attribute:: openmp_elemwise_minsize
+
+   Positive int value, default: 200000.
+
+   This specifies the vectors minimum size for which elemwise ops
+   use openmp, if openmp is enable.
 
 .. attribute:: cast_policy
 
@@ -199,12 +265,60 @@ import theano and print the config variable, as in:
 
 .. attribute:: mode
 
-    String value: 'Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN', 'FAST_COMPILE'
+    String value: 'Mode', 'ProfileMode'(deprecated), 'DebugMode', 'FAST_RUN',
+    'FAST_COMPILE'
 
     Default 'Mode'
 
     This sets the default compilation mode for theano functions. By default the
     mode Mode is equivalent to FAST_RUN. See Config attribute linker and optimizer.
+
+.. attribute:: profile
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linkers profile the execution time of Theano functions?
+
+    See :ref:`tut_profiling` for examples.
+
+.. attribute:: profile_memory
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linkers profile the memory usage of Theano functions?
+    It only works when profile=True.
+
+.. attribute:: profile_optimizer
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
+    It only works when profile=True.
+
+.. attribute:: profiling.n_apply
+
+    Positive int value, default: 20.
+
+    The number of Apply nodes to print in the profiler output
+
+.. attribute:: profiling.n_ops
+
+    Positive int value, default: 20.
+
+    The number of Ops to print in the profiler output
+
+.. attribute:: profiling.min_memory_size
+
+    Positive int value, default: 1024.
+
+    For the memory profile, do not print Apply nodes if the size
+    of their outputs (in bytes) is lower than this.
 
 .. attribute:: config.lib.amdlibm
 
@@ -235,13 +349,13 @@ import theano and print the config variable, as in:
 
 .. attribute:: on_opt_error
 
-    String value: 'warn' or 'raise'
+    String value: 'warn', 'raise' or 'pdb'
 
     Default: 'warn'
 
     When a crash occurs while trying to apply some optimization, either warn
-    the user and skip this optimization ('warn'), or raise the exception
-    ('raise').
+    the user and skip this optimization ('warn'), raise the exception
+    ('raise'), or fall into the pdb debugger ('pdb').
 
 .. attribute:: on_shape_error
 
@@ -255,7 +369,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.warn.ignore_bug_before
 
-    String value: 'None', 'all', '0.3', '0.4', '0.4.1', '0.5'
+    String value: 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6'
 
     Default: 'None'
 
@@ -294,7 +408,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: compiledir_format
 
-    Default: "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+    Default: "compiledir_%(platform)s-%(processor)s-%(python_version)s-%(python_bitwidth)s"
 
     This is a Python format string that specifies the subdirectory
     of ``config.base_compiledir`` in which to store platform-dependent
@@ -332,6 +446,22 @@ import theano and print the config variable, as in:
     Extra parameters to pass to gcc when compiling.  Extra include paths,
     library paths, configuration options, etc.
 
+.. attribute:: config.cxx
+
+
+    Default: 'g++' if g++ is present. Empty string otherwise.
+
+    Indicates which C++ compiler to use. If empty, no C++ code is compiled.
+    Theano automatically detects whether g++ is present and disables
+    C++ compilation when it is not.
+
+    We print a warning if we detect that g++ is not present. It is
+    recommended to run with C++ compilation as Theano will be much
+    slower otherwise.
+
+    Currently only g++ is supported, but supporting other compilers should
+    not be too difficult.
+
 .. attribute:: optimizer_excluding
 
     Default: ""
@@ -362,6 +492,14 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
+.. attribute:: optimizer_verbose
+
+    Bool value: either True or False
+
+    Default: False
+
+    When True, we print on the stdout the optimization applied.
+
 .. attribute:: nocleanup
 
     Bool value: either True or False
@@ -385,6 +523,8 @@ import theano and print the config variable, as in:
     A list of kinds of preallocated memory to use as output buffers for
     each Op's computations, separated by ``:``. Implemented modes are:
 
+    * ``"initial"``: initial storage present in storage map
+      (for instance, it can happen in the inner function of Scan),
     * ``"previous"``: reuse previously-returned memory,
     * ``"c_contiguous"``: newly-allocated C-contiguous memory,
     * ``"f_contiguous"``: newly-allocated Fortran-contiguous memory,
@@ -393,6 +533,15 @@ import theano and print the config variable, as in:
     * ``"ALL"``: placeholder for all of the above.
 
     In order not to test with preallocated memory, use an empty string, ``""``.
+
+.. attribute:: config.DebugMode.check_preallocated_output_ndim
+
+    Positive int value, default: 4.
+
+    When testing with "strided" preallocated output memory, test
+    all combinations of strides over that number of (inner-most)
+    dimensions. You may want to reduce that number to reduce memory or
+    time usage, but it is advised to keep a minimum of 2.
 
 .. attribute:: config.DebugMode.warn_input_not_reused
 
@@ -499,6 +648,12 @@ import theano and print the config variable, as in:
           this Op
         - ``'raise'`` will raise an Exception
     
+.. attribute:: config.compute_test_value_opt
+
+   As ``compute_test_value``, but it is the value used during Theano
+   optimization phase. Theano user's do not need to use this. This is
+   to help debug shape error in Theano optimization.
+
 .. attribute:: config.exception_verbosity
 
     String Value: ``'low'``, ``'high'``.
@@ -515,49 +670,6 @@ import theano and print the config variable, as in:
               B. log_likelihood_v_given_h
               C. log_likelihood_h
 
-.. attribute:: config.time_seq_optimizer
-
-    Bool value, default: False
-
-    Should each SeqOptimizer object print the time taken by each of its
-    optimizer. Each SeqOptimizer prints something like this::
-
-        SeqOptimizer gpu_opt  time 0.014s for 8/9 nodes before/after optimization
-          0.012573s - ('gpu_local_optimizations', 'EquilibriumOptimizer')
-          0.001373s - ('gpu_cut_transfers', 'EquilibriumOptimizer')
-          0.000441s - ('InputToGpuOptimizer', 'InputToGpuOptimizer')
-
-    This prints the name of the SeqOptimizer (gpu_opt), the number of
-    Apply nodes in the graph before (8) and after (9)
-    optimizations. Then a list of lines, one per optimization
-    in this SeqOptimizer. The first element is the time
-    taken by this optimization and then it is a tuple with the name of the
-    optimization and this class. This list is sorted from the sub
-    optimization that takes the most time to the optimization that takes
-    the least time.
-
-.. attribute:: config.time_eq_optimizer
-
-    Bool value, default: False
-
-    Should each EquilibriumOptimizer print the time taken by each of its
-    iterations, the total number of times each of its optimizers is applied,
-    and informations about the total number of nodes in the graph.
-    Here is an example of output::
-
-        EquilibriumOptimizer specialize
-         time 4.760s for 4 passes, 3801 nodes max
-        0 - 1.961s (0.079s in global opts) - 3797 nodes
-        1 - 1.233s (0.080s in global opts) - 3801 nodes
-        2 - 0.857s (0.071s in global opts) - 3203 nodes
-        3 - 0.710s (0.066s in global opts) - 3095 nodes
-
-        times applied - optimizer:
-          384 - dimshuffle_as_view
-          262 - constant_folding
-          216 - local_subtensor_make_vector
-          216 - local_shape_to_shape_i
-          4 - local_mul_specialize
 
 .. attribute:: config.cmodule.warn_no_version
 
@@ -573,3 +685,17 @@ import theano and print the config variable, as in:
 
     If set to True, breaks certain MacOS installations with the infamous
     Bus Error.
+
+.. attribute:: config.cmodule.remove_gxx_opt
+
+    Bool value, default: False
+
+    If True, will remove the -O* parameter passed to g++.
+    This is useful to debug in gdb modules compiled by Theano.
+    The parameter -g is passed by default to g++.
+
+.. attribute:: cmodule.compilation_warning
+
+    Bool value, default: False
+
+    If True, will print compilation warnings.

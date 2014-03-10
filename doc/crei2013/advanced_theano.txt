@@ -1,0 +1,216 @@
+
+.. _crei2013_advanced_theano:
+
+***************
+Advanced Theano
+***************
+
+
+Profiling
+---------
+
+- To replace the default mode with this mode, use the Theano flags ``profile=True``
+
+- To enable the memory profiling use the flags ``profile_memory=True``
+
+Theano output:
+
+.. literalinclude:: logreg_profile.txt
+
+Compilation pipeline
+--------------------
+
+.. image:: ../hpcs2011_tutorial/pics/pipeline.png
+   :width: 400 px
+
+
+Inplace optimization
+--------------------
+
+- 2 type of inplace operations:
+
+  - An op that return a view on its inputs (e.g. reshape, inplace transpose)
+  - An op that write the output on the inputs memory space
+
+- This allows some memory optimization
+- The Op must tell Theano if they work inplace
+- Inplace Op add constraints to the order of execution
+
+
+Conditions
+----------
+**IfElse**
+
+- Build condition over symbolic variables.
+- IfElse Op takes a boolean condition and two variables to compute as input.
+- While Switch Op evaluates both 'output' variables, IfElse Op is lazy and only
+  evaluates one variable respect to the condition.
+
+**IfElse Example: Comparison with Switch**
+
+.. literalinclude:: ifelse_switch.py
+
+IfElse Op spend less time (about an half) than Switch since it computes only
+one variable instead of both.
+
+>>> python ifelse_switch.py
+time spent evaluating both values 0.230000 sec
+time spent evaluating one value 0.120000 sec
+
+Note that IfElse condition is a boolean while Switch condition is a tensor, so
+Switch is more general.
+
+It is actually important to use  ``linker='vm'`` or ``linker='cvm'``,
+otherwise IfElse will compute both variables and take the same computation
+time as the Switch Op. The linker is not currently set by default to 'cvm' but
+it will be in a near future.
+
+Loops
+-----
+
+**Scan**
+
+- General form of **recurrence**, which can be used for looping.
+- **Reduction** and **map** (loop over the leading dimensions) are special cases of Scan
+- You 'scan' a function along some input sequence, producing an output at each time-step
+- The function can see the **previous K time-steps** of your function
+- ``sum()`` could be computed by scanning the z + x(i) function over a list, given an initial state of ``z=0``.
+- Often a for-loop can be expressed as a ``scan()`` operation, and ``scan`` is the closest that Theano comes to looping.
+- The advantage of using ``scan`` over for loops
+  
+  - The number of iterations to be part of the symbolic graph
+  - Minimizes GPU transfers if GPU is involved
+  - Compute gradients through sequential steps
+  - Slightly faster then using a for loop in Python with a compiled Theano function
+  - Can lower the overall memory usage by detecting the actual amount of memory needed
+
+**Scan Example: Computing pow(A,k)**
+
+.. literalinclude:: scan_pow.py
+
+
+**Scan Example: Calculating a Polynomial**
+
+.. literalinclude:: scan_poly.py
+
+Exercise 4
+-----------
+
+- Run both examples 
+- Modify and execute the polynomial example to have the reduction done by scan
+
+
+Exercise 5
+-----------
+
+- In the last exercises, do you see a speed up with the GPU?
+- Where does it come from? (Use ProfileMode)
+- Is there something we can do to speed up the GPU version?
+
+
+Printing/Drawing Theano graphs
+------------------------------
+
+- Pretty Printing
+
+``theano.printing.pprint(variable)``
+
+>>> theano.printing.pprint(prediction)
+gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),TensorConstant{0.5})
+
+
+- Debug Print
+
+``theano.printing.debugprint({fct, variable, list of variables})``
+
+>>> theano.printing.debugprint(prediction)
+Elemwise{gt,no_inplace} [@181772236] ''
+ |Elemwise{true_div,no_inplace} [@181746668] ''
+ | |InplaceDimShuffle{x} [@181746412] ''
+ | | |TensorConstant{1} [@181745836]
+ | |Elemwise{add,no_inplace} [@181745644] ''
+ | | |InplaceDimShuffle{x} [@181745420] ''
+ | | | |TensorConstant{1} [@181744844]
+ | | |Elemwise{exp,no_inplace} [@181744652] ''
+ | | | |Elemwise{sub,no_inplace} [@181744012] ''
+ | | | | |Elemwise{neg,no_inplace} [@181730764] ''
+ | | | | | |dot [@181729676] ''
+ | | | | | | |x [@181563948]
+ | | | | | | |w [@181729964]
+ | | | | |InplaceDimShuffle{x} [@181743788] ''
+ | | | | | |b [@181730156]
+ |InplaceDimShuffle{x} [@181771788] ''
+ | |TensorConstant{0.5} [@181771148]
+>>> theano.printing.debugprint(predict)
+Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
+ |dot [@183018796] ''   1
+ | |x [@183000780]
+ | |w [@183000812]
+ |InplaceDimShuffle{x} [@183133580] ''   0
+ | |b [@183000876]
+ |TensorConstant{[ 0.5]} [@183084108]
+
+- Picture Printing of Graphs
+
+>>> theano.printing.pydotprint_variables(prediction)
+
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_prediction.png
+   :width: 800 px
+
+All pydotprint* requires graphviz and pydot
+
+>>> theano.printing.pydotprint(predict)
+
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_predic.png
+   :width: 800 px
+
+>>> theano.printing.pydotprint(train) # This is a small train example!
+
+.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_train.png
+   :width: 1500 px
+
+
+Debugging
+---------
+
+- Run with the Theano flag ``compute_test_value = {``off'',``ignore'', ``warn'', ``raise''}``
+
+  - Run the code as we create the graph
+  - Allows you to find the bug earlier (ex: shape mismatch)
+  - Makes it easier to identify where the problem is in *your* code
+  - Use the value of constants and shared variables directly
+  - For pure symbolic variables uses ``x.tag.test_value = numpy.random.rand(5,10)``
+
+- Run with the flag ``mode=FAST_COMPILE``
+  
+  - Few optimizations
+  - Run Python code (better error messages and can be debugged interactively in the Python debugger)
+
+- Run with the flag ``mode=DebugMode``
+
+  - 100-1000x slower
+  - Test all optimization steps from the original graph to the final graph
+  - Checks many things that Op should/shouldn't do
+  - Executes both the Python and C code versions
+
+Known limitations
+-----------------
+
+- Compilation phase distinct from execution phase
+
+  - Use ``a_tensor_variable.eval()`` to make this less visible
+
+- Compilation time can be significant
+
+  - Amortize it with functions over big input or reuse functions
+
+- Execution overhead
+
+  - We have worked on this, but more work needed
+  - So needs a certain number of operations to be useful
+
+- Compilation time superlinear in the size of the graph.
+
+  - Hundreds of nodes is fine
+  - Disabling a few optimizations can speed up compilation
+  - Usually too many nodes indicates a problem with the graph

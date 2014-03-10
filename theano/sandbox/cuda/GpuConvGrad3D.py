@@ -336,12 +336,12 @@ convgrad_rows_stack( float* img, float* dCdH, float* dCdW,
                                             dCdW[j,z,k,l,m] += dCdH[i,j,p,q,r] * V[i,z,dr*p+k,dc*q+l,dt*r+m]
 */
 """
-        return codeSource#renderString(codeSource,locals())
+        return codeSource
 
 gpu_conv_grad3d = GpuConvGrad3D()
 
 @register_opt()
-@local_optimizer([])
+@local_optimizer([ConvGrad3D])
 def local_gpu_conv_gradd(node):
     if isinstance(node.op, ConvGrad3D):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):

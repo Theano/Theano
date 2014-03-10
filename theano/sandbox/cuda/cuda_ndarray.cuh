@@ -1,6 +1,37 @@
 #ifndef _CUDA_NDARRAY_H
 #define _CUDA_NDARRAY_H
 
+// Defines for Python 2/3 compatibility.
+#if PY_MAJOR_VERSION >= 3
+// Py3k treats all ints as longs. This one is not caught by npy_3kcompat.h.
+#define PyNumber_Int PyNumber_Long
+
+#include "numpy/npy_3kcompat.h"
+
+// Py3k strings are unicode, these mimic old functionality.
+//
+// NOTE: npy_3kcompat.h replaces PyString_X with PyBytes_X, which breaks
+// compatibility with some functions returning text.
+#define PyString_Check PyUnicode_Check
+#define PyString_FromString PyUnicode_FromString
+#define PyString_AsString PyUnicode_AsUTF8
+#define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+#define PyString_Size PyUnicode_GET_SIZE
+
+// Python 3 expects a PyObject* as the first argument to PySlice_GetIndicesEx().
+#define SLICE_CAST(x) (x)
+#else
+// Python 2 expects a PySliceObject* as the first argument to PySlice_GetIndicesEx().
+#define SLICE_CAST(x) ((PySliceObject*)(x))
+#endif // end #if PY_MAJOR_VERSION >= 3
+
+#ifndef Py_TYPE
+#  define Py_TYPE(o) ((o)->ob_type)
+#endif
+#ifndef Py_REFCNT
+#  define Py_REFCNT(o) ((o)->ob_refcnt)
+#endif
+
 #include <numpy/arrayobject.h>
 #include <stdio.h>
 
@@ -12,8 +43,10 @@
 #else
 #define DllExport   __declspec( dllimport )
 #endif
-#else
+#define ALWAYS_INLINE
+#else //else _WIN32
 #define DllExport
+#define ALWAYS_INLINE __attribute__((always_inline))
 #endif
 
 typedef float real;
@@ -27,7 +60,7 @@ typedef float real;
 #define NUM_VECTOR_OP_THREADS_PER_BLOCK     256  //Should be read from device properties. (#10)
 #endif
 
-#if 0
+#if 1
 // Do not wait after every kernel & transfer.
 #define CNDA_THREAD_SYNC
 #else
@@ -40,6 +73,9 @@ typedef float real;
 #define SHARED_SIZE (16*1024)
 #endif
 
+#define VERBOSE_DEVICE_MALLOC 1
+#define NO_VERBOSE_DEVICE_MALLOC 0
+
 /**
  * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.
  *
@@ -47,6 +83,7 @@ typedef float real;
  * device_free will return nonzero on failure (after setting the python error message)
  */
 DllExport void * device_malloc(size_t size);
+DllExport void * device_malloc(size_t size, int verbose);
 DllExport int device_free(void * ptr);
 
 template <typename T>
@@ -75,16 +112,27 @@ struct CudaNdarray
     /* Type-specific fields go here. */
     //GpuTensorType::VoidTensor * vt;
     int nd; //the number of dimensions of the tensor
-    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES macros
+    // Client should acces host_structure via CudaNdarray_HOST_DIMS / CudaNdarray_HOST_STRIDES functions
     int * host_structure; //dim0, dim1, ... stride0, stride1, ...
     int data_allocated; //the number of bytes allocated for devdata
 
 
     //device pointers (allocated by cudaMalloc)
     mutable int dev_structure_fresh;
-    //dev_structure should be accessed via macros, otherwise may not be synchronized
-    int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
+    //dev_structure should be accessed via the functions like
+    //CudaNdarray_DEV_DIMS, otherwise may not be
+    //synchronized with host_structure. The accessor functions will allocate it when needed.
+    mutable int * dev_structure; //dim0, dim1, ..., stride0, stride1, ...
     real* devdata; //pointer to data element [0,..,0].
+};
+
+
+enum operator_t
+{
+    IADD=0,
+    IDIV,
+    CPY,
+    N_ELEMWISE_OPS // This is to know the number of operation
 };
 
 /*
@@ -117,6 +165,12 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self);
  */
 DllExport int cnda_structure_size(int nd);
 
+/*
+ * This describes the shape of the ndarray. The array
+ * of dimensions is itself stored on the host.
+ * If you need to access the dimensions array from inside
+ * a kernel, use CudaNdarray_DEVICE_DIMS.
+ */
 DllExport const int *
 CudaNdarray_HOST_DIMS(const CudaNdarray * self);
 
@@ -126,8 +180,12 @@ CudaNdarray_HOST_STRIDES(const CudaNdarray * self);
 DllExport const int *
 CudaNdarray_HOST_LOG2DIMS(const CudaNdarray * self);
 
-DllExport void
-cnda_mark_dev_structure_dirty(CudaNdarray * self);
+DllExport inline void ALWAYS_INLINE
+cnda_mark_dev_structure_dirty(CudaNdarray * self)
+{
+    self->dev_structure_fresh = 0;
+}
+
 
 DllExport int
 CudaNdarray_EqualAndIgnore(CudaNdarray *cnda1, CudaNdarray *cnda2, int ignoreSync, int ignoreBase);
@@ -137,17 +195,45 @@ DllExport int
 CudaNdarray_Equal(CudaNdarray *cnda1, CudaNdarray *cnda2);
 
 /****
- *  Set the idx'th dimension to value d.
+ *  Set the dimension[idx] to value d.
  *
- *  Updates the log2dim shaddow array.
+ *  Updates the log2dim shadow array.
  *
- *  Does not sync structure to host.
+ *  Does not sync structure to device.
  */
-DllExport void
-CudaNdarray_set_dim(CudaNdarray * self, int idx, int d);
+DllExport inline void ALWAYS_INLINE
+CudaNdarray_set_dim(CudaNdarray * self, int idx, int d) 
+{
+    if ((idx >= self->nd) || (idx < 0) || (d < 0))
+    {
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_dim arguments: self->ndim=%i, idx=%i stride=%i\n",
+                self->nd, idx, d);
+    }
 
-DllExport void
-CudaNdarray_set_stride(CudaNdarray * self, int idx, int s);
+    if (d != self->host_structure[idx])
+    {
+        self->host_structure[idx] = d;
+        int log2d = (int)log2((double)d);
+        self->host_structure[idx + 2*self->nd] = (d == (1 << log2d)) ? log2d : -1;
+        cnda_mark_dev_structure_dirty(self);
+    }
+}
+
+
+DllExport inline void ALWAYS_INLINE
+CudaNdarray_set_stride(CudaNdarray * self, int idx, int s)
+{
+    if ((idx >= self->nd) || (idx < 0))
+    {
+        fprintf(stderr, "WARNING: probably bad CudaNdarray_set_stride arguments: %i %i\n", idx, s);
+    }
+
+    if (s != CudaNdarray_HOST_STRIDES(self)[idx])
+    {
+        self->host_structure[idx+self->nd] = s;
+        cnda_mark_dev_structure_dirty(self);
+    }
+}
 
 /***
  *  Update dependent variables from the contents of CudaNdarray_HOST_DIMS(self) and CudaNdarray_HOST_STRIDES(self)
@@ -156,10 +242,22 @@ CudaNdarray_set_stride(CudaNdarray * self, int idx, int s);
  */
 DllExport int cnda_copy_structure_to_device(const CudaNdarray * self);
 
+/* CudaNdarray_DEV_DIMS gives the same information as CudaNdarray_HOST_DIMS,
+ * but stored on the GPU. Use this pointer when it needs to be accessed
+ * from inside a CUDA kernel.
+ */
 DllExport const int *CudaNdarray_DEV_DIMS(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_STRIDES(const CudaNdarray * self);
 DllExport const int *CudaNdarray_DEV_LOG2DIMS(const CudaNdarray * self);
 DllExport float *CudaNdarray_DEV_DATA(const CudaNdarray * self);
+
+// The following 4 macro are here to help make c code generator that work on
+// both PyArray and CudaNdarray.  This is at least used for Subtensor and
+// GpuSubtensor
+#define CudaNdarray_DIMS CudaNdarray_HOST_DIMS
+#define CudaNdarray_NDIM(self) self->nd
+#define CudaNdarray_STRIDES CudaNdarray_HOST_STRIDES
+#define CudaNdarray_BYTES CudaNdarray_DEV_DATA
 
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
@@ -178,14 +276,55 @@ DllExport PyObject * CudaNdarray_new_nd(const int nd);
 /**
  * [Re]allocate a CudaNdarray with access to 'nd' dimensions.
  *
- * Note: This does not allocate storage for data.
+ * Note: This does not allocate storage for data, or free
+ *       pre-existing storage.
  */
-DllExport int CudaNdarray_set_nd(CudaNdarray * self, const int nd);
+DllExport inline int ALWAYS_INLINE
+CudaNdarray_set_nd(CudaNdarray * self, const int nd)
+{
+    if (nd != self->nd)
+    {
+        if (self->dev_structure)
+        {
+            if (device_free(self->dev_structure))
+            {
+                return -1;
+            }
+            self->dev_structure = NULL;
+        }
+        if (self->host_structure)
+        {
+            free(self->host_structure);
+            self->host_structure = NULL;
+            self->nd = -1;
+        }
+        if (nd == -1) return 0;
+
+        self->host_structure = (int*)malloc(cnda_structure_size(nd)*sizeof(int));
+        if (NULL == self->host_structure)
+        {
+            PyErr_SetString(PyExc_MemoryError, "Failed to allocate dim or str");
+            return -1;
+        }
+        //initialize all dimensions and strides to 0
+        for (int i = 0; i < cnda_structure_size(nd); ++i)
+        {
+            self->host_structure[i] = 0;
+        }
+        //The device structure will be created in cnda_copy_structure_to_device
+        //if needed.
+        self->nd = nd;
+        self->dev_structure_fresh = 0;
+    }
+    return 0;
+}
+
 
 /**
  * CudaNdarray_alloc_contiguous
  *
  * Allocate storage space for a tensor of rank 'nd' and given dimensions.
+ * (No-op if self already has a contiguous tensor of the right dimensions)
  *
  * Note: CudaNdarray_alloc_contiguous is templated to work for both int dimensions and npy_intp dimensions
  */
@@ -196,13 +335,13 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
     // return 0 on success
     int size = 1; //set up the strides for contiguous tensor
     assert (nd >= 0);
+
+    // Here we modify the host structure to have the desired shape and
+    // strides. This does not cause the storage to be freed or reallocated.
     if (CudaNdarray_set_nd(self, nd))
     {
         return -1;
     }
-    //TODO: check if by any chance our current dims are correct,
-    //      and strides already contiguous
-    //      in that case we can return right here.
     for (int i = nd-1; i >= 0; --i)
     {
         CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
@@ -210,7 +349,11 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         size = size * dim[i];
     }
 
-    if (CudaNdarray_is_c_contiguous(self) && (self->data_allocated == size))
+    // If the allocated buffer is already of the right size, we don't need to
+    // do anything else.
+    // Note: self->data_allocated is 0 for a view, so views will fail this
+    // check and be turned into independent arrays below.
+    if (self->data_allocated == size)
     {
         return 0;
     }
@@ -243,8 +386,6 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
         CudaNdarray_set_nd(self, -1);
         self->data_allocated = 0;
         self->devdata = 0;
-        PyErr_SetString(PyExc_RuntimeError,
-                        "Could not allocate memory on device");
         return -1;
     }
     if (0)
@@ -310,14 +451,27 @@ DllExport int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
  * Transfer the contents of CudaNdarray `other` to `self`.
  *
  * self is reallocated to have the correct dimensions if necessary.
+ * TODO: WRITEME: what does "if necessary" mean?
+ * TODO: we use this to implement set/inc subtensor, where self is a view of
+ *       the original tensor so that we write only to the subtensor. How
+ *       do we ensure that self is not reallocated in this case?
+ *
+ *  unbroadcast: if true, this means that other is broadcastable in some
+ *               dimensions, and the result, self, is not.
+ *               ie, if unbroadcast=false, we must do the broadcasting
+ *               operation as part of the copy.
+ *               e.g. suppose self and other are 2D matrices and other
+ *               has only one row. Then we need to copy this row several
+ *               times when copying to self.
  */
-DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self, const CudaNdarray * other, bool unbroadcast = false);
+DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
+        const CudaNdarray * other, bool unbroadcast = false);
 
 /**
  * Transfer the contents of CudaNdarray `self` to a new numpy ndarray.
  */
 DllExport PyObject *
-CudaNdarray_CreateArrayObj(CudaNdarray * self);
+CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args = NULL);
 
 DllExport PyObject *
 CudaNdarray_ZEROS(int n, int * dims);
@@ -325,7 +479,24 @@ CudaNdarray_ZEROS(int n, int * dims);
 /**
  * True iff the strides look like [dim[nd-2], dim[nd-3], ... , dim[0], 1]
  */
-DllExport bool CudaNdarray_is_c_contiguous(const CudaNdarray * self);
+DllExport inline bool ALWAYS_INLINE
+CudaNdarray_is_c_contiguous(const CudaNdarray * self)
+{
+    bool c_contiguous = true;
+    int size = 1;
+    for (int i = self->nd-1; (i >= 0) && c_contiguous; --i)
+    {
+        if (CudaNdarray_HOST_DIMS(self)[i] == 1)
+            continue;
+        if (CudaNdarray_HOST_STRIDES(self)[i] != size)
+        {
+            c_contiguous = false;
+        }
+        size = size * CudaNdarray_HOST_DIMS(self)[i];
+    }
+    return c_contiguous;
+}
+
 DllExport PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self);
 
 DllExport int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, float beta, CudaNdarray * C);
@@ -338,8 +509,43 @@ DllExport int CudaNdarray_reduce_min(CudaNdarray * self, CudaNdarray * A);
 DllExport int CudaNdarray_reduce_max(CudaNdarray * self, CudaNdarray * A);
 
 DllExport int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const int * pattern);
+DllExport PyObject*
+CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
-static void fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
+int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
+
+
+DllExport PyObject * CudaNdarray_View(const CudaNdarray * self);
+DllExport PyObject * CudaNdarray_inplace_add(PyObject* py_self, PyObject * py_other);
+DllExport PyObject * CudaNdarray_Subscript(PyObject * py_self, PyObject * key);
+DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t fct_nb);
+
+// Ensures that *arr is a pointer to a contiguous ndarray of the specified
+// dimensions.
+// *arr may initially be NULL, a pointer to an ndarray of the wrong size,
+// or a pointer to an ndarray of the right size. In the last case it will
+// not change.
+DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
+        const int * dims);
+
+DllExport inline const char* ALWAYS_INLINE cublasGetErrorString(cublasStatus err){
+    if(CUBLAS_STATUS_SUCCESS == err)
+        return "success";
+    else if(CUBLAS_STATUS_NOT_INITIALIZED == err)
+        return "the library was not initialized";
+    else if(CUBLAS_STATUS_ALLOC_FAILED == err)
+        return "the resource allocation failed";
+    else if(CUBLAS_STATUS_INVALID_VALUE == err)
+        return "the parameters n<0 or incx,incy=0";
+    else if(CUBLAS_STATUS_MAPPING_ERROR == err)
+        return "an access to GPU memory space failed";
+    else if(CUBLAS_STATUS_EXECUTION_FAILED == err)
+        return "the function failed to launch on the GPU";
+    else if(CUBLAS_STATUS_INTERNAL_ERROR == err)
+        return "an internal operation failed";
+    else
+        return "unknow code";
+}
 
 #endif
 /*

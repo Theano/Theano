@@ -1,5 +1,5 @@
 
-.. _gpundarray:
+.. _cifar2013_gpundarray:
 
 **********
 GpuNdArray

@@ -81,7 +81,7 @@ Reference
         Initialize object attributes.
 
 
-.. function:: function(inputs, outputs, mode=None, updates=None, givens=None, accept_inplace=False, name=None)
+.. function:: function(inputs, outputs, mode=None, updates=None, givens=None, no_default_updates=False, accept_inplace=False, name=None, rebuild_strict=True, allow_input_downcast=None, profile=None, on_unused_input='raise')
 
     Return a callable object that will calculate `outputs` from `inputs`.
 
@@ -120,6 +120,36 @@ Reference
 
     :param name: an optional name for this function.
       The profile mode will print the time spent in this function.
+
+    :param rebuild_strict: True (Default) is the safer and better
+        tested setting, in which case `givens` must substitute new
+        variables with the same Type as the variables they replace.
+        False is a you-better-know-what-you-are-doing setting, that
+        permits `givens` to replace variables with new variables of
+        any Type.  The consequence of changing a Type is that all
+        results depending on that variable may have a different Type
+        too (the graph is rebuilt from inputs to outputs).  If one of
+        the new types does not make sense for one of the Ops in the
+        graph, an Exception will be raised.
+
+    :type allow_input_downcast: Boolean or None
+    :param allow_input_downcast: True means that the values passed as
+        inputs when calling the function can be silently downcasted to
+        fit the dtype of the corresponding Variable, which may lose
+        precision.  False means that it will only be cast to a more
+        general, or precise, type. None (default) is almost like
+        False, but allows downcasting of Python float scalars to
+        floatX.
+
+    :type profile: None, True, or ProfileStats instance
+    :param profile: accumulate profiling information into a given
+        ProfileStats instance. If argument is `True` then a new
+        ProfileStats instance will be used.  This profiling object
+        will be available via self.profile.
+
+    :param on_unused_input: What to do if a variable in the 'inputs'
+        list is not used in the graph. Possible values are 'raise',
+        'warn', and 'ignore'.
 
     :rtype: Function instance
 

@@ -6,15 +6,15 @@ Extending Theano
 ================
 
 
-This documentation is for users who want to extend Theano with new Types, new
+This advanced tutorial is for users who want to extend Theano with new Types, new
 Operations (Ops), and new graph optimizations.
 
 Along the way, it also introduces many aspects of how Theano works, so it is
 also good for you if you are interested in getting more under the hood with
 Theano itself.
 
-Before tackling this tutorial, it is highly recommended to read the
-:ref:`tutorial`.
+Before tackling this more advanced presentation, it is highly recommended to read the
+introductory :ref:`Tutorial<tutorial>`.
 
 The first few pages will walk you through the definition of a new :ref:`type`,
 ``double``, and a basic arithmetic :ref:`operations <op>` on that Type. We
@@ -30,11 +30,10 @@ a C implementation.
     type
     op
     inplace
+    other_ops
     ctype
     cop
     optimization
     tips
     unittest
     extending_faq
-
-

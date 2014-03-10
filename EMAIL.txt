@@ -25,7 +25,7 @@ This is a release candidate for a major version, with lots of new
 features, bug fixes, and some interface changes (deprecated or
 potentially misleading features were removed).
 
-The upgrade is recommended for developpers who want to help test and
+The upgrade is recommended for developers who want to help test and
 report bugs, or want to use new features now.  If you have updated
 to 0.5rc1, you are highly encouraged to update to 0.5rc2.
 
@@ -106,18 +106,14 @@ http://deeplearning.net/tutorial/
 Acknowledgments
 ---------------
 
+
+
 I would like to thank all contributors of Theano. For this particular
 release, many people have helped, notably (in alphabetical order):
-Hani Almousli, Frédéric Bastien, Justin Bayer, Arnaud Bergeron, James
-Bergstra, Valentin Bisson, Josh Bleecher Snyder, Yann Dauphin, Olivier
-Delalleau, Guillaume Desjardins, Sander Dieleman, Xavier Glorot, Ian
-Goodfellow, Philippe Hamel, Pascal Lamblin, Eric Laufer, Grégoire
-Mesnil, Razvan Pascanu, Matthew Rocklin, Graham Taylor, Sebastian Urban,
-David Warde-Farley, and Yao Li.
+[Generate the list of commiters: git shortlog -s <previous_tag>...| cut -c8-]
 
 I would also like to thank users who submitted bug reports, notably:
-Nicolas Boulanger-Lewandowski, Olivier Chapelle, Michael Forbes, Timothy
-Lillicrap, and John Salvatier.
+[TODO]
 
 Also, thank you to all NumPy and Scipy developers as Theano builds on
 their strengths.

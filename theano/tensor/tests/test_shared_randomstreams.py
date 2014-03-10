@@ -182,6 +182,45 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
+    
+    def test_choice(self):
+        """Test that RandomStreams.choice generates the same results as numpy"""
+        # numpy.random.choice is only available for numpy versions >= 1.7
+        major, minor, _ = numpy.version.short_version.split('.')
+        if (int(major), int(minor)) < (1, 7):
+            raise utt.SkipTest('choice requires at NumPy version >= 1.7 '
+                               '(%s)' % numpy.__version__)
+        
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.choice((11, 8), 10, 1, 0))
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.choice(10, (11, 8), True, None)
+        numpy_val1 = rng.choice(10, (11, 8), True, None)
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
+
+    def test_poisson(self):
+        """Test that RandomStreams.poisson generates the same results as numpy"""
+        
+        # Check over two calls to see if the random state is correctly updated.
+        random = RandomStreams(utt.fetch_seed())
+        fn = function([], random.poisson(lam=5, size=(11, 8)))
+        fn_val0 = fn()
+        fn_val1 = fn()
+
+        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
+        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        numpy_val0 = rng.poisson(lam=5, size=(11, 8))
+        numpy_val1 = rng.poisson(lam=5, size=(11, 8))
+
+        assert numpy.all(fn_val0 == numpy_val0)
+        assert numpy.all(fn_val1 == numpy_val1)
 
     def test_permutation(self):
         """Test that RandomStreams.permutation generates the same results as numpy"""
@@ -332,6 +371,36 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert f([4,8]).shape == (4,8)
         self.assertRaises(ValueError, f, [4])
         self.assertRaises(ValueError, f, [4,3,4,5])
+
+    def test_mixed_shape(self):
+        # Test when the provided shape is a tuple of ints and scalar vars
+        random = RandomStreams(utt.fetch_seed())
+        shape0 = tensor.lscalar()
+        shape = (shape0, 3)
+        f = function([shape0], random.uniform(size=shape, ndim=2))
+        assert f(2).shape == (2, 3)
+        assert f(8).shape == (8, 3)
+
+        g = function([shape0], random.uniform(size=shape))
+        assert g(2).shape == (2, 3)
+        assert g(8).shape == (8, 3)
+
+    def test_mixed_shape_bcastable(self):
+        # Test when the provided shape is a tuple of ints and scalar vars
+        random = RandomStreams(utt.fetch_seed())
+        shape0 = tensor.lscalar()
+        shape = (shape0, 1)
+        u = random.uniform(size=shape, ndim=2)
+        assert u.broadcastable == (False, True)
+        f = function([shape0], u)
+        assert f(2).shape == (2, 1)
+        assert f(8).shape == (8, 1)
+
+        v = random.uniform(size=shape)
+        assert v.broadcastable == (False, True)
+        g = function([shape0], v)
+        assert g(2).shape == (2, 1)
+        assert g(8).shape == (8, 1)
 
     def test_default_shape(self):
         random = RandomStreams(utt.fetch_seed())
@@ -715,7 +784,36 @@ class T_SharedRandomStreams(unittest.TestCase):
         s_rng.set_value(rr, borrow=True)
         assert rr is s_rng.container.storage[0]
 
+    def test_multiple_rng_aliasing(self):
+        """
+        Test that when we have multiple random number generators, we do not alias
+        the state_updates member. `state_updates` can be useful when attempting to
+        copy the (random) state between two similar theano graphs. The test is
+        meant to detect a previous bug where state_updates was initialized as a
+        class-attribute, instead of the __init__ function.
+        """
+        rng1 = RandomStreams(1234)
+        rng2 = RandomStreams(2392)
+        assert rng1.state_updates is not rng2.state_updates
+        assert rng1.gen_seedgen is not rng2.gen_seedgen
 
+    def test_random_state_transfer(self):
+        """
+        Test that random state can be transferred from one theano graph to another.
+        """
+        class Graph:
+            def __init__(self, seed=123):
+                self.rng = RandomStreams(seed)
+                self.y = self.rng.uniform(size=(1,))
+        g1 = Graph(seed=123)
+        f1 = function([], g1.y)
+        g2 = Graph(seed=987)
+        f2 = function([], g2.y)
+
+        for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
+            su2[0].set_value(su1[0].get_value())
+
+        numpy.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
 
 
 if __name__ == '__main__':

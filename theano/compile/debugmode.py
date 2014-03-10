@@ -5,18 +5,19 @@
 """
 __docformat__ = "restructuredtext en"
 
-import time, copy, sys, copy_reg, gc, os
+import copy, sys, copy_reg, gc
 from itertools import izip
-from StringIO import StringIO
 
 import numpy
 
 import theano
 from theano import gof
-from theano.gof import Env, graph, utils, link, ops_with_inner_function
+from theano.compat import get_unbound_function
+from theano.compat.six import StringIO
+from theano.gof import FunctionGraph,graph, utils, link, ops_with_inner_function
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
-from theano.gof.python25 import any, product as itertools_product
+from theano.gof.python25 import all, any, product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
         StrParam)
 from theano.compile.function_module import (FunctionMaker,
@@ -24,8 +25,10 @@ from theano.compile.function_module import (FunctionMaker,
         infer_reuse_pattern,
         SymbolicInputKit,
         SymbolicOutput,
-        Supervisor)
+        Supervisor,
+        std_fgraph)
 from theano.compile.mode import Mode, register_mode
+from theano.compile.ops import OutputGuard
 
 AddConfigVar('DebugMode.patience',
         "Optimize graph this many times to detect inconsistency",
@@ -34,7 +37,7 @@ AddConfigVar('DebugMode.patience',
 
 AddConfigVar('DebugMode.check_c',
         "Run C implementations where possible",
-        BoolParam(True),
+        BoolParam(bool(theano.config.cxx)),
         in_c_key=False)
 
 AddConfigVar('DebugMode.check_py',
@@ -64,7 +67,7 @@ AddConfigVar('DebugMode.warn_input_not_reused',
 def is_valid_check_preallocated_output_param(param):
     if not isinstance(param, basestring):
         return False
-    valid = ["previous", "c_contiguous", "f_contiguous",
+    valid = ["initial", "previous", "c_contiguous", "f_contiguous",
              "strided", "wrong_size", "ALL", ""]
     for p in param.split(":"):
         if p not in valid:
@@ -74,12 +77,22 @@ def is_valid_check_preallocated_output_param(param):
 AddConfigVar('DebugMode.check_preallocated_output',
         ('Test thunks with pre-allocated memory as output storage. '
          'This is a list of strings separated by ":". Valid values are: '
+         '"initial" (initial storage in storage map, happens with Scan),'
          '"previous" (previously-returned memory), '
          '"c_contiguous", "f_contiguous", '
          '"strided" (positive and negative strides), '
          '"wrong_size" (larger and smaller dimensions), and '
          '"ALL" (all of the above).'),
         StrParam('', is_valid=is_valid_check_preallocated_output_param),
+        in_c_key=False)
+
+AddConfigVar('DebugMode.check_preallocated_output_ndim',
+        ('When testing with "strided" preallocated output memory, '
+         'test all combinations of strides over that number of '
+         '(inner-most) dimensions. You may want to reduce that number '
+         'to reduce memory or time usage, but it is advised to keep a '
+         'minimum of 2.'),
+        IntParam(4, lambda i: i > 0),
         in_c_key=False)
 
 import logging
@@ -114,24 +127,36 @@ class DebugModeError(Exception):
     pass
 
 
-class BadCLinkerOutput(DebugModeError):
-    """Exception: an Op's c_code and perform implementations don't agree."""
+class BadThunkOutput(DebugModeError):
+    """
+    Exception: Calling the same Op twice gives inconsistent outputs.
+
+    It can be raised, for instance, if an Op's c_code and perform method
+    do not agree, or if one of these methods do not give the same result
+    when called twice with the same inputs (but different memory layouts
+    for the output).
+    """
 
     r = None
     """The `Variable` instance for which conflicting values were computed"""
 
-    val_py = None
-    """The value computed by `r.owner.op.perform`"""
+    thunk1 = ''
+    val1 = None
+    """The value computed by `thunk1`"""
 
-    val_c = None
-    """The value computed by `r.owner.op.c_code`"""
+    thunk2 = ''
+    val2 = None
+    """The value computed by `thunk2`"""
 
-    def __init__(self, r, val_py, val_c):
+    def __init__(self, r, thunk1, val1, thunk2, val2, inputs_val=()):
         """Initialize members"""
         DebugModeError.__init__(self)  # to be compatible with python2.4
         self.r = r
-        self.val_py = val_py
-        self.val_c = val_c
+        self.thunk1 = thunk1
+        self.val1 = val1
+        self.thunk2 = thunk2
+        self.val2 = val2
+        self.inputs_val = inputs_val
 
     def offending_op(self):
         """Return the Op class whose c_code and perform
@@ -145,62 +170,26 @@ class BadCLinkerOutput(DebugModeError):
         """Return a pretty multiline string representating the cause
         of the exception"""
         sio = StringIO()
-        print >> sio, "BadCLinkerOutput"
-        print >> sio, "  variable:", self.r
-        print >> sio, "  Outputs Type    :", self.r.type
-        print >> sio, "  Inputs Type:", [i.type for i in self.r.owner.inputs]
+        print >> sio, "BadThunkOutput"
         print >> sio, "  Apply   :", self.r.owner
-        print >> sio, "  val_py  :", self.val_py
-        print >> sio, "  val_c   :", self.val_c
         print >> sio, "  op      :", self.offending_op()
-        try:
-            ssio = StringIO()
-            print >> ssio, "  PyValue shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val_py.shape,
-            print >> ssio, self.val_py.dtype,
-            print >> ssio, self.val_py.strides,
-            print >> ssio, self.val_py.min(),
-            print >> ssio, self.val_py.max(),
-            print >> ssio, numpy.isinf(self.val_py).sum(),
-            print >> ssio, numpy.isnan(self.val_py).sum(),
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        try:
-            ssio = StringIO()
-            print >> ssio, "  CValue shape, dtype, strides, min, max, n_inf, n_nan:",
-            print >> ssio, self.val_c.shape,
-            print >> ssio, self.val_c.dtype,
-            print >> ssio, self.val_c.strides,
-            print >> ssio, self.val_c.min(),
-            print >> ssio, self.val_c.max(),
-            print >> ssio, numpy.isinf(self.val_c).sum(),
-            print >> ssio, numpy.isnan(self.val_c).sum(),
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        try:
-            ov = numpy.asarray(self.val_c)
-            nv = numpy.asarray(self.val_py)
-            ssio = StringIO()
-            absdiff = numpy.absolute(nv - ov)
-            print >> ssio, "  Max Abs Diff: ", numpy.max(absdiff)
-            print >> ssio, "  Mean Abs Diff: ", numpy.mean(absdiff)
-            print >> ssio, "  Median Abs Diff: ", numpy.median(absdiff)
-            print >> ssio, "  Std Abs Diff: ", numpy.std(absdiff)
-            reldiff = numpy.absolute(nv - ov) / (numpy.absolute(nv) +
-                                                 numpy.absolute(ov))
-            print >> ssio, "  Max Rel Diff: ", numpy.max(reldiff)
-            print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
-            print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
-            print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
-            # only if all succeeds to we add anything to sio
-            print >> sio, ssio.getvalue()
-        except Exception:
-            pass
-        return sio.getvalue()
+        print >> sio, "  Outputs Type:", self.r.type
+        print >> sio, "  Outputs Shape:", getattr(self.val1, 'shape', None)
+        print >> sio, "  Outputs Strides:", getattr(self.val1, 'strides', None)
+        print >> sio, "  Inputs Type :", [i.type for i in self.r.owner.inputs]
+        print >> sio, "  Inputs Shape:", [getattr(val, 'shape', None)
+                                          for val in self.inputs_val]
+        print >> sio, "  Inputs Strides:", [getattr(val, 'strides', None)
+                                            for val in self.inputs_val]
+        print >> sio, "  Bad Variable:", self.r
+        print >> sio, "  thunk1  :", self.thunk1
+        print >> sio, "  thunk2  :", self.thunk2
+
+        #Don't import it at the top of the file to prevent circular import.
+        utt = theano.tests.unittest_tools
+        print >> sio, utt.str_diagnostic(self.val1, self.val2, None, None)
+        ret = sio.getvalue()
+        return ret
 
 
 class BadOptimization(DebugModeError):
@@ -498,7 +487,7 @@ def char_from_number(number):
         remainder = number % base
         new_char = chr(ord('A') + remainder)
         rval = new_char + rval
-        number /= base
+        number //= base
 
     return rval
 
@@ -566,7 +555,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         r_name = getattr(r, 'name', '')
         # normally if the name isn't set, it'll be None, so
-        # r_name == None here
+        # r_name is None here
         if r_name is None:
             r_name = ''
 
@@ -625,64 +614,84 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
     return file
 
-def _optcheck_env(input_specs, output_specs, accept_inplace=False):
-    """Create an Env for debugging.
+def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
+    """Create an FunctionGraph for debugging.
 
-    :param input_specs: env inputs
+    :param input_specs: fgraph inputs
     :type input_specs: WRITEME
-    :param output_specs: env outputs
+    :param output_specs: fgraph outputs
     :type output_specs: WRITEME
     :param accept_inplace: are inplace ops permitted in the original graph?
     :type accept_inplace: Bool
-    :rtype: `Env`
-    :returns: a new Env with a cloned graph, with debugging `Feature` instances already installed.
+    :rtype: `FunctionGraph`
+    :returns: a new FunctionGraph with a cloned graph, with debugging `Feature` instances already installed.
 
     """
     orig_inputs = [spec.variable for spec in input_specs]
     updates = [spec.update for spec in input_specs if spec.update]
     orig_outputs = [spec.variable for spec in output_specs] + updates
 
-    inputs, outputs = gof.graph.clone(orig_inputs, orig_outputs)
     equivalence_tracker = _VariableEquivalenceTracker()
-    env = gof.env.Env(inputs, outputs,
-            #DestroyHandler is not needed because it is actually installed by an optimization
-            # after canonicalization.  This variables in a big speed gain.
+    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
+            # DestroyHandler may not be needed yet, as there is usually no
+            # inplace operation in the graph at this stage. DestroyHandler
+            # will be installed by an optimization after canonicalization,
+            # before the inplace operations are applied.
+            # This results in a big speed gain.
+            # If inplace operations are accepted and present, however,
+            # DestroyHandler will be inserted in the loop below.
             #features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])
             features=[equivalence_tracker])
 
     if not accept_inplace:
-        for node in env.nodes:
+        for node in fgraph.apply_nodes:
             if getattr(node.op, 'destroy_map', None):
                 raise TypeError("Graph must not contain inplace operations",
                                 node)
+    else:
+        # However, if some inplace ops are already in the graph,
+        # DestroyHandler is needed for the Supervisor below to work correctly.
+        for node in fgraph.apply_nodes:
+            if getattr(node.op, 'destroy_map', None):
+                fgraph.attach_feature(gof.DestroyHandler())
+                break
 
     # We need to protect all immutable inputs from inplace operations.
-    env.extend(Supervisor(input for spec, input in zip(input_specs, inputs)
-                          if not (spec.mutable or (hasattr(env, 'destroyers')
-                                                   and env.destroyers(input)))))
+    fgraph.attach_feature(Supervisor(input for spec, input in zip(input_specs, fgraph.inputs)
+                          if not (spec.mutable or (hasattr(fgraph, 'destroyers')
+                                                   and fgraph.destroyers(input)))))
 
-    # If named nodes are replaced, keep the name
-    env.extend(gof.toolbox.PreserveNames())
+    for feature in std_fgraph.features:
+        fgraph.attach_feature(feature())
 
-    return env, map(SymbolicOutput, updates), equivalence_tracker
+    return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 
 
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                   clobber_dr_vals=True,
                   perform=None, warn_input_not_reused=True):
-    """Raise BadDestroyMap if necessary, update dr_vals"""
+    """
+    Raise BadDestroyMap if necessary, update dr_vals
+
+    Returns a list of output variables that actually worked inplace
+    (their value is aliased to the value of at least one input).
+    """
     destroyed_idx_list = []
     destroy_map = getattr(node.op, 'destroy_map', {})
     for o_pos, i_pos_list in destroy_map.iteritems():
         destroyed_idx_list.extend(i_pos_list)
     destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
 
-    if warn_input_not_reused and destroyed_res_list:
-        dmap = getattr(node.op, 'destroy_map', {})
-        for oo, ii in dmap.iteritems():
-            out_var = storage_map[node.outputs[oo]][0]
-            in_var = storage_map[node.inputs[ii[0]]][0]
-            if isinstance(node.op, theano.compile.mode.OutputGuard):
+    actually_inplace_outputs = []
+    dmap = getattr(node.op, 'destroy_map', {})
+    for oo, ii in dmap.iteritems():
+        out_var = storage_map[node.outputs[oo]][0]
+        in_var = storage_map[node.inputs[ii[0]]][0]
+        if _may_share_memory(out_var, in_var):
+            actually_inplace_outputs.append(node.outputs[oo])
+
+        if warn_input_not_reused and destroyed_res_list:
+            if isinstance(node.op, OutputGuard):
                 # The point of OutputGuard is to be declared as destructive
                 # while not destroying anything
                 continue
@@ -691,18 +700,21 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                         "as destroyed was not changed for node '%s'",
                         ii[0], str(node))
 
-    if warn_input_not_reused:
-        vmap = getattr(node.op, 'view_map', {})
-        for oo, ii in vmap.iteritems():
-            out_var = storage_map[node.outputs[oo]][0]
-            in_var = storage_map[node.inputs[ii[0]]][0]
+    vmap = getattr(node.op, 'view_map', {})
+    for oo, ii in vmap.iteritems():
+        out_var = storage_map[node.outputs[oo]][0]
+        in_var = storage_map[node.inputs[ii[0]]][0]
+        if _may_share_memory(out_var, in_var):
+            actually_inplace_outputs.append(node.outputs[oo])
+
+        if warn_input_not_reused:
             # We don't try to optimize simple scalar and empty ndarray,
             # as this is not worth our time. This happen at least in
             # Subtensor when the output is a scalar But this depend on
             # the version of numpy!
             if getattr(out_var, 'size', 2) <= 1:
                 continue
-            if isinstance(node.op, theano.compile.mode.OutputGuard):
+            if isinstance(node.op, OutputGuard):
                 # This class is not in the final graph.
                 continue
             if not _may_share_memory(out_var, in_var):
@@ -727,6 +739,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                 raise BadDestroyMap(node, r_idx, r_vals[r],
                                     storage_map[r][0], perform)
 
+    return actually_inplace_outputs
+
 
 def _check_viewmap(node, storage_map):
     """
@@ -742,46 +756,40 @@ def _check_viewmap(node, storage_map):
         outstorage = storage_map[onode][0]
         instorage_id = [id(storage_map[i][0]) for i in node.inputs]
 
-        # TODO: investigate ways in which other Types may be aliased
-        # TODO: consider adding a function to Type to detect aliasing
-        danger_flag = id(outstorage) in instorage_id or\
-                      (type(outstorage)==numpy.ndarray and
-                       outstorage.flags['OWNDATA']==False)
+        # first find out which input it aliases
+        view_map = getattr(node.op, 'view_map', {})
+        destroy_map = getattr(node.op, 'destroy_map', {})
 
-        if danger_flag:
-            # first find out which input it aliases
-            view_map = getattr(node.op, 'view_map', {})
-            destroy_map = getattr(node.op, 'destroy_map', {})
+        # In theory, theano's view_map only allows for 1 output to
+        # alias 1 input. Checking for multiple aliases just in
+        # case...
 
-            # In theory, theano's view_map only allows for 1 output to
-            # alias 1 input. Checking for multiple aliases just in
-            # case...
+        for ii, inode in enumerate(node.inputs):
 
-            for ii, inode in enumerate(node.inputs):
+            if _may_share_memory(outstorage, storage_map[inode][0]):
 
-                if _may_share_memory(outstorage, storage_map[inode][0]):
+                nodeid = id(inode)
+                bad_alias[nodeid] = ii
 
-                    nodeid = id(inode)
-                    bad_alias[nodeid] = ii
+                # check that the aliasing was declared in [view|destroy]_map
+                if ([ii] == view_map.get(oi, None) or
+                    [ii] == destroy_map.get(oi, None)):
 
-                    # check that the aliasing was declared in [view|destroy]_map
-                    if ([ii]==view_map.get(oi,None) or\
-                        [ii]==destroy_map.get(oi,None)):
+                    good_alias[nodeid] = bad_alias.pop(nodeid)
 
-                        good_alias[nodeid] = bad_alias.pop(nodeid)
-
-            #TODO: make sure this is correct
-            # According to OB, duplicate inputs are rejected on build graph time
-            # if they cause problems. So if they are here it should be ok.
-            for key, val in good_alias.iteritems():
-                bad_alias.pop(key, None)
-            if bad_alias:
-                raise BadViewMap(node, oi, outstorage, bad_alias.values())
+        #TODO: make sure this is correct
+        # According to OB, duplicate inputs are rejected on build graph time
+        # if they cause problems. So if they are here it should be ok.
+        for key, val in good_alias.iteritems():
+            bad_alias.pop(key, None)
+        if bad_alias:
+            raise BadViewMap(node, oi, outstorage, bad_alias.values())
 
         #if its not aliased to input, check output->output aliasing
         if not good_alias and _is_used_in_graph(onode):
             for other_oi, other_onode in enumerate(node.outputs):
-                if other_oi == oi: continue
+                if other_oi == oi:
+                    continue
 
                 other_storage = storage_map[other_onode][0]
                 # check to see if we share memory with this other output
@@ -833,17 +841,18 @@ def _lessbroken_deepcopy(a):
     """
     :param a: any object
 
-    Returns a copy of `a` that shares no internal storage with the original.  A deep copy.
-    This function handles numpy arrays specially to avoid some bug I had one time... (possibly
-    about copying 0-d arrays?)
+    Returns a copy of `a` that shares no internal storage with the original
+    (a deep copy).
+    This function handles numpy arrays specially, because copy.deepcopy()
+    called on a 0-d array will return a numpy scalar, not an array.
     """
-    # this exists because numpy copies are broken
-    if type(a) is numpy.ndarray:
-        rval = numpy.array(a, copy=True, dtype=a.dtype)
+    # this exists because copy.deepcopy on numpy arrays is broken
+    if type(a) in (numpy.ndarray, numpy.memmap):
+        rval = a.copy()
     else:
         rval = copy.deepcopy(a)
 
-    assert type(rval) == type(a)
+    assert type(rval) == type(a), (type(rval), type(a))
     if isinstance(rval, numpy.ndarray):
         assert rval.dtype == a.dtype
     return rval
@@ -994,7 +1003,8 @@ _find_bad_optimizations = _find_bad_optimizations0
 
 
 def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
-        storage_map, r_vals, dr_vals, perform, active_order_set):
+        storage_map, r_vals, dr_vals, perform, active_order_set,
+        inplace_outs, init_outputs):
     '''Preallocate outputs in different memory layouts'''
 
     # To avoid circular imports
@@ -1004,21 +1014,49 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         from theano.sandbox.cuda import CudaNdarray
         from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
-    # TODO: Sparse, Scalar
+    # TODO: Sparse? Scalar does not really make sense.
+
+    # Do not preallocate memory for outputs that actually work inplace
+    considered_outputs = []
+    for r in node.outputs:
+        if r not in inplace_outs:
+            considered_outputs.append(r)
+
+    # Output storage that was initially present in the storage_map
+    if 'initial' in prealloc_modes or 'ALL' in prealloc_modes:
+        initial_outputs = {}
+        for r in considered_outputs:
+            if r in init_outputs:
+                initial_outputs[r] = init_outputs[r]
+
+        if initial_outputs:
+            yield ('initial', initial_outputs)
 
     # reuse_output: use a copy of the same storage returned the first time
     # TODO: optimization warning if the storage in reuse_outputs
     # is not reused
     if 'previous' in prealloc_modes or 'ALL' in prealloc_modes:
         reuse_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             # We want to reuse the exact same memory buffer,
             # so we keep the copy in r_vals
             new_r = _lessbroken_deepcopy(r_vals[r])
             reuse_outputs[r] = r_vals[r]
             r_vals[r] = new_r
+            # Sometimes, outputs can be aliased together.
+            # I'm not sure why it is legitimate, but there are tests about it.
+            # So, we cannot fill r_vals[r] with def_val yet, we have to wait
+            # until all output values are deepcopied.
 
-        yield ('previous', reuse_outputs)
+        for r in considered_outputs:
+            # There is no risk to overwrite inputs, since r does not work
+            # inplace.
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                reuse_outputs[r][...] = numpy.asarray(
+                        def_val).astype(r.type.dtype)
+
+        if reuse_outputs:
+            yield ('previous', reuse_outputs)
         # clear memory that is not needed any more
         del reuse_outputs
 
@@ -1026,13 +1064,13 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # (for TensorType and CudaNdarray, else None)
     if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         c_cont_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
                 # CudaNdarray don't have flags field
                 # assert new_buf.flags["C_CONTIGUOUS"]
-                new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
 
@@ -1044,13 +1082,13 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # (for TensorType, only)
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
                 new_buf = numpy.zeros(
                         shape=r_vals[r].shape,
                         dtype=r_vals[r].dtype,
                         order='F')
-                new_buf += def_val
+                new_buf[...] = def_val
                 if isinstance(r.type, CudaNdarrayType):
                     # When the CudaNdarray is built, the underlying memory
                     # is c-contiguous, so we transpose it before and after.
@@ -1067,34 +1105,79 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # We assume that the different outputs of a same Op will behave
     # independently, and there is no need to test over all combinations
     # of outputs (the time taken is prohibitive).
+    # When all outputs on a certain dimension are broadcastable, the Op
+    # can assume that the shape is 1 on that dimension, and stride testing
+    # is less relevant.
+    # Dimensions should be align by the innermost index, so we iterate
+    # from the end of shapes.
     max_ndim = 0
-    for r in node.outputs:
+    rev_out_broadcastable = []
+    for r in considered_outputs:
         if isinstance(r.type, (TensorType, CudaNdarrayType)):
-            max_ndim = max(max_ndim, r.ndim)
+            if max_ndim < r.ndim:
+                rev_out_broadcastable += [True] * (r.ndim - max_ndim)
+                max_ndim = r.ndim
+            assert len(rev_out_broadcastable) == max_ndim
+
+            for i, b in enumerate(r.broadcastable[::-1]):
+                rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
+    out_broadcastable = rev_out_broadcastable[::-1]
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
+        check_ndim = config.DebugMode.check_preallocated_output_ndim
         # Initial allocation
         init_strided = {}
-        for r in node.outputs:
+        for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                # Create a buffer twice as large in every dimension
-                new_buf = r.type.value_zeros(
-                        [(s * 2) for s in r_vals[r].shape])
+                # Create a buffer twice as large in every dimension,
+                # except if broadcastable, or for dimensions above
+                # config.DebugMode.check_preallocated_output_ndim
+                buf_shape = []
+                for s, b in zip(r_vals[r].shape, r.broadcastable):
+                    if b or ((r.ndim - len(buf_shape)) > check_ndim):
+                        buf_shape.append(s)
+                    else:
+                        buf_shape.append(s * 2)
+                new_buf = r.type.value_zeros(buf_shape)
+                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
                 init_strided[r] = new_buf
 
-        for step_signs in itertools_product((-1, 1), repeat=max_ndim):
+        # The number of combinations is exponential in the number of
+        # dimensions, and some ops can have tens of outputs. To prevent
+        # tests from lasting days, we use the same strides for all
+        # dimensions but the last check_ndim ones.
+        # Moreover, to avoid memory problems, we do not test with strides
+        # 2 and -2 on those dimensions.
+        step_signs_list = []
+        for b in out_broadcastable[-check_ndim:]:
+            if b:
+                step_signs_list.append((1,))
+            else:
+                step_signs_list.append((-1, 1))
+
+        # Use the same step on all dimensions before the last check_ndim.
+        if all(out_broadcastable[:-check_ndim]):
+            step_signs_list = [(1,)] + step_signs_list
+        else:
+            step_signs_list = [(-1, 1)] + step_signs_list
+
+        for step_signs in itertools_product(*step_signs_list):
             for step_size in (1, 2):
                 strided = {}
-                steps = [s * step_size for s in step_signs]
+
+                # First, the dimensions above check_ndim, then the other ones
+                # Do not test with 2 or -2 for dimensions above check_ndim
+                steps = [step_signs[0]] * len(out_broadcastable[:-check_ndim])
+                steps += [s * step_size for s in step_signs[1:]]
+
                 name = 'strided%s' % str(tuple(steps))
-                for r in node.outputs:
+                for r in considered_outputs:
                     if r in init_strided:
-                        # Build lists of slices, for strides and shapes
                         strides = []
                         shapes = []
                         for i, size in enumerate(r_vals[r].shape):
-                            strides.append(slice(None, None, steps[i]))
                             shapes.append(slice(None, size, None))
+                            strides.append(slice(None, None, steps[i]))
 
                         r_buf = init_strided[r]
 
@@ -1103,15 +1186,19 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                         assert r_buf.shape == r_vals[r].shape
 
                         r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
-
                         strided[r] = r_buf
 
-                yield (name, strided)
+                if strided:
+                    yield (name, strided)
                 del strided
 
     if 'wrong_size' in prealloc_modes or 'ALL' in prealloc_modes:
         # For each dimension, try size-1, size, size+1
-        for dim in xrange(max_ndim):
+        for dim, b in enumerate(out_broadcastable):
+            if b:
+                # The shape has to be 1
+                continue
+
             shape_diff = [0] * max_ndim
             for diff in (-1, 1):
                 shape_diff[dim] = diff
@@ -1119,22 +1206,25 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 wrong_size = {}
                 name = 'wrong_size%s' % str(tuple(shape_diff))
 
-                for r in node.outputs:
+                for r in considered_outputs:
                     if isinstance(r.type, (TensorType, CudaNdarrayType)):
                         r_shape_diff = shape_diff[:r.ndim]
                         out_shape = [max((s + sd), 0)
                                 for s, sd in zip(r_vals[r].shape,
                                                  r_shape_diff)]
-                        new_buf = r.type.value_zeros(r_vals[r].shape)
-                        new_buf += numpy.asarray(def_val).astype(r.type.dtype)
+                        new_buf = r.type.value_zeros(out_shape)
+                        new_buf[...] = numpy.asarray(
+                                def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
-                yield (name, wrong_size)
+                if wrong_size:
+                    yield (name, wrong_size)
                 del wrong_size
 
 
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
-        storage_map, r_vals, dr_vals, perform, active_order_set):
+        storage_map, r_vals, dr_vals, perform, active_order_set,
+        inplace_outs, init_outputs):
     '''Try to apply thunk() on different output storages'''
 
     # If node has an inner compiled Theano function with mode DebugMode,
@@ -1163,17 +1253,33 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                     changed_inner_mode = True
                     _logger.info('changing inner mode')
 
+        # Set of inputs that are marked as destroyed or viewed
+        aliased_inputs = set()
+        dmap = getattr(node.op, 'destroy_map', {})
+        vmap = getattr(node.op, 'view_map', {})
+        for i, r in enumerate(node.inputs):
+            if any(i in v for v in (dmap.values() + vmap.values())):
+                aliased_inputs.add(r)
+
         _logger.debug('starting preallocated output checking')
         for (name, out_map) in _get_preallocated_maps(
                 node, thunk, prealloc_modes, def_val, storage_map, r_vals,
-                dr_vals, perform, active_order_set):
+                dr_vals, perform, active_order_set, inplace_outs,
+                init_outputs):
             _logger.debug('  name = %s', name)
 
-            # Copy the inputs over, if they were marked as destroyed
-            dmap = getattr(node.op, 'destroy_map', {})
-            for i, r in enumerate(node.inputs):
-                if any(i in v for v in dmap.values()):
-                    storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
+            thunk_name = '%s with %s output' % (perform, name)
+
+            if not out_map:
+                # Map is empty, there is no need to execute thunk() again
+                _logger.warn('%s: out_map is empty', name)
+                continue
+
+            # Copy the inputs over, if they were marked as destroyed or viewed
+            # (we will destroy the output at some point so it can destroy
+            # the input)
+            for r in aliased_inputs:
+                storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
             # Get the appropriate output storages
             # (no copy)
@@ -1186,13 +1292,13 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.is_valid_value(storage_map[r][0]):
                     raise InvalidValueError(r, storage_map[r][0],
-                            hint='%s with %s output' % (perform, name),
+                            hint=thunk_name,
                             specific_hint=r.type.value_validity_msg(
                             storage_map[r][0]))
 
             _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                           clobber_dr_vals=False,
-                          perform='%s with output %s' % (perform, name),
+                          perform=thunk_name,
                           warn_input_not_reused=False)
 
             _check_viewmap(node, storage_map)
@@ -1200,8 +1306,11 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             for r in node.outputs:
                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                     # TODO: indicate it is not a C/Py problem
-                    raise BadCLinkerOutput(r, val_py=r_vals[r],
-                                           val_c=storage_map[r][0])
+                    inputs_val = [storage_map[inp][0] for inp in r.owner.inputs]
+                    raise BadThunkOutput(r,
+                            thunk1='Reference value', val1=r_vals[r],
+                            thunk2=thunk_name, val2=storage_map[r][0],
+                            inputs_val=inputs_val)
 
             # Clear storage_map
             for r in node.outputs:
@@ -1214,8 +1323,8 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             fn.maker.mode = backup_mode
 
 
-class _EnvEvent(object):
-    """A record of an event in the life of an Env.
+class _FunctionGraphEvent(object):
+    """A record of an event in the life of an FunctionGraph.
 
     The __eq__ function is important here, as it is the basis for
     comparing optimization runs.
@@ -1269,7 +1378,7 @@ class _EnvEvent(object):
         if rval:
             # nodes are not compared because this comparison is
             # supposed to be true for corresponding events that happen
-            # in different Env instances (different graphs)
+            # in different FunctionGraph instances (different graphs)
             for attr in ['kind', 'op', 'idx', 'reason']:
                 rval = rval and getattr(self, attr) == getattr(other, attr)
         return rval
@@ -1279,9 +1388,9 @@ class _EnvEvent(object):
 
 
 class _VariableEquivalenceTracker(object):
-    """A Env Feature that keeps tabs on an Env and tries to detect problems."""
+    """A FunctionGraph Feature that keeps tabs on an FunctionGraph and tries to detect problems."""
 
-    env = None
+    fgraph = None
     """WRITEME"""
 
     equiv = None
@@ -1306,33 +1415,37 @@ class _VariableEquivalenceTracker(object):
     """WRITEME"""
 
     def __init__(self):
-        self.env = None
+        self.fgraph = None
 
-    def on_attach(self, env):
-        assert self.env is None
+    def on_attach(self, fgraph):
+        assert self.fgraph is None
         self.equiv = {}
         self.active_nodes = set()
         self.inactive_nodes = set()
-        self.env = env
+        self.fgraph = fgraph
         self.all_variables_ever = []
         self.reasons = {}
         self.replaced_by = {}
         self.event_list = []
+        for node in fgraph.toposort():
+            self.on_import(fgraph, node, "on_attach")
 
-    def on_detach(self, env):
-        assert env is self.env
-        self.env = None
+    def on_detach(self, fgraph):
+        assert fgraph is self.fgraph
+        self.fgraph = None
 
-    def on_prune(self, env, node):
-        self.event_list.append(_EnvEvent('prune', node))
+    def on_prune(self, fgraph, node, reason):
+        self.event_list.append(_FunctionGraphEvent('prune', node,
+                                                   reason=reason))
         #print 'PRUNING NODE', node, id(node)
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
         self.active_nodes.remove(node)
         self.inactive_nodes.add(node)
 
-    def on_import(self, env, node):
-        self.event_list.append(_EnvEvent('import', node))
+    def on_import(self, fgraph, node, reason):
+        self.event_list.append(_FunctionGraphEvent('import', node,
+                                                   reason=reason))
 
         #print 'NEW NODE', node, id(node)
         assert node not in self.active_nodes
@@ -1353,9 +1466,9 @@ class _VariableEquivalenceTracker(object):
                 self.reasons.setdefault(r, [])
                 self.replaced_by.setdefault(r, [])
 
-    def on_change_input(self, env, node, i, r, new_r, reason=None):
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
-        self.event_list.append(_EnvEvent('change', node,
+        self.event_list.append(_FunctionGraphEvent('change', node,
                                          reason=str(reason), idx=i))
 
         self.reasons.setdefault(new_r, [])
@@ -1410,23 +1523,26 @@ class _VariableEquivalenceTracker(object):
 #List of default version of make thunk.
 #This is needed to know if the user overrided it.
 #The GpuOp will be added here when theano.sandbox.cuda is imported.
-default_make_thunk = [theano.gof.Op.make_thunk.im_func]
+default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk),
+                      get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
 
 
 class _Linker(gof.link.LocalLinker):
     """Special debugging linker"""
-    def __init__(self, maker):
+    def __init__(self, maker, schedule=None):
         super(gof.LocalLinker, self).__init__()
-        self.env = None
+        self.fgraph = None
         self.maker = maker
+        if schedule:
+            self.schedule = schedule
 
-    def accept(self, env, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None):
         if no_recycling is None:
             no_recycling = []
-        if self.env is not None and self.env is not env:
+        if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(self.env, self.maker).accept(env, no_recycling)
-        self.env = env
+            return type(self)(maker=self.maker).accept(fgraph, no_recycling)
+        self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
 
@@ -1439,24 +1555,28 @@ class _Linker(gof.link.LocalLinker):
             # filter_checks_isfinite
             from theano.tensor import TensorType  # to set filter_check_isfinite
             from theano import tests  # for config.unittests.rseed
-        env = self.env
+        fgraph = self.fgraph
         input_storage_ = input_storage
         output_storage_ = output_storage
-        #order = env.toposort()
+        #order = self.schedule(fgraph)
 
         #Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
         #This will be OK, because every thunk is evaluated on a copy of its input.
-        order_outputs = copy.copy(env.equivalence_tracker.all_variables_ever)
+        order_outputs = copy.copy(fgraph.equivalence_tracker.all_variables_ever)
         order_outputs.reverse()
-        order = graph.io_toposort(env.inputs, order_outputs)
+        order = graph.io_toposort(fgraph.inputs, order_outputs)
 
-        active_order = env.toposort()  # an ordering of just the active nodes
+        active_order = self.schedule(fgraph) # an ordering of just the active nodes
         active_order_set = set(active_order)
 
-        no_recycling = self.no_recycling
+        # Disable no_recycling, in order to be able to use
+        # check_preallocated_output even on the output of the function.
+        # no_recycling in individual thunks does not really matter, since
+        # the function's outputs will always be freshly allocated.
+        no_recycling = []
 
         input_storage, output_storage, storage_map = link.map_storage(
-            env, order, input_storage_, output_storage_)
+            fgraph, order, input_storage_, output_storage_)
 
         thunks_py = []  # python thunks
         thunks_c = []  # c thunks
@@ -1474,8 +1594,9 @@ class _Linker(gof.link.LocalLinker):
                 # directly from PureOp)
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
-                e = Env(*graph.clone(node.inputs, node.outputs))
-                e.toposort = lambda: e.nodes  # WARNING: STOCHASTIC ORDER
+                e = FunctionGraph(node.inputs, node.outputs)
+                # The toposort isn't a stochastic order as it contain only one node.
+                e.toposort = lambda: list(e.apply_nodes)
                 #  Specifically... e.nodes is a set, but of only 1 element
 
                 cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs,
@@ -1518,6 +1639,8 @@ class _Linker(gof.link.LocalLinker):
                                            storage_map,
                                            compute_map,
                                            no_recycling)
+                thunk.inputs = [storage_map[v] for v in node.inputs]
+                thunk.outputs = [storage_map[v] for v in node.outputs]
 
                 # Right now there is no op that when called check if
                 # its ouputs are computed and don't recompute itself.
@@ -1548,12 +1671,15 @@ class _Linker(gof.link.LocalLinker):
                     _logger.warn("We won't check the perform function of node '%s' but we will check its make_thunk function" % node)
                     thunks_py[-1] = thunk
 
-        if no_recycling is True:
-            no_recycling = storage_map.values()
-            no_recycling = utils.difference(no_recycling, input_storage)
+        # Use self.no_recycling (that was passed in accept()) to always
+        # use new memory storage when it is needed, in particular for the
+        # function's outputs. no_recycling_map will be used in f() below.
+        if self.no_recycling is True:
+            no_recycling_map = storage_map.values()
+            no_recycling_map = utils.difference(no_recycling_map, input_storage)
         else:
-            no_recycling = [storage_map[r] for r in no_recycling
-                            if r not in env.inputs]
+            no_recycling_map = [storage_map[r] for r in self.no_recycling
+                            if r not in fgraph.inputs]
 
         # Precompute some things for storage pre-allocation
         try:
@@ -1573,7 +1699,7 @@ class _Linker(gof.link.LocalLinker):
             _logger.debug("starting a DebugMode call")
             _logger.debug("self.maker.mode.check_preallocated_output: %s",
                     self.maker.mode.check_preallocated_output)
-            for x in no_recycling:
+            for x in no_recycling_map:
                 x[0] = None
 
             # nest all this in try-finally to put storage *back* into
@@ -1617,11 +1743,14 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                         r_vals_initialized.append(r)
 
-                # TODO: store them in another map, and test the thunks on
+                # store preallocated outputs in another map, and test the thunks on
                 # them as output storages.
+                init_outputs = {}
                 for r in storage_map:
-                    if r in env.outputs:
-                        storage_map[r][0] = None
+                    if r in fgraph.outputs:
+                        if storage_map[r][0] is not None:
+                            init_outputs[r] = storage_map[r][0]
+                            storage_map[r][0] = None
 
                 #####
                 #  Precondition: the storage map is empty, transferred
@@ -1663,6 +1792,27 @@ class _Linker(gof.link.LocalLinker):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None
+                        except Exception, e:
+                            # I think that only 1 optimization can
+                            # insert a given apply node. If that is not True,
+                            # we would need to loop over all node outputs,
+                            # But this make the output uglier.
+                            reason = fgraph.equivalence_tracker.reasons[
+                                node.outputs[0]]
+                            if not reason:
+                                raise
+                            opt = str(reason[0][0])
+                            msg = (
+"An optimization (probably %s ) inserted an apply node that raise an error." % opt +
+"\nThe information we have about this optimizations is:" + str(reason[0][1]) +
+"\n" + reason[0][2] +
+"\n\nThe original exception: \n" + str(e))
+                            new_e = e.__class__(msg)
+                            exc_type, exc_value, exc_trace = sys.exc_info()
+                            exc_value = new_e
+                            raise_with_op(node, thunk_c,
+                                          (exc_type, exc_value, exc_trace))
+
 
                     if thunk_py:
                         # check output values for type-correctness
@@ -1673,11 +1823,11 @@ class _Linker(gof.link.LocalLinker):
                                 raise InvalidValueError(r, storage_map[r][0],
                                                         hint='perform output',
                                                         specific_hint=hint2)
-
-                        _check_inputs(node, storage_map, r_vals, dr_vals,
-                                      active_order_set,
-                                      clobber_dr_vals=True, perform='py',
-                                      warn_input_not_reused=config.DebugMode.warn_input_not_reused)
+                        py_inplace_outs = _check_inputs(
+                                node, storage_map, r_vals, dr_vals,
+                                active_order_set,
+                                clobber_dr_vals=True, perform='py',
+                                warn_input_not_reused=config.DebugMode.warn_input_not_reused)
 
                         _check_viewmap(node, storage_map)
 
@@ -1705,7 +1855,9 @@ class _Linker(gof.link.LocalLinker):
                                     r_vals=r_vals,
                                     dr_vals=dr_vals,
                                     perform='py',
-                                    active_order_set=active_order_set)
+                                    active_order_set=active_order_set,
+                                    inplace_outs=py_inplace_outs,
+                                    init_outputs=init_outputs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_py %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1717,6 +1869,7 @@ class _Linker(gof.link.LocalLinker):
                         clobber = True
                         if thunk_py:
                             dmap = getattr(node.op, 'destroy_map', {})
+                            vmap = getattr(node.op, 'view_map', {})
                             for i, r in enumerate(node.inputs):
                                 # if thunk_py ran, and we still got this far,
                                 # it means that the destroy_map of the Op (and view_map) are
@@ -1725,7 +1878,10 @@ class _Linker(gof.link.LocalLinker):
                                 # fact not been destroyed.
                                 # Therefore... we only need to overwrite inputs that *have*
                                 # been marked as destroyed.
-                                if any(i in v for v in dmap.values()):
+                                # Inputs marked as viewd are unsafe too,
+                                # because the corresponding output can
+                                # be destroyed.
+                                if any(i in v for v in (dmap.values() + vmap.values())):
                                     storage_map[r][0] = _lessbroken_deepcopy(r_vals[r])
 
                             clobber = False
@@ -1734,8 +1890,26 @@ class _Linker(gof.link.LocalLinker):
                         ## First time, with None in output_storage
                         try:
                             thunk_c()
-                        except Exception:
-                            raise_with_op(node)
+                        except Exception, e:
+                            # I think that only 1 optimization can
+                            # insert a given apply node. If that is not True,
+                            # we would need to loop over all node outputs,
+                            # But this make the output uglier.
+                            reason = fgraph.equivalence_tracker.reasons[
+                                node.outputs[0]]
+                            if not reason:
+                                raise
+                            opt = str(reason[0][0])
+                            msg = (
+"An optimization (probably %s ) inserted an apply node that raise an error." % opt +
+"\nThe information we have about this optimizations is:" + str(reason[0][1]) +
+"\n" + reason[0][2] +
+"\n\nThe original exception: \n" + str(e))
+                            new_e = e.__class__(msg)
+                            exc_type, exc_value, exc_trace = sys.exc_info()
+                            exc_value = new_e
+                            raise_with_op(node, thunk_c,
+                                          (exc_type, exc_value, exc_trace))
 
                         for r in node.outputs:
                             # check output values for type-correctness
@@ -1750,10 +1924,11 @@ class _Linker(gof.link.LocalLinker):
                                     self.maker.mode.require_matching_strides,
                                     node.op)
 
-                        _check_inputs(node, storage_map, r_vals,
-                                      dr_vals, active_order_set,
-                                      clobber_dr_vals=clobber, perform='c',
-                                      warn_input_not_reused=config.DebugMode.warn_input_not_reused)
+                        c_inplace_outs = _check_inputs(
+                                node, storage_map, r_vals,
+                                dr_vals, active_order_set,
+                                clobber_dr_vals=clobber, perform='c',
+                                warn_input_not_reused=config.DebugMode.warn_input_not_reused)
 
                         _check_viewmap(node, storage_map)
 
@@ -1766,7 +1941,11 @@ class _Linker(gof.link.LocalLinker):
                                 if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
                                     #import pdb; pdb.set_trace()
                                     #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
-                                    raise BadCLinkerOutput(r, val_py=r_vals[r], val_c=storage_map[r][0])
+                                    inputs_val = [storage_map[inp][0] for inp in r.owner.inputs]
+                                    raise BadThunkOutput(r,
+                                            thunk1='perform', val1=r_vals[r],
+                                            thunk2='c_code', val2=storage_map[r][0],
+                                            inputs_val=inputs_val)
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 #retrieve each output from the storage_map
@@ -1780,7 +1959,7 @@ class _Linker(gof.link.LocalLinker):
                                 try:
                                     thunk_c()
                                 except Exception:
-                                    raise_with_op(node)
+                                    raise_with_op(node, thunk_c)
                             _logger.debug(
                                     '%i - calling _check_preallocated_output '
                                     'with thunk_c', i)
@@ -1793,7 +1972,9 @@ class _Linker(gof.link.LocalLinker):
                                     r_vals=r_vals,
                                     dr_vals=dr_vals,
                                     perform='c code',
-                                    active_order_set=active_order_set)
+                                    active_order_set=active_order_set,
+                                    inplace_outs=c_inplace_outs,
+                                    init_outputs=init_outputs)
 
                         # print >> sys.stderr, i, "DEBUGMODE thunk_c  %100s %50s %30s" % (node,
                             #[(id(o), numpy.asarray(storage_map[o][0])[0,0]) for o in node.inputs],
@@ -1812,7 +1993,7 @@ class _Linker(gof.link.LocalLinker):
                     #But it is very slow and it is not sure it will help.
                     gc.collect()
 
-                _find_bad_optimizations(order, env.equivalence_tracker.reasons,
+                _find_bad_optimizations(order, fgraph.equivalence_tracker.reasons,
                                         r_vals)
 
                 #####
@@ -1827,23 +2008,23 @@ class _Linker(gof.link.LocalLinker):
                     assert s[0] is None
 
                 # store our output variables to their respective storage lists
-                for output, storage in zip(env.outputs, output_storage):
+                for output, storage in zip(fgraph.outputs, output_storage):
                     storage[0] = r_vals[output]
 
                 # transfer all inputs back to their respective storage lists
                 for r in r_vals:
                     if r.owner is None:
-                        if r in env.inputs:
-                            assert storage_map[r] is input_storage[env.inputs.index(r)]
+                        if r in fgraph.inputs:
+                            assert storage_map[r] is input_storage[fgraph.inputs.index(r)]
                         storage_map[r][0] = r_vals[r]
 
                 # if an input was destroyed, the destroyed value should be returned
                 for r in dr_vals:
                     assert dr_vals[r][0] is not None
                     if r.owner is None:
-                        assert r in env.inputs
+                        assert r in fgraph.inputs
                         #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
-                        if type(dr_vals[r][0]) is numpy.ndarray \
+                        if type(dr_vals[r][0]) in (numpy.ndarray, numpy.memmap) \
                                 and dr_vals[r][0].dtype == storage_map[r][0].dtype \
                                 and dr_vals[r][0].shape == storage_map[r][0].shape:
                             if len(dr_vals[r][0].shape):
@@ -1894,13 +2075,13 @@ class _Linker(gof.link.LocalLinker):
         f = run_with_tensortype_filter_check(f)
 
         f.allow_gc = True
-        assert len(env.inputs) == len(input_storage)
-        assert len(env.outputs) == len(output_storage)
+        assert len(fgraph.inputs) == len(input_storage)
+        assert len(fgraph.outputs) == len(output_storage)
         #print 'make_all returning output', [id(z) for z in output_storage]
         return f, [link.Container(input, storage, readonly=False)
-                   for input, storage in zip(env.inputs, input_storage)], \
+                   for input, storage in zip(fgraph.inputs, input_storage)], \
                   [link.Container(output, storage, readonly=True)
-                   for output, storage in zip(env.outputs, output_storage)], \
+                   for output, storage in zip(fgraph.outputs, output_storage)], \
                   thunks_py, order
 
 
@@ -1916,7 +2097,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             accept_inplace = False,
             function_builder = Function,
             profile=None,
-            on_unused_input='raise'):
+            on_unused_input=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -1959,33 +2140,33 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-#TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z)
-                                                for x, y, z in indices], [])
 
-        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
-
-        # make the env
+        # make the fgraph
         for i in xrange(mode.stability_patience):
-            env, additional_outputs, equivalence_tracker = _optcheck_env(
-                expanded_inputs, outputs, accept_inplace)
-            env.equivalence_tracker = equivalence_tracker
+            fgraph, additional_outputs, equivalence_tracker = _optcheck_fgraph(
+                inputs, outputs, accept_inplace)
+            fgraph.equivalence_tracker = equivalence_tracker
 
-            # optimize the env
+            # optimize the fgraph
             compute_test_value_orig = theano.config.compute_test_value
+            add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
             try:
-                theano.config.compute_test_value = "off"
-                optimizer(env)
+                theano.config.compute_test_value = theano.config.compute_test_value_opt
+                gof.Op.add_stack_trace_on_call = False  # Should it be 0 == i?
+                optimizer(fgraph)
 
-                theano.compile.function_module.insert_deepcopy(env, inputs,
+                theano.compile.function_module.insert_deepcopy(fgraph, inputs,
                                                     outputs + additional_outputs)
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
+                gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
 
             if i:
-                li = env.equivalence_tracker.event_list
-                l0 = env0.equivalence_tracker.event_list
+                li = fgraph.equivalence_tracker.event_list
+                l0 = fgraph0.equivalence_tracker.event_list
                 if li != l0 :
                     infolog = StringIO()
                     print >> infolog, "WARNING: Optimization process is unstable..."
@@ -2019,28 +2200,35 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                     raise StochasticOrder(infolog.getvalue())
                 else:
                     if self.verbose:
-                        print >> sys.stderr, "OPTCHECK: optimization", i, "of", len(li), "events was stable."
+                        print >> sys.stderr, "OPTCHECK: optimization", i, \
+                                 "of", len(li), "events was stable."
             else:
-                env0 = env
+                fgraph0 = fgraph
 
-
-        del env0
-        self.env = env
+        del fgraph0
+        self.fgraph = fgraph
         #equivalence_tracker.printstuff()
 
         linker = _Linker(self)
 
+        # the 'no_borrow' outputs are the ones for which that we can't return
+        # the internal storage pointer.
 
-        #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
-        no_borrow = [output for output, spec in zip(env.outputs, outputs+additional_outputs) if not spec.borrow]
+        no_borrow = [
+                output
+                for output, spec in izip(fgraph.outputs,
+                                         outputs + additional_outputs)
+                if not spec.borrow]
         if no_borrow:
-            self.linker = linker.accept(env, no_recycling = infer_reuse_pattern(env, no_borrow))
+            self.linker = linker.accept(
+                    fgraph,
+                    no_recycling=infer_reuse_pattern(fgraph, no_borrow))
         else:
-            self.linker = linker.accept(env)
+            self.linker = linker.accept(fgraph)
 
         self.indices = indices
         self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
+        self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none
@@ -2176,7 +2364,10 @@ class DebugMode(Mode):
 
     This mode catches several kinds of internal error:
 
-    - inconsistent c_code and perform implementations (see `BadCLinkerOutput`)
+    - inconsistent outputs when calling the same Op twice with the same
+      inputs, for instance if c_code and perform implementations, are
+      inconsistent, or in case of incorrect handling of output memory
+      (see `BadThunkOutput`),
 
     - a variable replacing another when their runtime values don't
       match.  This is a symptom of an incorrect optimization step, or

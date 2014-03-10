@@ -3,7 +3,7 @@ from theano.gof.graph import Variable, Apply
 from theano.gof.type import Type
 from theano.gof.op import Op
 
-from theano.gof.env import Env, InconsistencyError
+from theano.gof.fg import FunctionGraph, InconsistencyError
 from theano.gof.toolbox import *
 
 
@@ -61,15 +61,15 @@ def inputs():
     return x, y, z
 
 
-
 class TestNodeFinder:
 
     def test_straightforward(self):
         x, y, z = inputs()
         e0 = dot(y, z)
         e = add(add(sigmoid(x), sigmoid(sigmoid(z))), dot(add(x, y), e0))
-        g = Env([x, y, z], [e])
-        g.extend(NodeFinder())
+        g = FunctionGraph([x, y, z], [e], clone=False)
+        g.attach_feature(NodeFinder())
+
         assert hasattr(g, 'get_nodes')
         for type, num in ((add, 3), (sigmoid, 3), (dot, 2)):
             if not len([x for x in g.get_nodes(type)]) == num:
@@ -85,4 +85,4 @@ class TestNodeFinder:
                 raise Exception("Expected: %i times %s" % (num, type))
 
 
-    
+

@@ -1,0 +1,6 @@
+The code written by James Bergstra in this directory has been superseded
+by the scipy benchmarking code, which is in another repository:
+
+https://github.com/jaberg/DeepLearningBenchmarks
+
+The remainder of the code in this directory remains undocumented.

@@ -1,88 +1,143 @@
-import time
 import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
 try:
     import scipy.sparse as sp
-    import scipy.sparse
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
 import theano
+from theano import config
+from theano import tensor
+from theano import sparse
 
-from theano import tensor as T
-from theano import sparse as S
-from theano.sparse.sandbox import sp2 as S2
-
-from theano.tests import unittest_tools as utt
-
-if S.enable_sparse == False:
+if not theano.sparse.enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 
-def as_sparse_format(data, format):
-    if format == 'csc':
-        return scipy.sparse.csc_matrix(data)
-    elif format == 'csr':
-        return scipy.sparse.csr_matrix(data)
-    else:
-        raise NotImplementedError()
+from theano.sparse.sandbox.sp2 import (
+    Poisson, poisson, Binomial, Multinomial, multinomial)
+
+from theano.tests import unittest_tools as utt
+from theano.sparse.tests.test_basic import as_sparse_format
 
 
-def eval_outputs(outputs):
-    return compile.function([], outputs)()[0]
+class PoissonTester(utt.InferShapeTester):
+    x = {}
+    a = {}
 
+    for format in sparse.sparse_formats:
+        variable = getattr(theano.sparse, format + '_matrix')
 
-def random_lil(shape, dtype, nnz):
-    rval = sp.lil_matrix(shape, dtype=dtype)
-    huge = 2 ** 30
-    for k in range(nnz):
-        # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.random_integers(huge, size=len(shape)) % shape
-        value = numpy.random.rand()
-        #if dtype *int*, value will always be zeros!
-        if "int" in dtype:
-            value = int(value * 100)
-        rval.__setitem__(
-                idx,
-                value)
-    return rval
+        rand = numpy.array(numpy.random.random_integers(3, size=(3, 4)) - 1,
+                           dtype=theano.config.floatX)
 
+        x[format] = variable()
+        a[format] = as_sparse_format(rand, format)
 
-class test_structured_add_s_v(unittest.TestCase):
     def setUp(self):
-        utt.seed_rng()
+        super(PoissonTester, self).setUp()
+        self.op_class = Poisson
 
-    def test_structured_add_s_v_grad(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
-        
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                mat = numpy.ones(3, dtype=dtype)
-                
-                S.verify_grad_sparse(S2.structured_add_s_v,
-                    [spmat, mat], structured=True)
-    
-    def test_structured_add_s_v(self):
-        sp_types = {'csc': sp.csc_matrix,
-            'csr': sp.csr_matrix}
-        
-        for format in ['csr', 'csc']:
-            for dtype in ['float32', 'float64']:
-                x = S.SparseType(format, dtype=dtype)()
-                y = T.vector(dtype=dtype)
-                f = theano.function([x, y], S2.structured_add_s_v(x, y))
-                
-                spmat = sp_types[format](random_lil((4, 3), dtype, 3))
-                spones = spmat.copy()
-                spones.data = numpy.ones_like(spones.data)
-                mat = numpy.ones(3, dtype=dtype)
-                
-                out = f(spmat, mat)
-                
-                assert numpy.all(out.toarray() == spones.multiply(spmat + mat))
+    def test_op(self):
+        for format in sparse.sparse_formats:
+            f = theano.function(
+                [self.x[format]],
+                poisson(self.x[format]))
+
+            tested = f(self.a[format])
+
+            assert tested.format == format
+            assert tested.dtype == self.a[format].dtype
+            assert numpy.allclose(numpy.floor(tested.data), tested.data)
+            assert tested.shape == self.a[format].shape
+
+    def test_infer_shape(self):
+        for format in sparse.sparse_formats:
+            self._compile_and_check([self.x[format]],
+                                    [poisson(self.x[format])],
+                                    [self.a[format]],
+                                    self.op_class)
+
+
+class BinomialTester(utt.InferShapeTester):
+    n = tensor.scalar()
+    p = tensor.scalar()
+    shape = tensor.lvector()
+    _n = 5
+    _p = .25
+    _shape = numpy.asarray([3, 5], dtype='int64')
+
+    inputs = [n, p, shape]
+    _inputs = [_n, _p, _shape]
+
+    def setUp(self):
+        super(BinomialTester, self).setUp()
+        self.op_class = Binomial
+
+    def test_op(self):
+        for sp_format in sparse.sparse_formats:
+            for o_type in sparse.float_dtypes:
+                f = theano.function(
+                    self.inputs,
+                    Binomial(sp_format, o_type)(*self.inputs))
+
+                tested = f(*self._inputs)
+
+                assert tested.shape == tuple(self._shape)
+                assert tested.format == sp_format
+                assert tested.dtype == o_type
+                assert numpy.allclose(numpy.floor(tested.todense()),
+                                   tested.todense())
+
+    def test_infer_shape(self):
+        for sp_format in sparse.sparse_formats:
+            for o_type in sparse.float_dtypes:
+                self._compile_and_check(
+                    self.inputs,
+                    [Binomial(sp_format, o_type)(*self.inputs)],
+                    self._inputs,
+                    self.op_class)
+
+
+class MultinomialTester(utt.InferShapeTester):
+    p = sparse.csr_matrix()
+    _p = sp.csr_matrix(numpy.asarray([[0.0, 0.5, 0.0, 0.5],
+                                      [0.1, 0.2, 0.3, 0.4],
+                                      [0.0, 1.0, 0.0, 0.0],
+                                      [0.3, 0.3, 0.0, 0.4]],
+                                     dtype=config.floatX))
+
+    def setUp(self):
+        super(MultinomialTester, self).setUp()
+        self.op_class = Multinomial
+
+    def test_op(self):
+        n = tensor.lscalar()
+        f = theano.function([self.p, n], multinomial(n, self.p))
+
+        _n = 5
+        tested = f(self._p, _n)
+        assert tested.shape == self._p.shape
+        assert numpy.allclose(numpy.floor(tested.todense()), tested.todense())
+        assert tested[2, 1] == _n
+
+        n = tensor.lvector()
+        f = theano.function([self.p, n], multinomial(n, self.p))
+
+        _n = numpy.asarray([1, 2, 3, 4], dtype='int64')
+        tested = f(self._p, _n)
+        assert tested.shape == self._p.shape
+        assert numpy.allclose(numpy.floor(tested.todense()), tested.todense())
+        assert tested[2, 1] == _n[2]
+
+    def test_infer_shape(self):
+        self._compile_and_check([self.p],
+                                [multinomial(5, self.p)],
+                                [self._p],
+                                self.op_class,
+                                warn=False)
+
 
 if __name__ == '__main__':
     unittest.main()

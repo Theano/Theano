@@ -5,27 +5,31 @@
 Graph Structures
 ================
 
+
+Theano Graphs
+=============
+
 Debugging or profiling code written in Theano is not that simple if you
 do not know what goes on under the hood. This chapter is meant to
-introduce you to a required minimum of the inner workings of Theano, 
-for more details see :ref:`extending`.
+introduce you to a required minimum of the inner workings of Theano.  
+For more detail see :ref:`extending`.
 
 The first step in writing Theano code is to write down all mathematical 
 relations using symbolic placeholders (**variables**). When writing down 
 these expressions you use operations like ``+``, ``-``, ``**``,
 ``sum()``, ``tanh()``. All these are represented internally as **ops**. 
-An **op** represents a certain computation on some type of inputs
-producing some type of output. You can see it as a function definition
+An *op* represents a certain computation on some type of inputs
+producing some type of output. You can see it as a *function definition*
 in most programming languages. 
 
 Theano builds internally a graph structure composed of interconnected 
 **variable** nodes, **op** nodes and **apply** nodes. An 
-**apply** node represents the application of an **op** to some 
-**variables**. It is important to make the difference between the
-definition of a computation represented by an **op** and its application
-to some actual data which is represented by the **apply** node. For more
-details about these building blocks see :ref:`variable`, :ref:`op`, 
-:ref:`apply`. A graph example is the following:
+*apply* node represents the application of an *op* to some 
+*variables*. It is important to draw the difference between the
+definition of a computation represented by an *op* and its application
+to some actual data which is represented by the *apply* node. For more
+detail about these building blocks refer to :ref:`variable`, :ref:`op`, 
+:ref:`apply`. Here is an example of a graph:
 
 
 **Code**
@@ -50,9 +54,9 @@ details about these building blocks see :ref:`variable`, :ref:`op`,
     WARNING: hyper-links and ref's seem to break the PDF build when placed
     into this figure caption.
 
-Arrows in this :ref:`figure <tutorial-graphfigure>` represent references to the 
+Arrows in this figure represent references to the 
 Python objects pointed at. The blue
-box is an :ref:`apply` node. Red boxes are :ref:`variable` nodes. Green
+box is an :ref:`Apply` node. Red boxes are :ref:`Variable` nodes. Green
 circles are :ref:`Ops <op>`. Purple boxes are :ref:`Types <type>`.
 
 
@@ -63,17 +67,17 @@ Take for example the following code:
 .. code-block:: python
 
     x = T.dmatrix('x')
-    y = x*2.
+    y = x * 2.
 
-If you print `type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
+If you enter ``type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
 which is the apply node that connects the op and the inputs to get this
 output. You can now print the name of the op that is applied to get 
-``y``:
+*y*:
 
 >>> y.owner.op.name
 'Elemwise{mul,no_inplace}'
 
-So a elementwise multiplication is used to compute ``y``. This
+Hence, an elementwise multiplication is used to compute *y*. This
 multiplication is done between the inputs:
 
 >>> len(y.owner.inputs)
@@ -85,7 +89,7 @@ InplaceDimShuffle{x,x}.0
 
 Note that the second input is not 2 as we would have expected. This is 
 because 2 was first :term:`broadcasted <broadcasting>` to a matrix of 
-same shape as x. This is done by using the op ``DimShuffle`` :
+same shape as *x*. This is done by using the op ``DimShuffle`` :
 
 >>> type(y.owner.inputs[1])
 <class 'theano.tensor.basic.TensorVariable'>
@@ -97,9 +101,9 @@ same shape as x. This is done by using the op ``DimShuffle`` :
 [2.0]
 
 
-Starting from this graph structure it is easy to understand how 
-*automatic differentiation* is done, or how the symbolic relations
-can be optimized for performance or stability.
+Starting from this graph structure it is easier to understand how 
+*automatic differentiation* proceeds and how the symbolic relations
+can be *optimized* for performance or stability.  
 
 
 Automatic Differentiation
@@ -107,16 +111,19 @@ Automatic Differentiation
 
 Having the graph structure, computing automatic differentiation is
 simple. The only thing :func:`tensor.grad` has to do is to traverse the
-graph from the outputs back towards the inputs through all :ref:`apply`
-nodes (:ref:`apply` nodes are those that define which computations the
-graph does). For each such :ref:`apply` node, its  :ref:`op` defines 
-how to compute the gradient of the node's outputs with respect to its
-inputs. Note that if an :ref:`op` does not provide this information, 
-it is assumed that the gradient is not defined.
+graph from the outputs back towards the inputs through all *apply*
+nodes (*apply* nodes are those that define which computations the
+graph does). For each such *apply* node, its *op* defines 
+how to compute the *gradient* of the node's outputs with respect to its
+inputs. Note that if an *op* does not provide this information, 
+it is assumed that the *gradient* is not defined.
 Using the 
 `chain rule <http://en.wikipedia.org/wiki/Chain_rule>`_ 
 these gradients can be composed in order to obtain the expression of the 
-gradient of the graph's output with respect to the graph's inputs .
+*gradient* of the graph's output with respect to the graph's inputs .
+
+A following section of this tutorial will examine the topic of :ref:`differentiation<tutcomputinggrads>`
+in greater detail.
 
 
 Optimizations
@@ -124,7 +131,7 @@ Optimizations
 
 When compiling a Theano function, what you give to the
 :func:`theano.function <function.function>` is actually a graph
-(starting from the outputs variables you can traverse the graph up to
+(starting from the output variables you can traverse the graph up to
 the input variables). While this graph structure shows how to compute
 the output from the input, it also offers the possibility to improve the  
 way this computation is carried out. The way optimizations work in 
@@ -135,4 +142,27 @@ identical subgraphs and ensure that the same values are not computed
 twice or reformulate parts of the graph to a GPU specific version.
 
 For example, one (simple) optimization that Theano uses is to replace 
-the pattern :math:`\frac{xy}{y}` by :math:`x`.
+the pattern :math:`\frac{xy}{y}` by *x.*
+
+Further information regarding the optimization
+:ref:`process<optimization>` and the specific :ref:`optimizations<optimizations>` that are applicable
+is respectively available in the library and on the entrance page of the documentation.  
+
+
+**Example**
+
+Symbolic programming involves a change of paradigm: it will become clearer
+as we apply it. Consider the following example of optimization:
+
+>>> import theano
+>>> a = theano.tensor.vector("a")      # declare symbolic variable
+>>> b = a + a ** 10                    # build symbolic expression
+>>> f = theano.function([a], b)        # compile function
+>>> print f([0, 1, 2])                 # prints `array([0,2,1026])`
+
+
+======================================================  =====================================================
+        Unoptimized graph                                    Optimized graph
+======================================================  =====================================================
+.. image:: ../hpcs2011_tutorial/pics/f_unoptimized.png   .. image:: ../hpcs2011_tutorial/pics/f_optimized.png
+======================================================  =====================================================

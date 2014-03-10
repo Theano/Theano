@@ -1,4 +1,5 @@
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import sys
 import time
 import unittest
@@ -14,10 +15,12 @@ import numpy
 
 from theano import function, tensor
 import theano
+from theano.compat import next
 from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
 from theano.sparse import verify_grad_sparse
+from theano.sparse.tests.test_basic import sparse_random_inputs
 
 
 class TestSP(unittest.TestCase):
@@ -62,7 +65,7 @@ class TestSP(unittest.TestCase):
                         it = reversed(filters[k, :])
                         for i in range(kshp[0]):
                             for j in range(kshp[1]):
-                                filtersflipped[k,i,j] = it.next()
+                                filtersflipped[k,i,j] = next(it)
 
                     # compute output with convolve2d
                     if conv_mode == 'valid':
@@ -126,6 +129,7 @@ class TestSP(unittest.TestCase):
         #profmode.print_summary()
 
 
+    @attr('slow')
     def test_sparse(self):
 
 #        print '\n\n*************************************************'
@@ -313,14 +317,14 @@ class TestSP(unittest.TestCase):
 
             # numeric verification
             my_output_val = numpy.zeros((imval.shape[0], imval.shape[1],
-                                     imval.shape[2]/maxpoolshp[0],
-                                     imval.shape[3]/maxpoolshp[1]))
+                                     imval.shape[2] // maxpoolshp[0],
+                                     imval.shape[3] // maxpoolshp[1]))
             assert numpy.prod(my_output_val.shape[1:]) == numpy.prod(numpy.r_[imval.shape[1],outshp])
 
             for n in range(imval.shape[0]):
                 for k in range(imval.shape[1]):
-                    for i in range(imval.shape[2]/maxpoolshp[0]):
-                        for j in range(imval.shape[3]/maxpoolshp[1]):
+                    for i in range(imval.shape[2] // maxpoolshp[0]):
+                        for j in range(imval.shape[3] // maxpoolshp[1]):
                             ii,jj = i*maxpoolshp[0], j*maxpoolshp[1]
                             patch = imval[n,k,ii:ii+maxpoolshp[0],jj:jj+maxpoolshp[1]]
                             my_output_val[n,k,i,j] = numpy.max(patch)
@@ -362,187 +366,6 @@ class TestSP(unittest.TestCase):
                     # symbolic stuff
                     utt.verify_grad(d, [kvals])
 
-    def test_sp_sum(self):
-        from theano.sparse.sandbox.sp import SpSum
-
-        # TODO: test both grad.
-        rng = numpy.random.RandomState(42)
-        from theano.sparse.basic import SparseFromDense,DenseFromSparse
-        cases = [("csc", scipy.sparse.csc_matrix), ("csr", scipy.sparse.csr_matrix)]
-
-        for format, cast in cases:
-
-            #print 'format: %(format)s' % locals()
-            x = theano.sparse.SparseType(format=format,
-                                         dtype=theano.config.floatX)()
-            x_data = numpy.arange(20).reshape(5,4).astype(theano.config.floatX)
-
-            # Sum on all axis
-            #print 'sum on all axis...'
-            z = theano.sparse.sandbox.sp.sp_sum(x)
-            assert z.type.broadcastable == ()
-            f = theano.function([x], z)
-            x_val = cast(x_data)
-            out = f(x_val)
-            expected = x_val.sum()
-            assert out == expected
-
-            # Sum on axis 0
-            #print 'sum on axis 0...'
-            z = theano.sparse.sandbox.sp.sp_sum(x, axis=0)
-            assert z.type.broadcastable == (False,)
-            f = theano.function([x], z)
-            x_val = cast(x_data)
-            out = f(x_val)
-            expected = x_val.sum(axis=0)
-            assert (out == expected).all()
-
-            # Sum on axis 1
-            #print 'sum on axis 1...'
-            z = theano.sparse.sandbox.sp.sp_sum(x, axis=1)
-            assert z.type.broadcastable == (False,)
-            f = theano.function([x], z)
-            x_val = cast(x_data)
-            out = f(x_val)
-            expected = numpy.asarray(x_val.sum(axis=1)).reshape(x_val.shape[0])
-            assert (out == expected).all()
-
-            # Sparse gradient on Sum on all axis
-            # unfinished, and suspended until verify_grad get fixed
-            if False:
-#                print 'grad on sum on all axis...'
-                def fun(x):
-                    ## verify_grad does not handle sparse data, so here's some casting as a workaround.
-                    # x is a dense matrix: make it sparse
-                    sparse_var = SparseFromDense(format)(x)
-                    # apply op
-                    dense_sum = theano.sparse.sandbox.sp.SpSum(axis=None, sparse_grad=False)(sparse_var)
-                    return dense_sum
-                    # cast back to dense so that verify_grad can work
-                    dense_sum = theano.sparse.DenseFromSparse()(sparse_sum)
-                    return dense_sum
-                x_val = x_data.copy()
-#                print type(x_val)
-                import pdb;pdb.set_trace()
-                tensor.verify_grad(fun, [x_val], rng=rng)
-                #utt.verify_grad(SpSum(axis=None), [x_val])
-#                print 'ok'
-
-
-def test_diag():
-    m = theano.sparse.csc_matrix()
-    d = sp.diag(m)
-    f = theano.function([m], d)
-    f2 = theano.function([m], d.shape)
-    for K in 1, 5:
-        np_matrix = numpy.asarray(numpy.reshape(range(K**2),(K,K)),
-                dtype=theano.config.floatX)
-        diag = numpy.diagonal(np_matrix)
-        sp_matrix = scipy.sparse.csc_matrix(np_matrix)
-
-        assert numpy.all(diag == f(sp_matrix))
-        assert f2(sp_matrix) == diag.shape
-
-def test_square_diagonal():
-    for K in 1, 5:
-        d = tensor.ivector()
-        sd = sp.square_diagonal(d)
-        f = theano.function([d], sd)
-        n = numpy.zeros((K,K), dtype='int32')
-        for i in range(K):
-            n[i,i] = i
-
-        assert numpy.all(n == f(range(K)).toarray())
-
-def test_ensure_sorted_indices():
-    x = 2000
-    y = 2000
-    sparsity = 1000
-    for i in range(2):
-        # testing both csc and csr
-        if i is 0:
-            # csc
-            input_tensor = theano.sparse.csc_dmatrix()
-            sample = scipy.sparse.csc_matrix(random_lil((x,y),'float64',sparsity))
-        else:
-            # csr
-            input_tensor = theano.sparse.csr_dmatrix()
-            sample = scipy.sparse.csr_matrix(random_lil((x,y),'float64',sparsity))
-
-        sort_op = sp.ensure_sorted_indices(input_tensor)
-        f = theano.function([input_tensor], sort_op)
-        sorted_scipy = sample.sorted_indices()
-        sorted_theano = f(sample)
-        assert numpy.all(sorted_theano.todense() == sorted_scipy.todense())
-
-def test_square_diagonal_grad():
-    def d(x):
-        return sp.sp_sum(sp.square_diagonal(x), sparse_grad=True)
-    utt.verify_grad(d, [[0.0, 0.1, 0.2, 0.3]],
-            mode=theano.Mode(linker='py', optimizer='fast_compile'))
-
-def test_diag_grad():
-    def d(x):
-        sp_x = theano.sparse.csc_from_dense(x)
-        diag_x = sp.diag(sp_x)
-        return diag_x.sum()
-
-    diag_mat = numpy.zeros((4,4))
-    for idx in xrange(4):
-        diag_mat[idx, idx] += idx * 0.1
-
-    utt.verify_grad(d, [diag_mat],
-            mode=theano.Mode(linker='py', optimizer='fast_compile'))
-
-
-def test_row_scale():
-    x = theano.sparse.csc_dmatrix()
-    s = theano.tensor.dvector()
-
-    rng = numpy.random.RandomState(8723)
-    R = 5
-    C = 8
-
-    x_val_dense = numpy.zeros((R, C), dtype='d')
-    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
-        x_val_dense.__setitem__(idx, rng.randn())
-    x_val = scipy.sparse.csc_matrix(x_val_dense)
-
-    s_val = rng.randn(R)
-
-    f = theano.function([x, s], sp.row_scale(x, s))
-
-#    print 'A', f(x_val, s_val).toarray()
-#    print 'B', (x_val_dense.T * s_val).T
-
-    assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense.T * s_val).T)
-
-    verify_grad_sparse(sp.row_scale, [x_val, s_val], structured=False)
-
-
-def test_col_scale():
-    x = theano.sparse.csc_dmatrix()
-    s = theano.tensor.dvector()
-
-    rng = numpy.random.RandomState(8723)
-    R = 5
-    C = 8
-
-    x_val_dense = numpy.zeros((R, C), dtype='d')
-    for idx in [(0, 0), (4, 1), (2, 1), (3, 3), (4, 4), (3, 7), (2, 7)]:
-        x_val_dense.__setitem__(idx, rng.randn())
-    x_val = scipy.sparse.csc_matrix(x_val_dense)
-
-    s_val = rng.randn(C)
-
-    f = theano.function([x, s], sp.col_scale(x, s))
-
-#    print 'A', f(x_val, s_val).toarray()
-#    print 'B', (x_val_dense * s_val)
-
-    assert numpy.all(f(x_val, s_val).toarray() == (x_val_dense * s_val))
-
-    verify_grad_sparse(sp.col_scale, [x_val, s_val], structured=False)
 
 if __name__ == '__main__':
     if 0:

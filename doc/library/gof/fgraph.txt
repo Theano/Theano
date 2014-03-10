@@ -1,0 +1,42 @@
+
+.. _libdoc_gof_fgraph:
+
+================================================
+:mod:`fgraph` -- Graph Container [doc TODO]
+================================================
+
+.. module:: fgraph
+   :platform: Unix, Windows
+   :synopsis: Theano Internals
+.. moduleauthor:: LISA
+
+
+Guide
+=====
+
+FunctionGraph
+-------------
+
+.. _libdoc_gof_fgraphfeature:
+
+FunctionGraph Features
+----------------------
+
+.. _libdoc_gof_fgraphfeaturelist:
+
+FunctionGraph Feature List
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+* ReplaceValidate
+* DestroyHandler
+
+Reference
+=========
+
+.. class:: FunctionGraph
+
+    ***TODO***
+
+    .. note:: FunctionGraph(inputs, outputs) clones the inputs by
+        default. To avoid this behavior, add the parameter
+        clone=False. This is needed as we do not want cached constants
+        in fgraph.

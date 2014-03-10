@@ -33,6 +33,11 @@ There are less methods to define for an Op than for a Type:
 
       This must return C code that carries the computation we want to do.
 
+      sub is a dictionary of strings for you to substitute into your code.
+      It's not clear if it ever contains anything other than 'fail'.
+      sub['fail'] is a string of code that you should execute (after calling
+      PyErr_Format) if your C code needs to raise an exception.
+
     .. method:: c_code_cleanup(node, name, input_names, output_names, sub)
 
       This must return C code that cleans up whatever c_code allocated and
@@ -51,6 +56,18 @@ There are less methods to define for an Op than for a Type:
     .. method:: c_no_compile_args()
 
       Allows you to specify special g++ arguments to add/exclude
+
+    .. method:: c_init_code()
+
+      Allows you to specify code that will be executed once when the
+      module is initialized, before anything else is executed.
+
+    .. method:: c_init_code_apply(self, node, name)
+
+      Allows you to specify code that will be executed once when the
+      module is initialized, before anything else is executed and is
+      specialized for a particular apply of an :ref:`op`. Use
+      `c_init_code` if the code is the same for each apply of an op.
 
     .. method:: c_support_code()
 

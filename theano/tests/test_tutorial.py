@@ -9,7 +9,9 @@ import numpy
 from numpy import array
 
 from theano import config
-from theano.tests  import unittest_tools as utt
+from theano.tests import unittest_tools as utt
+from theano.sandbox.rng_mrg import MRG_RandomStreams
+from theano.tensor.shared_randomstreams import RandomStreams
 
 
 class T_extending(unittest.TestCase):
@@ -392,26 +394,26 @@ class T_extending(unittest.TestCase):
         from theano.gof import toolbox
 
         class Simplify(gof.Optimizer):
-            def add_requirements(self, env):
-                env.extend(toolbox.ReplaceValidate())
-            def apply(self, env):
-                for node in env.toposort():
+            def add_requirements(self, fgraph):
+                fgraph.attach_feature(toolbox.ReplaceValidate())
+            def apply(self, fgraph):
+                for node in fgraph.toposort():
                     if node.op == div:
                         x, y = node.inputs
                         z = node.outputs[0]
                         if x.owner and x.owner.op == mul:
                             a, b = x.owner.inputs
                             if y == a:
-                                env.replace_validate(z, b)
+                                fgraph.replace_validate(z, b)
                             elif y == b:
-                                env.replace_validate(z, a)
+                                fgraph.replace_validate(z, a)
 
         simplify = Simplify()
         x = double('x')
         y = double('y')
         z = double('z')
         a = add(z, mul(div(mul(y, x), y), div(z, x)))
-        e = gof.Env([x, y, z], [a])
+        e = gof.FunctionGraph([x, y, z], [a])
         simplify.optimize(e)
 
         class LocalSimplify(gof.LocalOptimizer):
@@ -437,7 +439,7 @@ class T_extending(unittest.TestCase):
         y = double('y')
         z = double('z')
         a = add(z, mul(div(mul(y, x), y), div(z, x)))
-        e = gof.Env([x, y, z], [a])
+        e = gof.FunctionGraph([x, y, z], [a])
         simplify = gof.TopoOptimizer(local_simplify)
         simplify.optimize(e)
 
@@ -585,7 +587,7 @@ class T_examples(unittest.TestCase):
         from theano import shared
         # Force the dtype to int64 to work correctly on 32 bit computer.
         # Otherwise, it create by default a int32 on 32 bit computer.
-        state = shared(numpy.int64(0))
+        state = shared(0)
         inc = T.iscalar('inc')
         accumulator = function([inc], state, updates=[(state, state+inc)])
 
@@ -604,10 +606,11 @@ class T_examples(unittest.TestCase):
         assert state.get_value()       == array(0)
 
         fn_of_state = state * 2 + inc
-        foo = T.lscalar()    # the type (lscalar) must match the shared variable we
-                            # are replacing with the ``givens`` list
+        # The type of foo must match the shared variable we are replacing
+        # with the ``givens``
+        foo = T.scalar(dtype=state.dtype)
         skip_shared = function([inc, foo], fn_of_state,
-                                                givens=[(state, foo)])
+                               givens=[(state, foo)])
         assert skip_shared(1, 3)       == array(7)
         assert state.get_value()       == array(0)
 
@@ -649,7 +652,92 @@ class T_examples(unittest.TestCase):
         rng.set_state(state_after_v0)
         rv_u.rng.set_value(rng, borrow=True)
         v2 = f()             # v2 != v1
+        v3 = f()             # v3 == v1
         assert numpy.all(v1 != v2)
+        assert numpy.all(v1 == v3)
+
+    def test_copy_random_state(self):
+
+        class Graph():
+            def __init__(self, seed=123):
+                self.rng = RandomStreams(seed)
+                self.y = self.rng.uniform(size=(1,))
+
+        g1 = Graph(seed=123)
+        f1 = theano.function([], g1.y)
+
+        g2 = Graph(seed=987)
+        f2 = theano.function([], g2.y)
+
+        #print 'By default, the two functions are out of sync.'
+        v1 =  f1()
+        v2 =  f2()
+
+        def copy_random_state(g1, g2):
+            if isinstance(g1.rng, MRG_RandomStreams):
+                g2.rng.rstate = g1.rng.rstate
+            for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
+                su2[0].set_value(su1[0].get_value())
+
+        #print 'We now copy the state of the theano random number generators.'
+        copy_random_state(g1, g2)
+        v3 = f1()
+        v4 = f2()
+        assert numpy.allclose(v1, 0.72803009)
+        assert numpy.allclose(v2, 0.55056769)
+        assert numpy.allclose(v3, 0.59044123)
+        assert numpy.allclose(v4, 0.59044123)
+
+    def test_examples_real_example(self):
+        rng = numpy.random
+
+        N = 400
+        feats = 784
+        D = (rng.randn(N, feats).astype(config.floatX),
+             rng.randint(size=N, low=0, high=2).astype(config.floatX))
+        training_steps = 10000
+        if config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
+            training_steps = 10
+
+        # Declare Theano symbolic variables
+        x = T.matrix("x")
+        y = T.vector("y")
+        # The *.03 have been added to have DebugMode don't complain
+        w = theano.shared(rng.randn(feats).astype(config.floatX) * .03,
+                          name="w")
+        b = theano.shared(numpy.asarray(0., dtype=config.floatX),
+                          name="b")
+        print "Initial model:"
+        print w.get_value(), b.get_value()
+
+        # Construct Theano expression graph
+        p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
+        prediction = p_1 > 0.5                    # The prediction thresholded
+        xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
+        cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
+        gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
+                                                  # (we shall return to this in a
+                                                  # following section of this tutorial)
+
+        # Compile
+        train = theano.function(
+            inputs=[x,y],
+            outputs=[prediction, xent],
+            updates=((w, w - 0.1 * gw), (b, b - 0.1 * gb)))
+        predict = theano.function(inputs=[x], outputs=prediction)
+
+        # Train
+        for i in range(training_steps):
+            pred, err = train(D[0], D[1])
+
+        print "Final model:"
+        print w.get_value(), b.get_value()
+        print "target values for D:", D[1]
+        print "prediction on D:", predict(D[0])
+
+        # A user reported that this happened on the mailig list.
+        assert not numpy.isnan(b.get_value()).any()
+        assert not numpy.isnan(w.get_value()).any()
 
 
 class T_aliasing(unittest.TestCase):
@@ -732,12 +820,12 @@ class T_loading_and_saving(unittest.TestCase):
                 tmpdir = mkdtemp()
                 os.chdir(tmpdir)
 
-                f = file('obj.save', 'wb')
+                f = open('obj.save', 'wb')
                 cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
                 f.close()
 
 
-                f = file('obj.save', 'rb')
+                f = open('obj.save', 'rb')
                 loaded_obj = cPickle.load(f)
                 f.close()
 
@@ -745,12 +833,12 @@ class T_loading_and_saving(unittest.TestCase):
                 obj2 = my_obj
                 obj3 = my_obj
 
-                f = file('objects.save', 'wb')
+                f = open('objects.save', 'wb')
                 for obj in [obj1, obj2, obj3]:
                     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
                 f.close()
 
-                f = file('objects.save', 'rb')
+                f = open('objects.save', 'rb')
                 loaded_objects = []
                 for i in range(3):
                     loaded_objects.append(cPickle.load(f))
@@ -797,20 +885,21 @@ class T_using_gpu(unittest.TestCase):
         rng = numpy.random.RandomState(22)
         x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
         f = function([], T.exp(x))
+        # print f.maker.fgraph.toposort()
         t0 = time.time()
         for i in xrange(iters):
             r = f()
-        print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+        t1 = time.time()
+        print 'Looping %d times took' % iters, t1 - t0, 'seconds'
         print 'Result is', r
-        if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+        if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
             print 'Used the cpu'
         else:
             print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
+            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
-            assert numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
-
+            assert numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
 
     def test_using_gpu_2(self):
@@ -828,26 +917,24 @@ class T_using_gpu(unittest.TestCase):
             rng = numpy.random.RandomState(22)
             x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
             f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
+            # print f.maker.fgraph.toposort()
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
-            print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+            t1 = time.time()
+            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
-
-
-
-
+            assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
     def test_using_gpu_3(self):
 
-        if theano.config.device.find('gpu') >-1:
+        if theano.config.device.find('gpu') > -1:
 
             from theano import function, config, shared, sandbox, Out
             import theano.tensor as T
@@ -862,18 +949,72 @@ class T_using_gpu(unittest.TestCase):
             f = function([],
                     Out(sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)),
                         borrow=True))
+            # print f.maker.fgraph.toposort()
             t0 = time.time()
             for i in xrange(iters):
                 r = f()
-            print 'Looping %d times took'%iters, time.time() - t0, 'seconds'
+            t1 = time.time()
+            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
             print 'Result is', r
             print 'Numpy result is', numpy.asarray(r)
-            if numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()]):
+            if numpy.any([isinstance(x.op, T.Elemwise)
+                          for x in f.maker.fgraph.toposort()]):
                 print 'Used the cpu'
             else:
                 print 'Used the gpu'
 
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.env.toposort()])
+            assert not numpy.any([isinstance(x.op, T.Elemwise)
+                                  for x in f.maker.fgraph.toposort()])
+
+
+# Used in T_fibby
+class Fibby(theano.Op):
+
+    """
+    An arbitrarily generalized Fibbonacci sequence
+    """
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        x_ = theano.tensor.as_tensor_variable(x)
+        assert x_.ndim == 1
+        return theano.Apply(self,
+            inputs=[x_],
+            outputs=[x_.type()])
+        # using x_.type() is dangerous, it copies x's broadcasting
+        # behaviour
+
+    def perform(self, node, inputs, output_storage):
+        x, = inputs
+        y = output_storage[0][0] = x.copy()
+        for i in range(2, len(x)):
+            y[i] = y[i - 1] * y[i - 2] + x[i]
+
+    def c_code(self, node, name, inames, onames, sub):
+        x, = inames
+        y, = onames
+        fail = sub['fail']
+        return """
+            Py_XDECREF(%(y)s);
+            %(y)s = (PyArrayObject*)PyArray_FromArray(
+                    %(x)s, 0, NPY_ARRAY_ENSURECOPY);
+            if (!%(y)s)
+                %(fail)s;
+            {//New scope needed to make compilation work
+                dtype_%(y)s * y = (dtype_%(y)s*)PyArray_DATA(%(y)s);
+                dtype_%(x)s * x = (dtype_%(x)s*)PyArray_DATA(%(x)s);
+                for (int i = 2; i < PyArray_DIMS(%(x)s)[0]; ++i)
+                    y[i] = y[i-1]*y[i-2] + x[i];
+            }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 
 class T_fibby(unittest.TestCase):
@@ -884,48 +1025,12 @@ class T_fibby(unittest.TestCase):
 
     def test_fibby_1(self):
 
-        class Fibby(theano.Op):
-
-            """
-            An arbitrarily generalized Fibbonacci sequence
-            """
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
-
-            def make_node(self, x):
-                x_ = tensor.as_tensor_variable(x)
-                return theano.Apply(self,
-                    inputs=[x_],
-                    outputs=[x_.type()])
-                # using x_.type() is dangerous, it copies x's broadcasting behaviour
-
-            def perform(self, node, inputs, output_storage):
-                x, = inputs
-                y = output_storage[0][0] = x.copy()
-                for i in range(2,len(x)):
-                    y[i] = y[i-1] * y[i-2] + x[i]
-
-            def c_code(self, node, name, inames, onames, sub):
-                x, = inames
-                y, = onames
-                fail = sub['fail']
-                return """
-                    Py_XDECREF(%(y)s);
-                    %(y)s = (PyArrayObject*)PyArray_FromArray(
-                            %(x)s, 0, NPY_ENSURECOPY);
-                    if (!(%y)s) %(fail)s;
-                    dtype_%(y)s * y = (dtype_%(y)s*)%(y)s->data;
-                    dtype_%(x)s * x = (dtype_%(x)s*)%(x)s->data;
-                    for (int i = 2; i < %(x)s->dimensions[0]; ++i)
-                        y[i] = y[i-1]*y[i-2] + x[i];
-                """ % locals()
-
+        # The definition of class Fibby is done outside of the test,
+        # so the object can be pickled.
         fibby = Fibby()
 
+        from theano.tensor.opt import (get_scalar_constant_value,
+                                       NotScalarConstantError)
 
         # Remove any fibby(zeros(...))
         @theano.tensor.opt.register_specialize
@@ -934,11 +1039,38 @@ class T_fibby(unittest.TestCase):
             if node.op == fibby:
                 x = node.inputs[0]
                 try:
-                    if numpy.all(0 == get_constant_value(x)):
+                    if numpy.all(0 == get_scalar_constant_value(x)):
                         return [x]
-                except TypeError:
+                except NotScalarConstantError:
                     pass
 
+        # Test it does not apply when not needed
+        x = T.dvector()
+        f = function([x], fibby(x))
+        #theano.printing.debugprint(f)
+
+        # We call the function to make sure it runs.
+        # If you run in DebugMode, it will compare the C and Python outputs.
+        f(numpy.random.rand(5))
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, Fibby)
+
+        # Test that the optimization gets applied.
+        f_zero = function([], fibby(T.zeros([5])))
+        #theano.printing.debugprint(f_zero)
+
+        # If you run in DebugMode, it will compare the output before
+        # and after the optimization.
+        f_zero()
+
+        # Check that the optimization removes the Fibby Op.
+        # For security, the Theano memory interface ensures that the output
+        # of the function is always memory not aliased to the input.
+        # That is why there is a DeepCopyOp op.
+        topo = f_zero.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)
 
 
 class T_graphstructures(unittest.TestCase):
@@ -964,35 +1096,35 @@ class T_graphstructures(unittest.TestCase):
         from theano.tensor import add, mul, Apply, Variable, TensorType
 
         # Instantiate a type that represents a matrix of doubles
-        float64_matrix = TensorType(dtype = 'float64',              # double
-                                    broadcastable = (False, False)) # matrix
+        float64_matrix = TensorType(dtype='float64',               # double
+                                    broadcastable=(False, False))  # matrix
 
         # We make the Variable instances we need.
-        x = Variable(type = float64_matrix, name = 'x')
-        y = Variable(type = float64_matrix, name = 'y')
-        z = Variable(type = float64_matrix, name = 'z')
+        x = Variable(type=float64_matrix, name='x')
+        y = Variable(type=float64_matrix, name='y')
+        z = Variable(type=float64_matrix, name='z')
 
         # This is the Variable that we want to symbolically represents y*z
-        mul_variable = Variable(type = float64_matrix)
+        mul_variable = Variable(type=float64_matrix)
         assert mul_variable.owner is None
 
         # Instantiate a symbolic multiplication
-        node_mul = Apply(op = mul,
-                         inputs = [y, z],
-                         outputs = [mul_variable])
+        node_mul = Apply(op=mul,
+                         inputs=[y, z],
+                         outputs=[mul_variable])
         # Fields 'owner' and 'index' are set by Apply
         assert mul_variable.owner is node_mul
         # 'index' is the position of mul_variable in mode_mul's outputs
         assert mul_variable.index == 0
 
         # This is the Variable that we want to symbolically represents x+(y*z)
-        add_variable = Variable(type = float64_matrix)
+        add_variable = Variable(type=float64_matrix)
         assert add_variable.owner is None
 
         # Instantiate a symbolic addition
-        node_add = Apply(op = add,
-                         inputs = [x, mul_variable],
-                         outputs = [add_variable])
+        node_add = Apply(op=add,
+                         inputs=[x, mul_variable],
+                         outputs=[add_variable])
         # Fields 'owner' and 'index' are set by Apply
         assert add_variable.owner is node_add
         assert add_variable.index == 0

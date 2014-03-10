@@ -1,79 +1,72 @@
+import unittest
+
 import theano
-from theano.updates import Updates
+from theano.updates import OrderedUpdates
 import theano.tensor as T
 
 
-def test_updates_setitem():
-    ok = True
+class test_ifelse(unittest.TestCase):
 
-    up = Updates()
-    sv = theano.shared('asdf')
+    def test_updates_init(self):
+        self.assertRaises(TypeError, OrderedUpdates, dict(d=3))
 
-    # keys have to be SharedVariables
-    try:
-        up[5] = 7
-        ok = False
-    except TypeError:
+        sv = theano.shared('asdf')
+        OrderedUpdates({sv:3})
+
+    def test_updates_setitem(self):
         ok = True
-    assert ok
 
-    # keys have to be SharedVariables
-    try:
-        up[T.vector()] = 7
-        ok = False
-    except TypeError:
-        ok = True
-    assert ok
+        up = OrderedUpdates()
+        sv = theano.shared('asdf')
 
-    # keys have to be SharedVariables
-    up[theano.shared(88)] = 7
+        # keys have to be SharedVariables
+        self.assertRaises(TypeError, up.__setitem__, 5, 7)
+        self.assertRaises(TypeError, up.__setitem__, T.vector(), 7)
 
+        up[theano.shared(88)] = 7
 
-def test_updates_add():
+    def test_updates_add(self):
 
-    up1 = Updates()
-    up2 = Updates()
+        up1 = OrderedUpdates()
+        up2 = OrderedUpdates()
 
-    a = theano.shared('a')
-    b = theano.shared('b')
+        a = theano.shared('a')
+        b = theano.shared('b')
 
+        assert not up1 + up2
 
-    assert not up1 + up2
+        up1[a] = 5
 
-    up1[a] = 5
+        # test that addition works
+        assert up1
+        assert up1 + up2
+        assert not up2
 
-    # test that addition works
-    assert up1
-    assert up1 + up2
-    assert not up2
+        assert len(up1 + up2) == 1
+        assert (up1 + up2)[a] == 5
 
-    assert len(up1+up2)==1
-    assert (up1 + up2)[a] == 5
+        up2[b] = 7
+        assert up1
+        assert up1 + up2
+        assert up2
 
-    up2[b] = 7
-    assert up1
-    assert up1 + up2
-    assert up2
+        assert len(up1 + up2) == 2
+        assert (up1 + up2)[a] == 5
+        assert (up1 + up2)[b] == 7
 
-    assert len(up1+up2)==2
-    assert (up1 + up2)[a] == 5
-    assert (up1 + up2)[b] == 7
+        assert a in (up1 + up2)
+        assert b in (up1 + up2)
 
-    assert a in (up1 + up2)
-    assert b in (up1 + up2)
+        # this works even though there is a collision
+        # because values all match
+        assert len(up1 + up1 + up1) == 1
 
-    # this works even though there is a collision
-    # because values all match
-    assert len(up1 + up1 + up1)==1
+        up2[a] = 8  # a gets different value in up1 and up2
+        try:
+            up1 + up2
+            assert 0
+        except KeyError:
+            pass
 
-    up2[a] = 8 # a gets different value in up1 and up2
-    try:
-        up1 + up2
-        assert 0
-    except KeyError:
-        pass
-
-    # reassigning to a key works fine right?
-    up2[a] = 10
-
-
+        # reassigning to a key works fine right?
+        up2[a] = 10

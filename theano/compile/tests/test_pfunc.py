@@ -335,6 +335,16 @@ class Test_pfunc(unittest.TestCase):
         inc_by_y()
         self.assertTrue(x.get_value() == 1)
 
+    def test_update_err_broadcast(self):
+        # Test that broadcastable dimensions raise error
+        data = numpy.random.rand(10, 10).astype('float32')
+        output_var = shared(name="output", value=data)
+
+        # the update_var has type matrix, and the update expression
+        # is a broadcasted scalar, and that should be allowed.
+        self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
+                updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
         z = shared(numpy.ones((2, 3)))
@@ -369,7 +379,6 @@ class Test_pfunc(unittest.TestCase):
             z: (((x * 5) + y) ** z)})
 
         up()
-        print x.get_value(borrow=True)
         assert numpy.all(x.get_value() == 20)
         assert numpy.all(y.get_value() == 24)
         assert numpy.all(z.get_value() == (24 ** 2))
@@ -380,7 +389,6 @@ class Test_pfunc(unittest.TestCase):
 
         f = pfunc([], [x])
         f()
-        print x.get_value()
         assert x.get_value() == 1
 
         del x.default_update
@@ -399,32 +407,26 @@ class Test_pfunc(unittest.TestCase):
         # Test that the default update is taken into account in the right cases
         f1 = pfunc([], [x], no_default_updates=True)
         f1()
-        print x.get_value()
         assert x.get_value() == 0
 
         f2 = pfunc([], [x], no_default_updates=[x])
         f2()
-        print x.get_value()
         assert x.get_value() == 0
 
         f3 = pfunc([], [x], no_default_updates=[x, y])
         f3()
-        print x.get_value()
         assert x.get_value() == 0
 
         f4 = pfunc([], [x], no_default_updates=[y])
         f4()
-        print x.get_value()
         assert x.get_value() == 2
 
         f5 = pfunc([], [x], no_default_updates=[])
         f5()
-        print x.get_value()
         assert x.get_value() == 4
 
         f5 = pfunc([], [x], no_default_updates=False)
         f5()
-        print x.get_value()
         assert x.get_value() == 6
 
         self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
@@ -435,32 +437,26 @@ class Test_pfunc(unittest.TestCase):
         # Mix explicit updates and no_default_updates
         g1 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=True)
         g1()
-        print x.get_value()
         assert x.get_value() == 5
 
         g2 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[x])
         g2()
-        print x.get_value()
         assert x.get_value() == 4
 
         g3 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[x, y])
         g3()
-        print x.get_value()
         assert x.get_value() == 3
 
         g4 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[y])
         g4()
-        print x.get_value()
         assert x.get_value() == 2
 
         g5 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=[])
         g5()
-        print x.get_value()
         assert x.get_value() == 1
 
         g5 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=False)
         g5()
-        print x.get_value()
         assert x.get_value() == 0
 
     def test_default_updates_expressions(self):
@@ -473,17 +469,14 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([a], z)
         f1(12)
-        print x
         assert x.get_value() == 1
 
         f2 = pfunc([a], z, no_default_updates=True)
         assert f2(7) == 7
-        print x
         assert x.get_value() == 1
 
         f3 = pfunc([a], z, no_default_updates=[x])
         assert f3(9) == 9
-        print x
         assert x.get_value() == 1
 
     def test_default_updates_multiple(self):
@@ -524,7 +517,6 @@ class Test_pfunc(unittest.TestCase):
 
         f1 = pfunc([], [x])
         f1()
-        print x.get_value(), y.get_value(), z.get_value()
         assert x.get_value() == 1
         assert y.get_value() == -1
         assert z.get_value() == -2
@@ -556,7 +548,7 @@ class Test_pfunc(unittest.TestCase):
     def test_default_updates_input(self):
         x = shared(0)
         y = shared(1)
-        if theano.gof.cmodule.python_int_bitwidth() == 32:
+        if theano.gof.python_int_bitwidth() == 32:
             a = iscalar('a')
         else:
             a = lscalar('a')
@@ -598,10 +590,8 @@ class Test_pfunc(unittest.TestCase):
         b = 2 * a
         # Use only the tip of the graph, a is not used
         f = pfunc([b], b)
-        print 'a.get_value() =', a.get_value()
         assert a.get_value() == 0
         f(21)
-        print 'a.get_value() =', a.get_value()
         assert a.get_value() == 0
 
     def test_givens_replaces_shared_variable(self):
@@ -611,8 +601,8 @@ class Test_pfunc(unittest.TestCase):
         c = a + 10
         f = pfunc([b], c, givens={a: b})
 
-        assert len(f.maker.env.inputs) == 1
-        assert len(f.maker.env.outputs) == 1
+        assert len(f.maker.fgraph.inputs) == 1
+        assert len(f.maker.fgraph.outputs) == 1
 
     def test_givens_replaces_shared_variable2(self):
         a = shared(1., 'a')
@@ -627,6 +617,49 @@ class Test_pfunc(unittest.TestCase):
         x = theano.tensor.lscalar('x')
         self.assertRaises(theano.compile.UnusedInputError,
                 theano.function, [x, x, x], x)
+
+    def test_update_same(self):
+        # There was a bug in CVM, triggered when a shared variable
+        # was its own update expression.
+        a = shared(1., 'a')
+        b = shared(numpy.ones((2, 3)), 'b')
+
+        # The order of the variables is not determined, so we try
+        # both shared variables.
+        # TODO: explain the above comment. By "not determined" does
+        # this mean "not deterministic"?
+        # This test originally wrote the updates using dictionaries,
+        # and iterating over the dictionary was not deterministic.
+        # Is that all the comment above meant, or is the CVM intended
+        # to add extra non-determinism? Or is the CVM meant to
+        # deterministically but arbitrarily pick an order for the updates?
+        f = theano.function([], [], updates=[(a, a), (b, (2 * b))])
+        g = theano.function([], [], updates=[(a, (a * 2)), (b, b)])
+
+        f()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
+        g()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
+
+    def test_update_equiv(self):
+        # Like test_update_same, but the update expression is simplified until
+        # it is found to be equal to the original variable
+        a = shared(1., 'a')
+        b = shared(numpy.ones((2, 3)), 'b')
+
+        # See comment in test_update_same about why we try both
+        # shared variables.
+        f = theano.function([], [], updates=[(a, a), (b, (2 * b - b))])
+        g = theano.function([], [], updates=[(a, (a * 2 - a)), (b, b)])
+
+        f()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
+        g()
+        assert a.get_value(borrow=True).shape == (), a.get_value()
+        assert b.get_value(borrow=True).shape == (2, 3), b.get_value()
 
 
 class Test_aliasing_rules(unittest.TestCase):
@@ -917,7 +950,7 @@ class Test_aliasing_rules(unittest.TestCase):
         data_of_b = data_of(B)
 
         f = pfunc([], [], updates=[(A, B[:, ::-1]), (B, A.T)])
-        theano.printing.debugprint(f)
+        #theano.printing.debugprint(f)
         f()
         # correctness (doesn't actually test the view...)
         assert numpy.all(data_of(A) == -.5)
@@ -938,7 +971,6 @@ class Test_aliasing_rules(unittest.TestCase):
 
             assert numpy.all(data_of(B) < 5)
             data_of_a += 10
-            print data_of(B)
             assert numpy.all(data_of(B) > 5)
             data_of_a -= 10
 
@@ -951,6 +983,19 @@ class Test_aliasing_rules(unittest.TestCase):
             # further and further from the (e.g. data_of_a) with each
             # call.  The memory leak is in the increasing number of view
             # objects forming a chain to the underlying data.
+
+
+class Test_rebuild_strict(unittest.TestCase):
+    def test1(self):
+        # Test fix for error reported at
+        # https://groups.google.com/d/topic/theano-users/BRK0UEB72XA/discussion
+        w = tensor.imatrix()
+        x, y = tensor.ivectors('x', 'y')
+        z = x * y
+        f = theano.function([w, y], z, givens=[(x, w)], rebuild_strict=False)
+        z_val = f(numpy.ones((3, 5), dtype='int32'), numpy.arange(5, dtype='int32'))
+        assert z_val.ndim == 2
+        assert numpy.all(z_val == numpy.ones((3, 5)) * numpy.arange(5))
 
 
 if __name__ == '__main__':

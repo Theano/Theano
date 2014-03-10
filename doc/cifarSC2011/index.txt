@@ -18,7 +18,7 @@ What does it do?
 
  * symbolic differentiation.
 
-It complements the Python numeric/scientific software stack (e.g. numpy, scipy,
+It complements the Python numeric/scientific software stack (e.g. NumPy, SciPy,
 scikits, matplotlib, PIL.)
 
 Design and feature set has been driven by machine learning research

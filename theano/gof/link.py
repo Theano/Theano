@@ -1,13 +1,16 @@
 """WRITEME"""
-import utils
-import graph
-from type import Type
-
-import sys, traceback
 from copy import copy
-from theano.gof.python25 import all
+import StringIO
+import sys
+import traceback
+
+import theano
+from theano.gof import utils
+from theano.gof import graph
+from theano.gof.type import Type
 
 __excepthook = sys.excepthook
+
 
 def log_thunk_trace(value, f=sys.stderr):
     """Log theano's diagnostic stack trace for an exception
@@ -24,15 +27,15 @@ def log_thunk_trace(value, f=sys.stderr):
         if trace2 is None:
             write("Could not find where this Op was defined.")
             write(" * You might have instantiated this Op "
-                    "directly instead of using a constructor.")
+                  "directly instead of using a constructor.")
             write(" * The Op you constructed might have been"
-                    " optimized. Try turning off optimizations.")
+                  " optimized. Try turning off optimizations.")
         elif trace2:
             write("Definition in: ")
             for line in traceback.format_list(trace2):
                 write(line)
             write("For the full definition stack trace set"
-                    " the Theano flags traceback.limit to -1")
+                  " the Theano flags traceback.limit to -1")
 
 
 def thunk_hook(type, value, trace):
@@ -52,15 +55,16 @@ def thunk_hook(type, value, trace):
 sys.excepthook = thunk_hook
 
 
-def raise_with_op(op, exc_info=None):
+# TODO: Make this work with linker defined schedule
+def raise_with_op(node, thunk=None, exc_info=None):
     """
     Re-raise an exception while annotating the exception object with
     debug info.
 
     Parameters
     ----------
-    op : object
-        The Op object that resulted in the raised exception.
+    node : Apply node
+        The Apply node object that resulted in the raised exception.
     exc_info : tuple, optional
         A tuple containing the exception type, exception object and
         associated traceback, as would be returned by a call to
@@ -79,7 +83,7 @@ def raise_with_op(op, exc_info=None):
      * __thunk_trace__: A traceback corresponding to the code that
        actually generated the exception, if it is available.
      * __applynode_index__: The index of the Apply node corresponding
-       to this op in `op.env.toposort()`.
+       to this op in `op.fgraph.toposort()`.
 
     The exception is not annotated if it is of type `KeyboardInterrupt`.
     """
@@ -90,13 +94,16 @@ def raise_with_op(op, exc_info=None):
         # print a simple traceback from KeyboardInterrupt
         raise exc_type, exc_value, exc_trace
     try:
-        trace = op.tag.trace
+        trace = node.tag.trace
     except AttributeError:
-        trace = ()
+        try:
+            trace = node.op.tag.trace
+        except AttributeError:
+            trace = ()
     exc_value.__thunk_trace__ = trace
-    exc_value.__op_instance__ = op
-    if op in op.env.toposort():
-        exc_value.__applynode_index__ = op.env.toposort().index(op)
+    exc_value.__op_instance__ = node
+    if node in node.fgraph.toposort():
+        exc_value.__applynode_index__ = node.fgraph.toposort().index(node)
     else:
         exc_value.__applynode_index__ = None
 
@@ -105,9 +112,70 @@ def raise_with_op(op, exc_info=None):
     if raise_with_op.print_thunk_trace:
         log_thunk_trace(exc_value)
 
+    hints = []
+    detailed_err_msg = "\nApply node that caused the error: " + str(node)
+
+    types = [getattr(ipt, 'type', 'No type') for ipt in node.inputs]
+    detailed_err_msg += "\nInputs types: %s\n" % types
+
+    if thunk is not None:
+        if hasattr(thunk, 'inputs'):
+            shapes = [getattr(ipt[0], 'shape', 'No shapes')
+                      for ipt in thunk.inputs]
+            strides = [getattr(ipt[0], 'strides', 'No strides')
+                       for ipt in thunk.inputs]
+            scalar_values = []
+            for ipt in thunk.inputs:
+                if getattr(ipt[0], "size", -1) == 1:
+                    scalar_values.append(ipt[0])
+                else:
+                    scalar_values.append("not scalar")
+        else:
+            shapes = "The thunk don't have an inputs attributes."
+            strides = "So we can't access the strides of inputs values"
+            scalar_values = "And can't print its inputs scalar value"
+
+        detailed_err_msg += ("Inputs shapes: %s" % shapes +
+                             "\nInputs strides: %s" % strides +
+                             "\nInputs scalar values: %s\n" % scalar_values)
+    else:
+        hints.append(
+            "HINT: Use another linker then the c linker to"
+            " have the inputs shapes and strides printed.")
+
+    # Print node backtrace
+    tr = getattr(node.tag, 'trace', None)
+    if tr:
+        sio = StringIO.StringIO()
+        traceback.print_list(tr, sio)
+        tr = sio.getvalue()
+        detailed_err_msg += "\nBacktrace when the node is created:"
+        detailed_err_msg += str(tr)
+    else:
+        hints.append(
+            "HINT: Re-running with most Theano optimization disabled could"
+            " give you a back-traces when this node was created. This can"
+            " be done with by setting the Theano flags"
+            " optimizer=fast_compile")
+
+    if theano.config.exception_verbosity == 'high':
+        f = StringIO.StringIO()
+        theano.printing.debugprint(node, file=f, stop_on_name=True,
+                                   print_type=True)
+        detailed_err_msg += "\nDebugprint of the apply node: \n"
+        detailed_err_msg += f.getvalue()
+
+    else:
+        hints.append(
+            "HINT: Use the Theano flag 'exception_verbosity=high'"
+            " for a debugprint of this apply node.")
+
+    exc_value = exc_type(str(exc_value) + detailed_err_msg +
+                         '\n' + '\n'.join(hints))
     raise exc_type, exc_value, exc_trace
 
 raise_with_op.print_thunk_trace = False
+
 
 class Linker(object):
     """WRITEME"""
@@ -123,29 +191,30 @@ class Linker(object):
         Example::
          x, y = Variable(Double), Variable(Double)
          e = x + y
-         env = Env([x, y], [e])
-         fn, (new_x, new_y), (new_e, ) = MyLinker(env).make_thunk(inplace)
+         fgraph = FunctionGraph([x, y], [e])
+         fn, (new_x, new_y), (new_e, ) = MyLinker(fgraph).make_thunk(inplace)
          new_x.data = 1.0
          new_y.data = 2.0
          fn()
          print new_e.data # 3.0
          print e.data # 3.0 iff inplace == True (else unknown)
         """
-        raise utils.MethodNotDefined("make_thunk", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined("make_thunk", type(self),
+                                     self.__class__.__name__)
 
     ## DELETEME ##
-    def make_function(self, unpack_single = True, **kwargs):
+    def make_function(self, unpack_single=True, **kwargs):
         """
         Returns a function that takes values corresponding to the inputs of the
-        env used by this L{Linker} and returns values corresponding the the outputs
-        of that env. If inplace is True, the calculations will operate in the
-        same storage the env uses, else independent storage will be allocated
+        fgraph used by this L{Linker} and returns values corresponding the the outputs
+        of that fgraph. If inplace is True, the calculations will operate in the
+        same storage the fgraph uses, else independent storage will be allocated
         for the function.
 
         Example::
          e = x + y
-         env = Env([x, y], [e])
-         fn = MyLinker(env).make_function(inplace)
+         fgraph = FunctionGraph([x, y], [e])
+         fn = MyLinker(fgraph).make_function(inplace)
          print fn(1.0, 2.0) # 3.0
          print e.data # 3.0 iff inplace == True (else unknown)
 
@@ -154,6 +223,7 @@ class Linker(object):
         length 1 will be returned.
         """
         thunk, inputs, outputs = self.make_thunk(**kwargs)
+
         def execute(*args):
             def e_arity(takes, got):
                 return 'Function call takes exactly %i %s (%i given)' \
@@ -164,7 +234,8 @@ class Linker(object):
                 variable.data = arg
             thunk()
             if unpack_single:
-                return utils.to_return_values([variable.data for variable in outputs])
+                return utils.to_return_values([variable.data
+                                               for variable in outputs])
             else:
                 return [variable.data for variable in outputs]
         execute.thunk = thunk
@@ -173,6 +244,9 @@ class Linker(object):
 
         return execute
 
+    def schedule(self, fgraph):
+        return fgraph.toposort()
+
 
 #TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
@@ -180,7 +254,7 @@ class Container(object):
     It is used in linkers, especially for the inputs and outputs of a Function.
     """
     def __init__(self, r, storage, readonly=False, strict=False,
-            allow_downcast=None, name=None):
+                 allow_downcast=None, name=None):
         """WRITEME
 
         :Parameters:
@@ -225,8 +299,10 @@ class Container(object):
                 kwargs['strict'] = True
             if self.allow_downcast is not None:
                 kwargs['allow_downcast'] = self.allow_downcast
-            if hasattr(self.type,'filter_inplace'):
-                self.storage[0] = self.type.filter_inplace(value, self.storage[0], **kwargs)
+            if hasattr(self.type, 'filter_inplace'):
+                self.storage[0] = self.type.filter_inplace(value,
+                                                           self.storage[0],
+                                                           **kwargs)
             else:
                 self.storage[0] = self.type.filter(value, **kwargs)
 
@@ -235,16 +311,18 @@ class Container(object):
             raise
     data = property(__get__, __set__)
     value = property(__get__, __set__)
+
     def __str__(self):
         return "<" + str(self.storage[0]) + ">"
+
     def __repr__(self):
         return "<" + repr(self.storage[0]) + ">"
 
 
-def map_storage(env, order, input_storage, output_storage):
+def map_storage(fgraph, order, input_storage, output_storage):
     """Ensure there is storage (a length-1 list) for inputs, outputs, and interior nodes.
 
-    :param env: The current env.  This function uses the inputs and outputs attributes.
+    :param fgraph: The current fgraph.  This function uses the inputs and outputs attributes.
     :param order: an iterable over Apply instances (in program running order)
     :param input_storage: None or existing input storage (see below)
     :param output_storage: None or existing output storage (see below)
@@ -257,53 +335,53 @@ def map_storage(env, order, input_storage, output_storage):
     input and output `Variable`, there is a unique storage container.  This is
     returned as a dictionary Variable->storage called the `storage_map`.
 
-    This function also returns `input_storage` which is a list of storages corresponding to env.inputs.
-    This function also returns `output_storage` which is a list of storages corresponding to env.outputs.
+    This function also returns `input_storage` which is a list of storages corresponding to fgraph.inputs.
+    This function also returns `output_storage` which is a list of storages corresponding to fgraph.outputs.
 
     """
     #each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
 
     # input_storage is a list of data-containers for the inputs.
     if input_storage is None:
-        input_storage = [[None] for input in env.inputs]
+        input_storage = [[None] for input in fgraph.inputs]
     else:
-        assert len(env.inputs) == len(input_storage)
+        assert len(fgraph.inputs) == len(input_storage)
 
     storage_map = {}
-    for r, storage in zip(env.inputs, input_storage):
+    for r, storage in zip(fgraph.inputs, input_storage):
         storage_map[r] = storage
-#     for orphan in env.orphans:
+#     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
 #             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
 #         storage_map[orphan] = [orphan.data]
 
     if output_storage is not None:
-        assert len(env.outputs) == len(output_storage)
-        for r, storage in zip(env.outputs, output_storage):
+        assert len(fgraph.outputs) == len(output_storage)
+        for r, storage in zip(fgraph.outputs, output_storage):
             storage_map[r] = storage
 
-    thunks = []
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
-                assert isinstance(r, graph.Value)
+                assert isinstance(r, graph.Constant)
                 storage_map[r] = [r.data]
         for r in node.outputs:
             storage_map.setdefault(r, [None])
-    for r in env.outputs:
+    for r in fgraph.outputs:
         if isinstance(r, graph.Constant):
             storage_map.setdefault(r, [r.data])
 
     if output_storage is None:
-        output_storage = [storage_map[r] for r in env.outputs]
+        output_storage = [storage_map[r] for r in fgraph.outputs]
 
     return input_storage, output_storage, storage_map
 
-def streamline(env, thunks, order, post_thunk_old_storage=None,
+
+def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                no_recycling=None, profiler=None, nice_errors=True):
     """WRITEME
 
-    :param env:
+    :param fgraph:
 
     :param thunks: the list of program instructions
 
@@ -328,26 +406,29 @@ def streamline(env, thunks, order, post_thunk_old_storage=None,
 
     if len(thunks) != len(order):
         raise ValueError('Length of thunks and order must match',
-                (len(thunks), len(order)))
+                         (len(thunks), len(order)))
 
     if post_thunk_old_storage:
         if len(thunks) != len(post_thunk_old_storage):
-            raise ValueError('Length of thunks and post_thunk_old_storage must match',
-                    (len(thunks), len(post_thunk_old_storage)))
+            raise ValueError(
+                'Length of thunks and post_thunk_old_storage must match',
+                (len(thunks), len(post_thunk_old_storage)))
 
         def streamline_default_f():
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node, old_storage in zip(thunks, order, post_thunk_old_storage):
+                for thunk, node, old_storage in zip(thunks, order,
+                                                    post_thunk_old_storage):
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
             except Exception:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
         f = streamline_default_f
     elif nice_errors:
         thunk_node_list = zip(thunks, order)
+
         def streamline_nice_errors_f():
             for x in no_recycling:
                 x[0] = None
@@ -355,7 +436,7 @@ def streamline(env, thunks, order, post_thunk_old_storage=None,
                 for thunk, node in thunk_node_list:
                     thunk()
             except Exception:
-                raise_with_op(node)
+                raise_with_op(node, thunk)
         f = streamline_nice_errors_f
     else:
         # don't worry about raise_with_op, just go a little faster.
@@ -368,16 +449,18 @@ def streamline(env, thunks, order, post_thunk_old_storage=None,
         f = streamline_fast_f
     return f
 
+
 class LocalLinker(Linker):
     """WRITEME
     Useful base class for L{Linker}s which keep all nodes in the graph, and run a
     thunk associated with each node.
     """
 
-    def make_thunk(self, profiler = None, input_storage = None, output_storage = None):
-        return self.make_all(profiler = profiler,
-                             input_storage = input_storage,
-                             output_storage = output_storage)[:3]
+    def make_thunk(self, profiler=None, input_storage=None,
+                   output_storage=None):
+        return self.make_all(profiler=profiler,
+                             input_storage=input_storage,
+                             output_storage=output_storage)[:3]
 
     def make_all(self, profiler, input_storage, output_storage):
         # By convention, subclasses of LocalLinker should implement this function!
@@ -388,7 +471,9 @@ class LocalLinker(Linker):
         # 3. output storage
         # 4. thunks: list of nodes' functions in the order they will be run by the function in (1)
         # 5. order: list of nodes, in the order they will be run by the function in (1)
-        raise utils.MethodNotDefined("make_all", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined("make_all", type(self),
+                                     self.__class__.__name__)
+
 
 def gc_helper(node_list):
     """
@@ -410,21 +495,25 @@ def gc_helper(node_list):
             computed.add(output)
     return computed, last_user
 
+
 class PerformLinker(LocalLinker):
     """WRITEME
 
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
-    the L{Env} in the order given by L{Env.toposort}.
+    the L{FunctionGraph} in the order given by L{Linker.schedule}.
     """
 
-    def __init__(self, allow_gc=True):
-        #TODO: set allow_gc = True by default, when it works with the OpWiseCLinker
-        self.env = None
+    def __init__(self, allow_gc=None, schedule=None):
+        if allow_gc is None:
+            allow_gc = theano.config.allow_gc
+        self.fgraph = None
         self.allow_gc = allow_gc
+        if schedule:
+            self.schedule = schedule
 
-    def accept(self, env, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None):
         """
-        :param env: a PerformLinker can have accepted one Env instance at a time.
+        :param fgraph: a PerformLinker can have accepted one FunctionGraph instance at a time.
 
         :param no_recycling: WRITEME
 
@@ -432,14 +521,14 @@ class PerformLinker(LocalLinker):
         """
         if no_recycling is None:
             no_recycling = []
-        if self.env is not None and self.env is not env:
-            return type(self)().accept(env, no_recycling)
-            #raise Exception("Cannot accept from a Linker that is already tied to another Env.")
-        self.env = env
+        if self.fgraph is not None and self.fgraph is not fgraph:
+            return type(self)(allow_gc=self.allow_gc).accept(fgraph, no_recycling)
+            #raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
+        self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, profiler = None, input_storage = None, output_storage = None):
+    def make_all(self, profiler=None, input_storage=None, output_storage=None):
         """
         :param profiler: WRITEME
         :param input_storage: WRITEME
@@ -448,12 +537,11 @@ class PerformLinker(LocalLinker):
         :returns: function to run all nodes, list of input containers, list of output containers, list of thunks (for all of program), list of nodes (for all of program)
 
         """
-        env = self.env
-        order = list(env.toposort())
+        fgraph = self.fgraph
+        order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
-        input_storage, output_storage, storage_map = map_storage(env, order, input_storage, output_storage)
-
+        input_storage, output_storage, storage_map = map_storage(fgraph, order, input_storage, output_storage)
 
         compute_map = {}
         for k in storage_map:
@@ -469,9 +557,11 @@ class PerformLinker(LocalLinker):
             try:
                 node.op._op_use_c_code = False
                 thunks += [node.op.make_thunk(node,
-                                    storage_map,
-                                    compute_map,
-                                    no_recycling)]
+                                              storage_map,
+                                              compute_map,
+                                              no_recycling)]
+                thunks[-1].inputs = [storage_map[v] for v in node.inputs]
+                thunks[-1].outputs = [storage_map[v] for v in node.outputs]
             finally:
                 node.op._op_use_c_code = old_value
 
@@ -485,7 +575,7 @@ class PerformLinker(LocalLinker):
             if self.allow_gc:
                 post_thunk_old_storage.append([storage_map[input]
                     for input in node.inputs
-                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
+                    if (input in computed) and (input not in fgraph.outputs) and node == last_user[input]])
 
         if no_recycling is True:
             # True seems like some special code for *everything*?? -JB
@@ -493,17 +583,18 @@ class PerformLinker(LocalLinker):
             no_recycling = storage_map.values()
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
-            no_recycling = [storage_map[r] for r in no_recycling if r not in env.inputs]
+            no_recycling = [storage_map[r] for r in no_recycling if r not in fgraph.inputs]
 
         # The function that actually runs your program is one of the f's in streamline.
-        f = streamline(env, thunks, order, post_thunk_old_storage, no_recycling = no_recycling, profiler = profiler)
+        f = streamline(fgraph, thunks, order, post_thunk_old_storage, no_recycling = no_recycling, profiler = profiler)
 
         f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
 
-        return f, [Container(input, storage) for input, storage in zip(env.inputs, input_storage)], \
-            [Container(output, storage, True) for output, storage in zip(env.outputs, output_storage)], \
+        return f, [Container(input, storage) for input, storage in zip(fgraph.inputs, input_storage)], \
+            [Container(output, storage, True) for output, storage in zip(fgraph.outputs, output_storage)], \
             thunks, order
+
 
 def add_clear_storage(f, computed, storage_map):
     def clear_storage():
@@ -513,7 +604,8 @@ def add_clear_storage(f, computed, storage_map):
 
 
 class WrapLinker(Linker):
-    """ WRITEME
+    """
+    WRITEME
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
@@ -549,16 +641,32 @@ class WrapLinker(Linker):
         function.)
 
         """
-        self.env = None
+        self.fgraph = None
         self.linkers = linkers
         self.wrapper = wrapper
 
-    def accept(self, env, no_recycling=None):
+    def __copy__(self):
         """
-        @type env: gof.Env
-        @param env: the env which we will link
+        Shallow copy of a WrapLinker.
 
-        @type no_recycling: a list of Variables that belong to env.
+        @returns: A copy of self, where each of the linkers in self.linkers
+            have been shallow-copied.
+
+        It is useful because in FunctionMaker, copy.copy is called on the
+        Mode's linker, so that it is not modified inplace when linker.accept()
+        is called. In this case, we want the wrapped linkers to be copied too.
+        """
+        other = self.__class__(
+            linkers=[copy(l) for l in self.linkers],
+            wrapper=self.wrapper)
+        return other
+
+    def accept(self, fgraph, no_recycling=None):
+        """
+        @type fgraph: gof.FunctionGraph
+        @param fgraph: the fgraph which we will link
+
+        @type no_recycling: a list of Variables that belong to fgraph.
 
         @param no_recycling: If a Variable is in no_recycling, L{WrapLinker} will clear
         the output storage associated to it (for each linker in linkers) during
@@ -567,12 +675,14 @@ class WrapLinker(Linker):
         """
         if no_recycling is None:
             no_recycling = []
-        if self.env is not None and self.env is not env:
-            return type(self)(self.linkers, self.wrapper).accept(env, no_recycling)
+        if self.fgraph is not None and self.fgraph is not fgraph:
+            return type(self)(self.linkers, self.wrapper).accept(fgraph,
+                                                                 no_recycling)
 
-        self.env = env
+        self.fgraph = fgraph
         self.no_recycling = no_recycling
-        self.linkers = [linker.accept(env, no_recycling) for linker in self.linkers]
+        self.linkers = [linker.accept(fgraph, no_recycling)
+                        for linker in self.linkers]
         return self
 
     def pre(self, f, inputs, order, thunk_groups):
@@ -591,7 +701,8 @@ class WrapLinker(Linker):
         order_list0 = order_lists[0]
         for order_list in order_lists[1:]:
             if not order_list0 == order_list:
-                raise Exception("All linkers to WrapLinker should execute operations in the same order.")
+                raise Exception(
+                    "All linkers to WrapLinker should execute operations in the same order.")
 
         inputs0 = input_lists[0]
         outputs0 = output_lists[0]
@@ -608,24 +719,28 @@ class WrapLinker(Linker):
 
         wrapper = self.wrapper
         pre = self.pre
+
         def f():
             for inputs in input_lists[1:]:
                 for input1, input2 in zip(inputs0, inputs):
                     input2.storage[0] = copy(input1.storage[0])
             for x in to_reset:
                 x[0] = None
-            pre(self, [input.data for input in input_lists[0]], order, thunk_groups)
+            pre(self, [input.data for input in input_lists[0]],
+                order, thunk_groups)
             for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)
                 except Exception:
-                    raise_with_op(node)
+                    raise_with_op(node, thunk)
         f.thunk_groups = thunk_groups
 
         return f, inputs0, outputs0
 
+
 def WrapLinkerMany(linkers, wrappers):
-    """ Variant on WrapLinker that runs a series of wrapper functions instead of
+    """
+    Variant on WrapLinker that runs a series of wrapper functions instead of
     just one.
     """
     def wrapper(*args):

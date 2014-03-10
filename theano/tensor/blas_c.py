@@ -1,10 +1,10 @@
 from theano import config
 
-
-from blas import ldflags, blas_header_text
-from blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
-from blas import Ger, ger, ger_destructive
-from blas import Gemv, gemv_inplace, gemv_no_inplace
+from theano.tensor.opt import in2out
+from theano.tensor.blas import ldflags, blas_header_text, blas_header_version
+from theano.tensor.blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
+from theano.tensor.blas import Ger, ger, ger_destructive
+from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
 
 
 class BaseBLAS(object):
@@ -33,35 +33,35 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
 
     int elemsize ;
 
-    if (%(A)s->nd != 2)
+    if (PyArray_NDIM(%(A)s) != 2)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(A) != 2"); %(fail)s;}
-    if (%(x)s->nd != 1)
+    if (PyArray_NDIM(%(x)s) != 1)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(x) != 1"); %(fail)s;}
-    if (%(y)s->nd != 1)
+    if (PyArray_NDIM(%(y)s) != 1)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 1"); %(fail)s;}
-    if (%(a)s->nd != 0)
+    if (PyArray_NDIM(%(a)s) != 0)
     {PyErr_SetString(PyExc_NotImplementedError, "rank(a) != 0"); %(fail)s;}
 
-    if (%(A)s->descr->type_num != %(x)s->descr->type_num)
+    if (PyArray_DESCR(%(A)s)->type_num != PyArray_DESCR(%(x)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "A vs. x"); %(fail)s; }
-    if (%(A)s->descr->type_num != %(y)s->descr->type_num)
+    if (PyArray_DESCR(%(A)s)->type_num != PyArray_DESCR(%(y)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "A vs. y"); %(fail)s; }
 
-    if (%(A)s->dimensions[0] != %(x)s->dimensions[0])
+    if (PyArray_DIMS(%(A)s)[0] != PyArray_DIMS(%(x)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[0] != x.shape[0]");
         %(fail)s;
     }
-    if (%(A)s->dimensions[1] != %(y)s->dimensions[0])
+    if (PyArray_DIMS(%(A)s)[1] != PyArray_DIMS(%(y)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[1] != y.shape[0]");
         %(fail)s;
     }
 
-    if  (%(A)s->descr->type_num == PyArray_DOUBLE) { elemsize = 8; }
-    else if (%(A)s->descr->type_num == PyArray_FLOAT) { elemsize = 4;}
+    if  (PyArray_DESCR(%(A)s)->type_num == NPY_DOUBLE) { elemsize = 8; }
+    else if (PyArray_DESCR(%(A)s)->type_num == NPY_FLOAT) { elemsize = 4;}
     else
     {
         PyErr_SetString(PyExc_NotImplementedError, "complex CGer");
@@ -70,22 +70,22 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
 
     // copy A if !self.destructive or A is fully strided
     if (!%(destructive)s
-        || (%(A)s->strides[0] < 0)
-        || (%(A)s->strides[1] < 0)
-        || ((%(A)s->strides[0] != elemsize)
-            && (%(A)s->strides[1] != elemsize)))
+        || (PyArray_STRIDES(%(A)s)[0] < 0)
+        || (PyArray_STRIDES(%(A)s)[1] < 0)
+        || ((PyArray_STRIDES(%(A)s)[0] != elemsize)
+            && (PyArray_STRIDES(%(A)s)[1] != elemsize)))
     {
         npy_intp dims[2];
-        dims[0] = %(A)s->dimensions[0];
-        dims[1] = %(A)s->dimensions[1];
+        dims[0] = PyArray_DIMS(%(A)s)[0];
+        dims[1] = PyArray_DIMS(%(A)s)[1];
 
         if ((NULL == %(Z)s)
-            || (%(Z)s->dimensions[0] != %(A)s->dimensions[0])
-            || (%(Z)s->dimensions[1] != %(A)s->dimensions[1])
-            || (%(Z)s->strides[0] < 0)
-            || (%(Z)s->strides[1] < 0)
-            || ((%(Z)s->strides[0] != elemsize)
-                && (%(Z)s->strides[1] != elemsize)))
+            || (PyArray_DIMS(%(Z)s)[0] != PyArray_DIMS(%(A)s)[0])
+            || (PyArray_DIMS(%(Z)s)[1] != PyArray_DIMS(%(A)s)[1])
+            || (PyArray_STRIDES(%(Z)s)[0] < 0)
+            || (PyArray_STRIDES(%(Z)s)[1] < 0)
+            || ((PyArray_STRIDES(%(Z)s)[0] != elemsize)
+                && (PyArray_STRIDES(%(Z)s)[1] != elemsize)))
         {
             if (%(Z)s) Py_XDECREF(%(Z)s);
             %(Z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims,
@@ -101,14 +101,14 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             PyErr_SetString(PyExc_AssertionError, "%(Z)s != %(A)s");
             %(fail)s
         }
-        if (%(Z)s->descr->type_num == PyArray_FLOAT)
+        if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
         {
-            float * zoutdata = (float*)%(Z)s->data;
-            const float * zdata = (float*)%(A)s->data;
-            int Ai = %(A)s->strides[0]/sizeof(float);
-            int Aj = %(A)s->strides[1]/sizeof(float);
-            int Zi = %(Z)s->strides[0]/sizeof(float);
-            int Zj = %(Z)s->strides[1]/sizeof(float);
+            float * zoutdata = (float*)PyArray_DATA(%(Z)s);
+            const float * zdata = (float*)PyArray_DATA(%(A)s);
+            int Ai = PyArray_STRIDES(%(A)s)[0]/sizeof(float);
+            int Aj = PyArray_STRIDES(%(A)s)[1]/sizeof(float);
+            int Zi = PyArray_STRIDES(%(Z)s)[0]/sizeof(float);
+            int Zj = PyArray_STRIDES(%(Z)s)[1]/sizeof(float);
             for (int i = 0; i < dims[0]; ++i)
             {
                 for (int j = 0; j < dims[1]; ++j)
@@ -117,14 +117,14 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                 }
             }
         }
-        else if (%(Z)s->descr->type_num == PyArray_DOUBLE)
+        else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
         {
-            double * zoutdata = (double*) %(Z)s->data;
-            const double * zdata = (double*)%(A)s->data;
-            int Ai = %(A)s->strides[0]/sizeof(double);
-            int Aj = %(A)s->strides[1]/sizeof(double);
-            int Zi = %(Z)s->strides[0]/sizeof(double);
-            int Zj = %(Z)s->strides[1]/sizeof(double);
+            double * zoutdata = (double*) PyArray_DATA(%(Z)s);
+            const double * zdata = (double*)PyArray_DATA(%(A)s);
+            int Ai = PyArray_STRIDES(%(A)s)[0]/sizeof(double);
+            int Aj = PyArray_STRIDES(%(A)s)[1]/sizeof(double);
+            int Zi = PyArray_STRIDES(%(Z)s)[0]/sizeof(double);
+            int Zj = PyArray_STRIDES(%(Z)s)[1]/sizeof(double);
             for (int i = 0; i < dims[0]; ++i)
             {
                 for (int j = 0; j < dims[1]; ++j)
@@ -152,10 +152,10 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
     }
 
     {
-        int Nz0 = %(Z)s->dimensions[0];
-        int Nz1 = %(Z)s->dimensions[1];
-        int Sx = %(x)s->strides[0] / elemsize;
-        int Sy = %(y)s->strides[0] / elemsize;
+        int Nz0 = PyArray_DIMS(%(Z)s)[0];
+        int Nz1 = PyArray_DIMS(%(Z)s)[1];
+        int Sx = PyArray_STRIDES(%(x)s)[0] / elemsize;
+        int Sy = PyArray_STRIDES(%(y)s)[0] / elemsize;
 
         /* create appropriate strides for Z, if it is a row or column matrix.
          * In that case, the value of the stride does not really matter, but
@@ -163,11 +163,11 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
          *  - they are not smaller than the number of elements in the array,
          *  - they are not 0.
          */
-        int Sz0 = (Nz0 > 1) ? (%(Z)s->strides[0] / elemsize) : (Nz1 + 1);
-        int Sz1 = (Nz1 > 1) ? (%(Z)s->strides[1] / elemsize) : (Nz0 + 1);
+        int Sz0 = (Nz0 > 1) ? (PyArray_STRIDES(%(Z)s)[0] / elemsize) : (Nz1 + 1);
+        int Sz1 = (Nz1 > 1) ? (PyArray_STRIDES(%(Z)s)[1] / elemsize) : (Nz0 + 1);
 
-        dtype_%(x)s* x_data = (dtype_%(x)s*) %(x)s->data;
-        dtype_%(y)s* y_data = (dtype_%(y)s*) %(y)s->data;
+        dtype_%(x)s* x_data = (dtype_%(x)s*) PyArray_DATA(%(x)s);
+        dtype_%(y)s* y_data = (dtype_%(y)s*) PyArray_DATA(%(y)s);
         // gemv expects pointers to the beginning of memory arrays,
         // but numpy provides provides a pointer to the first element,
         // so when the stride is negative, we need to get the last one.
@@ -176,24 +176,24 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
         if (Sy < 0)
             y_data += (Nz1 - 1) * Sy;
 
-        if (%(Z)s->strides[0] == elemsize)
+        if (PyArray_STRIDES(%(Z)s)[0] == elemsize)
         {
-            if (%(Z)s->descr->type_num == PyArray_FLOAT)
+            if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
             {
                 //fprintf(stderr, "A\\n");
-                float alpha = ((dtype_%(a)s*)%(a)s->data)[0];
+                float alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                 sger_(&Nz0, &Nz1, &alpha,
                     (float*)x_data, &Sx,
                     (float*)y_data, &Sy,
-                    (float*)(%(Z)s->data), &Sz1);
+                    (float*)(PyArray_DATA(%(Z)s)), &Sz1);
             }
-            else if (%(Z)s->descr->type_num == PyArray_DOUBLE)
+            else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
             {
-                double alpha = ((dtype_%(a)s*)%(a)s->data)[0];
+                double alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                 dger_(&Nz0, &Nz1, &alpha,
                     (double*)x_data, &Sx,
                     (double*)y_data, &Sy,
-                    (double*)(%(Z)s->data), &Sz1);
+                    (double*)(PyArray_DATA(%(Z)s)), &Sz1);
             }
             else {
                 PyErr_SetString(PyExc_NotImplementedError,
@@ -201,26 +201,26 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                 %(fail)s
             }
         }
-        else if (%(Z)s->strides[1] == elemsize)
+        else if (PyArray_STRIDES(%(Z)s)[1] == elemsize)
         {
-            if (%(Z)s->descr->type_num == PyArray_FLOAT)
+            if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
             {
                 //fprintf(stderr, "B %%i %%i %%i %%i\\n", Nz0, Nz1, Sz0, Sz1);
-                float alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
+                float alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
                 //fprintf(stderr, "alpha=%%f\\n", alpha);
                 //fprintf(stderr, "sx  sy %%i %%i\\n", Sx, Sy);
                 sger_(&Nz1, &Nz0, &alpha,
                     (float*)y_data, &Sy,
                     (float*)x_data, &Sx,
-                    (float*)(%(Z)s->data), &Sz0);
+                    (float*)(PyArray_DATA(%(Z)s)), &Sz0);
             }
-            else if (%(Z)s->descr->type_num == PyArray_DOUBLE)
+            else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
             {
-                double alpha = ((dtype_%(a)s*)%(a)s->data)[0];
+                double alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                 dger_(&Nz1, &Nz0, &alpha,
                     (double*)y_data, &Sy,
                     (double*)x_data, &Sx,
-                    (double*)(%(Z)s->data), &Sz0);
+                    (double*)(PyArray_DATA(%(Z)s)), &Sz0);
             }
             else
             {
@@ -251,7 +251,9 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (8,)
+        return (8, blas_header_version())
+cger_inplace = CGer(True)
+cger_no_inplace = CGer(False)
 
 
 @local_optimizer([ger, ger_destructive])
@@ -269,8 +271,8 @@ def use_c_ger(node):
 
 @local_optimizer([CGer(False)])
 def make_c_ger_destructive(node):
-    if node.op == CGer(False):
-        return [CGer(True)(*node.inputs)]
+    if node.op == cger_no_inplace:
+        return [cger_inplace(*node.inputs)]
 
 
 ####### ####### #######
@@ -290,68 +292,68 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
     float fbeta;
     double dbeta;
 
-    if (%(aa)s->nd != 1)
+    if (PyArray_NDIM(%(aa)s) != 1)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(aa) != 1");
         %(fail)s;
     }
-    if (%(xx)s->nd != 2)
+    if (PyArray_NDIM(%(xx)s) != 2)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(xx) != 2");
         %(fail)s;
     }
-    if (%(yy)s->nd != 1)
+    if (PyArray_NDIM(%(yy)s) != 1)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(yy) != 1");
         %(fail)s;
     }
-    if (%(alpha)s->nd != 0)
+    if (PyArray_NDIM(%(alpha)s) != 0)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(alpha) != 0");
         %(fail)s;
     }
-    if (%(beta)s->nd != 0)
+    if (PyArray_NDIM(%(beta)s) != 0)
     {
         PyErr_SetString(PyExc_NotImplementedError, "Gemv: rank(beta) != 0");
         %(fail)s;
     }
 
-    if (%(aa)s->descr->type_num != %(xx)s->descr->type_num)
+    if (PyArray_DESCR(%(aa)s)->type_num != PyArray_DESCR(%(xx)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "Gemv: aa vs. xx"); %(fail)s; }
-    if (%(aa)s->descr->type_num != %(yy)s->descr->type_num)
+    if (PyArray_DESCR(%(aa)s)->type_num != PyArray_DESCR(%(yy)s)->type_num)
     { PyErr_SetString(PyExc_TypeError, "Gemv: aa vs. yy"); %(fail)s; }
 
-    if (%(xx)s->dimensions[0] != %(aa)s->dimensions[0])
+    if (PyArray_DIMS(%(xx)s)[0] != PyArray_DIMS(%(aa)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[0] != x.shape[0]");
         %(fail)s;
     }
-    if (%(xx)s->dimensions[1] != %(yy)s->dimensions[0])
+    if (PyArray_DIMS(%(xx)s)[1] != PyArray_DIMS(%(yy)s)[0])
     {
         PyErr_SetString(PyExc_ValueError,
                         "Shape mismatch: A.shape[1] != y.shape[0]");
         %(fail)s;
     }
 
-    if  (%(aa)s->descr->type_num == PyArray_DOUBLE) { elemsize = 8; }
-    else if (%(aa)s->descr->type_num == PyArray_FLOAT) { elemsize = 4;}
+    if  (PyArray_DESCR(%(aa)s)->type_num == NPY_DOUBLE) { elemsize = 8; }
+    else if (PyArray_DESCR(%(aa)s)->type_num == NPY_FLOAT) { elemsize = 4;}
     else {
         PyErr_SetString(PyExc_NotImplementedError, "complex Gemv");
         %(fail)s;
     }
 
-    fbeta = dbeta = ((dtype_%(beta)s*)%(beta)s->data)[0];
+    fbeta = dbeta = ((dtype_%(beta)s*)PyArray_DATA(%(beta)s))[0];
 
     // copy aa if not destructive
     if (!%(destructive)s)
     {
         if ((NULL == %(zz)s)
-            || (%(zz)s->dimensions[0] != %(aa)s->dimensions[0]))
+            || (PyArray_DIMS(%(zz)s)[0] != PyArray_DIMS(%(aa)s)[0]))
         {
             if (%(zz)s) Py_XDECREF(%(zz)s);
             %(zz)s = (PyArrayObject*)PyArray_SimpleNew(1,
-                %(aa)s->dimensions, type_num_%(aa)s);
+                PyArray_DIMS(%(aa)s), type_num_%(aa)s);
             if(!%(zz)s) {
                 PyErr_SetString(PyExc_MemoryError,
                                 "failed to alloc gemv output");
@@ -365,24 +367,24 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
         }
         if (dbeta != 0)
         {
-            if (%(zz)s->descr->type_num == PyArray_FLOAT)
+            if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
             {
-                float * zoutdata = (float*)%(zz)s->data;
-                const float * zdata = (float*)%(aa)s->data;
-                int Ai = %(aa)s->strides[0]/sizeof(float);
-                int Zi = %(zz)s->strides[0]/sizeof(float);
-                for (int i = 0; i < %(aa)s->dimensions[0]; ++i)
+                float * zoutdata = (float*)PyArray_DATA(%(zz)s);
+                const float * zdata = (float*)PyArray_DATA(%(aa)s);
+                int Ai = PyArray_STRIDES(%(aa)s)[0]/sizeof(float);
+                int Zi = PyArray_STRIDES(%(zz)s)[0]/sizeof(float);
+                for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
                 {
                     zoutdata[Zi*i] = fbeta * zdata[Ai*i];
                 }
             }
-            else if (%(xx)s->descr->type_num == PyArray_DOUBLE)
+            else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
             {
-                double * zoutdata = (double*) %(zz)s->data;
-                const double * zdata = (double*)%(aa)s->data;
-                int Ai = %(aa)s->strides[0]/sizeof(double);
-                int Zi = %(zz)s->strides[0]/sizeof(double);
-                for (int i = 0; i < %(aa)s->dimensions[0]; ++i)
+                double * zoutdata = (double*) PyArray_DATA(%(zz)s);
+                const double * zdata = (double*)PyArray_DATA(%(aa)s);
+                int Ai = PyArray_STRIDES(%(aa)s)[0]/sizeof(double);
+                int Zi = PyArray_STRIDES(%(zz)s)[0]/sizeof(double);
+                for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
                 {
                     zoutdata[Zi*i] = dbeta * zdata[Ai*i];
                 }
@@ -409,20 +411,20 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
     {
         char TRANS = 'T';
         char NOTRANS = 'N';
-        int Nx0 = %(xx)s->dimensions[0];
-        int Nx1 = %(xx)s->dimensions[1];
+        int Nx0 = PyArray_DIMS(%(xx)s)[0];
+        int Nx1 = PyArray_DIMS(%(xx)s)[1];
         /* This formula is needed in the case where xx is actually a row or
          * column matrix, because BLAS sometimes insists that the strides:
          *  - are not smaller than the number of elements in the array
          *  - are not 0.
          */
-        int Sx0 = (Nx0 > 1) ? (%(xx)s->strides[0] / elemsize) : (Nx1 + 1);
-        int Sx1 = (Nx1 > 1) ? (%(xx)s->strides[1] / elemsize) : (Nx0 + 1);
-        int Sz = %(zz)s->strides[0] / elemsize;
-        int Sy = %(yy)s->strides[0] / elemsize;
+        int Sx0 = (Nx0 > 1) ? (PyArray_STRIDES(%(xx)s)[0] / elemsize) : (Nx1 + 1);
+        int Sx1 = (Nx1 > 1) ? (PyArray_STRIDES(%(xx)s)[1] / elemsize) : (Nx0 + 1);
+        int Sz = PyArray_STRIDES(%(zz)s)[0] / elemsize;
+        int Sy = PyArray_STRIDES(%(yy)s)[0] / elemsize;
 
-        dtype_%(yy)s* yy_data = (dtype_%(yy)s*) %(yy)s->data;
-        dtype_%(zz)s* zz_data = (dtype_%(zz)s*) %(zz)s->data;
+        dtype_%(yy)s* yy_data = (dtype_%(yy)s*) PyArray_DATA(%(yy)s);
+        dtype_%(zz)s* zz_data = (dtype_%(zz)s*) PyArray_DATA(%(zz)s);
         // gemv expects pointers to the beginning of memory arrays,
         // but numpy provides provides a pointer to the first element,
         // so when the stride is negative, we need to get the last one.
@@ -439,10 +441,10 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             //   gemv on reversed matrix and vectors
             // - if the copy is too long, maybe call vector/vector dot on
             //   each row instead
-            if ((%(xx)s->strides[0] < 0)
-                || (%(xx)s->strides[1] < 0)
-                || ((%(xx)s->strides[0] != elemsize)
-                    && (%(xx)s->strides[1] != elemsize)))
+            if ((PyArray_STRIDES(%(xx)s)[0] < 0)
+                || (PyArray_STRIDES(%(xx)s)[1] < 0)
+                || ((PyArray_STRIDES(%(xx)s)[0] != elemsize)
+                    && (PyArray_STRIDES(%(xx)s)[1] != elemsize)))
             {
                 npy_intp dims[2];
                 dims[0] = Nx0;
@@ -454,29 +456,29 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                     %(fail)s
                 Py_XDECREF(%(xx)s);
                 %(xx)s = xx_copy;
-                Sx0 = (Nx0 > 1) ? (%(xx)s->strides[0] / elemsize) : (Nx1 + 1);
-                Sx1 = (Nx1 > 1) ? (%(xx)s->strides[1] / elemsize) : (Nx0 + 1);
+                Sx0 = (Nx0 > 1) ? (PyArray_STRIDES(%(xx)s)[0] / elemsize) : (Nx1 + 1);
+                Sx1 = (Nx1 > 1) ? (PyArray_STRIDES(%(xx)s)[1] / elemsize) : (Nx0 + 1);
             }
 
-            if (%(xx)s->strides[0] == elemsize)
+            if (PyArray_STRIDES(%(xx)s)[0] == elemsize)
             {
-                if (%(xx)s->descr->type_num == PyArray_FLOAT)
+                if (PyArray_DESCR(%(xx)s)->type_num == NPY_FLOAT)
                 {
                     //fprintf(stderr, "A\\n");
-                    float alpha = ((dtype_%(alpha)s*)%(alpha)s->data)[0];
+                    float alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
                     sgemv_(&NOTRANS, &Nx0, &Nx1,
                         &alpha,
-                        (float*)(%(xx)s->data), &Sx1,
+                        (float*)(PyArray_DATA(%(xx)s)), &Sx1,
                         (float*)yy_data, &Sy,
                         &fbeta,
                         (float*)zz_data, &Sz);
                 }
-                else if (%(xx)s->descr->type_num == PyArray_DOUBLE)
+                else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
                 {
-                    double alpha = ((dtype_%(alpha)s*)%(alpha)s->data)[0];
+                    double alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
                     dgemv_(&NOTRANS, &Nx0, &Nx1,
                         &alpha,
-                        (double*)(%(xx)s->data), &Sx1,
+                        (double*)(PyArray_DATA(%(xx)s)), &Sx1,
                         (double*)yy_data, &Sy,
                         &dbeta,
                         (double*)zz_data, &Sz);
@@ -488,31 +490,53 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
                     %(fail)s
                 }
             }
-            else if (%(xx)s->strides[1] == elemsize)
+            else if (PyArray_STRIDES(%(xx)s)[1] == elemsize)
             {
-                if (%(xx)s->descr->type_num == PyArray_FLOAT)
+                if (PyArray_DESCR(%(xx)s)->type_num == NPY_FLOAT)
                 {
-                    //fprintf(stderr, "B %%i %%i %%i %%i\\n",
-                    //        Nz0, Nz1, Sz0, Sz1);
-                    float alpha = ((dtype_%(alpha)s*)%(alpha)s->data)[0];
-                    //fprintf(stderr, "alpha=%%f\\n", alpha);
-                    //fprintf(stderr, "sx  sy %%i %%i\\n", Sx, Sy);
-                    sgemv_(&TRANS, &Nx1, &Nx0,
-                        &alpha,
-                        (float*)(%(xx)s->data), &Sx0,
-                        (float*)yy_data, &Sy,
-                        &fbeta,
-                        (float*)zz_data, &Sz);
+                    float alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
+
+                    // Check for vector-vector dot (Nx0 == 1). The code may work
+                    // for Sx1 != 1 as well, but has not been tested for this case,
+                    // so Sx1 == 1 is required for safety.
+                    if (Nx0 == 1 && Sx1 == 1)
+                    {
+                        zz_data[0] = fbeta*zz_data[0] + alpha*sdot_(&Nx1, 
+                            (float*)(PyArray_DATA(%(xx)s)), &Sx1,
+                            (float*)yy_data, &Sy);
+                    }
+                    else
+                    {
+                        sgemv_(&TRANS, &Nx1, &Nx0,
+                            &alpha,
+                            (float*)(PyArray_DATA(%(xx)s)), &Sx0,
+                            (float*)yy_data, &Sy,
+                            &fbeta,
+                            (float*)zz_data, &Sz);
+                    }
                 }
-                else if (%(xx)s->descr->type_num == PyArray_DOUBLE)
+                else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
                 {
-                    double alpha = ((dtype_%(alpha)s*)%(alpha)s->data)[0];
-                    dgemv_(&TRANS, &Nx1, &Nx0,
-                        &alpha,
-                        (double*)(%(xx)s->data), &Sx0,
-                        (double*)yy_data, &Sy,
-                        &dbeta,
-                        (double*)zz_data, &Sz);
+                    double alpha = ((dtype_%(alpha)s*)PyArray_DATA(%(alpha)s))[0];
+
+                    // Check for vector-vector dot (Nx0 == 1). The code may work
+                    // for Sx1 != 1 as well, but has not been tested for this case,
+                    // so Sx1 == 1 is required for safety.
+                    if (Nx0 == 1 && Sx1 == 1)
+                    {
+                        zz_data[0] = dbeta*zz_data[0] + alpha*ddot_(&Nx1, 
+                              (double*)(PyArray_DATA(%(xx)s)), &Sx1,
+                              (double*)yy_data, &Sy);
+                    }
+                    else
+                    {
+                        dgemv_(&TRANS, &Nx1, &Nx0,
+                            &alpha,
+                            (double*)(PyArray_DATA(%(xx)s)), &Sx0,
+                            (double*)yy_data, &Sy,
+                            &dbeta,
+                            (double*)zz_data, &Sz);
+                    }
                 }
                 else
                 {
@@ -534,7 +558,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             // the matrix has at least one dim of length 0
             // so we do this loop, which either iterates over 0 elements
             // or else it does the right thing for length-0 x.
-            dtype_%(zz)s * zptr = (dtype_%(zz)s*)(%(zz)s->data);
+            dtype_%(zz)s * zptr = (dtype_%(zz)s*)(PyArray_DATA(%(zz)s));
             for (int i = 0; i < Nx0; ++i)
             {
                 zptr[i * Sz] *= dbeta;
@@ -556,7 +580,9 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10, blas_header_version())
+cgemv_inplace = CGemv(inplace=True)
+cgemv_no_inplace = CGemv(inplace=False)
 
 
 @local_optimizer([gemv_inplace, gemv_no_inplace])
@@ -574,8 +600,8 @@ def use_c_gemv(node):
 
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
-    if node.op == CGemv(inplace=False):
-        return [CGemv(inplace=True)(*node.inputs)]
+    if node.op == cgemv_no_inplace:
+        return [cgemv_inplace(*node.inputs)]
 
 
 ####### ####### #######
@@ -583,21 +609,14 @@ def make_c_gemv_destructive(node):
 ####### ####### #######
 
 blas_optdb.register('use_c_blas',
-    EquilibriumOptimizer([
-        use_c_ger,
-        use_c_gemv,
-        ],
-        max_use_ratio=5),
-    20, 'fast_run', 'c_blas')
+                    in2out(use_c_ger, use_c_gemv),
+                    20, 'fast_run', 'c_blas')
 #print 'BLAS_OPTDB'
 #print blas_optdb
 
 # this matches the InplaceBlasOpt defined in blas.py
 optdb.register('c_blas_destructive',
-        EquilibriumOptimizer([
-                make_c_ger_destructive,
-                make_c_gemv_destructive,
-            ],
-            failure_callback=EquilibriumOptimizer.warn_inplace,
-            max_use_ratio=5),
-        70.0, 'fast_run', 'inplace', 'c_blas')
+               in2out(make_c_ger_destructive,
+                      make_c_gemv_destructive,
+                      name="c_blas_destructive"),
+               70.0, 'fast_run', 'inplace', 'c_blas')

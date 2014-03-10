@@ -1,4 +1,4 @@
-// REMEMBER TO RAISE c_code_cache_version when changing this file
+// REMEMBER TO INCREASE c_code_cache_version when changing this file
 //
 //implement the valid convolution only
 
@@ -29,6 +29,7 @@ for (int iter_m=0; iter_m < Os[0]; iter_m++) {
 */
 #ifndef CONV_KERNEL_CU
 #define CONV_KERNEL_CU
+#include <stdint.h>
 
 /*
 #define CHECK_BANK_CONFLICTS 0
@@ -44,7 +45,9 @@ for (int iter_m=0; iter_m < Os[0]; iter_m++) {
 #define MIN(a, b) ((a) < (b) ? (a) : (b) )
 #define MAX(a, b) ((a) < (b) ? (b) : (a) )
 
-const unsigned long int COALESCED_ALIGN = 0xFFFFFFFFFFFFFF00; // zero-out the trailing bits of pointers
+//Must be the same size as a ptr. We can't use unsigned long as on Windows 64
+//bit, it is 32 bit.
+const uintptr_t COALESCED_ALIGN = 0xFFFFFFFFFFFFFF00; // zero-out the trailing bits of pointers
 
 __device__ void load_to_shared(float * dst, const float * src, const int thread_id, int nb_thread, const int N, const bool flipped=false){
   if (nb_thread < 64)
@@ -73,7 +76,7 @@ __device__ void load_to_shared(float * dst, const float * src, const int thread_
       if (thread_id < nb_thread)
         {
           const float * my_src_ptr = (const float *)(
-                  ((unsigned long int)src) & COALESCED_ALIGN);
+                  ((uintptr_t)src) & COALESCED_ALIGN);
           my_src_ptr += thread_id;
           while (my_src_ptr < src + N)
           {

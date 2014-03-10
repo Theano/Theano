@@ -1,27 +1,58 @@
+import errno
 import os, logging, sys
 
 import theano
 from theano import config
+from theano.compat import reload
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
 
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
-# Ensure the compiledir is in `sys.path` to be able to reload an existing
-# precompiled library.
-if config.compiledir not in sys.path:
-    sys.path.append(config.compiledir)
-
 force_compile = False
-version = 0.13 # must match constant returned in function get_version()
+version = 0.20  # must match constant returned in function get_version()
 
+def try_import():
+    global lazylinker_ext
+    sys.path[0:0] = [config.compiledir]
+    import lazylinker_ext
+    del sys.path[0]
+
+def try_reload():
+    sys.path[0:0] = [config.compiledir]
+    reload(lazylinker_ext)
+    del sys.path[0]
 
 try:
+    # See gh issue #728 for why these lines are here. Summary: compiledir must
+    # be at the beginning of the path to avoid conflicts with any other
+    # lazylinker_ext modules that might exist (this step handled in try_import
+    # and try_reload). An __init__.py file must be created for the same reason.
+    # Note that these lines may seem redundant (they are repeated in
+    # compile_str()) but if another lazylinker_ext does exist then it will be
+    # imported and compile_str won't get called at all.
+    location = os.path.join(config.compiledir, 'lazylinker_ext')
+    if not os.path.exists(location):
+        try:
+            # Try to make the location
+            os.mkdir(location)
+        except OSError, e:
+            # If we get an error, verify that the error was # 17, the path already exists,
+            # and that it is a directory
+            # Note: we can't check if it exists before making it, because we are not holding
+            # the lock right now, so we could race another process and get error 17 if we lose
+            # the race
+            assert e.errno == errno.EEXIST
+            assert os.path.isdir(location)
+
+    if not os.path.exists(os.path.join(location, '__init__.py')):
+        open(os.path.join(location, '__init__.py'), 'w').close()
+
     _need_reload = False
     if force_compile:
         raise ImportError()
     else:
-        import lazylinker_ext
+        try_import()
         _need_reload = True
         if version != getattr(lazylinker_ext, '_version', None):
             raise ImportError()
@@ -36,19 +67,16 @@ except ImportError:
             if _need_reload:
                 # The module was successfully imported earlier: we need to
                 # reload it to check if the version was updated.
-                reload(lazylinker_ext)
+                try_reload()
             else:
-                import lazylinker_ext
+                try_import()
                 _need_reload = True
             if version != getattr(lazylinker_ext, '_version', None):
                 raise ImportError()
         except ImportError:
             _logger.info("Compiling new CVM")
             dirname = 'lazylinker_ext'
-            # We use a .txt extensions as otherwise it don't get
-            # included when we create a package to send to pypi
-            # This happen even if we tell to include *.c files
-            cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c.txt')
+            cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c')
             code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
@@ -65,8 +93,8 @@ except ImportError:
             init_pyc = os.path.join(loc, '__init__.pyc')
             if os.path.isfile(init_pyc):
                 os.remove(init_pyc)
-            import lazylinker_ext
-            reload(lazylinker_ext)
+            try_import()
+            try_reload()
             from lazylinker_ext import lazylinker_ext as lazy_c
             assert (lazylinker_ext._version ==
                     lazy_c.get_version())

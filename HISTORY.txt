@@ -4,6 +4,296 @@
 =================
 Old Release Notes
 =================
+Theano 0.5 (23 February 2012)
+=============================
+
+Highlights:
+ * Moved to github: http://github.com/Theano/Theano/
+ * Old trac tickets moved to assembla tickets: http://www.assembla.com/spaces/theano/tickets
+ * Theano vision: http://deeplearning.net/software/theano/introduction.html#theano-vision (Many people)
+ * Theano with GPU works in some cases on Windows now. Still experimental. (Sebastian Urban)
+ * Faster dot() call: New/Better direct call to cpu and gpu ger, gemv, gemm
+   and dot(vector, vector). (James, Frédéric, Pascal)
+ * C implementation of Alloc. (James, Pascal)
+ * theano.grad() now also works with sparse variables. (Arnaud)
+ * Macro to implement the Jacobian/Hessian with theano.tensor.{jacobian,hessian} (Razvan)
+ * See the Interface changes.
+
+
+Interface Behavior Changes:
+ * The current default value of the parameter axis of
+   theano.{max,min,argmax,argmin,max_and_argmax} is now the same as
+   numpy: None. i.e. operate on all dimensions of the tensor.
+   (Frédéric Bastien, Olivier Delalleau) (was deprecated and generated
+   a warning since Theano 0.3 released Nov. 23rd, 2010)
+ * The current output dtype of sum with input dtype [u]int* is now always [u]int64.
+   You can specify the output dtype with a new dtype parameter to sum.
+   The output dtype is the one used for the summation.
+   There is no warning in previous Theano versions about this.
+   The consequence is that the sum is done in a dtype with more precision than before.
+   So the sum could be slower, but will be more resistant to overflow.
+   This new behavior is the same as numpy. (Olivier, Pascal)
+ * When using a GPU, detect faulty nvidia drivers. This was detected
+   when running Theano tests. Now this is always tested. Faulty
+   drivers result in wrong results for reduce operations. (Frederic B.)
+
+
+Interface Features Removed (most were deprecated):
+ * The string modes FAST_RUN_NOGC and STABILIZE are not accepted. They
+   were accepted only by theano.function().
+   Use Mode(linker='c|py_nogc') or Mode(optimizer='stabilize') instead.
+ * tensor.grad(cost, wrt) now always returns an object of the "same type" as wrt
+   (list/tuple/TensorVariable). (Ian Goodfellow, Olivier)
+ * A few tag.shape and Join.vec_length left have been removed. (Frederic)
+ * The .value attribute of shared variables is removed, use shared.set_value()
+   or shared.get_value() instead. (Frederic)
+ * Theano config option "home" is not used anymore as it was redundant with "base_compiledir".
+   If you use it, Theano will now raise an error. (Olivier D.)
+ * scan interface changes: (Razvan Pascanu)
+    * The use of `return_steps` for specifying how many entries of the output
+      to return has been removed. Instead, apply a subtensor to the output
+      returned by scan to select a certain slice.
+    * The inner function (that scan receives) should return its outputs and
+      updates following this order:
+        [outputs], [updates], [condition].
+      One can skip any of the three if not used, but the order has to stay unchanged.
+
+Interface bug fix:
+ * Rop in some case should have returned a list of one Theano variable,
+   but returned the variable itself. (Razvan)
+
+New deprecation (will be removed in Theano 0.6, warning generated if you use them):
+ * tensor.shared() renamed to tensor._shared(). You probably want to
+   call theano.shared() instead! (Olivier D.)
+
+
+Bug fixes (incorrect results):
+ * On CPU, if the convolution had received explicit shape information,
+   they were not checked at runtime.  This caused wrong result if the
+   input shape was not the one expected. (Frederic, reported by Sander
+   Dieleman)
+ * Theoretical bug: in some case we could have GPUSum return bad value.
+   We were not able to reproduce this problem
+     * patterns affected ({0,1}*nb dim, 0 no reduction on this dim, 1 reduction on this dim):
+       01, 011, 0111, 010, 10, 001, 0011, 0101 (Frederic)
+ * div by zero in verify_grad. This hid a bug in the grad of Images2Neibs. (James)
+ * theano.sandbox.neighbors.Images2Neibs grad was returning a wrong value.
+   The grad is now disabled and returns an error. (Frederic)
+ * An expression of the form "1 / (exp(x) +- constant)" was systematically matched to "1 / (exp(x) + 1)"
+   and turned into a sigmoid regardless of the value of the constant. A warning will be issued if your
+   code was affected by this bug. (Olivier, reported by Sander Dieleman)
+ * When indexing into a subtensor of negative stride (for instance, x[a:b:-1][c]),
+   an optimization replacing it with a direct indexing (x[d]) used an incorrect formula,
+   leading to incorrect results. (Pascal, reported by Razvan)
+ * The tile() function  is now stricter in what it accepts to allow for better
+   error-checking/avoiding nonsensical situations. The gradient has been
+   disabled for the time being as it only implemented (incorrectly) one special
+   case. The `reps` argument must be a constant (not a tensor variable), and
+   must have the same length as the number of dimensions in the `x` argument;
+   this is now checked. (David)
+
+
+Scan fixes:
+ * computing grad of a function of grad of scan (reported by Justin Bayer, fix by Razvan)
+   before: most of the time crash, but could be wrong value with bad number of dimensions (so a visible bug)
+   now: do the right thing.
+ * gradient with respect to outputs using multiple taps (reported by Timothy, fix by Razvan)
+   before: it used to return wrong values
+   now: do the right thing.
+   Note: The reported case of this bug was happening in conjunction with the
+         save optimization of scan that give run time errors. So if you didn't
+         manually disable the same memory optimization (number in the list4),
+         you are fine if you didn't manually request multiple taps.
+ * Rop of gradient of scan (reported by Timothy and Justin Bayer, fix by Razvan)
+   before: compilation error when computing R-op
+   now: do the right thing.
+ * save memory optimization of scan (reported by Timothy and Nicolas BL, fix by Razvan)
+   before: for certain corner cases used to result in a runtime shape error
+   now: do the right thing.
+ * Scan grad when the input of scan has sequences of different lengths. (Razvan, reported by Michael Forbes)
+ * Scan.infer_shape now works correctly when working with a condition for the number of loops.
+   In the past, it returned n_steps as the length, which is not always true. (Razvan)
+ * Scan.infer_shape crash fix. (Razvan)
+
+New features:
+ * AdvancedIncSubtensor grad defined and tested (Justin Bayer)
+ * Adding 1D advanced indexing support to inc_subtensor and set_subtensor (James Bergstra)
+ * tensor.{zeros,ones}_like now supports the dtype param as numpy (Frederic)
+ * Added configuration flag "exception_verbosity" to control the verbosity of exceptions (Ian)
+ * theano-cache list: list the content of the theano cache (Frederic)
+ * theano-cache unlock: remove the Theano cache lock (Olivier)
+ * tensor.ceil_int_div to compute ceil(a / float(b)) (Frederic)
+ * MaxAndArgMax.grad now works with any axis (The op supports only 1 axis) (Frederic)
+     * used by tensor.{max,min,max_and_argmax}
+ * tensor.{all,any} (Razvan)
+ * tensor.roll as numpy: (Matthew Rocklin, David Warde-Farley)
+ * Theano with GPU works in some cases on Windows now. Still experimental. (Sebastian Urban)
+ * IfElse now allows to have a list/tuple as the result of the if/else branches.
+     * They must have the same length and corresponding type (Razvan)
+ * Argmax output dtype is now int64 instead of int32. (Olivier)
+ * Added the element-wise operation arccos. (Ian)
+ * Added sparse dot with dense grad output. (Yann Dauphin)
+     * Optimized to Usmm and UsmmCscDense in some case (Yann)
+     * Note: theano.dot and theano.sparse.structured_dot() always had a gradient with the same sparsity pattern as the inputs.
+       The new theano.sparse.dot() has a dense gradient for all inputs.
+ * GpuAdvancedSubtensor1 supports broadcasted dimensions. (Frederic)
+ * TensorVariable.zeros_like() and SparseVariable.zeros_like()
+ * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.device_properties() (Frederic)
+ * theano.sandbox.cuda.cuda_ndarray.cuda_ndarray.mem_info() return free and total gpu memory (Frederic)
+ * Theano flags compiledir_format. Keep the same default as before: compiledir_%(platform)s-%(processor)s-%(python_version)s. (Josh Bleecher Snyder)
+     * We also support the "theano_version" substitution.
+ * IntDiv C code (faster and allows this elemwise to be fused with other elemwise) (Pascal)
+ * Internal filter_variable mechanism in Type. (Pascal, Ian)
+    * Ifelse works on sparse.
+    * It makes use of gpu shared variable more transparent with theano.function updates and givens parameter.
+ * Added a_tensor.transpose(axes) axes is optional (James)
+    * theano.tensor.transpose(a_tensor, kwargs) We were ignoring kwargs, now it is used as the axes.
+ * a_CudaNdarray_object[*] = int, now works (Frederic)
+ * tensor_variable.size (as numpy) computes the product of the shape elements. (Olivier)
+ * sparse_variable.size (as scipy) computes the number of stored values. (Olivier)
+ * sparse_variable[N, N] now works (Li Yao, Frederic)
+ * sparse_variable[M:N, O:P] now works (Li Yao, Frederic, Pascal)
+   M, N, O, and P can be Python int or scalar tensor variables, None, or
+   omitted (sparse_variable[:, :M] or sparse_variable[:M, N:] work).
+ * tensor.tensordot can now be moved to GPU (Sander Dieleman,
+   Pascal, based on code from Tijmen Tieleman's gnumpy,
+   http://www.cs.toronto.edu/~tijmen/gnumpy.html)
+ * Many infer_shape implemented on sparse matrices op. (David W.F.)
+ * Added theano.sparse.verify_grad_sparse to easily allow testing grad of
+   sparse op. It supports testing the full and structured gradients.
+ * The keys in our cache now store the hash of constants and not the constant values
+   themselves. This is significantly more efficient for big constant arrays. (Frederic B.)
+ * 'theano-cache list' lists key files bigger than 1M (Frederic B.)
+ * 'theano-cache list' prints an histogram of the number of keys per compiled module (Frederic B.)
+ * 'theano-cache list' prints the number of compiled modules per op class (Frederic B.)
+ * The Theano flag "nvcc.fastmath" is now also used for the cuda_ndarray.cu file.
+ * Add the header_dirs to the hard part of the compilation key. This is
+   currently used only by cuda, but if we use libraries that are only headers,
+   this can be useful. (Frederic B.)
+ * The Theano flag "nvcc.flags" is now included in the hard part of the key.
+   This means that now we recompile all modules for each value of "nvcc.flags".
+   A change in "nvcc.flags" used to be ignored for modules that were already
+   compiled. (Frederic B.)
+ * Alloc, GpuAlloc are not always pre-computed (constant_folding optimization)
+   at compile time if all their inputs are constant.
+   (Frederic B., Pascal L., reported by Sander Dieleman)
+ * New Op tensor.sort(), wrapping numpy.sort (Hani Almousli)
+
+
+New optimizations:
+ * AdvancedSubtensor1 reuses preallocated memory if available (scan, c|py_nogc linker) (Frederic)
+ * dot22, dot22scalar work with complex. (Frederic)
+ * Generate Gemv/Gemm more often. (James)
+ * Remove scan when all computations can be moved outside the loop. (Razvan)
+ * scan optimization done earlier. This allows other optimizations to be applied. (Frederic, Guillaume, Razvan)
+ * exp(x) * sigmoid(-x) is now correctly optimized to the more stable form sigmoid(x). (Olivier)
+ * Added Subtensor(Rebroadcast(x)) => Rebroadcast(Subtensor(x)) optimization. (Guillaume)
+ * Made the optimization process faster. (James)
+ * Allow fusion of elemwise when the scalar op needs support code. (James)
+ * Better opt that lifts transpose around dot. (James)
+
+
+Crashes fixed:
+ * T.mean crash at graph building time. (Ian)
+ * "Interactive debugger" crash fix. (Ian, Frederic)
+ * Do not call gemm with strides 0, some blas refuse it. (Pascal Lamblin)
+ * Optimization crash with gemm and complex. (Frederic)
+ * GPU crash with elemwise. (Frederic, some reported by Chris Currivan)
+ * Compilation crash with amdlibm and the GPU. (Frederic)
+ * IfElse crash. (Frederic)
+ * Execution crash fix in AdvancedSubtensor1 on 32 bit computers. (Pascal)
+ * GPU compilation crash on MacOS X. (Olivier)
+ * Support for OSX Enthought Python Distribution 7.x. (Graham Taylor, Olivier)
+ * When the subtensor inputs had 0 dimensions and the outputs 0 dimensions. (Frederic)
+ * Crash when the step to subtensor was not 1 in conjunction with some optimization. (Frederic, reported by Olivier Chapelle)
+ * Runtime crash related to an optimization with subtensor of alloc (reported by Razvan, fixed by Frederic)
+ * Fix dot22scalar cast of integer scalars (Justin Bayer, Frédéric, Olivier)
+ * Fix runtime crash in gemm, dot22. FB
+ * Fix on 32 bit computer: make sure all shapes are int64. (Olivier)
+ * Fix to deque on python 2.4 (Olivier)
+ * Fix crash when not using C code (or using DebugMode) (not used by
+   default) with numpy 1.6*. Numpy has a bug in the reduction code that
+   made it crash. (Pascal)
+ * Crashes of blas functions (Gemv on CPU; Ger, Gemv and Gemm on GPU)
+   when matrices had non-unit stride in both dimensions (CPU and GPU),
+   or when matrices had negative strides (GPU only). In those cases,
+   we are now making copies. (Pascal)
+ * More cases supported in AdvancedIncSubtensor1. (Olivier D.)
+ * Fix crash when a broadcasted constant was used as input of an
+   elemwise Op and needed to be upcasted to match the op's output.
+   (Reported by John Salvatier, fixed by Pascal L.)
+ * Fixed a memory leak with shared variable (we kept a pointer to the original value) (Ian G.)
+
+
+Known bugs:
+ * CAReduce with nan in inputs don't return the good output (`Ticket <https://www.assembla.com/spaces/theano/tickets/763>`_).
+     * This is used in tensor.{max,mean,prod,sum} and in the grad of PermuteRowElements.
+
+
+Sandbox:
+ * cvm interface more consistent with current linker. (James)
+   * Now all tests pass with the linker=cvm flags.
+ * vm linker has a callback parameter. (James)
+ * review/finish/doc: diag/extract_diag. (Arnaud Bergeron, Frederic, Olivier)
+ * review/finish/doc: AllocDiag/diag. (Arnaud, Frederic, Guillaume)
+ * review/finish/doc: MatrixInverse, matrix_inverse. (Razvan)
+ * review/finish/doc: matrix_dot. (Razvan)
+ * review/finish/doc: det (determinent) op. (Philippe Hamel)
+ * review/finish/doc: Cholesky determinent op. (David)
+ * review/finish/doc: ensure_sorted_indices. (Li Yao)
+ * review/finish/doc: spectral_radius_boud. (Xavier Glorot)
+ * review/finish/doc: sparse sum. (Valentin Bisson)
+ * review/finish/doc: Remove0 (Valentin)
+ * review/finish/doc: SquareDiagonal (Eric)
+
+
+Sandbox New features (not enabled by default):
+ * CURAND_RandomStreams for uniform and normal (not picklable, GPU only) (James)
+ * New sandbox.linalg.ops.pinv(pseudo-inverse) op (Razvan)
+
+
+Documentation:
+ * Many updates. (Many people)
+ * Updates to install doc on MacOS. (Olivier)
+ * Updates to install doc on Windows. (David, Olivier)
+ * Doc on the Rop function (Ian)
+ * Added how to use scan to loop with a condition as the number of iteration. (Razvan)
+ * Added how to wrap in Theano an existing python function (in numpy, scipy, ...). (Frederic)
+ * Refactored GPU installation of Theano. (Olivier)
+
+
+Others:
+ * Better error messages in many places. (Many people)
+ * PEP8 fixes. (Many people)
+ * Add a warning about numpy bug when using advanced indexing on a
+   tensor with more than 2**32 elements (the resulting array is not
+   correctly filled and ends with zeros). (Pascal, reported by David WF)
+ * Added Scalar.ndim=0 and ScalarSharedVariable.ndim=0 (simplify code) (Razvan)
+ * New min_informative_str() function to print graph. (Ian)
+ * Fix catching of exception. (Sometimes we used to catch interrupts) (Frederic, David, Ian, Olivier)
+ * Better support for utf string. (David)
+ * Fix pydotprint with a function compiled with a ProfileMode (Frederic)
+     * Was broken with change to the profiler.
+ * Warning when people have old cache entries. (Olivier)
+ * More tests for join on the GPU and CPU. (Frederic)
+ * Do not request to load the GPU module by default in scan module. (Razvan)
+ * Fixed some import problems. (Frederic and others)
+ * Filtering update. (James)
+ * On Windows, the default compiledir changed to be local to the
+   computer/user and not transferred with roaming profile. (Sebastian
+   Urban)
+ * New theano flag "on_shape_error". Defaults to "warn" (same as previous behavior):
+   it prints a warning when an error occurs when inferring the shape of some apply node.
+   The other accepted value is "raise" to raise an error when this happens. (Frederic)
+ * The buidbot now raises optimization/shape errors instead of just printing a warning. (Frederic)
+ * better pycuda tests (Frederic)
+ * check_blas.py now accepts the shape and the number of iterations as parameter (Frederic)
+ * Fix opt warning when the opt ShapeOpt is disabled (enabled by default) (Frederic)
+ * More internal verification on what each op.infer_shape return. (Frederic, James)
+ * Improved docstring and basic tests for the Tile Op (David).
+
+Reviewers (alphabetical order):
+ * David, Frederic, Ian, James, Olivier, Razvan
 
 
 Theano 0.4.1 (12 August 2011)

@@ -1,10 +1,7 @@
 """
 Tests of printing functionality
 """
-
-
 import logging
-import StringIO
 
 from nose.plugins.skip import SkipTest
 
@@ -12,7 +9,7 @@ import theano
 import theano.tensor as tensor
 
 from theano.printing import min_informative_str, debugprint
-
+from theano.compat.six import StringIO
 
 def test_pydotprint_cond_highlight():
     """
@@ -29,7 +26,7 @@ def test_pydotprint_cond_highlight():
     f = theano.function([x], x * 2)
     f([1, 2, 3, 4])
 
-    s = StringIO.StringIO()
+    s = StringIO()
     new_handler = logging.StreamHandler(s)
     new_handler.setLevel(logging.DEBUG)
     orig_handler = theano.logging_default_handler
@@ -45,6 +42,34 @@ def test_pydotprint_cond_highlight():
 
     assert (s.getvalue() == 'pydotprint: cond_highlight is set but there'
             ' is no IfElse node in the graph\n')
+
+
+def test_pydotprint_long_name():
+    """This is a REALLY PARTIAL TEST.
+
+    It prints a graph where there are variable and apply nodes whose long
+    names are different, but not the shortened names.
+    We should not merge those nodes in the dot graph.
+
+    """
+
+    # Skip test if pydot is not available.
+    if not theano.printing.pydot_imported:
+        raise SkipTest('pydot not available')
+
+    x = tensor.dvector()
+    mode = theano.compile.mode.get_default_mode().excluding("fusion")
+    f = theano.function([x], [x * 2, x + x], mode=mode)
+    f([1, 2, 3, 4])
+
+    s = StringIO()
+    new_handler = logging.StreamHandler(s)
+    new_handler.setLevel(logging.DEBUG)
+    orig_handler = theano.logging_default_handler
+
+    theano.printing.pydotprint(f, max_label_size=5,
+                               print_output_file=False,
+                               assert_nb_all_strings=6)
 
 
 def test_pydotprint_profile():
@@ -103,7 +128,7 @@ def test_debugprint():
     debugprint(G)
 
     # test ids=int
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='int')
     s = s.getvalue()
     # The additional white space are needed!
@@ -117,13 +142,13 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
 
     # test ids=CHAR
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='CHAR')
     s = s.getvalue()
     # The additional white space are needed!
@@ -137,14 +162,13 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
 
-
     # test ids=CHAR, stop_on_name=True
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='CHAR', stop_on_name=True)
     s = s.getvalue()
     # The additional white space are needed!
@@ -156,14 +180,13 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference
 
-
     # test ids=
-    s = StringIO.StringIO()
+    s = StringIO()
     debugprint(G, file=s, ids='')
     s = s.getvalue()
     # The additional white space are needed!
@@ -176,7 +199,7 @@ def test_debugprint():
    |E 
 """
     if s != reference:
-        print '--'+s+'--'
-        print '--'+reference+'--'
+        print '--' + s + '--'
+        print '--' + reference + '--'
 
     assert s == reference

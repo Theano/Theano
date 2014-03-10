@@ -69,11 +69,11 @@ if 0:
                 candidates = tracks
                 tracks = []
 
-        def apply(self, env):
+        def apply(self, fgraph):
             tasks = defaultdict(list)
-            
+
             if self.max_use_ratio is not None:
-                max_uses = self.max_use_ratio * len(env.nodes)
+                max_uses = self.max_use_ratio * len(fgraph.apply_nodes)
                 runs = defaultdict(int)
             else:
                 runs = None
@@ -91,14 +91,14 @@ if 0:
                     self.backtrack(new_r.owner, tasks)
 
     #         # == NOT IDEAL == #
-    #         for node in env.nodes:
+    #         for node in fgraph.apply_nodes:
     #             importer(node)
 
-            
-            for node in env.toposort():
+
+            for node in fgraph.toposort():
                 tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))
 
-            u = self.attach_updater(env, importer, pruner, chin)
+            u = self.attach_updater(fgraph, importer, pruner, chin)
             print 'KEYS', map(hash, tasks.keys())
             while tasks:
                 for node in tasks.iterkeys():
@@ -108,11 +108,11 @@ if 0:
                     if runs is not None and runs[lopt] >= max_uses:
                         print >>sys.stderr, 'Warning: optimization exceeded its maximal use ratio: %s, %s' % (lopt, max_uses)
                         continue
-                    success = self.process_node(env, node, lopt)
+                    success = self.process_node(fgraph, node, lopt)
                     if success:
                         if runs is not None: runs[lopt] += 1
                         break
-            self.detach_updater(env, u)
+            self.detach_updater(fgraph, u)
 
 #     def match(self, node, candidates):
 #         candidates[:] = [candidate
@@ -124,7 +124,7 @@ if 0:
 #                     if isinstance(in1, basestring):
 #                         candidate.match[in1] = in2
 #         for client in node.clients:
-            
+
 
 #         op = node.op
 #         patterns = self.pattern_base[(depth, op)].union(self.pattern_base[(depth, WILDCARD)])

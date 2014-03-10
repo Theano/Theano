@@ -208,7 +208,7 @@ Exercise 2
 
 
     # Construct Theano expression graph
-    p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probabily of having a one
+    p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
     prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
     xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy
     cost = xent.mean() + 0.01*(w**2).sum() # The cost to optimize
@@ -224,14 +224,14 @@ Exercise 2
                 name = "predict")
 
     if any( [x.op.__class__.__name__=='Gemv' for x in
-    train.maker.env.toposort()]):
+    train.maker.fgraph.toposort()]):
         print 'Used the cpu'
     elif any( [x.op.__class__.__name__=='GpuGemm' for x in
-    train.maker.env.toposort()]):
+    train.maker.fgraph.toposort()]):
         print 'Used the gpu'
     else:
         print 'ERROR, not able to tell if theano used the cpu or the gpu'
-        print train.maker.env.toposort()
+        print train.maker.fgraph.toposort()
 
 
 
@@ -345,20 +345,11 @@ Differentiation details
 * We are working on the missing optimizations to be able to compute efficently the full Jacobian and Hessian and Jacobian x vector
 
 
+.. _cifar2011_benchmark:
 
 Benchmarks
 ----------
 
-Example:
-
-* Multi-layer perceptron
-* Convolutional Neural Networks
-* Misc Elemwise operations
-
-Competitors: NumPy + SciPy, MATLAB, EBLearn, Torch5, numexpr
-
-* EBLearn, Torch5: specialized libraries written by practitioners specifically for these tasks
-* numexpr: similar to Theano, 'virtual machine' for elemwise expressions
 
 **Multi-Layer Perceptron**:
 

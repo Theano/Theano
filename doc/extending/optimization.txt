@@ -19,16 +19,21 @@ In this section we will define a couple optimizations on doubles.
    Later, the rest is more useful for when that decorator syntax type thing
    doesn't work. (There are optimizations that don't fit that model).
 
+.. note::
 
+   The optimization tag `cxx_only` is used for optimizations that insert
+   Ops which have no Python implementation (so they only have C code).
+   Optimizations with this tag are skipped when there is no C++ compiler
+   available.
 
 Global and local optimizations
 ==============================
 
 First, let's lay out the way optimizations work in Theano. There are
 two types of optimizations: *global* optimizations and *local*
-optimizations. A global optimization takes an ``Env`` object (an
-Env is a wrapper around a whole computation graph, you can see its
-:class:`documentation <Env>` for more details) and navigates through it
+optimizations. A global optimization takes a ``FunctionGraph`` object (a
+FunctionGraph is a wrapper around a whole computation graph, you can see its
+:class:`documentation <FunctionGraph>` for more details) and navigates through it
 in a suitable way, replacing some Variables by others in the process. A
 local optimization, on the other hand, is defined as a function on a
 *single* :ref:`apply` node and must return either ``False`` (to mean that
@@ -54,26 +59,26 @@ methods:
 
 .. class:: Optimizer
 
-    .. method:: apply(env)
+    .. method:: apply(fgraph)
 
-      This method takes an Env object which contains the computation graph
+      This method takes a FunctionGraph object which contains the computation graph
       and does modifications in line with what the optimization is meant
       to do. This is one of the main methods of the optimizer.
 
-    .. method:: add_requirements(env)
+    .. method:: add_requirements(fgraph)
 
-      This method takes an Env object and adds :ref:`features
-      <libdoc_gof_envfeature>` to it. These features are "plugins" that are needed
+      This method takes a FunctionGraph object and adds :ref:`features
+      <libdoc_gof_fgraphfeature>` to it. These features are "plugins" that are needed
       for the ``apply`` method to do its job properly.
 
-    .. method:: optimize(env)
+    .. method:: optimize(fgraph)
 
       This is the interface function called by Theano.
 
-      *Default:* this is defined by Optimizer as ``add_requirement(env);
-      apply(env)``.
+      *Default:* this is defined by Optimizer as ``add_requirement(fgraph);
+      apply(fgraph)``.
 
-See the section about :class:`Env` to understand how to define these
+See the section about :class:`FunctionGraph` to understand how to define these
 methods.
 
 
@@ -123,19 +128,19 @@ simplification described above:
    from theano.gof import toolbox
 
    class Simplify(gof.Optimizer):
-       def add_requirements(self, env):
-           env.extend(toolbox.ReplaceValidate())
-       def apply(self, env):
-           for node in env.toposort():
+       def add_requirements(self, fgraph):
+           fgraph.attach_feature(toolbox.ReplaceValidate())
+       def apply(self, fgraph):
+           for node in fgraph.toposort():
                if node.op == div:
                    x, y = node.inputs
                    z = node.outputs[0]
                    if x.owner and x.owner.op == mul:
                        a, b = x.owner.inputs
                        if y == a:
-                           env.replace_validate(z, b)
+                           fgraph.replace_validate(z, b)
                        elif y == b:
-                           env.replace_validate(z, a)
+                           fgraph.replace_validate(z, a)
 
    simplify = Simplify()
 
@@ -145,16 +150,16 @@ simplification described above:
    requirements we might want to  know about?
 
 Here's how it works: first, in ``add_requirements``, we add the
-``ReplaceValidate`` :ref:`libdoc_gof_envfeature` located in
+``ReplaceValidate`` :ref:`libdoc_gof_fgraphfeature` located in
 :ref:`libdoc_gof_toolbox`. This feature adds the ``replace_validate``
-method to ``env``, which is an enhanced version of ``replace`` that
+method to ``fgraph``, which is an enhanced version of ``replace`` that
 does additional checks to ensure that we are not messing up the
 computation graph (note: if ``ReplaceValidate`` was already added by
 another optimizer, ``extend`` will do nothing). In a nutshell,
-``toolbox.ReplaceValidate`` grants access to ``env.replace_validate``,
-and ``env.replace_validate`` allows us to replace a Variable with
+``toolbox.ReplaceValidate`` grants access to ``fgraph.replace_validate``,
+and ``fgraph.replace_validate`` allows us to replace a Variable with
 another while respecting certain validation constraints. You can
-browse the list of :ref:`libdoc_gof_envfeaturelist` and see if some of
+browse the list of :ref:`libdoc_gof_fgraphfeaturelist` and see if some of
 them might be useful to write optimizations with. For example, as an
 exercise, try to rewrite Simplify using :class:`NodeFinder`. (Hint: you
 want to use the method it publishes instead of the call to toposort!)
@@ -169,7 +174,7 @@ so we check for that. If the numerator is a multiplication we put the
 two operands in ``a`` and ``b``, so
 we can now say that ``z == (a*b)/y``. If ``y==a`` then ``z==b`` and if
 ``y==b`` then ``z==a``. When either case happens then we can replace
-``z`` by either ``a`` or ``b`` using ``env.replace_validate`` - else we do
+``z`` by either ``a`` or ``b`` using ``fgraph.replace_validate`` - else we do
 nothing. You might want to check the documentation about :ref:`variable`
 and :ref:`apply` to get a better understanding of the
 pointer-following game you need to get ahold of the nodes of interest
@@ -185,7 +190,7 @@ Test time:
 >>> y = double('y')
 >>> z = double('z')
 >>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
->>> e = gof.Env([x, y, z], [a])
+>>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
 [add(z, mul(div(mul(y, x), y), div(z, x)))]
 >>> simplify.optimize(e)
@@ -201,7 +206,7 @@ optimization you wrote. For example, consider the following:
 >>> y = double('y')
 >>> z = double('z')
 >>> a = div(mul(add(y, z), x), add(y, z))
->>> e = gof.Env([x, y, z], [a])
+>>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
 [div(mul(add(y, z), x), add(y, z))]
 >>> simplify.optimize(e)
@@ -233,7 +238,7 @@ for this somewhere in the future.
 
 .. note::
 
-   :class:`Env` is a Theano structure intended for the optimization
+   :class:`FunctionGraph` is a Theano structure intended for the optimization
    phase. It is used internally by function and Module and is rarely
    exposed to the end user. You can use it to test out optimizations,
    etc. if you are comfortable with it, but it is recommended to use
@@ -278,7 +283,9 @@ The local version of the above code would be the following:
 The definition of transform is the inner loop of the global optimizer,
 where the node is given as argument. If no changes are to be made,
 ``False`` must be returned. Else, a list of what to replace the node's
-outputs with must be returned.
+outputs with must be returned. This list must have the same length as
+node.ouputs. If one of node.outputs don't have clients(it is not used
+in the graph), you can put None in the returned list to remove it.
 
 In order to apply the local optimizer we must use it in conjunction
 with a :ref:`navigator`. Basically, a :ref:`navigator` is a global
@@ -292,7 +299,7 @@ subset of them) and applies one or several local optimizers on them.
 >>> y = double('y')
 >>> z = double('z')
 >>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
->>> e = gof.Env([x, y, z], [a])
+>>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
 [add(z, mul(div(mul(y, x), y), div(z, x)))]
 >>> simplify = gof.TopoOptimizer(local_simplify)

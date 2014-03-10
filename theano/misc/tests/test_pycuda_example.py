@@ -50,14 +50,14 @@ def test_pycuda_elemwise_source_module():
                                  mode=mode_with_gpu)
 
             assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
-                        for node in f.maker.env.toposort()])
+                        for node in f.maker.fgraph.toposort()])
             assert any([isinstance(node.op, PycudaElemwiseSourceModuleOp)
-                        for node in f2.maker.env.toposort()])
+                        for node in f2.maker.fgraph.toposort()])
             assert any([isinstance(node.op, PycudaElemwiseSourceModuleOp)
-                        for node in f3.maker.env.toposort()])
+                        for node in f3.maker.fgraph.toposort()])
             assert any([isinstance(node.op,
                                    PycudaElemwiseSourceModuleMakeThunkOp)
-                        for node in f4.maker.env.toposort()])
+                        for node in f4.maker.fgraph.toposort()])
 
             val1 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
             val2 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
@@ -73,15 +73,15 @@ def test_pycuda_elemwise_kernel():
     x = T.fmatrix('x')
     y = T.fmatrix('y')
     f = theano.function([x, y], x + y, mode=mode_with_gpu)
-    print f.maker.env.toposort()
+    print f.maker.fgraph.toposort()
     mode_pycuda = mode_with_gpu.including("local_pycuda_gpu_elemwise_kernel")
     f2 = theano.function([x, y], x + y, mode=mode_pycuda)
-    print f2.maker.env.toposort()
+    print f2.maker.fgraph.toposort()
 
     assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
-                for node in f.maker.env.toposort()])
+                for node in f.maker.fgraph.toposort()])
     assert any([isinstance(node.op, PycudaElemwiseKernelOp)
-                for node in f2.maker.env.toposort()])
+                for node in f2.maker.fgraph.toposort()])
 
     val1 = numpy.asarray(numpy.random.rand(5, 5), dtype='float32')
     val2 = numpy.asarray(numpy.random.rand(5, 5), dtype='float32')
@@ -96,9 +96,9 @@ def test_pycuda_elemwise_kernel():
     z3 = T.ftensor3('y')
 
     f4 = theano.function([x3, y3, z3], x3 * y3 + z3, mode=mode_pycuda)
-    print f4.maker.env.toposort()
+    print f4.maker.fgraph.toposort()
     assert any([isinstance(node.op, PycudaElemwiseKernelOp)
-                for node in f4.maker.env.toposort()])
+                for node in f4.maker.fgraph.toposort()])
 
     val1 = numpy.random.rand(2, 2, 2)
     print val1

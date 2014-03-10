@@ -25,7 +25,6 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     This is basic test for GpuCrossentropySoftmaxArgmax1HotWithBias
 
     We check that we loop when their is too much threads
-    TODO: check that we loop when their is too much block(>32*1024)
 
     """
 
@@ -46,7 +45,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     #we precompute the dot with big shape before to allow the test of
     #GpuCrossentropySoftmax1HotWithBiasDx to don't fail with the error
     #(the launch timed out and was terminated) on GPU card not
-    #powerfull enought. We need the big shape to check for corner
+    #powerful enough. We need the big shape to check for corner
     #case.
     dot_result = T.fmatrix('dot_result')
 
@@ -77,10 +76,10 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
     assert any([isinstance(node.op,
                            T.nnet.CrossentropySoftmaxArgmax1HotWithBias)
-                for node in classify.maker.env.toposort()])
+                for node in classify.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
                            cuda.nnet.GpuCrossentropySoftmaxArgmax1HotWithBias)
-                for node in classify_gpu.maker.env.toposort()])
+                for node in classify_gpu.maker.fgraph.toposort()])
 
     out = classify(yy, b_values, dot_value)
     gout = classify_gpu(yy, b_values, dot_value)
@@ -100,12 +99,15 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     This is basic test for GpuCrossentropySoftmax1HotWithBiasDx
 
     We check that we loop when their is too much threads
-    TODO: check that we loop when their is too much block(>32*1024)
 
     """
     n_in = 1000
     batch_size = 4097
     n_out = 1250
+
+    if not isinstance(mode_with_gpu, theano.compile.DebugMode):
+        n_in = 4098
+        n_out = 4099
 
     # Seed numpy.random with config.unittests.rseed
     utt.seed_rng()
@@ -129,10 +131,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     #theano.printing.debugprint(gpu_f)
 
     assert any([isinstance(node.op, T.nnet.CrossentropySoftmax1HotWithBiasDx)
-                for node in cpu_f.maker.env.toposort()])
+                for node in cpu_f.maker.fgraph.toposort()])
     assert any([isinstance(node.op,
                            cuda.nnet.GpuCrossentropySoftmax1HotWithBiasDx)
-                for node in gpu_f.maker.env.toposort()])
+                for node in gpu_f.maker.fgraph.toposort()])
 
     cpu_out = cpu_f(softmax_output_value)
     gpu_out = gpu_f(softmax_output_value)
@@ -172,40 +174,38 @@ def test_softmax_with_bias():
     x = T.fmatrix('x')
     # We can't use zeros_like(x[0,::]) as this don't allow to test with
     # 0 shape.
-    z = T.nnet.softmax_with_bias(x, T.alloc(numpy.asarray(0, dtype='float32'),
-                                            x.shape[1]))
+    z = T.nnet.softmax_with_bias(x, T.arange(x.shape[1] * 2,
+                                             dtype='float32')[::2])
 
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.env.toposort()[-1].op == T.nnet.softmax_with_bias
-    assert isinstance(f_gpu.maker.env.toposort()[-2].op,
+    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_with_bias
+    assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSoftmaxWithBias)
 
-    def cmp(n, m, catch=False):
-        """Some old card won't accet the configuration arguments of
-        this implementation."""
-        try:
-            #print "test_softmax",n,m
-            data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-            out = f(data)
-            gout = f_gpu(data)
-            assert numpy.allclose(out, gout), numpy.absolute(out - gout)
-        except RuntimeError, e:
-            if not catch:
-                raise
-            assert (e.args[0] ==
-              'Cuda error: kSoftmaxWithBias_node_0: invalid configuration argument.\n'
-            ), e.args[0]
+    def cmp(n, m):
+        #print "test_softmax",n,m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data)
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+
     cmp(2, 5)
     #we need to test n>32*1024 to check that we make the block loop.
     cmp(2 << 15, 5)
     cmp(4074, 400)
     cmp(0, 10)
-    cmp(4, 1000, True)
-    cmp(4, 1024, True)
-    cmp(4, 2000, True)
-    cmp(4, 2024, True)
-    cmp(4, 4074, True)
+    cmp(784, 784)
+    cmp(4, 1000)
+    cmp(4, 1024)
+    cmp(4, 2000)
+    cmp(4, 2024)
+    #GTX285 don't have enough shared mem for this case.
+    cmp(4, 4074)
+    # The GTX580, 680 and kepler don't have enough shared memory.
+    cmp(2, 10000)
+    cmp(128, 16 * 1024)
+    cmp(128, 64 * 1024)
 
 
 def test_softmax():
@@ -213,40 +213,37 @@ def test_softmax():
     This is basic test for GpuSoftmax
 
     We check that we loop when their is too much block
-
-    TODO: check that we loop when their is too much thread.(THIS IS
-    NOT IMPLEMENTED)
+    We use slower code when there isn't enough shared memory
     """
     x = T.fmatrix('x')
 
     z = T.nnet.softmax(x)
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.env.toposort()[-1].op == T.nnet.softmax
-    assert isinstance(f_gpu.maker.env.toposort()[-2].op,
+    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax
+    assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSoftmax)
 
-    def cmp(n, m, catch=False):
-        """Some old card won't accet the configuration arguments of
-        this implementation."""
-        try:
-            #print "test_softmax",n,m
-            data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-            out = f(data)
-            gout = f_gpu(data)
-            assert numpy.allclose(out, gout), numpy.absolute(out - gout)
-        except RuntimeError, e:
-            if not catch:
-                raise
-            assert (e.args[0] ==
-              'Cuda error: kSoftmax_node_0: invalid configuration argument.\n')
+    def cmp(n, m):
+        #print "test_softmax",n,m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data)
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
     #we need to test n>32*1024 to check that we make the block loop.
     cmp(2, 5)
     cmp(2 << 15, 5)
     cmp(4074, 400)
-    cmp(4, 1000, True)
-    cmp(4, 1024, True)
-    cmp(4, 2000, True)
-    cmp(4, 2024, True)
-    cmp(4, 4074, True)
+    cmp(0, 10)
+    cmp(784, 784)
+    cmp(4, 1000)
+    cmp(4, 1024)
+    cmp(4, 2000)
+    cmp(4, 2024)
+    # The GTX285 don't have enough shared memory.
+    cmp(4, 4074)
+    # The GTX580, 680 and kepler don't have enough shared memory.
+    cmp(2, 10000)
+    cmp(128, 16 * 1024)
+    cmp(128, 64 * 1024)

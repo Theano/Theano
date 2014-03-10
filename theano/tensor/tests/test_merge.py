@@ -3,7 +3,7 @@ from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
 from theano.gof.opt import *
-from theano.gof.env import Env
+from theano.gof.fg import FunctionGraph as Env
 from theano.gof.toolbox import *
 import theano.tensor.basic as T
 
@@ -62,8 +62,8 @@ def test_merge_with_weird_eq():
     g = Env([x, y], [x+y])
     MergeOptimizer().optimize(g)
 
-    assert len(g.nodes) == 1
-    node = list(g.nodes)[0]
+    assert len(g.apply_nodes) == 1
+    node = list(g.apply_nodes)[0]
     assert len(node.inputs) == 2
     assert node.inputs[0] is node.inputs[1]
 
@@ -74,8 +74,7 @@ def test_merge_with_weird_eq():
     g = Env([x, y], [x+y])
     MergeOptimizer().optimize(g)
 
-    assert len(g.nodes) == 1
-    node = list(g.nodes)[0]
+    assert len(g.apply_nodes) == 1
+    node = list(g.apply_nodes)[0]
     assert len(node.inputs) == 2
     assert node.inputs[0] is node.inputs[1]
-

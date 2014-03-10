@@ -9,7 +9,7 @@ from theano.compile.io import In, Out
 from theano.compile import function
 from theano.compile import UnusedInputError
 from theano.gof import MissingInputError
-from theano.gof.python25 import all, any
+from theano.compat import all, exc_message
 
 from theano import tensor
 from theano import tensor as T
@@ -307,7 +307,7 @@ class T_function(unittest.TestCase):
     def test_constant_output(self):
         # Test that if the output is a constant, we respect the theano memory interface
         f = theano.function([],theano.tensor.constant([4]))
-        print f.maker.env.toposort()
+        #print f.maker.fgraph.toposort()
         out = f()
         assert (out==4).all()
         out[0]=3
@@ -318,7 +318,7 @@ class T_function(unittest.TestCase):
 
         # Test that if the output is a constant and borrow, we respect the theano memory interface
         f = theano.function([],Out(theano.tensor.constant([4]), borrow=True))
-        print f.maker.env.toposort()
+        #print f.maker.fgraph.toposort()
         out = f()
         assert (out==4).all()
         out[0]=3
@@ -386,6 +386,14 @@ class T_function(unittest.TestCase):
         self.assertRaises(UnusedInputError, function, [m, mt], mt*2)
         f = function([m, mt], mt*2, on_unused_input='ignore')
 
+    def test_givens_input_var(self):
+        """
+        Ensure error is raised when trying to replace an input variable.
+        """
+        x = T.scalar('x')
+        y = x * 2
+        self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
+
 
 class T_picklefunction(unittest.TestCase):
 
@@ -412,8 +420,8 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(x in g.container)
         self.assertFalse(x in g.value)
         self.assertTrue(len(f.defaults) == len(g.defaults))
-        print 'f.defaults = %s' % (f.defaults, )
-        print 'g.defaults = %s' % (g.defaults, )
+        #print 'f.defaults = %s' % (f.defaults, )
+        #print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
             f_val == g_val
             for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
@@ -521,9 +529,9 @@ class T_picklefunction(unittest.TestCase):
             return
 
         assert f.maker is not g.maker
-        assert f.maker.env is not g.maker.env
-        tf = f.maker.env.toposort()
-        tg = f.maker.env.toposort()
+        assert f.maker.fgraph is not g.maker.fgraph
+        tf = f.maker.fgraph.toposort()
+        tg = f.maker.fgraph.toposort()
         assert len(tf) == len(tg)
         for nf, ng in zip(tf, tg):
             assert nf.op == ng.op
@@ -624,18 +632,18 @@ class T_picklefunction(unittest.TestCase):
 
         f = theano.function([x], theano.tensor.dot(x, y))
 
-        import StringIO
-        fp = StringIO.StringIO()
+        from theano.compat import BytesIO
+        fp = BytesIO()
         p = cPickle.Pickler(fp, 2)
         p.persistent_id = pers_save
         try:
             p.dump(f)
         except NotImplementedError, e:
-            if e[0].startswith('DebugMode is not picklable'):
+            if exc_message(e).startswith('DebugMode is not picklable'):
                 return
             else:
                 raise
-        fp2 = StringIO.StringIO(fp.getvalue())
+        fp2 = BytesIO(fp.getvalue())
         fp.close()
         p = cPickle.Unpickler(fp2)
         p.persistent_load = pers_load
@@ -678,6 +686,18 @@ class SomethingToPickle(object):
         self.f1 = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         self.f2 = function([x, In(a, value=1.0,name='a'), In(s, value=self.f1.container[s], update=s+a*x, mutable=True)], s+a*x)
+
+
+def test_empty_givens_updates():
+    """
+    Regression test for bug fixed in 8625e03.
+    """
+    # Empty givens / updates dictionaries were not properly detected before,
+    # triggering useless crashes at compile time.
+    x = T.scalar()
+    y = x * 2
+    function([theano.In(x)], y, givens={})
+    function([theano.In(x)], y, updates={})
 
 
 if __name__ == '__main__':

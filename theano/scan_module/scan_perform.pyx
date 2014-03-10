@@ -59,11 +59,10 @@ cimport numpy
 from theano import gof
 import time
 import copy
-from theano.sandbox import cuda
 
 
 def get_version():
-    return 0.266
+    return 0.279
 
 @cython.boundscheck(False)
 def perform(
@@ -85,10 +84,11 @@ def perform(
             numpy.ndarray[numpy.int32_t,ndim=1] mit_mot_out_nslices,
             fn,
             fnct,
-            bint inplace,
+            numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
             args,
             outs,
-            self):
+            self,
+            node):
     """
     Parameters
     ----------
@@ -145,9 +145,8 @@ def perform(
     fnct: python object
         Only used to attach some timings for the profile mode ( can be
         skiped if we don't care about Theano's profile mode)
-    inplace
-        Boolean that says if things should be computed inplace or if they
-        should not.
+    destroy_map
+        Array of boolean saying if an output is computed inplace
     args: list of ndarrays (and random states)
         The inputs of scan in a given order ( n_steps, sequences, mit_mot,
         mit_sot, sit_sot, nit_sot, shared_outs, other_args)
@@ -230,7 +229,7 @@ def perform(
 
     # 2.1 Create storage space for outputs
     for idx in range(n_outs):
-        if inplace:
+        if destroy_map[idx] != 0:
             # ^ Case 1. Outputs should be computed inplace of their
             # initial state
             outs[idx][0] = args[ <unsigned int>(1+ n_seqs + idx)]
@@ -384,10 +383,7 @@ def perform(
                         outs[j][0].shape[0] < store_steps[j] or
                         outs[j][0].shape[1:] != shape[1:] or
                         outs[j][0].dtype != dtype ):
-                    if self.gpu:
-                        outs[j][0] = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                    else:
-                        outs[j][0] = numpy.zeros(shape, dtype)
+                    outs[j][0] = node.outputs[j].type.value_zeros(shape)
                 elif outs[j][0].shape[0] != store_steps[j]:
                     outs[j][0] = outs[j][0][:store_steps[j]]
                 outs[j][0][pos[j]] = output_storage[jout].storage[0]
@@ -427,22 +423,13 @@ def perform(
                 # before it is read (as it used to happen).
                 shape = (pdx,)+ outs[idx][0].shape[1:]
 
-                if cuda.cuda_available and isinstance( outs[idx][0],
-                                                      cuda.CudaNdarray):
-                    tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                else:
-                    tmp = numpy.empty(shape, outs[idx][0].dtype)
+                tmp = node.outputs[idx].type.value_zeros(shape)
                 tmp[:] = outs[idx][0][:pdx]
                 outs[idx][0][:store_steps[idx]-pdx] = outs[idx][0][pdx:]
                 outs[idx][0][store_steps[idx]-pdx:] = tmp
             else:
                 shape = (store_steps[idx]-pdx,) + outs[idx][0].shape[1:]
-
-                if cuda.cuda_available and isinstance( outs[idx][0],
-                                                      cuda.CudaNdarray):
-                    tmp = cuda.cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(shape)
-                else:
-                    tmp = numpy.empty(shape, outs[idx][0].dtype)
+                tmp = node.outputs[idx].type.value_zeros(shape)
                 tmp[:] = outs[idx][0][pdx:]
                 outs[idx][0][store_steps[idx]-pdx:] = outs[idx][0][:pdx]
                 outs[idx][0][:store_steps[idx]-pdx] = tmp

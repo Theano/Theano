@@ -1,0 +1,16 @@
+.. _libdoc_neighbours:
+
+===================================================================
+:mod:`sandbox.neighbours` --  Neighbours Ops
+===================================================================
+
+.. module:: sandbox.neighbours
+   :platform: Unix, Windows
+   :synopsis: Neighbours Ops
+.. moduleauthor:: LISA
+
+API
+===
+
+.. automodule:: theano.sandbox.neighbours
+    :members:

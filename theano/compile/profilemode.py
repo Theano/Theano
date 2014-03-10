@@ -1,7 +1,9 @@
 import atexit
 import copy
+import os
 import time
 
+import theano
 from theano.gof.link import WrapLinker
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
@@ -42,15 +44,26 @@ class Profile_Maker(FunctionMaker):
     def create(self, input_storage=None, trustme=False):
         ret = super(Profile_Maker, self).create(input_storage, trustme)
 
+        if (hasattr(theano, 'sandbox') and
+            hasattr(theano.sandbox, 'cuda') and
+            theano.sandbox.cuda.cuda_enabled):
+            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
+                raise Exception(
+                    "You are running the Theano profiler with CUDA enabled."
+                    " Theano GPU ops execution is asynchronous by default."
+                    " So by default, the profile is useless."
+                    " You must set the environment variable"
+                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                    " synchronize the execution to get a meaningful profile.")
+
         # create a function-specific storage container for profiling info
         profile = ProfileStats(atexit_print=False)
         self.mode.profile_stats[ret] = profile
         ret.profile = profile
 
         #initialize the timers
-        for i, node in enumerate(ret.maker.env.toposort()):
+        for i, node in enumerate(ret.maker.fgraph.toposort()):
             profile.apply_time[node] = 0.0
-            profile.outputs_size[node] = [0.0] * len(node.outputs)
 
             # a thunk_group is a list of the thunks from each linker
             # corresponding to the i'th position in the toposort.
@@ -70,13 +83,13 @@ class Profile_Maker(FunctionMaker):
 
         def new_fn():
             self.mode.apply_time = self.mode.profile_stats[ret].apply_time
-            self.mode.outputs_size = self.mode.profile_stats[ret].outputs_size
+            self.mode.variable_shape = self.mode.profile_stats[ret].variable_shape
             ret_fn()
             # delete the old apply_time variable
             # because it doesn't mean the same thing anymore.
             # This prevents old code from looking like it still works.
             del self.mode.apply_time
-            del self.mode.outputs_size
+            del self.mode.variable_shape
 
         ret.fn = new_fn
 
@@ -165,34 +178,10 @@ class ProfileMode(Mode):
                 t0 = time.time()
                 th()
                 dt = time.time() - t0
-            size = []
-            for o in th.outputs:
-                if not hasattr(o[0], 'size'):
-                    #if the output type don't have a size attribute, set -1
-                    #to signify we can't evaluate it.
-                    #This happen at least for mtrand.RandomState type(in numpy)
-                    size.append(-1)
-                    continue
-                s = o[0].size
-                #can't use o[0].dtype.itemsize as dtype is a str for
-                #CudaNdarray
-                dtype = str(o[0].dtype)
-                dtype2 = dtype[-2:]
-                if dtype2 == '32':
-                    s *= 4
-                elif dtype2 == '64':
-                    s *= 8
-                elif dtype2 == '16':
-                    s *= 2
-                elif dtype[-1] == '8':
-                    s *= 1
-                elif dtype[-3:] == '128':
-                    s *= 16
-                else:
-                    raise Exception("Can't determine the memory size of dtype",
-                                    o[0].dtype)
-                size.append(s)
-            self.outputs_size[node] = size
+            for var, data in zip(node.outputs, th.outputs):
+                sh = getattr(data[0], 'shape', 'input no shape')
+                self.variable_shape[var] = sh
+
             self.apply_time[node] += max(dt, 1e-14)
 
         self.provided_linker = linker
@@ -213,8 +202,6 @@ class ProfileMode(Mode):
 
         self.call_time = 0
         self.fn_time = 0
-        self.optimizer_time = 0
-        self.linker_time = 0
 
     def print_summary(self, **kwargs):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
@@ -240,22 +227,21 @@ class ProfileMode(Mode):
 
         apply_time = {}
         for fn, ps in self.profile_stats.items():
-            for (i, node) in enumerate(fn.maker.env.toposort()):
+            for (i, node) in enumerate(fn.maker.fgraph.toposort()):
                 apply_time[(i, node)] = ps.apply_time[node]
         for (i, n), t in apply_time.items():
             if t == 0:
                 print i, n
 
         apply_cimpl = {}
-        outputs_size = {}
         for fn, ps in self.profile_stats.items():
             apply_cimpl.update(ps.apply_cimpl)
 
         message = self.message
 
-        outputs_size = {}
+        variable_shape = {}
         for fn, ps in self.profile_stats.items():
-            outputs_size.update(ps.outputs_size)
+            variable_shape.update(ps.variable_shape)
 
         other_time = dict(
                 linker_time=sum(
@@ -265,7 +251,7 @@ class ProfileMode(Mode):
 
         self.print_summary_("print_summary",
                             compile_time, fct_call_time, fct_call,
-                            apply_time, apply_cimpl, message, outputs_size,
+                            apply_time, apply_cimpl, message, variable_shape,
                             self.local_time, other_time,
                             **kwargs)
 
@@ -300,19 +286,28 @@ class ProfileMode(Mode):
         apply_time = diff_dict(self.apply_time, other.apply_time)
         apply_cimpl = self.apply_cimpl and other.apply_cimpl
         message = self.message
-        outputs_size = diff_dict(self.outputs_size, other.outputs_size)
-        other_time = {'linker_time': self.linker_time - other.linker_time,
-                      'optimizer_time': self.optimizer_time -
-                                        other.optimizer_time}
+        variable_shape = diff_dict(self.variable_shape, other.variable_shape)
+        self_linker_time = sum([ps.linker_time for ps
+                                 in self.profile_stats.values()])
+        other_linker_time = sum([ps.linker_time for ps
+                                 in other.profile_stats.values()])
+        self_optimizer_time = sum([ps.optimizer_time for ps
+                                 in self.profile_stats.values()])
+        other_optimizer_time = sum([ps.optimizer_time for ps
+                                 in other.profile_stats.values()])
+
+        other_time = {'linker_time': self_linker_time - other_linker_time,
+                      'optimizer_time': self_optimizer_time -
+                                        other_optimizer_time}
         self.print_summary_("print_diff_summary", compile_time,
                             fct_call_time, fct_call,
-                            apply_time, apply_cimpl, message, outputs_size,
+                            apply_time, apply_cimpl, message, variable_shape,
                             print_apply=False, other_time=other_time,
                             **kwargs)
 
     @staticmethod
     def print_summary_(fct_name, compile_time, fct_call_time, fct_call,
-                       apply_time, apply_cimpl, message, outputs_size,
+                       apply_time, apply_cimpl, message, variable_shape,
                        local_time, other_time,
                        n_apply_to_print=config.ProfileMode.n_apply_to_print,
                        n_ops_to_print=config.ProfileMode.n_ops_to_print,
@@ -328,6 +323,10 @@ class ProfileMode(Mode):
         :param min_memory_size: Don't print memory profile of apply
                                 whose outputs memory size is lower then that.
         """
+
+        print "ProfileMode is deprecated! Use the new profiler."
+        print " The Theano flags to enable it ise: profile=True"
+        print " The Theano flags for the memory profile to it is: profile_memory=True"
 
         total_time = time.time() - import_time
         total_fct_time = sum(fct_call_time.values())
@@ -384,7 +383,7 @@ class ProfileMode(Mode):
             op_apply.setdefault(op,0)
             sop_apply.setdefault(type(a.op),0)
             op_time[op]+=t
-            nb_call = [v for k,v in fct_call.items() if k.maker.env is a.env][0]
+            nb_call = [v for k,v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
             op_cimpl.setdefault(a.op, True)
             op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
             if t==0:
@@ -480,7 +479,7 @@ class ProfileMode(Mode):
             print
             print 'Apply-wise summary:'
             print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.env is a[1].env][0]) for a, t in apply_time.items()]
+            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
             tot=0
@@ -502,96 +501,17 @@ class ProfileMode(Mode):
             print '(*) Op is running a c implementation'
         for printer in profiler_printers:
             printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, apply_cimpl, message, outputs_size,
+                    apply_time, apply_cimpl, message, variable_shape,
                     other_time)
 
-        if not outputs_size:
+        if not variable_shape:
             print """\nProfile of Theano intermediate memory disabled.
  To enabled, put the Theano flag ProfileMode.profile_memory to True."""
         else:
-            fct_memory={}#env->dict(node->(outputs size))
-            var_mem = {}
-            for node, val in outputs_size.items():
-                fct_memory.setdefault(node.env, {})
-                fct_memory[node.env][node]=val
-                for out,v in zip(node.outputs,val):
-                    var_mem[out]=v
-            print
-            print "Profile of Theano functions memory:"
-            print "(This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)"
-            nb_skipped = 0
-            for env,nodes_mem in fct_memory.iteritems():
-                size_sum=sum([sum(val) for key,val in nodes_mem.iteritems()])
-                if size_sum < min_memory_size:
-                    nb_skipped += 1
-                    continue
-                print "Theano fct:", [fct for fct in fct_call.keys() if fct.maker.env is env][0].name
-                print "    Max without gc, inplace and view (KB)",size_sum/1024
-
-                node_memory_size = 0
-                node_memory_saved_by_view = 0
-                node_memory_saved_by_inplace = 0
-                running_memory_size = 0
-                running_max_memory_size = 0
-                post_thunk_old_storage = []
-                items = nodes_mem.items()
-                items.sort(key=lambda a: a[1])
-                items.reverse()
-
-                order = env.toposort()
-                computed, last_user = gof.link.gc_helper(order)
-                for node in order:
-                    post_thunk_old_storage.append([ input_idx
-                                                    for input_idx,input in enumerate(node.inputs)
-                                                    if (input in computed) and (input not in env.outputs) and node == last_user[input]])
-                for node,val in items[:n_apply_to_print]:
-                    dmap = getattr(node.op,'destroy_map',None)
-                    vmap = getattr(node.op,'view_map',None)
-
-                    for idx,v in enumerate(val):
-                        if dmap and idx in dmap:#TODO check the op returned a view
-                            node_memory_saved_by_inplace += v
-                        elif vmap and idx in vmap:#TODO check the op returned a view
-                            node_memory_saved_by_view += v
-                        else:
-                            node_memory_size += v
-                            running_memory_size += v
-                            if running_memory_size > running_max_memory_size:
-                                running_max_memory_size = running_memory_size
-                            old_storage = post_thunk_old_storage[order.index(node)]
-                            for old_s in old_storage:
-                                running_memory_size -= var_mem[node.inputs[old_s]]
-                                pass
-                    pass
-
-                print "    Max FAST_RUN_NO_GC (KB)", node_memory_size/1024
-                print "    Max FAST_RUN (KB)", running_max_memory_size/1024
-                print "    Memory saved by view (KB)", node_memory_saved_by_view/1024
-                print "    Memory saved by inplace (KB)", node_memory_saved_by_inplace/1024
-                print "    Memory saved by GC (KB)", (node_memory_size-running_max_memory_size)/1024
-
-                n_apply_to_print+=10#TODO remove this line
-                print "    <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)> <created/inplace/view> <Apply node>"
-                print "    <created/inplace/view> is taked from the op declaration, not the op exeuction. Use DebugMode to have warning about inplace/view declaration being respected."
-
-                n_apply_printed = 0
-                for key,val in items[:n_apply_to_print]:
-                    if sum(val) < min_memory_size:
-                        break
-                    code = ['c']*len(node.outputs)
-                    for out,inp in getattr(key.op,'destroy_map',{}).iteritems():
-                        code[out] = "i"
-                    for out,inp in getattr(key.op,'view_map',{}).iteritems():
-                        code[out] = "v"
-                    print '       %9dB  %s %s %s' % (sum(val), str(val), ' '.join(code), key)
-                    n_apply_printed += 1
-
-                print '   ... (remaining %i Apply account for %.2f%%(%d bytes) of the total intermediate memory used)'\
-                %(max(0, len(nodes_mem)-n_apply_printed),
-                  sum(sum(val) for key, val in items[n_apply_printed:])/float(size_sum),
-                  sum(sum(val) for key, val in items[n_apply_printed:]))
-            if nb_skipped > 0:
-                print '   We skipped %d theano function(s). Each of them used less then %dB(theano flags ProfileMode.min_memory_size) of total intermediate memory size'%(nb_skipped, min_memory_size)
+            print """
+            The memory profile in ProfileMode is removed!
+            Use the new profiler. Use the Theano flags
+            profile=True,profile_memory=True to enable it."""
 
         print
         print """Here are tips to potentially make your code run faster
@@ -624,7 +544,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         def get_scalar_ops(s):
             if isinstance(s, theano.scalar.Composite):
                 l = []
-                for node in s.env.toposort():
+                for node in s.fgraph.toposort():
                     l += get_scalar_ops(node.op)
                 return l
             else:
@@ -671,14 +591,21 @@ Test them first, as they are not guaranteed to always provide a speedup."""
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and
                                            a.inputs[0].dtype == 'float32'
                                            for i, a in apply_time]):
-            print "  - With the default gcc libm, exp in float32 is slower then in float64! Try Theano flag floatX=float64, or install amdlibm and set the theano flags lib.amdlibm=True"
+            print ("  - With the default gcc libm, exp in float32 is slower "
+                   "than in float64! Try Theano flag floatX=float64, or "
+                   "install amdlibm and set the theano flags lib.amdlibm=True")
             printed_tip = True
 
         #tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
-            if isinstance(node.op, T.Dot) and all([ len(i.type.broadcastable)==2 for i in node.inputs]):
-                print "  - You have a dot operation that was not optimized to dot22 (which is faster). Make sure the inputs are float32 or 64, and are the same for both inputs. Currently they are:",[i.type for i in node.inputs]
+            if (isinstance(node.op, T.Dot) and
+                all([len(i.type.broadcastable) == 2 for i in node.inputs])):
+                print ("  - You have a dot operation that was not optimized to"
+                       " dot22 (which is faster). Make sure the inputs are "
+                       "float32 or float64, and are the same for both inputs. "
+                       "Currently they are: %s" %
+                       [i.type for i in node.inputs])
                 printed_tip = True
 
         #tip 5
@@ -686,9 +613,13 @@ Test them first, as they are not guaranteed to always provide a speedup."""
             node = a[1]
             if isinstance(node.op, RandomFunction):
                 printed_tip = True
-                print "  - Replace the default random number generator by 'from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams', as this is is faster. It is still experimental, but seems to work correctly."
+                print ("  - Replace the default random number generator by "
+                       "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
+                       "as RandomStreams', as this is is faster. It is still "
+                       "experimental, but seems to work correctly.")
                 if config.device.startswith("gpu"):
-                    print "     - MRG_RandomStreams is the only random number generator supported on the GPU."
+                    print ("     - MRG_RandomStreams is the only random number"
+                           " generator supported on the GPU.")
                 break
 
         if not printed_tip:
@@ -702,17 +633,17 @@ prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
 
 
 def atexit_print_default_profile_mode():
-    """Print the summary of the predefined mode PROFILE_MODE if used.
+    """Print the summary of the predefined mode ProfileMode if used.
 
     This all to have the summary printed at exit when
-    config.mode=PROFILE_MODE
+    config.mode=ProfileMode
     """
     for prof_mode in prof_mode_instance_to_print:
         if prof_mode.local_time > 0:
             prof_mode.print_summary()
 
 #Register atexit_print_default_profile_mode to have the summary of the
-#predefined mode PROFILE_MODE if it is used printed when the program terminate.
+#predefined mode ProfileMode if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
 
 

@@ -48,3 +48,5 @@ There are also some top-level imports that you might find more convenient:
     Works like :func:`tensor.dot` for both sparse and dense matrix products
 
 .. autofunction:: theano.clone
+
+.. autofunction:: theano.sparse_grad

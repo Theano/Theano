@@ -6,21 +6,27 @@ in a graph(Print Op)
 from copy import copy
 import logging
 import os
-import StringIO
 import sys
+# Not available on all platforms
+hashlib = None
 
 import numpy
+np = numpy
 
 try:
     import pydot as pd
-    pydot_imported = True
+    if pd.find_graphviz():
+        pydot_imported = True
+    else:
+        pydot_imported = False
 except ImportError:
     pydot_imported = False
 
 import theano
-import gof
+from theano import gof
 from theano import config
-from gof import Op, Apply
+from theano.compat.six import StringIO
+from theano.gof import Op, Apply
 from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
@@ -30,14 +36,14 @@ _logger = logging.getLogger("theano.printing")
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False):
-    """Print a computation graph to file
+    """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
     :param obj: symbolic thing to print
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)
     :type print_type: boolean
-    :param print_type: wether to print the type of printed objects
+    :param print_type: whether to print the type of printed objects
     :type file: None, 'str', or file-like object
     :param file: print to this file ('str' means to return a string)
     :type ids: str
@@ -56,19 +62,19 @@ def debugprint(obj, depth=-1, print_type=False,
     The first part of the text identifies whether it is an input
     (if a name or type is printed) or the output of some Apply (in which case
     the Op is printed).
-    The second part of the text is the memory location of the Variable.
+    The second part of the text is an identifier of the Variable.
     If print_type is True, we add a part containing the type of the Variable
 
     If a Variable is encountered multiple times in the depth-first search,
     it is only printed recursively the first time. Later, just the Variable
-    and its memory location are printed.
+    identifier is printed.
 
     If an Apply has multiple outputs, then a '.N' suffix will be appended
     to the Apply's identifier, to indicate which output a line corresponds to.
 
     """
     if file == 'str':
-        _file = StringIO.StringIO()
+        _file = StringIO()
     elif file is None:
         _file = sys.stdout
     else:
@@ -81,13 +87,15 @@ def debugprint(obj, depth=-1, print_type=False,
     elif isinstance(obj, gof.Apply):
         results_to_print.extend(obj.outputs)
     elif isinstance(obj, Function):
-        results_to_print.extend(obj.maker.env.outputs)
-        order = obj.maker.env.toposort()
+        results_to_print.extend(obj.maker.fgraph.outputs)
+        order = obj.maker.fgraph.toposort()
     elif isinstance(obj, (list, tuple)):
         results_to_print.extend(obj)
-    elif isinstance(obj, gof.Env):
+    elif isinstance(obj, gof.FunctionGraph):
         results_to_print.extend(obj.outputs)
         order = obj.toposort()
+    elif isinstance(obj, (int, long, float, numpy.ndarray)):
+        print obj
     else:
         raise TypeError("debugprint cannot print an object of this type", obj)
     for r in results_to_print:
@@ -128,7 +136,15 @@ class Print(Op):
                   their return value printed.
 
     :note: WARNING. This can disable some optimizations!
-                    (speed and/pr stabilization)
+                    (speed and/or stabilization)
+
+            Detailed explanation:
+            As of 2012-06-21 the Print op is not known by any optimization.
+            Setting a Print op in the middle of a pattern that is usually
+            optimized out will block the optimization. for example, log(1+x)
+            optimizes to log1p(x) but log(1+Print(x)) is unaffected by
+            optimizations.
+
     """
     view_map = {0: [0]}
 
@@ -453,7 +469,9 @@ pprint.assign(lambda pstate, r: hasattr(pstate, 'target')
               LeafPrinter())
 
 pp = pprint
-
+"""
+Print to the terminal a math-like expression.
+"""
 
 # colors not used: orange, amber#FFBF00, purple, pink,
 # used by default: green, blue, grey, red
@@ -462,19 +480,21 @@ default_colorCodes = {'GpuFromHost': 'red',
               'Scan': 'yellow',
               'Shape': 'cyan',
               'IfElse': 'magenta',
-              'Elemwise': '#FFAABB',
-              'Subtensor': '#FFAAFF'}
+              'Elemwise': '#FFAABB',  # dark pink
+              'Subtensor': '#FFAAFF',  # purple
+              'Alloc': '#FFAA22'}  # orange
 
 
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
                high_contrast=True, cond_highlight=None, colorCodes=None,
-               max_label_size=50, scan_graphs=False,
+               max_label_size=70, scan_graphs=False,
                var_with_name_simple=False,
-               print_output_file=True
+               print_output_file=True,
+               assert_nb_all_strings=-1
                ):
     """
-    print to a file in png format the graph of op of a compile theano fct.
+    Print to a file (png format) the graph of a compiled theano function's ops.
 
     :param fct: the theano fct returned by theano.function.
     :param outfile: the output file where to put the graph.
@@ -501,6 +521,10 @@ def pydotprint(fct, outfile=None,
     :param var_with_name_simple: If true and a variable have a name,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
+    :param assert_nb_all_strings: Used for tests. If non-negative, assert that
+                the number of unique string nodes in the dot graph is equal to
+                this number. This is used in tests to verify that dot won't
+                merge Theano nodes.
 
     In the graph, ellipses are Apply Nodes (the execution of an op)
     and boxes are variables.  If variables have names they are used as
@@ -513,11 +537,12 @@ def pydotprint(fct, outfile=None,
     label each edge between an input and the Apply node with the
     input's index.
 
-    green boxes are inputs variables to the graph
-    blue boxes are outputs variables of the graph
-    grey boxes are variables that are not outputs and are not used
+    Green boxes are inputs variables to the graph,
+    blue boxes are outputs variables of the graph,
+    grey boxes are variables that are not outputs and are not used,
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
-       HostFromGpu)
+    HostFromGpu).
+
     """
     if colorCodes is None:
         colorCodes = default_colorCodes
@@ -528,16 +553,18 @@ def pydotprint(fct, outfile=None,
 
     if isinstance(fct, Function):
         mode = fct.maker.mode
-        fct_env = fct.maker.env
+        profile = getattr(fct, "profile", None)
         if (not isinstance(mode, ProfileMode)
             or not fct in mode.profile_stats):
             mode = None
-    elif isinstance(fct, gof.Env):
+        fct_fgraph = fct.maker.fgraph
+    elif isinstance(fct, gof.FunctionGraph):
         mode = None
-        fct_env = fct
+        profile = None
+        fct_fgraph = fct
     else:
         raise ValueError(('pydotprint expects as input a theano.function or '
-                         'the env of a function!'), fct)
+                         'the FunctionGraph of a function!'), fct)
 
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
@@ -550,7 +577,7 @@ def pydotprint(fct, outfile=None,
         c2 = pd.Cluster('Right')
         c3 = pd.Cluster('Middle')
         cond = None
-        for node in fct_env.toposort():
+        for node in fct_fgraph.toposort():
             if (node.op.__class__.__name__ == 'IfElse'
                 and node.op.name == cond_highlight):
                 cond = node
@@ -614,11 +641,18 @@ def pydotprint(fct, outfile=None,
                 varstr = varstr + idx
         elif len(varstr) > max_label_size:
             varstr = varstr[:max_label_size - 3] + '...'
+            idx = 1
+            while varstr in all_strings:
+                idx += 1
+                suffix = ' id=' + str(idx)
+                varstr = (varstr[:max_label_size - 3 - len(suffix)] +
+                          '...' +
+                          suffix)
         var_str[var] = varstr
         all_strings.add(varstr)
 
         return varstr
-    topo = fct_env.toposort()
+    topo = fct_fgraph.toposort()
     apply_name_cache = {}
 
     def apply_name(node):
@@ -637,6 +671,14 @@ def pydotprint(fct, outfile=None,
             else:
                 pf = time * 100 / mode.profile_stats[fct].fct_call_time
             prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
+        elif profile:
+            time = profile.apply_time.get(node, 0)
+            #second, %fct time in profiler
+            if profile.fct_callcount == 0:
+                pf = 0
+            else:
+                pf = time * 100 / profile.fct_call_time
+            prof_str = '   (%.3fs,%.3f%%)' % (time, pf)
         applystr = str(node.op).replace(':', '_')
         applystr += prof_str
         if (applystr in all_strings) or with_ids:
@@ -648,6 +690,13 @@ def pydotprint(fct, outfile=None,
                 applystr = applystr + idx
         elif len(applystr) > max_label_size:
             applystr = applystr[:max_label_size - 3] + '...'
+            idx = 1
+            while applystr in all_strings:
+                idx += 1
+                suffix = ' id=' + str(idx)
+                applystr = (applystr[:max_label_size - 3 - len(suffix)] +
+                            '...' +
+                            suffix)
 
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
@@ -655,7 +704,7 @@ def pydotprint(fct, outfile=None,
 
     # Update the inputs that have an update function
     input_update = {}
-    outputs = list(fct_env.outputs)
+    outputs = list(fct_fgraph.outputs)
     if isinstance(fct, Function):
         for i in reversed(fct.maker.expanded_inputs):
             if i.update is not None:
@@ -690,10 +739,10 @@ def pydotprint(fct, outfile=None,
         for id, var in enumerate(node.inputs):
             varstr = var_name(var)
             label = str(var.type)
-            if len(label) > max_label_size:
-                label = label[:max_label_size - 3] + '...'
             if len(node.inputs) > 1:
                 label = str(id) + ' ' + label
+            if len(label) > max_label_size:
+                label = label[:max_label_size - 3] + '...'
             if var.owner is None:
                 if high_contrast:
                     g.add_node(pd.Node(varstr,
@@ -743,12 +792,16 @@ def pydotprint(fct, outfile=None,
 
     if not outfile.endswith('.' + format):
         outfile += '.' + format
-    g.write(outfile, prog='dot', format=format)
 
+    g.write(outfile, prog='dot', format=format)
     if print_output_file:
         print 'The output file is available at', outfile
+
+    if assert_nb_all_strings != -1:
+        assert len(all_strings) == assert_nb_all_strings
+
     if scan_graphs:
-        scan_ops = [(idx, x) for idx, x in enumerate(fct_env.toposort())
+        scan_ops = [(idx, x) for idx, x in enumerate(fct_fgraph.toposort())
                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         path, fn = os.path.split(outfile)
         basename = '.'.join(fn.split('.')[:-1])
@@ -906,8 +959,21 @@ def pydotprint_variables(vars,
     for nd in vars:
         if nd.owner:
             plot_apply(nd.owner, depth)
-
-    g.write_png(outfile, prog='dot')
+    try:
+        g.write_png(outfile, prog='dot')
+    except pd.InvocationException, e:
+        # Some version of pydot are bugged/don't work correctly with
+        # empty label. Provide a better user error message.
+        if pd.__version__ == "1.0.28" and "label=]" in e.message:
+            raise Exception("pydot 1.0.28 is know to be bugged. Use another "
+                            "working version of pydot")
+        elif "label=]" in e.message:
+            raise Exception("Your version of pydot " + pd.__version__ +
+                            " returned an error. Version 1.0.28 is known"
+                            " to be bugged and 1.0.25 to be working with"
+                            " Theano. Using another version of pydot could"
+                            " fix this problem. The pydot error is: " +
+                            e.message)
 
     print 'The output file is available at', outfile
 
@@ -1021,4 +1087,100 @@ def min_informative_str(obj, indent_level=0,
 
     rval = indent + prefix + name
 
+    return rval
+
+
+
+
+def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
+    """
+    Returns a string, with no endlines, fully specifying
+    how a variable is computed. Does not include any memory
+    location dependent information such as the id of a node.
+    """
+
+    global hashlib
+    if hashlib is None:
+        try:
+            import hashlib
+        except ImportError:
+            raise RuntimeError("Can't run var_descriptor because hashlib is not available.")
+
+    if _prev_obs is None:
+        _prev_obs = {}
+
+    if id(obj) in _prev_obs:
+        tag = _prev_obs[id(obj)]
+
+        return '<' + tag + '>'
+
+    if _tag_generator is None:
+        _tag_generator = _TagGenerator()
+
+    cur_tag = _tag_generator.get_tag()
+
+    _prev_obs[id(obj)] = cur_tag
+
+    if hasattr(obj, '__array__'):
+        # hashlib hashes only the contents of the buffer, but
+        # it can have different semantics depending on the strides
+        # of the ndarray
+        name = '<ndarray:'
+        name += 'strides=['+','.join(str(stride) for stride in obj.strides)+']'
+        name += ',digest='+hashlib.md5(obj).hexdigest()+'>'
+    elif hasattr(obj, 'owner') and obj.owner is not None:
+        name = str(obj.owner.op) + '('
+        name += ','.join(var_descriptor(ipt,
+                    _prev_obs=_prev_obs, _tag_generator=_tag_generator) for ipt
+                    in obj.owner.inputs)
+        name += ')'
+    elif hasattr(obj, 'name') and obj.name is not None:
+        # Only print the name if there is no owner.
+        # This way adding a name to an intermediate node can't make
+        # a deeper graph get the same descriptor as a shallower one
+        name = obj.name
+    else:
+        name = str(obj)
+        if ' at 0x' in name:
+            # The __str__ method is encoding the object's id in its str
+            name = position_independent_str(obj)
+            if ' at 0x' in name:
+                print name
+                assert False
+
+    prefix = cur_tag + '='
+
+    rval = prefix + name
+
+    return rval
+
+def position_independent_str(obj):
+    if isinstance(obj, theano.gof.graph.Variable):
+        rval = 'theano_var'
+        rval += '{type='+str(obj.type)+'}'
+    else:
+        raise NotImplementedError()
+
+    return rval
+
+
+def hex_digest(x):
+    """
+    Returns a short, mostly hexadecimal hash of a numpy ndarray
+    """
+
+    global hashlib
+    if hashlib is None:
+        try:
+            import hashlib
+        except ImportError:
+            raise RuntimeError("Can't run hex_digest because hashlib is not available.")
+    assert isinstance(x, np.ndarray)
+    rval = hashlib.md5(x.tostring()).hexdigest()
+    # hex digest must be annotated with strides to avoid collisions
+    # because the buffer interface only exposes the raw data, not
+    # any info about the semantics of how that data should be arranged
+    # into a tensor
+    rval = rval + '|strides=[' + ','.join(str(stride) for stride in x.strides) + ']'
+    rval = rval + '|shape=[' + ','.join(str(s) for s in x.shape) + ']'
     return rval

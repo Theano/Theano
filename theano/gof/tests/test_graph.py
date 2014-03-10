@@ -1,3 +1,4 @@
+import pickle
 import unittest
 
 from theano import tensor
@@ -82,7 +83,7 @@ class X:
         return as_string(inputs, outputs,
                          leaf_formatter = self.leaf_formatter,
                          node_formatter = self.node_formatter)
-    
+
 
 class TestStr(X):
 
@@ -151,7 +152,7 @@ class TestClone(X):
 ############
 
 def prenode(obj):
-    if isinstance(obj, Variable): 
+    if isinstance(obj, Variable):
         if obj.owner:
             return [obj.owner]
     if isinstance(obj, Apply):
@@ -290,3 +291,23 @@ class TestIsSameGraph(unittest.TestCase):
                                     ({y: x, t: z}, True))),
             ],
             debug=False)
+
+
+################
+# eval         #
+################
+
+class TestEval(unittest.TestCase):
+
+    def setUp(self):
+        self.x, self.y = tensor.scalars('x', 'y')
+        self.z = self.x + self.y
+        self.w = 2 * self.z
+
+    def test_eval(self):
+        self.assertEquals(self.w.eval({self.x : 1., self.y : 2.}), 6.)
+        self.assertEquals(self.w.eval({self.z : 3}), 6.)
+        self.assertTrue(hasattr(self.w, "_fn_cache"),
+                "variable must have cache after eval")
+        self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),
+                "temporary functions must not be serialized")

@@ -1,10 +1,10 @@
 import copy
 import os
-import StringIO
 
 import theano
 from theano import Apply
 from theano import tensor
+from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 
@@ -123,7 +123,7 @@ class GpuDot22Scalar(GpuOp):
         fail = sub['fail']
         return """
         #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT)
+        float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
         ? (REAL)(((float*)%(a)s->data)[0])
         : (REAL)(((double*)%(a)s->data)[0]);
         #undef REAL
@@ -226,16 +226,16 @@ class GpuGemm(GpuOp):
         z_out, = outputs
         inplace = int(self.inplace)
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
 
         #define REAL float
-        float %(name)s_a = (%(a)s->descr->type_num == PyArray_FLOAT)
+        float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
         ? (REAL)(((float*)%(a)s->data)[0])
         : (REAL)(((double*)%(a)s->data)[0]);
 
-        float %(name)s_b = (%(b)s->descr->type_num == PyArray_FLOAT) ?
+        float %(name)s_b = (PyArray_TYPE(%(b)s) == NPY_FLOAT) ?
         (REAL)(((float*)%(b)s->data)[0])
         : (REAL)(((double*)%(b)s->data)[0]);
         #undef REAL
@@ -341,7 +341,7 @@ class GpuGemv(GpuOp):
         z_out, = outputs
         inplace = int(self.inplace)
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
         float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
@@ -438,7 +438,7 @@ class GpuGer(GpuOp):
         z_out, = outputs
         inplace = int(self.inplace)
         fail = sub['fail']
-        sio = StringIO.StringIO()
+        sio = StringIO()
 
         print >> sio, """
         float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
@@ -497,101 +497,6 @@ gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)
 
 
-class GpuOuter(GpuOp):
-    """ Implement outer on the gpu."""
-    def make_node(self, x, y):
-        # we suppose type checking has been done, but make sure.
-        assert (x.type.ndim == 1 and y.type.ndim == 1 and
-                x.type.dtype == 'float32' and y.type.dtype == 'float32')
-
-        bz = [x.type.broadcastable[0], y.type.broadcastable[0]]
-
-        outputs = [CudaNdarrayType(dtype='float32', broadcastable=bz)()]
-        return Apply(self, [x, y], outputs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def c_code_cache_version(self):
-        return (4,)
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        # A = x * y'
-        x, y = inputs
-        A, = outputs
-        fail = sub['fail']
-
-        return """
-        CudaNdarray *%(name)sx = NULL, *%(name)sy = NULL;
-        int %(name)sres;
-
-        if (CudaNdarray_HOST_STRIDES(%(x)s)[0] < 0) {
-            %(name)sx = (CudaNdarray *)CudaNdarray_Copy(%(x)s);
-            if (!%(name)sx) {
-                %(fail)s;
-            }
-        } else {
-            %(name)sx = %(x)s;
-            Py_INCREF(%(name)sx);
-        }
-        if (CudaNdarray_HOST_STRIDES(%(y)s)[0] < 0) {
-            %(name)sy = (CudaNdarray *)CudaNdarray_Copy(%(y)s);
-            if (!%(name)sy) {
-                Py_DECREF(%(name)sx);
-                %(fail)s;
-            }
-        } else {
-            %(name)sy = %(y)s;
-            Py_INCREF(%(name)sy);
-        }
-        if (!(%(A)s &&
-              CudaNdarray_HOST_DIMS(%(A)s)[0] ==
-                CudaNdarray_HOST_DIMS(%(x)s)[0] &&
-              CudaNdarray_HOST_DIMS(%(A)s)[1] ==
-                CudaNdarray_HOST_DIMS(%(y)s)[0] &&
-              CudaNdarray_is_c_contiguous(%(A)s))) {
-            Py_XDECREF(%(A)s);
-            int dims[2];
-            dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
-            dims[1] = CudaNdarray_HOST_DIMS(%(y)s)[0];
-            %(A)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
-            if (!%(A)s) {
-                Py_DECREF(%(name)sy);
-                Py_DECREF(%(name)sx);
-                %(fail)s;
-            }
-        }
-        else
-        {
-            // sger accumulates into A. We need to zero it first.
-            int total_size = (sizeof(real) *
-                                CudaNdarray_HOST_DIMS(%(A)s)[0] *
-                                CudaNdarray_HOST_DIMS(%(A)s)[1]);
-            if (cudaSuccess != cudaMemset(%(A)s->devdata, 0, total_size))
-            {
-                PyErr_Format(PyExc_MemoryError,
-                      "GpuOuter: Error memsetting %%d bytes of device memory.",
-                      total_size);
-                Py_DECREF(%(name)sy);
-                Py_DECREF(%(name)sx);
-                %(fail)s;
-            }
-        }
-
-        %(name)sres = CudaNdarray_sger(1.0, %(name)sx, %(name)sy, %(A)s);
-        Py_DECREF(%(name)sy);
-        Py_DECREF(%(name)sx);
-        if (%(name)sres) {
-            %(fail)s;
-        }
-        """ % dict(x=x, y=y, A=A, fail=fail, name=name)
-
-gpu_outer = GpuOuter()
-
-
 ##
 # Not really a BLAS operation, but whatever.
 #
@@ -618,21 +523,21 @@ class GpuConv(GpuOp):
             imshp=None,
             max_threads_dim0=None):
         """
-        :param version: each version of c_code implement many kernel for the
+        :param version: each version of c_code implements many kernel for the
                         convolution. By default we try to guess the best one.
                         You can force one version with this parameter. This
                         parameter is used by the tests.
         :param verbose: for value of 1,2 and 3. Print more information during
                         the execution of the convolution. Mostly used for
                         optimization or debugging.
-        :param kshp:    The size of the kernel. If provided, can genera
+        :param kshp:    The size of the kernel. If provided, can generate
                         faster code. If the GpuConv op is automatically
                         inserted,
                         we take its value automatically from the Conv op.
         :param imshp:   The size of the image. Not used for code generation but
-                        allow to select an experimental new version in another
+                        allows to select an experimental new version in another
                         repo.
-        :param max_threads_dim0: The maximum number of thread for the
+        :param max_threads_dim0: The maximum number of threads for the
                         block size dimensions 0 (blockDim.x) used by the
                         GPU function.
 
@@ -677,6 +582,8 @@ class GpuConv(GpuOp):
         self.__dict__.update(d)
         if not hasattr(self, "imshp"):
             self.imshp = None
+        if not hasattr(self, "max_threads_dim0"):
+            self.max_threads_dim0 = None
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and
@@ -714,6 +621,25 @@ class GpuConv(GpuOp):
                          False, False]
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
+    def flops(self, inputs, outputs):
+        """ Useful with the hack in profilemode to print the MFlops"""
+        images, kerns = inputs
+        out, = outputs
+        assert images[1] == kerns[1]
+        flops = 0
+        if self.border_mode == "valid":
+            # nb mul and add by output pixel
+            flops = kerns[2] * kerns[3] * 2
+            # nb flops by output image
+            flops *= out[2] * out[3]
+            # nb patch multiplied
+            flops *= images[1] * kerns[0] * images[0]
+        else:
+            flops = (images[0] * kerns[0] * images[1] *
+                     kerns[2] * kerns[3] *
+                     images[2] * images[3] * 2)
+        return flops
+
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = copy.copy(node)
         assert node.op is node_.op
@@ -734,11 +660,6 @@ class GpuConv(GpuOp):
         return super(GpuConv, node_.op).make_thunk(node_, storage_map,
                                                    compute_map, no_recycling)
 
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        if not hasattr(self, "max_threads_dim0"):
-            self.max_threads_dim0 = None
-
     def c_compile_args(self):
         nb = 0
         if self.kshp is not None:
@@ -750,7 +671,7 @@ class GpuConv(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 19)
+        return (0, 21)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -770,6 +691,11 @@ class GpuConv(GpuOp):
         verbose = self.verbose
         sub = sub.copy()
         max_threads_dim0 = self.max_threads_dim0
+        if max_threads_dim0 is None:
+            raise NotImplementedError("GpuConv.c_code should not be called "
+                                      "directly. It should be called by "
+                                      "make_thunk() that add some information "
+                                      "related to the selected GPU.")
         sub.update(locals())
         return """
     //Mandatory args
@@ -797,6 +723,7 @@ class GpuConv(GpuOp):
         return NULL;
     }
 
+    // TODO, make out be decref before we alloc out2!
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
                                                          %(out)s, mode,
                                                          dx, dy,
@@ -804,6 +731,10 @@ class GpuConv(GpuOp):
                                                          %(max_threads_dim0)s);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
+
+    if (%(out)s==NULL){
+        %(fail)s
+    }
 """ % sub
 
 
@@ -838,7 +769,7 @@ class GpuDownsampleFactorMax(GpuOp):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-        return (4)
+        return (6)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, = inp
@@ -850,7 +781,8 @@ class GpuDownsampleFactorMax(GpuOp):
         int dims[4], xdim2, xdim3;
         if (%(x)s->nd != 4)
         {
-            PyErr_SetString(PyExc_ValueError, "rank error");
+            PyErr_SetString(PyExc_ValueError,
+                            "GpuDownsampleFactorMax: rank error");
             %(fail)s;
         }
         xdim2 = CudaNdarray_HOST_DIMS(%(x)s)[2];
@@ -886,12 +818,14 @@ class GpuDownsampleFactorMax(GpuOp):
                 Py_XDECREF(%(z)s);
                 %(z)s = NULL;
                 PyErr_SetString(PyExc_ValueError,
+                                "GpuDownsampleFactorMax:"
                                 "Was not able to allocate output!");
                 %(fail)s;
             }
         }
         {
-            dim3 grid(dims[0] * dims[1], dims[2]);
+            dim3 grid(std::min(dims[0] * dims[1], 65535),
+                      dims[2]);
             //dim3 block(std::min(dims[3], 512));
             //TODO: implement this by supporting more outputs than threads
             dim3 block(dims[3]);
@@ -938,53 +872,61 @@ class GpuDownsampleFactorMax(GpuOp):
            float *z, int zS0, int zS1, int zS2, int zS3)
         {
             float cur_max, cur_x;
-            int i0 = blockIdx.x %% D0;
-            int i1 = blockIdx.x / D0;
-            int i2 = blockIdx.y;
+            // Cast threadIdx.x into a signed int, to avoid problems with
+            // indexing with negative offsets.
+            int tx = threadIdx.x;
+            for(int block_x_idx = blockIdx.x;
+                block_x_idx < D0 * D1;
+                block_x_idx += gridDim.x){
 
-            extern __shared__ float xbuf[]; //size [xD3]
+                int i0 = block_x_idx %% D0;
+                int i1 = block_x_idx / D0;
+                int i2 = blockIdx.y;
 
-            for (int r2 = 0;
-                 (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
-                 ++r2)
-            {
-                __syncthreads();
-                // load the current row of the image into shared memory
-                for (int j = threadIdx.x; j < xD3; j += blockDim.x)
+                extern __shared__ float xbuf[]; //size [xD3]
+
+                for (int r2 = 0;
+                     (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
+                     ++r2)
                 {
-                    xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
-                }
-                __syncthreads();
-
-                // initialize our max if this is the first row we're loading
-                cur_max = (r2 == 0) ? xbuf[threadIdx.x*pf3] : cur_max;
-
-                // do a mini-reduction over the pf3 relevant elements
-                // in the current row
-
-                if (%(ignore_border)s)
-                {
-                    for (int k = 0; k < pf3; ++k)
+                    __syncthreads();
+                    // load the current row of the image into shared memory
+                    for (int j = tx; j < xD3; j += blockDim.x)
                     {
-                        cur_x = xbuf[threadIdx.x*pf3+k];
-                        cur_max = (cur_x > cur_max) ? cur_x : cur_max;
+                        xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
                     }
-                }
-                else
-                {
-                    for (int k = 0; k < pf3; ++k)
+                    __syncthreads();
+
+                    // initialize our max if this is the
+                    // first row we're loading
+                    cur_max = (r2 == 0) ? xbuf[tx*pf3] : cur_max;
+
+                    // do a mini-reduction over the pf3 relevant elements
+                    // in the current row
+
+                    if (%(ignore_border)s)
                     {
-                        if (threadIdx.x*pf3 + k < xD3)
+                        for (int k = 0; k < pf3; ++k)
                         {
-                            cur_x = xbuf[threadIdx.x*pf3+k];
+                            cur_x = xbuf[tx*pf3+k];
                             cur_max = (cur_x > cur_max) ? cur_x : cur_max;
                         }
                     }
+                    else
+                    {
+                        for (int k = 0; k < pf3; ++k)
+                        {
+                            if (tx*pf3 + k < xD3)
+                            {
+                                cur_x = xbuf[tx*pf3+k];
+                                cur_max = (cur_x > cur_max) ? cur_x : cur_max;
+                            }
+                        }
+                    }
                 }
-            }
 
-            //store the result to global memory
-            z[i0*zS0 + i1*zS1 + i2*zS2 + threadIdx.x*zS3] = cur_max;
+                z[i0*zS0 + i1*zS1 + i2*zS2 + tx*zS3] = cur_max;
+            }
         }
         """ % locals()
 
@@ -1014,8 +956,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         return Apply(self, [x, z, gz], [x.type()])
 
     def c_code_cache_version(self):
-        #return ()
-        return (5,)
+        return (9,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
@@ -1057,7 +998,8 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // make sure we cover every x row when ignore border isset and
             // there's a border present to be ignored
             int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
-            dim3 grid(CudaNdarray_HOST_DIMS(%(z)s)[0],CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
+            dim3 grid(std::min(CudaNdarray_HOST_DIMS(%(z)s)[0], 65535),
+                      CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
             dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[3], 512));
 
             kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
@@ -1082,7 +1024,11 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                 CudaNdarray_HOST_STRIDES(%(gz)s)[1],
                 CudaNdarray_HOST_STRIDES(%(gz)s)[2],
                 CudaNdarray_HOST_STRIDES(%(gz)s)[3],
-                CudaNdarray_DEV_DATA(%(gx)s));
+                CudaNdarray_DEV_DATA(%(gx)s),
+                CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[3]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
@@ -1120,7 +1066,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
            const float * x, int xS0, int xS1, int xS2, int xS3,
            const float * z, int zS0, int zS1, int zS2, int zS3,
            const float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
-           float *gx)
+           float *gx, int gxS0, int gxS1, int gxS2, int gxS3)
         {
             //  D0: number of image rows
             //  D1: number of image cols
@@ -1131,56 +1077,63 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // various .S. variables are strides
 
             float cur_max, cur_x, my_z, my_gz;
-            int i0 = blockIdx.x;       // image row
-            int i1 = 0;                // image col
-            // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
-            // (as needed to cover all x rows)
-            int i2 = blockIdx.y;
-            int x_col = threadIdx.x;   // col wrt x, ranges from 0 to xD3 - 1
-            int z_col = x_col/ds1;     // z_col corresponding to this x_col
+            // Cast threadIdx.x into a signed int, to avoid problems with
+            // indexing with negative offsets.
+            int tx = threadIdx.x;
+            int bdimx = blockDim.x;
+
+            for(int i0 = blockIdx.x;
+                i0 < D0;
+                i0 += gridDim.x){
+
+                int i1 = 0;                // image col
+                // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
+                // (as needed to cover all x rows)
+                int i2 = blockIdx.y;
+                int x_col = tx;            // col wrt x, ranges from 0 to xD3 - 1
+                int z_col = x_col/ds1;     // z_col corresponding to this x_col
 
 
-            //TODO: raise occupancy.  Use threadIdx.y to run several
-            //      iterations of this i1 loop in parallel
+                //TODO: raise occupancy.  Use threadIdx.y to run several
+                //      iterations of this i1 loop in parallel
 
-            for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
-            {
-                for(int col_iter = 0;
-                    col_iter * blockDim.x <= xD3 ; col_iter++){
+                for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
+                {
+                    for(int col_iter = 0;
+                        (tx + col_iter * bdimx < xD3) ; col_iter++){
 
-                    //The if inside is to don't do the division if we
-                    // need only 1 col_iter
+                        //The if inside is to don't do the division if we
+                        // need only 1 col_iter
 
-                    if(blockDim.x != xD3)
-                    {
-                        x_col = threadIdx.x + col_iter * blockDim.x;
-                        z_col = x_col/ds1;
-                    }
+                        if(tx + bdimx < xD3)
+                        {
+                            x_col = tx + col_iter * bdimx;
+                            z_col = x_col/ds1;
+                        }
 
-                    if (%(ignore_border)s && x_col >= ds1 * D3)
-                    {
-                        // This happens only if x_col was ignored
-                        // (via ignore_border)
-                        // TODO: if ignore_border is False, this is impossible
-                        //        and we don't even need to generate this code.
+                        if (%(ignore_border)s && ((x_col >= ds1 * D3) || (i2 >= D2)))
+                        {
+                            // This happens only if x_col, or i2*ds0, was ignored
+                            // (via ignore_border)
+                            // TODO: if ignore_border is False, this is impossible
+                            //        and we don't even need to generate this code.
 
-                        my_gz = 0.0f;
+                            my_gz = 0.0f;
 
-                        //any fp number suffices for my_z, so we don't even
-                        //need to set it to anything in particular.
+                            //any fp number suffices for my_z, so we don't even
+                            //need to set it to anything in particular.
 
-                    }
-                    else
-                    {
-                        // this is effectively:
-                        // my_gz = gz[image_row][image_col][z_row][z_col]
-                        // my_z  = z[image_row][image_col][z_row][z_col]
-                        my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 +
-                                   z_col*gzS3];
-                        my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 +
-                                   z_col* zS3];
-                    }
-                    if(x_col<xD3){
+                        }
+                        else
+                        {
+                            // this is effectively:
+                            // my_gz = gz[image_row][image_col][z_row][z_col]
+                            // my_z  = z[image_row][image_col][z_row][z_col]
+                            my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 +
+                                       z_col*gzS3];
+                            my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 +
+                                       z_col* zS3];
+                        }
                         for (int x_row = i2*ds0;
                               (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
                         {
@@ -1188,15 +1141,12 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                             // gx[image_row][image_col][x_row][x_col]
                             //   = (my_z == x[image_row][image_col][
                             //                x_row][x_col]) ? my_gz : 0.0f;
-                            gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                               x_row*xD3 + x_col]
+                            gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3]
                                = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 +
                                             x_col*xS3]) ? my_gz : 0.0f;
                         }
-                    //gx[i0 * D1*xD2*xD3 + i1*xD2*xD3 +
-                    //   x_row*xD3 + x_col] = -999;
-}
 
+                    }
                 }
             }
         }

@@ -1,0 +1,397 @@
+
+.. _crei2013_Introduction:
+
+
+************
+Introduction
+************
+
+Background Questionaire
+-----------------------
+
+* Who has used Theano before?
+
+ * What did you do with it?
+
+* Who has used Python? NumPy? SciPy? matplotlib?
+
+* Who has used iPython?
+
+ * Who has used it as a distributed computing engine?
+
+* Who has done C/C++ programming?
+
+* Who has organized computation around a particular physical memory layout?
+
+* Who has used a multidimensional array of >2 dimensions?
+
+* Who has written a Python module in C before?
+
+ * Who has written a program to *generate* Python modules in C?
+
+* Who has used a templating engine?
+
+* Who has programmed a GPU before?
+
+ * Using OpenGL / shaders ?
+
+ * Using CUDA (runtime? / driver?)
+
+ * Using PyCUDA ?
+
+ * Using OpenCL / PyOpenCL ?
+
+ * Using cudamat / gnumpy ?
+
+ * Other?
+
+* Who has used Cython?
+
+
+Python in one slide
+-------------------
+
+* General-purpose high-level OO interpreted language
+ 
+* Emphasizes code readability
+ 
+* Comprehensive standard library
+ 
+* Dynamic type and memory management
+
+* Built-in types: int, float, str, list, dict, tuple, object
+
+* Slow execution
+
+* Popular in web-dev and scientific communities
+
+
+.. code-block:: python
+
+    #######################
+    # PYTHON SYNTAX EXAMPLE
+    #######################
+    a = 1                     # no type declaration required!
+    b = (1, 2, 3)             # tuple of three int literals
+    c = [1, 2, 3]             # list of three int literals
+    d = {'a': 5, b: None}     # dictionary of two elements
+                              # N.B. string literal, None
+
+    print d['a']              # square brackets index
+    # -> 5
+    print d[(1, 2, 3)]        # new tuple == b, retrieves None
+    # -> None
+    print d[6]
+    # raises KeyError Exception
+
+    x, y, z = 10, 100, 100    # multiple assignment from tuple
+    x, y, z = b               # unpacking a sequence
+
+    b_squared = [b_i**2 for b_i in b]  # list comprehension
+
+    def foo(b, c=3):          # function w default param c
+        return a + b + c      # note scoping, indentation
+
+    foo(5)                    # calling a function
+    # -> 1 + 5 + 3 == 9       # N.B. scoping
+    foo(b=6, c=2)             # calling with named args
+    # -> 1 + 6 + 2 == 9
+
+    print b[1:3]              # slicing syntax
+
+    class Foo(object):        # Defining a class
+        def __init__(self):
+            self.a = 5
+        def hello(self):
+            return self.a
+
+    f = Foo()                 # Creating a class instance
+    print f.hello()           # Calling methods of objects
+    # -> 5 
+
+    class Bar(Foo):           # Defining a subclass
+        def __init__(self, a):
+            self.a = a
+
+    print Bar(99).hello()     # Creating an instance of Bar
+    # -> 99
+
+NumPy in one slide
+------------------
+
+* Python floats are full-fledged objects on the heap
+
+ * Not suitable for high-performance computing!
+
+* NumPy provides a N-dimensional numeric array in Python
+
+ * Perfect for high-performance computing.
+ * Slice are return view (no copy)
+
+* NumPy provides
+
+ * elementwise computations
+
+ * linear algebra, Fourier transforms
+
+ * pseudorandom numbers from many distributions
+
+* SciPy provides lots more, including
+
+ * more linear algebra
+
+ * solvers and optimization algorithms
+
+ * matlab-compatible I/O
+
+ * I/O and signal processing for images and audio
+
+.. code-block:: python
+
+    ##############################
+    # Properties of NumPy arrays
+    # that you really need to know
+    ##############################
+
+    import numpy as np          # import can rename
+    a = np.random.rand(3, 4, 5) # random generators
+    a32 = a.astype('float32')   # arrays are strongly typed
+
+    a.ndim                      # int: 3
+    a.shape                     # tuple: (3, 4, 5)
+    a.size                      # int: 60
+    a.dtype                     # np.dtype object: 'float64'
+    a32.dtype                   # np.dtype object: 'float32'
+
+    assert a[1, 1, 1] != 10     # a[1, 1, 1] is a view
+    a[1, 1, 1] = 10             # So affectation to it change the
+    assert a[1, 1, 1] == 10     # original array
+
+
+Arrays can be combined with numeric operators, standard mathematical
+functions. NumPy has great `documentation <http://docs.scipy.org/doc/numpy/reference/>`_.
+
+Training an MNIST-ready classification neural network in pure NumPy might look like this:
+
+.. code-block:: python
+
+    #########################
+    # NumPy for Training a
+    # Neural Network on MNIST
+    #########################
+
+    x = np.load('data_x.npy')
+    y = np.load('data_y.npy')
+    w = np.random.normal(
+        avg=0,
+        std=.1,
+        size=(784, 500))
+    b = np.zeros((500,))
+    v = np.zeros((500, 10))
+    c = np.zeros((10,))
+
+    batchsize = 100
+    for i in xrange(1000):
+        x_i = x[i * batchsize: (i + 1) * batchsize]
+        y_i = y[i * batchsize: (i + 1) * batchsize]
+
+        hidin = np.dot(x_i, w) + b
+
+        hidout = np.tanh(hidin)
+
+        outin = np.dot(hidout, v) + c
+        outout = (np.tanh(outin) + 1) / 2.0
+
+        g_outout = outout - y_i
+        err = 0.5 * np.sum(g_outout) ** 2
+
+        g_outin = g_outout * outout * (1.0 - outout)
+
+        g_hidout = np.dot(g_outin, v.T)
+        g_hidin = g_hidout * (1 - hidout ** 2)
+
+        b -= lr * np.sum(g_hidin, axis=0)
+        c -= lr * np.sum(g_outin, axis=0)
+        w -= lr * np.dot(x_i.T, g_hidin)
+        v -= lr * np.dot(hidout.T, g_outin)
+
+
+What's missing?
+---------------
+
+* Non-lazy evaluation (required by Python) hurts performance
+
+* NumPy is bound to the CPU
+
+* NumPy lacks symbolic or automatic differentiation
+
+Now let's have a look at the same algorithm in Theano, which runs 15 times faster if
+you have GPU (I'm skipping some dtype-details which we'll come back to).
+
+.. code-block:: python
+
+    #########################
+    # Theano for Training a
+    # Neural Network on MNIST
+    #########################
+
+    import numpy as np
+
+    import theano
+    import theano.tensor as tensor
+
+    x = np.load('data_x.npy')
+    y = np.load('data_y.npy')
+
+    # symbol declarations
+    sx = tensor.matrix()
+    sy = tensor.matrix()
+    w = theano.shared(np.random.normal(avg=0, std=.1,
+                                       size=(784, 500)))
+    b = theano.shared(np.zeros(500))
+    v = theano.shared(np.zeros((500, 10)))
+    c = theano.shared(np.zeros(10))
+
+    # symbolic expression-building
+    hid = tensor.tanh(tensor.dot(sx, w) + b)
+    out = tensor.tanh(tensor.dot(hid, v) + c)
+    err = 0.5 * tensor.sum(out - sy) ** 2
+    gw, gb, gv, gc = tensor.grad(err, [w, b, v, c])
+
+    # compile a fast training function
+    train = theano.function([sx, sy], err,
+        updates={
+            w: w - lr * gw,
+            b: b - lr * gb,
+            v: v - lr * gv,
+            c: c - lr * gc})
+
+    # now do the computations
+    batchsize = 100
+    for i in xrange(1000):
+        x_i = x[i * batchsize: (i + 1) * batchsize]
+        y_i = y[i * batchsize: (i + 1) * batchsize]
+        err_i = train(x_i, y_i)
+
+    
+Theano in one slide
+-------------------
+
+* High-level domain-specific language tailored to numeric computation
+
+* Compiles most common expressions to C for CPU and GPU.
+
+* Limited expressivity means lots of opportunities for expression-level optimizations
+
+ * No function call -> global optimization
+
+ * Strongly typed -> compiles to machine instructions
+
+ * Array oriented -> parallelizable across cores
+
+ * Support for looping and branching in expressions
+
+* Expression substitution optimizations automatically draw
+  on many backend technologies for best performance.
+
+ * FFTW, MKL, ATLAS, SciPy, Cython, CUDA
+
+ * Slower fallbacks always available
+
+* Automatic differentiation and R op
+
+* Sparse matrices
+
+
+Project status
+--------------
+
+* Mature: theano has been developed and used since January 2008 (5.5 yrs old)
+
+* Driven over 87 research papers
+
+* Good user documentation
+
+* Active mailing list with participants from outside our lab
+
+* Core technology for a funded Silicon-Valley startup
+
+* Many contributors (some from outside our lab)
+
+* Used to teach IFT6266 for many years
+
+* Used for research at Google and Yahoo.
+
+* Downloads (January 2011 -  June 8 2011):
+
+ * Pypi (16 July 2013): 60k total, 159 last day, 823 last week 
+
+ * Github (`bleeding edge` repository): unknown
+
+
+
+
+Why scripting for GPUs?
+-----------------------
+
+They *Complement each other*:
+
+* GPUs are everything that scripting/high level languages are not
+
+ * Highly parallel
+
+ * Very architecture-sensitive
+
+ * Built for maximum FP/memory throughput
+
+ * So hard to program that meta-programming is easier.
+
+* CPU: largely restricted to control
+
+ * Optimized for sequential code and low latency (rather than high throughput)
+
+ * Tasks (1000/sec)
+
+ * Scripting fast enough
+
+Best of both: scripted CPU invokes JIT-compiled kernels on GPU.
+
+
+How Fast are GPUs?
+------------------
+
+* Theory
+
+ * Intel Core i7 980 XE (107Gf/s float64) 6 cores
+
+ * NVIDIA C2050 (515 Gf/s float64, 1Tf/s float32) 480 cores
+
+ * NVIDIA GTX580 (1.5Tf/s float32) 512 cores
+
+ * GPUs are faster, cheaper, more power-efficient
+
+* Practice (our experience)
+
+ * Depends on algorithm and implementation!
+
+ * Reported speed improvements over CPU in lit. vary *widely* (.01x to 1000x)
+
+ * Matrix-matrix multiply speedup: usually about 10-20x.
+
+ * Convolution speedup: usually about 15x.
+
+ * Elemwise speedup: slower or up to 100x (depending on operation and layout)
+
+ * Sum: can be faster or slower depending on layout.
+
+* Benchmarking is delicate work...
+
+ * How to control quality of implementation?
+
+  * How much time was spent optimizing CPU vs GPU code?
+
+ * Theano goes up to 100x faster on GPU because it uses only one CPU core
+
+ * Theano can be linked with multi-core capable BLAS (GEMM and GEMV)
+
+* If you see speedup > 100x, the benchmark is probably not fair.

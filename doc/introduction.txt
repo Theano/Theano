@@ -152,7 +152,7 @@ to other computational tools.
     * 'R' and 'L' differential operators
     * Speed/memory optimizations
     * Numerical stability optimizations
-* Have an OpenCL backend (for GPU, SIMD and multi-core)
+* Can use many compiled languages, instructions sets: C/C++, CUDA, OpenCL, PTX, CAL, AVX, ...
 * Lazy evaluation
 * Loop
 * Parallel execution (SIMD, multi-core, multi-node on cluster,
@@ -165,11 +165,11 @@ Note: There is no short term plan to support multi-node computation.
 Theano Vision State
 ===================
 
-Here is the state of that vision as of 24 October 2011 (after Theano release
-0.4.1):
+Here is the state of that vision as of December 3th, 2013 (after Theano release
+0.6):
 
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
-* We support sparse types by using the `scipy.{csc,csr}_matrix` object and support some operations on them (more are coming).
+* We support sparse types by using the `scipy.{csc,csr}_matrix` object and support some operations on them.
 * We have started implementing/wrapping more advanced linear algebra operations.
 * We have many graph transformations that cover the 4 categories listed above.
 * We can improve the graph transformation with better storage optimization
@@ -179,7 +179,7 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
     doesn't apply to only 1 op.
   * Example of use: Determine if we should move computation to the
     GPU or not depending on the input size.
-  * Possible implementation note: allow Theano Variable in the env to
+  * Possible implementation note: allow Theano Variable in the fgraph to
     have more than 1 owner.
 
 * We have a CUDA backend for tensors of type `float32` only.
@@ -190,24 +190,21 @@ Here is the state of that vision as of 24 October 2011 (after Theano release
   * Will provide better support for GPU on Windows and use an OpenCL backend on CPU.
 
 * Loops work, but not all related optimizations are currently done.
-* The cvm linker allows lazy evaluation. It works, but some work is still
-  needed before enabling it by default.
+* The cvm linker allows lazy evaluation. It is the current default linker.
 
-  * All tests pass with linker=cvm?
-  * How to have `DEBUG_MODE` check it? Right now, DebugMode checks the computation non-lazily.
-  * The profiler used by cvm is less complete than `PROFILE_MODE`.
+  * How to have `DebugMode` check it? Right now, DebugMode checks the computation non-lazily.
 
 * SIMD parallelism on the CPU comes from the compiler.
-* Multi-core parallelism is only supported for gemv and gemm, and only
-  if the external BLAS implementation supports it.
+* Multi-core parallelism is only supported by Conv2d(not by default).
+  If the external BLAS implementation supports it,
+  there are also, gemm, gemv and ger that are parallelized.
 * No multi-node support.
 * Many, but not all NumPy functions/aliases are implemented.
-  * http://www.assembla.com/spaces/theano/tickets/781
-* Wrapping an existing Python function in easy, but better documentation of
-  it would make it even easier.
-* We need to find a way to separate the shared variable memory
+  * https://github.com/Theano/Theano/issues/1080
+* Wrapping an existing Python function in easy and documented.
+* We know how to separate the shared variable memory
   storage location from its object type (tensor, sparse, dtype, broadcast
-  flags).
+  flags), but we need to do it.
 
 
 Contact us

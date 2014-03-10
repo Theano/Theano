@@ -65,8 +65,8 @@ class TestCGer(TestCase, TestOptimizationMixin):
         self.assert_(CGer(False) != Ger(False))
 
         # assert that eq works for non-CGer instances
-        self.assert_(CGer(False) != None)
-        self.assert_(CGer(True) != None)
+        self.assert_(CGer(False) is not None)
+        self.assert_(CGer(True) is not None)
 
     def test_hash(self):
         self.assert_(hash(CGer(True)) == hash(CGer(True)))
@@ -180,19 +180,19 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         # Assert they produce the same output
         assert numpy.allclose(f(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = [n.op for n in f.maker.env.toposort()]
+        topo = [n.op for n in f.maker.fgraph.toposort()]
         assert topo == [CGemv(inplace=False)], topo
 
         #test the inplace version
         g = theano.function([], [],
-                updates={v2: v2 + theano.dot(m, v1)},
+                updates=[(v2, v2 + theano.dot(m, v1))],
                 mode=self.mode)
 
         # Assert they produce the same output
         g()
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
-        topo = [n.op for n in g.maker.env.toposort()]
+        topo = [n.op for n in g.maker.fgraph.toposort()]
         assert topo == [CGemv(inplace=True)]
 
         # Do the same tests with a matrix with strides in both dimensions
@@ -208,8 +208,12 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
     def test_gemv1(self):
         self.t_gemv1((3, 2))
+        self.t_gemv1((1, 2))
         self.t_gemv1((0, 2))
+        self.t_gemv1((3, 1))
         self.t_gemv1((3, 0))
+        self.t_gemv1((1, 0))
+        self.t_gemv1((0, 1))
         self.t_gemv1((0, 0))
 
     def test_gemv_dimensions(self, dtype='float32'):

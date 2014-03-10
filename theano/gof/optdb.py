@@ -1,13 +1,10 @@
-import StringIO
 import sys
 
-if sys.version_info[:2] >= (2, 5):
-    from collections import defaultdict
-else:
-    from python25 import defaultdict
+from theano.gof.python25 import DefaultOrderedDict
 
 import numpy
-import opt
+from theano.compat.six import StringIO
+from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config
 AddConfigVar('optdb.position_cutoff',
@@ -29,7 +26,7 @@ class DB(object):
         return self._optimizer_idx
 
     def __init__(self):
-        self.__db__ = defaultdict(set)
+        self.__db__ = DefaultOrderedDict(set)
         self._names = set()
         self.name = None  # will be reset by register
         #(via obj.name by the thing doing the registering)
@@ -68,6 +65,16 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
                 raise ValueError('The tag of the object collides with a name.',
                                  obj, tag)
             self.__db__[tag].add(obj)
+
+    def remove_tags(self, name, *tags):
+        obj = self.__db__[name]
+        assert len(obj) == 1
+        obj = obj.copy().pop()
+        for tag in tags:
+            if tag in self._names:
+                raise ValueError('The tag of the object collides with a name.',
+                                 obj, tag)
+            self.__db__[tag].remove(obj)
 
     def __query__(self, q):
         if not isinstance(q, Query):
@@ -141,6 +148,10 @@ class Query(object):
         self.exclude = exclude or set()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
+        if isinstance(self.require, (list, tuple)):
+            self.require = set(self.require)
+        if isinstance(self.exclude, (list, tuple)):
+            self.exclude = set(self.exclude)
 
     #add all opt with this tag
     def including(self, *tags):
@@ -183,7 +194,6 @@ class EquilibriumDB(DB):
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         return opt.EquilibriumOptimizer(opts,
-                max_depth=5,
                 max_use_ratio=config.optdb.max_use_ratio,
                 failure_callback=opt.NavigatorOptimizer.warn_inplace)
 
@@ -229,7 +239,10 @@ class SequenceDB(DB):
 
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
         opts.sort(key=lambda obj: self.__position__[obj.name])
-        return opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
+        ret = opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
+        if hasattr(tags[0], 'name'):
+            ret.name = tags[0].name
+        return ret
 
     def print_summary(self, stream=sys.stdout):
         print >> stream, "SequenceDB (id %i)" % id(self)
@@ -244,7 +257,7 @@ class SequenceDB(DB):
         print >> stream, "  db", self.__db__
 
     def __str__(self):
-        sio = StringIO.StringIO()
+        sio = StringIO()
         self.print_summary(sio)
         return sio.getvalue()
 

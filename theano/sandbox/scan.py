@@ -13,14 +13,16 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import numpy
+import warnings
 
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
+from theano.gof.python25 import OrderedDict
 from theano.tensor import opt
 from theano import tensor
 from theano import config
-from theano.updates import Updates
+from theano.updates import OrderedUpdates
 
 
 from theano.scan_module import scan_op
@@ -133,8 +135,8 @@ def scan(fn,
         n_fixed_steps = int(n_steps)
     else:
         try:
-            n_fixed_steps = opt.get_constant_value(n_steps)
-        except (TypeError, AttributeError):
+            n_fixed_steps = opt.get_scalar_constant_value(n_steps)
+        except tensor.basic.NotScalarConstantError:
             n_fixed_steps = None
 
     # Check n_steps is an int
@@ -147,7 +149,7 @@ def scan(fn,
     n_seqs = len(seqs)
     n_outs = len(outs_info)
 
-    return_steps = {}
+    return_steps = OrderedDict()
     # wrap outputs info in a dictionary if they are not already in one
     for i in xrange(n_outs):
         if outs_info[i] is not None:
@@ -165,10 +167,11 @@ def scan(fn,
                 # ^ initial state but taps not provided
                 if 'taps' in outs_info[i]:
                     # ^ explicitly provided a None for taps
-                    _logger.warning('Output %s ( index %d) has a memory '
-                                    'buffer but taps is explicitly set to None ',
-                             getattr(outs_info[i]['membuf'], 'name', 'None'),
-                             i)
+                    _logger.warning(
+                            'Output %s (index %d) has a memory '
+                            'buffer but taps is explicitly set to None ',
+                            getattr(outs_info[i]['membuf'], 'name', 'None'),
+                            i)
                 outs_info[i]['taps'] = [-1]
         else:
             # if a None is provided as the output info we replace it
@@ -193,9 +196,13 @@ def scan(fn,
     inner_slices = []  # Actual slices if scan is removed from the picture
     # go through sequences picking up time slices as needed
     for i, seq in enumerate(seqs):
+        if isinstance(seq, dict):
+            seq = seq['input']
         actual_slice = seq[0]
         _seq_val = tensor.as_tensor_variable(seq)
         _seq_val_slice = _seq_val[0]
+
+        nw_slice = _seq_val_slice.type()
         # Try to transfer test_value to the new variable
         if config.compute_test_value != 'off':
             try:
@@ -209,9 +216,8 @@ def scan(fn,
                         'the inner function of scan, input value '
                         'missing %s'), e)
 
-        nw_slice = _seq_val_slice.type()
         if seq.name:
-            nw_slice.name=seq.name + '[t]'
+            nw_slice.name = seq.name + '[t]'
         scan_seqs.append(_seq_val)
         inner_seqs.append(nw_slice)
         inner_slices.append(actual_slice)
@@ -242,7 +248,7 @@ def scan(fn,
     mit_sot_inner_inputs = []
     mit_sot_inner_slices = []
     mit_sot_inner_outputs = []
-    mit_sot_return_steps = {}
+    mit_sot_return_steps = OrderedDict()
     mit_sot_tap_array = []
     mit_sot_rightOrder = []
 
@@ -251,7 +257,7 @@ def scan(fn,
     sit_sot_inner_inputs = []
     sit_sot_inner_slices = []
     sit_sot_inner_outputs = []
-    sit_sot_return_steps = {}
+    sit_sot_return_steps = OrderedDict()
     sit_sot_rightOrder = []
     nit_sot_steps = []
     # go through outputs picking up time slices as needed
@@ -262,7 +268,9 @@ def scan(fn,
         # makes code much cleaner for those who do not use taps. Otherwise
         # they would always had to shape_padleft the initial state ..
         # which is ugly
-        if init_out['taps'] == [-1]:
+
+        # Note, 'taps' might not be in the dictionary
+        if 'taps' in init_out and init_out['taps'] == [-1]:
 
             actual_arg = init_out['membuf']
             arg = safe_new(init_out['membuf'][0])
@@ -350,7 +358,6 @@ def scan(fn,
         else:
             pass
 
-
     # Re-order args
     max_mit_sot = numpy.max([-1] + mit_sot_rightOrder) + 1
     max_sit_sot = numpy.max([-1] + sit_sot_rightOrder) + 1
@@ -396,7 +403,9 @@ def scan(fn,
                       not isinstance(arg, tensor.Constant))]
     # when we apply the lambda expression we get a mixture of update rules
     # and outputs that needs to be separated
-    condition, outputs, updates = scan_utils.get_updates_and_outputs(fn(*args))
+    lambda_result = fn(*args)
+    condition, outputs, updates = scan_utils.get_updates_and_outputs(
+                                                                lambda_result)
     if condition is not None:
         as_while = True
     else:
@@ -462,6 +471,13 @@ def scan(fn,
     dummy_outs = outputs
     if condition is not None:
         dummy_outs.append(condition)
+
+    # If we use a regular dict here, the results are non-deterministic
+    if not isinstance(updates, (list, tuple)):
+        if isinstance(updates, dict) and \
+            not isinstance(updates, gof.python25.OrderedDict):
+                warnings.warn("Using non-deterministic dictionary.")
+
     dummy_f = function(dummy_args,
                        dummy_outs,
                        updates=updates,
@@ -506,7 +522,7 @@ def scan(fn,
             sit_sot_inner_outputs.append(outputs[i])
 
     ## Step 5.3 Outputs that correspond to update rules of shared variables
-    givens = {}
+    givens = OrderedDict()
     n_shared_outs = 0
     shared_scan_inputs = []
     shared_inner_inputs = []
@@ -525,7 +541,7 @@ def scan(fn,
     ## Step 5.4 Outputs with no taps used in the input
     n_nit_sot = 0
     nit_sot_inner_outputs = []
-    nit_sot_return_steps = {}
+    nit_sot_return_steps = OrderedDict()
     nit_sot_rightOrder = []
     for i, out in enumerate(outs_info):
         if not 'taps' in out:
@@ -580,7 +596,7 @@ def scan(fn,
                   shared_inner_outputs)
     if condition is not None:
         inner_outs.append(condition)
-    new_givens = {}
+    new_givens = OrderedDict()
     for w, w_copy in givens.iteritems():
         new_givens[w] = w.type.filter_variable(w_copy)
 
@@ -591,7 +607,7 @@ def scan(fn,
     ##
 
     tap_array = mit_sot_tap_array + [[-1] for x in xrange(n_sit_sot)]
-    info = {}
+    info = OrderedDict()
 
     info['tap_array'] = tap_array
     info['n_seqs'] = n_seqs
@@ -605,11 +621,12 @@ def scan(fn,
     info['truncate_gradient'] = -1
     info['name'] = name
     info['mode'] = mode
+    info['destroy_map'] = OrderedDict()
     info['inplace'] = False
     info['gpu'] = False
     info['as_while'] = as_while
     info['profile'] = profile
-    info['_scan_merge_visited'] = True
+    info['_scan_savemem_visited'] = True
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
@@ -638,7 +655,7 @@ def scan(fn,
     ###         and so on ...
     ##
 
-    update_map = Updates()
+    update_map = OrderedUpdates()
 
     offset = n_mit_mot
     offsets = [abs(numpy.min(x)) for x in mit_sot_tap_array]
@@ -672,4 +689,5 @@ def scan(fn,
     elif len(scan_out_list) == 0:
         scan_out_list = None
 
+    assert isinstance(update_map, OrderedDict)
     return (scan_out_list, update_map)

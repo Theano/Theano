@@ -46,17 +46,12 @@ from itertools import izip
 import logging
 import numpy
 
-from theano.compile import SharedVariable, function
-from theano import compile
 from theano import gof
 from theano.tensor import opt, TensorVariable
 from theano.tensor.sharedvar import TensorSharedVariable
 from theano import tensor
-from theano import config
-from theano.updates import Updates
 from theano.scalar.sharedvar import shared as scalar_shared
 from theano.compile.pfunc import rebuild_collect_shared
-import theano
 
 import scan_op
 import scan_utils
@@ -132,7 +127,7 @@ def scan(fn,
         The list of ``non_sequences`` can also contain shared variables
         used in the function, though ``scan`` is able to figure those
         out on its own so they can be skipped. For the clarity of the
-        code we recommand though to provide them to scan. To some extend
+        code we recommend though to provide them to scan. To some extend
         ``scan`` can also figure out other ``non sequences`` (not shared)
         even if not passed to scan (but used by `fn`). A simple example of
         this would be :
@@ -340,7 +335,7 @@ def scan(fn,
         T_value = int(n_steps)
     else:
         try:
-            T_value = opt.get_constant_value(n_steps)
+            T_value = opt.get_scalar_constant_value(n_steps)
         except (TypeError, AttributeError):
             T_value = None
 

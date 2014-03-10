@@ -1,9 +1,13 @@
 import cPickle
 import errno
+import logging
 import os
 import platform
 import re
 import shutil
+import struct
+import socket
+import subprocess
 import sys
 import textwrap
 
@@ -12,16 +16,67 @@ import numpy
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
+from theano.misc.windows import call_subprocess_Popen
 
-compiledir_format_dict = {"platform": platform.platform(),
-                          "processor": platform.processor(),
-                          "python_version": platform.python_version(),
-                          "theano_version": theano.__version__,
-                          "numpy_version": numpy.__version__,
-                         }
-compiledir_format_keys = ", ".join(compiledir_format_dict.keys())
-default_compiledir_format =\
-                    "compiledir_%(platform)s-%(processor)s-%(python_version)s"
+
+_logger = logging.getLogger("theano.gof.compiledir")
+
+# Using the dummy file descriptors below is a workaround for a crash
+# experienced in an unusual Python 2.4.4 Windows environment with the default
+# None values.
+dummy_err = open(os.devnull, 'w')
+p = None
+try:
+    p = call_subprocess_Popen(['g++', '-dumpversion'],
+                              stdout=subprocess.PIPE,
+                              stderr=dummy_err.fileno())
+    p.wait()
+    gcc_version_str = p.stdout.readline().strip().decode()
+except OSError:
+    # Typically means gcc cannot be found.
+    gcc_version_str = 'GCC_NOT_FOUND'
+del p
+del dummy_err
+
+
+def local_bitwidth():
+    """
+    Return 32 for 32bit arch, 64 for 64bit arch
+
+    By "architecture", we mean the size of memory pointers (size_t in C),
+    *not* the size of long int, as it can be different.
+    """
+    # Note that according to Python documentation, `platform.architecture()` is
+    # not reliable on OS X with universal binaries.
+    # Also, sys.maxsize does not exist in Python < 2.6.
+    # 'P' denotes a void*, and the size is expressed in bytes.
+    return struct.calcsize('P') * 8
+
+
+def python_int_bitwidth():
+    """
+    Return the bit width of Python int (C long int).
+
+    Note that it can be different from the size of a memory pointer.
+    """
+    # 'l' denotes a C long int, and the size is expressed in bytes.
+    return struct.calcsize('l') * 8
+
+
+compiledir_format_dict = {
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+        "python_version": platform.python_version(),
+        "python_bitwidth": local_bitwidth(),
+        "python_int_bitwidth": python_int_bitwidth(),
+        "theano_version": theano.__version__,
+        "numpy_version": numpy.__version__,
+        "gxx_version": gcc_version_str.replace(" ", "_"),
+        "hostname": socket.gethostname(),
+        }
+compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
+default_compiledir_format = ("compiledir_%(platform)s-%(processor)s-"
+                             "%(python_version)s-%(python_bitwidth)s")
 
 AddConfigVar("compiledir_format",
              textwrap.fill(textwrap.dedent("""\
@@ -29,7 +84,8 @@ AddConfigVar("compiledir_format",
                  module subdirectory (relative to base_compiledir).
                  Available keys: %s. Defaults to %r.
              """ % (compiledir_format_keys, default_compiledir_format))),
-             StrParam(default_compiledir_format, allow_override=False))
+             StrParam(default_compiledir_format, allow_override=False),
+             in_c_key=False)
 
 
 def default_compiledirname():
@@ -38,7 +94,14 @@ def default_compiledirname():
     return safe
 
 
+def filter_base_compiledir(path):
+    # Expand '~' in path
+    return os.path.expanduser(str(path))
+
+
 def filter_compiledir(path):
+    # Expand '~' in path
+    path = os.path.expanduser(path)
     # Turn path into the 'real' path. This ensures that:
     #   1. There is no relative path, which would fail e.g. when trying to
     #      import modules from the compile dir.
@@ -97,26 +160,36 @@ else:
     default_base_compiledir = os.path.join(get_home_dir(), '.theano')
 
 
-AddConfigVar('base_compiledir',
-        "platform-independent root directory for compiled modules",
-        StrParam(default_base_compiledir, allow_override=False))
+AddConfigVar(
+    'base_compiledir',
+    "platform-independent root directory for compiled modules",
+    ConfigParam(
+        default_base_compiledir,
+        filter=filter_base_compiledir,
+        allow_override=False),
+    in_c_key=False)
 
-AddConfigVar('compiledir',
-        "platform-dependent cache directory for compiled modules",
-        ConfigParam(
-            os.path.join(
-                os.path.expanduser(config.base_compiledir),
-                default_compiledirname()),
-            filter=filter_compiledir,
-            allow_override=False))
+AddConfigVar(
+    'compiledir',
+    "platform-dependent cache directory for compiled modules",
+    ConfigParam(
+        os.path.join(
+            config.base_compiledir,
+            default_compiledirname()),
+        filter=filter_compiledir,
+        allow_override=False),
+    in_c_key=False)
 
 
 def cleanup():
     """
     Delete keys in old format from the compiledir.
 
-    We define keys in old format as keys that have an ndarray in them.
-    Now we use a hash in the keys of the constant data.
+    Old clean up include key in old format or with old version of the c_code:
+    1) keys that have an ndarray in them.
+       Now we use a hash in the keys of the constant data.
+    2) key that don't have the numpy ABI version in them
+    3) They do not have a compile version string
 
     If there is no key left for a compiled module, we delete the module.
     """
@@ -131,18 +204,54 @@ def cleanup():
                 try:
                     keydata = cPickle.load(file)
                     for key in list(keydata.keys):
+                        have_npy_abi_version = False
+                        have_c_compiler = False
                         for obj in flatten(key):
                             if isinstance(obj, numpy.ndarray):
-                                keydata.remove_key(key)
+                                #Reuse have_npy_abi_version to
+                                #force the removing of key
+                                have_npy_abi_version = False
                                 break
+                            elif isinstance(obj, basestring):
+                                if obj.startswith('NPY_ABI_VERSION=0x'):
+                                    have_npy_abi_version = True
+                                elif obj.startswith('c_compiler_str='):
+                                    have_c_compiler = True
+                            elif (isinstance(obj, (theano.gof.Op, theano.gof.Type)) and
+                                  hasattr(obj, 'c_code_cache_version')):
+                                v = obj.c_code_cache_version()
+                                if v not in [(), None] and v not in key[0]:
+                                    #Reuse have_npy_abi_version to
+                                    #force the removing of key
+                                    have_npy_abi_version = False
+                                    break
+
+                        if not have_npy_abi_version or not have_c_compiler:
+                            try:
+                                #This can happen when we move the compiledir.
+                                if keydata.key_pkl != filename:
+                                    keydata.key_pkl = filename
+                                keydata.remove_key(key)
+                            except IOError, e:
+                                _logger.error(
+                                    "Could not remove file '%s'. To complete "
+                                    "the clean-up, please remove manually "
+                                    "the directory containing it.",
+                                    filename)
                     if len(keydata.keys) == 0:
                         shutil.rmtree(os.path.join(compiledir, directory))
 
                 except EOFError:
-                    print ("ERROR while reading this key file '%s'."
-                           " Delete its directory" % filename)
+                    _logger.error(
+                        "Could not read key file '%s'. To complete "
+                        "the clean-up, please remove manually "
+                        "the directory containing it.",
+                        filename)
             except IOError:
-                pass
+                _logger.error(
+                    "Could not clean up this directory: '%s'. To complete "
+                    "the clean-up, please remove it manually.",
+                    directory)
         finally:
             if file is not None:
                 file.close()
@@ -229,3 +338,37 @@ def print_compiledir_content():
            " 1 op (was compiled with the C linker)" % more_than_one_ops)
     print ("Skipped %d files that contained 0 op "
            "(are they always theano.scalar ops?)" % zeros_op)
+
+
+def compiledir_purge():
+    shutil.rmtree(config.compiledir)
+
+
+def basecompiledir_ls():
+    subdirs = []
+    others = []
+    for f in os.listdir(config.base_compiledir):
+        if os.path.isdir(os.path.join(config.base_compiledir, f)):
+            subdirs.append(f)
+        else:
+            others.append(f)
+
+    subdirs = sorted(subdirs)
+    others = sorted(others)
+
+    print 'Base compile dir is %s' % theano.config.base_compiledir
+    print 'Sub-directories (possible compile caches):'
+    for d in subdirs:
+        print '    %s' % d
+    if not subdirs:
+        print '    (None)'
+
+    if others:
+        print
+        print 'Other files in base_compiledir:'
+        for f in others:
+            print '    %s' % f
+
+
+def basecompiledir_purge():
+    shutil.rmtree(config.base_compiledir)

@@ -16,22 +16,22 @@ The descriptions are brief and point to further reading.
 If you would like to add an additional optimization, refer to
 :ref:`optimization` in the guide to extending Theano.
 
-..  #COMMENT
+..  note::
 
-    Since the print_summary method has been added to several OpDBs and
-    optimizers, it is possible to compute an accurate and up-to-date
-    optimization list by typing
+    This list is partial.
+
+    The print_summary method allows several OpDBs and optimizers to list the executed optimizations.
+    This makes it possible to have an up-to-date list.
 
     python -c 'import theano; theano.compile.FAST_RUN.optimizer.print_summary()'
+
     python -c 'import theano; theano.compile.FAST_COMPILE.optimizer.print_summary()'
 
-    etc.
-
-========================================================= ========= ============
-Optimization                                              FAST_RUN  FAST_COMPILE
-========================================================= ========= ============
+========================================================= ========= ============ =============
+Optimization                                              FAST_RUN  FAST_COMPILE Stabilization
+========================================================= ========= ============ =============
 :term:`merge`                                             x         x
-:term:`constant folding<constant folding>`                x
+:term:`constant folding<constant folding>`                x         x
 :term:`shape promotion<shape promotion>`                  x
 :term:`fill cut<fill cut>`                                x
 :term:`inc_subtensor srlz.<inc_subtensor serialization>`  x
@@ -51,9 +51,10 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 :term:`gemm`                                              x
 :term:`inplace_elemwise`                                  x
 :term:`inplace_random`                                    x
-:term:`elemwise fusion`     
-:term:`GPU transfer`
-========================================================= ========= ============
+:term:`elemwise fusion`                                   x
+:term:`GPU transfer`                                      x
+:term:`local_log_softmax`                                 x                      x
+========================================================= ========= ============ =============
 
 
 .. glossary::
@@ -252,5 +253,8 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 
         See :func:`theano.sandbox.cuda.opt.*`.
 
-
-
+    local_log_softmax
+        This is a stabilization optimization.
+        It can happen due to rounding errors that the softmax probability of one value gets to 0.
+        Taking the log of 0 would generate -inf that will probably generate NaN later.
+        We return a closer answer.

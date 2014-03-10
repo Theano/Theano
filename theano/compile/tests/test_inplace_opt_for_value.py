@@ -187,7 +187,7 @@ class ExampleRNN(Module):
         self.minimizer = minimizer([x, y], self.cost, self.params)
 
     def _instance_initialize(self, obj):
-        print 'INITIALIZE EXAMPLE RNN'
+        #print 'INITIALIZE EXAMPLE RNN'
         n_vis = self.n_vis
 
         rng = N.random.RandomState(unittest_tools.fetch_seed(2342))
@@ -214,8 +214,8 @@ def test_example_rnn():
     LAG = 4
     y[LAG:] = x[:-LAG, 0:n_out]
 
-    if 1:
-        for i, node in enumerate(rnn.minimizer.step_cost.maker.env.toposort()):
+    if 0:
+        for i, node in enumerate(rnn.minimizer.step_cost.maker.fgraph.toposort()):
             print i, node
 
     niter=1500
@@ -223,10 +223,7 @@ def test_example_rnn():
         niter=30
 
     for i in xrange(niter):
-        if i % 100 == 0:
-            print i, rnn.minimizer.step_cost(x, y), rnn.minimizer.stepsize
-        else:
-            rnn.minimizer.step_cost(x, y)
+        rnn.minimizer.step_cost(x, y)
     if theano.config.mode=='DEBUG_MODE':
         assert rnn.minimizer.step_cost(x,y) < -.9 #it starts around -.28
     else:
@@ -258,26 +255,26 @@ def test_WEIRD_STUFF():
 #    rnn2 = rnn_module1.make(mode=Mode('c|py', 'fast_run').excluding("inplace_opt"))#work
 #    rnn2 = rnn_module1.make(mode=Mode('py', 'fast_run'))#fail
     m = Mode('py', 'fast_run')
-    for n in m.optimizer: print n.name
+#    for n in m.optimizer: print n.name
 
     if 0:
-        topo1=rnn1.minimizer.step_cost.maker.env.toposort()
-        topo2=rnn2.minimizer.step_cost.maker.env.toposort()
+        topo1=rnn1.minimizer.step_cost.maker.fgraph.toposort()
+        topo2=rnn2.minimizer.step_cost.maker.fgraph.toposort()
         for i in range(len(topo1)):
             print '1',i, topo1[i]
             print '2',i, topo2[i]
-    if 1:
-        topo1=rnn1.minimizer.step.maker.env.toposort()
-        topo2=rnn2.minimizer.step.maker.env.toposort()
+    if 0:
+        topo1=rnn1.minimizer.step.maker.fgraph.toposort()
+        topo2=rnn2.minimizer.step.maker.fgraph.toposort()
         for i in range(len(topo1)):
             print '1',i, topo1[i]
             print '2',i, topo2[i]
     import theano.printing
 
-    print len(rnn1.minimizer.step.maker.inputs)
-    print len(rnn2.minimizer.step.maker.inputs)
-    print rnn1.minimizer.step.maker.inputs
-    print rnn2.minimizer.step.maker.inputs
+    #print len(rnn1.minimizer.step.maker.inputs)
+    #print len(rnn2.minimizer.step.maker.inputs)
+    #print rnn1.minimizer.step.maker.inputs
+    #print rnn2.minimizer.step.maker.inputs
 
 
 
@@ -293,15 +290,15 @@ def test_WEIRD_STUFF():
 
     niter=3
     for i in xrange(niter):
-        print rnn1.minimizer.step_cost(x, y)
-        print rnn2.minimizer.step_cost(x, y)
+        #print rnn1.minimizer.step_cost(x, y)
+        #print rnn2.minimizer.step_cost(x, y)
 
     #    assert rnn1.n_vis != rnn2.n_vis or slef.n_hid != rnn2.n_hid or rnn1.n_out != rnn2.n_out
         assert (N.abs(rnn1.z0-rnn2.z0)<1e-8).all()
-        print (N.abs(rnn1.w-rnn2.w)<1e-8).all()
-        print (N.abs(rnn1.w-rnn2.w))
-        print rnn1.w
-        print rnn2.w
+        #print (N.abs(rnn1.w-rnn2.w)<1e-8).all()
+        #print (N.abs(rnn1.w-rnn2.w))
+        #print rnn1.w
+        #print rnn2.w
         assert (N.abs(rnn1.w-rnn2.w)<1e-8).all()
 
     #    assert b

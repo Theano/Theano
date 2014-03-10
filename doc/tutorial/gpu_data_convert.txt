@@ -7,54 +7,130 @@ PyCUDA/CUDAMat/Gnumpy compatibility
 PyCUDA
 ======
 
-Currently PyCUDA and Theano have different object to store GPU
+Currently, PyCUDA and Theano have different objects to store GPU
 data. The two implementations do not support the same set of features.
-Theano's implementation is called CudaNdarray and supports
-strides. It support only the float32 dtype. PyCUDA's implementation
-is called GPUArray and doesn't support strides. Instead it can deal with all numpy and Cuda dtypes.
+Theano's implementation is called *CudaNdarray* and supports
+*strides*. It also only supports the *float32* dtype. PyCUDA's implementation
+is called *GPUArray* and doesn't support *strides*. However, it can deal with
+all NumPy and CUDA dtypes.
 
-We are currently working on having the same base object that will
-mimic numpy. Until this is ready, here is some information on how to
-use both Project in the same script.
+We are currently working on having the same base object for both that will
+also mimic Numpy. Until this is ready, here is some information on how to
+use both objects in the same script.
 
 Transfer
 --------
 
-You can use the `theano.misc.pycuda_utils` module to convert GPUArray to and
-from CudaNdarray. The function `to_cudandarray(x, copyif=False)` and
-`to_gpuarray(x)` return a new object that share the same memory space
-as the original. Otherwise it raise an ValueError. Because GPUArray don't
+You can use the ``theano.misc.pycuda_utils`` module to convert GPUArray to and
+from CudaNdarray. The functions ``to_cudandarray(x, copyif=False)`` and
+``to_gpuarray(x)`` return a new object that occupies the same memory space
+as the original. Otherwise it raises a *ValueError*. Because GPUArrays don't
 support strides, if the CudaNdarray is strided, we could copy it to
 have a non-strided copy. The resulting GPUArray won't share the same
-memory region. If you want this behavior, set `copyif=True` in
-`to_gpuarray`.
+memory region. If you want this behavior, set ``copyif=True`` in
+``to_gpuarray``.
 
 Compiling with PyCUDA
 ---------------------
 
-You can use PyCUDA to compile some CUDA function that work directly on
-CudaNdarray. There is an example in the function `test_pycuda_theano`
-in the file `theano/misc/tests/test_pycuda_theano_simple.py`. Also,
-there is an example that shows how to make an op that calls a pycuda
-function :ref:`here <pyCUDA_theano>`.
+You can use PyCUDA to compile CUDA functions that work directly on
+CudaNdarrays. Here is an example from the file ``theano/misc/tests/test_pycuda_theano_simple.py``:
 
-Theano op using PyCUDA function
--------------------------------
+.. code-block:: python
 
-You can use gpu function compiled with PyCUDA in a Theano op. Look
-into the `HPCS2011 tutorial
-<http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_ for an example.
+  import sys
+  import numpy
+  import theano
+  import theano.sandbox.cuda as cuda_ndarray
+  import theano.misc.pycuda_init
+  import pycuda
+  import pycuda.driver as drv
+  import pycuda.gpuarray
 
 
+  def test_pycuda_theano():
+      """Simple example with pycuda function and Theano CudaNdarray object."""
+      from pycuda.compiler import SourceModule
+      mod = SourceModule("""
+  __global__ void multiply_them(float *dest, float *a, float *b)
+  {
+    const int i = threadIdx.x;
+    dest[i] = a[i] * b[i];
+  }
+  """)
 
+      multiply_them = mod.get_function("multiply_them")
+
+      a = numpy.random.randn(100).astype(numpy.float32)
+      b = numpy.random.randn(100).astype(numpy.float32)
+  
+      # Test with Theano object
+      ga = cuda_ndarray.CudaNdarray(a)
+      gb = cuda_ndarray.CudaNdarray(b)
+      dest = cuda_ndarray.CudaNdarray.zeros(a.shape)
+      multiply_them(dest, ga, gb,
+                    block=(400, 1, 1), grid=(1, 1))
+      assert (numpy.asarray(dest) == a * b).all()
+
+
+Theano Op using a PyCUDA function
+---------------------------------
+
+You can use a GPU function compiled with PyCUDA in a Theano op:
+
+.. code-block:: python
+
+    import numpy, theano
+    import theano.misc.pycuda_init
+    from pycuda.compiler import SourceModule
+    import theano.sandbox.cuda as cuda
+
+    class PyCUDADoubleOp(theano.Op):
+        def __eq__(self, other):
+            return type(self) == type(other)
+        def __hash__(self):
+            return hash(type(self))
+        def __str__(self):
+            return self.__class__.__name__
+        def make_node(self, inp):
+            inp = cuda.basic_ops.gpu_contiguous(
+               cuda.basic_ops.as_cuda_ndarray_variable(inp))
+            assert inp.dtype == "float32"
+            return theano.Apply(self, [inp], [inp.type()])
+        def make_thunk(self, node, storage_map, _, _2):
+            mod = SourceModule("""
+        __global__ void my_fct(float * i0, float * o0, int size) {
+        int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if(i<size){
+            o0[i] = i0[i] * 2;
+        }
+      }""")
+            pycuda_fct = mod.get_function("my_fct")
+            inputs = [ storage_map[v] for v in node.inputs]
+            outputs = [ storage_map[v] for v in node.outputs]
+            def thunk():
+                z = outputs[0]
+                if z[0] is None or z[0].shape!=inputs[0][0].shape:
+                    z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
+                grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
+                pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
+                           block=(512, 1, 1), grid=grid)
+            return thunk
+    
 CUDAMat
 =======
 
-There is conversion function between CUDAMat object and Theano CudaNdArray. They are with the same principe as PyCUDA one's. They are in theano.misc.cudamat_utils.py
+There are functions for conversion between CUDAMat objects and Theano's CudaNdArray objects. 
+They obey the same principles as Theano's PyCUDA functions and can be found in
+``theano.misc.cudamat_utils.py``.
 
-WARNING: there is a strange problem with stride/shape with those converter. The test to work need a transpose and reshape...
+.. TODO: this statement is unclear:
+
+WARNING: There is a peculiar problem associated with stride/shape with those converters. 
+In order to work, the test needs a *transpose* and *reshape*...
 
 Gnumpy
 ======
 
-There is conversion function between gnumpy garray object and Theano CudaNdArray. They are with the same principe as PyCUDA one's. They are in theano.misc.gnumpy_utils.py
+There are conversion functions between Gnumpy *garray* objects and Theano CudaNdArray objects. 
+They are also similar to Theano's PyCUDA functions and can be found in ``theano.misc.gnumpy_utils.py``.

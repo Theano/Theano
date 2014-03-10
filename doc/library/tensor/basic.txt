@@ -1,5 +1,6 @@
-
 .. currentmodule:: tensor
+
+.. _libdoc_basic_tensor:
 
 ===========================
 Basic Tensor Functionality
@@ -293,14 +294,14 @@ them perfectly, but a dscalar otherwise.
     :rtype: :class:`TensorVariable` or :class:`TensorConstant`
 
 
-
 TensorType and TensorVariable
 =============================
 
 .. class:: TensorType(Type)
 
     The Type class used to mark Variables that stand for `numpy.ndarray`
-    values.  Recalling to the tutorial, the purple box in
+    values (`numpy.memmap`, which is a subclass of `numpy.ndarray`, is also allowed).
+    Recalling to the tutorial, the purple box in
     :ref:`the tutorial's graph-structure figure <tutorial-graphfigure>` is an instance of this class.
 
     .. attribute:: broadcastable
@@ -419,7 +420,9 @@ TensorVariable
 
 .. class:: _tensor_py_operators(object)
 
-    This mix-in class adds convenient attributes, methods, and support for Python operators (see :ref:`tensor_operator_support`).
+    This mix-in class adds convenient attributes, methods, and support
+    to TensorVariable, TensorConstant and TensorSharedVariable for
+    Python operators (see :ref:`tensor_operator_support`).
 
     .. attribute:: type
 
@@ -471,6 +474,10 @@ TensorVariable
 
         See :func:`flatten`.
 
+    .. method:: ravel()
+
+        return self.flatten(). For NumPy compatibility.
+
     .. attribute:: T
 
         Transpose of this tensor.
@@ -484,8 +491,31 @@ TensorVariable
             same vector!  Use `reshape` or `dimshuffle` to turn your vector
             into a row or column matrix.
 
+    .. method:: {any,all}(axis=None, keepdims=False)
+    .. method:: {sum,prod,mean}(axis=None, dtype=None, keepdims=False, acc_dtype=None)
+    .. method:: {var,std,min,max,argmin,argmax}(axis=None, keepdims=False),
+    .. method:: diagonal(offset=0, axis1=0, axis2=1)
+    .. method:: astype(dtype)
+    .. method:: take(indices, axis=None, mode='raise')
+    .. method:: copy()
+    .. method:: norm(L, axis=None)
+    .. method:: nonzero(self, return_matrix=False)
+    .. method:: nonzero_values(self)
+    .. method:: sort(self, axis=-1, kind='quicksort', order=None)
+    .. method:: argsort(self, axis=-1, kind='quicksort', order=None)
+    .. method:: clip(self, a_min, a_max)
+    .. method:: conf()
+    .. method:: repeat(repeats, axis=None)
+    .. method:: round(mode="half_away_from_zero")
+    .. method:: trace()
+    .. method:: get_scalar_constant_value()
+    .. method:: zeros_like(model, dtype=None)
 
+       All the above methods are equivalent to NumPy for Theano on the current tensor.
 
+    .. method:: __{abs,neg,lt,le,gt,ge,invert,and,or,add,sub,mul,div,truediv,floordiv}__
+
+       Those elemwise operation are supported via Python syntax.
 
 Shaping and Shuffling
 =====================
@@ -531,7 +561,7 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 
 
 
-.. function:: shape_padright(x,n_ones = 1)
+.. function:: shape_padright(x, n_ones=1)
 
     Reshape `x` by right padding the shape with `n_ones` 1s. Note that all
     this new dimension will be broadcastable. To make them non-broadcastable
@@ -546,13 +576,13 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 .. function:: unbroadcast(x, *axes)
 
     Make `x` impossible to broadcast in the specified axes `axes`. For
-    example, `unbroadcast(x,0)` will make the first dimension of `x`
+    example, `unbroadcast(x, 0)` will make the first dimension of `x`
     unbroadcastable.
 
 .. function:: addbroadcast(x, *axes)
 
     Make `x` broadcastable in the specified axes `axes`. For
-    example, `unbroadcast(x,0)` will make the first dimension of `x`
+    example, `addbroadcast(x, 0)` will make the first dimension of `x`
     broadcastable. When performing the function, if the length of `x`
     along that dimension is not 1, a ``ValueError`` will be raised.
 
@@ -571,10 +601,14 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
         dimensions, but with all remaining dimensions of `x` collapsed into
         the last dimension.
 
-    For example, if we flatten a tensor of shape (2,3,4,5) with flatten(x,
+    For example, if we flatten a tensor of shape (2, 3, 4, 5) with flatten(x,
     outdim=2), then we'll have the same (2-1=1) leading dimensions (2,), and the
     remaining dimensions are collapsed.  So the output in this example would
     have shape (2, 60).
+
+
+Creating Tensor
+===============
 
 
 .. function:: zeros_like(x)
@@ -596,7 +630,13 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 
     Create a matrix by filling the shape of `a` with `b`
 
-.. function:: eye(n, m = None, k = 0, dtype=theano.config.floatX)
+.. function:: alloc(value, *shape)
+
+    :param value: a value with which to fill the output
+    :param shape: the dimensions of the returned array
+    :returns: an N-dimensional tensor initialized by `value` and having the specified shape.
+
+.. function:: eye(n, m=None, k=0, dtype=theano.config.floatX)
 
     :param n: number of rows in output (value or theano scalar)
     :param m: number of columns in output (value or theano scalar)
@@ -643,62 +683,132 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     >>> x = T.concatenate([x0, x1[0], T.shape_padright(x2)], axis=1)
     >>> # x.ndim == 2
 
+.. function:: stacklists(tensor_list)
+
+    :type tensor_list: an iterable that contains either tensors or other
+        iterables of the same type as `tensor_list` (in other words, this
+        is a tree whose leaves are tensors).
+    :param tensor_list: tensors to be stacked together.
+
+    Recursively stack lists of tensors to maintain similar structure.
+
+    This function can create a tensor from a shaped list of scalars:
+
+    >>> from theano.tensor import stacklists, scalars, matrices
+    >>> from theano import function
+    >>> a, b, c, d = scalars('abcd')
+    >>> X = stacklists([[a, b], [c, d]])
+    >>> f = function([a, b, c, d], X)
+    >>> f(1, 2, 3, 4)
+    >>> # array([[ 1.,  2.], [ 3.,  4.]], dtype=float32)
+
+    We can also stack arbitrarily shaped tensors. Here we stack matrices into
+    a 2 by 2 grid:
+
+    >>> from numpy import ones
+    >>> a, b, c, d = matrices('abcd')
+    >>> X = stacklists([[a, b], [c, d]])
+    >>> f = function([a, b, c, d], X)
+    >>> x = ones((4, 4), 'float32')
+    >>> f(x, x, x, x).shape
+    >>> # (2, 2, 4, 4)
 
 Reductions
 ==========
 
 
-.. function:: max(x, axis=None)
+.. function:: max(x, axis=None, keepdims=False)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the maximum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Returns: maximum of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the maximum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: argmax(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
-    :Returns: the maximum value along a given axis
-    :note: see maximum for elemwise max
-
-    if axis=None, Theano 0.5rc1 or later: max over the flattened tensor (like numpy)
-                  older: then axis is assumed to be ndim(x)-1
-
-.. function:: argmax(x, axis=None)
-
-    :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
+    :Parameter: *axis* - axis along which to compute the index of the maximum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
+		left in the result as a dimension with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: the index of the maximum value along a given axis
 
     if axis=None, Theano 0.5rc1 or later: argmax over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: max_and_argmax(x, axis=None)
+.. function:: max_and_argmax(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the maximum
+    :Parameter: *axis* - axis along which to compute the maximum and its index
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axis which is reduced is
+		left in the result as a dimension with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: the maxium value along a given axis and its index.
 
     if axis=None, Theano 0.5rc1 or later: max_and_argmax over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: min(x, axis=None)
+.. function:: min(x, axis=None, keepdims=False)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to compute the minimum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Returns: minimum of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the minimum is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: argmin(x, axis=None, keepdims=False)
 
     :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the minimum
-    :Returns: the minimum value along a given axis
-    :note: see miminum for elemwise min
-
-    if axis=None, Theano 0.5rc1 or later: min over the flattened tensor (like numpy)
-                  older: then axis is assumed to be ndim(x)-1
-
-.. function:: argmin(x, axis=None)
-
-    :Parameter: *x* - symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis along which to compute the minimum
+    :Parameter: *axis* - axis along which to compute the index of the minimum
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: the index of the minimum value along a given axis
 
     if axis=None, Theano 0.5rc1 or later: argmin over the flattened tensor (like numpy)
                   older: then axis is assumed to be ndim(x)-1
 
-.. function:: sum(x, axis=None)
+.. function:: sum(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the sum
+    :Parameter: *dtype* - The dtype of the returned tensor.
+        If None, then we use the default dtype which is the same as
+        the input tensor's dtype except when:
+
+        - the input dtype is a signed integer of precision < 64 bit, in
+          which case we use int64
+        - the input dtype is an unsigned integer of precision < 64 bit, in
+          which case we use uint64
+
+        This default dtype does _not_ depend on the value of "acc_dtype".
+
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+
+    :Parameter: *acc_dtype* -  The dtype of the internal accumulator.
+        If None (default), we use the dtype in the list below,
+        or the input dtype if its precision is higher:
+
+        - for int dtypes, we use at least int64;
+        - for uint dtypes, we use at least uint64;
+        - for float dtypes, we use at least float64;
+        - for complex dtypes, we use at least complex128.
+
     :Returns: sum of *x* along *axis*
 
     axis can be:
@@ -706,10 +816,49 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: prod(x, axis=None)
+.. function:: prod(x, axis=None, dtype=None, keepdims=False, acc_dtype=None, no_zeros_in_input=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the product
+    :Parameter: *dtype* - The dtype of the returned tensor.
+        If None, then we use the default dtype which is the same as
+        the input tensor's dtype except when:
+
+        - the input dtype is a signed integer of precision < 64 bit, in
+          which case we use int64
+        - the input dtype is an unsigned integer of precision < 64 bit, in
+          which case we use uint64
+
+        This default dtype does _not_ depend on the value of "acc_dtype".
+
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+
+    :Parameter: *acc_dtype* -  The dtype of the internal accumulator.
+        If None (default), we use the dtype in the list below,
+        or the input dtype if its precision is higher:
+
+        - for int dtypes, we use at least int64;
+        - for uint dtypes, we use at least uint64;
+        - for float dtypes, we use at least float64;
+        - for complex dtypes, we use at least complex128.
+
+    :Parameter: *no_zeros_in_input* - The grad of prod is complicated
+         as we need to handle 3 different cases: without zeros in the
+         input reduced group, with 1 zero or with more zeros.
+
+	 This could slow you down, but more importantly, we currently
+	 don't support the second derivative of the 3 cases. So you
+	 cannot take the second derivative of the default prod().
+
+	 To remove the handling of the special cases of 0 and so get
+	 some small speed up and allow second derivative set
+	 ``no_zeros_in_inputs`` to ``True``. It defaults to ``False``.
+
+	 **It is the user responsibility to make sure there are no zeros
+	 in the inputs. If there are, the grad will be wrong.**
+
     :Returns: product of every term in *x* along *axis*
 
     axis can be:
@@ -717,10 +866,22 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: mean(x, axis=None)
+.. function:: mean(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the mean
+    :Parameter: *dtype* - The dtype to cast the result of the inner summation into.
+        For instance, by default, a sum of a float32 tensor will be
+        done in float64 (acc_dtype would be float64 by default),
+        but that result will be casted back in float32.
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Parameter: *acc_dtype* -  The dtype of the internal accumulator of the
+        inner summation. This will not necessarily be the dtype of the
+        output (in particular if it is a discrete (int/uint) dtype, the
+        output will be in a float type).  If None, then we use the same
+        rules as :func:`sum()`.
     :Returns: mean value of *x* along *axis*
 
     axis can be:
@@ -728,36 +889,59 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: var(x, axis=None)
+.. function:: var(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the variance
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: variance of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - in which case the variance is computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: all(x, axis=None)
+.. function:: std(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
-    :Parameter: *axis* - axis or axes along which to apply bitwise and
+    :Parameter: *axis* - axis or axes along which to compute the standard deviation
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
+    :Returns: variance of *x* along *axis*
+
+    axis can be:
+     * *None* - in which case the standard deviation is computed along all axes (like numpy)
+     * an *int* - computed along this axis
+     * a *list of ints* - computed along these axes
+
+.. function:: all(x, axis=None, keepdims=False)
+
+    :Parameter: *x* -  symbolic Tensor (or compatible)
+    :Parameter: *axis* - axis or axes along which to apply 'bitwise and'
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: bitwise and of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - in which case the 'bitwise and' is computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: any(x, axis=None)
+.. function:: any(x, axis=None, keepdims=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to apply bitwise or
+    :Parameter: *keepdims* - (boolean) If this is set to True, the axes which are reduced are
+		left in the result as dimensions with size one. With this option, the result
+		will broadcast correctly against the original tensor.
     :Returns: bitwise or of *x* along *axis*
 
     axis can be:
-     * *None* - variance computed along all axes (like numpy)
+     * *None* - in which case the 'bitwise or' is computed along all axes (like numpy)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -765,25 +949,39 @@ Reductions
 Indexing
 ========
 
-Like numpy, Theano distinguishes between *basic* and *advanced* indexing.
+Like NumPy, Theano distinguishes between *basic* and *advanced* indexing.
 Theano fully supports basic indexing
-(see `numpy's basic indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_).
+(see `NumPy's indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_).
 
-Advanced indexing is almost entirely unsupported (for now).
-The one sort of advanced indexing that is supported is the retrieval of the c[i]'th element of each
-row of a matrix x:
+`Integer advanced indexing
+<http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#integer>`_
+will be supported in 0.6rc4 (or the development version). We do not
+support boolean masks, as Theano does not have a boolean type (we use
+int8 for the output of logic operators). To imitate boolean advanced
+indexing, you can do::
 
->>> x = T.fmatrix()
->>> c = T.lvector()
->>> x[T.arange(c.shape[0]), c]
+    # NumPy indexing with a mask
+    n = np.arange(9).reshape(3,3)
+    n[n > 4] # array([5, 6, 7, 8])
+
+    # Theano indexing with a "mask" (incorrect approach)
+    t = theano.tensor.arange(9).reshape((3,3))
+    t[t > 4].eval()  # an array with shape (3, 3, 3)
+
+    # getting a Theano result like NumPy
+    t[(t > 4).nonzero()].eval() # array([5, 6, 7, 8])
+
+The gradient of Advanced indexing needs in many cases NumPy
+1.8. It is not released yet as of April 30th, 2013. You can use NumPy
+development version to have this feature now.
 
 
 Index-assignment is *not* supported.  If you want to do something like ``a[5]
-= b`` or ``a[5]+=b``, see :func:`set_subtensor` and :func:`inc_subtensor` below.
+= b`` or ``a[5]+=b``, see :func:`theano.tensor.set_subtensor` and :func:`theano.tensor.inc_subtensor` below.
 
-.. autofunction:: theano.tensor.basic.set_subtensor
+.. autofunction:: theano.tensor.set_subtensor
 
-.. autofunction:: theano.tensor.basic.inc_subtensor
+.. autofunction:: theano.tensor.inc_subtensor
 
 .. _tensor_operator_support:
 
@@ -913,6 +1111,18 @@ The six usual equality and inequality operators share the same interface.
 
     Returns a variable representing the result of logical inequality (a!=b).
 
+.. function:: isnan(a)
+
+    Returns a variable representing the comparison of ``a`` elements with nan.
+
+    This is equivalent to ``numpy.isnan``.
+
+.. function:: isinf(a)
+
+    Returns a variable representing the comparison of ``a`` elements
+    with inf or -inf.
+
+    This is equivalent to ``numpy.isinf``.
 
 Condition
 ---------
@@ -933,6 +1143,11 @@ Condition
       a,b = T.dmatrices('a','b')
       x,y = T.dmatrices('x','y')
       z = T.switch(T.lt(a,b), x, y)
+
+.. function:: where(cond, ift, iff)
+
+   Alias for `switch`. where is the numpy name.
+
 
 .. function:: clip(x, min, max)
 
@@ -1015,11 +1230,11 @@ Mathematical
 
     Returns a variable representing the exponential of a, ie e^a.
 
-.. function:: maximum(a,b)
+.. function:: maximum(a, b)
 
    Returns a variable representing the maximum element by element of a and b
 
-.. function:: minimum(a,b)
+.. function:: minimum(a, b)
 
    Returns a variable representing the minimum element by element of a and b
 
@@ -1073,7 +1288,11 @@ Mathematical
 
 .. function:: erf(a), erfc(a)
 
-    Returns a variable representing the error function or the complementary error function.
+    Returns a variable representing the error function or the complementary error function. `wikipedia <http://en.wikipedia.org/wiki/Error_function>`__
+
+.. function:: erfinv(a), erfcinv(a)
+
+    Returns a variable representing the inverse error function or the inverse complementary error function. `wikipedia <http://en.wikipedia.org/wiki/Error_function#Inverse_functions>`__
 
 
 .. _libdoc_tensor_broadcastable:
@@ -1141,19 +1360,157 @@ Linear Algebra
 
     :return: vector-vector outer product
 
-.. function:: tensordot(X, Y, axes=2)
+.. function:: tensordot(a, b, axes=2)
 
-    This is a symbolic standing for ``numpy.tensordot``.
+    Given two tensors a and b,tensordot computes a generalized dot product over
+    the provided axes. Theano's implementation reduces all expressions to
+    matrix or vector dot products and is based on code from Tijmen Tieleman's
+    gnumpy (http://www.cs.toronto.edu/~tijmen/gnumpy.html).
+
+    :param a: the first tensor variable
+    :type a: symbolic tensor
+
+    :param b: the second tensor variable
+    :type b: symbolic tensor
+
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+                 Note that the default value of 2 is not guaranteed to work
+                 for all values of a and b, and an error will be raised if
+                 that is the case. The reason for keeping the default is to
+                 maintain the same signature as numpy's tensordot function
+                 (and np.tensordot raises analogous errors for non-compatible
+                 inputs).
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor:
+
+                     axes = [range(a.ndim - i, b.ndim), range(i)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 0]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 1st axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 1st axis of b.
+    :type axes: int or array-like of length 2
+
+    :returns: a tensor with shape equal to the concatenation of a's shape
+              (less any dimensions that were summed over) and b's shape
+              (less any dimensions that were summed over).
+    :rtype: symbolic tensor
+
+    It may be helpful to consider an example to see what tensordot does.
+    Theano's implementation is identical to NumPy's. Here a has shape (2, 3, 4)
+    and b has shape (5, 6, 4, 3). The axes to sum over are [[1, 2], [3, 2]] --
+    note that a.shape[1] == b.shape[3] and a.shape[2] == b.shape[2]; these axes
+    are compatible. The resulting tensor will have shape (2, 5, 6) -- the
+    dimensions that are not being summed:
+
+    .. code-block:: python
+
+        a = np.random.random((2,3,4))
+        b = np.random.random((5,6,4,3))
+
+        #tensordot
+        c = np.tensordot(a, b, [[1,2],[3,2]])
+
+        #loop replicating tensordot
+        a0, a1, a2 = a.shape
+        b0, b1, _, _ = b.shape
+        cloop = np.zeros((a0,b0,b1))
+
+        #loop over non-summed indices -- these exist
+        #in the tensor product.
+        for i in range(a0):
+            for j in range(b0):
+                for k in range(b1):
+                    #loop over summed indices -- these don't exist
+                    #in the tensor product.
+                    for l in range(a1):
+                        for m in range(a2):
+                            cloop[i,j,k] += a[i,l,m] * b[j,k,m,l]
+
+        np.allclose(c, cloop) #true
+
+    This specific implementation avoids a loop by transposing a and b such that
+    the summed axes of a are last and the summed axes of b are first. The
+    resulting arrays are reshaped to 2 dimensions (or left as vectors, if
+    appropriate) and a matrix or vector dot product is taken. The result is
+    reshaped back to the required output dimensions.
+
+    In an extreme case, no axes may be specified. The resulting tensor
+    will have shape equal to the concatenation of the shapes of a and b:
+
+    .. code-block:: python
+
+        c = np.tensordot(a, b, 0)
+        print(a.shape) #(2,3,4)
+        print(b.shape) #(5,6,4,3)
+        print(c.shape) #(2,3,4,5,6,4,3)
+
+    :note: See the documentation of `numpy.tensordot <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ for more examples.
+
+.. function:: batched_dot(X, Y)
+
+    :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+
+    This function computes the dot product between the two tensors, by iterating
+    over the first dimension using scan.
+    Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
+    Example:
+    >>> first = T.tensor3('first')
+    >>> second = T.tensor3('second')
+    >>> result = batched_dot(first, second)
+
+    :note:  This is a subset of numpy.einsum, but we do not provide it for now.
+        But numpy einsum is slower than dot or tensordot:
+        http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
 
     :param X: left term
     :param Y: right term
-    :param axes: sum out these axes from X and Y.
     :type X: symbolic tensor
     :type Y: symbolic tensor
-    :rtype: symbolic tensor
-    :type axes: see numpy.tensordot
 
-    :return: tensor product
+    :return: tensor of products
+
+.. function:: batched_tensordot(X, Y, axes=2)
+
+    :param x: A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor (excluding the first 
+                 (batch) dimension):
+                     axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 4]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 5th axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 5th axis of b.
+    :type axes: int or array-like of length 2
+    
+    :returns: a tensor with shape equal to the concatenation of a's shape
+              (less any dimensions that were summed over) and b's shape
+              (less first dimension and any dimensions that were summed over).
+    :rtype: tensor of tensordots
+    
+    A hybrid of batch_dot and tensordot, this function computes the 
+    tensordot product between the two tensors, by iterating over the 
+    first dimension using scan to perform a sequence of tensordots.
+    
+    :note: See :func:`tensordot` and :func:`batched_dot` for 
+        supplementary documentation.
 
 
 

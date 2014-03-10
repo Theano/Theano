@@ -1,7 +1,16 @@
-
+"""
+If you have two expressions
+containing unification variables, these expressions can be "unified"
+if there exists an assignment to all unification variables such that
+    the two expressions are equal. For instance, [5, A, B] and [A, C, 9]
+    can be unified if A=C=5 and B=9, yielding [5, 5, 9]. [5, [A, B]] and
+    [A, [1, 2]] cannot be unified because there is no value for A that
+    satisfies the constraints. That's useful for pattern matching.
+"""
 from copy import copy
 
-from utils import *
+from theano.gof.python25 import partial
+from theano.gof.utils import *
 
 
 ################################
@@ -10,8 +19,18 @@ from utils import *
 class Variable:
     """
     Serves as a base class of variables for the purpose of unification.
+    "Unification" here basically means matching two patterns, see the
+    module-level docstring.
+
     Behavior for unifying various types of variables should be added as
     overloadings of the 'unify' function.
+
+    Note: there are two Variable classes in theano and this is the
+    more rarely used one.
+    This class is used internally by the PatternSub optimization,
+    and possibly other subroutines that have to perform graph queries.
+    If that doesn't sound like what you're doing, the Variable class you
+    want is probably theano.gof.graph.Variable
     """
     def __init__(self, name = "?"):
         self.name = name
@@ -166,7 +185,7 @@ def unify_walk(a, b, U):
     be added if required)
 
     Here is a list of unification rules with their associated behavior:
-        
+
     """
     if a.__class__ != b.__class__:
         return False

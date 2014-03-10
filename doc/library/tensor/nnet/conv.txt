@@ -7,8 +7,11 @@
 .. note::
 
     Two similar implementation exists for conv2d:
-    **theano.tensor.signal.conv.conv2d** and
-    **theano.tensor.nnet.conv.conv2d**. The foremer implements a traditional
+
+        :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>` and
+        :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
+
+    The former implements a traditional
     2D convolution, while the latter implements the convolutional layers
     present in convolutional neural networks (where filters are 3D and pool
     over several input channels).
@@ -21,5 +24,25 @@
 
 TODO: Give examples for how to use these things! They are pretty complicated.
 
-.. autofunction:: theano.tensor.nnet.conv.conv2d
+- Conv implemented
+    - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
+    - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
+    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
+    - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
+      Another conv3d implementation that uses the conv2d with data reshaping.
+      It is faster in some cases than conv3d, specifically on the GPU.
+    - `Faster conv2d <http://deeplearning.net/software/pylearn2/library/alex.html>`_
 
+      This is in Pylearn2, not very documented and uses a different
+      memory layout for the input. It is important to have the input
+      in the native memory layout, and not use dimshuffle on the
+      inputs, otherwise you lose most of the speed up. So this is not
+      a drop in replacement of conv2d.
+
+      Normally those are called from the `linear transform
+      <http://deeplearning.net/software/pylearn2/library/linear.html>`_
+      implementation.
+
+.. autofunction:: theano.tensor.nnet.conv.conv2d
+.. autofunction:: theano.tensor.nnet.Conv3D.conv3D
+.. autofunction:: theano.tensor.nnet.conv3d2d.conv3d

@@ -6,6 +6,8 @@ try:
     import line_profiler
 except ImportError:
     pass
+
+from nose.plugins.skip import SkipTest
 import numpy
 
 from theano import function
@@ -38,9 +40,9 @@ class TestCallbacks(unittest.TestCase):
                     linker=vm.VM_Linker(callback=self.callback)))
 
         f(1, 2, 3)
-        assert sum(self.n_callbacks.values()) == len(f.maker.env.toposort())
+        assert sum(self.n_callbacks.values()) == len(f.maker.fgraph.toposort())
         f(1, 2, 3)
-        assert sum(self.n_callbacks.values()) == len(f.maker.env.toposort()) * 2
+        assert sum(self.n_callbacks.values()) == len(f.maker.fgraph.toposort()) * 2
 
 
     def test_callback_with_ifelse(self):
@@ -55,6 +57,8 @@ class TestCallbacks(unittest.TestCase):
 
 
 def test_speed():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
 
     def build_graph(x, depth=5):
         z = x
@@ -74,10 +78,10 @@ def test_speed():
 
         numpy_version(x, steps_a)
         t0 = time.time()
-        print numpy_version(x, steps_a)
+        #print numpy_version(x, steps_a)
         t1 = time.time()
         t2 = time.time()
-        print numpy_version(x, steps_b)
+        #print numpy_version(x, steps_b)
         t3 = time.time()
         t_a = t1 - t0
         t_b = t3 - t2
@@ -103,15 +107,15 @@ def test_speed():
                 #profile='f_b speed test %s'%name,
                 )
 
-        print f_a([2.0, 3.0])
+        f_a([2.0, 3.0])
         t0 = time.time()
-        print f_a([2.0, 3.0])
+        f_a([2.0, 3.0])
         t1 = time.time()
 
-        print f_b([2.0, 3.0])
+        f_b([2.0, 3.0])
 
         t2 = time.time()
-        print f_b([2.0, 3.0])
+        f_b([2.0, 3.0])
         t3 = time.time()
 
         t_a = t1 - t0
@@ -124,8 +128,9 @@ def test_speed():
     time_linker('c|py', OpWiseCLinker)
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda : vm.VM_Linker(allow_gc=False))
-    time_linker('vmLinker_CLOOP', lambda : vm.VM_Linker(allow_gc=False,
-        use_cloop=True))
+    if theano.config.cxx:
+        time_linker('vmLinker_CLOOP', lambda : vm.VM_Linker(allow_gc=False,
+                                                            use_cloop=True))
     time_numpy()
 
 def test_speed_lazy():
@@ -155,15 +160,15 @@ def test_speed_lazy():
                 #profile='f_b lazy ifelse %s'%name,
                 )
 
-        print f_a([2.0])
+        f_a([2.0])
         t0 = time.time()
-        print f_a([2.0])
+        f_a([2.0])
         t1 = time.time()
 
-        print f_b([2.0])
+        f_b([2.0])
 
         t2 = time.time()
-        print f_b([2.0])
+        f_b([2.0])
         t3 = time.time()
 
         t_a = t1 - t0
@@ -175,14 +180,15 @@ def test_speed_lazy():
 
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda : vm.VM_Linker(allow_gc=False))
-    time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False,
-        use_cloop=True))
+    if theano.config.cxx:
+        time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False,
+                                                        use_cloop=True))
 
 run_memory_usage_tests = False
 if run_memory_usage_tests:
     # these are not normal unit tests, do not run them as part of standard
-    # suite.  I ran them while looking at top, and stopped when memory usage was
-    # stable.
+    # suite.  I ran them while looking at top, and stopped when memory usage
+    # was stable.
     def test_leak2():
         import theano.sandbox.cuda as cuda
         for i in xrange(1000000):
@@ -199,13 +205,13 @@ if run_memory_usage_tests:
     def test_no_leak_many_graphs():
         # Verify no memory leaks when creating and deleting a lot of functions
 
-        # This isn't really a unit test, you have to run it and look at top to see
-        # if there's a leak
+        # This isn't really a unit test, you have to run it and look at top to
+        # see if there's a leak
         for i in xrange(10000):
             x = tensor.vector()
             z = x
             for d in range(10):
-                z = tensor.sin(-z+ 1)
+                z = tensor.sin(-z + 1)
 
             f = function([x], z, mode=Mode(optimizer=None, linker='cvm'))
             if not i % 100:
@@ -222,13 +228,13 @@ if run_memory_usage_tests:
     def test_no_leak_many_call_lazy():
         # Verify no memory leaks when calling a function a lot of times
 
-        # This isn't really a unit test, you have to run it and look at top to see
-        # if there's a leak
+        # This isn't really a unit test, you have to run it and look at top to
+        # see if there's a leak
 
         def build_graph(x, depth=5):
             z = x
             for d in range(depth):
-                z = ifelse(z> 0, -z, z)
+                z = ifelse(z > 0, -z, z)
             return z
 
         def time_linker(name, linker):
@@ -242,7 +248,7 @@ if run_memory_usage_tests:
 
             for i in xrange(100000):
                 f_a([2.0])
-            if 0: # this doesn't seem to work, prints 0 for everything
+            if 0:  # this doesn't seem to work, prints 0 for everything
                 import resource
                 pre = resource.getrusage(resource.RUSAGE_SELF)
                 post = resource.getrusage(resource.RUSAGE_SELF)
@@ -250,24 +256,25 @@ if run_memory_usage_tests:
                 print pre.ru_idrss, post.ru_idrss
                 print pre.ru_maxrss, post.ru_maxrss
 
-        time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False, use_cloop=True))
+        time_linker('vmLinker_C',
+                    lambda: vm.VM_Linker(allow_gc=False, use_cloop=True))
 
     def test_no_leak_many_call_nonlazy():
         # Verify no memory leaks when calling a function a lot of times
 
-        # This isn't really a unit test, you have to run it and look at top to see
-        # if there's a leak
+        # This isn't really a unit test, you have to run it and look at top to
+        # see if there's a leak.
 
         def build_graph(x, depth=5):
             z = x
             for d in range(depth):
-                z = tensor.sin(-z+1)
+                z = tensor.sin(-z + 1)
             return z
 
         def time_linker(name, linker):
             steps_a = 10
             x = tensor.vector()
-            a = build_graph(x,steps_a)
+            a = build_graph(x, steps_a)
 
             f_a = function([x], a,
                     mode=Mode(optimizer=None,
@@ -276,6 +283,39 @@ if run_memory_usage_tests:
             for i in xrange(500000):
                 f_a([2.0])
 
-        time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False, use_cloop=True))
+        time_linker('vmLinker_C',
+                    lambda: vm.VM_Linker(allow_gc=False, use_cloop=True))
 
 
+class RunOnce(theano.Op):
+    def __init__(self):
+        self.nb_run = 0
+
+    def make_node(self, x):
+        return theano.Apply(self, [x], [x.type()])
+
+    def perform(self, node, inputs, outputs):
+        assert self.nb_run == 0
+        self.nb_run += 1
+        outputs[0][0] = inputs[0].copy()
+
+
+def test_vm_gc():
+    """This already caused a bug in the trunk of Theano.
+
+    The bug was introduced in the trunk on July 5th, 2012 and fixed on
+    July 30th.
+
+    """
+    x = theano.tensor.vector()
+    p = RunOnce()(x)
+    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(lazy=True))
+    f = theano.function([theano.In(x, mutable=True)], [p + 1, p + 2],
+                        mode=mode)
+    f([1, 2, 3])
+
+    p = RunOnce()(x)
+    pp = p + p
+    f = theano.function([x], [pp + pp],
+                        mode=mode)
+    f([1, 2, 3])

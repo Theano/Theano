@@ -6,8 +6,8 @@ Loading and Saving
 ==================
 
 Python's standard way of saving class instances and reloading them
-is the pickle_ mechanism. Many Theano objects can be serialized (and
-deserialized) by ``pickle``, however, a limitation of ``pickle`` is that
+is the pickle_ mechanism. Many Theano objects can be *serialized* (and
+*deserialized*) by ``pickle``, however, a limitation of ``pickle`` is that
 it does not save the code or data of a class along with the instance of
 the class being serialized. As a result, reloading objects created by a
 previous version of a class can be really problematic.
@@ -24,7 +24,7 @@ as you would in the course of any other Python program.
 .. _pickle: http://docs.python.org/library/pickle.html
 
 
-The basics of pickling
+The Basics of Pickling
 ======================
 
 The two modules ``pickle`` and ``cPickle`` have the same functionalities, but
@@ -45,7 +45,7 @@ You can serialize (or *save*, or *pickle*) objects to a file with
 .. note::
 
     If you want your saved object to be stored efficiently, don't forget
-    to use ``cPickle.HIGHEST_PROTOCOL``, the resulting file can be
+    to use ``cPickle.HIGHEST_PROTOCOL``. The resulting file can be
     dozens of times smaller than with the default protocol.
 
 .. note::
@@ -81,7 +81,7 @@ For more details about pickle's usage, see
 `Python documentation <http://docs.python.org/library/pickle.html#usage>`_.
 
 
-Short-term serialization
+Short-Term Serialization
 ========================
 
 If you are confident that the class instance you are serializing will be
@@ -114,7 +114,7 @@ For instance, you can define functions along the lines of:
         self.training_set = cPickle.load(file(self.training_set_file, 'rb'))
 
 
-Long-term serialization
+Long-Term Serialization
 =======================
 
 If the implementation of the class you want to save is quite unstable, for
@@ -126,7 +126,7 @@ maybe defining the attributes you want to save, rather than the ones you
 don't.
 
 For instance, if the only parameters you want to save are a weight
-matrix ``W`` and a bias ``b``, you can define:
+matrix *W* and a bias *b*, you can define:
 
 .. code-block:: python
 
@@ -138,8 +138,8 @@ matrix ``W`` and a bias ``b``, you can define:
         self.W = W
         self.b = b
 
-If, at some point in time, ``W`` is renamed to ``weights`` and ``b`` to
-``bias``, the older pickled files will still be usable, if you update these
+If at some point in time *W* is renamed to *weights* and *b* to
+*bias*, the older pickled files will still be usable, if you update these
 functions to reflect the change in name:
 
 .. code-block:: python
@@ -152,6 +152,6 @@ functions to reflect the change in name:
         self.weights = W
         self.bias = b
 
-For more information on advanced use of pickle and its internals, see Python's
+For more information on advanced use of ``pickle`` and its internals, see Python's
 pickle_ documentation.
 

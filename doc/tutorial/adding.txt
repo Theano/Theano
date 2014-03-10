@@ -1,14 +1,13 @@
 .. _adding:
 
-========================================
-Baby steps - Adding two numbers together
-========================================
+====================
+Baby Steps - Algebra
+====================
 
-
-Adding two scalars
+Adding two Scalars
 ==================
 
-So, to get us started with Theano and get a feel of what we're working with, 
+To get us started with Theano and get a feel of what we're working with, 
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
@@ -34,12 +33,12 @@ Let's break this down into several steps. The first step is to define
 two symbols (*Variables*) representing the quantities that you want
 to add. Note that from now on, we will use the term 
 *Variable* to mean "symbol" (in other words, 
-``x``, ``y``, ``z`` are all *Variable* objects). The output of the function 
-``f`` is a ``numpy.ndarray`` with zero dimensions.
+*x*, *y*, *z* are all *Variable* objects). The output of the function 
+*f* is a ``numpy.ndarray`` with zero dimensions.
 
 If you are following along and typing into an interpreter, you may have
 noticed that there was a slight delay in executing the ``function``
-instruction. Behind the scenes, ``f`` was being compiled into C code.
+instruction. Behind the scene, *f* was being compiled into C code.
 
 
 .. note:
@@ -52,12 +51,10 @@ instruction. Behind the scenes, ``f`` was being compiled into C code.
   >>> x = theano.tensor.ivector()
   >>> y = -x
   
-  ``x`` and ``y`` are both Variables, i.e. instances of the
+  *x* and *y* are both Variables, i.e. instances of the
   ``theano.gof.graph.Variable`` class. The
-  type of both ``x`` and ``y`` is ``theano.tensor.ivector``.
+  type of both *x* and *y* is ``theano.tensor.ivector``.
 
-
--------------------------------------------
 
 **Step 1**
 
@@ -68,9 +65,9 @@ In Theano, all symbols must be typed. In particular, ``T.dscalar``
 is the type we assign to "0-dimensional arrays (`scalar`) of doubles
 (`d`)". It is a Theano :ref:`type`.
 
-``dscalar`` is not a class. Therefore, neither ``x`` nor ``y``
+``dscalar`` is not a class. Therefore, neither *x* nor *y*
 are actually instances of ``dscalar``. They are instances of
-:class:`TensorVariable`. ``x`` and ``y``
+:class:`TensorVariable`. *x* and *y*
 are, however, assigned the theano Type ``dscalar`` in their ``type``
 field, as you can see here:
 
@@ -83,52 +80,75 @@ TensorType(float64, scalar)
 >>> x.type is T.dscalar
 True
 
-You can learn more about the structures in Theano in :ref:`graphstructures`.
-
 By calling ``T.dscalar`` with a string argument, you create a
 *Variable* representing a floating-point scalar quantity with the
 given name. If you provide no argument, the symbol will be unnamed. Names
 are not required, but they can help debugging.
 
+More will be said in a moment regarding Theano's inner structure. You
+could also learn more by looking into :ref:`graphstructures`.
 
--------------------------------------------
 
 **Step 2**
 
-The second step is to combine ``x`` and ``y`` into their sum ``z``:
+The second step is to combine *x* and *y* into their sum *z*:
 
 >>> z = x + y
 
-``z`` is yet another *Variable* which represents the addition of
-``x`` and ``y``. You can use the :ref:`pp <libdoc_printing>`
-function to pretty-print out the computation associated to ``z``.
+*z* is yet another *Variable* which represents the addition of
+*x* and *y*. You can use the :ref:`pp <libdoc_printing>`
+function to pretty-print out the computation associated to *z*.
 
+>>> from theano import pp
 >>> print pp(z)
 (x + y)
 
--------------------------------------------
 
 **Step 3**
 
-The last step is to create a function taking ``x`` and ``y`` as inputs
-and giving ``z`` as output:
+The last step is to create a function taking *x* and *y* as inputs
+and giving *z* as output:
 
 >>> f = function([x, y], z)
 
 The first argument to :func:`function <function.function>` is a list of Variables
 that will be provided as inputs to the function. The second argument
 is a single Variable *or* a list of Variables. For either case, the second
-argument is what we want to see as output when we apply the function.
+argument is what we want to see as output when we apply the function. *f* may
+then be used like a normal Python function.
 
-``f`` may then be used like a normal Python function.
+.. note::
+
+    As a shortcut, you can skip step 3, and just use a variable's
+    :func:`eval` method. The :func:`eval` method is not as flexible
+    as :func:`function` but it can do everything we've covered in
+    the tutorial so far. It has the added benefit of not requiring
+    you to import :func:`function` . Here is how :func:`eval` works:
+
+    >>> import theano.tensor as T
+    >>> x = T.dscalar('x')
+    >>> y = T.dscalar('y')
+    >>> z = x + y
+    >>> z.eval({x : 16.3, y : 12.1})
+    array(28.4)
+
+    We passed :func:`eval` a dictionary mapping symbolic theano
+    variables to the values to substitute for them, and it returned
+    the numerical value of the expression.
+
+    :func:`eval` will be slow the first time you call it on a variable --
+    it needs to call :func:`function` to compile the expression behind
+    the scenes. Subsequent calls to :func:`eval` on that same variable
+    will be fast, because the variable caches the compiled function.
 
 
-Adding two matrices
+
+Adding two Matrices
 ===================
 
 You might already have guessed how to do this. Indeed, the only change
-from the previous example is that you need to instantiate ``x`` and
-``y`` using the matrix Types:
+from the previous example is that you need to instantiate *x* and
+*y* using the matrix Types:
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_adding.test_adding_2
@@ -138,14 +158,14 @@ from the previous example is that you need to instantiate ``x`` and
 >>> z = x + y
 >>> f = function([x, y], z)
 
-``dmatrix`` is the Type for matrices of doubles. And then we can use
+``dmatrix`` is the Type for matrices of doubles. Then we can use
 our new function on 2D arrays:
 
 >>> f([[1, 2], [3, 4]], [[10, 20], [30, 40]])
 array([[ 11.,  22.],
        [ 33.,  44.]])
 
-The variable is a numpy array. We can also use numpy arrays directly as
+The variable is a NumPy array. We can also use NumPy arrays directly as
 inputs:
 
 >>> import numpy
@@ -159,18 +179,37 @@ by :ref:`broadcasting <libdoc_tensor_broadcastable>`.
 
 The following types are available:
 
-* **byte**: bscalar, bvector, bmatrix, brow, bcol, btensor3, btensor4
-* **32-bit integers**: iscalar, ivector, imatrix, irow, icol, itensor3, itensor4
-* **64-bit integers**: lscalar, lvector, lmatrix, lrow, lcol, ltensor3, ltensor4
-* **float**: fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4
-* **double**: dscalar, dvector, dmatrix, drow, dcol, dtensor3, dtensor4
-* **complex**: cscalar, cvector, cmatrix, crow, ccol, ctensor3, ctensor4
+* **byte**: ``bscalar, bvector, bmatrix, brow, bcol, btensor3, btensor4``
+* **16-bit integers**: ``wscalar, wvector, wmatrix, wrow, wcol, wtensor3, wtensor4``
+* **32-bit integers**: ``iscalar, ivector, imatrix, irow, icol, itensor3, itensor4``
+* **64-bit integers**: ``lscalar, lvector, lmatrix, lrow, lcol, ltensor3, ltensor4``
+* **float**: ``fscalar, fvector, fmatrix, frow, fcol, ftensor3, ftensor4``
+* **double**: ``dscalar, dvector, dmatrix, drow, dcol, dtensor3, dtensor4``
+* **complex**: ``cscalar, cvector, cmatrix, crow, ccol, ctensor3, ctensor4``
 
-The previous list is not exhaustive. A guide to all types compatible
-with numpy arrays may be found :ref:`here <libdoc_tensor_creation>`.
+The previous list is not exhaustive and a guide to all types compatible
+with NumPy arrays may be found here: :ref:`tensor creation<libdoc_tensor_creation>`.
 
 .. note::
 
    You, the user---not the system architecture---have to choose whether your
    program will use 32- or 64-bit integers (``i`` prefix vs. the ``l`` prefix)
    and floats (``f`` prefix vs. the ``d`` prefix).
+
+
+
+Exercise
+========
+
+.. code-block:: python
+
+  import theano
+  a = theano.tensor.vector() # declare variable
+  out = a + a ** 10               # build symbolic expression
+  f = theano.function([a], out)   # compile function
+  print f([0, 1, 2])  # prints `array([0, 2, 1026])`
+  
+Modify and execute this code to compute this expression: a ** 2 + b ** 2 + 2 * a * b.
+
+
+:download:`Solution<adding_solution_1.py>`
