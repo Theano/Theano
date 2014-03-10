@@ -874,3 +874,21 @@ def test_gradient_scan():
     gw = theano.grad(tensor.sum(values[-1]), w)
     f = theano.function([x], gw)
     f(numpy.arange(1, dtype='float32'))
+
+
+def test_multMatVect():
+    A = tensor.imatrix('A')
+    s = tensor.ivector('s')
+    m = tensor.iscalar('m')
+    
+    g0 = rng_mrg.DotModulo()(A, s, m)
+    f0 = theano.function([A, s, m], g0)
+    
+    A = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, (3, 3)).astype('int32')
+    s = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, 3).astype('int32')
+    m = numpy.random.randint(numpy.iinfo(numpy.int32).max)
+    
+    r_a = rng_mrg.matVecModM(A, s, m)
+    r_b = f0(A, s, m)
+    
+    assert numpy.allclose(r_a, r_b)
