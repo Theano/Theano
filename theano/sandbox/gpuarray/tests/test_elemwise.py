@@ -1,9 +1,5 @@
-import unittest
-
 from theano import scalar, gof
-from theano.gof import FunctionGraph
 from theano.gof.python25 import all, any
-from theano.tests.unittest_tools import SkipTest
 
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce)
