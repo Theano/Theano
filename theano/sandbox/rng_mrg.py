@@ -58,7 +58,7 @@ class DotModulo(Op):
         out[0] = matVecModM(A, s, m)
     
     #def c_code_cache_version(self):
-    #    return (1,)
+    #    return (2,)
 
     def c_code(self, node, name, (_A, _s, _m), (_z, ), sub):
         return """
@@ -93,23 +93,18 @@ class DotModulo(Op):
             npy_intp Ss = PyArray_STRIDES(%(_s)s)[0] / PyArray_DESCR(%(_s)s)->elsize;
             npy_intp Sz = PyArray_STRIDES(%(_z)s)[0] / PyArray_DESCR(%(_z)s)->elsize;
 
-            memset(Dz, 0, M*sizeof(dtype_%(_z)s));
-
             for (npy_int32 i = 0; i < M; ++i)
             {
                 const dtype_%(_A)s* __restrict__ Ak = (dtype_%(_A)s*)(PyArray_BYTES(%(_A)s) + PyArray_STRIDES(%(_A)s)[0] * i);
                 
+                npy_int64 r = 0;
+                
                 for (npy_int32 j = 0; j < N; ++j)
                 {
-                    npy_intp r = (Dz[i * Sz] + (npy_int64)(Ds[j * Ss]) * (npy_int64)(Ak[j * SA])) %% m;
-                    
-                    if (r >= 0) {
-                        Dz[i * Sz] = r;
-                    }
-                    else {
-                        Dz[i * Sz] = r + m;
-                    }
+                    r += Ds[j * Ss] * (npy_int64)(Ak[j * SA]);
                 }
+                
+                Dz[i * Sz] = r %% m;
             }
         }
 
