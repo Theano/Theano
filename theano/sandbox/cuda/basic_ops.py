@@ -1198,7 +1198,11 @@ class GpuCAReduce(GpuOp):
                     n_threads.z += 1;
                 else
                     break;
-            }""" % locals()
+            }
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
+
+        """ % locals()
 
         if len(self.reduce_mask) == 2:
             threads_y = ''
@@ -1509,6 +1513,8 @@ class GpuCAReduce(GpuOp):
                 n_threads.z += 1;
             }
             n_threads.z -= 1;
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
 
             dim3 n_blocks(1,1,1);
             %(makecall)s
