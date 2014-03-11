@@ -543,7 +543,7 @@ def grad(cost, wrt, consider_constant=None,
         rval, = rval
     return rval
 
-def subgrad(wrt, grad_end, known_grads=None, cost=None, details=False):
+def subgrad(wrt, end, start=None, cost=None, details=False):
     '''
     With respect to wrt, computes gradients of known_grads, cost, 
     or both, up to grad_end theano variables in theano digraph. 
@@ -566,58 +566,74 @@ def subgrad(wrt, grad_end, known_grads=None, cost=None, details=False):
     parameters
     ----------
     wrt : list
-        gradients are computed with regard to (wrt) these variables.
-    known_grads : dict
-        parameters, gradients (key, value) in the forward part 
-        (near cost) of the graph for which gradients are known. 
-        These will be used to compute the gradients backwards 
-        up to the variables in grad_end.
-    grad_end : list
+        gradients are computed with respect to (wrt) these variables.
+    end : list
         theano variables where to stop the backpropagation of gradients
         (they will be considered constant in theano.grad).
+    start : dict
+        Theano variables, gradients (key, value) in the forward part 
+        (near a cost) of the graph for which gradients are known. 
+        These will be used to compute the gradients backwards 
+        up to the variables in grad_end (they will be used as known_grads
+        in theano.grad).
     cost : theano scalar
         additional costs for which to compute the gradients. For 
         example, these could be weight decay, or l1 constraint on output
     details: bool
         when True, return OrderedDict of wrt, gradients, and lists of
         gradients derived from known_grads, cost_grads, respectively
-        (in same order as params)
+        (in same order as wrt)
     
     return
     ------
     Returns an OrderedDict of params (keys), gradients (values)
     '''
-    assert ((cost is not None) or (known_grads is not None))
-    assert isinstance(grad_end, list)
+    assert ((cost is not None) or (start is not None))
+    assert isinstance(end, list)
     assert isinstance(wrt, list)
-    if known_grads is not None:
-        assert isinstance(known_grads, dict)
-    kg_grads = None
+    if start is not None:
+        assert isinstance(start, dict)
+        
+    params = list(set(wrt + end))
+    
+    start_grads = None
     cost_grads = None
-    if known_grads is not None:
-        kg_grads = list(theano.grad(cost=None, wrt=wrt, 
-                          known_grads=known_grads, 
-                          consider_constant=grad_end,
-                          disconnected_inputs='ignore'))
+    if start is not None:
+        start_grads = list(
+            theano.grad(
+                cost=None, wrt=params, known_grads=start, 
+                consider_constant=end, 
+                disconnected_inputs='ignore'
+            )
+        )
         
     if cost is not None:
-        cost_grads = list(theano.grad(cost=cost, wrt=wrt,
-                        consider_constant=grad_end,
-                        disconnected_inputs='ignore'))
+        cost_grads = list(
+            theano.grad(
+                cost=cost, wrt=params,
+                consider_constant=end,
+                disconnected_inputs='ignore'
+            )
+        )
                         
     grads = None
-    if known_grads is None:
+    if start is None:
         grads = cost_grads
     else:
-        grads = kg_grads
+        grads = start_grads
         if cost_grads is not None:
             for i in range(len(grads)):
                 grads[i] += cost_grads[i]
     
-            
+    pgrads = OrderedDict(zip(params, grads))
+    # separate wrt from end grads:
+    wrt_grads = list(pgrads[k] for k in wrt)
+    end_grads = list(pgrads[k] for k in end)
+   
+    
     if details:
-        return grads, kg_grads, cost_grads
-    return grads
+        return wrt_grads, end_grads, start_grads, cost_grads
+    return wrt_grads, end_grads
 
 def _node_to_pattern(node):
     """ given an apply node, obtain its connection pattern

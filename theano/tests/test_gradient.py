@@ -569,7 +569,7 @@ def test_subgrad():
     cost2 += theano.tensor.sqr(w2.sum())
     cost1 = theano.tensor.sqr(w1.sum())
     
-    params = [[w2,a1],[w1,x]]
+    params = [[w2],[w1]]
     costs = [cost2,cost1]
     grad_ends = [[a1], [x]]
     
@@ -578,30 +578,24 @@ def test_subgrad():
     values = [rng.randn(2), rng.randn(3)]
     values = [np.cast[ipt.dtype](value) for ipt, value in zip(inputs, values)]
 
-    wrt = [w2, a1, w1, x]
+    wrt = [w2, w1]
     cost = cost2 + cost1
     true_grads = theano.grad(cost, wrt)
     true_grads = theano.function(inputs, true_grads)
     true_grads = true_grads(*values)
     from theano.gof.python25 import OrderedDict
-    known_grad = None
-    params2 = []
+    next_grad = None
+    param_grads = []
     for i in xrange(2):
-        param = params[i]
-        cost = costs[i]
-        grad_end = grad_ends[i]
-        
-        pgrad = theano.subgrad(
-            wrt=param, grad_end=grad_end, 
-            known_grads=known_grad, cost=cost
+        param_grad, next_grad = theano.subgrad(
+            wrt=params[i], end=grad_ends[i], 
+            start=next_grad, cost=costs[i]
         )
-        known_grad = OrderedDict(zip(param,pgrad))
-        params2.extend(pgrad)
+        next_grad = OrderedDict(zip(grad_ends[i], next_grad))
+        param_grads.extend(param_grad)
     
-    pgrads = theano.function(inputs, params2)
+    pgrads = theano.function(inputs, param_grads)
     pgrads = pgrads(*values)
-    print(pgrads)
-    print(true_grads)
     
     for true_grad, pgrad in zip(true_grads, pgrads):
         print(true_grad, pgrad)
