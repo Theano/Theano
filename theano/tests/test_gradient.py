@@ -599,7 +599,6 @@ def test_subgrad():
     pgrads = pgrads(*values)
     
     for true_grad, pgrad in zip(true_grads, pgrads):
-        print(true_grad, pgrad)
         assert(np.sum(np.abs(true_grad - pgrad)) < 0.00001)
 
 
