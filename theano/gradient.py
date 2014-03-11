@@ -543,6 +543,81 @@ def grad(cost, wrt, consider_constant=None,
         rval, = rval
     return rval
 
+def subgrad(wrt, grad_end, known_grads=None, cost=None, details=False):
+    '''
+    With respect to wrt, computes gradients of known_grads, cost, 
+    or both, up to grad_end theano variables in theano digraph. 
+    In other words, computes gradients for a subgraph of the
+    symbolic theano function. Ignores all disconnected inputs.
+    
+    This can be useful when one needs to perform the gradient descent 
+    iteratively (e.g. one layer at a time in an MLP), or when a particular 
+    operation is not differentiable in theano (e.g. stochastic sampling 
+    from a multinomial). In the latter case, the gradient of the 
+    non-differentiable process could be approximated by user-defined 
+    formula which could be calculated using the gradients at the 
+    output of the process. These are obtained by performing a subgrad 
+    from the cost or previously known_grads up to the outputs of the 
+    process (grad_end). The gradients obtained from the user defined 
+    gradient of the process can then be fed into another subgrad as 
+    known_grads with any other cost functions (e.g. weight decay), and 
+    so on.
+    
+    parameters
+    ----------
+    wrt : list
+        gradients are computed with regard to (wrt) these variables.
+    known_grads : dict
+        parameters, gradients (key, value) in the forward part 
+        (near cost) of the graph for which gradients are known. 
+        These will be used to compute the gradients backwards 
+        up to the variables in grad_end.
+    grad_end : list
+        theano variables where to stop the backpropagation of gradients
+        (they will be considered constant in theano.grad).
+    cost : theano scalar
+        additional costs for which to compute the gradients. For 
+        example, these could be weight decay, or l1 constraint on output
+    details: bool
+        when True, return OrderedDict of wrt, gradients, and lists of
+        gradients derived from known_grads, cost_grads, respectively
+        (in same order as params)
+    
+    return
+    ------
+    Returns an OrderedDict of params (keys), gradients (values)
+    '''
+    assert ((cost is not None) or (known_grads is not None))
+    assert isinstance(grad_end, list)
+    assert isinstance(wrt, list)
+    if known_grads is not None:
+        assert isinstance(known_grads, dict)
+    kg_grads = None
+    cost_grads = None
+    if known_grads is not None:
+        kg_grads = list(theano.grad(cost=None, wrt=wrt, 
+                          known_grads=known_grads, 
+                          consider_constant=grad_end,
+                          disconnected_inputs='ignore'))
+        
+    if cost is not None:
+        cost_grads = list(theano.grad(cost=cost, wrt=wrt,
+                        consider_constant=grad_end,
+                        disconnected_inputs='ignore'))
+                        
+    grads = None
+    if known_grads is None:
+        grads = cost_grads
+    else:
+        grads = kg_grads
+        if cost_grads is not None:
+            for i in range(len(grads)):
+                grads[i] += cost_grads[i]
+    
+            
+    if details:
+        return grads, kg_grads, cost_grads
+    return grads
 
 def _node_to_pattern(node):
     """ given an apply node, obtain its connection pattern
