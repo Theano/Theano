@@ -5,6 +5,7 @@ from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 
 from theano.tensor.extra_ops import CumsumOp
+from theano.sandbox.cuda import GpuFlatten
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
@@ -15,12 +16,28 @@ if cuda_available:
 class GpuCumsum(CumsumOp, GpuOp):
     SUPPORTED_NDIMS = 2
 
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and self.axis == other.axis \
+            and self.max_threads_dim0 == other.max_threads_dim0 \
+            and self.max_grid_size1 == other.max_grid_size1
+
+    def __hash__(self):
+        return hash(type(self)) \
+            ^ hash(self.axis) \
+            ^ hash(self.max_threads_dim0) \
+            ^ hash(self.max_grid_size1)
+
+    def __str__(self):
+        return "%s{%s}" % (self.__class__.__name__, self.axis)
+
     def __init__(self, axis):
         """
         ``axis`` can not be None. If you want the array flatten, do it before.
         """
         self.axis = axis
         self.max_threads_dim0 = None
+        self.max_grid_size1 = None
 
     def make_node(self, x):
         assert x.dtype == 'float32'
@@ -38,7 +55,7 @@ class GpuCumsum(CumsumOp, GpuOp):
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = copy.copy(node)
         assert node.op is node_.op
-        if node_.op.max_threads_dim0 is None:
+        if node_.op.max_threads_dim0 is None or node_.op.max_grid_size1 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
             if device_id is None:
@@ -53,12 +70,12 @@ class GpuCumsum(CumsumOp, GpuOp):
             prop = cuda_ndarray.device_properties(device_id)
             node_.op.max_threads_dim0 = prop['maxThreadsDim0']
             node_.op.max_grid_size1 = prop['maxGridSize1']
+
         return super(GpuCumsum, node_.op).make_thunk(node_, storage_map,
                                                      compute_map, no_recycling)
 
     def c_code_cache_version(self):
-        #return (1,)
-        return ()
+        return (1,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -301,16 +318,18 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         return code
 
-from theano.sandbox.cuda import GpuFlatten
 
 @local_optimizer([CumsumOp])
 def use_gpu_cumsum(node):
-    if node.inputs[0].ndim > GpuCumsum.SUPPORTED_NDIMS:
-       return None
-
     if type(node.op) is CumsumOp and node.inputs[0].dtype == 'float32':
-        x = gpu_from_host(node.inputs[0])
         axis = node.op.axis
+        x = node.inputs[0]
+
+        if axis is not None and x.ndim > GpuCumsum.SUPPORTED_NDIMS:
+            return None
+
+        x = gpu_from_host(x)
+        
         if axis is None and x.ndim > 1:
             x = GpuFlatten()(x)
 
