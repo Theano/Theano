@@ -47,6 +47,23 @@ class AdvancedIndexingError(TypeError):
 # Helpful functions to deal with Subtensor and IncSubtensor
 ##########
 
+def make_constant(args):
+    """
+    Convert python litterals to theano constants in subtensor arguments.
+    """
+    def conv(a):
+            if a is None:
+                return a
+            elif isinstance(a, slice):
+                return slice(conv(a.start),
+                             conv(a.stop),
+                             conv(a.step))
+            elif isinstance(a, (int, long, numpy.integer)):
+                return scal.ScalarConstant(scal.int64, a)
+            else:
+                return a
+    return tuple(map(conv, args))
+
 def get_idx_list(inputs, idx_list):
     '''
     Given a list of inputs to the subtensor and its idx_list reorders

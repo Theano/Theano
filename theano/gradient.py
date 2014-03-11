@@ -23,6 +23,7 @@ from theano.gof import Variable
 from theano.gof.python25 import OrderedDict
 from theano.gof.null_type import NullType
 from theano.gof.op import get_debug_values
+from theano.compile import ViewOp
 
 # we can't do "import theano.tensor"
 # tensor depends on theano.compile
@@ -1788,3 +1789,29 @@ def _is_zero(x):
         return 'no'
 
     return 'yes'
+
+
+class ConsiderConstant(ViewOp):
+    def grad(self, args, g_outs):
+        return [g_out.zeros_like(g_out) for g_out in g_outs]
+consider_constant_ = ConsiderConstant()
+
+
+#I create a function only to have the doc show well.
+def consider_constant(x):
+    """ Consider an expression constant when computing gradients.
+
+    The expression itself is unaffected, but when its gradient is
+    computed, or the gradient of another expression that this
+    expression is a subexpression of, it will not be backpropagated
+    through. In other words, the gradient of the expression is
+    truncated to 0.
+
+    :param x: A Theano expression whose gradient should be truncated.
+
+    :return: The expression is returned unmodified, but its gradient
+        is now truncated to 0.
+
+    .. versionadded:: 0.6.1
+    """
+    return consider_constant_(x)
