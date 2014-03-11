@@ -27,7 +27,7 @@ if cuda_available:
                                      float32_shared_constructor)
 
 def matVecModM(A, s, m):
-    return numpy.int32(numpy.sum((A*s) % m, 1) % m)
+    return numpy.int32(numpy.dot(A, s) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
