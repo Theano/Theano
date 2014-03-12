@@ -571,6 +571,8 @@ def repeat(x, repeats, axis=None):
 
     :param axis: int, optional.
 
+    :see: :func:`tensor.tile <tensor.tile>`
+
     .. versionadded:: 0.6
     """
     return RepeatOp(axis=axis)(x, repeats)
