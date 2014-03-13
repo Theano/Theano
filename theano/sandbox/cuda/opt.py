@@ -1017,6 +1017,41 @@ from theano.tensor.nnet import conv
 
 
 @register_opt()
+@local_optimizer([GpuConv])
+def local_gpu_conv_device(node):
+    """Add device specific info to GpuConv.
+
+    This can't be in __init__ as we don't always know the device
+    used. Putting this in make_thunk is awkward.
+
+    We can't put this only in the same opt as the one that move
+    computation to the GPU, in case users/tests add this node himself
+    to make sure it run on the GPU.
+
+    """
+    if (not isinstance(node.op, GpuConv) or
+        node.op.max_threads_dim0 is not None):
+        return
+
+    cuda = theano.sandbox.cuda
+    device_id = cuda.use.device_number
+    if device_id is None:
+        cuda.use("gpu",
+                 force=False,
+                 default_to_move_computation_to_gpu=False,
+                 move_shared_float32_to_gpu=False,
+                 enable_cuda=False,
+                 test_driver=True)
+        device_id = cuda.use.device_number
+    cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
+    prop = cuda_ndarray.device_properties(device_id)
+    max_threads_dim0 = prop['maxThreadsDim0']
+
+    new_op = copy.copy(node.op)
+    new_op.max_threads_dim0 = max_threads_dim0
+    return [new_op(*node.inputs)]
+
+@register_opt()
 @local_optimizer([gpu_from_host, conv.ConvOp])
 def local_gpu_conv(node):
     """

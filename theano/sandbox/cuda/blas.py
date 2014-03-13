@@ -640,26 +640,6 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = copy.copy(node)
-        assert node.op is node_.op
-        if node_.op.max_threads_dim0 is None:
-            cuda = theano.sandbox.cuda
-            device_id = cuda.use.device_number
-            if device_id is None:
-                cuda.use("gpu",
-                         force=False,
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False,
-                         test_driver=True)
-                device_id = cuda.use.device_number
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
-        return super(GpuConv, node_.op).make_thunk(node_, storage_map,
-                                                   compute_map, no_recycling)
-
     def c_compile_args(self):
         nb = 0
         if self.kshp is not None:
@@ -678,7 +658,7 @@ class GpuConv(GpuOp):
         # these files
         files = ['conv_kernel.cu', 'conv_full_kernel.cu', 'conv.cu']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
-                for f in files]
+                 for f in files]
         return reduce(str.__add__, codes)
 
     def c_code(self, node, nodename, inp, out_, sub):
@@ -692,10 +672,9 @@ class GpuConv(GpuOp):
         sub = sub.copy()
         max_threads_dim0 = self.max_threads_dim0
         if max_threads_dim0 is None:
-            raise NotImplementedError("GpuConv.c_code should not be called "
-                                      "directly. It should be called by "
-                                      "make_thunk() that add some information "
-                                      "related to the selected GPU.")
+            raise Exception(
+                "The Theano optimization local_gpu_conv_device must be"
+                " used to init some device specific for GpuConv")
         sub.update(locals())
         return """
     //Mandatory args
