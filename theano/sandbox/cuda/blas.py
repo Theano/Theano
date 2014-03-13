@@ -520,8 +520,7 @@ class GpuConv(GpuOp):
             version=-1,
             verbose=0,
             kshp=None,
-            imshp=None,
-            max_threads_dim0=None):
+            imshp=None):
         """
         :param version: each version of c_code implements many kernel for the
                         convolution. By default we try to guess the best one.
@@ -537,10 +536,6 @@ class GpuConv(GpuOp):
         :param imshp:   The size of the image. Not used for code generation but
                         allows to select an experimental new version in another
                         repo.
-        :param max_threads_dim0: The maximum number of threads for the
-                        block size dimensions 0 (blockDim.x) used by the
-                        GPU function.
-
         """
         self.border_mode = border_mode
         self.subsample = subsample
@@ -563,7 +558,6 @@ class GpuConv(GpuOp):
         self.verbose = verbose
         self.kshp = kshp
         self.imshp = imshp
-        self.max_threads_dim0 = max_threads_dim0
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -576,14 +570,13 @@ class GpuConv(GpuOp):
             and self.verbose == other.verbose \
             and self.kshp == other.kshp\
             and self.imshp == other.imshp\
-            and self.max_threads_dim0 == other.max_threads_dim0
 
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, "imshp"):
             self.imshp = None
-        if not hasattr(self, "max_threads_dim0"):
-            self.max_threads_dim0 = None
+        if hasattr(self, "max_threads_dim0"):
+            del self.max_threads_dim0
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and
@@ -597,8 +590,7 @@ class GpuConv(GpuOp):
             ^ self.version \
             ^ hash(self.verbose) \
             ^ hash(self.kshp)\
-            ^ hash(self.imshp)\
-            ^ hash(self.max_threads_dim0)
+            ^ hash(self.imshp)
 
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s, %s, %s}' % (
@@ -640,26 +632,6 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = copy.copy(node)
-        assert node.op is node_.op
-        if node_.op.max_threads_dim0 is None:
-            cuda = theano.sandbox.cuda
-            device_id = cuda.use.device_number
-            if device_id is None:
-                cuda.use("gpu",
-                         force=False,
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False,
-                         test_driver=True)
-                device_id = cuda.use.device_number
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
-        return super(GpuConv, node_.op).make_thunk(node_, storage_map,
-                                                   compute_map, no_recycling)
-
     def c_compile_args(self):
         nb = 0
         if self.kshp is not None:
@@ -671,7 +643,7 @@ class GpuConv(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
+        return (1, 0)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -690,12 +662,6 @@ class GpuConv(GpuOp):
         version = self.version
         verbose = self.verbose
         sub = sub.copy()
-        max_threads_dim0 = self.max_threads_dim0
-        if max_threads_dim0 is None:
-            raise NotImplementedError("GpuConv.c_code should not be called "
-                                      "directly. It should be called by "
-                                      "make_thunk() that add some information "
-                                      "related to the selected GPU.")
         sub.update(locals())
         return """
     //Mandatory args
@@ -727,8 +693,7 @@ class GpuConv(GpuOp):
     CudaNdarray * out2 = (CudaNdarray *)CudaNdarray_Conv(%(img)s, %(kern)s,
                                                          %(out)s, mode,
                                                          dx, dy,
-                                                         version, verbose,
-                                                         %(max_threads_dim0)s);
+                                                         version, verbose);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
 

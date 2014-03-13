@@ -1396,8 +1396,7 @@ PyObject *
 CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
                  CudaNdarray * out, const int mode,
                  const int subsample_rows, const int subsample_cols,
-                 const int version, const int verbose,
-                 const int max_threads_dim0 = 512
+                 const int version, const int verbose
                  )
 {
     // Re-use the out object if possible.  If the out object it not used, then its refcount is not modified.
@@ -1432,6 +1431,13 @@ CudaNdarray_Conv(CudaNdarray *img, CudaNdarray * kern,
     out_dim[3] = ceil_intdiv(logical_cols, subsample_cols);
 
     CudaNdarray * rval = NULL;
+
+    int dev_id;
+    cudaDeviceProp deviceProp;
+    int max_threads_dim0;
+    cudaGetDevice(&dev_id);
+    cudaGetDeviceProperties(&deviceProp, dev_id);
+    max_threads_dim0 = deviceProp.maxThreadsDim[0];
 
     if ( out
          && out->nd==4
