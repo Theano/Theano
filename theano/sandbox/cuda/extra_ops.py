@@ -75,7 +75,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                                                      compute_map, no_recycling)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -289,12 +289,21 @@ class GpuCumsum(CumsumOp, GpuOp):
                     if (CudaNdarray_HOST_DIMS(%(x)s)[i] == CudaNdarray_HOST_DIMS(%(z)s)[i]) {
                         needAllocation = true;
                     }
+
+                    if (CudaNdarray_HOST_STRIDES(%(x)s)[i] == CudaNdarray_HOST_STRIDES(%(z)s)[i]) {
+                        needAllocation = true;
+                    }
                 }
             }
 
             if (needAllocation){
                 Py_XDECREF(%(z)s);
                 %(z)s = (CudaNdarray*) CudaNdarray_NewDims(CudaNdarray_NDIM(%(x)s), shape);
+
+                // Copy strides information
+                for (int i= 0; i < CudaNdarray_NDIM(%(x)s); ++i) {
+                    CudaNdarray_set_stride(%(z)s, i, CudaNdarray_HOST_STRIDES(%(x)s)[i]);
+                }
             }
 
             if (!%(z)s) {

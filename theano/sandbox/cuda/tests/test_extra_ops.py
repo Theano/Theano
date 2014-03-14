@@ -44,6 +44,19 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         self.max_threads_dim0 = prop['maxThreadsDim0']
         self.max_grid_size1 = prop['maxGridSize1']
 
+    def test_Strides1D(self):
+        x = T.vector('x')
+
+        # Stepped strides
+        f = theano.function([x], cumsum(x[::2]))
+        a = np.random.randint(10, size=(42,)).astype(config.floatX)
+        assert np.allclose(np.cumsum(a[::2]), f(a))
+        
+        # Negative strides
+        f = theano.function([x], cumsum(x[::-1]))
+        a = np.random.randint(10, size=(42,)).astype(config.floatX)
+        assert np.allclose(np.cumsum(a[::-1]), f(a))
+
     def test_GpuCumsum1D(self):
         block_max_size = self.max_threads_dim0 * 2
 
