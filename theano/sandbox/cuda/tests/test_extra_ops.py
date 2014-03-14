@@ -31,6 +31,14 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         # Fetch some useful properties on the device
         cuda = theano.sandbox.cuda
         device_id = cuda.use.device_number
+        if device_id is None:
+            cuda.use("gpu",
+                     force=False,
+                     default_to_move_computation_to_gpu=False,
+                     move_shared_float32_to_gpu=False,
+                     enable_cuda=False,
+                     test_driver=True)
+            device_id = cuda.use.device_number
         cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
         prop = cuda_ndarray.device_properties(device_id)
         self.max_threads_dim0 = prop['maxThreadsDim0']
