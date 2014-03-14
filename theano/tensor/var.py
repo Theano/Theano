@@ -549,6 +549,14 @@ class _tensor_py_operators:
     def zeros_like(model, dtype=None):
         return theano.tensor.basic.zeros_like(model, dtype=dtype)
 
+    def cumsum(self,axis):
+        from theano.tensor.extra_ops import cumsum
+        return cumsum(x, axis)
+
+    def cumprod(self,axis):
+        from theano.tensor.extra_ops import cumprod
+        return cumprod(x, axis)
+
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
