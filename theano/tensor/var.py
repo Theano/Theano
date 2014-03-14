@@ -9,6 +9,7 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
+from theano.tensor import nnet
 from theano.tensor.extra_ops import cumsum
 from theano.tensor.extra_ops import cumprod
 
