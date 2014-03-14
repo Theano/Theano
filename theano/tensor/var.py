@@ -9,7 +9,8 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
-
+from theano.tensor.extra_ops import cumsum
+from theano.tensor.extra_ops import cumprod
 
 class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a
@@ -550,11 +551,9 @@ class _tensor_py_operators:
         return theano.tensor.basic.zeros_like(model, dtype=dtype)
 
     def cumsum(self, axis):
-        from theano.tensor.extra_ops import cumsum
         return cumsum(x, axis)
 
     def cumprod(self, axis):
-        from theano.tensor.extra_ops import cumprod
         return cumprod(x, axis)
 
 
