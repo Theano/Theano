@@ -2,7 +2,7 @@
 from nose.plugins.skip import SkipTest
 
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+if cuda_ndarray.cuda_available is False:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.tensor.tests.test_extra_ops
@@ -19,6 +19,7 @@ import theano
 from theano import config
 from theano.tensor.extra_ops import cumsum
 
+
 class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     mode = mode_with_gpu
     op = GpuCumsum
@@ -27,7 +28,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     def setUp(self):
         super(TestGpuCumsum, self).setUp()
 
-        # Fetch some useful properties on the device 
+        # Fetch some useful properties on the device
         cuda = theano.sandbox.cuda
         device_id = cuda.use.device_number
         cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
@@ -51,7 +52,8 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         assert np.allclose(np.cumsum(a), f(a))
 
         # Use recursive cumsum
-        a = np.ones((block_max_size*(block_max_size+1)+2,)).astype(config.floatX)
+        a = np.ones((block_max_size*(block_max_size+1)+2,),
+                    dtype=config.floatX)
         assert np.allclose(np.cumsum(a), f(a))
 
     def test_GpuCumsum2D(self):
