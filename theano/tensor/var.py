@@ -510,13 +510,11 @@ class _tensor_py_operators:
 
     def sort(self, axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.sort`"""
-        from theano.tensor.sort import sort
-        return sort(self, axis, kind, order)
+        return theano.tensor.sort.sort(self, axis, kind, order)
 
     def argsort(self, axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.argsort`"""
-        from theano.tensor.sort import argsort
-        return argsort(self, axis, kind, order)
+        return theano.tensor.sort.argsort(self, axis, kind, order)
 
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
@@ -530,16 +528,14 @@ class _tensor_py_operators:
 
     def repeat(self, repeats, axis=None):
         """See `theano.tensor.repeat`"""
-        from theano.tensor.extra_ops import repeat
-        return repeat(self, repeats, axis)
+        return theano.tensor.extra_ops.repeat(self, repeats, axis)
 
     def round(self, mode="half_away_from_zero"):
         """See `theano.tensor.round`"""
         return theano.tensor.basic.round(self, mode)
 
     def trace(self):
-        from theano.sandbox.linalg import trace
-        return trace(self)
+        return theano.sandbox.linalg.trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
