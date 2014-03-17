@@ -114,13 +114,13 @@ class Optimizer(object):
 
 class FromFunctionOptimizer(Optimizer):
     """WRITEME"""
-    def __init__(self, fn):
+    def __init__(self, fn, requirements=()):
         self.apply = fn
+        self.requirements = requirements
 
     def add_requirements(self, fgraph):
-        # Added by default
-        #fgraph.attach_feature(toolbox.ReplaceValidate())
-        pass
+        for req in self.requirements:
+            req(fgraph)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" % (
@@ -138,6 +138,16 @@ class FromFunctionOptimizer(Optimizer):
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
     rval = FromFunctionOptimizer(f)
+    rval.__name__ = f.__name__
+    return rval
+
+
+def inplace_optimizer(f):
+    """decorator for FromFunctionOptimizer"""
+    dh_handler = dh.DestroyHandler
+    requirements = (lambda fgraph:
+                    fgraph.attach_feature(dh_handler()),)
+    rval = FromFunctionOptimizer(f, requirements)
     rval.__name__ = f.__name__
     return rval
 

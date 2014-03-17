@@ -174,7 +174,7 @@ def inplace_elemwise_optimizer_op(OP):
     """
     We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
-    @gof.optimizer
+    @gof.inplace_optimizer
     def inplace_elemwise_optimizer(fgraph):
         """
         Usage: inplace_elemwise_optimizer.optimize(fgraph)
