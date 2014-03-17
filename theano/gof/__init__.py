@@ -57,7 +57,10 @@ from theano.gof.link import \
 from theano.gof.op import \
     Op, OpenMPOp, PureOp, ops_with_inner_function
 
-from theano.gof.opt import (Optimizer, optimizer, SeqOptimizer,
+from theano.gof.opt import (
+    Optimizer,
+    optimizer, inplace_optimizer,
+    SeqOptimizer,
     MergeOptimizer, MergeOptMerge,
     LocalOptimizer, local_optimizer, LocalOptGroup,
     OpSub, OpRemove, PatternSub,

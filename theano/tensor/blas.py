@@ -1715,20 +1715,19 @@ def local_dot_to_dot22(node):
     _logger.info('Not optimizing dot with inputs %s %s %s %s',
                  x, y, x.type, y.type)
 
-
-@local_optimizer([gemm_no_inplace])
+@local_optimizer([gemm_no_inplace], inplace=True)
 def local_inplace_gemm(node):
     if node.op == gemm_no_inplace:
         return [gemm_inplace(*node.inputs)]
 
 
-@local_optimizer([gemv_no_inplace])
+@local_optimizer([gemv_no_inplace], inplace=True)
 def local_inplace_gemv(node):
     if node.op == gemv_no_inplace:
         return [gemv_inplace(*node.inputs)]
 
 
-@local_optimizer([ger])
+@local_optimizer([ger], inplace=True)
 def local_inplace_ger(node):
     if node.op == ger:
         return [ger_destructive(*node.inputs)]
