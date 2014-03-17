@@ -555,10 +555,10 @@ def test_disconnected_cost_grad():
             return
         raise AssertionError("A disconnected gradient has been ignored.")
         
-def test_hypograd():
+def test_subgraph_grad():
 
     # Tests that the grad method with no known_grads
-    # matches what happens if you use successive hypograds
+    # matches what happens if you use successive subgraph_grads
 
     x = theano.tensor.fvector('x')
     t = theano.tensor.fvector('t')
@@ -588,7 +588,7 @@ def test_hypograd():
     next_grad = None
     param_grads = []
     for i in xrange(2):
-        param_grad, next_grad = theano.hypograd(
+        param_grad, next_grad = theano.subgraph_grad(
             wrt=params[i], end=grad_ends[i], 
             start=next_grad, cost=costs[i]
         )
