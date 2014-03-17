@@ -1214,19 +1214,19 @@ def local_gpujoin_1(node):
 #   shared =  dimshuffle(gemm_inplace(dimshuffle(shared)))
 # which causes memory leaks (long term fix is to make the above not leak
 # memory)
-@local_optimizer([gpu_gemm_no_inplace])
+@local_optimizer([gpu_gemm_no_inplace], inplace=True)
 def local_inplace_gemm(node):
     if node.op == gpu_gemm_no_inplace:
         return [gpu_gemm_inplace(*node.inputs)]
 
 
-@local_optimizer([gpu_gemv_no_inplace])
+@local_optimizer([gpu_gemv_no_inplace], inplace=True)
 def local_inplace_gemv(node):
     if node.op == gpu_gemv_no_inplace:
         return [gpu_gemv_inplace(*node.inputs)]
 
 
-@local_optimizer([gpu_ger_no_inplace])
+@local_optimizer([gpu_ger_no_inplace], inplace=True)
 def local_inplace_ger(node):
     if node.op == gpu_ger_no_inplace:
         return [gpu_ger_inplace(*node.inputs)]

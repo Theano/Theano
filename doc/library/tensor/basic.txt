@@ -607,6 +607,27 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     have shape (2, 60).
 
 
+.. function:: tile(x, reps, ndim=None)
+
+    Construct an array by repeating the input `x` according to `reps`
+    pattern.
+
+    Tiles its input according to `reps`. The length of `reps` is the
+    number of dimension of `x` and contains the number of times to
+    tile `x` in each dimension.
+
+    :see: `numpy.tile
+        <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
+        documentation for examples.
+
+    :see: :func:`theano.tensor.extra_ops.repeat
+        <theano.tensor.extra_ops.repeat>`
+
+    :note: Currently, `reps` must be a constant, `x.ndim` and
+        `len(reps)` must be equal and, if specified, `ndim` must be
+        equal to both.
+
+
 Creating Tensor
 ===============
 
