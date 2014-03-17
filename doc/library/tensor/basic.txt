@@ -1543,7 +1543,7 @@ Gradient / Differentiation
     :rtype: variable or list of variables (matching `wrt`)
     :returns: gradients of the cost with respect to each of the `wrt` terms
     
-.. function:: subgrad(wrt, end, start=None, cost=None, details=False)
+.. function:: hypograd(wrt, end, start=None, cost=None, details=False)
 
     With respect to `wrt`, computes gradients of cost and/or from existing 
     `start` gradients, up to the `end` variables of a symbolic digraph. 
@@ -1557,13 +1557,13 @@ Gradient / Differentiation
     non-differentiable process could be approximated by user-defined 
     formula, which could be calculated using the gradients of a cost 
     with respect to samples (0s and 1s). These gradients are obtained 
-    by performing a subgrad from the `cost` or previously known gradients 
+    by performing a hypograd from the `cost` or previously known gradients 
     (`start`) up to the outputs of the stochastic process (`end`). 
     A dictionary mapping gradients obtained from the user-defined 
     differentiation of the process, to variables, could then be fed into 
-    another subgrad as `start` with any other `cost` (e.g. weight decay).
+    another hypograd as `start` with any other `cost` (e.g. weight decay).
     
-    In an MLP, we could use subgrad to iteratively backpropagate:
+    In an MLP, we could use hypograd to iteratively backpropagate:
     >>> x, t = theano.tensor.fvector('x'), theano.tensor.fvector('t')
     >>> w1 = theano.shared(np.random.randn(3,4))
     >>> w2 = theano.shared(np.random.randn(4,2))
@@ -1580,7 +1580,7 @@ Gradient / Differentiation
     >>> next_grad = None
     >>> param_grads = []
     >>> for i in xrange(2):
-    >>>     param_grad, next_grad = theano.subgrad(
+    >>>     param_grad, next_grad = theano.hypograd(
     >>>         wrt=params[i], end=grad_ends[i], 
     >>>         start=next_grad, cost=costs[i]
     >>>     )

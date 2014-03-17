@@ -544,7 +544,7 @@ def grad(cost, wrt, consider_constant=None,
         rval, = rval
     return rval
 
-def subgrad(wrt, end, start=None, cost=None, details=False):
+def hypograd(wrt, end, start=None, cost=None, details=False):
     '''
     With respect to `wrt`, computes gradients of cost and/or from existing 
     `start` gradients, up to the `end` variables of a symbolic digraph. 
@@ -558,11 +558,11 @@ def subgrad(wrt, end, start=None, cost=None, details=False):
     non-differentiable process could be approximated by user-defined 
     formula, which could be calculated using the gradients of a cost 
     with respect to samples (0s and 1s). These gradients are obtained 
-    by performing a subgrad from the `cost` or previously known gradients 
+    by performing a hypograd from the `cost` or previously known gradients 
     (`start`) up to the outputs of the stochastic process (`end`). 
     A dictionary mapping gradients obtained from the user-defined 
     differentiation of the process, to variables, could then be fed into 
-    another subgrad as `start` with any other `cost` (e.g. weight decay).
+    another hypograd as `start` with any other `cost` (e.g. weight decay).
     
     :type wrt : List of Variables.
         Gradients are computed with respect to `wrt`.
