@@ -790,9 +790,14 @@ class LocalOptimizer(object):
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
-    def __init__(self, fn, tracks=None):
+    def __init__(self, fn, tracks=None, requirements=()):
         self.transform = fn
         self._tracks = tracks
+        self.requirements = requirements
+
+    def add_requirements(self, fgraph):
+        for req in self.requirements:
+            req(fgraph)
 
     def tracks(self):
         return self._tracks
@@ -808,7 +813,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
                 id(self))
 
 
-def local_optimizer(tracks):
+def local_optimizer(tracks, inplace=False):
     def decorator(f):
         """WRITEME"""
         if tracks is not None:
@@ -817,7 +822,12 @@ def local_optimizer(tracks):
             for t in tracks:
                 if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
                     raise ValueError, ("Tracks are op classes or instances", f.__module__, f.__name__)
-        rval = FromFunctionLocalOptimizer(f, tracks)
+        requirements = ()
+        if inplace:
+            dh_handler = dh.DestroyHandler
+            requirements = (lambda fgraph:
+                            fgraph.attach_feature(dh_handler()),)
+        rval = FromFunctionLocalOptimizer(f, tracks, requirements)
         rval.__name__ = f.__name__
         return rval
     return decorator
@@ -851,6 +861,10 @@ class LocalOptGroup(LocalOptimizer):
             depth -= 1
             for lopt in self.opts:
                 lopt.print_summary(stream, level=(level + 2), depth=depth)
+
+    def add_requirements(self, fgraph):
+        for opt in self.opts:
+            opt.add_requirements(fgraph)
 
 
 class _LocalOpKeyOptGroup(LocalOptGroup):

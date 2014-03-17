@@ -2110,7 +2110,7 @@ compile.optdb.register('pre_local_IncSubtensor_serialize',
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
 
-@gof.local_optimizer([IncSubtensor]) # XXX: GPU
+@gof.local_optimizer([IncSubtensor], inplace=True)
 def local_inplace_setsubtensor(node):
     """
     Also work for GpuIncSubtensor
@@ -2129,7 +2129,7 @@ compile.optdb.register('local_inplace_setsubtensor',
                        'fast_run', 'inplace')  # DEBUG
 
 
-@gof.local_optimizer([AdvancedIncSubtensor1]) # XXX: GPU
+@gof.local_optimizer([AdvancedIncSubtensor1], inplace=True)
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
