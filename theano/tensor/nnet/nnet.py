@@ -95,7 +95,7 @@ class SoftmaxWithBias(gof.Op):
         return ['<iostream>', '<cmath>']
 
     @staticmethod
-    def c_code_template():
+    def c_code_template(dtype):
         # this implementation was lifted from
         # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
 
@@ -107,6 +107,10 @@ class SoftmaxWithBias(gof.Op):
         #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
         npy_intp* Nx = PyArray_DIMS(%(x)s);
+        npy_intp Sx = 0;
+        npy_intp Sb = 0;
+        npy_intp Ssm = 0;
+
 
         if (PyArray_NDIM(%(x)s) != 2)
         {
@@ -151,6 +155,10 @@ class SoftmaxWithBias(gof.Op):
                 %(fail)s
             }
         }
+        Sx = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
+        Sb = PyArray_STRIDES(%(b)s)[0]/sizeof(dtype_%(b)s);
+        Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+
         """
 
         begin_row_loop = """
@@ -201,6 +209,54 @@ class SoftmaxWithBias(gof.Op):
 
         """
 
+        # Get the vectorized version of exp if it exist
+        try:
+            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype,
+                                                              "Nx[1]", "sm_i", "sm_i")
+            inside_row_loop_contig = """
+            size_t row_max_j=0;
+            dtype_%%(sm)s row_max = x_i[0] + b_i[0];
+            //std::cout << "0 " << row_max << "\\n";
+            // Get the maximum value of the row
+            for (j = 1; j < Nx[1]; ++j)
+            {
+                dtype_%%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
+                //std::cout << "1 " << row_ij << "\\n";
+                row_max_j = (row_ij > row_max) ? j : row_max_j;
+                row_max   = (row_ij > row_max) ? row_ij : row_max;
+            }
+
+            for (j = 0; j < Nx[1]; ++j)
+            {
+                dtype_%%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
+                //std::cout << "2 " << j << " " << row_ij << " " << row_max << "\\n";
+                dtype_%%(sm)s sm_ij = row_ij - row_max;
+                //std::cout << "3 " << j << " " << sm_ij << "\\n";
+                sm_i[j * Ssm] = sm_ij;
+            }
+            %(vec_exp)s;
+            for (j = 0; j < Nx[1]; ++j)
+            {
+                sum += sm_i[j * Ssm];
+            }
+
+            //cblas_dscal(x.N, 1.0 / sum, &mat_at(s,i,0), s.n);
+            double sum_inv = 1.0 / sum;
+            for (j = 0; j < Nx[1]; ++j)
+            {
+                sm_i[j * Ssm] *= sum_inv;
+            }
+
+        """ % locals()
+            inside_row_loop = """
+            if(Ssm == 1){
+                %(inside_row_loop_contig)s
+            }else{
+                %(inside_row_loop)s
+            }
+            """ % locals()
+        except theano.gof.utils.MethodNotDefined:
+            pass
         end_row_loop = """
         }
         """
@@ -210,12 +266,13 @@ class SoftmaxWithBias(gof.Op):
     def c_code(self, node, name, inp, out, sub):
         x, b = inp
         sm, = out
-        code_template = ''.join(self.c_code_template())
+        code_template = ''.join(self.c_code_template(
+            node.inputs[0].type.dtype_specs()[1]))
         return code_template % dict(locals(), **sub)
 
     @staticmethod
     def c_code_cache_version():
-        return (6,)
+        return (7,)
 
 softmax_with_bias = SoftmaxWithBias()
 
