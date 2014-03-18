@@ -200,13 +200,13 @@ from theano.gof import local_optimizer, LocalOptGroup
 from theano.tensor.opt import in2out
 
 
-@local_optimizer([gpugemv_no_inplace])
+@local_optimizer([gpugemv_no_inplace], inplace=True)
 def local_inplace_gpuagemv(node):
     if node.op == gpugemv_no_inplace:
         return [gpugemv_inplace(*node.inputs)]
 
 
-@local_optimizer([gpugemm_no_inplace])
+@local_optimizer([gpugemm_no_inplace], inplace=True)
 def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
         return [gpugemm_inplace(*node.inputs)]
