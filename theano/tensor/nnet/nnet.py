@@ -415,7 +415,7 @@ class Softmax(gof.Op):
             || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
             || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
         {
-            if (NULL != %(sm)s) Py_XDECREF(%(sm)s);
+            Py_XDECREF(%(sm)s);
             %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
                                                        type_num_%(x)s);
             if(!%(sm)s) {
