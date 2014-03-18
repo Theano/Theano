@@ -1281,7 +1281,10 @@ class GpuCAReduceCuda(HideC, CAReduce):
                     n_threads.z += 1;
                 else
                     break;
-            }""" % locals()
+            }
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
+        """ % locals()
 
         if len(self.reduce_mask) == 2:
             threads_y = ''
@@ -1601,6 +1604,8 @@ class GpuCAReduceCuda(HideC, CAReduce):
                 n_threads.z += 1;
             }
             n_threads.z -= 1;
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
 
             dim3 n_blocks(1,1,1);
             %(makecall)s
@@ -1697,7 +1702,7 @@ class GpuCAReduceCuda(HideC, CAReduce):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [8]  # the version corresponding to the c code in this Op
+        version = [9]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,

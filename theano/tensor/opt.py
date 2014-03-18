@@ -174,7 +174,7 @@ def inplace_elemwise_optimizer_op(OP):
     """
     We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
-    @gof.optimizer
+    @gof.inplace_optimizer
     def inplace_elemwise_optimizer(fgraph):
         """
         Usage: inplace_elemwise_optimizer.optimize(fgraph)
@@ -2110,7 +2110,7 @@ compile.optdb.register('pre_local_IncSubtensor_serialize',
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
 
-@gof.local_optimizer([IncSubtensor]) # XXX: GPU
+@gof.local_optimizer([IncSubtensor], inplace=True)
 def local_inplace_setsubtensor(node):
     """
     Also work for GpuIncSubtensor
@@ -2129,7 +2129,7 @@ compile.optdb.register('local_inplace_setsubtensor',
                        'fast_run', 'inplace')  # DEBUG
 
 
-@gof.local_optimizer([AdvancedIncSubtensor1]) # XXX: GPU
+@gof.local_optimizer([AdvancedIncSubtensor1], inplace=True)
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
@@ -4866,3 +4866,13 @@ else:
                            FusionOptimizer(local_elemwise_fusion), 49,
                            'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
+
+
+# ############################
+# # Remove consider_constant #
+# ############################
+
+# Although the op just returns its input, it should be removed from
+# the graph to make sure all possible optimizations can be applied.
+register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
+    'fast_compile', name='remove_consider_constant')

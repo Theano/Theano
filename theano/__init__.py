@@ -79,7 +79,7 @@ from theano.updates import Updates, OrderedUpdates
 #we don't import by default as we don't want to force having scipy installed.
 #import sparse
 
-from theano.gradient import Rop, Lop, grad
+from theano.gradient import Rop, Lop, grad, subgraph_grad
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda

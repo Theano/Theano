@@ -114,13 +114,13 @@ class Optimizer(object):
 
 class FromFunctionOptimizer(Optimizer):
     """WRITEME"""
-    def __init__(self, fn):
+    def __init__(self, fn, requirements=()):
         self.apply = fn
+        self.requirements = requirements
 
     def add_requirements(self, fgraph):
-        # Added by default
-        #fgraph.attach_feature(toolbox.ReplaceValidate())
-        pass
+        for req in self.requirements:
+            req(fgraph)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" % (
@@ -138,6 +138,16 @@ class FromFunctionOptimizer(Optimizer):
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
     rval = FromFunctionOptimizer(f)
+    rval.__name__ = f.__name__
+    return rval
+
+
+def inplace_optimizer(f):
+    """decorator for FromFunctionOptimizer"""
+    dh_handler = dh.DestroyHandler
+    requirements = (lambda fgraph:
+                    fgraph.attach_feature(dh_handler()),)
+    rval = FromFunctionOptimizer(f, requirements)
     rval.__name__ = f.__name__
     return rval
 
@@ -790,9 +800,14 @@ class LocalOptimizer(object):
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
-    def __init__(self, fn, tracks=None):
+    def __init__(self, fn, tracks=None, requirements=()):
         self.transform = fn
         self._tracks = tracks
+        self.requirements = requirements
+
+    def add_requirements(self, fgraph):
+        for req in self.requirements:
+            req(fgraph)
 
     def tracks(self):
         return self._tracks
@@ -808,7 +823,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
                 id(self))
 
 
-def local_optimizer(tracks):
+def local_optimizer(tracks, inplace=False):
     def decorator(f):
         """WRITEME"""
         if tracks is not None:
@@ -817,7 +832,12 @@ def local_optimizer(tracks):
             for t in tracks:
                 if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
                     raise ValueError, ("Tracks are op classes or instances", f.__module__, f.__name__)
-        rval = FromFunctionLocalOptimizer(f, tracks)
+        requirements = ()
+        if inplace:
+            dh_handler = dh.DestroyHandler
+            requirements = (lambda fgraph:
+                            fgraph.attach_feature(dh_handler()),)
+        rval = FromFunctionLocalOptimizer(f, tracks, requirements)
         rval.__name__ = f.__name__
         return rval
     return decorator
@@ -851,6 +871,10 @@ class LocalOptGroup(LocalOptimizer):
             depth -= 1
             for lopt in self.opts:
                 lopt.print_summary(stream, level=(level + 2), depth=depth)
+
+    def add_requirements(self, fgraph):
+        for opt in self.opts:
+            opt.add_requirements(fgraph)
 
 
 class _LocalOpKeyOptGroup(LocalOptGroup):
