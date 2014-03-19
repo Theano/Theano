@@ -510,11 +510,11 @@ class _tensor_py_operators:
 
     def sort(self, axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.sort`"""
-        return theano.tensor.sort.sort(self, axis, kind, order)
+        return theano.tensor.sort(self, axis, kind, order)
 
     def argsort(self, axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.argsort`"""
-        return theano.tensor.sort.argsort(self, axis, kind, order)
+        return theano.tensor.argsort(self, axis, kind, order)
 
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
