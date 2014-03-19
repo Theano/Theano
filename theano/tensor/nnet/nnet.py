@@ -966,7 +966,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         return ['<iostream>', '<cmath>']
 
     @staticmethod
-    def c_code_template():
+    def c_code_template(dtype):
         # this implementation was lifted from
         # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
 
@@ -977,7 +977,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
         #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         (init_decl, begin_row_loop, inside_row_loop, end_row_loop) = \
-                SoftmaxWithBias.c_code_template()
+                SoftmaxWithBias.c_code_template(dtype)
         return (init_decl,
                 """
         if (PyArray_NDIM(%(y_idx)s) != 1)
@@ -1050,7 +1050,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         nll, sm, am = out
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         am_type = y_idx_type
-        code_template = ''.join(self.c_code_template())
+        dtype = node.inputs[0].type.dtype_specs()[1]
+        code_template = ''.join(self.c_code_template(dtype))
         return code_template % dict(locals(), **sub)
 
 
