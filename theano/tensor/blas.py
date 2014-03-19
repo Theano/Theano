@@ -173,12 +173,9 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
   warnings.warn('Specified path %s is invalid.' % d)
 """
             #I'm not able to remove all printed stuff
-            with_context = warnings.catch_warnings(record=True)
-            with_context.__enter__()
-            try:
+            with warnings.catch_warnings(record=True):
+                numpy.distutils.system_info.system_info.verbosity = 0
                 blas_info = numpy.distutils.system_info.get_info("blas_opt")
-            finally:
-                with_context.__exit__(None, None, None)
 
         # If we are in a EPD installation, mkl is available
         if "EPD" in sys.version:
