@@ -171,9 +171,7 @@ class SoftmaxWithBias(gof.Op):
             const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
             const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(PyArray_BYTES(%(b)s));
             dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
-        """
 
-        inside_row_loop = """
             npy_intp Sx = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
             npy_intp Sb = PyArray_STRIDES(%(b)s)[0]/sizeof(dtype_%(b)s);
             npy_intp Ssm = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
@@ -190,6 +188,9 @@ class SoftmaxWithBias(gof.Op):
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
             }
 
+        """
+
+        inside_row_loop = """
             for (j = 0; j < Nx[1]; ++j)
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
@@ -214,18 +215,6 @@ class SoftmaxWithBias(gof.Op):
             vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype,
                                                               "Nx[1]", "sm_i", "sm_i")
             inside_row_loop_contig = """
-            size_t row_max_j=0;
-            dtype_%%(sm)s row_max = x_i[0] + b_i[0];
-            //std::cout << "0 " << row_max << "\\n";
-            // Get the maximum value of the row
-            for (j = 1; j < Nx[1]; ++j)
-            {
-                dtype_%%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
-                //std::cout << "1 " << row_ij << "\\n";
-                row_max_j = (row_ij > row_max) ? j : row_max_j;
-                row_max   = (row_ij > row_max) ? row_ij : row_max;
-            }
-
             for (j = 0; j < Nx[1]; ++j)
             {
                 dtype_%%(sm)s row_ij = x_i[j * Sx] +  b_i[j * Sb];
@@ -272,7 +261,7 @@ class SoftmaxWithBias(gof.Op):
 
     @staticmethod
     def c_code_cache_version():
-        return (7,)
+        return (8,)
 
 softmax_with_bias = SoftmaxWithBias()
 
@@ -494,9 +483,7 @@ class Softmax(gof.Op):
 
             const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
             dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
-        """
 
-        inside_row_loop = """
             size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0];
             //std::cout << "0 " << row_max << "\\n";
@@ -509,6 +496,9 @@ class Softmax(gof.Op):
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
             }
 
+        """
+
+        inside_row_loop = """
             for (j = 0; j < Nx[1]; ++j)
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx1] ;
@@ -532,18 +522,6 @@ class Softmax(gof.Op):
             vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype,
                                                               "Nx[1]", "sm_i", "sm_i")
             inside_row_loop_contig = """
-            size_t row_max_j=0;
-            dtype_%%(sm)s row_max = x_i[0];
-            //std::cout << "0 " << row_max << "\\n";
-            // Get the maximum value of the row
-            for (j = 1; j < Nx[1]; ++j)
-            {
-                dtype_%%(sm)s row_ij = x_i[j * Sx1] ;
-                //std::cout << "1 " << row_ij << "\\n";
-                row_max_j = (row_ij > row_max) ? j : row_max_j;
-                row_max   = (row_ij > row_max) ? row_ij : row_max;
-            }
-
             for (j = 0; j < Nx[1]; ++j)
             {
                 sm_i[j * Ssm1] = x_i[j * Sx1] - row_max;
@@ -587,7 +565,7 @@ class Softmax(gof.Op):
 
     @staticmethod
     def c_code_cache_version():
-        return (2,)
+        return (3,)
 
 softmax = Softmax()
 
