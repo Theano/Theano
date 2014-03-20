@@ -65,6 +65,9 @@ optdb.register('gpu_after_fusion',
                optdb.__position__.get('elemwise_fusion', 49) + .1,
                'gpu')
 
+## Register merge_optimizer as a global opt
+gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer, 'fast_run')
+
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
@@ -488,18 +491,17 @@ def local_gpu_gemv(node):
     gemv(host_from_gpu) -> host_from_gpu(gpu_gemv)
 
     """
-    gemvs = {
-            tensor.blas.gemv_inplace: gpu_gemv_no_inplace,
-            tensor.blas.gemv_no_inplace: gpu_gemv_no_inplace,
-            tensor.blas_c.CGemv(inplace=True): gpu_gemv_no_inplace,
-            tensor.blas_c.CGemv(inplace=False): gpu_gemv_no_inplace,
-            }
+    gemvs = [tensor.blas.gemv_inplace,
+             tensor.blas.gemv_no_inplace,
+             tensor.blas_c.cgemv_inplace,
+             tensor.blas_c.cgemv_no_inplace,
+            ]
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op in gemvs:
             op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
-            return [gemvs[op](
+            return [gpu_gemv_no_inplace(
                     gpu_from_host(z),
                     a,
                     gpu_from_host(x),
@@ -512,7 +514,7 @@ def local_gpu_gemv(node):
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
             return [host_from_gpu(
-                gemvs[node.op](
+                gpu_gemv_no_inplace(
                     gpu_from_host(z),
                     a,
                     gpu_from_host(x),
@@ -530,20 +532,20 @@ def local_gpu_ger(node):
     ger(host_from_gpu) -> host_from_gpu(gpu_ger)
 
     """
-    gers = {
-            tensor.blas_c.CGer(destructive=True): gpu_ger_no_inplace,
-            tensor.blas_c.CGer(destructive=False): gpu_ger_no_inplace,
-            tensor.blas.Ger(destructive=True): gpu_ger_no_inplace,
-            tensor.blas.Ger(destructive=False): gpu_ger_no_inplace,
-            tensor.blas_scipy.ScipyGer(destructive=True): gpu_ger_no_inplace,
-            tensor.blas_scipy.ScipyGer(destructive=False): gpu_ger_no_inplace,
-            }
+    gers = [tensor.blas_c.cger_inplace,
+            tensor.blas_c.cger_no_inplace,
+            tensor.blas.ger_destructive,
+            tensor.blas.ger,
+            tensor.blas_scipy.scipy_ger_inplace,
+            tensor.blas_scipy.scipy_ger_no_inplace,
+            ]
+
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op in gers:
             op = host_input.owner.op
             z, a, x, y = host_input.owner.inputs
-            return [gers[op](
+            return [gpu_ger_no_inplace(
                     gpu_from_host(z),
                     a,
                     gpu_from_host(x),
@@ -556,7 +558,7 @@ def local_gpu_ger(node):
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
             return [host_from_gpu(
-                gers[node.op](
+                gpu_ger_no_inplace(
                     gpu_from_host(z),
                     a,
                     gpu_from_host(x),
@@ -573,15 +575,16 @@ def local_gpu_gemm(node):
 
     gemm(host_from_gpu) -> host_from_gpu(gpu_gemm)
     """
-    gemms = {
-            #tensor.blas.gemm_inplace: gpu_gemm_inplace,
-            tensor.blas.gemm_no_inplace: gpu_gemm_no_inplace}
+    gemms = [
+        tensor.blas.gemm_inplace,
+        tensor.blas.gemm_no_inplace,
+    ]
     if node.op == gpu_from_host:
         host_input = node.inputs[0]
         if host_input.owner and host_input.owner.op in gemms:
             op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
-            return [gemms[op](gpu_from_host(z),
+            return [gpu_gemm_no_inplace(gpu_from_host(z),
                               a,
                               gpu_from_host(x),
                               gpu_from_host(y),
@@ -592,7 +595,7 @@ def local_gpu_gemm(node):
         y_on_gpu = (y.owner and y.owner.op == host_from_gpu)
         z_on_gpu = (z.owner and z.owner.op == host_from_gpu)
         if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(gemms[node.op](gpu_from_host(z),
+            return [host_from_gpu(gpu_gemm_no_inplace(gpu_from_host(z),
                                                  a,
                                                  gpu_from_host(x),
                                                  gpu_from_host(y),
