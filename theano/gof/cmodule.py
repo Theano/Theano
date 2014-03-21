@@ -1717,7 +1717,7 @@ class GCC_compiler(object):
                                     continue
                                 mj, mn, patch = [int(vp) for vp in version]
                                 if (((mj, mn) == (4, 6) and patch < 4) or
-                                        ((mj, mn) == (4, 7) and patch < 3) or
+                                        ((mj, mn) == (4, 7) and patch <= 3) or
                                         ((mj, mn) == (4, 8) and patch < 1)):
                                     new_flags[i] = p.rstrip('-avx')
 
