@@ -1519,19 +1519,23 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def __init__(self,
                  optimizers,
                  failure_callback=None,
+                 ignore_newtrees=True,
                  max_use_ratio=None):
-        """
+        """ Apply optimizations until equilibrium point.
+
         :param optimizers:  list or set of local or global optimizations to
             apply until equilibrium.
 
         :param max_use_ratio: each optimizer can be applied at most
             (size of graph * this number) times
+        :param ignore_newtrees: See EquilibriumDB ignore_newtrees
+            parameter definition
 
         """
 
         super(EquilibriumOptimizer, self).__init__(
             None,
-            ignore_newtrees=True,
+            ignore_newtrees=ignore_newtrees,
             failure_callback=failure_callback)
         self.local_optimizers_map = dict()
         self.local_optimizers_all = []

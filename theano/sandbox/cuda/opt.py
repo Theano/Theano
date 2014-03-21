@@ -46,7 +46,10 @@ linalg = None
 
 #optdb.print_summary()  # shows what is currently registered
 
-gpu_optimizer = EquilibriumDB()
+#ignore_newtrees is to speed the optimization as this is the pattern
+#we use for optimization. Otherwise, we can iterate 100s of time on
+#the graph and apply only a few optimizations each time.
+gpu_optimizer = EquilibriumDB(ignore_newtrees=False)
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
