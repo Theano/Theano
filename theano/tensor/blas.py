@@ -1379,27 +1379,25 @@ def _gemm_from_factored_list(lst):
     """Returns None, or a list to replace node.outputs
     """
 
-    # Make every pair in list have matching dtypes
-    # sM can be a tuple of 2 elements or a theano variable.
-    # We should not use __len__ as theano variables don't support
-    # it. I don't want to change this to isinstance(sM, tuple)
-    # as I'm not able to make a test that triggers this case.
-    def is_pair(sM):
-        try:
-            s, M = sM
-            return True
-        except Exception:
-            return False
-
     lst2 = []
     # Remove the tuple that can't be cast correctly.
     # This can happen when we try to cast a complex to a real
     for sM in lst:
-        if is_pair(sM):
+        # Make every pair in list have matching dtypes
+        # sM can be a tuple of 2 elements or a theano variable.
+        # We should not use __len__ as theano variables don't support
+        # it. I don't want to change this to isinstance(sM, tuple)
+        # as I'm not able to make a test that triggers this case.
+        try:
             sm0, sm1 = sM
             sm0 = T.as_tensor_variable(sm0)
             if theano.scalar.upcast(sm0.dtype, sm1.dtype) == sm1.dtype:
                 lst2.append((T.cast(sm0, sm1.dtype), sM[1]))
+        except ValueError:
+            # "ValueError: length not known" is raised by
+            # "sm0, sm1 = sM" when sM is a Theano variable
+            pass
+
     lst = lst2
 
     # Try every pair in the sM_list, trying to turn it into a gemm operation
