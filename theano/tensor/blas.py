@@ -1399,6 +1399,17 @@ def _gemm_from_factored_list(lst):
 
     lst = lst2
 
+    def item_to_var(t):
+        try:
+            s, M = t
+        except Exception:
+            return t
+        if s == 1:
+            return M
+        if s == -1:
+            return -M
+        return s * M
+
     # Try every pair in the sM_list, trying to turn it into a gemm operation
     for i in xrange(len(lst) - 1):
         s_i, M_i = lst[i]
@@ -1415,16 +1426,6 @@ def _gemm_from_factored_list(lst):
                                                               s_j, M_j)
             #print 'GOT IT', gemm_of_sM_list
             if gemm_of_sM_list:
-                def item_to_var(t):
-                    try:
-                        s, M = t
-                    except Exception:
-                        return t
-                    if s == 1:
-                        return M
-                    if s == -1:
-                        return -M
-                    return s * M
 
                 assert len(gemm_of_sM_list) == 1
                 add_inputs = [item_to_var(input)
