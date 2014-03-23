@@ -83,6 +83,8 @@ def register_opt(*tags, **kwargs):
 #register local_track_shape_i at this level too
 #to make multi-level lift of shape work.
 register_opt()(theano.tensor.opt.local_track_shape_i)
+register_opt(name='gpu_constant_folding')(
+    tensor.opt.constant_folding)
 
 
 class InputToGpuOptimizer(Optimizer):
