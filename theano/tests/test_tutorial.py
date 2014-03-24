@@ -1235,7 +1235,7 @@ class T_scan(unittest.TestCase):
                                 t_f, theano.config.floatX), \
                             sequences=[T.arange(X.shape[0]), \
                                 T.arange(X.shape[1])], \
-                            outputs_info=numpy.zeros_like(0., \
+                            outputs_info=numpy.asarray(0., \
                                 dtype=theano.config.floatX))
             
           result = results[-1]
