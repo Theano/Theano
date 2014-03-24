@@ -1438,8 +1438,12 @@ def get_gcc_shared_library_arg():
 
 
 def std_include_dirs():
-    return (numpy.distutils.misc_util.get_numpy_include_dirs()
-            + [distutils.sysconfig.get_python_inc()])
+    numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
+    py_inc = distutils.sysconfig.get_python_inc()
+    py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
+    python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
+                       else [py_inc, py_plat_spec_inc])
+    return numpy_inc_dirs + python_inc_dirs
 
 
 def std_lib_dirs_and_libs():
@@ -1713,7 +1717,7 @@ class GCC_compiler(object):
                                     continue
                                 mj, mn, patch = [int(vp) for vp in version]
                                 if (((mj, mn) == (4, 6) and patch < 4) or
-                                        ((mj, mn) == (4, 7) and patch < 3) or
+                                        ((mj, mn) == (4, 7) and patch <= 3) or
                                         ((mj, mn) == (4, 8) and patch < 1)):
                                     new_flags[i] = p.rstrip('-avx')
 

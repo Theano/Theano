@@ -909,7 +909,22 @@ class UnaryScalarOp(ScalarOp):
             node.inputs[0].type != node.outputs[0].type):
             raise theano.gof.utils.MethodNotDefined()
 
-        dtype = node.inputs[0].dtype
+        dtype = node.inputs[0].type.dtype_specs()[1]
+        fct_call = self.c_code_contiguous_raw(dtype, 'n', 'x', 'z')
+        return """
+{
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct_call)s;
+}
+        """ % locals()
+
+    def c_code_contiguous_raw(self, dtype, n, i, o):
+        if not config.lib.amdlibm:
+            raise theano.gof.utils.MethodNotDefined()
+        if dtype.startswith('npy_'):
+            dtype = dtype[4:]
         if dtype == 'float32' and self.amd_float32 is not None:
             dtype = 'float'
             fct = self.amd_float32
@@ -918,12 +933,7 @@ class UnaryScalarOp(ScalarOp):
             fct = self.amd_float64
         else:
             raise theano.gof.utils.MethodNotDefined()
-        return """
-        npy_intp n = PyArray_SIZE(%(z)s);
-        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
-        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
-        %(fct)s(n, x, z);
-        """ % locals()
+        return "%(fct)s(%(n)s, %(i)s, %(o)s)" % locals()
 
 
 class BinaryScalarOp(ScalarOp):
