@@ -119,11 +119,11 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   # define tensor variable
   X = T.matrix("X")
   results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()), sequences=[X.T])
-  compute_norm_lines = theano.function(inputs = [X], outputs=[results])
+  compute_norm_cols = theano.function(inputs = [X], outputs=[results])
   
   # test value
   x = np.diag(np.arange(1,6),1)
-  print compute_norm_lines(x)[0]
+  print compute_norm_cols(x)[0]
   
   # comparison with numpy
   print np.sqrt((x**2).sum(0))
@@ -178,18 +178,20 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   w = 0.5*np.ones((2,2))
   u = 0.5*(np.ones((2,2))-np.eye(2))
   v = 0.5*np.ones((2,2))
-  n = 100
+  n = 10
   b = np.ones((2))
   
   print compute_seq2(x,u,v,w,b,n)
   
   # comparison with numpy
-  x_res = np.zeros((100,2))
-  x_res[0] = x[1].dot(v) + np.tanh(x[1].dot(w) + b)
-  x_res[1] = x_res[0].dot(v) + np.tanh(x_res[0].dot(w) + b)
-  x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) + np.tanh(x_res[1].dot(w) + b)
-  for i in range(2,100):
-    x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) + np.tanh(x_res[i-1].dot(w) + b))
+  x_res = numpy.zeros((10,2))
+  x_res[0] = x[0].dot(u) + x[1].dot(v) + numpy.tanh(x[1].dot(w) + b)
+  x_res[1] = x[1].dot(u) + x_res[0].dot(v) + numpy.tanh(x_res[0].dot(w) + b)
+  x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) \
+            + numpy.tanh(x_res[1].dot(w) + b)
+  for i in range(2,10):
+    x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) \
+            + numpy.tanh(x_res[i-1].dot(w) + b))
 
 **Scan Example: Computing the Jacobian of y = tanh(v*A) wrt x**
 
@@ -214,6 +216,8 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   # compare with numpy
   print ((1 - np.tanh(x.dot(w))**2)*w).T
 
+Note that we need to iterate over the indices of ``y`` and not over the elements of ``y``. The reason is that scan create a placeholder variable for its internal function and this placeholder variable does not have the same dependencies than the variables that will replace it. 
+
 **Scan Example: Accumulate number of loop during a scan**
 
 .. code-block:: python
@@ -223,6 +227,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   
   # define shared variables
   k = theano.shared(0)
+  n_sym = T.iscalar("n_sym")
   
   results, updates = theano.scan(lambda:{k:(k+1)}, n_steps=n_sym)
   accumulator = theano.function([n_sym], [], updates=updates, allow_input_downcast = True)
@@ -239,8 +244,8 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import numpy as np
   
   # define tensor variables
-  v = T.vector()
-  A = T.matrix()
+  X = T.matrix("X")
+  W = T.matrix("W")
   b_sym = T.vector("b_sym")
   
   # define shared random stream
@@ -256,7 +261,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   
   print compute_with_bnoise(x, w, b)
 
-
+Note that if you want to use a random variable ``d`` that will not be updated through scan loops, you should pass this variable as a ``non_sequences`` arguments. 
 
 **Scan Example: Computing pow(A,k)**
 
