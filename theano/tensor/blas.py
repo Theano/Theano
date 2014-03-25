@@ -1190,32 +1190,31 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
 
     # it also might be the case that there is a dimshuffle between the +
     # and the dot22. local_dot_to_dot22 in particular will put in such things.
-    if M.owner and isinstance(M.owner.op, T.DimShuffle):
+    if (M.owner and isinstance(M.owner.op, T.DimShuffle) and
+        M.owner.inputs[0].owner and
+        isinstance(M.owner.inputs[0].owner.op, Dot22)):
         MM = M.owner.inputs[0]
-        if tuple(M.owner.op.new_order) == (0,):
+        if M.owner.op.new_order == (0,):
             # it is making a column MM into a vector
-            if MM.owner and MM.owner.op == _dot22:
-                MMl, MMr = MM.owner.inputs
-                g = gemm_no_inplace(L.dimshuffle(0, 'x'),
-                        alpha, MMl, MMr, beta)
-                rval = [g.dimshuffle(0)]
-                return rval, MM
-        if tuple(M.owner.op.new_order) == (1,):
+            MMl, MMr = MM.owner.inputs
+            g = gemm_no_inplace(L.dimshuffle(0, 'x'),
+                                alpha, MMl, MMr, beta)
+            rval = [g.dimshuffle(0)]
+            return rval, MM
+        if M.owner.op.new_order == (1,):
             # it is making a row MM into a vector
-            if MM.owner and MM.owner.op == _dot22:
-                MMl, MMr = MM.owner.inputs
-                g = gemm_no_inplace(L.dimshuffle('x', 0),
-                        alpha, MMl, MMr, beta)
-                rval = [g.dimshuffle(1)]
-                return rval, MM
-        if tuple(M.owner.op.new_order) == ():
+            MMl, MMr = MM.owner.inputs
+            g = gemm_no_inplace(L.dimshuffle('x', 0),
+                                alpha, MMl, MMr, beta)
+            rval = [g.dimshuffle(1)]
+            return rval, MM
+        if len(M.owner.op.new_order) == 0:
             # it is making a row MM into a vector
-            if MM.owner and MM.owner.op == _dot22:
-                MMl, MMr = MM.owner.inputs
-                g = gemm_no_inplace(L.dimshuffle('x', 'x'),
-                        alpha, MMl, MMr, beta)
-                rval = [g.dimshuffle()]
-                return rval, MM
+            MMl, MMr = MM.owner.inputs
+            g = gemm_no_inplace(L.dimshuffle('x', 'x'),
+                                alpha, MMl, MMr, beta)
+            rval = [g.dimshuffle()]
+            return rval, MM
 
     # this is False'd out because of inadequate testing.
     # TODO see ticket #237
@@ -1379,28 +1378,30 @@ def _gemm_from_factored_list(lst):
     """Returns None, or a list to replace node.outputs
     """
 
-    # Make every pair in list have matching dtypes
-    # sM can be a tuple of 2 elements or a theano variable.
-    # We should not use __len__ as theano variables don't support
-    # it. I don't want to change this to isinstance(sM, tuple)
-    # as I'm not able to make a test that triggers this case.
-    def is_pair(sM):
-        try:
-            s, M = sM
-            return True
-        except Exception:
-            return False
-
     lst2 = []
     # Remove the tuple that can't be cast correctly.
     # This can happen when we try to cast a complex to a real
     for sM in lst:
-        if is_pair(sM):
+        # Make every pair in list have matching dtypes
+        # sM can be a tuple of 2 elements or a theano variable.
+        if isinstance(sM, tuple):
             sm0, sm1 = sM
             sm0 = T.as_tensor_variable(sm0)
             if theano.scalar.upcast(sm0.dtype, sm1.dtype) == sm1.dtype:
                 lst2.append((T.cast(sm0, sm1.dtype), sM[1]))
+
     lst = lst2
+
+    def item_to_var(t):
+        try:
+            s, M = t
+        except Exception:
+            return t
+        if s == 1:
+            return M
+        if s == -1:
+            return -M
+        return s * M
 
     # Try every pair in the sM_list, trying to turn it into a gemm operation
     for i in xrange(len(lst) - 1):
@@ -1418,16 +1419,6 @@ def _gemm_from_factored_list(lst):
                                                               s_j, M_j)
             #print 'GOT IT', gemm_of_sM_list
             if gemm_of_sM_list:
-                def item_to_var(t):
-                    try:
-                        s, M = t
-                    except Exception:
-                        return t
-                    if s == 1:
-                        return M
-                    if s == -1:
-                        return -M
-                    return s * M
 
                 assert len(gemm_of_sM_list) == 1
                 add_inputs = [item_to_var(input)

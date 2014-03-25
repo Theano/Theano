@@ -1047,10 +1047,6 @@ class PatternSub(LocalOptimizer):
             self.__name__ = name
         self.pdb = pdb
 
-    def skip_identities(self, expr):
-        if self.skip_identities_fn:
-            return self.skip_identities_fn(expr)
-
     def op_key(self):
         return self.op
 
@@ -1064,10 +1060,13 @@ class PatternSub(LocalOptimizer):
         """
         if node.op != self.op:
             return False
-
+        #TODO: if we remove pdb, do this speed things up?
         def match(pattern, expr, u, allow_multiple_clients=False, pdb=False):
+            #TODO move outside match
             def retry_with_equiv():
-                expr_equiv = self.skip_identities(expr)
+                if not self.skip_identities_fn:
+                    return False
+                expr_equiv = self.skip_identities_fn(expr)
                 if expr_equiv is None:
                     return False
                 #TODO: Not sure how to handle multiple_clients flag
@@ -1126,19 +1125,19 @@ class PatternSub(LocalOptimizer):
                 pdb.set_trace()
             return u
 
-        def build(pattern, u):
-            if isinstance(pattern, (list, tuple)):
-                args = [build(p, u) for p in pattern[1:]]
-                return pattern[0](*args)
-            elif isinstance(pattern, basestring):
-                return u[unify.Var(pattern)]
-            elif isinstance(pattern, (int, float)):
-                return pattern
-            else:
-                return pattern.clone()
         u = match(self.in_pattern, node.out, unify.Unification(), True,
                   self.pdb)
         if u:
+            def build(pattern, u):
+                if isinstance(pattern, (list, tuple)):
+                    args = [build(p, u) for p in pattern[1:]]
+                    return pattern[0](*args)
+                elif isinstance(pattern, basestring):
+                    return u[unify.Var(pattern)]
+                elif isinstance(pattern, (int, float)):
+                    return pattern
+                else:
+                    return pattern.clone()
             p = self.out_pattern
             new = build(p, u)
             ####print "PatternSub matched:", new
@@ -1520,19 +1519,23 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def __init__(self,
                  optimizers,
                  failure_callback=None,
+                 ignore_newtrees=True,
                  max_use_ratio=None):
-        """
+        """ Apply optimizations until equilibrium point.
+
         :param optimizers:  list or set of local or global optimizations to
             apply until equilibrium.
 
         :param max_use_ratio: each optimizer can be applied at most
             (size of graph * this number) times
+        :param ignore_newtrees: See EquilibriumDB ignore_newtrees
+            parameter definition
 
         """
 
         super(EquilibriumOptimizer, self).__init__(
             None,
-            ignore_newtrees=True,
+            ignore_newtrees=ignore_newtrees,
             failure_callback=failure_callback)
         self.local_optimizers_map = dict()
         self.local_optimizers_all = []
