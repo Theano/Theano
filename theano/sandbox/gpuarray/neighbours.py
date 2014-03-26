@@ -382,10 +382,10 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 PyGpuArray_STRIDES(%(ten4)s)[1],
                 PyGpuArray_STRIDES(%(ten4)s)[2],
                 PyGpuArray_STRIDES(%(ten4)s)[3],
-                CudaNdarray_DEV_DATA(%(ten4)s),
+                PyGpuArray_DATA(%(ten4)s),
                 PyGpuArray_STRIDES(%(z)s)[0],
                 PyGpuArray_STRIDES(%(z)s)[1],
-                CudaNdarray_DEV_DATA(%(z)s)
+                PyGpuArray_DATA(%(z)s)
             );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
