@@ -1,7 +1,7 @@
 # This is work in progress
 from theano import Op, Apply
 from theano.gof import local_optimizer
-from theano.sandbox.cuda import cuda_available, GpuOp
+from theano.sandbox.cuda import cuda_available
 
 from theano.sandbox.neighbours import Images2Neibs
 
@@ -11,7 +11,7 @@ if cuda_available:
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
 
-class GpuImages2Neibs(Images2Neibs, GpuOp):
+class GpuImages2Neibs(Images2Neibs, Op):
     def __init__(self, mode='valid'):
         if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
