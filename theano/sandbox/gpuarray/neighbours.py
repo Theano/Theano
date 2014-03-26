@@ -243,54 +243,54 @@ class GpuImages2Neibs(Images2Neibs, Op):
         "Images2Neibs: in mode wrap_centered need patch with odd shapes");
                     %(fail)s;
                 }
-                if ( CudaNdarray_HOST_DIMS(%(ten4)s)[2] < c ||
-                     CudaNdarray_HOST_DIMS(%(ten4)s)[3] < d)
+                if ( PyGpuArray_DIMS(%(ten4)s)[2] < c ||
+                     PyGpuArray_DIMS(%(ten4)s)[3] < d)
                 {
                     PyErr_Format(PyExc_TypeError,
                                  "Images2Neibs: in wrap_centered mode, don't"
                                  " support image shapes smaller then the patch"
                                  " shapes: neib_shape=(%%d,%%d),"
                                  " ten4[2:]=[%%d,%%d]",
-                                 c, d, CudaNdarray_HOST_DIMS(%(ten4)s)[2],
-                                 CudaNdarray_HOST_DIMS(%(ten4)s)[3]);
+                                 c, d, PyGpuArray_DIMS(%(ten4)s)[2],
+                                 PyGpuArray_DIMS(%(ten4)s)[3]);
                     %(fail)s;
                 }
-                grid_c = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]),
+                grid_c = CEIL_INTDIV(((PyGpuArray_DIMS(%(ten4)s))[2]),
                                      step_x);
-                grid_d = CEIL_INTDIV(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]),
+                grid_d = CEIL_INTDIV(((PyGpuArray_DIMS(%(ten4)s))[3]),
                                      step_y);
 
 
             }else if ( "%(mode)s" == "valid") {
-                if ( ((CudaNdarray_HOST_DIMS(%(ten4)s))[2] < c) ||
-                     ((((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
+                if ( ((PyGpuArray_DIMS(%(ten4)s))[2] < c) ||
+                     ((((PyGpuArray_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
                 {
                     PyErr_Format(PyExc_TypeError,
                                  "neib_shape[0]=%%d, neib_step[0]=%%d and"
                                  " ten4.shape[2]=%%d not consistent",
                                  c, step_x,
-                                 CudaNdarray_HOST_DIMS(%(ten4)s)[2]);
+                                 PyGpuArray_DIMS(%(ten4)s)[2]);
                     %(fail)s;
                 }
-                if ( ((CudaNdarray_HOST_DIMS(%(ten4)s))[3] < d) ||
-                     ((((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
+                if ( ((PyGpuArray_DIMS(%(ten4)s))[3] < d) ||
+                     ((((PyGpuArray_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
                 {
                     PyErr_Format(PyExc_TypeError,
                                  "neib_shape[1]=%%d, neib_step[1]=%%d and"
                                  " ten4.shape[3]=%%d not consistent",
                                  d, step_y,
-                                 CudaNdarray_HOST_DIMS(%(ten4)s)[3]);
+                                 PyGpuArray_DIMS(%(ten4)s)[3]);
                     %(fail)s;
                 }
                 //number of patch in height
-                grid_c = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c)/step_x);
+                grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-c)/step_x);
                 //number of patch in width
-                grid_d = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d)/step_y);
+                grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
             }else if ( "%(mode)s" == "ignore_borders") {
                 //number of patch in height
-                grid_c = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[2]-c)/step_x);
+                grid_c = 1+(((PyGpuArray_DIMS(%(ten4)s))[2]-c)/step_x);
                 //number of patch in width
-                grid_d = 1+(((CudaNdarray_HOST_DIMS(%(ten4)s))[3]-d)/step_y);
+                grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
             }else{
                 PyErr_Format(PyExc_TypeError,
                              "Images2Neibs: unknow mode '%(mode)s'");
@@ -301,12 +301,12 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int z_dim1 = c * d;
             const int z_dim0 =  grid_c
                                 * grid_d
-                                * CudaNdarray_HOST_DIMS(%(ten4)s)[1]
-                                * CudaNdarray_HOST_DIMS(%(ten4)s)[0];
+                                * PyGpuArray_DIMS(%(ten4)s)[1]
+                                * PyGpuArray_DIMS(%(ten4)s)[0];
 
             if ((NULL == %(z)s)
-                || (CudaNdarray_HOST_DIMS(%(z)s)[0] != z_dim0)
-                || (CudaNdarray_HOST_DIMS(%(z)s)[1] != z_dim1))
+                || (PyGpuArray_DIMS(%(z)s)[0] != z_dim0)
+                || (PyGpuArray_DIMS(%(z)s)[1] != z_dim1))
             {
                 Py_XDECREF(%(z)s);
                 npy_intp dims[2];
@@ -325,10 +325,10 @@ class GpuImages2Neibs(Images2Neibs, Op):
 
         { // NESTED SCOPE
 
-            const int nb_batch = CudaNdarray_HOST_DIMS(%(ten4)s)[0];
-            const int nb_stack = CudaNdarray_HOST_DIMS(%(ten4)s)[1];
-            const int height = CudaNdarray_HOST_DIMS(%(ten4)s)[2];
-            const int width = CudaNdarray_HOST_DIMS(%(ten4)s)[3];
+            const int nb_batch = PyGpuArray_DIMS(%(ten4)s)[0];
+            const int nb_stack = PyGpuArray_DIMS(%(ten4)s)[1];
+            const int height = PyGpuArray_DIMS(%(ten4)s)[2];
+            const int width = PyGpuArray_DIMS(%(ten4)s)[3];
 
             const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(
                                                      %(neib_shape)s, 0);
@@ -348,14 +348,14 @@ class GpuImages2Neibs(Images2Neibs, Op):
             //a higher core utilisation. for smaller patch size
 
             while(c*d*(n_threads.z+1) < 128 && n_threads.z<64 &&
-                  n_threads.z<CudaNdarray_HOST_DIMS(%(z)s)[0]){
+                  n_threads.z<PyGpuArray_DIMS(%(z)s)[0]){
                 n_threads.z++;
             }
             int nb_block;
-            if (CudaNdarray_HOST_DIMS(%(z)s)[0] %% n_threads.z == 0)
-                nb_block = CudaNdarray_HOST_DIMS(%(z)s)[0] / n_threads.z;
+            if (PyGpuArray_DIMS(%(z)s)[0] %% n_threads.z == 0)
+                nb_block = PyGpuArray_DIMS(%(z)s)[0] / n_threads.z;
             else
-                nb_block = (CudaNdarray_HOST_DIMS(%(z)s)[0] / n_threads.z) + 1;
+                nb_block = (PyGpuArray_DIMS(%(z)s)[0] / n_threads.z) + 1;
             dim3 n_blocks(std::min(32*1024,nb_block));
             int n_shared = 0;
 
