@@ -2,6 +2,7 @@
 from theano import Op, Apply
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 from theano.sandbox.neighbours import Images2Neibs
 
@@ -35,6 +36,13 @@ class GpuImages2Neibs(Images2Neibs, Op):
 
     def c_code_cache_version(self):
         return (8,)
+        
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
+                '<compyte/ext_cuda.h>']
+
+    def c_compiler(self):
+        return NVCC_compiler
 
     def c_support_code_apply(self, node, nodename):
         mode = self.mode
