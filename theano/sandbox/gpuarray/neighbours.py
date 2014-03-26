@@ -378,13 +378,13 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 height, width,
                 c, d, step_x, step_y,
                 grid_c, grid_d,
-                CudaNdarray_HOST_STRIDES(%(ten4)s)[0],
-                CudaNdarray_HOST_STRIDES(%(ten4)s)[1],
-                CudaNdarray_HOST_STRIDES(%(ten4)s)[2],
-                CudaNdarray_HOST_STRIDES(%(ten4)s)[3],
+                PyGpuArray_STRIDES(%(ten4)s)[0],
+                PyGpuArray_STRIDES(%(ten4)s)[1],
+                PyGpuArray_STRIDES(%(ten4)s)[2],
+                PyGpuArray_STRIDES(%(ten4)s)[3],
                 CudaNdarray_DEV_DATA(%(ten4)s),
-                CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                PyGpuArray_STRIDES(%(z)s)[0],
+                PyGpuArray_STRIDES(%(z)s)[1],
                 CudaNdarray_DEV_DATA(%(z)s)
             );
             CNDA_THREAD_SYNC;
