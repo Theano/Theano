@@ -201,6 +201,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
         z, = out
         fail = sub['fail']
         mode = self.mode
+        typecode_z = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
+        
         return """
 #ifndef CEIL_INTDIV
 #define CEIL_INTDIV(a, b) ((a/b) + ((a %% b) ? 1: 0))
@@ -312,7 +314,9 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 npy_intp dims[2];
                 dims[0] = z_dim0;
                 dims[1] = z_dim1;
-                %(z)s = (CudaNdarray*)CudaNdarray_NewDims(2, dims);
+                %(z)s = pygpu_empty(2, dims, %(typecode_z)s,
+                                    GA_C_ORDER, pygpu_default_context(),
+                                    Py_None);
                 if (!%(z)s)
                 {
                     PyErr_SetString(PyExc_MemoryError,
