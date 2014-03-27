@@ -32,10 +32,6 @@ class GroupDot(theano.gof.Op):
                                 [vec.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_input_storage = [storage_map[r] for r in node.inputs]
-        node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
         shared = theano.tensor._shared
 
         self.W = shared(numpy.zeros((2, 2), dtype='float32'))
@@ -113,10 +109,6 @@ class GroupDotGrad(theano.gof.Op):
                                 [vec.type(), mat.type(), bias.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_input_storage = [storage_map[r] for r in node.inputs]
-        node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
         shared = theano.tensor._shared
 
         self.W = shared(numpy.zeros((2, 2), dtype='float32'))

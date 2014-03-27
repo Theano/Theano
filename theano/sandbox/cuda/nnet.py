@@ -742,10 +742,6 @@ class GpuGroupDot(GpuOp):
         return theano.gof.Apply(self, [vec, mat, bias, index], [vec.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_input_storage = [storage_map[r] for r in node.inputs]
-        node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
         shared = theano.shared
 
         self.W = shared(numpy.zeros((2, 2), dtype='float32'))
@@ -877,10 +873,6 @@ class GpuGroupDotGrad(GpuOp):
                                 [vec.type(), mat.type(), bias.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_input_storage = [storage_map[r] for r in node.inputs]
-        node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
         shared = theano.shared
 
         self.W = shared(numpy.zeros((2, 3), dtype='float32'))
