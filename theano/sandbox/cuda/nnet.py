@@ -771,9 +771,7 @@ class GpuGroupDot(GpuOp):
             for jdx in xrange(groups.shape[0]):
                 if groups[jdx] == pos:
                     self.h.set_value(state_below[jdx], borrow=True)
-                    print "h", self.h.shape.eval()
                     self.step()
-                    print "out", self.out.shape.eval()
                     _outs[0][0][jdx] = self.out.get_value(borrow=True,
                                                           return_internal_type=True)
 
