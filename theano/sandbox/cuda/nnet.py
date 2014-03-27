@@ -860,7 +860,7 @@ class GpuGroupDotGrad(GpuOp):
         return hash(type(self)) ^ hash(self.n_groups)
 
     def __str__(self):
-        return 'GpuGradGroupDot{%d}' % (self.n_groups)
+        return 'GpuGroupDotGrad{%d}' % (self.n_groups)
 
     def make_node(self, vec, mat, bias, index, grad_on_out):
         vec = as_cuda_ndarray_variable(vec)
@@ -897,7 +897,7 @@ class GpuGroupDotGrad(GpuOp):
         updates = [(self.gW, gW), (self.gh, gh)]
         self.step = theano.function([], [], updates=updates, name='grad_step')
 
-        return super(GpuGradGroupDot, self).make_thunk(node, storage_map,
+        return super(GpuGroupDotGrad, self).make_thunk(node, storage_map,
                                                        compute_map,
                                                        no_recycling)
 

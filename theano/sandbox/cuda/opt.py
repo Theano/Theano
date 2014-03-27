@@ -1541,9 +1541,9 @@ def gd_to_gpu(node):
     return [host_from_gpu(GpuGroupDot(node.op.n_groups)(*node.inputs))]
 
 @register_opt()
-@local_optimizer([tensor.nnet.GradGroupDot])
+@local_optimizer([tensor.nnet.GroupDotGrad])
 def ggd_to_gpu(node):
-    return map(host_from_gpu, GpuGradGroupDot(node.op.n_groups)(*node.inputs))
+    return map(host_from_gpu, GpuGroupDotGrad(node.op.n_groups)(*node.inputs))
 
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])
