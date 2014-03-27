@@ -798,39 +798,39 @@ class GpuGroupDot(GpuOp):
         int fail = 0;
         npy_intp ng_shp = 0;
         CudaNdarray *proxy_W = (CudaNdarray *)CudaNdarray_new_nd(2);
-        CudaNdarray *proxy_b = (CudaNdarray *)CudaNdarray_new_nd(1);
+        CudaNdarray *proxy_h = (CudaNdarray *)CudaNdarray_new_nd(1);
         CudaNdarray *proxy_o = (CudaNdarray *)CudaNdarray_new_nd(1);
         CudaNdarray *tmp = (CudaNdarray *)CudaNdarray_new_nd(1);
-        if (!proxy_W || !proxy_b || !proxy_o || !tmp) { fail = 1; goto %(name)s_fail; }
-        CudaNdarray_set_dim(proxy_W, 0, CudaNdarray_HOST_DIMS(%(matrix)s)[1]);
-        CudaNdarray_set_dim(proxy_W, 1, CudaNdarray_HOST_DIMS(%(matrix)s)[2]);
-        CudaNdarray_set_dim(proxy_b, 0, CudaNdarray_HOST_DIMS(%(biases)s)[1]);
+        if (!proxy_W || !proxy_h || !proxy_o || !tmp) { fail = 1; goto %(name)s_fail; }
+        CudaNdarray_set_dim(proxy_W, 0, CudaNdarray_HOST_DIMS(%(matrix)s)[2]);
+        CudaNdarray_set_dim(proxy_W, 1, CudaNdarray_HOST_DIMS(%(matrix)s)[1]);
+        CudaNdarray_set_dim(proxy_h, 0, CudaNdarray_HOST_DIMS(%(state_below)s)[1]);
         CudaNdarray_set_dim(proxy_o, 0, CudaNdarray_HOST_DIMS(%(out0)s)[1]);
-        CudaNdarray_set_dim(tmp, 0, CudaNdarray_HOST_DIMS(%(state_below)s)[1]);
-        CudaNdarray_set_stride(proxy_W, 0, CudaNdarray_HOST_STRIDES(%(matrix)s)[1]);
-        CudaNdarray_set_stride(proxy_W, 1, CudaNdarray_HOST_STRIDES(%(matrix)s)[2]);
-        CudaNdarray_set_stride(proxy_b, 0, CudaNdarray_HOST_STRIDES(%(biases)s)[1]);
+        CudaNdarray_set_dim(tmp, 0, CudaNdarray_HOST_DIMS(%(biases)s)[1]);
+        CudaNdarray_set_stride(proxy_W, 0, CudaNdarray_HOST_STRIDES(%(matrix)s)[2]);
+        CudaNdarray_set_stride(proxy_W, 1, CudaNdarray_HOST_STRIDES(%(matrix)s)[1]);
+        CudaNdarray_set_stride(proxy_h, 0, CudaNdarray_HOST_STRIDES(%(state_below)s)[1]);
         CudaNdarray_set_stride(proxy_o, 0, CudaNdarray_HOST_STRIDES(%(out0)s)[1]);
-        CudaNdarray_set_stride(tmp, 0, CudaNdarray_HOST_STRIDES(%(state_below)s)[1]);
+        CudaNdarray_set_stride(tmp, 0, CudaNdarray_HOST_STRIDES(%(biases)s)[1]);
         ng_shp = PyArray_DIMS(%(groups)s)[0];
         for (npy_intp pos = 0; pos < %(n_groups)s; pos++) {
             CudaNdarray_set_device_data(proxy_W, CudaNdarray_DEV_DATA(%(matrix)s)+(pos * CudaNdarray_HOST_STRIDES(%(matrix)s)[0]), %(matrix)s);
-            CudaNdarray_set_device_data(proxy_b, CudaNdarray_DEV_DATA(%(biases)s)+(pos * CudaNdarray_HOST_STRIDES(%(biases)s)[0]), %(biases)s);
+            CudaNdarray_set_device_data(tmp, CudaNdarray_DEV_DATA(%(biases)s)+(pos * CudaNdarray_HOST_STRIDES(%(biases)s)[0]), %(biases)s);
             for (npy_intp jdx = 0; jdx < ng_shp; jdx++) {
                %(groups_ctype)s *p = (%(groups_ctype)s *)PyArray_GETPTR1(%(groups)s, jdx);
                if (*p == pos) {
                    CudaNdarray_set_device_data(proxy_o, CudaNdarray_DEV_DATA(%(out0)s)+(jdx * CudaNdarray_HOST_STRIDES(%(out0)s)[0]), %(out0)s);
-                   CudaNdarray_set_device_data(tmp, CudaNdarray_DEV_DATA(%(state_below)s)+(jdx * CudaNdarray_HOST_STRIDES(%(state_below)s)[0]), %(state_below)s);
+                   CudaNdarray_set_device_data(proxy_h, CudaNdarray_DEV_DATA(%(state_below)s)+(jdx * CudaNdarray_HOST_STRIDES(%(state_below)s)[0]), %(state_below)s);
                    if (CudaNdarray_CopyFromCudaNdarray(proxy_o, tmp))
                        { fail = 1; goto %(name)s_fail; }
-                   if (CudaNdarray_sgemv(1.0f, proxy_W, proxy_b,
+                   if (CudaNdarray_sgemv(1.0f, proxy_W, proxy_h,
                                          1.0f, proxy_o)) { fail = 1; goto %(name)s_fail; }
                }
             }
         }
   %(name)s_fail:
     Py_XDECREF(proxy_W);
-    Py_XDECREF(proxy_b);
+    Py_XDECREF(proxy_h);
     Py_XDECREF(proxy_o);
     Py_XDECREF(tmp);
     if (fail)
