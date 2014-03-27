@@ -775,7 +775,7 @@ class GpuGroupDot(GpuOp):
         state_below, matrix, biases, groups = inputs
         out0, = outputs
         fail = sub['fail']
-        groups_ctype = 'int64_t'
+        groups_ctype = node.inputs[3].dtype + '_t'
         n_groups = self.n_groups
         return """
         if (%(out0)s == NULL ||
@@ -787,6 +787,9 @@ class GpuGroupDot(GpuOp):
             int dims[2];
             dims[0] = CudaNdarray_HOST_DIMS(%(state_below)s)[0];
             dims[1] = CudaNdarray_HOST_DIMS(%(biases)s)[1];
+            // I know it seems from the rest of the code that this could be _NewDims()
+            // but the code gives wrong results if we do that.
+            // TODO: find out why.
             %(out0)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
             if (%(out0)s == NULL) { %(fail)s; }
         }
