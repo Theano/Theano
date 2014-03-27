@@ -1,8 +1,5 @@
 import numpy
 import theano
-import theano.tensor as TT
-from theano import tensor
-
 
 class GroupDot(theano.gof.Op):
     def __init__(self, n_groups):
@@ -21,10 +18,10 @@ class GroupDot(theano.gof.Op):
         return hash(type(self)) ^ hash(self.n_groups)
 
     def make_node(self, vec, mat, bias, index):
-        vec = TT.as_tensor_variable(vec)
-        mat = TT.as_tensor_variable(mat)
-        bias = TT.as_tensor_variable(bias)
-        index = TT.as_tensor_variable(index)
+        vec = theano.tensor.as_tensor_variable(vec)
+        mat = theano.tensor.as_tensor_variable(mat)
+        bias = theano.tensor.as_tensor_variable(bias)
+        index = theano.tensor.as_tensor_variable(index)
         assert vec.ndim == 2
         assert mat.ndim == 3
         assert bias.ndim == 2
@@ -39,13 +36,13 @@ class GroupDot(theano.gof.Op):
         node_output_storage = [storage_map[r] for r in node.outputs]
         node_input_compute = [compute_map[r] for r in node.inputs]
         node_output_compute = [compute_map[r] for r in node.outputs]
-        shared = TT._shared
+        shared = theano.tensor._shared
 
         self.W = shared(numpy.zeros((2, 2), dtype='float32'))
         self.b = shared(numpy.zeros((2,), dtype='float32'))
         self.h = shared(numpy.zeros((2, 2), dtype='float32'))
         self.out = shared(numpy.zeros((2, 2), dtype='float32'))
-        out = TT.dot(self.h, self.W) + self.b
+        out = theano.tensor.dot(self.h, self.W) + self.b
         updates = [(self.out, out)]
         self.step = theano.function(
             [],
@@ -100,12 +97,12 @@ class GroupDotGrad(theano.gof.Op):
         return hash(type(self)) ^ hash(self.n_groups)
 
     def make_node(self, vec, mat, bias, index, grad_on_out):
-        vec = TT.as_tensor_variable(vec)
-        mat = TT.as_tensor_variable(mat)
-        bias = TT.as_tensor_variable(bias)
-        grad_on_out = TT.as_tensor_variable(grad_on_out)
+        vec = theano.tensor.as_tensor_variable(vec)
+        mat = theano.tensor.as_tensor_variable(mat)
+        bias = theano.tensor.as_tensor_variable(bias)
+        grad_on_out = theano.tensor.as_tensor_variable(grad_on_out)
 
-        index = TT.as_tensor_variable(index)
+        index = theano.tensor.as_tensor_variable(index)
         assert vec.ndim == 2
         assert mat.ndim == 3
         assert bias.ndim == 2
@@ -120,7 +117,7 @@ class GroupDotGrad(theano.gof.Op):
         node_output_storage = [storage_map[r] for r in node.outputs]
         node_input_compute = [compute_map[r] for r in node.inputs]
         node_output_compute = [compute_map[r] for r in node.outputs]
-        shared = TT._shared
+        shared = theano.tensor._shared
 
         self.W = shared(numpy.zeros((2, 2), dtype='float32'))
 
@@ -132,8 +129,8 @@ class GroupDotGrad(theano.gof.Op):
         self.gh = shared(numpy.zeros((2, 2), dtype='float32'))
         self.gb = shared(numpy.zeros((2,), dtype='float32'))
 
-        gW = TT.dot(self.h.T, self.grad_on_out)
-        gh = TT.dot(self.grad_on_out, self.W.T)
+        gW = theano.tensor.dot(self.h.T, self.grad_on_out)
+        gh = theano.tensor.dot(self.grad_on_out, self.W.T)
         gb = self.grad_on_out.sum(0)
 
         updates = [(self.gW, gW), (self.gb, gb), (self.gh, gh)]
