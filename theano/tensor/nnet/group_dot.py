@@ -136,23 +136,10 @@ class GroupDotGrad(theano.gof.Op):
         updates = [(self.gW, gW), (self.gb, gb), (self.gh, gh)]
         self.step = theano.function([], [], updates=updates, name='grad_step')
 
-        self.tmp_h = None
-        self.tmp_grad_out = None
-        p = self.execute
+        return super(GroupDotGrad, self).make_thunk(node, storage_map,
+                                                    compute_map, no_recycling)
 
-        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
-            r = p(n, [x[0] for x in i], o)
-            for o in n.outputs:
-                compute_map[o][0] = True
-            return r
-
-        rval.inputs = node_input_storage
-        rval.outputs = node_output_storage
-        rval.perform = p
-        rval.lazy = False
-        return rval
-
-    def execute(self, node, ins, _outs):
+    def perform(self, node, ins, _outs):
         state_below, matrix, biases, groups, grad_on_out = ins
         if not (_outs[0][0] and _outs[0][0].shape == state_below.shape):
             _outs[0][0] = numpy.zeros_like(state_below)
