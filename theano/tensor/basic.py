@@ -2625,8 +2625,7 @@ class Alloc(gof.Op):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (not isinstance(client[0], basestring) and
-                  #It is the inputs id 0 of the following op
+            elif (#The following ops work inplace of their input id 0.
                   client[1] == 0 and
                   isinstance(client[0].op, (
                     #Ops that will work inplace on the Alloc. So if they
