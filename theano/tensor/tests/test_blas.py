@@ -1091,7 +1091,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 
         # Assert that the dot was optimized somehow
         self.assertFunctionContains0(f, T.dot)
-        self.assertFunctionContains1(f, Gemv(False))
+        self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
         assert numpy.allclose(f(), numpy.dot(v.get_value(), w.get_value()))
