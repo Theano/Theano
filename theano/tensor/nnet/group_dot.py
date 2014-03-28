@@ -1,6 +1,7 @@
 import numpy
 import theano
 
+
 class GroupDot(theano.gof.Op):
     def __init__(self, n_groups):
         """
@@ -11,8 +12,7 @@ class GroupDot(theano.gof.Op):
         self.n_groups = n_groups
 
     def __eq__(self, other):
-        return type(self) == type(other) and \
-                self.n_groups == other.n_groups
+        return type(self) == type(other) and self.n_groups == other.n_groups
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.n_groups)
@@ -34,18 +34,14 @@ class GroupDot(theano.gof.Op):
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         shared = theano.tensor._shared
 
-        self.W = shared(numpy.zeros((2, 2), dtype='float32'))
-        self.b = shared(numpy.zeros((2,), dtype='float32'))
-        self.h = shared(numpy.zeros((2, 2), dtype='float32'))
-        self.out = shared(numpy.zeros((2, 2), dtype='float32'))
+        self.W = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
+        self.b = shared(numpy.zeros((2,), dtype=node.inputs[2].dtype))
+        self.h = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
+        self.out = shared(numpy.zeros((2, 2), dtype=node.outputs[0].dtype))
         out = theano.tensor.dot(self.h, self.W) + self.b
         updates = [(self.out, out)]
-        self.step = theano.function(
-            [],
-            [],
-            name='step',
-            updates=updates)
-        self.tmp_h = None
+        self.step = theano.function([], [], name='GroupDotStep',
+                                    updates=updates)
 
         return super(GroupDot, self).make_thunk(node, storage_map,
                                                 compute_map, no_recycling)
@@ -111,22 +107,21 @@ class GroupDotGrad(theano.gof.Op):
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         shared = theano.tensor._shared
 
-        self.W = shared(numpy.zeros((2, 2), dtype='float32'))
-
-        self.b = shared(numpy.zeros((2,), dtype='float32'))
-        self.h = shared(numpy.zeros((2, 2), dtype='float32'))
-        #self.out = shared(numpy.zeros((2,2), dtype='float32'))
-        self.grad_on_out = shared(numpy.zeros((2, 2), dtype='float32'))
-        self.gW = shared(numpy.zeros((2, 2), dtype='float32'))
-        self.gh = shared(numpy.zeros((2, 2), dtype='float32'))
-        self.gb = shared(numpy.zeros((2,), dtype='float32'))
+        self.W = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
+        self.h = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
+        self.grad_on_out = shared(numpy.zeros((2, 2),
+                                              dtype=node.inputs[3].dtype))
+        self.gW = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
+        self.gh = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
+        self.gb = shared(numpy.zeros((2,), dtype=node.outputs[2].dtype))
 
         gW = theano.tensor.dot(self.h.T, self.grad_on_out)
         gh = theano.tensor.dot(self.grad_on_out, self.W.T)
         gb = self.grad_on_out.sum(0)
 
         updates = [(self.gW, gW), (self.gb, gb), (self.gh, gh)]
-        self.step = theano.function([], [], updates=updates, name='grad_step')
+        self.step = theano.function([], [], updates=updates,
+                                    name='GroupDotGradStep')
 
         return super(GroupDotGrad, self).make_thunk(node, storage_map,
                                                     compute_map, no_recycling)
