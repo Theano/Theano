@@ -6,7 +6,7 @@ if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.test_neighbours
-from theano.sandbox.cuda.neighbours import GpuImages2Neibs
+from theano.sandbox.gpuarray.neighbours import GpuImages2Neibs
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
