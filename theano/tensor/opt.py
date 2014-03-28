@@ -2611,8 +2611,10 @@ register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 def local_fill_sink(node):
     """
     f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
+
+    f need to be an elemwise
     """
-    if not (node.op and isinstance(node.op, T.Elemwise) and node.op != T.fill):
+    if not isinstance(node.op, T.Elemwise) or node.op == T.fill:
         return False
     models = []
     inputs = []
@@ -2622,7 +2624,7 @@ def local_fill_sink(node):
             inputs.append(input.owner.inputs[1])
         else:
             inputs.append(input)
-    if inputs == node.inputs:
+    if not models:
         return False
     c = node.op(*inputs)
     for model in models:
