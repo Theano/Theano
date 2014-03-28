@@ -3198,13 +3198,27 @@ class GpuAlloc(GpuOp):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (not isinstance(client[0], basestring)
-                    and isinstance(client[0].op, (
-                        tensor.IncSubtensor,
-                        tensor.AdvancedIncSubtensor1,
-                        GpuIncSubtensor,
-                        GpuAdvancedIncSubtensor1
-                        ))):
+            elif (#The following ops work inplace of their input id 0.
+                  client[1] == 0 and
+                  isinstance(client[0].op, (
+                    #Ops that will work inplace on the Alloc. So if they
+                    #get constant_folded, they would copy the
+                    #constant and this is less efficients.
+
+                    #Not doing the constant folding could also lower
+                    #the peak memory usage, as we the "constant" won't
+                    #always exists.
+                      #theano.tensor.subtensor.AdvancedIncSubtensor,
+                      GpuIncSubtensor,
+                      GpuAdvancedIncSubtensor1,
+                      theano.sandbox.cuda.blas.GpuGemm,
+                      theano.sandbox.cuda.blas.GpuGemv,
+                      theano.sandbox.cuda.blas.GpuGer,
+                  ))):
+                return False
+            #If the clients is a transfer, we don't want to fold. We
+            #let the moving opt finish before deciding what to do.
+            elif isinstance(client[0].op, HostFromGpu):
                 return False
         return True
 
