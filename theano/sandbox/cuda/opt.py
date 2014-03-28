@@ -1538,12 +1538,22 @@ def local_gpu_extract_diagonal(node):
 @register_opt()
 @local_optimizer([tensor.nnet.GroupDot])
 def gd_to_gpu(node):
-    return [host_from_gpu(GpuGroupDot(node.op.n_groups)(*node.inputs))]
+    if (isinstance(node.op, tensor.nnet.GroupDot) and
+        node.inputs[0].dtype == 'float32' and
+        node.inputs[1].dtype == 'float32' and
+        node.inputs[2].dtype == 'float32'):
+        return [host_from_gpu(GpuGroupDot(node.op.n_groups)(*node.inputs))]
 
 @register_opt()
 @local_optimizer([tensor.nnet.GroupDotGrad])
 def ggd_to_gpu(node):
-    return map(host_from_gpu, GpuGroupDotGrad(node.op.n_groups)(*node.inputs))
+    if (isinstance(node.op, tensor.nnet.GroupDotGrad) and
+        node.inputs[0].dtype == 'float32' and
+        node.inputs[1].dtype == 'float32' and
+        node.inputs[2].dtype == 'float32' and
+        node.inputs[4].dtype == 'float32'):
+        return map(host_from_gpu,
+                   GpuGroupDotGrad(node.op.n_groups)(*node.inputs))
 
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])
