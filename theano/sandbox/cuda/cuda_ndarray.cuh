@@ -160,6 +160,12 @@ CudaNdarray_CheckExact(const PyObject * ob);
 DllExport bool
 CudaNdarray_is_c_contiguous(const CudaNdarray * self);
 
+/**
+ * Return true for a F-contiguous CudaNdarray, else false
+ */
+DllExport bool
+CudaNdarray_is_f_contiguous(const CudaNdarray * self);
+
 /****
  * Returns the number of elements necessary in host_structure and dev_structure for a given number of dimensions.
  */
@@ -510,6 +516,27 @@ CudaNdarray_is_c_contiguous(const CudaNdarray * self)
         size = size * CudaNdarray_HOST_DIMS(self)[i];
     }
     return c_contiguous;
+}
+
+/**
+ * True iff the strides look like [1, dim[0], dim[0]*dim[1], ...]
+ */
+DllExport inline bool ALWAYS_INLINE
+CudaNdarray_is_f_contiguous(const CudaNdarray * self)
+{
+    bool f_contiguous = true;
+    int size = 1;
+    for (int i = 0; (i < self->nd) && f_contiguous; i++)
+    {
+        if (CudaNdarray_HOST_DIMS(self)[i] == 1)
+            continue;
+        if (CudaNdarray_HOST_STRIDES(self)[i] != size)
+        {
+            f_contiguous = false;
+        }
+        size = size * CudaNdarray_HOST_DIMS(self)[i];
+    }
+    return f_contiguous;
 }
 
 DllExport PyObject * CudaNdarray_IS_C_Contiguous(CudaNdarray * self);
