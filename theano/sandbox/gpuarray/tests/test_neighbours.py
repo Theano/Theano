@@ -1,23 +1,17 @@
-# Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
+import unittest
 
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
-    raise SkipTest('Optional package cuda disabled')
+# We let that import do the init of the back-end if needed.
+from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
+                                                          mode_without_gpu)
 
 import theano.sandbox.test_neighbours
 from theano.sandbox.gpuarray.neighbours import GpuImages2Neibs
-
-if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
-else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
 class T_GpuImages2Neibs(theano.sandbox.test_neighbours.T_Images2Neibs):
     mode = mode_with_gpu
     op = GpuImages2Neibs
-    dtypes = ['float32']
+    dtypes = ['int64', 'float32', 'float64']
 
 if __name__ == '__main__':
     unittest.main()

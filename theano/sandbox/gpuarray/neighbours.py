@@ -1,15 +1,21 @@
 # This is work in progress
-from theano import Op, Apply
+import numpy
+from theano import Op, Apply, config
 from theano.gof import local_optimizer
-from theano.sandbox.cuda import cuda_available
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
-
 from theano.sandbox.neighbours import Images2Neibs
+import theano.tensor as T
 
-if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType
-    from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
-    from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
+try:
+    import pygpu
+    from pygpu import gpuarray, elemwise
+except ImportError:
+    pass
+
+from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable,
+                                               host_from_gpu, gpu_from_host)
+from theano.sandbox.gpuarray.opt import register_opt as register_gpu_opt
+from theano.sandbox.gpuarray.type import GpuArrayType
 
 
 class GpuImages2Neibs(Images2Neibs, Op):
@@ -22,20 +28,22 @@ class GpuImages2Neibs(Images2Neibs, Op):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
-        assert ten4.dtype == 'float32'
-        if not isinstance(ten4.type, CudaNdarrayType):
-            raise TypeError('ten4 must be cudandarray', ten4)
-
+        
+        assert ten4.dtype in ['int64', 'float32', 'float64']
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
-
+        
+        ten4 = as_gpuarray_variable(ten4)
+        neib_shape = T.as_tensor_variable(neib_shape)
+        neib_step = T.as_tensor_variable(neib_step)
+           
         return Apply(self, [ten4, neib_shape, neib_step],
-                     [CudaNdarrayType(broadcastable=(False, False),
-                                      dtype=ten4.type.dtype)()])
+                     [GpuArrayType(broadcastable=(False, False),
+                                   dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
         
     def c_headers(self):
         return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
@@ -48,6 +56,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
         return ['setup_ext_cuda();']
 
     def c_support_code_apply(self, node, nodename):
+        dtype_ten4 = node.inputs[0].dtype
+        dtype_z = node.outputs[0].dtype
         mode = self.mode
         return """
 //a version that use less register but don't work in all case.
@@ -64,9 +74,9 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int grid_d,
             const int stride0, const int stride1,
             const int stride2, const int stride3,
-            float * global_ten4,
+            npy_%(dtype_ten4)s * global_ten4,
             const int out_s0, const int out_s1,
-            float * global_out
+            npy_%(dtype_z)s * global_out
         )
         {
             const int wrap_centered_idx_shift_x = c/2;
@@ -136,9 +146,9 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int grid_d,
             const int stride0, const int stride1,
             const int stride2, const int stride3,
-            float * global_ten4,
+            npy_%(dtype_ten4)s * global_ten4,
             const int out_s0, const int out_s1,
-            float * global_out
+            npy_%(dtype_z)s * global_out
         )
         {
             const int wrap_centered_idx_shift_x = c/2;
@@ -196,17 +206,24 @@ class GpuImages2Neibs(Images2Neibs, Op):
                             }
             }
         }
-
         """ % locals()
 
     def c_code(self, node, name, inp, out, sub):
         dtype_ten4 = node.inputs[0].dtype
+        dtype_neib_shape = node.inputs[1].dtype
+        dtype_neib_step = node.inputs[2].dtype
         dtype_z = node.outputs[0].dtype
+        itemsize_ten4 = numpy.dtype(dtype_ten4).itemsize
+        itemsize_z = numpy.dtype(dtype_z).itemsize
         typecode_z = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        ten4, neib_shape, neib_step = inp
+        ten4, neib_shape, neib_step = inp 
         z, = out
         fail = sub['fail']
         mode = self.mode
+        if config.gpuarray.sync:
+            cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
+        else:
+            cnda_thread_sync = "" 
         return """
 #ifndef CEIL_INTDIV
 #define CEIL_INTDIV(a, b) ((a/b) + ((a %% b) ? 1: 0))
@@ -221,7 +238,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 PyErr_Format(PyExc_TypeError, "pvals wrong rank");
                 %(fail)s;
             }
-            if (PyGpuArray_NDIM(%(neib_shape)s) != 1)
+            if (PyArray_NDIM(%(neib_shape)s) != 1)
             {
                 PyErr_Format(PyExc_TypeError, "unis wrong rank");
                 %(fail)s;
@@ -234,13 +251,13 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 %(fail)s;
             }
 
-            const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(
+            const int c = *(npy_%(dtype_neib_shape)s*) PyArray_GETPTR1(
                                                      %(neib_shape)s, 0);
-            const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(
+            const int d = *(npy_%(dtype_neib_shape)s*) PyArray_GETPTR1(
                                                      %(neib_shape)s, 1);
-            const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*)
+            const npy_intp step_x = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 0);
-            const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*)
+            const npy_intp step_y = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 1);
 
             if ( "%(mode)s" == "wrap_centered") {
@@ -315,7 +332,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 || (PyGpuArray_DIMS(%(z)s)[1] != z_dim1))
             {
                 Py_XDECREF(%(z)s);
-                npy_intp dims[2];
+                size_t dims[2];
                 dims[0] = z_dim0;
                 dims[1] = z_dim1;
                 %(z)s = pygpu_empty(2, dims, %(typecode_z)s,
@@ -337,14 +354,14 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int nb_stack = PyGpuArray_DIMS(%(ten4)s)[1];
             const int height = PyGpuArray_DIMS(%(ten4)s)[2];
             const int width = PyGpuArray_DIMS(%(ten4)s)[3];
-
-            const int c = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(
+            
+            const int c = *(npy_%(dtype_neib_shape)s*) PyArray_GETPTR1(
                                                      %(neib_shape)s, 0);
-            const int d = *(dtype_%(neib_shape)s*) PyArray_GETPTR1(
+            const int d = *(npy_%(dtype_neib_shape)s*) PyArray_GETPTR1(
                                                      %(neib_shape)s, 1);
-            const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*)
+            const npy_intp step_x = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 0);
-            const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*)
+            const npy_intp step_y = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 1);
 
             dim3 n_threads(d,c,1);
@@ -371,9 +388,9 @@ class GpuImages2Neibs(Images2Neibs, Op):
                       int, int, int ,int,
                       int, int,
                       int, int, int, int,
-                      float*,
+                      npy_%(dtype_ten4)s*,
                       int, int,
-                      float*);
+                      npy_%(dtype_z)s*);
             if(n_threads.x==d && n_threads.y==c){
                 f = k_multi_warp_less_%(name)s;
             }else{
@@ -386,19 +403,19 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 height, width,
                 c, d, step_x, step_y,
                 grid_c, grid_d,
-                PyGpuArray_STRIDES(%(ten4)s)[0],
-                PyGpuArray_STRIDES(%(ten4)s)[1],
-                PyGpuArray_STRIDES(%(ten4)s)[2],
-                PyGpuArray_STRIDES(%(ten4)s)[3],
+                PyGpuArray_STRIDES(%(ten4)s)[0] / %(itemsize_ten4)s,
+                PyGpuArray_STRIDES(%(ten4)s)[1] / %(itemsize_ten4)s,
+                PyGpuArray_STRIDES(%(ten4)s)[2] / %(itemsize_ten4)s,
+                PyGpuArray_STRIDES(%(ten4)s)[3] / %(itemsize_ten4)s,
                 (npy_%(dtype_ten4)s*)(
                                 ((char *)cuda_get_ptr(%(ten4)s->ga.data)) +
                                 %(ten4)s->ga.offset),
-                PyGpuArray_STRIDES(%(z)s)[0],
-                PyGpuArray_STRIDES(%(z)s)[1],
+                PyGpuArray_STRIDES(%(z)s)[0] / %(itemsize_z)s,
+                PyGpuArray_STRIDES(%(z)s)[1] / %(itemsize_z)s,
                 (npy_%(dtype_z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                                   %(z)s->ga.offset),
+                                   %(z)s->ga.offset)
             );
-            CNDA_THREAD_SYNC;
+            %(cnda_thread_sync)s
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts)
             {
@@ -427,12 +444,11 @@ def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
 @local_optimizer([Images2Neibs])
 def use_gpu_images2neibs(node):
     if (type(node.op) is Images2Neibs and
-        node.inputs[0].dtype == 'float32' and
+        node.inputs[0].dtype in ['int64', 'float32', 'float64'] and
         node.op.mode in ['valid', 'ignore_borders',
                          'wrap_centered']):
         return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),
                                                node.inputs[1], node.inputs[2],
                                                mode=node.op.mode))]
 
-if cuda_available:
-    register_gpu_opt()(use_gpu_images2neibs)
+register_gpu_opt()(use_gpu_images2neibs)
