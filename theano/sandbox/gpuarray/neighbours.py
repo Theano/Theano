@@ -28,30 +28,30 @@ class GpuImages2Neibs(Images2Neibs, Op):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
-        
+
         assert ten4.dtype in ['int64', 'float32', 'float64']
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
-        
+
         ten4 = as_gpuarray_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
         neib_step = T.as_tensor_variable(neib_step)
-           
+
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
         return (9,)
-        
+
     def c_headers(self):
         return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
                 '<compyte/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
-        
+
     def c_init_code(self):
         return ['setup_ext_cuda();']
 
@@ -216,14 +216,14 @@ class GpuImages2Neibs(Images2Neibs, Op):
         itemsize_ten4 = numpy.dtype(dtype_ten4).itemsize
         itemsize_z = numpy.dtype(dtype_z).itemsize
         typecode_z = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        ten4, neib_shape, neib_step = inp 
+        ten4, neib_shape, neib_step = inp
         z, = out
         fail = sub['fail']
         mode = self.mode
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
-            cnda_thread_sync = "" 
+            cnda_thread_sync = ""
         return """
 #ifndef CEIL_INTDIV
 #define CEIL_INTDIV(a, b) ((a/b) + ((a %% b) ? 1: 0))
@@ -354,7 +354,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int nb_stack = PyGpuArray_DIMS(%(ten4)s)[1];
             const int height = PyGpuArray_DIMS(%(ten4)s)[2];
             const int width = PyGpuArray_DIMS(%(ten4)s)[3];
-            
+
             const int c = *(npy_%(dtype_neib_shape)s*) PyArray_GETPTR1(
                                                      %(neib_shape)s, 0);
             const int d = *(npy_%(dtype_neib_shape)s*) PyArray_GETPTR1(
