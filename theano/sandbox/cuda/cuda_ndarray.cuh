@@ -326,10 +326,13 @@ CudaNdarray_set_nd(CudaNdarray * self, const int nd)
  * Allocate storage space for a tensor of rank 'nd' and given dimensions.
  * (No-op if self already has a contiguous tensor of the right dimensions)
  *
+ * If fortran is non-zeros, a fortran order is made, otherwise it is a c order.
+ *
  * Note: CudaNdarray_alloc_contiguous is templated to work for both int dimensions and npy_intp dimensions
  */
 template<typename inttype>
-static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const inttype * dim)
+static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
+                                        const inttype * dim, int fortran=0)
 {
     // allocate an empty ndarray with c_contiguous access
     // return 0 on success
@@ -342,11 +345,23 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd, const i
     {
         return -1;
     }
-    for (int i = nd-1; i >= 0; --i)
+    if (fortran)
     {
-        CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
-        CudaNdarray_set_dim(self, i, dim[i]);
-        size = size * dim[i];
+        for (int i = 0; i < nd; i++)
+        {
+            CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
+            CudaNdarray_set_dim(self, i, dim[i]);
+            size = size * dim[i];
+        }
+    }
+    else
+    {
+        for (int i = nd-1; i >= 0; --i)
+        {
+            CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
+            CudaNdarray_set_dim(self, i, dim[i]);
+            size = size * dim[i];
+        }
     }
 
     // If the allocated buffer is already of the right size, we don't need to
@@ -525,8 +540,9 @@ DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_othe
 // *arr may initially be NULL, a pointer to an ndarray of the wrong size,
 // or a pointer to an ndarray of the right size. In the last case it will
 // not change.
+// If fortran is non-zero, a fortran order is expected/created
 DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
-        const int * dims);
+                                      const int * dims, int fortran = 0);
 
 DllExport inline const char* ALWAYS_INLINE cublasGetErrorString(cublasStatus err){
     if(CUBLAS_STATUS_SUCCESS == err)
