@@ -1,3 +1,4 @@
+import sys
 import logging
 
 import theano
@@ -36,6 +37,8 @@ def init_dev(dev):
     context = pygpu.init(dev)
     pygpu.set_default_context(context)
     pygpu_activated = True
+    if config.print_active_device:
+        print >> sys.stderr, "Using device %s: %s" % (dev, context.devname)
 
 if pygpu:
     try:
