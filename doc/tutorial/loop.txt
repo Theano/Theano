@@ -24,7 +24,7 @@ Scan
 
 The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
-**Scan Example: Computing tanh(x(t)*W + b) elementwise**
+**Scan Example: Computing tanh(x(t).dot(W) + b) elementwise**
 
 .. code-block:: python
   import theano
@@ -51,7 +51,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   print np.tanh(x.dot(w) + b)
   
 
-**Scan Example: Computing the sequence x(t) = tanh(x(t-1)*W + y(t)*U + p(T-t)*V)**
+**Scan Example: Computing the sequence x(t) = tanh(x(t-1).dot(W) + y(t).dot(U) + p(T-t).dot(V))**
 
 .. code-block:: python
   import theano
@@ -67,8 +67,9 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   V = T.matrix("V")
   P = T.matrix("P")
   
-  results, updates = theano.scan(lambda y,p,x_tm1:T.tanh(T.dot(x_tm1,W)+T.dot(y,U)+T.dot(p,V)), \
-                                 sequences=[Y,P[::-1]], outputs_info=[X])
+  results, updates = theano.scan(lambda 
+            y,p,x_tm1:T.tanh(T.dot(x_tm1,W)+T.dot(y,U)+T.dot(p,V)), 
+            sequences=[Y,P[::-1]], outputs_info=[X])
   compute_seq = theano.function(inputs = [X, W, Y, U, P, V], outputs=[results])
   
   # test values
@@ -152,7 +153,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   # comparison with numpy
   print np.diagonal(x).sum()
 
-**Scan Example: Computing the sequence x(t) = x(t-2)*U + x(t-1)*V +  tanh(x(t-1)*W  + b)**
+**Scan Example: Computing the sequence x(t) = x(t-2).dot(U) + x(t-1).dot(V) +  tanh(x(t-1).dot(W)  + b)**
 
 .. code-block:: python
   import theano
@@ -193,7 +194,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
     x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) \
             + numpy.tanh(x_res[i-1].dot(w) + b))
 
-**Scan Example: Computing the Jacobian of y = tanh(v*A) wrt x**
+**Scan Example: Computing the Jacobian of y = tanh(v.dot(A)) wrt x**
 
 .. code-block:: python
   import theano
@@ -236,7 +237,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
   accumulator(5)
   k.get_value()
 
-**Scan Example: Computing tanh(v*W + b)*d where b is binomial**
+**Scan Example: Computing tanh(v.dot(W) + b)*d where b is binomial**
 
 .. code-block:: python
   import theano

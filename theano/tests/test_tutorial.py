@@ -1282,7 +1282,8 @@ class T_scan(unittest.TestCase):
           # comparison with numpy
           x_res = numpy.zeros((10,2))
           x_res[0] = x[0].dot(u) + x[1].dot(v) + numpy.tanh(x[1].dot(w) + b)
-          x_res[1] = x[1].dot(u) + x_res[0].dot(v) + numpy.tanh(x_res[0].dot(w) + b)
+          x_res[1] = x[1].dot(u) + x_res[0].dot(v) \
+                        + numpy.tanh(x_res[0].dot(w) + b)
           x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) \
                     + numpy.tanh(x_res[1].dot(w) + b)
           for i in range(2,10):
