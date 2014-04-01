@@ -944,6 +944,65 @@ class Eig(Op):
 
 eig = Eig()
 
+class SVD(Op):
+    """
+    Singular Value Decomposition.
+    Factors the matrix a as u * np.diag(s) * v, where u and v are unitary
+        and s is a 1-d array of a's singular values.
+    """
+    _numop = staticmethod(numpy.linalg.svd)
+
+    def __init__(self, full_matrices=True, compute_uv=True):
+        """
+        inputs :
+        --------
+        full_matrices : bool, optional
+            If True (default), u and v have the shapes (M, M) and (N, N), respectively.
+            Otherwise, the shapes are (M, K) and (K, N), respectively, where K = min(M, N).
+        compute_uv : bool, optional
+            Whether or not to compute u and v in addition to s. True by default.
+        """
+        self.full_matrices = full_matrices
+        self.compute_uv = compute_uv
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def props(self):
+        return self.full_matrices, self.compute_uv,
+
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim == 2, "The input of svd function should be a matrix."
+        w = theano.tensor.matrix(dtype=x.dtype)
+        u = theano.tensor.matrix(dtype=x.dtype)
+        v = theano.tensor.matrix(dtype=x.dtype)
+        return Apply(self, [x], [w, u, v])
+
+    def perform(self, node, (x,), (w, u, v)):
+        try:
+            assert x.ndim == 2, "The input of svd function should be a matrix."
+            w[0], u[0], v[0] = self._numop(x,
+                                           self.full_matrices,
+                                           self.compute_uv)
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
+                                                      node.inputs[0]))
+            raise
+
+    def grad(self, inputs, g_outputs):
+        raise NotImplementedError("Grad method of %s is "
+                                  "not implemented." % self.__class__.__name__)
+
+    def __str__(self):
+        return self._numop.__name__.capitalize()
+
+def svd(a, full_matrices=1, compute_uv=1):
+    return SVD(full_matrices, compute_uv)(a)
 
 def _zero_disconnected(outputs, grads):
     l = []
