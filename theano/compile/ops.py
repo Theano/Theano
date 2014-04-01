@@ -444,7 +444,7 @@ def as_op(itypes, otypes, infer_shape=None):
         raise TypeError("itypes has to be a list of theano types")
     if not isinstance(otypes, (list, tuple)):
         otypes = [otypes]
-    if any(not isinstance(t, theano.Type) for t in otypes)):
+    if any(not isinstance(t, theano.Type) for t in otypes):
         raise TypeError("otypes has to be a list of theano types")
 
     # make sure they are lists and not tuples
