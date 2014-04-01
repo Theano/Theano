@@ -3403,6 +3403,174 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                                for i in node.outputs])
 
 
+class GpuSVD(GpuOp):
+    """
+    Singular Value Decomposition.
+    Factors the matrix a as u * np.diag(s) * v, where u and v are unitary
+        and s is a 1-d array of a's singular values.
+    """
+    def __init__(self, full_matrices=True, compute_uv=True):
+        """
+        inputs :
+        --------
+        full_matrices : bool, optional
+            If True (default), u and v have the shapes (M, M) and (N, N), respectively.
+            Otherwise, the shapes are (M, K) and (K, N), respectively, where K = min(M, N).
+        compute_uv : bool, optional
+            Whether or not to compute u and v in addition to s. True by default.
+        """
+
+        if dtype is None:
+            dtype = config.floatX
+
+        assert dtype == 'float32'
+        self.dtype = dtype
+        self.full_matrices = full_matrices
+        self.compute_uv = compute_uv
+
+    def props(self):
+        return self.full_matrices, self.compute_uv,
+
+    def make_node(self, n, m, k):
+        x = as_cuda_ndarray_variable(x)
+        assert x.ndim == 2, "The input of svd function should be a matrix."
+        w = x.type()#eano.tensor.matrix(dtype=x.dtype)
+        u = cuda.vector(dtype=x.dtype)# theano.tensor.vector(dtype=x.dtype)
+        v = x.type()#heano.tensor.matrix(dtype=x.dtype)
+        return Apply(self, [x], [w, u, v])
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def c_headers(self):
+        return ["cula_lapack.h"]
+
+    def c_libraries(self):
+        return ["lcula_lapack_basic", "lcublas", "lcudart", "pthread", "liomp5"]
+
+    def c_code(self, node, name, inp, out, sub):
+        x = inp
+        w, u, v, = out
+        fail = sub['fail']
+
+        paramsd = locals()
+        paramsd["compute_uv"] = self.compute_uv
+        paramsd["full_matrices"] = self.full_matrices
+
+        s = """
+        int compute_uv = %(compute_uv)d;
+        int full_matrices = %(full_matrices)d;
+
+        char jobu = 'N';
+        char jobvt = 'N';
+        int dims[] = {0, 0};
+
+        dims[0] = ((dtype_%(n)s*)PyArray_DIMS(%(x)s))[0];
+        dims[1] = ((dtype_%(m)s*)PyArray_DIMS(%(x)s))[1];
+
+        int ldvt = dims[0];
+        int ldu = dims[0];
+        int lda = dims[1];
+        int wdim = (dims[0] > dims[1]) ? dims[1] : dims[0];
+
+        if (compute_uv == 1){
+            if (full_matrices == 1) {
+                jobu  = 'A';
+                jobvt = 'A';
+            } else if (compute_uv == 1) {
+                jobu = 'S';
+                jobvt = 'S';
+                ldu = (int)(ldu / 2)
+                ldvt = (int)(ldu / 2)
+            }
+        }
+
+        int x_total_size = dims[0] * dims[1] * sizeof(float);
+        int w_total_size = wdim * sizeof(float);
+        int u_total_size = dims[0] * ldu * sizeof(float);
+        int v_total_size = dims[1] * ldvt * sizeof(float);
+
+        int w_dims[] = {wdim};
+        int u_dims[] = {dims[0], ldu};
+        int v_dims[] = {ldvt, dims[1]};
+
+        cudaError_t sts;
+
+        void * orig_u = %(u)s;
+        void * orig_w = %(w)s;
+        void * orig_v = %(v)s;
+
+        if (CudaNdarray_prep_output(& %(w)s, 1, w_dims))
+        {
+            %(fail)s;
+        }
+
+        if (CudaNdarray_prep_output(& %(u)s, 2, u_dims))
+        {
+            %(fail)s;
+        }
+
+        if (CudaNdarray_prep_output(& %(v)s, 2, v_dims))
+        {
+            %(fail)s;
+        }
+
+        sts = cudaMemset(CudaNdarray_DEV_DATA(%(w)s), 0, w_total_size);
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_MemoryError,
+                         "GpuSVD: Error in memset %%d bytes of device memory.",
+                         total_size);
+            if(orig_w == NULL)
+                Py_XDECREF(%(s)s);
+            %(fail)s;
+        }
+        sts = cudaMemset(CudaNdarray_DEV_DATA(%(u)s), 0, u_total_size);
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_MemoryError,
+                         "GpuSVD: Error in memset %%d bytes of device memory.",
+                         total_size);
+            if(orig_u == NULL)
+                Py_XDECREF(%(u)s);
+            %(fail)s;
+        }
+        sts = cudaMemset(CudaNdarray_DEV_DATA(%(v)s), 0, v_total_size);
+        if (cudaSuccess != sts)
+        {
+            PyErr_Format(PyExc_MemoryError,
+                         "GpuSVD: Error in memset %%d bytes of device memory.",
+                         total_size);
+            if(orig_v == NULL)
+                Py_XDECREF(%(w)s);
+            %(fail)s;
+        }
+        status = culaDeviceSgesvd(jobu, jobvt, dims[0], dims[1], %(x)s, lda, %(w)s, %(u)s, ldu, %(v)s, ldvt);
+        CNDA_THREAD_SYNC;
+
+        sts = cudaGetLastError();
+        if (cudaSuccess != sts)
+        {
+               PyErr_Format(PyExc_RuntimeError,
+                    "Cuda error: culaDeviceSgesvd: %%s. n=%%d, m=%%d.",
+                    cudaGetErrorString(sts),
+                    dims[0], dims[1]);
+            %(fail)s;
+        }
+        """ % paramsd
+
+        return s
+
+    def c_code_cache_version(self):
+        return (3,)
+
+
 class GpuEye(GpuOp):
     def __init__(self, dtype=None):
         if dtype is None:
@@ -3485,7 +3653,7 @@ __global__ void kEye(float* a, int n, int m) {
                     cudaGetErrorString(sts),
                     dims[0], dims[1]);
             %(fail)s;
-         }
+        }
         """ % locals()
 
         return s
