@@ -257,7 +257,7 @@ class GpuFromHost(Op):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isintance(ev, GpuArrayType):
+        if isinstance(ev, GpuArrayType):
             return [host_from_gpu(ev)]
         else:
             return ev
@@ -317,7 +317,7 @@ class GpuFromCuda(Op):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isintance(ev, GpuArrayType):
+        if isinstance(ev, GpuArrayType):
             return [cuda_from_gpu(ev)]
         else:
             return ev
