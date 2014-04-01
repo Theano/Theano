@@ -5093,7 +5093,7 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 
 
 int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
-        const int * dims)
+                            const int * dims, int fortran)
 {
     bool allocated = false;
     if (*arr == NULL)
@@ -5105,7 +5105,7 @@ int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         allocated = true;
     }
 
-    if (CudaNdarray_alloc_contiguous(*arr, nd, dims))
+    if (CudaNdarray_alloc_contiguous(*arr, nd, dims, fortran))
     {
         if (allocated)
         {
