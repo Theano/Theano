@@ -510,11 +510,11 @@ class ProfileStats(object):
         topos = {}  # Only do the topo once per fct.
         atimes = []
         for a, t in self.apply_time.items():
-            if a not in topos:
+            if a.fgraph not in topos:
                 topo = a.fgraph.toposort()
-                topos[a] = topo
+                topos[a.fgraph] = topo
             else:
-                topo = topos[a]
+                topo = topos[a.fgraph]
             atimes.append((
                 t * 100 / local_time,
                 t,
