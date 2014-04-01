@@ -300,7 +300,7 @@ class GpuDimShuffle(GpuOp):
 
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
-                if b != 1:
+                if not b:
                     # we cannot drop non-broadcastable dimensions
                     raise ValueError("You cannot drop a non-broadcastable"
                                      " dimension.",
