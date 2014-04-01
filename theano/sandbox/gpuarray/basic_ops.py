@@ -3,12 +3,12 @@ import os
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Op, Apply
 from theano import tensor, scalar, config
 from theano.scalar import Scalar
 from theano.tensor.basic import Alloc
 
-from theano.gof.python25 import all, any
+from theano.gof.python25 import any
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 
