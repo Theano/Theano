@@ -4049,8 +4049,8 @@ def constant_folding(node):
     return rval
 
 register_canonicalize(constant_folding, 'fast_compile')
-register_stabilize(constant_folding)
-register_specialize(constant_folding)
+register_stabilize(constant_folding, 'fast_compile')
+register_specialize(constant_folding, 'fast_compile')
 
 
 def _is_1(expr):

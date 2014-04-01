@@ -3,12 +3,12 @@ import os
 import numpy
 
 import theano
-from theano import Op, Type, Apply, Variable, Constant
+from theano import Op, Apply
 from theano import tensor, scalar, config
 from theano.scalar import Scalar
 from theano.tensor.basic import Alloc
 
-from theano.gof.python25 import all, any
+from theano.gof.python25 import any
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 
@@ -257,7 +257,7 @@ class GpuFromHost(Op):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isintance(ev, GpuArrayType):
+        if isinstance(ev, GpuArrayType):
             return [host_from_gpu(ev)]
         else:
             return ev
@@ -317,7 +317,7 @@ class GpuFromCuda(Op):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isintance(ev, GpuArrayType):
+        if isinstance(ev, GpuArrayType):
             return [cuda_from_gpu(ev)]
         else:
             return ev
@@ -650,6 +650,36 @@ class GpuAlloc(HideC, Alloc):
 
     def c_code_cache_version(self):
         return (2,)
+
+    def do_constant_folding(self, node):
+        for client in node.outputs[0].clients:
+            if client[0] == 'output':
+                # If the output is a constant, it will have to be deepcopied
+                # each time the function is called.  So we do not fold.
+                return False
+            elif (#The following ops work inplace of their input id 0.
+                  client[1] == 0 and
+                  isinstance(client[0].op, (
+                    #Ops that will work inplace on the Alloc. So if they
+                    #get constant_folded, they would copy the
+                    #constant and this is less efficients.
+
+                    #Not doing the constant folding could also lower
+                    #the peak memory usage, as we the "constant" won't
+                    #always exists.
+                      #theano.tensor.subtensor.AdvancedIncSubtensor,
+                      theano.sandbox.gpuarray.subtensor.GpuIncSubtensor,
+                      #theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
+                      theano.sandbox.gpuarray.blas.GpuGemm,
+                      theano.sandbox.gpuarray.blas.GpuGemv,
+                      #theano.sandbox.gpuarray.blas.GpuGer, Not Yet implemented
+                  ))):
+                return False
+            #If the clients is a transfer, we don't want to fold. We
+            #let the moving opt finish before deciding what to do.
+            elif isinstance(client[0].op, HostFromGpu):
+                return False
+        return True
 
 gpu_alloc = GpuAlloc()
 

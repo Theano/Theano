@@ -507,13 +507,22 @@ class ProfileStats(object):
 
         print >> file, header_str
 
-        atimes = [(
+        topos = {}  # Only do the topo once per fct.
+        atimes = []
+        for a, t in self.apply_time.items():
+            if a.fgraph not in topos:
+                topo = a.fgraph.toposort()
+                topos[a.fgraph] = topo
+            else:
+                topo = topos[a.fgraph]
+            atimes.append((
                 t * 100 / local_time,
                 t,
                 a,
-                a.fgraph.toposort().index(a),
-                self.apply_callcount[a])
-            for a, t in self.apply_time.items()]
+                topo.index(a),
+                self.apply_callcount[a]))
+        del topos
+
         atimes.sort()
         atimes.reverse()
         tot = 0

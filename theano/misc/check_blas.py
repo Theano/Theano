@@ -203,6 +203,7 @@ if __name__ == "__main__":
 
         cuda version      5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
         gpu
+        K6000/NOECC       0.06s
         K20m/ECC                 0.07s
         K20/NOECC                0.07s
         M2090             0.19s
