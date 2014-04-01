@@ -157,6 +157,3 @@ class GroupDotGrad(theano.gof.Op):
                 _outs[0][0][mask] = gh
                 _outs[1][0][pos] += gW
                 _outs[2][0][pos] += gb
-
-    def grad(self, inputs, grads):
-        raise NotImplemented

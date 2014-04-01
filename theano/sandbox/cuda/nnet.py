@@ -1049,6 +1049,3 @@ class GpuGroupDotGrad(GpuOp):
       %(fail)s;
         }
         """ % locals()
-
-    def grad(self, inputs, grads):
-        raise NotImplemented
