@@ -668,8 +668,8 @@ class GpuAlloc(HideC, Alloc):
                     #the peak memory usage, as we the "constant" won't
                     #always exists.
                       #theano.tensor.subtensor.AdvancedIncSubtensor,
-                      GpuIncSubtensor,
-                      GpuAdvancedIncSubtensor1,
+                      theano.sandbox.gpuarray.subtensor.GpuIncSubtensor,
+                      #theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
                       theano.sandbox.gpuarray.blas.GpuGemm,
                       theano.sandbox.gpuarray.blas.GpuGemv,
                       #theano.sandbox.gpuarray.blas.GpuGer, Not Yet implemented
