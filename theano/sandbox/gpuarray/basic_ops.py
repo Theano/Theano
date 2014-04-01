@@ -694,6 +694,36 @@ class GpuReshape(HideC, tensor.Reshape):
                 raise ValueError("total size of new array must be unchanged")
         out[0] = x.reshape(tuple(shp))
 
+    def do_constant_folding(self, node):
+        for client in node.outputs[0].clients:
+            if client[0] == 'output':
+                # If the output is a constant, it will have to be deepcopied
+                # each time the function is called.  So we do not fold.
+                return False
+            elif (#The following ops work inplace of their input id 0.
+                  client[1] == 0 and
+                  isinstance(client[0].op, (
+                    #Ops that will work inplace on the Alloc. So if they
+                    #get constant_folded, they would copy the
+                    #constant and this is less efficients.
+
+                    #Not doing the constant folding could also lower
+                    #the peak memory usage, as we the "constant" won't
+                    #always exists.
+                      #theano.tensor.subtensor.AdvancedIncSubtensor,
+                      GpuIncSubtensor,
+                      GpuAdvancedIncSubtensor1,
+                      theano.sandbox.gpuarray.blas.GpuGemm,
+                      theano.sandbox.gpuarray.blas.GpuGemv,
+                      #theano.sandbox.gpuarray.blas.GpuGer, Not Yet implemented
+                  ))):
+                return False
+            #If the clients is a transfer, we don't want to fold. We
+            #let the moving opt finish before deciding what to do.
+            elif isinstance(client[0].op, HostFromGpu):
+                return False
+        return True
+
 
 class GpuEye(GpuKernelBase, Op):
     def __init__(self, dtype=None):
