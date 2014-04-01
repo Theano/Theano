@@ -296,38 +296,15 @@ class GpuDimShuffle(GpuOp):
     def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
-        new_order = tuple(new_order)
         self.new_order = new_order
 
-        # list of dimensions of the input to drop
-        self.drop = []
-        # this maps i before dropping dimensions to j after dropping
-        # dimensions so self.shuffle can be set properly later on
-        i2j = {}
-        j = 0
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
-                # we want to drop this dimension because it's not a
-                # value in new_order
-                if b == 1:  # 1 aka True
-                    self.drop.append(i)
-                else:
+                if not b:
                     # we cannot drop non-broadcastable dimensions
                     raise ValueError("You cannot drop a non-broadcastable"
                                      " dimension.",
                                      (input_broadcastable, new_order))
-            else:
-                i2j[i] = j
-                j += 1
-
-        # transposition of non-broadcastable dimensions This is how
-        # the dimensions will be permuted, without accounting for the
-        # extra 'x' broadcastable dimensions to insert.
-        self.shuffle = [i2j[x] for x in new_order if x != 'x']
-
-        # list of dimensions of the output that are broadcastable and
-        # were not in the original input
-        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
         self.view_map = {0: [0]}
 
@@ -481,8 +458,6 @@ class GpuDimShuffle(GpuOp):
             print self
             print "IN BROAD", self.input_broadcastable
             print "NEW ORDER", self.new_order
-            print "SHUFFLE", self.shuffle
-            print "AUGMENT", self.augment
             print '------------'
             print ''
             print sio.getvalue()

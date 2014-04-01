@@ -284,7 +284,7 @@ def local_gpu_dimshuffle_0(node):
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
             new_op = GpuDimShuffle(node.op.input_broadcastable,
-                    node.op.new_order)
+                                   node.op.new_order)
             return [host_from_gpu(new_op(gpu_from_host(input)))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -292,7 +292,7 @@ def local_gpu_dimshuffle_0(node):
                                            tensor.DimShuffle):
             dimshuffle_node = host_input.owner
             new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable,
-                    dimshuffle_node.op.new_order)
+                                   dimshuffle_node.op.new_order)
             return [new_op(gpu_from_host(dimshuffle_node.inputs[0]))]
     return False
 
