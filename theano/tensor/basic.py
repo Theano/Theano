@@ -1369,6 +1369,9 @@ class MaxAndArgmax(Op):
             """ % locals()
         ret = """
         int axis;
+
+        Py_CLEAR(%(max)s);
+        Py_CLEAR(%(argmax)s);//todo pass them as out parameter.
         %(axis_code)s
         %(max)s = (PyArrayObject*)PyArray_Max(%(x)s, axis, NULL);
         if(%(max)s == NULL){
@@ -1407,7 +1410,7 @@ class MaxAndArgmax(Op):
         return ret % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
