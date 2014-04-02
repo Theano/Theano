@@ -4072,13 +4072,29 @@ def _is_minus1(expr):
     except NotScalarConstantError:
         return False
 
+def get_clients(node):
+    "Used by erf/erfc opt to track less frequent op"
+    return [c for c, i in node.outputs[0].clients
+            if c != "output"]
+
+def get_clients2(node):
+    "Used by erf/erfc opt to track less frequent op"
+    l = []
+    for c, i in node.outputs[0].clients:
+        if c != "output":
+            for var in c.outputs:
+                l.extend([cc for cc, ii in var.clients if cc != "output"])
+    return l
+
 #1+erf(x)=>erfc(-x)
 local_one_plus_erf = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint=_is_1),
                                      (T.erf, 'x')),
                                     (T.erfc, (T.neg, 'x')),
                                     allow_multiple_clients=True,
-                                    name='local_one_plus_erf')
+                                    name='local_one_plus_erf',
+                                    tracks=[T.erf],
+                                    get_nodes=get_clients)
 register_canonicalize(local_one_plus_erf)
 register_stabilize(local_one_plus_erf)
 register_specialize(local_one_plus_erf)
@@ -4111,7 +4127,9 @@ local_one_plus_neg_erf = gof.PatternSub((T.add,
                                          (T.neg, (T.erf, 'x'))),
                                         (T.erfc, 'x'),
                                         allow_multiple_clients=True,
-                                        name='local_one_plus_neg_erf')
+                                        name='local_one_plus_neg_erf',
+                                        tracks=[T.erf],
+                                        get_nodes=get_clients2)
 register_canonicalize(local_one_plus_neg_erf)
 register_stabilize(local_one_plus_neg_erf)
 register_specialize(local_one_plus_neg_erf)
@@ -4123,7 +4141,9 @@ local_erf_minus_one = gof.PatternSub((T.add,
                                       (T.erf, 'x')),
                                      (T.neg, (T.erfc, 'x')),
                                      allow_multiple_clients=True,
-                                     name='local_erf_minus_one')
+                                     name='local_erf_minus_one',
+                                     tracks=[T.erf],
+                                     get_nodes=get_clients)
 register_canonicalize(local_erf_minus_one)
 register_stabilize(local_erf_minus_one)
 register_specialize(local_erf_minus_one)
@@ -4134,7 +4154,9 @@ local_one_minus_erfc = gof.PatternSub((T.sub,
                                        (T.erfc, 'x')),
                                       (T.erf, 'x'),
                                       allow_multiple_clients=True,
-                                      name='local_one_minus_erfc')
+                                      name='local_one_minus_erfc',
+                                      tracks=[T.erfc],
+                                      get_nodes=get_clients)
 register_canonicalize(local_one_minus_erfc)
 register_stabilize(local_one_minus_erfc)
 register_specialize(local_one_minus_erfc)
@@ -4144,7 +4166,9 @@ local_one_minus_erfc2 = gof.PatternSub((T.add,
                                         (T.neg, (T.erfc, 'x'))),
                                        (T.erf, 'x'),
                                        allow_multiple_clients=True,
-                                       name='local_one_minus_erfc2')
+                                       name='local_one_minus_erfc2',
+                                       tracks=[T.erfc],
+                                       get_nodes=get_clients2)
 register_canonicalize(local_one_minus_erfc2)
 register_stabilize(local_one_minus_erfc2)
 register_specialize(local_one_minus_erfc2)
@@ -4154,7 +4178,9 @@ local_one_minus_erfc3 = gof.PatternSub((T.add,
                                         (T.mul, -1, (T.erfc, 'x'))),
                                        (T.erf, 'x'),
                                        allow_multiple_clients=True,
-                                       name='local_one_minus_erfc3')
+                                       name='local_one_minus_erfc3',
+                                       tracks=[T.erfc],
+                                       get_nodes=get_clients2)
 register_canonicalize(local_one_minus_erfc3)
 register_stabilize(local_one_minus_erfc3)
 register_specialize(local_one_minus_erfc3)
@@ -4166,7 +4192,10 @@ local_one_add_neg_erfc = gof.PatternSub((T.add,
                                          (T.neg, (T.erfc, 'x'))),
                                         (T.erf, 'x'),
                                         allow_multiple_clients=True,
-                                        name='local_one_add_neg_erfc')
+                                        name='local_one_add_neg_erfc',
+                                        tracks=[T.erfc],
+                                        get_nodes=get_clients2)
+
 register_canonicalize(local_one_add_neg_erfc)
 register_stabilize(local_one_add_neg_erfc)
 register_specialize(local_one_add_neg_erfc)
@@ -4177,7 +4206,9 @@ local_erf_neg_minus_one = gof.PatternSub((T.add,
                                           (T.erfc, (T.neg, 'x'))),
                                          (T.erf, 'x'),
                                          allow_multiple_clients=True,
-                                         name='local_erf_neg_minus_one')
+                                         name='local_erf_neg_minus_one',
+                                         tracks=[T.erfc],
+                                         get_nodes=get_clients)
 register_canonicalize(local_erf_neg_minus_one)
 register_stabilize(local_erf_neg_minus_one)
 register_specialize(local_erf_neg_minus_one)
@@ -4188,7 +4219,9 @@ local_erf_neg_minus_one2 = gof.PatternSub((T.add,
                                            (T.erfc, (T.mul, -1, 'x'))),
                                           (T.erf, 'x'),
                                           allow_multiple_clients=True,
-                                          name='local_erf_neg_minus_one2')
+                                          name='local_erf_neg_minus_one2',
+                                          tracks=[T.erfc],
+                                          get_nodes=get_clients)
 register_canonicalize(local_erf_neg_minus_one2)
 register_stabilize(local_erf_neg_minus_one2)
 register_specialize(local_erf_neg_minus_one2)
