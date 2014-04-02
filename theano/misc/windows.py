@@ -2,7 +2,7 @@ import os
 import subprocess
 
 
-def call_subprocess_Popen(command, **params):
+def subprocess_Popen(command, **params):
     """
     Utility function to work around windows behavior that open windows
     """
@@ -36,3 +36,30 @@ def call_subprocess_Popen(command, **params):
         if stdin is not None:
             del stdin
     return proc
+
+def call_subprocess_Popen(command, **params):
+    if 'stdout' in params or 'stderr' in params:
+        raise TypeError("don't use stderr or stdout with call_subprocess_Popen")
+    null = open(os.devnull, 'wb')
+    # stdin to devnull is a workaround for a crash in a weird Windows
+    # environement where sys.stdin was None
+    params.setdefault('stdin', null)
+    params['stdout'] = null
+    params['stderr'] = null
+    p = subprocess_Popen(command, **params)
+    p.wait()
+    return p.returncode
+
+def output_subprocess_Popen(command, **params):
+    if 'stdout' in params or 'stderr' in params:
+        raise TypeError("don't use stderr or stdout with output_subprocess_Popen")
+    # stdin to devnull is a workaround for a crash in a weird Windows
+    # environement where sys.stdin was None
+    if not hasattr(params, 'stdin'):
+        null = open(os.devnull, 'wb')
+        params['stdin'] = null
+    params['stdout'] = subprocess.PIPE
+    params['stderr'] = subprocess.PIPE
+    p = subprocess_Popen(command, **params)
+    out = p.communicate()
+    return out + (p.returncode,)

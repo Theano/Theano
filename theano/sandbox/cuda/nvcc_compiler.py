@@ -16,7 +16,7 @@ from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 get_lib_extension)
 from theano.gof.python25 import any
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import output_subprocess_Popen
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 _logger.setLevel(logging.WARN)
@@ -98,12 +98,8 @@ nvcc_version = None
 def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
     def set_version():
-        p = call_subprocess_Popen([nvcc_path, '--version'],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-        p.wait()
-
-        ver_line = decode(p.stdout.readlines()[-1])
+        p_out = output_subprocess_Popen([nvcc_path, '--version'])
+        ver_line = decode(p_out[0].split('\n')[-1])
         build, version = ver_line.split(',')[1].strip().split()
 
         assert build == 'release'
