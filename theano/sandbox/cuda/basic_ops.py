@@ -1,14 +1,17 @@
 import copy
 import logging
 import sys
+import os
 
 import numpy
 
 import theano
+
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
 from theano.scalar import Scalar
+
 scal = scalar # somewhere scalar gets reassigned to be a function
 
 from theano.gof.python25 import all, any
@@ -3409,7 +3412,7 @@ class GpuSVD(GpuOp):
     Factors the matrix a as u * np.diag(s) * v, where u and v are unitary
         and s is a 1-d array of a's singular values.
     """
-    def __init__(self, full_matrices=True, compute_uv=True):
+    def __init__(self, full_matrices=True, compute_uv=True, dtype=None):
         """
         inputs :
         --------
@@ -3431,12 +3434,12 @@ class GpuSVD(GpuOp):
     def props(self):
         return self.full_matrices, self.compute_uv,
 
-    def make_node(self, n, m, k):
+    def make_node(self, x):
         x = as_cuda_ndarray_variable(x)
         assert x.ndim == 2, "The input of svd function should be a matrix."
-        w = x.type()#eano.tensor.matrix(dtype=x.dtype)
-        u = cuda.vector(dtype=x.dtype)# theano.tensor.vector(dtype=x.dtype)
-        v = x.type()#heano.tensor.matrix(dtype=x.dtype)
+        w = x.type()
+        u = vector(dtype=x.dtype)
+        v = x.type()
         return Apply(self, [x], [w, u, v])
 
     def grad(self, inp, grads):
@@ -3449,45 +3452,68 @@ class GpuSVD(GpuOp):
         return (type(self) == type(other) and self.props() == other.props())
 
     def c_headers(self):
-        return ["cula_lapack.h"]
+        return [ "stdio.h", "math.h", "cuda_runtime.h", "stdlib.h", "cula_lapack_device.h"]
+
+    def c_init_code(self):
+        return ["culaStatus status = culaInitialize();"]
+
+    def c_compile_args(self):
+        cula_inc_path = "CULA_INC_PATH"
+        cula_lib_path_64 = "CULA_LIB_PATH_64"
+        cula_lib_path_32 = "CULA_LIB_PATH_32"
+        cula_lib_path = None
+        assert os.environ[cula_inc_path] is not None
+
+        if os.environ[cula_lib_path_64] is not None:
+            cula_lib_path = cula_lib_path_64
+        elif os.environ[cula_lib_path_32] is not None:
+            cula_lib_path = cula_lib_path_32
+        else:
+            raise Exception("Could not find the cula library path to import.")
+
+        return ["-I${%s}" % cula_inc_path, "-L${%s}" % cula_lib_path]
+
+    def c_support_code(self):
+        return "culaStatus status;"
 
     def c_libraries(self):
-        return ["lcula_lapack_basic", "lcublas", "lcudart", "pthread", "liomp5"]
+        return ["m", "cula_lapack_basic", "cublas"]
 
     def c_code(self, node, name, inp, out, sub):
-        x = inp
+        x = inp[0]
         w, u, v, = out
         fail = sub['fail']
 
-        paramsd = locals()
-        paramsd["compute_uv"] = self.compute_uv
-        paramsd["full_matrices"] = self.full_matrices
+        compute_uv = self.compute_uv
+        full_matrices = self.full_matrices
 
-        s = """
+        code = """
         int compute_uv = %(compute_uv)d;
         int full_matrices = %(full_matrices)d;
-
         char jobu = 'N';
         char jobvt = 'N';
         int dims[] = {0, 0};
 
-        dims[0] = ((dtype_%(n)s*)PyArray_DIMS(%(x)s))[0];
-        dims[1] = ((dtype_%(m)s*)PyArray_DIMS(%(x)s))[1];
+        //dims[0] = ((dtype_%(x)s*)PyArray_DIMS(%(x)s))[0];
+        //dims[1] = ((dtype_%(x)s*)PyArray_DIMS(%(x)s))[1];
+        dims[0] = ((float *)PyArray_DIMS(%(x)s))[0];
+        dims[1] = ((float *)PyArray_DIMS(%(x)s))[1];
+
 
         int ldvt = dims[0];
         int ldu = dims[0];
         int lda = dims[1];
         int wdim = (dims[0] > dims[1]) ? dims[1] : dims[0];
 
-        if (compute_uv == 1){
+        if (compute_uv == 1) {
             if (full_matrices == 1) {
                 jobu  = 'A';
                 jobvt = 'A';
             } else if (compute_uv == 1) {
                 jobu = 'S';
                 jobvt = 'S';
-                ldu = (int)(ldu / 2)
-                ldvt = (int)(ldu / 2)
+                ldu = (int)(ldu / 2);
+                ldvt = (int)(ldu / 2);
             }
         }
 
@@ -3506,17 +3532,17 @@ class GpuSVD(GpuOp):
         void * orig_w = %(w)s;
         void * orig_v = %(v)s;
 
-        if (CudaNdarray_prep_output(& %(w)s, 1, w_dims))
+        if (CudaNdarray_prep_output(& %(w)s, 1, w_dims, fortran=1))
         {
             %(fail)s;
         }
 
-        if (CudaNdarray_prep_output(& %(u)s, 2, u_dims))
+        if (CudaNdarray_prep_output(& %(u)s, 2, u_dims, fortran=1))
         {
             %(fail)s;
         }
 
-        if (CudaNdarray_prep_output(& %(v)s, 2, v_dims))
+        if (CudaNdarray_prep_output(& %(v)s, 2, v_dims, fortran=1))
         {
             %(fail)s;
         }
@@ -3526,32 +3552,37 @@ class GpuSVD(GpuOp):
         {
             PyErr_Format(PyExc_MemoryError,
                          "GpuSVD: Error in memset %%d bytes of device memory.",
-                         total_size);
+                         w_total_size);
             if(orig_w == NULL)
-                Py_XDECREF(%(s)s);
+                Py_XDECREF(%(w)s);
             %(fail)s;
         }
+
         sts = cudaMemset(CudaNdarray_DEV_DATA(%(u)s), 0, u_total_size);
         if (cudaSuccess != sts)
         {
             PyErr_Format(PyExc_MemoryError,
                          "GpuSVD: Error in memset %%d bytes of device memory.",
-                         total_size);
+                         u_total_size);
             if(orig_u == NULL)
                 Py_XDECREF(%(u)s);
             %(fail)s;
         }
+
         sts = cudaMemset(CudaNdarray_DEV_DATA(%(v)s), 0, v_total_size);
         if (cudaSuccess != sts)
         {
             PyErr_Format(PyExc_MemoryError,
                          "GpuSVD: Error in memset %%d bytes of device memory.",
-                         total_size);
+                         v_total_size);
             if(orig_v == NULL)
-                Py_XDECREF(%(w)s);
+                Py_XDECREF(%(v)s);
             %(fail)s;
         }
-        status = culaDeviceSgesvd(jobu, jobvt, dims[0], dims[1], %(x)s, lda, %(w)s, %(u)s, ldu, %(v)s, ldvt);
+
+        status = culaDeviceSgesvd(jobu, jobvt, dims[0], dims[1], CudaNdarray_DEV_DATA(%(x)s), lda,
+                                  CudaNdarray_DEV_DATA(%(w)s), CudaNdarray_DEV_DATA(%(u)s), ldu,
+                                  CudaNdarray_DEV_DATA(%(v)s), ldvt);
         CNDA_THREAD_SYNC;
 
         sts = cudaGetLastError();
@@ -3563,13 +3594,14 @@ class GpuSVD(GpuOp):
                     dims[0], dims[1]);
             %(fail)s;
         }
-        """ % paramsd
-
-        return s
+        """ % locals()
+        return code
 
     def c_code_cache_version(self):
         return (3,)
 
+def gpu_svd(a, full_matrices=1, compute_uv=1, dtype="float32"):
+    return GpuSVD(full_matrices, compute_uv, dtype=dtype)(a)
 
 class GpuEye(GpuOp):
     def __init__(self, dtype=None):
