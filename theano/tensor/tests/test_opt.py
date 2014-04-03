@@ -1706,8 +1706,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y, z], tensor.exp(x + y + z)[0], mode=mode_opt)
 
         prog = f.maker.fgraph.toposort()
-        assert isinstance(prog[1].op, tensor.DimShuffle)
-        assert isinstance(prog[0].op, tensor.Subtensor)  # first subtensor
+        assert isinstance(prog[0].op, tensor.DimShuffle)
+        assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[2].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[3].op.scalar_op, theano.scalar.
             Composite)  # Composite{add,add}
@@ -1723,8 +1723,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y, z], tensor.exp(x + y + z)[0:2], mode=mode_opt)
 
         prog = f.maker.fgraph.toposort()
-        assert isinstance(prog[1].op, tensor.DimShuffle)
-        assert isinstance(prog[0].op, tensor.Subtensor)  # first subtensor
+        assert isinstance(prog[0].op, tensor.DimShuffle)
+        assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[2].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[3].op.scalar_op, theano.scalar.
             Composite)  # Composite{add,add}
@@ -3432,7 +3432,7 @@ class T_local_erfc(unittest.TestCase):
         assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert len(f.maker.fgraph.toposort()[0].fgraph.toposort()[
-            0].op.scalar_op.fgraph.apply_nodes)==2,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
+            0].op.scalar_op.fgraph.apply_nodes)==22,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         #TODO: fix this problem
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest(
