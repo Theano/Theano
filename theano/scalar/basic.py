@@ -2980,7 +2980,8 @@ class Composite(ScalarOp):
         # that will flatten Composite. We don't need to do this
         # recusively, as the way the fusion optimizer work, we have
         # only 1 new Composite each time at the output.
-        if not any([isinstance(var.owner.op, Composite) for var in outputs]):
+        if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
+                                        for var in outputs]):
             # No inner Composite
             inputs, outputs = gof.graph.clone(inputs, outputs)
         else:
@@ -3004,8 +3005,8 @@ class Composite(ScalarOp):
             assert res[0] != inputs
             inputs, outputs = res[0], res2[1]
             # Next assert comment just for speed
-            assert not any([isinstance(node.op, Composite) for node in
-                            theano.gof.graph.ops(inputs, outputs)])
+            #assert not any([isinstance(node.op, Composite) for node in
+            #                theano.gof.graph.ops(inputs, outputs)])
 
         self.inputs = copy(inputs)
         self.outputs = copy(outputs)
