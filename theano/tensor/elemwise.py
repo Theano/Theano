@@ -774,8 +774,7 @@ class Elemwise(OpenMPOp):
             super(Elemwise, self).perform(node, inputs, output_storage)
 
         maxsize = max(len(input.shape) for input in inputs)
-        for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
-                            + zip(input.shape, sinput.type.broadcastable))
+        for dims in izip(*[zip(input.shape, sinput.type.broadcastable)
                           for input, sinput in zip(inputs, node.inputs)]):
             if max(d for d, b in dims) != 1 and (1, False) in dims:
                 # yes there may be more compact ways to write this code,
