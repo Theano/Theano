@@ -807,34 +807,36 @@ class Elemwise(OpenMPOp):
                 out_shape.append(max(values))
         out_shape = tuple(out_shape)
 
-        if not self.inplace_pattern:
-            for output, storage in izip(node.outputs, output_storage):
-                odat = storage[0]
-                if odat is not None:
-                    if odat.shape != out_shape:
-                        # It is unsafe to try to resize odat,
-                        # we have to allocate output storage.
-                        odat = None
-                if odat is None:
-                    odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
-                storage[0] = odat
-        else:
-            for i, (output, storage) in enumerate(
-                    izip(node.outputs, output_storage)):
-                #i is an output idx
-                if i in self.inplace_pattern:
-                    odat = inputs[self.inplace_pattern[i]]
-                else:
-                    odat = storage[0]
-                    if odat is not None:
-                        if odat.shape != out_shape:
-                            # It is unsafe to try to resize odat,
-                            # we have to allocate output storage.
-                            odat = None
-                    if odat is None:
-                        odat = numpy.ndarray(out_shape,
-                                dtype=output.type.dtype)
-                storage[0] = odat
+        # Commented as we don't reuse outputs now.
+        #
+        # if not self.inplace_pattern:
+        #     for output, storage in izip(node.outputs, output_storage):
+        #         odat = storage[0]
+        #         if odat is not None:
+        #             if odat.shape != out_shape:
+        #                 # It is unsafe to try to resize odat,
+        #                 # we have to allocate output storage.
+        #                 odat = None
+        #         if odat is None:
+        #             odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
+        #         storage[0] = odat
+        # else:
+        #     for i, (output, storage) in enumerate(
+        #             izip(node.outputs, output_storage)):
+        #         #i is an output idx
+        #         if i in self.inplace_pattern:
+        #             odat = inputs[self.inplace_pattern[i]]
+        #         else:
+        #             odat = storage[0]
+        #             if odat is not None:
+        #                 if odat.shape != out_shape:
+        #                     # It is unsafe to try to resize odat,
+        #                     # we have to allocate output storage.
+        #                     odat = None
+        #             if odat is None:
+        #                 odat = numpy.ndarray(out_shape,
+        #                         dtype=output.type.dtype)
+        #         storage[0] = odat
 
         ufunc_args = inputs  # + output_storage
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
