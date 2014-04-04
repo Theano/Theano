@@ -861,7 +861,7 @@ class Elemwise(OpenMPOp):
             variables = [variables]
         for variable, storage, nout in izip(variables, output_storage,
                                             node.outputs):
-            if str(getattr(variable, "dtype", "")) == 'object':
+            if getattr(variable, "dtype", "") == 'object':
                 # Since numpy 1.6, function created with numpy.frompyfunc
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
