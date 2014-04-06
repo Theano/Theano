@@ -868,15 +868,11 @@ class Elemwise(OpenMPOp):
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
 
-            # The storage has been resized earlier.
-            if hasattr(variable, 'shape'):
-                assert storage[0].shape == variable.shape
-            else:
-                # If variable has not shape, then it is a scalar.
-                assert numpy.prod(storage[0].shape) == 1
+            # Sometimes NumPy return a Python type.
+            if not isinstance(variable, numpy.ndarray):
+                variable = numpy.asarray(variable, nout.dtype)
 
-            storage[0][...] = variable
-            assert str(storage[0].dtype) != 'object'
+            storage[0] = variable
 
         # the following should be used instead of the previous loop,
         # unfortunately it tends to segfault
