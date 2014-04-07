@@ -1,19 +1,22 @@
 import traceback
-
 import numpy
 
 import theano.tensor.basic
 from theano.tensor.basic import TensorType, _tensor_py_operators
 from theano.compile import shared_constructor, SharedVariable
 
-from theano.sandbox.cuda.type import CudaNdarrayType
-try:
-    # We must do those import to be able to create the full doc when
-    # nvcc is not available
-    from theano.sandbox.cuda import filter as type_support_filter
-    from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
-except ImportError:
-    pass
+cuda = None
+
+def init_cuda():
+    global cuda
+    if cuda is None:
+        try:
+            import theano.sandbox.cuda
+            #from theano.sandbox.cuda.type import CudaNdarrayType
+            cuda = theano.sandbox.cuda
+        except ImportError:
+            return False
+    return True
 
 
 def load_shared_variable(val):
@@ -49,27 +52,40 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         :note: For more user-friendly constructor, see `shared`
 
         """
+        self._valid_types = TensorType
+        if init_cuda():
+            self._valid_types = (TensorType, cuda.type.CudaNdarrayType)
+        if not isinstance(type, self._valid_types):
+            raise TypeError(
+                "TensorSharedVariable only accepts type of instance "
+                "TensorType or CudaNdarrayType."
+            )
         super(TensorSharedVariable, self).__init__(
             type=type, name=name, owner=None, index=None
         )
-        self.containers = []
+        # a cache of containers.
+        self.containers = {}
+        
         if container is not None:
-            self.containers.append(container)
+            self.containers[container.type] = container
             if (value is not None) or (strict is not None):
                 raise TypeError(
                    'value and strict are ignored if you pass a container here')
         else:
             if container is not None:
                 raise TypeError('Error to specify both value and container')
-            self.containers.append(
-                Container(self,
-                    storage=[type.filter(value, strict=strict,
-                                         allow_downcast=allow_downcast)],
-                    readonly=False,
-                    strict=strict,
-                    allow_downcast=allow_downcast
-                )
+            self.containers[type] = Container(
+                self, readonly=False, strict=strict,
+                allow_downcast=allow_downcast
+                storage=[type.filter(value, strict=strict, 
+                                     allow_downcast=allow_downcast)],
             )
+    
+    def toGPU(self):
+        pass
+        
+    def toCPU(self):
+        pass
     
     """Define a few properties and conversion methods for CudaNdarray Variables.
 
@@ -81,13 +97,13 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     gradients.
     """
     def _as_TensorVariable(self):
-        if isinstance(self.type, CudaNdarrayType):
-            return HostFromGpu()(self)
+        if init_cuda() and isinstance(self.type, cuda.type.CudaNdarrayType):
+            return cuda.basic_ops.HostFromGpu()(self)
         assert(isinstance(self.type, TensorType))
         return super(TensorSharedVariable, self)._as_TensorVariable(self)
     
     def _as_CudaNdarrayVariable(self):
-        assert(isinstance(self.type, CudaNdarrayType))
+        assert(init_cuda() and isinstance(self.type, cuda.type.CudaNdarrayType))
         return self
 
     dtype = property(lambda s:'float32')
@@ -172,9 +188,6 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         # the definition in `SharedVariable` is only meant to raise an error.
         return _operators.__getitem__(self, *args)
                     
-
-
-CudaNdarrayType.SharedVariable = TensorSharedVariable
 
 def cuda_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
@@ -262,12 +275,6 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
     argument will override this default.
 
     """
-    if not isinstance(value, (numpy.ndarray, ):
-        raise TypeError()
-    
-    try:
-        import 
-        
     if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
         raise TypeError('ndarray or CudaNdarray required')
     if isinstance(value, numpy.ndarray) and value.dtype.num != CudaNdarrayType.typenum:
