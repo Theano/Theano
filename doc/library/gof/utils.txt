@@ -1,0 +1,17 @@
+.. _libdoc_gof_utils:
+
+==========================================================
+:mod:`utils` -- Utilities functions operating on the graph
+==========================================================
+
+.. module:: utils
+   :platform: Unix, Windows
+   :synopsis: Utilities functions operating on the graph
+.. moduleauthor:: LISA
+
+---------
+Reference
+---------
+
+.. automodule:: theano.gof.utils
+    :members:

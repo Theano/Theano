@@ -23,6 +23,7 @@ from theano.gof import Variable
 from theano.gof.python25 import OrderedDict
 from theano.gof.null_type import NullType
 from theano.gof.op import get_debug_values
+from theano.compile import ViewOp
 
 # we can't do "import theano.tensor"
 # tensor depends on theano.compile
@@ -543,6 +544,109 @@ def grad(cost, wrt, consider_constant=None,
         rval, = rval
     return rval
 
+def subgraph_grad(wrt, end, start=None, cost=None, details=False):
+    '''
+    With respect to `wrt`, computes gradients of cost and/or from existing 
+    `start` gradients, up to the `end` variables of a symbolic digraph. 
+    In other words, computes gradients for a subgraph of the
+    symbolic theano function. Ignores all disconnected inputs.
+    
+    This can be useful when one needs to perform the gradient descent 
+    iteratively (e.g. one layer at a time in an MLP), or when a particular 
+    operation is not differentiable in theano (e.g. stochastic sampling 
+    from a multinomial). In the latter case, the gradient of the 
+    non-differentiable process could be approximated by user-defined 
+    formula, which could be calculated using the gradients of a cost 
+    with respect to samples (0s and 1s). These gradients are obtained 
+    by performing a subgraph_grad from the `cost` or previously known gradients 
+    (`start`) up to the outputs of the stochastic process (`end`). 
+    A dictionary mapping gradients obtained from the user-defined 
+    differentiation of the process, to variables, could then be fed into 
+    another subgraph_grad as `start` with any other `cost` (e.g. weight decay).
+    
+    :type wrt : List of Variables.
+        Gradients are computed with respect to `wrt`.
+    
+    :type end : List of Variables.
+        Theano variables at which to end gradient descent
+        (they are considered constant in theano.grad). 
+        For convenience, the gradients with respect to these variables 
+        are also returned.
+    
+    :type start : Dictionary of Variables
+    :param start: If not None, a dictionary mapping variables to 
+            their gradients. This is useful when the gradient on some 
+            variables are known. These are used to compute the gradients
+            backwards up to the variables in `end` 
+            (they are used as known_grad in theano.grad).
+    
+    :type cost: Scalar (0-dimensional) Variable.
+    :param cost: 
+            Additional costs for which to compute the gradients.  
+            For example, these could be weight decay, an l1 constraint,
+            MSE, NLL, etc. May optionally be None if start is provided.
+            Warning : If the gradients of `cost` with respect to any 
+            of the `start` variables is already part of the `start` 
+            dictionary, then it may be counted twice with respect to `wrt` 
+            and `end`.
+    
+    :type details: bool.
+    :param details: When True, additionally returns the 
+        list of gradients from `start` and of `cost`, respectively, 
+        with respect to `wrt` (not `end`).
+    
+    :rtype: Tuple of 2 or 4 Lists of Variables
+    
+    :return: Returns lists of gradients with respect to `wrt` and `end`, 
+            respectively.
+    '''
+    assert ((cost is not None) or (start is not None))
+    assert isinstance(end, list)
+    assert isinstance(wrt, list)
+    if start is not None:
+        assert isinstance(start, dict)
+        
+    params = list(set(wrt + end))
+    
+    start_grads = None
+    cost_grads = None
+    if start is not None:
+        start_grads = list(
+            theano.grad(
+                cost=None, wrt=params, known_grads=start, 
+                consider_constant=end, 
+                disconnected_inputs='ignore'
+            )
+        )
+        
+    if cost is not None:
+        cost_grads = list(
+            theano.grad(
+                cost=cost, wrt=params,
+                consider_constant=end,
+                disconnected_inputs='ignore'
+            )
+        )
+                        
+    grads = None
+    if start is None:
+        grads = cost_grads
+    else:
+        grads = start_grads
+        if cost_grads is not None:
+            for i in range(len(grads)):
+                grads[i] += cost_grads[i]
+    
+    pgrads = OrderedDict(zip(params, grads))
+    # separate wrt from end grads:
+    wrt_grads = list(pgrads[k] for k in wrt)
+    end_grads = list(pgrads[k] for k in end)
+   
+    
+    if details:
+        return wrt_grads, end_grads, start_grads, cost_grads
+    
+    return wrt_grads, end_grads
 
 def _node_to_pattern(node):
     """ given an apply node, obtain its connection pattern
@@ -1636,12 +1740,17 @@ def hessian(cost, wrt, consider_constant=None,
         assert input.ndim == 1, \
                 "tensor.hessian expects a (list of) 1 dimensional variable "\
                 "as `wrt`"
-        expr = grad(cost, input)
+        expr = grad(cost, input, consider_constant=consider_constant,
+                    disconnected_inputs=disconnected_inputs)
+
+        # It is possible that the inputs are disconnected from expr,
+        # even if they are connected to cost.
+        # This should not be an error.
         hess, updates = theano.scan(lambda i, y, x: grad(
                             y[i],
                             x,
                             consider_constant=consider_constant,
-                            disconnected_inputs=disconnected_inputs),
+                            disconnected_inputs='ignore'),
                        sequences=arange(expr.shape[0]),
                        non_sequences=[expr, input])
         assert not updates, \
@@ -1680,3 +1789,29 @@ def _is_zero(x):
         return 'no'
 
     return 'yes'
+
+
+class ConsiderConstant(ViewOp):
+    def grad(self, args, g_outs):
+        return [g_out.zeros_like(g_out) for g_out in g_outs]
+consider_constant_ = ConsiderConstant()
+
+
+#I create a function only to have the doc show well.
+def consider_constant(x):
+    """ Consider an expression constant when computing gradients.
+
+    The expression itself is unaffected, but when its gradient is
+    computed, or the gradient of another expression that this
+    expression is a subexpression of, it will not be backpropagated
+    through. In other words, the gradient of the expression is
+    truncated to 0.
+
+    :param x: A Theano expression whose gradient should be truncated.
+
+    :return: The expression is returned unmodified, but its gradient
+        is now truncated to 0.
+
+    .. versionadded:: 0.6.1
+    """
+    return consider_constant_(x)

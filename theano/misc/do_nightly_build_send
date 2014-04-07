@@ -12,16 +12,23 @@ me='lisa@iro.umontreal.ca'
 #Those file contain the output of the do_nightly_build script.
 files=["do_nightly_build_theano", "do_nightly_build_pylearn",
        "do_nightly_build_deeplearning", "do_nightly_build_pylearn2",
-       "do_nightly_build_theano_python2.4",
+#       "do_nightly_build_theano_python2.4",
        "do_nightly_build_theano_python3.3.0",
 ]
 msgs=['Theano buildbot', 'Pylearn buildbot', 'Deep Learning Tutorial buildbot',
-      'Pylearn2 buildbot', 'Theano Python2.4 buildbot', 'Theano Python3.3.0 buildbot']
+      'Pylearn2 buildbot',
+#      'Theano Python2.4 buildbot',
+      'Theano Python3.3.0 buildbot']
 
 print 'files', files
 print "msgs", msgs
 print "args", sys.argv
-if len(sys.argv)==2:
+if len(sys.argv) == 3:
+    #We send just a file with a message
+    files = [sys.argv[1]]
+    msgs = [sys.argv[2]]
+elif len(sys.argv) == 2:
+    #This is a prefix where the output files are
     files=[os.path.join(sys.argv[1], x) for x in files]
 else:
     files=[os.path.join('/tmp', x) for x in files]

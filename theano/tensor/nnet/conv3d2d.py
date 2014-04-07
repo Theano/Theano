@@ -1,7 +1,7 @@
 import theano
 from theano.compat import any
 from theano.gradient import DisconnectedType
-from theano.gof import Op, Apply
+from theano.gof import Op, Apply, TopoOptimizer
 from theano import tensor
 import theano.sandbox.cuda as cuda
 
@@ -164,6 +164,8 @@ def conv3d(signals, filters,
            border_mode='valid'):
     """Convolve spatio-temporal filters with a movie.
 
+    It flips the filters.
+
     :param signals: timeseries of images whose pixels have color channels.
             shape: [Ns, Ts, C, Hs, Ws]
     :param filters: spatio-temporal filters
@@ -173,6 +175,13 @@ def conv3d(signals, filters,
     :param border_mode: The only one tested is 'valid'.
 
     :note: Work on the GPU.
+           Another way to define signals: (batch,  time, in channel, row, column)
+           Another way to define filters: (out channel,time,in channel, row, column)
+
+    :see: Someone made a script that shows how to swap the axes between
+          both 3d convolution implementations in Theano. See the last
+          `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+
     """
 
     if isinstance(border_mode, str):
@@ -266,7 +275,7 @@ def make_gpu_optimizer(op, to_gpu):
     :param to_gpu: a list of op inputs that are moved to the GPU.
 
     """
-    @theano.gof.local_optimizer([])
+    @theano.gof.local_optimizer([op, cuda.gpu_from_host])
     def local_to_gpu(node):
         """
         op(host_from_gpu()) -> host_from_gpu(op)
@@ -300,3 +309,20 @@ def make_gpu_optimizer(op, to_gpu):
 if cuda.cuda_available:
     make_gpu_optimizer(DiagonalSubtensor, [0])
     make_gpu_optimizer(IncDiagonalSubtensor, [0, 3])
+
+
+@theano.gof.local_optimizer([DiagonalSubtensor, IncDiagonalSubtensor])
+def local_inplace_DiagonalSubtensor(node):
+    """ also work for IncDiagonalSubtensor """
+    if (isinstance(node.op, (DiagonalSubtensor, IncDiagonalSubtensor)) and
+        not node.op.inplace):
+        new_op = node.op.__class__(inplace=True)
+        new_node = new_op(*node.inputs)
+        return [new_node]
+    return False
+theano.compile.optdb.register(
+    'local_inplace_DiagonalSubtensor',
+    TopoOptimizer(
+        local_inplace_DiagonalSubtensor,
+        failure_callback=TopoOptimizer.warn_inplace),
+    60, 'fast_run', 'inplace')

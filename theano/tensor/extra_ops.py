@@ -8,6 +8,222 @@ tensor = basic
 from theano.gradient import DisconnectedType
 
 
+class CumsumOp(theano.Op):
+    # See function cumsum for docstring
+    def __init__(self, axis=None):
+        self.axis = axis
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.axis == other.axis)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.axis)
+
+    def make_node(self, x):
+        x = basic.as_tensor_variable(x)
+        out_type = x.type()
+
+        if self.axis is None:
+            out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
+
+        return theano.Apply(self, [x], [out_type])
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        z = output_storage[0]
+        z[0] = np.cumsum(x, axis=self.axis)
+
+    def grad(self, inputs, output_gradients):
+        [gi] = output_gradients
+
+        if self.axis is None:
+            return [cumsum(gi[::-1])[::-1].reshape(inputs[0].shape)]
+
+        # We need to reverse the gradients along ``self.axis``,
+        #  compute cumsum, then reverse again
+        reverse_slicing = [slice(None,None,None)] * gi.ndim
+        reverse_slicing[self.axis] = slice(None,None,-1)
+        reverse_slicing = tuple(reverse_slicing)
+        return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
+
+    def infer_shape(self, node, shapes):
+        if self.axis is None:
+            return [(tensor.prod(shapes[0]),)]  # Flatten
+
+        return shapes
+
+    def c_code(self, node, name, inames, onames, sub):
+        x, = inames
+        z, = onames
+        axis = self.axis
+        fail = sub['fail']
+
+        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
+            code = """
+                npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
+                if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
+                {
+                    Py_XDECREF(%(z)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                }
+
+                if (!%(z)s)
+                    %(fail)s;
+                {
+                    PyArray_CumSum(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                }
+            """ % locals()
+        else:
+            code = """
+                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
+                {
+                    Py_XDECREF(%(z)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                }
+
+                if (!%(z)s)
+                    %(fail)s;
+                {
+                    PyArray_CumSum(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                }
+            """ % locals()
+
+        return code
+
+    def c_code_cache_version(self):
+        return (3,)
+
+    def __str__(self):
+        return "%s{%s}" % (self.__class__.__name__, self.axis)
+
+
+def cumsum(x, axis=None):
+    """Return the cumulative sum of the elements along a given axis.
+
+    Wraping of numpy.cumsum.
+
+    :param x: Input tensor variable.
+
+    :param axis: The axis along which the cumulative sum is computed.
+        The default (None) is to compute the cumsum over the flattened array.
+
+    .. versionadded:: 0.6.1
+    """
+    return CumsumOp(axis=axis)(x)
+
+
+class CumprodOp(theano.Op):
+    # See function cumprod for docstring
+    def __init__(self, axis=None):
+        self.axis = axis
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.axis == other.axis)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.axis)
+
+    def make_node(self, x):
+        x = basic.as_tensor_variable(x)
+        out_type = x.type()
+
+        if self.axis is None:
+            out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
+
+        return theano.Apply(self, [x], [out_type])
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        z = output_storage[0]
+        z[0] = np.cumprod(x, axis=self.axis)
+
+    def grad(self, inputs, output_gradients):
+        x, = inputs
+        gi, = output_gradients
+        fx = cumprod(x, axis=self.axis)
+
+        if self.axis is None:
+            return [cumsum((fx * gi)[::-1])[::-1].reshape(inputs[0].shape) / x]
+
+        # We need to reverse the gradients along ``self.axis``,
+        #  compute cumsum, then reverse again
+        reverse_slicing = [slice(None,None,None)] * gi.ndim
+        reverse_slicing[self.axis] = slice(None,None,-1)
+        reverse_slicing = tuple(reverse_slicing)
+        return [cumsum((fx * gi)[reverse_slicing], self.axis)[reverse_slicing] / x]
+
+    def infer_shape(self, node, shapes):
+        if self.axis is None:
+            return [(tensor.prod(shapes[0]),)]  # Flatten
+
+        return shapes
+
+    def c_code(self, node, name, inames, onames, sub):
+        x, = inames
+        z, = onames
+        axis = self.axis
+        fail = sub['fail']
+
+        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
+            code = """
+                npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
+                if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
+                {
+                    Py_XDECREF(%(z)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                }
+
+                if (!%(z)s)
+                    %(fail)s;
+                {
+                    PyArray_CumProd(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                }
+            """ % locals()
+        else:
+            code = """
+                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
+                {
+                    Py_XDECREF(%(z)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                }
+
+                if (!%(z)s)
+                    %(fail)s;
+                {
+                    PyArray_CumProd(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                }
+            """ % locals()
+
+        return code
+
+    def c_code_cache_version(self):
+        return (2,)
+
+    def __str__(self):
+        return "%s{%s}" % (self.__class__.__name__, self.axis)
+
+
+def cumprod(x, axis=None):
+    """Return the cumulative product of the elements along a given axis.
+
+    Wraping of numpy.cumprod.
+
+    :param x: Input tensor variable.
+
+    :param axis: The axis along which the cumulative product is computed.
+        The default (None) is to compute the cumprod over the flattened array.
+
+    .. versionadded:: 0.6.1
+    """
+    return CumprodOp(axis=axis)(x)
+
+
 class DiffOp(theano.Op):
     # See function diff for docstring
     def __init__(self, n=1, axis=-1):
@@ -246,17 +462,17 @@ class RepeatOp(theano.Op):
         # Some dtypes are not supported by numpy's implementation of repeat.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
-        int_bitwidth = theano.gof.python_int_bitwidth()
-        if int_bitwidth == 64:
+        ptr_bitwidth = theano.gof.local_bitwidth()
+        if ptr_bitwidth == 64:
             numpy_unsupported_dtypes = ('uint64',)
-        if int_bitwidth == 32:
+        if ptr_bitwidth == 32:
             numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
 
         if repeats.dtype in numpy_unsupported_dtypes:
             raise TypeError(
                     ("dtypes %s are not supported by numpy.repeat "
                      "for the 'repeats' parameter, "
-                     % numpy_unsupported_dtypes), repeats.dtype)
+                     % str(numpy_unsupported_dtypes)), repeats.dtype)
 
         if self.axis is None:
             broadcastable = [False]
@@ -354,6 +570,8 @@ def repeat(x, repeats, axis=None):
     :param repeats: int, scalar or tensor variable.
 
     :param axis: int, optional.
+
+    :see: :func:`tensor.tile <tensor.tile>`
 
     .. versionadded:: 0.6
     """

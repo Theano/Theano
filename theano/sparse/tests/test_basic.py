@@ -69,14 +69,16 @@ def random_lil(shape, dtype, nnz):
     huge = 2 ** 30
     for k in range(nnz):
         # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.random_integers(huge, size=len(shape)) % shape
+        idx = numpy.random.random_integers(huge, size=2) % shape
         value = numpy.random.rand()
         #if dtype *int*, value will always be zeros!
         if "int" in dtype:
             value = int(value * 100)
+        # The call to tuple is needed as scipy 0.13.1 do not support
+        # ndarray with lenght 2 as idx tuple.
         rval.__setitem__(
-                idx,
-                value)
+            tuple(idx),
+            value)
     return rval
 
 
@@ -323,7 +325,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
                 [sp.csr_matrix(random_lil((10, 40),
                                config.floatX, 3)),
                  numpy.random.randn(10, 40).astype(config.floatX)],
-                AddSD)
+                (AddSD, sparse.opt.AddSD_ccode))
 
     def test_mul_ss(self):
         x = SparseType('csr', dtype=config.floatX)()
@@ -534,158 +536,115 @@ class T_AddMul(unittest.TestCase):
     def _testSS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(array1)
-            aR = as_sparse_variable(a)
-            self.assertFalse(aR.data is a)
-            self.assertTrue(_is_sparse(a))
-            self.assertTrue(_is_sparse_variable(aR))
-
-            b = mtype(array2)
-            bR = as_sparse_variable(b)
-            self.assertFalse(bR.data is b)
-            self.assertTrue(_is_sparse(b))
-            self.assertTrue(_is_sparse_variable(bR))
-
-            apb = op(aR, bR)
-            self.assertTrue(_is_sparse_variable(apb))
-
-            self.assertTrue(apb.type.dtype == aR.type.dtype, apb.type.dtype)
-            self.assertTrue(apb.type.dtype == bR.type.dtype, apb.type.dtype)
-            self.assertTrue(apb.type.format == aR.type.format, apb.type.format)
-            self.assertTrue(apb.type.format == bR.type.format, apb.type.format)
-
-            val = eval_outputs([apb])
-            self.assertTrue(val.shape == (3, 2))
-            if op is add:
-                self.assertTrue(numpy.all(val.todense() == (array1 + array2)))
-                verify_grad_sparse(op, [a, b], structured=False)
-            elif op is mul:
-                self.assertTrue(numpy.all(val.todense()
-                                          == (array1 * array2)))
-                verify_grad_sparse(op, [a, b], structured=False)
-
-    def _testSD(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
-                array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
-        for mtype in _mtypes:
-            for a in [numpy.array(array1), tensor.as_tensor_variable(array1)]:
-                b = mtype(array2)
-                bR = as_sparse_variable(b)
-                self.assertFalse(bR.data is b)  # constants are copied
-                self.assertTrue(_is_sparse(b))
-                self.assertTrue(_is_sparse_variable(bR))
-
-                apb = op(a, bR)
-
-                self.assertTrue(apb.type.dtype == a.dtype, apb.type.dtype)
-                self.assertTrue(apb.type.dtype == bR.type.dtype, apb.type.dtype)
-
-                val = eval_outputs([apb])
-                self.assertTrue(val.shape == (3, 2))
-                if op is add:
-                    self.assertTrue(_is_dense_variable(apb))
-                    self.assertTrue(numpy.all(val == (array1 + b)))
-                    ans = numpy.array([[1., 2], [3, 4], [5, 6]])
-                    self.assertTrue(numpy.all(val == ans))
-                elif op is mul:
-                    self.assertTrue(_is_sparse_variable(apb))
-                    self.assertTrue(numpy.all(val.todense() == (b.multiply(array1))))
-                    self.assertTrue(numpy.all(val.todense() == numpy.array(
-                        [[1, 0], [9, 0], [0, 36]])))
-
-    def _testDS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
-                array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
-        for mtype in _mtypes:
-            for b in [numpy.asarray(array2), tensor.as_tensor_variable(array2)]:
-                a = mtype(array1)
+            for dtype1, dtype2 in [('float64', 'int8'),
+                                   ('int8', 'float64'),
+                               ]:
+                a = mtype(array1).astype(dtype1)
                 aR = as_sparse_variable(a)
                 self.assertFalse(aR.data is a)
                 self.assertTrue(_is_sparse(a))
                 self.assertTrue(_is_sparse_variable(aR))
 
-                apb = op(aR, b)
+                b = mtype(array2).astype(dtype2)
+                bR = as_sparse_variable(b)
+                self.assertFalse(bR.data is b)
+                self.assertTrue(_is_sparse(b))
+                self.assertTrue(_is_sparse_variable(bR))
 
-                self.assertTrue(apb.type.dtype == aR.type.dtype, apb.type.dtype)
-                self.assertTrue(apb.type.dtype == b.dtype, apb.type.dtype)
+                apb = op(aR, bR)
+                self.assertTrue(_is_sparse_variable(apb))
+
+                self.assertTrue(apb.type.format == aR.type.format, apb.type.format)
+                self.assertTrue(apb.type.format == bR.type.format, apb.type.format)
 
                 val = eval_outputs([apb])
                 self.assertTrue(val.shape == (3, 2))
                 if op is add:
-                    self.assertTrue(_is_dense_variable(apb))
-                    self.assertTrue(numpy.all(val == (a + array2)))
-                    ans = numpy.array([[1., 2], [3, 4], [5, 6]])
-                    self.assertTrue(numpy.all(val == ans))
+                    self.assertTrue(numpy.all(val.todense() == (array1 + array2)))
+                    if dtype1.startswith('float') and dtype2.startswith('float'):
+                        verify_grad_sparse(op, [a, b], structured=False)
                 elif op is mul:
-                    self.assertTrue(_is_sparse_variable(apb))
-                    ans = numpy.array([[1, 0], [9, 0], [0, 36]])
-                    self.assertTrue(numpy.all(val.todense() == (a.multiply(array2))))
-                    self.assertTrue(numpy.all(val.todense() == ans))
+                    self.assertTrue(numpy.all(val.todense()
+                                              == (array1 * array2)))
+                    if dtype1.startswith('float') and dtype2.startswith('float'):
+                        verify_grad_sparse(op, [a, b], structured=False)
 
-    def test_upcast(self):
-        array1 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='float32')
-        array2 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='int32')
-        array3 = numpy.array([[1, 0], [3, 0], [0, 6]], dtype='int8')
-
-        # AddSS and MulSS
+    def _testSD(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
+                array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(array1)
-            aR = as_sparse_variable(a)
-            b = mtype(array2)
-            bR = as_sparse_variable(b)
-            c = mtype(array3)
-            cR = as_sparse_variable(c)
+            for a in [numpy.array(array1), tensor.as_tensor_variable(array1),
+                      theano.shared(array1)]:
+                for dtype1, dtype2 in [('float64', 'int8'),
+                                       ('int8', 'float64'),
+                                   ]:
+                    a = a.astype(dtype1)
+                    b = mtype(array2).astype(dtype2)
+                    bR = as_sparse_variable(b)
+                    self.assertFalse(bR.data is b)  # constants are copied
+                    self.assertTrue(_is_sparse(b))
+                    self.assertTrue(_is_sparse_variable(bR))
 
-            # Ops that do not upcast
-            self.assertRaises(NotImplementedError, add, aR, bR)
-            self.assertRaises(NotImplementedError, add, bR, aR)
-            self.assertRaises(NotImplementedError, add, bR, cR)
-            self.assertRaises(NotImplementedError, add, cR, bR)
-            self.assertRaises(NotImplementedError, add, aR, cR)
-            self.assertRaises(NotImplementedError, add, cR, aR)
+                    apb = op(a, bR)
 
-            self.assertRaises(NotImplementedError, mul, aR, bR)
-            self.assertRaises(NotImplementedError, mul, bR, aR)
-            self.assertRaises(NotImplementedError, mul, bR, cR)
-            self.assertRaises(NotImplementedError, mul, cR, bR)
-            self.assertRaises(NotImplementedError, mul, aR, cR)
-            self.assertRaises(NotImplementedError, mul, cR, aR)
+                    val = eval_outputs([apb])
+                    self.assertTrue(val.shape == (3, 2))
+                    if op is add:
+                        self.assertTrue(_is_dense_variable(apb))
+                        self.assertTrue(numpy.all(val == (array1 + b)))
+                        ans = numpy.array([[1., 2], [3, 4], [5, 6]])
+                        self.assertTrue(numpy.all(val == ans))
+                        if isinstance(a, theano.Constant):
+                            a = a.data
+                        if dtype1.startswith('float') and dtype2.startswith('float'):
+                            verify_grad_sparse(op, [a, b], structured=True)
+                    elif op is mul:
+                        self.assertTrue(_is_sparse_variable(apb))
+                        self.assertTrue(numpy.all(val.todense() == (b.multiply(array1))))
+                        self.assertTrue(numpy.all(val.todense() == numpy.array(
+                            [[1, 0], [9, 0], [0, 36]])))
+                        if isinstance(a, theano.Constant):
+                            a = a.data
+                        if dtype1.startswith('float') and dtype2.startswith('float'):
+                            verify_grad_sparse(op, [a, b], structured=False)
 
-        # AddSD and MulSD
+    def _testDS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
+                array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
         for mtype in _mtypes:
-            a = mtype(array1)
-            a_sv = as_sparse_variable(a)
-            a_dv = tensor.as_tensor_variable(array1)
-            b = mtype(array2)
-            b_sv = as_sparse_variable(b)
-            b_dv = tensor.as_tensor_variable(array2)
-            c = mtype(array3)
-            c_sv = as_sparse_variable(c)
-            c_dv = tensor.as_tensor_variable(array3)
+            for b in [numpy.asarray(array2),
+                      tensor.as_tensor_variable(array2),
+                      theano.shared(array2)]:
+                for dtype1, dtype2 in [('float64', 'int8'),
+                                       ('int8', 'float64'),
+                                   ]:
+                    a = mtype(array1).astype(dtype1)
+                    aR = as_sparse_variable(a)
+                    self.assertFalse(aR.data is a)
+                    self.assertTrue(_is_sparse(a))
+                    self.assertTrue(_is_sparse_variable(aR))
+                    b = b.astype(dtype2)
 
-            # add does not upcast
-            self.assertRaises(NotImplementedError, add, a_sv, b_dv)
-            self.assertRaises(NotImplementedError, add, b_sv, a_dv)
-            self.assertRaises(NotImplementedError, add, b_sv, c_dv)
-            self.assertRaises(NotImplementedError, add, c_sv, b_dv)
-            self.assertRaises(NotImplementedError, add, a_sv, c_dv)
-            self.assertRaises(NotImplementedError, add, c_sv, a_dv)
+                    apb = op(aR, b)
 
-            # mul may upcast the dense input if needed
-            if (config.cast_policy in ('custom', 'numpy') or
-                (config.cast_policy == 'numpy+floatX' and
-                 config.floatX == 'float64')):
-                # The result should be a float64 (not implemented).
-                self.assertRaises(NotImplementedError, mul, a_sv, b_dv)
-            elif (config.cast_policy == 'numpy+floatX' and
-                  config.floatX == 'float32'):
-                # The result should be a float32.
-                assert mul(a_sv, b_dv).dtype == 'float32'
-            else:
-                raise NotImplementedError()
-            self.assertRaises(NotImplementedError, mul, b_sv, a_dv)
-            assert mul(b_sv, c_dv).dtype == 'int32'
-            self.assertRaises(NotImplementedError, mul, c_sv, b_dv)
-            assert mul(a_sv, c_dv).dtype == 'float32'
-            self.assertRaises(NotImplementedError, mul, c_sv, a_dv)
+                    val = eval_outputs([apb])
+                    self.assertTrue(val.shape == (3, 2))
+                    if op is add:
+                        self.assertTrue(_is_dense_variable(apb))
+                        self.assertTrue(numpy.all(val == (a + array2)))
+                        ans = numpy.array([[1., 2], [3, 4], [5, 6]])
+                        self.assertTrue(numpy.all(val == ans))
+                        if isinstance(b, theano.Constant):
+                            b = b.data
+                        if dtype1.startswith('float') and dtype2.startswith('float'):
+                            verify_grad_sparse(op, [a, b], structured=True)
+                    elif op is mul:
+                        self.assertTrue(_is_sparse_variable(apb))
+                        ans = numpy.array([[1, 0], [9, 0], [0, 36]])
+                        self.assertTrue(numpy.all(val.todense() == (a.multiply(array2))))
+                        self.assertTrue(numpy.all(val.todense() == ans))
+                        if isinstance(b, theano.Constant):
+                            b = b.data
+                        if dtype1.startswith('float') and dtype2.startswith('float'):
+                            verify_grad_sparse(op, [a, b], structured=False)
 
 
 class T_conversion(unittest.TestCase):
@@ -1111,8 +1070,11 @@ class test_structureddot(unittest.TestCase):
             utt.assert_allclose(scipy_result, theano_result)
             if (not theano.config.mode in ["DebugMode", "DEBUG_MODE"] and
                 theano.config.cxx):
-                    self.assertFalse(theano_time > overhead_rtol * scipy_time +
-                                     overhead_tol)
+                    self.assertFalse(
+                        theano_time > overhead_rtol * scipy_time + overhead_tol,
+                        (theano_time,
+                         overhead_rtol * scipy_time + overhead_tol,
+                         scipy_time, overhead_rtol, overhead_tol))
 
 
 class DotTests(utt.InferShapeTester):
@@ -1264,6 +1226,7 @@ class UsmmTests(unittest.TestCase):
         self.z = numpy.asarray(self.rng.uniform(-1, 1, z_size),
                                dtype=theano.config.floatX)
 
+    # this is slow, but it's the only test for the op.
     def test(self):
         def mat(format, name, dtype):
             if format == 'dense':
@@ -1948,7 +1911,7 @@ class Test_getitem(unittest.TestCase):
             assert r1.shape == t1.shape
             assert numpy.all(t1.toarray() == r1.toarray())
 
-            """"
+            """
             Important: based on a discussion with both Fred and James
             The following indexing methods is not supported because the rval
             would be a sparse matrix rather than a sparse vector, which is a
@@ -2107,6 +2070,7 @@ class CastTester(utt.InferShapeTester):
     def setUp(self):
         super(CastTester, self).setUp()
 
+    # slow but only test
     def test_cast(self):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.all_dtypes:
@@ -2461,6 +2425,35 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
 
     return Tester
 
+def test_hstack_vstack():
+    """
+    Tests sparse.hstack and sparse.vstack (as opposed to the HStack and VStack
+    classes that they wrap).
+    """
+
+    def make_block(dtype):
+        return theano.sparse.csr_matrix(name="%s block" % dtype,
+                                        dtype=dtype)
+
+    def get_expected_dtype(blocks, to_dtype):
+        if to_dtype is None:
+            block_dtypes = tuple(b.dtype for b in blocks)
+            return theano.scalar.upcast(*block_dtypes)
+        else:
+            return to_dtype
+
+    # a deliberately weird mix of dtypes to stack
+    dtypes = ('complex128', theano.config.floatX)
+
+    blocks = [make_block(dtype) for dtype in dtypes]
+
+    for stack_dimension, stack_function in enumerate((theano.sparse.vstack,
+                                                      theano.sparse.hstack)):
+
+        for to_dtype in (None, ) + dtypes:
+            stacked_blocks = stack_function(blocks, dtype=to_dtype)
+            expected_dtype = get_expected_dtype(blocks, to_dtype)
+            assert stacked_blocks.dtype == expected_dtype
 
 def structure_function(f, index=0):
     """Decorator to structure a function wich

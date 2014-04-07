@@ -69,6 +69,18 @@ def upcast(dtype, *dtypes):
         return rval
 
 
+def get_scalar_type(dtype):
+    """
+    Return an Scalar(dtype) object.
+
+    This cache objects to save allocation and run time.
+    """
+    if dtype not in get_scalar_type.cache:
+        get_scalar_type.cache[dtype] = Scalar(dtype=dtype)
+    return get_scalar_type.cache[dtype]
+get_scalar_type.cache = {}
+
+
 def as_scalar(x, name=None):
     if isinstance(x, gof.Apply):
         if len(x.outputs) != 1:
@@ -91,7 +103,7 @@ def constant(x):
     # purpose typically.
     if hasattr(x, 'dtype'):
         assert x.ndim == 0
-        return ScalarConstant(Scalar(str(x.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x.dtype)), x)
     if isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
@@ -99,7 +111,7 @@ def constant(x):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(Scalar(str(x_.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
     if isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
@@ -107,7 +119,7 @@ def constant(x):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(Scalar(str(x_.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
     if isinstance(x, builtin_complex):
         #TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
@@ -245,7 +257,8 @@ class Scalar(Type):
     def c_declare(self, name, sub):
         return """
         %(dtype)s %(name)s;
-        typedef %(dtype)s %(name)s_dtype;
+        typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+        typedef %(dtype)s dtype_%(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
@@ -456,18 +469,18 @@ theano.compile.register_view_op_c_code(
     1)
 
 
-int8 = Scalar('int8')
-int16 = Scalar('int16')
-int32 = Scalar('int32')
-int64 = Scalar('int64')
-uint8 = Scalar('uint8')
-uint16 = Scalar('uint16')
-uint32 = Scalar('uint32')
-uint64 = Scalar('uint64')
-float32 = Scalar('float32')
-float64 = Scalar('float64')
-complex64 = Scalar('complex64')
-complex128 = Scalar('complex128')
+int8 = get_scalar_type('int8')
+int16 = get_scalar_type('int16')
+int32 = get_scalar_type('int32')
+int64 = get_scalar_type('int64')
+uint8 = get_scalar_type('uint8')
+uint16 = get_scalar_type('uint16')
+uint32 = get_scalar_type('uint32')
+uint64 = get_scalar_type('uint64')
+float32 = get_scalar_type('float32')
+float64 = get_scalar_type('float64')
+complex64 = get_scalar_type('complex64')
+complex128 = get_scalar_type('complex128')
 
 int_types = int8, int16, int32, int64
 uint_types = uint8, uint16, uint32, uint64
@@ -583,7 +596,7 @@ class _scalar_py_operators:
         # The second is needed for Elemwise ops to work right
         if dtype is None:
             dtype = str(self.type.dtype)
-        return second(self, ScalarConstant(Scalar(dtype), 0))
+        return second(self, ScalarConstant(get_scalar_type(dtype), 0))
 
     def astype(self, dtype):
         return cast(self, dtype)
@@ -627,7 +640,8 @@ complexs128 = _multi(complex128)
 # necessary to use this same mechanism in other places as well in the future.
 class upcast_out(object):
     def __new__(self, *types):
-        return Scalar(dtype=Scalar.upcast(*types)),
+        dtype = Scalar.upcast(*types)
+        return get_scalar_type(dtype),
 
 
 class upgrade_to_float(object):
@@ -643,7 +657,7 @@ class upgrade_to_float(object):
                 uint16: float32,
                 uint32: float64,
                 uint64: float64}
-        return Scalar(Scalar.upcast(*[conv.get(type, type)
+        return get_scalar_type(Scalar.upcast(*[conv.get(type, type)
                                       for type in types])),
 
 
@@ -655,7 +669,7 @@ class same_out(object):
 def upcast_out_no_complex(*types):
     if any([type in complex_types for type in types]):
         raise TypeError('complex type are not supported')
-    return Scalar(dtype=Scalar.upcast(*types)),
+    return get_scalar_type(dtype=Scalar.upcast(*types)),
 
 
 def same_out_float_only(type):
@@ -792,14 +806,14 @@ class ScalarOp(Op):
             if not callable(output_types_preference):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
-                    self.__class__, output_types_preference)
+                    (self.__class__, output_types_preference))
             self.output_types_preference = output_types_preference
 
     def make_node(self, *inputs):
         if self.nin >= 0:
             if len(inputs) != self.nin:
                 raise TypeError("Wrong number of inputs for %s.make_node (got %i(%s), expected %i)" %
-                                self, len(inputs), str(inputs), self.nin)
+                                (self, len(inputs), str(inputs), self.nin))
         inputs = [as_scalar(input) for input in inputs]
         outputs = [t() for t in self.output_types([input.type
                                                    for input in inputs])]
@@ -855,7 +869,8 @@ class ScalarOp(Op):
             return self.name
         else:
             param = [(k, v) for k, v in self.__dict__.items()
-                     if k not in ["name", "_op_use_c_code"]]
+                     if k not in ["name", "_op_use_c_code",
+                                  "output_types_preference"]]
             if param:
                 return "%s{%s}" % (self.__class__.__name__,
                                    ", ".join("%s=%s" % (k, v)
@@ -894,7 +909,22 @@ class UnaryScalarOp(ScalarOp):
             node.inputs[0].type != node.outputs[0].type):
             raise theano.gof.utils.MethodNotDefined()
 
-        dtype = node.inputs[0].dtype
+        dtype = node.inputs[0].type.dtype_specs()[1]
+        fct_call = self.c_code_contiguous_raw(dtype, 'n', 'x', 'z')
+        return """
+{
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct_call)s;
+}
+        """ % locals()
+
+    def c_code_contiguous_raw(self, dtype, n, i, o):
+        if not config.lib.amdlibm:
+            raise theano.gof.utils.MethodNotDefined()
+        if dtype.startswith('npy_'):
+            dtype = dtype[4:]
         if dtype == 'float32' and self.amd_float32 is not None:
             dtype = 'float'
             fct = self.amd_float32
@@ -903,12 +933,7 @@ class UnaryScalarOp(ScalarOp):
             fct = self.amd_float64
         else:
             raise theano.gof.utils.MethodNotDefined()
-        return """
-        npy_intp n = PyArray_SIZE(%(z)s);
-        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
-        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
-        %(fct)s(n, x, z);
-        """ % locals()
+        return "%(fct)s(%(n)s, %(i)s, %(o)s)" % locals()
 
 
 class BinaryScalarOp(ScalarOp):
@@ -1454,7 +1479,7 @@ def div_proxy(x, y):
 class TrueDiv(BinaryScalarOp):
     def output_types(self, types):
         if all(t in discrete_types for t in types):
-            return [Scalar(config.floatX)]
+            return [get_scalar_type(config.floatX)]
         else:
             return super(TrueDiv, self).output_types(types)
 
@@ -1655,8 +1680,14 @@ class Mod(BinaryScalarOp):
             """) % locals()
 
     def grad(self, (x, y), (gz, )):
-        return [x.zeros_like(dtype=theano.config.floatX),
-                y.zeros_like(dtype=theano.config.floatX)]
+        z = self(x, y)
+        if z.type.dtype in discrete_types:
+            # The gradient does not flow in if the output is discrete
+            return [x.zeros_like(dtype=theano.config.floatX),
+                    y.zeros_like(dtype=theano.config.floatX)]
+        return [gz,
+                -(x // y) * gz]
+
 mod = Mod(upcast_out, name='mod')
 
 
@@ -2943,7 +2974,40 @@ class Composite(ScalarOp):
         # We need to clone the graph as sometimes its nodes already
         # contain a reference to an fgraph. As we want the Composite
         # to be pickable, we can't have reference to fgraph.
-        inputs, outputs = gof.graph.clone(inputs, outputs)
+
+        # Also, if there is Composite in the inner graph, we want to
+        # remove them. In that case, we do a more complicated clone
+        # that will flatten Composite. We don't need to do this
+        # recusively, as the way the fusion optimizer work, we have
+        # only 1 new Composite each time at the output.
+        if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
+                                        for var in outputs]):
+            # No inner Composite
+            inputs, outputs = gof.graph.clone(inputs, outputs)
+        else:
+            # Inner Composite that we need to flatten
+            assert len(outputs) == 1
+            # 1. Create a new graph from inputs up to the
+            # Composite
+            res = theano.compile.rebuild_collect_shared(
+                inputs=inputs,
+                outputs=outputs[0].owner.inputs,
+                copy_inputs_over=False) #  Clone also the inputs
+            # 2. We continue this partial clone with the graph in
+            # the inner Composite
+            res2 = theano.compile.rebuild_collect_shared(
+                inputs=outputs[0].owner.op.inputs,
+                outputs=outputs[0].owner.op.outputs,
+                replace=dict(zip(outputs[0].owner.op.inputs, res[1]))
+            )
+            assert len(res2[1]) == len(outputs)
+            assert len(res[0]) == len(inputs)
+            assert res[0] != inputs
+            inputs, outputs = res[0], res2[1]
+            # Next assert comment just for speed
+            #assert not any([isinstance(node.op, Composite) for node in
+            #                theano.gof.graph.ops(inputs, outputs)])
+
         self.inputs = copy(inputs)
         self.outputs = copy(outputs)
         self.inputs_type = tuple([input.type for input in inputs])

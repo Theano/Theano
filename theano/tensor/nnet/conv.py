@@ -547,9 +547,7 @@ class ConvOp(OpenMPOp):
         return True
 
     def __setstate__(self, d):
-        self.__dict__.update(d)
-        if not hasattr(self, "openmp"):
-            self.openmp = False
+        super(ConvOp, self).__setstate__(d)
         self._rehash()
 
     def _rehash(self):

@@ -79,6 +79,46 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                     ignore_border=ignore_border)(input)
                 utt.verify_grad(mp, [imval], rng=rng)
 
+    def test_DownsampleFactorMaxGrad_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        maxpoolshps = ((1, 1), (3, 2), (2, 3))
+        imval = rng.rand(2, 3, 3, 4) * 10.0
+        #more variance means numeric gradient will be more accurate
+
+        for maxpoolshp in maxpoolshps:
+            for ignore_border in [True, False]:
+                #print 'maxpoolshp =', maxpoolshp
+                #print 'ignore_border =', ignore_border
+                # The shape of the gradient will be the shape of the output
+                grad_shape = DownsampleFactorMax.out_shape(
+                    imval.shape, maxpoolshp, ignore_border=ignore_border)
+                grad_val = rng.rand(*grad_shape) * 10.0
+
+                def mp(input, grad):
+                    out = DownsampleFactorMax(
+                        maxpoolshp, ignore_border=ignore_border)(input)
+                    grad_op = DownsampleFactorMaxGrad(
+                        maxpoolshp, ignore_border=ignore_border)
+                    return grad_op(input, out, grad)
+
+                utt.verify_grad(mp, [imval, grad_val], rng=rng)
+
+    def test_DownsampleFactorMax_hessian(self):
+        # Example provided by Frans Cronje, see
+        # https://groups.google.com/d/msg/theano-users/qpqUy_3glhw/JMwIvlN5wX4J
+        x_vec = tensor.vector('x')
+        z = tensor.dot(x_vec.dimshuffle(0, 'x'),
+                       x_vec.dimshuffle('x', 0))
+        y = max_pool_2d(input=z, ds=(2, 2))
+        C = tensor.exp(tensor.sum(y))
+
+        grad_hess = tensor.hessian(cost=C, wrt=x_vec)
+        fn_hess = function(inputs=[x_vec], outputs=grad_hess)
+
+        # The value has been manually computed from the theoretical gradient,
+        # and confirmed by the implementation.
+        assert numpy.allclose(fn_hess([1, 2]), [[0., 0.], [0., 982.7667]])
+
     def test_max_pool_2d_2D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (3, 2))

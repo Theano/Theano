@@ -10,6 +10,7 @@ import warnings
 import numpy
 
 from theano import Op, Apply, shared, config, Variable
+from theano import gradient
 from theano import tensor
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
                            get_vector_length, cast, opt, scal)
@@ -27,16 +28,8 @@ if cuda_available:
 
 
 def matVecModM(A, s, m):
-    # return (A * s) % m
-    x = numpy.zeros_like(s)
-    for i in xrange(len(x)):
-        for j in xrange(len(s)):
-            r = numpy.int32((numpy.int64(A[i][j]) * s[j] + x[i]) % m)
-            if r >= 0:
-                x[i] = r
-            else:
-                x[i] = r + m
-    return x
+    assert A.dtype == 'int64'
+    return numpy.int32(numpy.sum((A*s) % m, 1) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
@@ -62,24 +55,30 @@ MASK2 = numpy.int32(65535)      #2^16 - 1
 MULT2 = numpy.int32(21069)
 NORM = 4.656612873077392578125e-10; #1./2^31
 
-A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]])
-A2p0 = numpy.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]])
+#A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
+#                      dtype='int64')
+#A2p0 = numpy.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]],
+#                      dtype='int64')
 
 A1p72 = numpy.asarray([[1516919229, 758510237, 499121365],
                        [1884998244, 1516919229, 335398200],
-                       [601897748, 1884998244, 358115744]])
+                       [601897748, 1884998244, 358115744]],
+                      dtype='int64')
 A2p72 = numpy.asarray([[1228857673, 1496414766, 954677935],
                        [1133297478, 1407477216, 1496414766],
-                       [2002613992, 1639496704, 1407477216]])
+                       [2002613992, 1639496704, 1407477216]],
+                      dtype='int64')
 
 A1p134 = numpy.asarray(
     [[1702500920, 1849582496, 1656874625],
      [828554832, 1702500920, 1512419905],
-     [1143731069, 828554832, 102237247]])
+     [1143731069, 828554832, 102237247]],
+    dtype='int64')
 A2p134 = numpy.asarray(
     [[796789021, 1464208080, 607337906],
      [1241679051, 1431130166, 1464208080],
-     [1401213391, 1178684362, 1431130166]])
+     [1401213391, 1178684362, 1431130166]],
+    dtype='int64')
 np_int32_vals = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
 
 
@@ -175,7 +174,10 @@ class mrg_uniform_base(Op):
                      [rstate.type(), self.output_type()])
 
     def grad(self, inputs, ograd):
-        return [None for i in inputs]
+        return [gradient.grad_undefined(
+                    self, k, inp,
+                    'No gradient defined through random sampling op')
+                for k, inp in enumerate(inputs)]
 
     def R_op(self, inputs, eval_points):
         return [None for i in eval_points]
@@ -730,9 +732,11 @@ class MRG_RandomStreams(object):
 
         :param low: Lower bound of the interval on which values are sampled.
         If the ``dtype`` arg is provided, ``low`` will be cast into dtype.
+        This bound is excluded.
 
         :param high: Higher bound of the interval on which values are sampled.
         If the ``dtype`` arg is provided, ``high`` will be cast into dtype.
+        This bound is excluded.
 
         :param size: Can be a list of integer or Theano variable
                 (ex: the shape of other Theano Variable)
@@ -941,7 +945,7 @@ class MRG_RandomStreams(object):
         return final_samples
 
 
-@local_optimizer([None])
+@local_optimizer([mrg_uniform])
 def mrg_random_make_inplace(node):
     op = node.op
     if isinstance(op, mrg_uniform) and not op.inplace:

@@ -5,6 +5,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 import theano
 from theano.gof.python25 import all, any
@@ -16,7 +17,7 @@ from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
-
+import math
 
 def FunctionGraph(i, o):
     e = gof.FunctionGraph(i, o)
@@ -145,6 +146,9 @@ class test_Broadcast(unittest.TestCase):
     ctype = TensorType
     cop = Elemwise
 
+    openmp_minsize = 2*config.openmp_elemwise_minsize
+    openmp_minsize_sqrt = math.ceil(math.sqrt(openmp_minsize))
+
     def rand_val(self, shp):
         return numpy.asarray(numpy.random.rand(*shp))
 
@@ -160,6 +164,8 @@ class test_Broadcast(unittest.TestCase):
                          ((3, 5), (3, 1)),
                          ((1, 5), (5, 1)),
                          ((1, 1), (1, 1)),
+                         ((self.openmp_minsize,), (self.openmp_minsize,)),
+                         ((self.openmp_minsize_sqrt, self.openmp_minsize_sqrt), (self.openmp_minsize_sqrt, self.openmp_minsize_sqrt)),
                          ((2, 3, 4, 5), (2, 3, 4, 5)),
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
@@ -284,24 +290,26 @@ class test_Broadcast(unittest.TestCase):
 
 class test_CAReduce(unittest_tools.InferShapeTester):
     op = CAReduce
+    cases = [((5, 6), None),
+             ((5, 6), (0, 1)),
+             ((5, 6), (0, )),
+             ((5, 6), (1, )),
+             ((5, 6), (-1, )),
+             ((5, 6), (-2, )),
+             ((5, 6), ()),
+             ((2, 3, 4, 5), (0, 1, 3)),
+             ((2, 3, 4, 5), (-2, -3)),
+             ((5, 0), None),
+             ((5, 0), (0, )),
+             ((5, 0), (1, )),
+             ((5, 0), ()),
+             ((), None),
+             ((), ())
+         ]
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     test_nan=False, tensor_op=None):
-        for xsh, tosum in [((5, 6), None),
-                           ((5, 6), (0, 1)),
-                           ((5, 6), (0, )),
-                           ((5, 6), (1, )),
-                           ((5, 6), (-1, )),
-                           ((5, 6), (-2, )),
-                           ((5, 6), ()),
-                           ((2, 3, 4, 5), (0, 1, 3)),
-                           ((2, 3, 4, 5), (-2, -3)),
-                           ((5, 0), None),
-                           ((5, 0), (0, )),
-                           ((5, 0), (1, )),
-                           ((5, 0), ()),
-                           ((), None),
-                           ((), ())]:
+        for xsh, tosum in self.cases:
             if dtype == "floatX":
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
@@ -400,29 +408,38 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 if scalar_op in [scalar.and_, scalar.or_]:
                     zv = numpy.asarray(zv, dtype='int8')
                 if test_nan:
-                    self.assertTrue(theano.tensor.TensorType.values_eq(f(xv),
-                                                                       zv),
-                                    (f(xv), zv))
+                    try:
+                        self.assertTrue(
+                            theano.tensor.TensorType.values_eq(f(xv), zv),
+                            (f(xv), zv))
+                    except NotImplementedError:
+                        # GpuCAReduce don't implement all cases when size is 0
+                        assert xv.size == 0
                 else:
-                    f_xv = f(xv)
-                    self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
-                    self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
+                    try:
+                        f_xv = f(xv)
+                        self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
+                        self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv))
+                    except NotImplementedError:
+                        # GpuCAReduce don't implement all cases when size is 0
+                        assert xv.size == 0
 
-            #test CAReduce.infer_shape
-            #the Shape op don't implement c_code!
-            if isinstance(linker, gof.PerformLinker):
-                x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
-                if tensor_op is None:
-                    e = self.op(scalar_op, axis=tosum)(x)
-                else:
-                    e = tensor_op(x, axis=tosum)
-                if tosum is None:
-                    tosum = range(len(xsh))
-                f = copy(linker).accept(FunctionGraph([x],
-                     [e.shape])).make_function()
-                if not(scalar_op in [scalar.maximum, scalar.minimum] and
-                       ((xsh == () or numpy.prod(xsh) == 0))):
+            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            if tensor_op is None:
+                e = self.op(scalar_op, axis=tosum)(x)
+            else:
+                e = tensor_op(x, axis=tosum)
+            if tosum is None:
+                tosum = range(len(xsh))
+            f = copy(linker).accept(FunctionGraph([x],
+                                                  [e.shape])).make_function()
+            if not(scalar_op in [scalar.maximum, scalar.minimum] and
+                   ((xsh == () or numpy.prod(xsh) == 0))):
+                try:
                     assert all(f(xv) == zv.shape)
+                except NotImplementedError:
+                    # GpuCAReduce don't implement all cases when size is 0
+                    assert xv.size == 0
 
     def test_perform(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
@@ -454,6 +471,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype,
                              test_nan=True, tensor_op=tensor.all)
 
+    @attr('slow')
     def test_c(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
@@ -487,30 +505,19 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
 
-    def test_infer_shape(self):
-        for xsh, tosum in [((5, 6), None),
-                           ((5, 6), (0, 1)),
-                           ((5, 6), (0, )),
-                           ((5, 6), (1, )),
-                           ((5, 6), (-1, )),
-                           ((5, 6), (-2, )),
-                           ((2, 3, 4, 5), (0, 1, 3)),
-                           ((2, 3, 4, 5), (-2, -3)),
-                           ((5, 0), None),
-                           ((5, 0), (0, )),
-                           ((5, 0), (1, )),
-                           ((5, 6), ()),
-                           ((5, 0), ()),
-                           ((), None),
-                           ((), ())]:
+    def test_infer_shape(self, dtype=None):
+        if dtype is None:
             dtype = theano.config.floatX
+        for xsh, tosum in self.cases:
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
             if tosum is None:
                 tosum = range(len(xsh))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             self._compile_and_check([x],
-                            [self.op(scalar.add, axis=tosum)(x)],
-                            [xv], self.op, ["local_cut_useless_reduce"])
+                                    [self.op(scalar.add, axis=tosum)(x)],
+                                    [xv], self.op,
+                                    ["local_cut_useless_reduce"],
+                                    warn=0 not in xsh)
 
 
 class test_Prod(unittest.TestCase):
@@ -581,6 +588,38 @@ class test_Prod(unittest.TestCase):
 
         #unittest_tools.verify_grad(fn5, [x_val])
 
+    def test_prod_no_zeros_in_input(self):
+        x = theano.tensor.dmatrix()
+        x_val = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
+        pwz = Prod(axis=1, no_zeros_in_input=True)(x)
+        fn = theano.function([x], pwz, mode=self.mode)
+
+        assert numpy.allclose(fn(x_val), [6, 120, 504])
+
+        pwz = Prod(no_zeros_in_input=True)(x)
+        g = theano.grad(pwz, x)
+        gg = theano.grad(g.sum(), x)
+        fn = theano.function([x], g, mode=self.mode)
+        assert numpy.allclose(fn(x_val),
+                              [[362880., 181440., 120960.],
+                               [90720., 72576., 60480.],
+                               [51840., 45360., 40320.]])
+        fn = theano.function([x], gg, mode=self.mode)
+        assert numpy.allclose(fn(x_val),
+                              [[663696., 422568., 301872.],
+                               [233964., 190800., 161016.],
+                               [139248., 122652., 109584.]])
+        unittest_tools.verify_grad(Prod(axis=1, no_zeros_in_input=True),
+                                   [x_val],
+                                   mode=self.mode)
+        unittest_tools.verify_grad(Prod(no_zeros_in_input=True), [x_val],
+                                   mode=self.mode)
+
+        def second_deriv(x):
+            return theano.grad(Prod(no_zeros_in_input=True)(x), x)
+        unittest_tools.verify_grad(second_deriv, [x_val],
+                                   mode=self.mode)
+
     def test_prod_without_zeros(self):
         x = theano.tensor.dmatrix()
         x_val = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]], dtype='float32')
@@ -592,6 +631,7 @@ class test_Prod(unittest.TestCase):
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
 
+    @attr('slow')
     def test_other_grad_tests(self):
         x = theano.tensor.dmatrix()
         x_val1 = numpy.array([[1, 2, 3], [0, 5, 6], [0, 0, 9]],
@@ -665,7 +705,9 @@ class test_IsInf_IsNan(unittest.TestCase):
                     (x.ndim == 1 and input is not self.vector)):
                     # We only test with the appropriate input type.
                     continue
-                assert (theano_isfunc(x) == numpy_isfunc(x)).all()
+                t_out = theano_isfunc(x)
+                n_out = numpy_isfunc(x)
+                assert (t_out == n_out).all(), (t_out, n_out)
 
     def test_isinf(self):
         return self.run_isfunc('isinf')
@@ -721,6 +763,7 @@ class T_sum_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_sum_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a sum.
@@ -821,6 +864,7 @@ class T_mean_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_mean_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a mean.
@@ -928,6 +972,7 @@ class T_prod_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_prod_custom_dtype(self):
         """
         Test the ability to provide your own output dtype for a prod.
@@ -959,6 +1004,7 @@ class T_prod_dtype(unittest.TestCase):
                 tensor.grad(prod_var.sum(), x,
                             disconnected_inputs='ignore')
 
+    @attr('slow')
     def test_prod_custom_acc_dtype(self):
         """
         Test the ability to provide your own acc_dtype for a prod.
@@ -1047,6 +1093,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             data = data.astype(dtype)
             f(data)
 
+    @attr('slow')
     def test_prod_without_zeros_custom_dtype(self):
         """
         Test ability to provide your own output dtype for a ProdWithoutZeros().
@@ -1070,6 +1117,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                 data = data.astype(input_dtype)
                 f(data)
 
+    @attr('slow')
     def test_prod_without_zeros_custom_acc_dtype(self):
         """
         Test ability to provide your own acc_dtype for a ProdWithoutZeros().

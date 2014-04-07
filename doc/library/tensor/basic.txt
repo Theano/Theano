@@ -607,6 +607,27 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     have shape (2, 60).
 
 
+.. function:: tile(x, reps, ndim=None)
+
+    Construct an array by repeating the input `x` according to `reps`
+    pattern.
+
+    Tiles its input according to `reps`. The length of `reps` is the
+    number of dimension of `x` and contains the number of times to
+    tile `x` in each dimension.
+
+    :see: `numpy.tile
+        <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
+        documentation for examples.
+
+    :see: :func:`theano.tensor.extra_ops.repeat
+        <theano.tensor.extra_ops.repeat>`
+
+    :note: Currently, `reps` must be a constant, `x.ndim` and
+        `len(reps)` must be equal and, if specified, `ndim` must be
+        equal to both.
+
+
 Creating Tensor
 ===============
 
@@ -816,7 +837,7 @@ Reductions
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
-.. function:: prod(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
+.. function:: prod(x, axis=None, dtype=None, keepdims=False, acc_dtype=None, no_zeros_in_input=False)
 
     :Parameter: *x* -  symbolic Tensor (or compatible)
     :Parameter: *axis* - axis or axes along which to compute the product
@@ -843,6 +864,21 @@ Reductions
         - for uint dtypes, we use at least uint64;
         - for float dtypes, we use at least float64;
         - for complex dtypes, we use at least complex128.
+
+    :Parameter: *no_zeros_in_input* - The grad of prod is complicated
+         as we need to handle 3 different cases: without zeros in the
+         input reduced group, with 1 zero or with more zeros.
+
+	 This could slow you down, but more importantly, we currently
+	 don't support the second derivative of the 3 cases. So you
+	 cannot take the second derivative of the default prod().
+
+	 To remove the handling of the special cases of 0 and so get
+	 some small speed up and allow second derivative set
+	 ``no_zeros_in_inputs`` to ``True``. It defaults to ``False``.
+
+	 **It is the user responsibility to make sure there are no zeros
+	 in the inputs. If there are, the grad will be wrong.**
 
     :Returns: product of every term in *x* along *axis*
 
@@ -1437,7 +1473,7 @@ Linear Algebra
         print(b.shape) #(5,6,4,3)
         print(c.shape) #(2,3,4,5,6,4,3)
 
-    See the documentation of numpy.tensordot for more examples.
+    :note: See the documentation of `numpy.tensordot <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ for more examples.
 
 .. function:: batched_dot(X, Y)
 
@@ -1462,6 +1498,40 @@ Linear Algebra
     :type Y: symbolic tensor
 
     :return: tensor of products
+
+.. function:: batched_tensordot(X, Y, axes=2)
+
+    :param x: A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor (excluding the first 
+                 (batch) dimension):
+                     axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 4]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 5th axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 5th axis of b.
+    :type axes: int or array-like of length 2
+    
+    :returns: a tensor with shape equal to the concatenation of a's shape
+              (less any dimensions that were summed over) and b's shape
+              (less first dimension and any dimensions that were summed over).
+    :rtype: tensor of tensordots
+    
+    A hybrid of batch_dot and tensordot, this function computes the 
+    tensordot product between the two tensors, by iterating over the 
+    first dimension using scan to perform a sequence of tensordots.
+    
+    :note: See :func:`tensordot` and :func:`batched_dot` for 
+        supplementary documentation.
 
 
 
@@ -1493,6 +1563,86 @@ Gradient / Differentiation
 
     :rtype: variable or list of variables (matching `wrt`)
     :returns: gradients of the cost with respect to each of the `wrt` terms
+    
+.. function:: subgraph_grad(wrt, end, start=None, cost=None, details=False)
+
+    With respect to `wrt`, computes gradients of cost and/or from existing 
+    `start` gradients, up to the `end` variables of a symbolic digraph. 
+    In other words, computes gradients for a subgraph of the
+    symbolic theano function. Ignores all disconnected inputs.
+    
+    This can be useful when one needs to perform the gradient descent 
+    iteratively (e.g. one layer at a time in an MLP), or when a particular 
+    operation is not differentiable in theano (e.g. stochastic sampling 
+    from a multinomial). In the latter case, the gradient of the 
+    non-differentiable process could be approximated by user-defined 
+    formula, which could be calculated using the gradients of a cost 
+    with respect to samples (0s and 1s). These gradients are obtained 
+    by performing a subgraph_grad from the `cost` or previously known gradients 
+    (`start`) up to the outputs of the stochastic process (`end`). 
+    A dictionary mapping gradients obtained from the user-defined 
+    differentiation of the process, to variables, could then be fed into 
+    another subgraph_grad as `start` with any other `cost` (e.g. weight decay).
+    
+    In an MLP, we could use subgraph_grad to iteratively backpropagate:
+    >>> x, t = theano.tensor.fvector('x'), theano.tensor.fvector('t')
+    >>> w1 = theano.shared(np.random.randn(3,4))
+    >>> w2 = theano.shared(np.random.randn(4,2))
+    >>> a1 = theano.tensor.tanh(theano.tensor.dot(x,w1))
+    >>> a2 = theano.tensor.tanh(theano.tensor.dot(a1,w2))
+    >>> cost2 = theano.tensor.sqr(a2 - t).sum() 
+    >>> cost2 += theano.tensor.sqr(w2.sum())
+    >>> cost1 = theano.tensor.sqr(w1.sum())
+    
+    >>> params = [[w2],[w1]]
+    >>> costs = [cost2,cost1]
+    >>> grad_ends = [[a1], [x]]
+    
+    >>> next_grad = None
+    >>> param_grads = []
+    >>> for i in xrange(2):
+    >>>     param_grad, next_grad = theano.subgraph_grad(
+    >>>         wrt=params[i], end=grad_ends[i], 
+    >>>         start=next_grad, cost=costs[i]
+    >>>     )
+    >>>     next_grad = dict(zip(grad_ends[i], next_grad))
+    >>>     param_grads.extend(param_grad)
+    
+    :type wrt : List of Variables.
+        Gradients are computed with respect to `wrt`.
+    
+    :type end : List of Variables.
+        Theano variables at which to end gradient descent
+        (they are considered constant in theano.grad). 
+        For convenience, the gradients with respect to these variables 
+        are also returned.
+    
+    :type start : Dictionary of Variables
+    :param start: If not None, a dictionary mapping variables to 
+            their gradients. This is useful when the gradient on some 
+            variables are known. These are used to compute the gradients
+            backwards up to the variables in `end` 
+            (they are used as known_grad in theano.grad).
+    
+    :type cost: Scalar (0-dimensional) Variable.
+    :param cost: 
+            Additional costs for which to compute the gradients.  
+            For example, these could be weight decay, an l1 constraint,
+            MSE, NLL, etc. May optionally be None if start is provided.
+            Warning : If the gradients of `cost` with respect to any 
+            of the `start` variables is already part of the `start` 
+            dictionary, then it may be counted twice with respect to `wrt` 
+            and `end`.
+    
+    :type details: bool.
+    :param details: When True, additionally returns the 
+        list of gradients from `start` and of `cost`, respectively, 
+        with respect to `wrt` (not `end`).
+    
+    :rtype: Tuple of 2 or 4 Lists of Variables
+    
+    :return: Returns lists of gradients with respect to `wrt` and `end`, 
+            respectively.
 
 
 .. _R_op_list:

@@ -13,6 +13,7 @@ import __builtin__
 builtin_min = __builtin__.min
 
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
@@ -44,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle)
+        stacklists, DimShuffle, hessian)
 
 from theano.tests import unittest_tools as utt
 
@@ -883,6 +884,7 @@ ModTester = makeBroadcastTester(
         x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
     good=copymod(_good_broadcast_div_mod_normal_float,
                  ['complex1', 'complex2']),
+    grad=_grad_broadcast_div_mod_normal,
     )
 
 
@@ -892,6 +894,7 @@ ModInplaceTester = makeBroadcastTester(
         x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
     good=copymod(_good_broadcast_div_mod_normal_float_inplace,
                  ["complex1", "complex2"]),
+    grad=_grad_broadcast_div_mod_normal,
     inplace=True)
 
 _good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
@@ -1925,7 +1928,8 @@ class TestAlloc(unittest.TestCase):
                 #AdvancedIncSubtensor1
                 (some_matrix[arange(60)], 2),
                 #AdvancedIncSubtensor
-                (some_matrix[idx, idx], 1)]):
+                (some_matrix[idx, idx], 1)
+        ]):
             derp = sum(dot(subtensor, variables))
 
             fobj = theano.function([some_vector], derp, mode=self.mode)
@@ -1933,14 +1937,18 @@ class TestAlloc(unittest.TestCase):
             fgrad = theano.function([some_vector], grad_derp,
                                     mode=self.mode)
             topo_obj = fobj.maker.fgraph.toposort()
+            #<= is needed as the GPU currently don't implement
+            #AdvancedIncSubtensor. When this is the case it can be
+            #replaced with ==.
             assert numpy.sum([isinstance(node.op, alloc)
-                              for node in topo_obj]) == 0
+                              for node in topo_obj]) <= 1
             topo_grad = fgrad.maker.fgraph.toposort()
 
             #print subtensor
             #theano.printing.debugprint(fgrad)
             assert numpy.sum([isinstance(node.op, alloc)
-                              for node in topo_grad]) == n_alloc
+                              for node in topo_grad]) == n_alloc, (
+                                  alloc, subtensor, n_alloc, topo_grad)
             fobj(test_params)
             fgrad(test_params)
 
@@ -1994,6 +2002,7 @@ class TestAlloc(unittest.TestCase):
                                   numpy.zeros(shp))
 
 
+# This is slow for the ('int8', 3) version.
 def test_eye():
     def check(dtype, N, M_=None, k=0):
         # Theano does not accept None as a tensor.
@@ -2319,8 +2328,32 @@ def test_batched_dot():
     result_fn = theano.function([first_mat, second_mat], output)
     result = result_fn(first_mat_val, second_mat_val)
 
-    assert result.shape[0] == first_val.shape[0]
+    assert result.shape[0] == first_mat_val.shape[0]
 
+def test_batched_tensordot():
+    first = theano.tensor.tensor4("first")
+    second = theano.tensor.tensor4("second")
+    axes = [[1,2], [3,1]]
+    output = theano.tensor.basic.batched_tensordot(first, second, axes)
+    first_val = numpy.random.rand(8, 10, 20, 3).astype(config.floatX)
+    second_val = numpy.random.rand(8, 20, 5, 10).astype(config.floatX)
+    result_fn = theano.function([first, second], output)
+    result = result_fn(first_val, second_val)
+    assert result.shape[0] == first_val.shape[0]
+    assert result.shape[1] == first_val.shape[3]
+    assert result.shape[2] == second_val.shape[2]
+
+    first_mat = theano.tensor.dmatrix("first")
+    second_mat = theano.tensor.dmatrix("second")
+    axes = 1
+    output = theano.tensor.basic.batched_tensordot(first_mat, second_mat, axes)
+    first_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
+    second_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
+    result_fn = theano.function([first_mat, second_mat], output)
+    result = result_fn(first_mat_val, second_mat_val)
+    print(result.shape)
+    assert result.shape[0] == first_mat_val.shape[0]
+    assert len(result.shape) == 1
 
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself
@@ -3067,6 +3100,47 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
+    def test_stack_hessian(self):
+        # Test the gradient of stack when used in hessian, see gh-1589
+        a = tensor.dvector('a')
+        b = tensor.dvector('b')
+        A = stack(a, b)
+        B = A.T.dot(A)
+        Ha, Hb = hessian(B.sum(), [a, b])
+
+        # Try some values
+        a_v = numpy.random.rand(4)
+        b_v = numpy.random.rand(4)
+        f = theano.function([a, b], [Ha, Hb])
+        Ha_v, Hb_v = f(a_v, b_v)
+        # The Hessian is always a matrix full of 2
+        assert Ha_v.shape == (4, 4)
+        assert Hb_v.shape == (4, 4)
+        assert numpy.allclose(Ha_v, 2.)
+        assert numpy.allclose(Hb_v, 2.)
+
+    def test_stack_hessian2(self):
+        # Test the hessian macro when the gradient itself does not depend
+        # on the input (but the cost does)
+        a = tensor.dvector('a')
+        b = tensor.dvector('b')
+        A = stack([a, b])
+        Ha, Hb = hessian(A.sum(), [a, b])
+
+        # Try some values
+        a_v = numpy.random.rand(4)
+        b_v = numpy.random.rand(4)
+        f = theano.function([a, b], [Ha, Hb])
+        Ha_v, Hb_v = f(a_v, b_v)
+        print Ha_v
+        print Hb_v
+        # The Hessian is always a matrix full of 0
+        assert Ha_v.shape == (4, 4)
+        assert Hb_v.shape == (4, 4)
+        assert numpy.allclose(Ha_v, 0.)
+        assert numpy.allclose(Hb_v, 0.)
+
+
     def test_join_concatenate_one_element(self):
         ''' Fast test of concatenate as this is an alias for join.
         also test that we remove the Join op if there is only 1 input'''
@@ -3318,10 +3392,8 @@ class T_Join_and_Split(unittest.TestCase):
         utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
-        """
-        Test that all broadcastable flags are preserved by a
-        single-input join.
-        """
+        # Test that all broadcastable flags are preserved by a
+        # single-input join.
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         a = self.shared(a_val, broadcastable=(True, False, True))
@@ -3344,10 +3416,8 @@ class T_Join_and_Split(unittest.TestCase):
         #self.assertRaises(TypeError, f, bad_a_val)
 
     def test_broadcastable_flags_many_dims_and_inputs(self):
-        """
-        Test that the right broadcastable flags get set for a join
-        with many inputs and many input dimensions.
-        """
+        # Test that the right broadcastable flags get set for a join
+        # with many inputs and many input dimensions.
         a = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 0, 0, 0])()
         b = TensorType(dtype=self.floatX, broadcastable=[1, 1, 1, 0, 0, 0])()
         c = TensorType(dtype=self.floatX, broadcastable=[1, 0, 0, 0, 0, 0])()
@@ -3436,20 +3506,16 @@ class T_Join_and_Split(unittest.TestCase):
             f(get_mat(3, 4), get_mat(3, 4), get_mat(2, 5))
 
     def test_rebroadcast(self):
-        """
-        Regression test for a crash that used to happen when rebroadcasting.
-        """
+        # Regression test for a crash that used to happen when rebroadcasting.
         x = tensor.TensorType(self.floatX, [False, False, True])()
         u = tensor.TensorType(self.floatX, [False, False, True])()
         # This line used to crash.
         z = tensor.concatenate([x, -u], axis=2)
 
     def test_concatenate_same(self):
-        """
-        Test that we can concatenate the same tensor multiple time.
+        # Test that we can concatenate the same tensor multiple time.
 
-        In the past it was broken on the GPU.
-        """
+        # In the past it was broken on the GPU.
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         T_shared = self.shared(rng.rand(3, 4).astype(self.floatX))
         Tout = tensor.concatenate([T_shared, T_shared])
@@ -4015,6 +4081,7 @@ class t_dot(unittest.TestCase):
         utt.verify_grad(dot, [rand(2, 3, 4), rand(4, 5)])
         utt.verify_grad(dot, [rand(2, 3, 4), rand(3, 4, 5)])
 
+    @attr('slow')
     def test_broadcastable_patterns(self):
 
         #
@@ -5913,6 +5980,35 @@ class T_get_scalar_constant_value(unittest.TestCase):
             get_scalar_constant_value,
             mv[t()])
 
+    def test_shape_i(self):
+        c = theano.tensor.constant(numpy.random.rand(3, 4))
+        s = opt.Shape_i(0)(c)
+        assert get_scalar_constant_value(s) == 3
+        s = opt.Shape_i(1)(c)
+        assert get_scalar_constant_value(s) == 4
+
+    def test_elemwise(self):
+        # We test only for a few elemwise, the list of all supported
+        # elemwise are in the fct.
+        c = theano.tensor.constant(numpy.random.rand())
+        s = c + 1
+        assert numpy.allclose(get_scalar_constant_value(s), c.data + 1)
+        s = c - 1
+        assert numpy.allclose(get_scalar_constant_value(s), c.data - 1)
+        s = c * 1.2
+        assert numpy.allclose(get_scalar_constant_value(s), c.data * 1.2)
+        s = c < 0.5
+        assert numpy.allclose(get_scalar_constant_value(s), int(c.data < 0.5))
+        s = tensor.second(c, .4)
+        assert numpy.allclose(get_scalar_constant_value(s), .4)
+
+    def test_second(self):
+        #Second should apply when the value is constant but not the shape
+        c = theano.tensor.constant(numpy.random.rand())
+        shp = theano.tensor.vector()
+        s = theano.tensor.second(shp, c)
+        assert get_scalar_constant_value(s) == c.data
+
 
 class T_as_tensor_variable(unittest.TestCase):
     """
@@ -6644,6 +6740,17 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         # Test equivalent advanced indexing
         assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
+
+    def test_cumsum(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.cumsum().eval({X: x}), x.cumsum())
+
+    def test_cumprod(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.cumprod().eval({X: x}), x.cumprod())
+
 
 def test_norm():
     x = theano.tensor.vector('x')

@@ -134,7 +134,7 @@ if rc == 0:
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode"),
+                  "or ProfileMode(deprecated)"),
                  EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
                      'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
@@ -142,7 +142,7 @@ else:
     # g++ is not present, linker should default to python only
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode"),
+                  "or ProfileMode(deprecated)"),
                  EnumStr('py', 'vm', 'vm_nogc'),
                  in_c_key=False)
     _logger.warning('g++ not detected ! Theano will be unable to execute '
@@ -174,7 +174,7 @@ AddConfigVar('allow_gc',
 #Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('optimizer',
         ("Default optimizer. If not None, will use this linker with the Mode "
-         "object (not ProfileMode or DebugMode)"),
+         "object (not ProfileMode(deprecated) or DebugMode)"),
         EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
         in_c_key=False)
 
@@ -259,12 +259,27 @@ AddConfigVar('gpuelemwise.sync',
 
 AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
-             IntParam(5),
+# We default to 6 to be able to know where v1 + v2 is created in the
+# user script. The bigger this number is, the more run time it takes.
+             IntParam(6),
              in_c_key=False)
 
 AddConfigVar('experimental.mrg',
              "Another random number generator that work on the gpu",
              BoolParam(False))
+
+AddConfigVar('experimental.unpickle_gpu_on_cpu',
+             "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
+             "This is useful, if you want to open a CudaNdarray without "
+             "having cuda installed."
+             "If you have cuda installed, this will force unpickling to"
+             "be done on the cpu to numpy.ndarray."
+             "Please be aware that this may get you access to the data,"
+             "however, trying to unpicke gpu functions will not succeed."
+             "This flag is experimental and may be removed any time, when"
+             "gpu<>cpu transparency is solved.",
+             BoolParam(default=False),
+             in_c_key=False)
 
 AddConfigVar('numpy.seterr_all',
              ("Sets numpy's behaviour for floating-point errors, ",
@@ -410,6 +425,13 @@ AddConfigVar('compute_test_value_opt',
              EnumStr('off', 'ignore', 'warn', 'raise', 'pdb'),
              in_c_key=False)
 
+AddConfigVar('unpickle_function',
+             ("Replace unpickled Theano function with None",
+              "This is useful to unpickle old graph that pickled"
+              " them when it shouldn't"),
+             BoolParam(True),
+             in_c_key=False)
+
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
     method when exception_verbosity == 'low'. When exception_verbosity
@@ -466,5 +488,13 @@ AddConfigVar('openmp',
              "threads used with the environment variable OMP_NUM_THREADS."
              " If it is set to 1, we disable openmp in Theano by default.",
              BoolParam(default_openmp),
+             in_c_key=False,
+         )
+
+AddConfigVar('openmp_elemwise_minsize',
+             "If OpenMP is enable, this is the minimum size of vector "
+             "for which  the openmp parallel for is enable."
+             "Used in element wise ops",
+             IntParam(200000),
              in_c_key=False,
          )

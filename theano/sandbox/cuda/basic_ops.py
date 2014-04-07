@@ -296,38 +296,15 @@ class GpuDimShuffle(GpuOp):
     def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
-        new_order = tuple(new_order)
         self.new_order = new_order
 
-        # list of dimensions of the input to drop
-        self.drop = []
-        # this maps i before dropping dimensions to j after dropping
-        # dimensions so self.shuffle can be set properly later on
-        i2j = {}
-        j = 0
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
-                # we want to drop this dimension because it's not a
-                # value in new_order
-                if b == 1:  # 1 aka True
-                    self.drop.append(i)
-                else:
+                if not b:
                     # we cannot drop non-broadcastable dimensions
                     raise ValueError("You cannot drop a non-broadcastable"
                                      " dimension.",
                                      (input_broadcastable, new_order))
-            else:
-                i2j[i] = j
-                j += 1
-
-        # transposition of non-broadcastable dimensions This is how
-        # the dimensions will be permuted, without accounting for the
-        # extra 'x' broadcastable dimensions to insert.
-        self.shuffle = [i2j[x] for x in new_order if x != 'x']
-
-        # list of dimensions of the output that are broadcastable and
-        # were not in the original input
-        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
         self.view_map = {0: [0]}
 
@@ -481,8 +458,6 @@ class GpuDimShuffle(GpuOp):
             print self
             print "IN BROAD", self.input_broadcastable
             print "NEW ORDER", self.new_order
-            print "SHUFFLE", self.shuffle
-            print "AUGMENT", self.augment
             print '------------'
             print ''
             print sio.getvalue()
@@ -1198,7 +1173,11 @@ class GpuCAReduce(GpuOp):
                     n_threads.z += 1;
                 else
                     break;
-            }""" % locals()
+            }
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
+
+        """ % locals()
 
         if len(self.reduce_mask) == 2:
             threads_y = ''
@@ -1509,6 +1488,8 @@ class GpuCAReduce(GpuOp):
                 n_threads.z += 1;
             }
             n_threads.z -= 1;
+            //Maximum for Fermi GPU on that dimensions.
+            n_threads.z = std::min(n_threads.z, (unsigned)64);
 
             dim3 n_blocks(1,1,1);
             %(makecall)s
@@ -1605,7 +1586,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [8]  # the version corresponding to the c code in this Op
+        version = [9]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -2794,20 +2775,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         """
         return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
 
-    def set_view_base(self, x, fail):
-        return """
-        //Set the base only now
-
-        if(CudaNdarray_set_device_data(zview, CudaNdarray_DEV_DATA(zview),
-                                    %(x)s)){
-            PyErr_Format(PyExc_RuntimeError,
-                         "GpuSubtensor is not able to set"
-                         " the base of the view array");
-            Py_XDECREF(zview);
-            %(fail)s;
-        }""" % locals()
-
-    def add_to_zview(self, x, fail):
+    def add_to_zview(self, name, x, fail):
 
         return """
         PyObject * add_result = CudaNdarray_inplace_add((PyObject *) zview,
@@ -3205,13 +3173,27 @@ class GpuAlloc(GpuOp):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (not isinstance(client[0], basestring)
-                    and isinstance(client[0].op, (
-                        tensor.IncSubtensor,
-                        tensor.AdvancedIncSubtensor1,
-                        GpuIncSubtensor,
-                        GpuAdvancedIncSubtensor1
-                        ))):
+            elif (#The following ops work inplace of their input id 0.
+                  client[1] == 0 and
+                  isinstance(client[0].op, (
+                    #Ops that will work inplace on the Alloc. So if they
+                    #get constant_folded, they would copy the
+                    #constant and this is less efficients.
+
+                    #Not doing the constant folding could also lower
+                    #the peak memory usage, as we the "constant" won't
+                    #always exists.
+                      #theano.tensor.subtensor.AdvancedIncSubtensor,
+                      GpuIncSubtensor,
+                      GpuAdvancedIncSubtensor1,
+                      theano.sandbox.cuda.blas.GpuGemm,
+                      theano.sandbox.cuda.blas.GpuGemv,
+                      theano.sandbox.cuda.blas.GpuGer,
+                  ))):
+                return False
+            #If the clients is a transfer, we don't want to fold. We
+            #let the moving opt finish before deciding what to do.
+            elif isinstance(client[0].op, HostFromGpu):
                 return False
         return True
 

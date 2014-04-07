@@ -7,7 +7,8 @@
 # #
 # # This file is up-to-date if the command git log --format="%aN <%aE>" | sort -u
 # # gives no duplicates.
-
+Jörg Bornschein <jb@capsec.org> Joerg Bornschein <bornschein@fias.uni-frankfurt.de>
+Eric Hunsberger <hunse@ctn> hunse <hunse@ctn>
 Jan Schlüter <github@jan-schlueter.de> f0k <github@jan-schlueter.de>
 Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
 Arnaud Bergeron <abergeron@gmail.com> <abergeron@gmail.com>
@@ -19,7 +20,7 @@ Douglas Eck <douglas.eck@gmail.com> eckdoug@waits.local <eckdoug@waits.local>
 Dumitru Erhan <dumitru.erhan@gmail.com> dumitru@deepnets.mtv.corp.google.com <dumitru@deepnets.mtv.corp.google.com>
 Dumitru Erhan <dumitru.erhan@gmail.com> erhandum@bikat.iro.umontreal.ca <erhandum@bikat.iro.umontreal.ca>
 Francois Savard <devnull@localhost> fsavard <devnull@localhost>
-
+Steven Pigeon <pigeon@iro.umontreal.ca> steven-pigeon <pigeon@iro.umontreal.ca>
 #     5	Firstname Lastname <firstname.lastname@example.net>
 #     4	Laboratoire d'Informatique des Systemes Adaptatifs <lisa@iro.umontreal.ca>
 #     6	Li Yao <yaoli@iro>

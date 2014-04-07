@@ -187,6 +187,18 @@ class CLinkerObject(object):
                                      self.__class__.__name__)
 
 
+    def c_init_code_apply(self, node, name):
+        """
+        Optional: return a list of code snippets specific to the apply
+        to be inserted in module initialization.
+
+        :Exceptions:
+         - `MethodNotDefined`: the subclass does not override this method
+        """
+        raise utils.MethodNotDefined("c_init_code_apply", type(self),
+                                     self.__class__.__name__)
+
+
 class CLinkerOp(CLinkerObject):
     """
     Interface definition for `Op` subclasses compiled by `CLinker`.
@@ -792,6 +804,12 @@ class OpenMPOp(Op):
         if openmp is None:
             openmp = theano.config.openmp
         self.openmp = openmp
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        # If we unpickle old op
+        if not hasattr(self, "openmp"):
+            self.openmp = False
 
     def c_compile_args(self):
         self.update_self_openmp()

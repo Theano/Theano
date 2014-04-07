@@ -202,8 +202,6 @@ class ProfileMode(Mode):
 
         self.call_time = 0
         self.fn_time = 0
-        self.optimizer_time = 0
-        self.linker_time = 0
 
     def print_summary(self, **kwargs):
         """ Print 3 summary that show where the time is spend. The first show an Apply-wise summary, the second show an Op-wise summary, the third show an type-Op-wise summary.
@@ -289,9 +287,18 @@ class ProfileMode(Mode):
         apply_cimpl = self.apply_cimpl and other.apply_cimpl
         message = self.message
         variable_shape = diff_dict(self.variable_shape, other.variable_shape)
-        other_time = {'linker_time': self.linker_time - other.linker_time,
-                      'optimizer_time': self.optimizer_time -
-                                        other.optimizer_time}
+        self_linker_time = sum([ps.linker_time for ps
+                                 in self.profile_stats.values()])
+        other_linker_time = sum([ps.linker_time for ps
+                                 in other.profile_stats.values()])
+        self_optimizer_time = sum([ps.optimizer_time for ps
+                                 in self.profile_stats.values()])
+        other_optimizer_time = sum([ps.optimizer_time for ps
+                                 in other.profile_stats.values()])
+
+        other_time = {'linker_time': self_linker_time - other_linker_time,
+                      'optimizer_time': self_optimizer_time -
+                                        other_optimizer_time}
         self.print_summary_("print_diff_summary", compile_time,
                             fct_call_time, fct_call,
                             apply_time, apply_cimpl, message, variable_shape,
@@ -626,17 +633,17 @@ prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
 
 
 def atexit_print_default_profile_mode():
-    """Print the summary of the predefined mode PROFILE_MODE if used.
+    """Print the summary of the predefined mode ProfileMode if used.
 
     This all to have the summary printed at exit when
-    config.mode=PROFILE_MODE
+    config.mode=ProfileMode
     """
     for prof_mode in prof_mode_instance_to_print:
         if prof_mode.local_time > 0:
             prof_mode.print_summary()
 
 #Register atexit_print_default_profile_mode to have the summary of the
-#predefined mode PROFILE_MODE if it is used printed when the program terminate.
+#predefined mode ProfileMode if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
 
 

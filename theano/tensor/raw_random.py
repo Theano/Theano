@@ -576,11 +576,11 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 
 
 def choice_helper(random_state, a, replace, p, size):
-    """
-    Helper function to draw random numbers using numpy's choice function.
+    """Helper function to draw random numbers using numpy's choice function.
 
-    This is a generalization of numpy.random.choice to the case where `a`,
-    `replace` and `p` are tensors.
+    This is a generalization of numpy.random.choice that coerces
+    `replace` to a bool and replaces `p` with None when p is a vector
+    of 0 elements.
     """
     if a.ndim > 1:
         raise ValueError('a.ndim (%i) must be 0 or 1' % a.ndim)
@@ -622,6 +622,30 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
                                                          broadcastable=bcast))
     return op(random_state, size, a, replace, p)
 
+def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
+    """
+    Draw samples from a Poisson distribution.
+
+    The Poisson distribution is the limit of the Binomial distribution for large N.
+    
+    :param lam: float or ndarray-like of the same shape as size parameter
+        Expectation of interval, should be >= 0.
+
+    :param size: int or tuple of ints, optional
+        Output shape. If the given shape is, e.g., (m, n, k), then m * n * k samples are drawn.
+
+    :param dtype: the dtype of the return value (which will represent counts)
+
+    size or ndim must be given
+    """
+    lam = tensor.as_tensor_variable(lam)
+    
+    ndim, size, bcast = _infer_ndim_bcast(ndim, size)
+
+    op = RandomFunction("poisson", tensor.TensorType(dtype=dtype,
+                                                     broadcastable=bcast))
+    return op(random_state, size, lam)
+
 
 def permutation_helper(random_state, n, shape):
     """Helper function to generate permutations from integers.
@@ -634,6 +658,9 @@ def permutation_helper(random_state, n, shape):
 
     If you wish to perform a permutation of the elements of an existing vector,
     see shuffle_row_elements.
+
+    This is a generalization of numpy.random.permutation to tensors.
+    Otherwise it behaves the same.
     """
     # n should be a 0-dimension array
     assert n.shape == ()
@@ -646,7 +673,7 @@ def permutation_helper(random_state, n, shape):
         shape = ()
     out_shape = list(shape)
     out_shape.append(n)
-    out = numpy.zeros(out_shape, int)
+    out = numpy.empty(out_shape, int)
     for i in numpy.ndindex(*shape):
         out[i] = random_state.permutation(n)
 
@@ -816,7 +843,7 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
     return op(random_state, size, n, pvals)
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([RandomFunction])
 def random_make_inplace(node):
     op = node.op
     if isinstance(op, RandomFunction) and not op.inplace:
@@ -835,7 +862,7 @@ class RandomStreamsBase(object):
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
                  prob=None):
         """
-        Sample n times with probability of success prob for each trial,
+        Sample n times with probability of success p for each trial and
         return the number of successes.
 
         If the size argument is ambiguous on the number of dimensions,
@@ -893,6 +920,18 @@ class RandomStreamsBase(object):
         information.
         """
         return self.gen(choice, size, a, replace, p, ndim=ndim, dtype=dtype)
+
+    def poisson(self, size=None, lam=None, ndim=None, dtype='int64'):
+        """
+        Draw samples from a Poisson distribution.
+  
+        The Poisson distribution is the limit of the Binomial distribution for large N.
+
+        If the size argument is ambiguous on the number of dimensions,
+        ndim may be a plain integer to supplement the missing
+        information.
+        """
+        return self.gen(poisson, size, lam, ndim=ndim, dtype=dtype)
 
     def permutation(self, size=None, n=1, ndim=None, dtype='int64'):
         """

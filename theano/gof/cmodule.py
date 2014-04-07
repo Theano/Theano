@@ -25,7 +25,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import any, PY3, next, decode, decode_iter
-from theano.compat.six import BytesIO, StringIO
+from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -308,12 +308,13 @@ def last_access_time(path):
     return os.stat(path)[stat.ST_ATIME]
 
 
-def module_name_from_dir(dirname, err=True):
+def module_name_from_dir(dirname, err=True, files=None):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
     """
-    files = os.listdir(dirname)
+    if files is None:
+        files = os.listdir(dirname)
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -362,7 +363,7 @@ def get_module_hash(src_code, key):
     # it changes, then the module hash should be different.
     # We start with the source code itself (stripping blanks might avoid
     # recompiling after a basic indentation fix for instance).
-    to_hash = map(str.strip, src_code.split('\n'))
+    to_hash = [l.strip() for l in src_code.split('\n')]
     # Get the version part of the key (ignore if unversioned).
     if key[0]:
         to_hash += map(str, key[0])
@@ -640,18 +641,21 @@ class ModuleCache(object):
             time_now = time.time()
             # Go through directories in alphabetical order to ensure consistent
             # behavior.
-            root_dirs_files = sorted(os.walk(self.dirname),
-                                     key=operator.itemgetter(0))
-            for root, dirs, files in root_dirs_files:
+            subdirs = sorted(os.listdir(self.dirname))
+            for root in subdirs:
+                root = os.path.join(self.dirname, root)
                 key_pkl = os.path.join(root, 'key.pkl')
                 if key_pkl in self.loaded_key_pkl:
                     continue
-                elif 'delete.me' in files or not files:
+                if not os.path.isdir(root):
+                    continue
+                files = os.listdir(root)
+                if 'delete.me' in files or not files:
                     _rmtree(root, ignore_nocleanup=True,
                             msg="delete.me found in dir")
                 elif 'key.pkl' in files:
                     try:
-                        entry = module_name_from_dir(root)
+                        entry = module_name_from_dir(root, files=files)
                     except ValueError:  # there is a key but no dll!
                         if not root.startswith("/tmp"):
                             # Under /tmp, file are removed periodically by the
@@ -814,8 +818,7 @@ class ModuleCache(object):
                 # We do nothing here.
 
             # Clean up the name space to prevent bug.
-            if root_dirs_files:
-                del root, dirs, files
+            del root, files, subdirs
 
             # Remove entries that are not in the filesystem.
             items_copy = list(self.module_hash_to_key_data.iteritems())
@@ -1435,8 +1438,12 @@ def get_gcc_shared_library_arg():
 
 
 def std_include_dirs():
-    return (numpy.distutils.misc_util.get_numpy_include_dirs()
-            + [distutils.sysconfig.get_python_inc()])
+    numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
+    py_inc = distutils.sysconfig.get_python_inc()
+    py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
+    python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
+                       else [py_inc, py_plat_spec_inc])
+    return numpy_inc_dirs + python_inc_dirs
 
 
 def std_lib_dirs_and_libs():
@@ -1456,8 +1463,17 @@ def std_lib_dirs_and_libs():
             # modules, even when libpython27.lib and python27.dll are
             # available, and the *.a files have to be found earlier than
             # the other ones.
-            libdir = os.path.join(sys.base_prefix, '..', '..', '..',
-                                  'User', 'libs')
+
+            #When Canopy is installed for the user:
+            #sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
+            #sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            #When Canopy is installed for all users:
+            #sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            #sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
+            #So we need to use sys.prefix as it support both cases.
+            #sys.base_prefix support only one case
+            libdir = os.path.join(sys.prefix, 'libs')
+
             for f, lib in [('libpython27.a', 'libpython 1.2'),
                            ('libmsvcr90.a', 'mingw 4.5.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
@@ -1550,6 +1566,7 @@ class GCC_compiler(object):
                         "         It is better to let Theano/g++ find it"
                         " automatically, but we don't do it now")
                     detect_march = False
+                    GCC_compiler.march_flags = []
                     break
 
         if detect_march:
@@ -1565,7 +1582,7 @@ class GCC_compiler(object):
                 # as stdin (which is the default) results in the process
                 # waiting forever without returning. For that reason,
                 # we use a pipe, and use the empty string as input.
-                (stdout, stderr) = p.communicate(input='')
+                (stdout, stderr) = p.communicate(input=b(''))
                 if p.returncode != 0:
                     return None
 
@@ -1674,6 +1691,36 @@ class GCC_compiler(object):
                                         opt_name, opt_val = opt
                                         new_flags[i] = '-march=%s' % opt_val
 
+                            # Some versions of GCC report the native arch
+                            # as "corei7-avx", but it generates illegal
+                            # instructions, and should be "corei7" instead.
+                            # Affected versions are:
+                            # - 4.6 before 4.6.4
+                            # - 4.7 before 4.7.3
+                            # - 4.8 before 4.8.1
+                            # Earlier versions did not have arch "corei7-avx"
+                            for i, p in enumerate(new_flags):
+                                if 'march' not in p:
+                                    continue
+                                opt = p.split('=')
+                                if len(opt) != 2:
+                                    # Inexpected, but do not crash
+                                    continue
+                                opt_val = opt[1]
+                                if not opt_val.endswith('-avx'):
+                                    # OK
+                                    continue
+                                # Check the version of GCC
+                                version = gcc_version_str.split('.')
+                                if len(version) != 3:
+                                    # Unexpected, but should not be a problem
+                                    continue
+                                mj, mn, patch = [int(vp) for vp in version]
+                                if (((mj, mn) == (4, 6) and patch < 4) or
+                                        ((mj, mn) == (4, 7) and patch <= 3) or
+                                        ((mj, mn) == (4, 8) and patch < 1)):
+                                    new_flags[i] = p.rstrip('-avx')
+
                             # Go back to split arguments, like
                             # ["-option", "value"],
                             # as this is the way g++ expects them split.
@@ -1686,8 +1733,8 @@ class GCC_compiler(object):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
-            #Add the detected -march=native equivalent flags
-            cxxflags.extend(GCC_compiler.march_flags)
+        #Add the detected -march=native equivalent flags
+        cxxflags.extend(GCC_compiler.march_flags)
 
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
@@ -1699,6 +1746,7 @@ class GCC_compiler(object):
         # numpy 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
+            cxxflags.append("-D NPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
             cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
             cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
             cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
@@ -1714,7 +1762,7 @@ class GCC_compiler(object):
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
         # Pi.
-        if any([not 'arm' in flag for flag in GCC_compiler.march_flags]):
+        if any([not 'arm' in flag for flag in cxxflags]):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
@@ -1730,37 +1778,9 @@ class GCC_compiler(object):
             # link with libpython.
             cxxflags.append('-DMS_WIN64')
 
-        #DSE Patch 1 for supporting OSX frameworks; add -framework Python
         if sys.platform == 'darwin':
+            # Use the already-loaded python symbols.
             cxxflags.extend(['-undefined', 'dynamic_lookup'])
-            python_inc = distutils.sysconfig.get_python_inc()
-            # link with the framework library *if specifically requested*
-            # config.mac_framework_link is by default False, since on some mac
-            # installs linking with -framework causes a Bus Error
-            if (python_inc.count('Python.framework') > 0 and
-                config.cmodule.mac_framework_link):
-                cxxflags.extend(['-framework', 'Python'])
-            if 'Anaconda' in sys.version:
-                new_path = os.path.join(sys.prefix, "lib")
-                new_path = os.path.realpath(new_path)
-                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
-                if v is not None:
-                    # This will resolve symbolic links
-                    v = os.path.realpath(v)
-
-                # The python __import__ don't seam to take into account
-                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
-                # when we set with os.environ['...'] = X or os.putenv()
-                # So we tell the user and tell him what todo.
-                if v is None or new_path not in v.split(":"):
-                    raise Exception(
-                        "The environment variable "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
-                        "the '%s' path in its value. This will make "
-                        "Theano unable to compile c code. Update "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
-                        "said value, this will fix this error."
-                        % new_path)
 
         return cxxflags
 
@@ -1787,6 +1807,11 @@ class GCC_compiler(object):
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]
             try:
+                # Python3 compatibility: try to cast Py3 strings as Py2 strings
+                try:
+                    src_code = b(src_code)
+                except:
+                    pass
                 os.write(fd, src_code)
                 os.close(fd)
                 fd = None
@@ -1833,12 +1858,12 @@ class GCC_compiler(object):
         if not theano.config.cxx:
             return False
 
-        code = """
+        code = b("""
         int main(int argc, char** argv)
         {
             return 0;
         }
-        """
+        """)
         return GCC_compiler.try_compile_tmp(code, tmp_prefix='try_flags_',
                 flags=flag_list, try_run=False)
 

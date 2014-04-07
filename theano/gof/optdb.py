@@ -179,10 +179,15 @@ class Query(object):
 
 
 class EquilibriumDB(DB):
-    """ A set of potential optimizations which should be applied in an
+    """A set of potential optimizations which should be applied in an
         arbitrary order until equilibrium is reached.
 
     Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
+
+    :param ignore_newtrees: If False, we will apply local opt on new
+        node introduced during local optimization application. This
+        could result in less fgraph iterations, but this don't mean it
+        will be faster globally.
 
     .. note::
 
@@ -190,13 +195,17 @@ class EquilibriumDB(DB):
         suppor both.
 
     """
+    def __init__(self, ignore_newtrees=True):
+        super(EquilibriumDB, self).__init__()
+        self.ignore_newtrees = ignore_newtrees
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
-        return opt.EquilibriumOptimizer(opts,
-                max_depth=5,
-                max_use_ratio=config.optdb.max_use_ratio,
-                failure_callback=opt.NavigatorOptimizer.warn_inplace)
+        return opt.EquilibriumOptimizer(
+            opts,
+            max_use_ratio=config.optdb.max_use_ratio,
+            ignore_newtrees=self.ignore_newtrees,
+            failure_callback=opt.NavigatorOptimizer.warn_inplace)
 
 
 class SequenceDB(DB):

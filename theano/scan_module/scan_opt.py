@@ -49,7 +49,7 @@ def info(*msg):
     _logger.info('INFO theano.scan: ' + ' '.join(msg))
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([scan_op.Scan])
 def remove_constants_and_unused_inputs_scan(node):
     '''
     Move constants into the inner graph, and remove unused inputs.
@@ -1337,7 +1337,7 @@ def make_equiv(lo, li):
     return left, right
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([scan_op.Scan])
 def scan_merge_inouts(node):
     if not isinstance(node.op, scan_op.Scan):
         return False
@@ -1509,7 +1509,6 @@ class PushOutDot1(gof.Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
 

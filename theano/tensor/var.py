@@ -11,6 +11,7 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
 
 
+
 class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a
     TensorVariable.
@@ -348,6 +349,8 @@ class _tensor_py_operators:
     def __getitem__(self, args):
         if not isinstance(args, tuple):
             args = args,
+        # Convert python literals to theano constants
+        args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
         # The logic is already in Subtensor.convert: if it succeeds,
         # standard indexing is used; if it fails with
@@ -378,7 +381,7 @@ class _tensor_py_operators:
                         theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(arg, axis)
             else:
-                return theano.tensor.subtensor.AdvancedSubtensor()(self, *args)
+                return theano.tensor.subtensor.advanced_subtensor(self, *args)
         else:
             if numpy.newaxis in args:
                 # None (aka np.newaxis) in numpy indexing means to add a
@@ -507,13 +510,11 @@ class _tensor_py_operators:
 
     def sort(self, axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.sort`"""
-        from theano.tensor.sort import sort
-        return sort(self, axis, kind, order)
+        return theano.tensor.sort(self, axis, kind, order)
 
     def argsort(self, axis=-1, kind='quicksort', order=None):
         """See `theano.tensor.argsort`"""
-        from theano.tensor.sort import argsort
-        return argsort(self, axis, kind, order)
+        return theano.tensor.argsort(self, axis, kind, order)
 
     def clip(self, a_min, a_max):
         "Clip (limit) the values in an array."
@@ -527,16 +528,14 @@ class _tensor_py_operators:
 
     def repeat(self, repeats, axis=None):
         """See `theano.tensor.repeat`"""
-        from theano.tensor.extra_ops import repeat
-        return repeat(self, repeats, axis)
+        return theano.tensor.extra_ops.repeat(self, repeats, axis)
 
     def round(self, mode="half_away_from_zero"):
         """See `theano.tensor.round`"""
         return theano.tensor.basic.round(self, mode)
 
     def trace(self):
-        from theano.sandbox.linalg import trace
-        return trace(self)
+        return theano.sandbox.linalg.trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
@@ -546,6 +545,12 @@ class _tensor_py_operators:
 
     def zeros_like(model, dtype=None):
         return theano.tensor.basic.zeros_like(model, dtype=dtype)
+
+    def cumsum(self, axis=None):
+        return theano.tensor.extra_ops.cumsum(self, axis)
+
+    def cumprod(self, axis=None):
+        return theano.tensor.extra_ops.cumprod(self, axis)
 
 
 class TensorVariable(_tensor_py_operators, Variable):
@@ -608,7 +613,7 @@ class TensorConstantSignature(tuple):
             # The following 2 lines are needede as in Python 3.3 with NumPy
             # 1.7.1, numpy.ndarray and numpy.memmap aren't hashable.
             if type(self._sum) is numpy.memmap:
-                self._sum = numpy.asarray(self._sum).sum()
+                self._sum = numpy.asarray(self._sum).item()
             if self.has_nan and self.no_nan.mask.all():
                 # In this case the sum is not properly computed by numpy.
                 self._sum = 0

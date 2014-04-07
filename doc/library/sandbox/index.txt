@@ -16,6 +16,4 @@
     cuda/index
     linalg
     neighbours
-
-
-
+    rng_mrg

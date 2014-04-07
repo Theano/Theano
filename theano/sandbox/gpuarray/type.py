@@ -100,15 +100,33 @@ class GpuArrayType(Type):
         return numpy.asarray(compare(a, '==', b)).all()
 
     @staticmethod
-    def values_eq_approx(a, b):
+    def values_eq_approx(a, b,
+                         allow_remove_inf=False, allow_remove_nan=False,
+                         rtol=None, atol=None):
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
         if 'int' in str(a.dtype):
             return GpuArrayType.values_eq(a, b)
         else:
+            if allow_remove_inf or allow_remove_nan:
+                raise NotImplementedError(
+                    "GpuArrayType.values_eq_approx() don't implemented the"
+                    " allow_remove_inf and allow_remove_nan parameter")
+            narrow = 'float32', 'complex64'
+            if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
+                atol_ = theano.tensor.basic.float32_atol
+                rtol_ = theano.tensor.basic.float32_rtol
+            else:
+                atol_ = theano.tensor.basic.float64_atol
+                rtol_ = theano.tensor.basic.float64_rtol
+            if rtol is not None:
+                rtol_ = rtol
+            if atol is not None:
+                atol_ = atol
             res = elemwise2(a, '', b, a, odtype=numpy.dtype('bool'),
-                            op_tmpl="res[i] = ((%(a)s - %(b)s) <"
-                            "(1e-8 + 1e-5 * fabs(%(b)s)))")
+                            op_tmpl="res[i] = (fabs(%%(a)s - %%(b)s) <"
+                            "(%(atol_)s + %(rtol_)s * fabs(%%(b)s)))" %
+                            locals())
             return numpy.asarray(res).all()
 
     def value_zeros(self, shape):
@@ -138,7 +156,9 @@ class GpuArrayType(Type):
             return numpy.dtype(self.dtype).itemsize
 
     def c_declare(self, name, sub):
-        return "PyGpuArrayObject *%s;" % (name,)
+        return """
+        PyGpuArrayObject *%(name)s;
+        """ % locals()
 
     def c_init(self, name, sub):
         return "%s = NULL;" % (name,)
@@ -276,6 +296,30 @@ theano.compile.register_view_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
     %(oname)s = %(iname)s;
     Py_XINCREF(%(oname)s);
+""", version=(0,))
+
+# Register GpuArrayType C code for Shape Op.
+theano.compile.register_shape_c_code(
+    GpuArrayType,
+    """
+    npy_intp shape[] = {%(iname)s->ga.nd};
+    if(%(oname)s == NULL || (PyArray_DIMS(%(oname)s)[0] != shape[0]))
+    {
+        Py_XDECREF(%(oname)s);
+        %(oname)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, NPY_INT64);
+    }
+    for(int i=0;i<shape[0];i++)
+    {
+        ((npy_int64*)PyArray_GETPTR1(%(oname)s, i))[0] = %(iname)s->ga.dimensions[i];
+    }
+    """,
+    version=1)
+
+theano.compile.register_shape_i_c_code(GpuArrayType, """
+    if(!%(oname)s)
+        %(oname)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+    ((npy_int64*)PyArray_DATA(%(oname)s))[0] =
+                              %(iname)s->ga.dimensions[%(i)s];
 """, version=(0,))
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """

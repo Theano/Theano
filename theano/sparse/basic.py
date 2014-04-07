@@ -1654,13 +1654,12 @@ class AddSS(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError()
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if x.type.format != y.type.format:
             raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
-                         [SparseType(dtype=x.type.dtype,
+                         [SparseType(dtype=out_dtype,
                                      format=x.type.format
                                     ).make_variable()])
 
@@ -1742,96 +1741,33 @@ class AddSD(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
-    def __init__(self, inplace=False, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
-        #Should we do inplace addition or not ?
-        self.inplace = inplace
-        if self.inplace:
-            self.destroy_map = {0: [3]}
 
     def __eq__(self, other):
-        return (type(self) == type(other)) and self.inplace == other.inplace
+        return (type(self) == type(other))
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
+        return hash(type(self))
 
     def __str__(self):
-        if self.inplace:
-            return self.__class__.__name__ + '{inplace}'
         return self.__class__.__name__
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
 
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError(
-                "AddSD support inputs with the same dtype only."
-                " You passed %s and %s inputs dtype." % (x.type.dtype,
-                                                         y.type.dtype))
-
-        indices, indptr, data = csm_indices(x), csm_indptr(x), csm_data(x)
-
-        # We either use CSC or CSR depending on the format of input
-        self.format = x.format
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         assert y.type.ndim == 2
         return gof.Apply(self,
-                         [data, indices, indptr, y],
-                         [tensor.TensorType(dtype=y.type.dtype,
+                         [x, y],
+                         [tensor.TensorType(dtype=out_dtype,
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
-    def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
-        inplace = int(self.inplace)
-        format = {'csc': 0, 'csr': 1}[self.format]
-        code = """
-                Py_XDECREF(%(z)s);
-                if (!%(inplace)s){
-                  %(z)s = (PyArrayObject *) PyArray_NewCopy(%(y)s, NPY_CORDER);
-                }else{
-                  %(z)s = %(y)s;
-                  Py_XINCREF(%(z)s);
-                }
-
-                npy_intp N =  PyArray_DIMS(%(_indptr)s)[0]-1;
-                const npy_int32 * __restrict__ indptr = (npy_int32 *)PyArray_DATA(%(_indptr)s);
-                const npy_int32 * __restrict__ indices = (npy_int32*)PyArray_DATA(%(_indices)s);
-                const dtype_%(_data)s* __restrict__ data = (dtype_%(_data)s*)PyArray_DATA(%(_data)s);
-
-                dtype_%(y)s* ydata = (dtype_%(y)s*)PyArray_DATA(%(y)s);
-                dtype_%(z)s* zdata = (dtype_%(z)s*)PyArray_DATA(%(z)s);
-                int Yi = PyArray_STRIDES(%(y)s)[0]/PyArray_DESCR(%(y)s)->elsize;
-                int Yj = PyArray_STRIDES(%(y)s)[1]/PyArray_DESCR(%(y)s)->elsize;
-
-                npy_int32 pos;
-                if (%(format)s == 0){
-                for (npy_int32 col = 0; col < N; ++col){
-                  for (npy_int32 ind = indptr[col]; ind < indptr[col+1]; ++ind){
-                    npy_int32 row = indices[ind];
-                    pos = row * Yi + col * Yj;
-                    zdata[pos] = ydata[pos] + data[ind];
-                  }
-                }
-                }else{
-                for (npy_int32 row = 0; row < N; ++row){
-                  for (npy_int32 ind = indptr[row]; ind < indptr[row+1]; ++ind){
-                    npy_int32 col = indices[ind];
-                    pos = row * Yi + col * Yj;
-                    zdata[pos] = ydata[pos] + data[ind];
-                  }
-                 } 
-                }
-             """ % dict(locals(), **sub)
-        return code
-
-    def perform(self, node, (data, indices, indptr,  y), (out, )):
+    def perform(self, node, (x,  y), (out, )):
         assert _is_dense(y)
-
-        if self.format == 'csr':
-            x = scipy.sparse.csr_matrix((data, indices, indptr), shape=y.shape)
-        elif self.format == 'csc':
-            x = scipy.sparse.csc_matrix((data, indices, indptr), shape=y.shape)
 
         # The asarray is needed as in some case, this return a
         # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
@@ -1843,10 +1779,8 @@ class AddSD(gof.op.Op):
         return sp_ones_like(x) * gz, gz
 
     def infer_shape(self, node, shapes):
-        return [shapes[3]]
+        return [shapes[1]]
 
-    def c_code_cache_version(self):
-        return (1,)
 add_s_d = AddSD()
 
 
@@ -1983,11 +1917,16 @@ class MulSS(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
-        if x.type != y.type:
+        out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if x.type.format != y.type.format:
             raise NotImplementedError(
                     "MulSS not supported for differing types. "
                     "Got %s and %s." % (str(x.type), str(y.type)))
-        return gof.Apply(self, [x, y], [x.type()])
+        return gof.Apply(self, [x, y],
+                         [SparseType(dtype=out_dtype,
+                                     format=x.type.format
+                                    )()])
+
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
@@ -2031,23 +1970,25 @@ class MulSD(gof.op.Op):
 
         # upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
-        if y.type.dtype != dtype:
-            y = tensor.cast(y, dtype)
 
-        if x.type.dtype != y.type.dtype:
-            raise NotImplementedError(
-                "MulSD not implemented for different input dtypes. "
-                "Got %s and %s." % (x.type.dtype, y.type.dtype))
         # The magic number two here arises because L{scipy.sparse}
         # objects must be matrices (have dimension 2)
         # Broadcasting of the sparse matrix is not supported.
-        assert y.type.ndim <= 2
-        return gof.Apply(self, [x, y], [x.type()])
+        # We support nd == 0 used by grad of SpSum()
+        assert y.type.ndim in [0, 2]
+        out = SparseType(dtype=dtype,
+                         format=x.type.format)()
+        return gof.Apply(self, [x, y], [out])
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_dense(y)
         if len(y.shape) == 0:
-            out[0] = x.copy()
+            out_dtype = node.outputs[0].dtype
+            if x.dtype == out_dtype:
+                z = x.copy()
+            else:
+                z = x.astype(out_dtype)
+            out[0] = z
             out[0].data *= y
         elif len(y.shape) == 1:
             raise NotImplementedError()  # RowScale / ColScale
@@ -2057,12 +1998,16 @@ class MulSD(gof.op.Op):
             # TODO: change runtime from O(M*N) to O(nonzeros)
             M, N = x.shape
             assert x.shape == y.shape
+            out_dtype = node.outputs[0].dtype
 
             if x.format == 'csc':
                 x_data = x.data
                 indices = x.indices
                 indptr = x.indptr
-                z = x.copy()
+                if x.dtype == out_dtype:
+                    z = x.copy()
+                else:
+                    z = x.astype(out_dtype)
                 z_data = z.data
 
                 for j in xrange(0, N):
@@ -2074,7 +2019,10 @@ class MulSD(gof.op.Op):
                 x_data = x.data
                 indices = x.indices
                 indptr = x.indptr
-                z = x.copy()
+                if x.dtype == out_dtype:
+                    z = x.copy()
+                else:
+                    z = x.astype(out_dtype)
                 z_data = z.data
 
                 for i in xrange(0, M):
@@ -2246,6 +2194,10 @@ class HStack(gof.op.Op):
             assert _is_sparse(b)
         out[0] = scipy.sparse.hstack(block, format=self.format,
                                      dtype=self.dtype)
+        # Some version of scipy (at least 0.14.0.dev-c4314b0)
+        # Do not cast to the wanted dtype.
+        if out[0].dtype != self.dtype:
+            out[0] = out[0].astype(self.dtype)
 
     def grad(self, inputs, (gz, )):
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
@@ -2298,7 +2250,7 @@ def hstack(blocks, format=None, dtype=None):
 
     blocks = [as_sparse_variable(i) for i in blocks]
     if dtype is None:
-        dtype = theano.scalar.upcast([i.dtype for i in blocks])
+        dtype = theano.scalar.upcast(*[i.dtype for i in blocks])
     return HStack(format=format, dtype=dtype)(*blocks)
 
 
@@ -2321,6 +2273,10 @@ class VStack(HStack):
             assert _is_sparse(b)
         out[0] = scipy.sparse.vstack(block, format=self.format,
                                      dtype=self.dtype)
+        # Some version of scipy (at least 0.14.0.dev-c4314b0)
+        # Do not cast to the wanted dtype.
+        if out[0].dtype != self.dtype:
+            out[0] = out[0].astype(self.dtype)
 
     def grad(self, inputs, (gz, )):
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
@@ -2370,7 +2326,7 @@ def vstack(blocks, format=None, dtype=None):
 
     blocks = [as_sparse_variable(i) for i in blocks]
     if dtype is None:
-        dtype = theano.scalar.upcast([i.dtype for i in blocks])
+        dtype = theano.scalar.upcast(*[i.dtype for i in blocks])
     return VStack(format=format, dtype=dtype)(*blocks)
 
 
@@ -2667,11 +2623,14 @@ class TrueDot(gof.op.Op):
         self.grad_preserves_dense = grad_preserves_dense
 
     def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.grad_preserves_dense == other.grad_preserves_dense)
+        # The grad_preserves_dense attribute doesn't change the
+        # execution behavior.  To let the optimizer merge nodes with
+        # different values of this attribute we shouldn't compare it
+        # here.
+        return type(self) == type(other)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.grad_preserves_dense)
+        return hash(type(self))
 
     def __ne__(self, other):
         return not (self == other)
@@ -2756,15 +2715,17 @@ class TrueDot(gof.op.Op):
 def true_dot(x, y, grad_preserves_dense=True):
     """
     Operation for efficiently calculating the dot product when
-    one or all operands is sparse. Supported format are CSC and CSR.
+    one or all operands are sparse. Supported formats are CSC and CSR.
     The output of the operation is sparse.
 
-    :param x: Matrix variable.
-    :param y: Matrix variable.
-    :param grad_preserves_dense: if True and one on the input is dense,
-        make the output dense.
+    :param x: Sparse matrix or 2d tensor variable.
+    :param y: Sparse matrix or 2d tensor variable.
+    :param grad_preserves_dense: if True (default), makes the grad of
+        dense inputs dense.  Otherwise the grad is always sparse.
 
     :return: The dot product `x`.`y` in a sparse format.
+
+    :note: one of ``x`` or ``y`` must be sparse.
     """
     # TODO
     # Maybe the triple-transposition formulation

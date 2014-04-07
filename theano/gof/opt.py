@@ -114,13 +114,13 @@ class Optimizer(object):
 
 class FromFunctionOptimizer(Optimizer):
     """WRITEME"""
-    def __init__(self, fn):
+    def __init__(self, fn, requirements=()):
         self.apply = fn
+        self.requirements = requirements
 
     def add_requirements(self, fgraph):
-        # Added by default
-        #fgraph.attach_feature(toolbox.ReplaceValidate())
-        pass
+        for req in self.requirements:
+            req(fgraph)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print >> stream, "%s%s id=%i" % (
@@ -131,10 +131,23 @@ class FromFunctionOptimizer(Optimizer):
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
+    def __str__(self):
+        return self.__name__
+
 
 def optimizer(f):
     """decorator for FromFunctionOptimizer"""
     rval = FromFunctionOptimizer(f)
+    rval.__name__ = f.__name__
+    return rval
+
+
+def inplace_optimizer(f):
+    """decorator for FromFunctionOptimizer"""
+    dh_handler = dh.DestroyHandler
+    requirements = (lambda fgraph:
+                    fgraph.attach_feature(dh_handler()),)
+    rval = FromFunctionOptimizer(f, requirements)
     rval.__name__ = f.__name__
     return rval
 
@@ -289,9 +302,9 @@ class SeqOptimizer(Optimizer, list):
                          prof2[1][idx2])
             new_l.append(l)
             if hasattr(l, 'merge_profile'):
-                assert len(prof1[5][idx1]) == len(prof2[5][idx1])
-                new_sub_profile.append(l.merge_profile(prof1[5][idx1],
-                                                       prof2[5][idx2]))
+                assert len(prof1[6][idx1]) == len(prof2[6][idx2])
+                new_sub_profile.append(l.merge_profile(prof1[6][idx1],
+                                                       prof2[6][idx2]))
             else:
                 new_sub_profile.append(None)
 
@@ -315,10 +328,10 @@ class SeqOptimizer(Optimizer, list):
                         p = prof2
                     new_t[idx] += p[1][p[0].index(l)]
                     if hasattr(l, 'merge_profile'):
-                        assert len(p[5][p[0].index(l)]) == \
+                        assert len(p[6][p[0].index(l)]) == \
                                 len(new_sub_profile[idx])
                         new_sub_profile[idx] = l.merge_profile(
-                            new_sub_profile[idx], p[5][p[0].index(l)])
+                            new_sub_profile[idx], p[6][p[0].index(l)])
                     else:
                         new_sub_profile[idx] = None
                 continue
@@ -329,14 +342,19 @@ class SeqOptimizer(Optimizer, list):
             new_t.append(p[1][p[0].index(l)])
             idx = p[0].index(l)
             new_l.append(l)
-            new_sub_profile.append(p[5][idx])
+            new_sub_profile.append(p[6][idx])
 
         new_opt = SeqOptimizer(*new_l)
-        assert set(prof1[0]).issubset(set(new_l))
-#        assert set(prof2[0]).issubset(set(new_l))
+        #We need to assert based on the name as we merge also based on
+        #the name.
+        assert set([l.name for l in prof1[0]]).issubset(
+            set([l.name for l in new_l]))
+        assert set([l.name for l in prof2[0]]).issubset(
+            set([l.name for l in new_l]))
         assert len(new_t) == len(new_opt) == len(new_sub_profile)
         return (new_opt, new_t, prof1[2] + prof2[2],
-                -1, -1, new_sub_profile)
+                prof1[3] + prof2[3],
+                -1, -1, new_sub_profile, [])
 
 
 class _metadict:
@@ -621,7 +639,10 @@ class MergeOptimizer(Optimizer):
         print >> stream, blanc, "  replace_time", replace_time
         print >> stream, blanc, "  validate_time", validate_time
         print >> stream, blanc, "  callback_time", callback_time
-        print >> stream, blanc, "  callback_times", callbacks_time
+        print >> stream, blanc, "  callbacks_time"
+        for i in sorted(callbacks_time.iteritems(), key=lambda a: a[1]):
+            if i[1] > 0:
+                print i
         print >> stream, blanc, "  nb_merged", nb_merged
         print >> stream, blanc, "  nb_constant", nb_constant
 
@@ -736,6 +757,14 @@ class LocalOptimizer(object):
             _optimizer_idx[0] += 1
         return self._optimizer_idx
 
+    def tracks(self):
+        """
+        Return the list of op classes that this opt applies to.
+
+        Return None to apply to all nodes.
+        """
+        return None
+
     def transform(self, node):
         """Transform a subgraph whose output is `node`.
 
@@ -746,6 +775,8 @@ class LocalOptimizer(object):
           or
         - <list of variables> to use in place of `node`'s outputs in the
           greater graph.
+        - dict(old variables -> new variables). A dictionary that map
+          from old variables to new variables to replace.
 
         :type node: an Apply instance
 
@@ -771,11 +802,14 @@ class LocalOptimizer(object):
 
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
-    def __init__(self, fn, tracks=None):
-        if tracks is None:
-            tracks = []
+    def __init__(self, fn, tracks=None, requirements=()):
         self.transform = fn
         self._tracks = tracks
+        self.requirements = requirements
+
+    def add_requirements(self, fgraph):
+        for req in self.requirements:
+            req(fgraph)
 
     def tracks(self):
         return self._tracks
@@ -791,10 +825,21 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
                 id(self))
 
 
-def local_optimizer(*tracks):
+def local_optimizer(tracks, inplace=False):
     def decorator(f):
         """WRITEME"""
-        rval = FromFunctionLocalOptimizer(f, tracks)
+        if tracks is not None:
+            if len(tracks) is 0:
+                raise ValueError, ("Use None instead of an empty list to apply to all nodes.", f.__module__, f.__name__)
+            for t in tracks:
+                if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
+                    raise ValueError, ("Tracks are op classes or instances", f.__module__, f.__name__)
+        requirements = ()
+        if inplace:
+            dh_handler = dh.DestroyHandler
+            requirements = (lambda fgraph:
+                            fgraph.attach_feature(dh_handler()),)
+        rval = FromFunctionLocalOptimizer(f, tracks, requirements)
         rval.__name__ = f.__name__
         return rval
     return decorator
@@ -828,6 +873,10 @@ class LocalOptGroup(LocalOptimizer):
             depth -= 1
             for lopt in self.opts:
                 lopt.print_summary(stream, level=(level + 2), depth=depth)
+
+    def add_requirements(self, fgraph):
+        for opt in self.opts:
+            opt.add_requirements(fgraph)
 
 
 class _LocalOpKeyOptGroup(LocalOptGroup):
@@ -870,7 +919,7 @@ class OpSub(LocalOptimizer):
         return self.op1
 
     def tracks(self):
-        return [[self.op1]]
+        return [self.op1]
 
     def transform(self, node):
         if node.op != self.op1:
@@ -901,7 +950,7 @@ class OpRemove(LocalOptimizer):
         return self.op
 
     def tracks(self):
-        return [[self.op]]
+        return [self.op]
 
     def transform(self, node):
         if node.op != self.op:
@@ -968,8 +1017,10 @@ class PatternSub(LocalOptimizer):
                       (scrabble, 'x'))
     """
 
-    def __init__(self, in_pattern, out_pattern, allow_multiple_clients=False,
-                 skip_identities_fn=None, name=None, pdb=False):
+    def __init__(self, in_pattern, out_pattern,
+                 allow_multiple_clients=False,
+                 skip_identities_fn=None, name=None, pdb=False,
+                 tracks=(), get_nodes=None):
         """
         Creates a PatternSub that replaces occurrences of
         in_pattern by occurrences of out_pattern.
@@ -979,8 +1030,21 @@ class PatternSub(LocalOptimizer):
         :param allow_multiple_clients: if False, the pattern matching will fail
                                        if one of the subpatterns has more than
                                        one client.
+        :param skip_identities_fn: TODO
+        :param name: Allow to override this optimizer name
         :param pdb: if True, we invoke pdb when the first node in the
                     pattern match.
+        :param tracks: Optional. The values that self.tracks() will
+            return. Useful to speed up optimization some times.
+        :param get_nodes: Optional. If you provide `tracks`, you must
+            provide this parameter. It must be a function that take the
+            tracked node and return a list of node on which we will try
+            this optimizer.
+
+        `tracks` and `get_nodes` can be used to make this optimizer
+        track a less frequent Op, so this will make this optimizer
+        tried less frequently,
+
         """
         self.in_pattern = in_pattern
         self.out_pattern = out_pattern
@@ -999,38 +1063,42 @@ class PatternSub(LocalOptimizer):
         if name:
             self.__name__ = name
         self.pdb = pdb
-
-    def skip_identities(self, expr):
-        if self.skip_identities_fn:
-            return self.skip_identities_fn(expr)
+        self._tracks = tracks
+        self.get_nodes = get_nodes
+        if tracks != ():
+            assert get_nodes
 
     def op_key(self):
         return self.op
 
     def tracks(self):
-        def helper(pattern, sofar):
-            if isinstance(pattern, (list, tuple)):
-                sofar = sofar + (pattern[0],)
-                return reduce(tuple.__add__,
-                              tuple(helper(p, sofar) for p in pattern[1:]),
-                              ())
-            elif isinstance(pattern, dict):
-                return helper(pattern['pattern'], sofar)
-            else:
-                return (sofar,)
-        return set(helper(self.in_pattern, ()))
+        if self._tracks != ():
+            return self._tracks
+        return [self.op]
 
-    def transform(self, node):
+    def transform(self, node, get_nodes=True):
         """
         Checks if the graph from node corresponds to in_pattern. If it does,
         constructs out_pattern and performs the replacement.
         """
+        if get_nodes and self.get_nodes is not None:
+            for real_node in self.get_nodes(node):
+                if real_node == "output":
+                    continue
+                ret = self.transform(real_node, get_nodes=False)
+                if ret is not False and ret is not None:
+                    assert len(real_node.outputs) == len(ret)
+                    return dict(zip(real_node.outputs, ret))
+
         if node.op != self.op:
             return False
-
+        #TODO: if we remove pdb, do this speed things up?
         def match(pattern, expr, u, allow_multiple_clients=False, pdb=False):
+            #TODO move outside match
             def retry_with_equiv():
-                expr_equiv = self.skip_identities(expr)
+                if not self.skip_identities_fn:
+                    return False
+                expr_equiv = self.skip_identities_fn(expr)
                 if expr_equiv is None:
                     return False
                 #TODO: Not sure how to handle multiple_clients flag
@@ -1089,19 +1157,19 @@ class PatternSub(LocalOptimizer):
                 pdb.set_trace()
             return u
 
-        def build(pattern, u):
-            if isinstance(pattern, (list, tuple)):
-                args = [build(p, u) for p in pattern[1:]]
-                return pattern[0](*args)
-            elif isinstance(pattern, basestring):
-                return u[unify.Var(pattern)]
-            elif isinstance(pattern, (int, float)):
-                return pattern
-            else:
-                return pattern.clone()
         u = match(self.in_pattern, node.out, unify.Unification(), True,
                   self.pdb)
         if u:
+            def build(pattern, u):
+                if isinstance(pattern, (list, tuple)):
+                    args = [build(p, u) for p in pattern[1:]]
+                    return pattern[0](*args)
+                elif isinstance(pattern, basestring):
+                    return u[unify.Var(pattern)]
+                elif isinstance(pattern, (int, float)):
+                    return pattern
+                else:
+                    return pattern.clone()
             p = self.out_pattern
             new = build(p, u)
             ####print "PatternSub matched:", new
@@ -1245,7 +1313,7 @@ class NavigatorOptimizer(Optimizer):
                     pruner(node)
             if chin is not None:
                 def on_change_input(self, fgraph, node, i, r, new_r, reason):
-                    chin(node, i, r, new_r)
+                    chin(node, i, r, new_r, reason)
 
         u = Updater()
         fgraph.attach_feature(u)
@@ -1294,20 +1362,24 @@ class NavigatorOptimizer(Optimizer):
                 raise
         if replacements is False or replacements is None:
             return False
-        if not isinstance(replacements, (tuple, list)):
+        old_vars = node.outputs
+        if isinstance(replacements, dict):
+            old_vars = replacements.keys()
+            replacements = replacements.values()
+        elif not isinstance(replacements, (tuple, list)):
             raise TypeError('Optimizer %s gave wrong type of replacement. '
                             'Expected list or tuple.' % lopt)
-        if len(node.outputs) != len(replacements):
+        if len(old_vars) != len(replacements):
             raise ValueError('Optimizer %s gave wrong number of replacements'
                              % lopt)
         # None in the replacement mean that this variable isn't used
         # and we want to remove it
-        for r, rnew in zip(node.outputs, replacements):
+        for r, rnew in zip(old_vars, replacements):
             if rnew is None and len(r.clients) > 0:
                 raise ValueError("A local optimizer tried to remove a Variable that is used")
         # If an output would be replaced by itself, no need to perform
         # the replacement
-        repl_pairs = [(r, rnew) for r, rnew in zip(node.outputs, replacements)
+        repl_pairs = [(r, rnew) for r, rnew in zip(old_vars, replacements)
                       if rnew is not r and rnew is not None]
 
         if len(repl_pairs) == 0:
@@ -1483,40 +1555,56 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def __init__(self,
                  optimizers,
                  failure_callback=None,
-                 max_depth=None,
+                 ignore_newtrees=True,
                  max_use_ratio=None):
-        """
+        """ Apply optimizations until equilibrium point.
+
         :param optimizers:  list or set of local or global optimizations to
             apply until equilibrium.
 
         :param max_use_ratio: each optimizer can be applied at most
             (size of graph * this number) times
-
-        :param max_depth: TODO what does this do? (EquilibriumDB sets it to 5)
+        :param ignore_newtrees: See EquilibriumDB ignore_newtrees
+            parameter definition
 
         """
 
         super(EquilibriumOptimizer, self).__init__(
             None,
-            ignore_newtrees=True,
+            ignore_newtrees=ignore_newtrees,
             failure_callback=failure_callback)
-        self.local_optimizers = []
+        self.local_optimizers_map = dict()
+        self.local_optimizers_all = []
         self.global_optimizers = []
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
-                self.local_optimizers.append(opt)
+                if opt.tracks() is None:
+                    self.local_optimizers_all.append(opt)
+                else:
+                    for c in opt.tracks():
+                        self.local_optimizers_map.setdefault(c, []).append(opt)
             else:
                 self.global_optimizers.append(opt)
-        self.max_depth = max_depth
         self.max_use_ratio = max_use_ratio
         assert self.max_use_ratio is not None, (
                 'max_use_ratio has to be a number')
 
+    def get_local_optimizers(self):
+        for opt in self.local_optimizers_all:
+            yield opt
+        # if repeat is not a problem we can drop the set
+        s = set()
+        for lopt in self.local_optimizers_map.values():
+            for opt in lopt:
+                if opt not in s:
+                    yield opt
+                    s.add(opt)
+
     def add_requirements(self, fgraph):
         super(EquilibriumOptimizer, self).add_requirements(fgraph)
         fgraph.attach_feature(ChangeTracker())
-        for opt in self.local_optimizers:
+        for opt in self.get_local_optimizers():
             opt.add_requirements(fgraph)
         for opt in self.global_optimizers:
             opt.add_requirements(fgraph)
@@ -1542,7 +1630,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         time_opts = {}
         io_toposort_timing = []
         nb_nodes = []
-        for opt in self.global_optimizers + self.local_optimizers:
+        for opt in self.global_optimizers + list(self.get_local_optimizers()):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
 
@@ -1595,7 +1683,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     node = q.pop()
                     current_node = node
 
-                    for lopt in self.local_optimizers:
+                    for lopt in (self.local_optimizers_all +
+                                 self.local_optimizers_map.get(type(node.op), []) +
+                                 self.local_optimizers_map.get(node.op, [])):
                         t_opt = time.time()
                         lopt_change = self.process_node(fgraph, node, lopt)
                         time_opts[lopt] += time.time() - t_opt
@@ -1634,7 +1724,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         print >> stream, "%s%s %s id=%i" % (
                 (' ' * level), self.__class__.__name__, name, id(self))
         if depth != 0:
-            for lopt in self.local_optimizers:
+            for lopt in self.get_local_optimizers():
                 lopt.print_summary(stream, level=(level + 2),
                                    depth=(depth - 1))
 
@@ -1654,7 +1744,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 start_nb_nodes, end_nb_nodes, max_nb_nodes)
         print >> stream, blanc, "  time io_toposort %.3fs" % sum(
             io_toposort_timing)
-        s = sum([time_opts[o] for o in opt.local_optimizers])
+        s = sum([time_opts[o] for o in opt.get_local_optimizers()])
         print >> stream, blanc, "  time in local optimizers %.3fs" % s
         s = sum([time_opts[o] for o in opt.global_optimizers])
         print >> stream, blanc, "  time in global optimizers %.3fs" % s
@@ -1676,10 +1766,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                          lopt))
 
         count_opt = []
-        not_used = 0
+        not_used = []
         not_used_time = 0
         process_count = {}
-        for o in opt.global_optimizers + opt.local_optimizers:
+        for o in opt.global_optimizers + list(opt.get_local_optimizers()):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in count.iteritems():
@@ -1688,7 +1778,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             if count > 0:
                 count_opt.append((time_opts[opt], count, opt))
             else:
-                not_used += 1
+                not_used.append((time_opts[opt], opt))
                 not_used_time += time_opts[opt]
 
         if count_opt:
@@ -1698,8 +1788,13 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             for (t, count, opt) in count_opt[::-1]:
                 print >> stream, blanc, '  %.3fs - %d - %s' % (
                     t, count, opt)
-            print >> stream, blanc, '  %.3fs - in %d optimization that where not used' % (
-                not_used_time, not_used)
+            print >> stream, blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
+                not_used_time, len(not_used))
+            not_used.sort()
+            for (t, opt) in not_used[::-1]:
+                if t > 0:
+                    # Skip opt that have 0 times, they probably wasn't even tried.
+                    print >> stream, blanc + "  ", '  %.3fs - %s' % (t, opt)
             print >> stream
 
     @staticmethod
@@ -1707,8 +1802,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         #(opt, loop_timing, loop_process_count, max_nb_nodes,
         # global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof1
 
-        local_optimizers = set(prof1[0].local_optimizers).union(
-            prof2[0].local_optimizers)
+        local_optimizers = set(prof1[0].get_local_optimizers()).union(
+            prof2[0].get_local_optimizers())
         global_optimizers = set(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
         new_opt = EquilibriumOptimizer(
@@ -1726,7 +1821,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         loop_timing = merge_list(prof1[1], prof2[1])
 
-        loop_process_count = prof1[2].copy()
+        loop_process_count = list(prof1[2])
         for i in range(len(loop_process_count)):
             process_count = loop_process_count[i]
             for process, count in prof2[2][i].iteritems():
@@ -1735,7 +1830,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 else:
                     process_count[process] = count
         for i in range(len(loop_process_count), len(prof2[2])):
-            loop_process_count.append(prof2[2].copy())
+            loop_process_count.append(list(prof2[2]))
 
         max_nb_nodes = max(prof1[3], prof2[3])
 
@@ -1871,31 +1966,3 @@ def pre_greedy_local_optimizer(list_optimizations, out):
     final_outs, optimized_nodes = local_recursive_function(
         list_optimizations, out, {}, 0)
     return final_outs[out_index]
-
-
-############
-### Misc ###
-############
-
-class InplaceOptimizer(Optimizer):
-
-    def __init__(self, inplace):
-        self.inplace = inplace
-
-    def apply(self, fgraph):
-        self.inplace(fgraph)
-
-    def add_requirements(self, fgraph):
-        fgraph.attach_feature(dh.DestroyHandler())
-
-
-class PureThenInplaceOptimizer(Optimizer):
-
-    def __init__(self, pure, inplace):
-        self.pure = pure
-        self.inplace = inplace
-
-    def apply(self, fgraph):
-        self.pure(fgraph)
-        fgraph.attach_feature(dh.DestroyHandler())
-        self.inplace(fgraph)

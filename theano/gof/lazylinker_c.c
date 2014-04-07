@@ -793,7 +793,8 @@ int lazy_rec_eval(CLazyLinker * self, Py_ssize_t var_idx, PyObject*one, PyObject
   set_position_of_error(self, owner_idx);
   return err;
 }
-PyObject *
+
+static PyObject *
 CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
 {
   CLazyLinker * self = (CLazyLinker*)_self;

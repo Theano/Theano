@@ -709,6 +709,8 @@ def _pickle_Function(f):
     return rval
 
 def _constructor_Function(maker, input_storage, inputs_data):
+    if not theano.config.unpickle_function:
+        return None
     f = maker.create(input_storage, trustme = True)
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
@@ -973,10 +975,24 @@ class FunctionMaker(object):
             raise TypeError(
                     'profile passed via both "mode" and "profile" arguments')
         self.profile = profile = profile or mode_profile
-        if profile:
-            # We preload the cache here to don't have its timming
-            # included in optimization that compile function.
-            theano.gof.cc.get_module_cache()
+        if profile or theano.config.cxx:
+            # This is very important:
+            # 1) We preload the cache here to don't have its timming
+            #    included in optimization that compile function.
+            # 2) If other repo that import Theano have Theano ops defined,
+            #    we need to refresh the cache here. Otherwise, their is import
+            #    order problems.
+            #    When device=gpu, we compile during Theano import. This trigger
+            #    the loading of the cache. But unpickling the cache ask that the
+            #    other repos Ops are completly loaded, which isn't always the
+            #    case!
+            #    If a module isn't completly loaded and their unpickling fail,
+            #    it mean it is safe for this function compilation to skip them,
+            #    but not for futur compilation. So reloading the cache at each
+            #    compilation fix this problem.
+            # 3) This help propagate knowledge of newly compiled module to
+            #    concurrent process.
+            theano.gof.cc.get_module_cache().refresh()
         # Handle the case where inputs and/or outputs is a single Variable (not in a list)
         self.orig_outputs = outputs
         unpack_single = False
@@ -999,13 +1015,12 @@ class FunctionMaker(object):
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-        #TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z) for x, y, z in indices], [])
-        assert expanded_inputs == inputs  # JB - I added this to make sure we could delete above
 
         # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
-        fgraph, additional_outputs = std_fgraph(expanded_inputs, outputs, accept_inplace)
+        fgraph, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
         fgraph.profile = profile
 
         self.fgraph = fgraph
@@ -1023,8 +1038,6 @@ class FunctionMaker(object):
             optimizer_profile = optimizer(fgraph)
             end_optimizer = time.time()
             opt_time = end_optimizer - start_optimizer
-            mode.optimizer_time += opt_time
-
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
@@ -1039,7 +1052,7 @@ class FunctionMaker(object):
 
         # initialize the linker
         if not hasattr(linker, 'accept'):
-            raise ValueError("'linker' parameter of FunctionFactory should be a Linker with an accept method " \
+            raise ValueError("'linker' parameter of FunctionMaker should be a Linker with an accept method " \
                              "or one of %s" % theano.compile.mode.predefined_linkers.keys())
 
         #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
@@ -1053,11 +1066,11 @@ class FunctionMaker(object):
         if hasattr(linker, 'accept_var_updates'):
             # hacky thing so VMLinker knows about updates
             self.linker.accept_var_updates(
-                    fgraph_updated_vars(fgraph, expanded_inputs))
+                    fgraph_updated_vars(fgraph, inputs))
 
         self.indices = indices
         self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
+        self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none
@@ -1184,7 +1197,6 @@ class FunctionMaker(object):
 
         linker_time = end_linker - start_linker
         _logger.debug('Linker took %f seconds', linker_time)
-        self.mode.linker_time += linker_time
         if self.profile:
             self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
@@ -1208,7 +1220,10 @@ def _pickle_FunctionMaker(self):
 
 
 def _constructor_FunctionMaker(kwargs):
-    return FunctionMaker(**kwargs)
+    if theano.config.unpickle_function:
+        return FunctionMaker(**kwargs)
+    else:
+        return None
 
 copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
@@ -1266,9 +1281,9 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
      - FAST_COMPILE (minimal optimization)
 
-     - PROFILE_MODE: allow to print a profile mode with mode.print_summary
+     - ProfileMode(deprecated): allow to print a profile mode with mode.print_summary
 
-     - DEBUG_MODE: verify many internal conditions that are normally assumed
+     - DebugMode: verify many internal conditions that are normally assumed
        (slow)
 
     :param accept_inplace: True iff the graph can contain inplace operations

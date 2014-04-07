@@ -2,7 +2,7 @@
 # Slice type and Op. None Type and NoneConst.
 #
 import theano
-from theano.gof import Apply, Constant, Op, Type
+from theano.gof import Apply, Constant, Generic, Op, Type
 from theano.gradient import DisconnectedType
 
 
@@ -55,7 +55,10 @@ class SliceType(Type):
 slicetype = SliceType()
 
 
-class NoneTypeT(Type):
+class NoneTypeT(Generic):
+    """
+    Inherit from Generic to have c code working.
+    """
 
     def filter(self, x, strict=False, allow_downcast=None):
         if x is None:
@@ -66,4 +69,7 @@ class NoneTypeT(Type):
     def __str__(self):
         return "None"
 
+# This is a variable instance. It can be used only once per fgraph.
+# So use NoneConst.clone() before using it in a Theano graph.
+# Use NoneConst.equal(x) to check if two variable are NoneConst.
 NoneConst = Constant(NoneTypeT(), None, name='None')

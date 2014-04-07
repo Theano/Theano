@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from tempfile import mkdtemp
 import time
 import unittest
@@ -7,6 +8,7 @@ import unittest
 import cPickle
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 from numpy.testing import dec
 
 import theano
@@ -1524,6 +1526,7 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
+    @attr('slow')
     def test_grad_multiple_outs_taps(self):
         l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1585,17 +1588,19 @@ class T_Scan(unittest.TestCase):
             vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
             params = [u1, u2, x0, y0, W_in1]
             gparams = theano.tensor.grad(cost, params)
-            grad_fn = theano.function([u1, u2, x0, y0, W_in1],
-                                      gparams,
-                                      updates=updates,
-                                      no_default_updates=True,
-                                      allow_input_downcast=True)
-
+            print >> sys.stderr, "."
             cost_fn = theano.function([u1, u2, x0, y0, W_in1],
                                       cost,
                                       updates=updates,
                                       no_default_updates=True,
                                       allow_input_downcast=True)
+            print >> sys.stderr, "."
+            grad_fn = theano.function([u1, u2, x0, y0, W_in1],
+                                      gparams,
+                                      updates=updates,
+                                      no_default_updates=True,
+                                      allow_input_downcast=True)
+            print >> sys.stderr, "."
         finally:
             theano.config.compute_test_value = old1
             theano.config.compute_test_value_opt = old2
@@ -1615,6 +1620,7 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
+    @attr('slow')
     def test_grad_multiple_outs_taps_backwards(self):
         l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -2596,6 +2602,7 @@ class T_Scan(unittest.TestCase):
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
 
+    @attr('slow')
     def test_rop2(self):
         seed = utt.fetch_seed()
         rng = numpy.random.RandomState(seed)
@@ -3656,12 +3663,13 @@ class T_Scan(unittest.TestCase):
             inp = scan_node.op.outer_non_seqs(scan_node)
             assert len(inp) == 1
 
+    @attr('slow')
     def test_hessian_bug_grad_grad_two_scans(self):
         #Bug reported by Bitton Tenessi
 
         W_flat = tensor.fvector(name='W')
-        W_flat.tag.test_value=numpy.ones((8,), dtype=numpy.float32)
-        W = W_flat.reshape((2,2,2))
+        W_flat.tag.test_value = numpy.ones((8,), dtype=numpy.float32)
+        W = W_flat.reshape((2, 2, 2))
 
         def loss_outer(i_outer, sum_outer, W):
 
@@ -3669,24 +3677,28 @@ class T_Scan(unittest.TestCase):
 
                 return sum_inner + (W**2).sum().sum().sum()
 
-            result_inner, _ = theano.scan(fn=loss_inner,
-               outputs_info = tensor.as_tensor_variable(
-                   numpy.asarray(0, dtype=numpy.float32)),
-               sequences=tensor.arange(1, dtype='int32'),
-               non_sequences=[W],
-               )
+            result_inner, _ = theano.scan(
+                fn=loss_inner,
+                outputs_info=tensor.as_tensor_variable(
+                    numpy.asarray(0, dtype=numpy.float32)),
+                sequences=tensor.arange(1, dtype='int32'),
+                non_sequences=[W],
+            )
             return sum_outer + result_inner[-1]
 
-        result_outer, _ = theano.scan(fn=loss_outer,
-               outputs_info = tensor.as_tensor_variable(
-                   numpy.asarray(0, dtype=numpy.float32)),
-               sequences=tensor.arange(1, dtype='int32'),
-               non_sequences=[W],
-               )
+        result_outer, _ = theano.scan(
+            fn=loss_outer,
+            outputs_info=tensor.as_tensor_variable(
+                numpy.asarray(0, dtype=numpy.float32)),
+            sequences=tensor.arange(1, dtype='int32'),
+            non_sequences=[W],
+        )
 
         cost = result_outer[-1]
         H = theano.gradient.hessian(cost, W_flat)
+        print >> sys.stderr, "."
         f = theano.function([W_flat], H)
+        print >> sys.stderr, "."
         f(numpy.ones((8,), dtype='float32'))
 
 

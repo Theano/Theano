@@ -16,6 +16,7 @@ if cuda_available:
 import unittest
 from theano.tests import unittest_tools as utt
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 #TODO: test gpu
 # Done in test_consistency_GPU_{serial,parallel}
@@ -445,6 +446,7 @@ def test_uniform():
                   allow_01=True, inputs=input)
 
 
+@attr('slow')
 def test_binomial():
 #TODO: test size=None, ndim=X
 #TODO: test size=X, ndim!=X.ndim
@@ -532,6 +534,7 @@ def test_binomial():
                       inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
+@attr('slow')
 def test_normal0():
 
     steps = 50
@@ -752,3 +755,19 @@ def test_random_state_transfer():
         su2[0].set_value(su1[0].get_value())
 
     numpy.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
+
+
+def test_gradient_scan():
+    # Test for a crash when using MRG inside scan and taking the gradient
+    # See https://groups.google.com/d/msg/theano-dev/UbcYyU5m-M8/UO9UgXqnQP0J
+    theano_rng = MRG_RandomStreams(10)
+    w = theano.shared(numpy.ones(1, dtype='float32'))
+
+    def one_step(x):
+        return x + theano_rng.uniform((1,), dtype='float32') * w
+
+    x = tensor.vector(dtype='float32')
+    values, updates = theano.scan(one_step, outputs_info=x, n_steps=10)
+    gw = theano.grad(tensor.sum(values[-1]), w)
+    f = theano.function([x], gw)
+    f(numpy.arange(1, dtype='float32'))

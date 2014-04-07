@@ -1792,6 +1792,27 @@ class _Linker(gof.link.LocalLinker):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None
+                        except Exception, e:
+                            # I think that only 1 optimization can
+                            # insert a given apply node. If that is not True,
+                            # we would need to loop over all node outputs,
+                            # But this make the output uglier.
+                            reason = fgraph.equivalence_tracker.reasons[
+                                node.outputs[0]]
+                            if not reason:
+                                raise
+                            opt = str(reason[0][0])
+                            msg = (
+"An optimization (probably %s ) inserted an apply node that raise an error." % opt +
+"\nThe information we have about this optimizations is:" + str(reason[0][1]) +
+"\n" + reason[0][2] +
+"\n\nThe original exception: \n" + str(e))
+                            new_e = e.__class__(msg)
+                            exc_type, exc_value, exc_trace = sys.exc_info()
+                            exc_value = new_e
+                            raise_with_op(node, thunk_c,
+                                          (exc_type, exc_value, exc_trace))
+
 
                     if thunk_py:
                         # check output values for type-correctness
@@ -1869,8 +1890,26 @@ class _Linker(gof.link.LocalLinker):
                         ## First time, with None in output_storage
                         try:
                             thunk_c()
-                        except Exception:
-                            raise_with_op(node, thunk_c)
+                        except Exception, e:
+                            # I think that only 1 optimization can
+                            # insert a given apply node. If that is not True,
+                            # we would need to loop over all node outputs,
+                            # But this make the output uglier.
+                            reason = fgraph.equivalence_tracker.reasons[
+                                node.outputs[0]]
+                            if not reason:
+                                raise
+                            opt = str(reason[0][0])
+                            msg = (
+"An optimization (probably %s ) inserted an apply node that raise an error." % opt +
+"\nThe information we have about this optimizations is:" + str(reason[0][1]) +
+"\n" + reason[0][2] +
+"\n\nThe original exception: \n" + str(e))
+                            new_e = e.__class__(msg)
+                            exc_type, exc_value, exc_trace = sys.exc_info()
+                            exc_value = new_e
+                            raise_with_op(node, thunk_c,
+                                          (exc_type, exc_value, exc_trace))
 
                         for r in node.outputs:
                             # check output values for type-correctness
@@ -2101,29 +2140,29 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-#TODO: REMOVE THIS CRUFT - it's complicated for SymbolicInputKits
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
-        expanded_inputs = reduce(list.__add__, [list(z)
-                                                for x, y, z in indices], [])
-
-        assert expanded_inputs == inputs  #JB - I added this to make sure we could delete above
 
         # make the fgraph
         for i in xrange(mode.stability_patience):
             fgraph, additional_outputs, equivalence_tracker = _optcheck_fgraph(
-                expanded_inputs, outputs, accept_inplace)
+                inputs, outputs, accept_inplace)
             fgraph.equivalence_tracker = equivalence_tracker
 
             # optimize the fgraph
             compute_test_value_orig = theano.config.compute_test_value
+            add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
             try:
                 theano.config.compute_test_value = theano.config.compute_test_value_opt
+                gof.Op.add_stack_trace_on_call = False  # Should it be 0 == i?
                 optimizer(fgraph)
 
                 theano.compile.function_module.insert_deepcopy(fgraph, inputs,
                                                     outputs + additional_outputs)
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
+                gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
 
             if i:
                 li = fgraph.equivalence_tracker.event_list
@@ -2189,7 +2228,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
         self.indices = indices
         self.inputs = inputs
-        self.expanded_inputs = expanded_inputs
+        self.expanded_inputs = inputs
         self.outputs = outputs
         self.unpack_single = unpack_single
         self.return_none = return_none

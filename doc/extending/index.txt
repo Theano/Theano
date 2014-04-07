@@ -30,11 +30,10 @@ a C implementation.
     type
     op
     inplace
+    other_ops
     ctype
     cop
     optimization
     tips
     unittest
     extending_faq
-
-

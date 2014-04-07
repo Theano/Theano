@@ -505,6 +505,33 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(numpy.allclose(val0, numpy_val0))
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
+    def test_poisson(self):
+        """Test that raw_random.poisson generates the same
+        results as numpy."""
+        # Check over two calls to see if the random state is correctly updated.
+        rng_R = random_state_type()
+        # Use non-default parameters, and larger dimensions because of
+        # the integer nature of the result
+        post_r, out = poisson(rng_R, lam=5, size=(11,8))
+
+        f = compile.function(
+                [compile.In(rng_R,
+                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    update=post_r, mutable=True)],
+                [out], accept_inplace=True)
+
+        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        val0 = f()
+        val1 = f()
+        numpy_val0 = numpy_rng.poisson(5,size=(11,8))
+        numpy_val1 = numpy_rng.poisson(5,size=(11,8))
+        print val0
+        print numpy_val0
+        print val1
+        print numpy_val1
+        self.assertTrue(numpy.allclose(val0, numpy_val0))
+        self.assertTrue(numpy.allclose(val1, numpy_val1))
+
     def test_permutation(self):
         """Test that raw_random.permutation generates the same
         results as numpy."""

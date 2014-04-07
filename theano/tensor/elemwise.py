@@ -6,9 +6,9 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof import Apply, Op
+from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
-from theano.scalar import Scalar
+from theano.scalar import Scalar, get_scalar_type
 from theano.printing import pprint
 from theano.gof.python25 import all, any
 from theano.tensor.utils import hash_from_dict
@@ -419,7 +419,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle),
 ### Elemwise ###
 ################
 
-class Elemwise(Op):
+class Elemwise(OpenMPOp):
     """
     Generalizes a scalar op to tensors.
 
@@ -449,7 +449,7 @@ class Elemwise(Op):
     """
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
-            nfunc_spec=None):
+                 nfunc_spec=None, openmp=None):
         """
         Usage: Elemwise(scalar_op, inplace_pattern = {})
 
@@ -487,6 +487,7 @@ class Elemwise(Op):
 
         #precompute the hash of this node
         self._rehash()
+        super(Elemwise,self).__init__(openmp=openmp)
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -497,7 +498,7 @@ class Elemwise(Op):
         return d
 
     def __setstate__(self, d):
-        self.__dict__.update(d)
+        super(Elemwise, self).__setstate__(d)
         self.ufunc = None
         self.nfunc = None
         if getattr(self, 'nfunc_spec', None):
@@ -515,7 +516,7 @@ class Elemwise(Op):
         """
         inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
-                *[Scalar(dtype=i.type.dtype)() for i in inputs])
+                *[get_scalar_type(dtype=i.type.dtype)() for i in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -718,7 +719,7 @@ class Elemwise(Op):
             def as_scalar(t):
                 if isinstance(t.type, (NullType, DisconnectedType)):
                     return t
-                return Scalar(t.type.dtype)()
+                return get_scalar_type(t.type.dtype)()
 
             scalar_inputs = map(as_scalar, inputs)
             scalar_ograds = map(as_scalar, ograds)
@@ -765,9 +766,15 @@ class Elemwise(Op):
         return ret
 
     def perform(self, node, inputs, output_storage):
+        if len(node.inputs) >= 32:
+            # Some versions of NumPy will segfault, other will raise a
+            # ValueError, if the number of inputs to a ufunc is 32 or more.
+            # In that case, the C version should be used, or Elemwise fusion
+            # should be disabled.
+            super(Elemwise, self).perform(node, inputs, output_storage)
+
         maxsize = max(len(input.shape) for input in inputs)
-        for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
-                            + zip(input.shape, sinput.type.broadcastable))
+        for dims in izip(*[zip(input.shape, sinput.type.broadcastable)
                           for input, sinput in zip(inputs, node.inputs)]):
             if max(d for d, b in dims) != 1 and (1, False) in dims:
                 # yes there may be more compact ways to write this code,
@@ -800,34 +807,36 @@ class Elemwise(Op):
                 out_shape.append(max(values))
         out_shape = tuple(out_shape)
 
-        if not self.inplace_pattern:
-            for output, storage in izip(node.outputs, output_storage):
-                odat = storage[0]
-                if odat is not None:
-                    if odat.shape != out_shape:
-                        # It is unsafe to try to resize odat,
-                        # we have to allocate output storage.
-                        odat = None
-                if odat is None:
-                    odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
-                storage[0] = odat
-        else:
-            for i, (output, storage) in enumerate(
-                    izip(node.outputs, output_storage)):
-                #i is an output idx
-                if i in self.inplace_pattern:
-                    odat = inputs[self.inplace_pattern[i]]
-                else:
-                    odat = storage[0]
-                    if odat is not None:
-                        if odat.shape != out_shape:
-                            # It is unsafe to try to resize odat,
-                            # we have to allocate output storage.
-                            odat = None
-                    if odat is None:
-                        odat = numpy.ndarray(out_shape,
-                                dtype=output.type.dtype)
-                storage[0] = odat
+        # Commented as we don't reuse outputs now.
+        #
+        # if not self.inplace_pattern:
+        #     for output, storage in izip(node.outputs, output_storage):
+        #         odat = storage[0]
+        #         if odat is not None:
+        #             if odat.shape != out_shape:
+        #                 # It is unsafe to try to resize odat,
+        #                 # we have to allocate output storage.
+        #                 odat = None
+        #         if odat is None:
+        #             odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
+        #         storage[0] = odat
+        # else:
+        #     for i, (output, storage) in enumerate(
+        #             izip(node.outputs, output_storage)):
+        #         #i is an output idx
+        #         if i in self.inplace_pattern:
+        #             odat = inputs[self.inplace_pattern[i]]
+        #         else:
+        #             odat = storage[0]
+        #             if odat is not None:
+        #                 if odat.shape != out_shape:
+        #                     # It is unsafe to try to resize odat,
+        #                     # we have to allocate output storage.
+        #                     odat = None
+        #             if odat is None:
+        #                 odat = numpy.ndarray(out_shape,
+        #                         dtype=output.type.dtype)
+        #         storage[0] = odat
 
         ufunc_args = inputs  # + output_storage
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
@@ -852,26 +861,25 @@ class Elemwise(Op):
 
         if nout == 1:
             variables = [variables]
+        i = 0
         for variable, storage, nout in izip(variables, output_storage,
                                             node.outputs):
-            if str(getattr(variable, "dtype", "")) == 'object':
+            if getattr(variable, "dtype", "") == 'object':
                 # Since numpy 1.6, function created with numpy.frompyfunc
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
 
-            # The storage has been resized earlier.
-            if hasattr(variable, 'shape'):
-                assert storage[0].shape == variable.shape
+            if i in self.inplace_pattern:
+                odat = inputs[self.inplace_pattern[i]]
+                odat[...] = variable
+                storage[0] = odat
+            # Sometimes NumPy return a Python type.
+            elif not isinstance(variable, numpy.ndarray):
+                variable = numpy.asarray(variable, nout.dtype)
+                storage[0] = variable
             else:
-                # If variable has not shape, then it is a scalar.
-                assert numpy.prod(storage[0].shape) == 1
-
-            storage[0][...] = variable
-            assert str(storage[0].dtype) != 'object'
-
-        # the following should be used instead of the previous loop,
-        # unfortunately it tends to segfault
-        # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
+                storage[0] = variable
+            i += 1
 
     def infer_shape(self, node, i_shapes):
         rval = []
@@ -1021,20 +1029,12 @@ class Elemwise(Op):
         # which is allocated, OR, if there are any aliased outputs,
         # the index of the last of these aliased outputs.
 
-        # We declare the scalar variables used in the inner loop to do
-        # the element-wise computation. Aliased scalar variables need
-        # not be declared, as they are #defined in defines
-        task_decl = "".join([
-            "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                for name, dtype in izip(inames + list(real_onames),
-                                       idtypes + list(real_odtypes))])
-
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                      [Scalar(dtype=input.type.dtype)()
+                      [get_scalar_type(dtype=input.type.dtype)()
                           for input in node.inputs],
-                      [Scalar(dtype=output.type.dtype)()
+                      [get_scalar_type(dtype=output.type.dtype)()
                           for output in node.outputs]),
                 nodename + '_scalar_',
                 ["%s_i" % s for s in _inames],
@@ -1043,11 +1043,13 @@ class Elemwise(Op):
         code = """
         {
             %(defines)s
-            %(task_decl)s
             %(task_code)s
             %(undefs)s
         }
         """ % locals()
+
+        loop_orders = orders + [range(nnested)] * len(real_onames)
+        dtypes = (idtypes + list(real_odtypes))
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1056,19 +1058,47 @@ class Elemwise(Op):
                 all_code = [("", "")] * (nnested - 1) + [("", code)] + [""]
             else:
                 all_code = [code]
+            if len(all_code) == 1:
+                #No loops
+                task_decl = "".join([
+                    "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
+                    for name, dtype in izip(inames + list(real_onames),
+                                            idtypes + list(real_odtypes))])
 
-            loop = cgen.make_loop(
-                loop_orders=orders + [range(nnested)] * len(real_onames),
-                dtypes=(idtypes + list(real_odtypes)),
-                loop_tasks=all_code,
-                sub=sub)
+                preloops = {}
+                for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
+                    for j, index in enumerate(loop_order):
+                        if index != 'x':
+                            preloops.setdefault(j, "")
+                            preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                            break
+                    else:  # all broadcastable
+                            preloops.setdefault(0, "")
+                            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+
+                init_array = preloops.get(0, " ")
+                loop = """
+                {
+                  %(defines)s
+                  %(init_array)s
+                  %(task_decl)s
+                  %(task_code)s
+                  %(undefs)s
+                }
+                """ % locals()
+            else:
+                loop = cgen.make_loop(
+                    loop_orders=loop_orders,
+                    dtypes=dtypes,
+                    loop_tasks=all_code,
+                    sub=sub, openmp=self.openmp)
         else:
             loop = cgen.make_reordered_loop(
-                init_loop_orders=orders + [range(nnested)] * len(real_onames),
+                init_loop_orders=loop_orders,
                 olv_index=olv_index,
-                dtypes=(idtypes + list(real_odtypes)),
+                dtypes=dtypes,
                 inner_task=code,
-                sub=sub)
+                sub=sub, openmp=self.openmp)
 
         # If all inputs and outputs are contiguous
         # and the scalar op define optimized code for that case
@@ -1110,7 +1140,8 @@ class Elemwise(Op):
                             contig += """
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
-
+                    if self.openmp:
+                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_elemwise_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
@@ -1154,11 +1185,12 @@ class Elemwise(Op):
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
-                [Scalar(dtype=input.type.dtype)() for input in node.inputs],
-                [Scalar(dtype=output.type.dtype)() for output in node.outputs])
+                [get_scalar_type(dtype=input.type.dtype)() for input in node.inputs],
+                [get_scalar_type(dtype=output.type.dtype)() for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
+        version.append(('openmp', self.openmp))
         if all(version):
             return tuple(version)
         else:
@@ -1524,9 +1556,9 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         task1_code = self.scalar_op.c_code(
                 Apply(
                     self.scalar_op,
-                    [Scalar(dtype=input.type.dtype)()
+                    [get_scalar_type(dtype=input.type.dtype)()
                         for input in (node.inputs * 2)],
-                    [Scalar(dtype=output.type.dtype)()
+                    [get_scalar_type(dtype=output.type.dtype)()
                         for input in node.outputs]),
                 None,
                 ["%s_i" % aname, "%s_i" % inames[0]],
@@ -1550,7 +1582,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
                         + [("", code1), ""])
         else:
             all_code = [task0_decl + code1]
-        loop = cgen.make_loop(
+        loop = cgen.make_loop_careduce(
                 [order, range(nnested) + ['x'] * len(axis)],
                 [idtype, adtype], all_code, sub)
 
@@ -1576,11 +1608,11 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
-                [Scalar(dtype=input.type.dtype)() for input in node.inputs],
-                [Scalar(dtype=output.type.dtype)() for output in node.outputs])
+                [get_scalar_type(dtype=input.type.dtype)() for input in node.inputs],
+                [get_scalar_type(dtype=output.type.dtype)() for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(Scalar(dtype=i.type.dtype).c_code_cache_version())
+            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
@@ -1658,7 +1690,7 @@ class CAReduceDtype(CAReduce):
 
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         """
-        Usage: CAReduceDtype(scalar_op, axis=None, dtype=None)
+        Usage: CAReduceDtype(scalar_op, axis=None, dtype=None, acc_dtype=None)
 
         :param scalar_op: a binary scalar op with only one output.
                      It must be commutative and associative.

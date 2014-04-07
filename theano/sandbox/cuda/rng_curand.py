@@ -346,7 +346,7 @@ class CURAND_RandomStreams(object):
         return  rval
 
 
-@local_optimizer([None])
+@local_optimizer([CURAND_Base])
 def local_destructive(node):
     op = node.op
     if isinstance(op, CURAND_Base) and not op.destructive:

@@ -7,6 +7,7 @@ from theano import config
 from theano import gof
 import theano
 import theano.tensor
+from theano.compat import exc_message
 from theano.compile import debugmode
 import theano.compile
 from theano.tests import unittest_tools as utt
@@ -243,6 +244,39 @@ def test_badoptimization():
         f([1.0, 2.0, 3.0], [2, 3, 4],)
     except debugmode.BadOptimization, e:
         assert str(e.reason) == 'insert_broken_add'
+        return  # TEST PASS
+
+    assert False
+
+
+def test_badoptimization_opt_err():
+    """This variant of test_badoptimization() replace the working code
+    with a new apply node that will raise an error.
+
+    """
+    @gof.local_optimizer([theano.tensor.add])
+    def insert_bigger_b_add(node):
+        if node.op == theano.tensor.add:
+            inputs = list(node.inputs)
+            if inputs[-1].owner is None:
+                inputs[-1] = theano.tensor.concatenate((inputs[-1],
+                                                        inputs[-1]))
+                return [node.op(*inputs)]
+        return False
+    edb = gof.EquilibriumDB()
+    edb.register('insert_bigger_b_add', insert_bigger_b_add, 'all')
+    opt = edb.query('+all')
+
+    a = theano.tensor.dvector()
+    b = theano.tensor.dvector()
+
+    f = theano.function([a, b], a + b,
+                        mode=debugmode.DebugMode(optimizer=opt))
+
+    try:
+        f([1.0, 2.0, 3.0], [2, 3, 4],)
+    except Exception, e:
+        assert 'insert_bigger_b_add' in exc_message(e)
         return  # TEST PASS
 
     assert False

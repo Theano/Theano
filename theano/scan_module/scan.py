@@ -382,7 +382,7 @@ def scan(fn,
     for i in xrange(n_seqs):
         if not isinstance(seqs[i], dict):
             seqs[i] = OrderedDict([('input', seqs[i]), ('taps', [0])])
-        elif seqs[i].get('taps', None):
+        elif seqs[i].get('taps', None) is not None:
             seqs[i]['taps'] = wrap_into_list(seqs[i]['taps'])
         elif seqs[i].get('taps', None) is None:
             # seqs dictionary does not have the ``taps`` key
@@ -393,7 +393,7 @@ def scan(fn,
         if outs_info[i] is not None:
             if isinstance(outs_info[i], dict):
                 # DEPRECATED :
-                if outs_info[i].get('return_steps', None):
+                if outs_info[i].get('return_steps', None) is not None:
                     raise ValueError(
                             "Using `return_steps` has been deprecated. "
                             "Simply select the entries you need using a "
@@ -404,14 +404,14 @@ def scan(fn,
             if not isinstance(outs_info[i], dict):
                 # by default any output has a tap value of -1
                 outs_info[i] = OrderedDict([('initial', outs_info[i]), ('taps', [-1])])
-            elif (not outs_info[i].get('initial', None) and
-                    outs_info[i].get('taps', None)):
+            elif (outs_info[i].get('initial', None) is None and
+                    outs_info[i].get('taps', None) is not None):
                 # ^ no initial state but taps provided
                 raise ValueError(('If you are using slices of an output '
                                   'you need to provide a initial state '
                                   'for it'), outs_info[i])
-            elif (outs_info[i].get('initial', None) and
-                  not outs_info[i].get('taps', None)):
+            elif (outs_info[i].get('initial', None) is not None and
+                  outs_info[i].get('taps', None) is None):
                 # ^ initial state but taps not provided
                 if 'taps' in outs_info[i]:
                     # ^ explicitly provided a None for taps

@@ -4,6 +4,102 @@
 Release Notes
 =============
 
+Theano 0.6 (December 3th, 2013)
+===================================
+
+We recommend that everybody update to this version.
+
+
+Highlights (since 0.6rc5):
+ * Last release with support for Python 2.4 and 2.5.
+ * We will try to release more frequently.
+ * Fix crash/installation problems.
+ * Use less memory for conv3d2d.
+
+0.6rc4 skipped for a technical reason.
+
+Highlights (since 0.6rc3):
+ * Python 3.3 compatibility with buildbot test for it.
+ * Full advanced indexing support.
+ * Better Windows 64 bit support.
+ * New profiler.
+ * Better error messages that help debugging.
+ * Better support for newer NumPy versions (remove useless warning/crash).
+ * Faster optimization/compilation for big graph.
+ * Move in Theano the Conv3d2d implementation.
+ * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator.
+ * Bug fixes.
+
+Change from 0.6rc5:
+ * Fix crash when specifing march in cxxflags Theano flag. (Frederic B., reported by FiReTiTi)
+ * code cleanup (Jorg Bornschein)
+ * Fix Canopy installation on windows when it was installed for all users: Raingo
+ * Fix Theano tests due to a scipy change. (Frederic B.)
+ * Work around bug introduced in scipy dev 0.14. (Frederic B.)
+ * Fix Theano tests following bugfix in SciPy. (Frederic B., reported by Ziyuan Lin)
+ * Add Theano flag cublas.lib (Misha Denil)
+ * Make conv3d2d work more inplace (so less memory usage) (Frederic B., repoted by Jean-Philippe Ouellet)
+
+
+Committers since 0.5:
+
+Frederic Bastien
+Pascal Lamblin
+Ian Goodfellow
+Olivier Delalleau
+Razvan Pascanu
+abalkin
+Arnaud Bergeron
+Nicolas Bouchard +
+Jeremiah Lowin +
+Matthew Rocklin
+Eric Larsen +
+James Bergstra
+David Warde-Farley
+John Salvatier +
+Vivek Kulkarni +
+Yann N. Dauphin
+Ludwig Schmidt-Hackenberg +
+Gabe Schwartz +
+Rami Al-Rfou' +
+Guillaume Desjardins
+Caglar +
+Sigurd Spieckermann +
+Steven Pigeon +
+Bogdan Budescu +
+Jey Kottalam +
+Mehdi Mirza +
+Alexander Belopolsky +
+Ethan Buchman +
+Jason Yosinski
+Nicolas Pinto +
+Sina Honari +
+Ben McCann +
+Graham Taylor
+Hani Almousli
+Ilya Dyachenko +
+Jan Schlüter +
+Jorg Bornschein +
+Micky Latowicki +
+Yaroslav Halchenko +
+Eric Hunsberger +
+Amir Elaguizy +
+Hannes Schulz +
+Huy Nguyen +
+Ilan Schnell +
+Li Yao
+Misha Denil +
+Robert Kern +
+Sebastian Berg +
+Vincent Dumoulin +
+Wei Li +
+XterNalz +
+
+
+A total of 51 people contributed to this release.
+People with a "+" by their names contributed a patch for the first time.
+
+
 Theano 0.6rc5 (November 25th, 2013)
 ===================================
 
@@ -26,7 +122,7 @@ Highlights:
  * Better SymPy/Theano bridge: Make an Theano op from SymPy expression and use SymPy c code generator.
  * Bug fixes.
 
-Committers for this rc4 only:
+Committers for this rc5 only:
 
 Frederic Bastien
 Pascal Lamblin

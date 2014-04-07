@@ -19,11 +19,14 @@ from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant,
                                _tensor_py_operators)
 from theano.tensor.type import TensorType
+from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
 from theano.gof.python25 import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
+from theano.compile import Shape, shape  #For history
+
 
 # We use these exceptions as well.
 import theano.scalar.sharedvar
@@ -505,6 +508,12 @@ class EmptyConstantError(NotScalarConstantError):
     """
 
 
+get_scalar_constant_value_elemwises = (
+    scal.Cast, scal.Switch,
+    scal.NEQ, scal.EQ,
+    scal.LT, scal.GT, scal.LE, scal.GE,
+    scal.Sub, scal.Add, scal.Mod, scal.Mul,
+    scal.IntDiv, scal.TrueDiv)
 def get_scalar_constant_value(v):
     """return the constant scalar(0-D) value underlying variable `v`
 
@@ -554,37 +563,46 @@ def get_scalar_constant_value(v):
             data = v.data
         return numpy_scalar(data)
 
-    if v.owner:
+    if getattr(v, 'owner', None):
         if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                    compile.ops.OutputGuard,
                                    compile.DeepCopyOp)):
             return get_scalar_constant_value(v.owner.inputs[0])
-        if isinstance(v.owner.op, Elemwise) and \
-                isinstance(v.owner.op.scalar_op, scal.Second):
-            shape, val = v.owner.inputs
-            return get_scalar_constant_value(val)
-        if isinstance(v.owner.op, scal.Second):
-            x, y = v.owner.inputs
-            return get_scalar_constant_value(y)
+        elif (isinstance(v.owner.op, theano.compile.ops.Shape_i) and
+            isinstance(v.owner.inputs[0], Constant)):
+            return v.owner.inputs[0].data.shape[v.owner.op.i]
         # Don't act as the constant_folding optimization here as this
         # fct is used too early in the optimization phase.  This would
-        # mess with the stabilization optimization.
-        if (isinstance(v.owner.op, Elemwise) and isinstance(
-            v.owner.op.scalar_op, scal.Cast)) or \
-            isinstance(v.owner.op, scal.Cast):
-            const = get_scalar_constant_value(v.owner.inputs[0])
-            ret = [[None]]
-            v.owner.op.perform(v.owner, [const], ret)
-            return ret[0][0]
-        if isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
-            # This condition depends on Subtensor always embedding constant
-            # indices in the Op rather than making them inputs to the Apply
-            # node.
-            if isinstance(v.owner.inputs[0], TensorConstant) and \
-                len(v.owner.inputs) == 1:
+        # mess with the stabilization optimization and be too slow.
+        # We put all the scalar Ops used by get_canonical_form_slice()
+        # to allow it to determine the broadcast pattern correctly.
+        elif isinstance(v.owner.op, scal.ScalarOp):
+            if isinstance(v.owner.op, scal.Second):
+                # We don't need both input to be constant for second
+                shape, val = v.owner.inputs
+                return get_scalar_constant_value(val)
+            if isinstance(v.owner.op, get_scalar_constant_value_elemwises):
+                const = [get_scalar_constant_value(i)
+                         for i in v.owner.inputs]
+                ret = [[None]]
+                v.owner.op.perform(v.owner, const, ret)
+                return ret[0][0]
+        elif isinstance(v.owner.op, Elemwise):
+            if isinstance(v.owner.op.scalar_op, scal.Second):
+                # We don't need both input to be constant for second
+                shape, val = v.owner.inputs
+                return get_scalar_constant_value(val)
+            elif isinstance(v.owner.op.scalar_op,
+                            get_scalar_constant_value_elemwises):
+                const = [get_scalar_constant_value(i) for i in v.owner.inputs]
+                ret = [[None]]
+                v.owner.op.perform(v.owner, const, ret)
+                return ret[0][0]
+        elif isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and v.ndim == 0:
+            if isinstance(v.owner.inputs[0], TensorConstant):
+                cdata = tuple(v.owner.op.get_constant_idx(v.owner.inputs))
                 try:
-                    return v.owner.inputs[0].data.__getitem__(
-                    tuple(v.owner.op.idx_list))
+                    return v.owner.inputs[0].data.__getitem__(cdata)
                 except IndexError:
                     raise IndexError(
                             str(tuple(v.owner.op.idx_list)) +
@@ -607,29 +625,30 @@ def get_scalar_constant_value(v):
                            v.owner.inputs[0].owner.inputs) and
                 len(v.owner.op.idx_list) == 1):
 
+                idx = v.owner.op.idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(v.owner.inputs[1])
                 # Note the '+ 1' is because the first argument to Join is the
                 # axis.
-                ret = v.owner.inputs[0].owner.inputs[
-                    v.owner.op.idx_list[0] + 1]
+                ret = v.owner.inputs[0].owner.inputs[idx + 1]
                 ret = get_scalar_constant_value(ret)
                 # join can cast implicitly its input in some case.
                 return theano._asarray(ret, dtype=v.type.dtype)
 
-            if (v.owner.inputs[0].owner and
+            elif (v.owner.inputs[0].owner and
                 isinstance(v.owner.inputs[0].owner.op,
                            theano.tensor.opt.MakeVector) and
                 # MakeVector normally accept only scalar as input.
                 # We put this check in case there is change in the future
                 python_all(var.ndim == 0 for var in
                            v.owner.inputs[0].owner.inputs) and
-                len(v.owner.op.idx_list) == 1 and
-                #idx_list can contain Scalar Type object.
-                isinstance(v.owner.op.idx_list[0], (int, long,
-                                                    numpy.integer))):
-
+                len(v.owner.op.idx_list) == 1):
+                idx = v.owner.op.idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(v.owner.inputs[1])
                 # Python 2.4 does not support indexing with numpy.integer
                 # So we cast it.
-                idx = int(v.owner.op.idx_list[0])
+                idx = int(idx)
                 ret = v.owner.inputs[0].owner.inputs[idx]
                 ret = get_scalar_constant_value(ret)
                 # MakeVector can cast implicitly its input in some case.
@@ -645,6 +664,8 @@ def get_scalar_constant_value(v):
                 op = owner.op
                 idx_list = op.idx_list
                 idx = idx_list[0]
+                if isinstance(idx, gof.Type):
+                    idx = get_scalar_constant_value(owner.inputs[1])
                 grandparent = leftmost_parent.owner.inputs[0]
                 gp_broadcastable = grandparent.type.broadcastable
                 ndim = grandparent.type.ndim
@@ -652,13 +673,13 @@ def get_scalar_constant_value(v):
                 assert ndim == len(gp_broadcastable)
 
                 if not (idx < len(gp_broadcastable)):
-                    msg = "get_scalar_constant_value detected " + \
-                            "deterministic IndexError: x.shape[%d] " + \
-                            "when x.ndim=%d." % (ndim, idx)
+                    msg = ("get_scalar_constant_value detected " +
+                           "deterministic IndexError: x.shape[%d] " +
+                           "when x.ndim=%d.") % (ndim, idx)
                     if config.exception_verbosity == 'high':
-                        msg += 'x=%s' % min_informative_str(x)
+                        msg += 'x=%s' % min_informative_str(v)
                     else:
-                        msg += 'x=%s' % str(x)
+                        msg += 'x=%s' % str(v)
                     raise ValueError(msg)
 
                 if gp_broadcastable[idx]:
@@ -980,7 +1001,7 @@ class ScalarFromTensor(Op):
         assert t.type.broadcastable == ()
         return Apply(self,
                      [t],
-                     [scal.Scalar(dtype=t.type.dtype).make_variable()])
+                     [scal.get_scalar_type(dtype=t.type.dtype).make_variable()])
 
     def perform(self, node, inp, out_):
         s, = inp
@@ -1114,83 +1135,6 @@ def cast(x, dtype):
 ##########################
 
 
-class Shape(Op):
-    """
-    L{Op} to return the shape of a matrix.
-
-    @note: Non-differentiable.
-    """
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def make_node(self, x):
-        # Must work for all type that have a shape attribute.
-        # This will fail at execution time.
-        x = as_tensor_variable(x)
-        # Each type variable should implement their .shape attribute
-        # and have the fct infer_shape() implemented in the op that convert
-        # the type to TensorVariable to have the optimization working
-        # correctly.
-        return Apply(self, [x], [lvector()])
-
-    def perform(self, node, inp, out_):
-        x, = inp
-        out, = out_
-        out[0] = theano._asarray(x.shape, dtype='int64')
-
-    def infer_shape(self, node, in_shapes):
-        return [[len(in_shapes[0])]]
-
-    def connection_pattern(self, node):
-        # the grad returns the gradient with respect to the
-        # elements of a tensor variable
-        # the elements of the tensor variable do not participate
-        # in the computation of the shape, so they are not really
-        # part of the graph
-        return [[False]]
-
-    def grad(self, inp, grads):
-        # the grad returns the gradient with respect to the
-        # elements of a tensor variable
-        # the elements of the tensor variable do not participate
-        # in the computation of the shape, so they are not really
-        # part of the graph
-        return [DisconnectedType()()]
-
-    def R_op(self, inputs, eval_points):
-        return [None]
-
-    def c_code(self, node, nodename, inp, out, sub):
-        x, = inp
-        z, = out
-        if isinstance(node.inputs[0].type, TensorType):
-            return """
-            npy_intp shape[] = {PyArray_NDIM(%(x)s)};
-            if(%(z)s == NULL || (PyArray_DIMS(%(z)s)[0] != shape[0]))
-            {
-                Py_XDECREF(%(z)s);
-                %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, NPY_INT64);
-            }
-            for(int i=0;i<shape[0];i++)
-            {
-                ((npy_int64*)PyArray_GETPTR1(%(z)s, i))[0] = PyArray_DIMS(%(x)s)[i];
-            }
-            """ % locals()
-        else:
-            #TODO: if your type is not listed here, make a damn registry of
-            #      shape_i ops for various types of variables.
-            #      Do not continue this madness.
-            return super(Shape, self).c_code(node, nodename, (x,), (out,), sub)
-
-    def c_code_cache_version(self):
-        return (1,)
-
 @constructor
 def old_shape(a):
     """
@@ -1211,10 +1155,6 @@ def old_shape(a):
         # all shape components are known at compile time, so we return
         # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
         return va.type.shape
-
-shape = Shape()
-_shape = shape  # was used in the past, now use shape directly.
-pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 
 class SpecifyShape(Op):
@@ -1356,11 +1296,7 @@ class MaxAndArgmax(Op):
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
 
-        if isinstance(axis, (int, numpy.integer)):
-            axis = [axis]
-        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
-            axis = [int(axis)]
-        elif isinstance(axis, (tuple, list)):
+        if isinstance(axis, (tuple, list)):
             axis = [int(a) for a in axis]
             if len(axis) != 1:
                 axis = list(axis)
@@ -1373,34 +1309,41 @@ class MaxAndArgmax(Op):
                 assert axis == range(x.type.ndim), (
                     "MaxAndArgmax does not support multiple"
                     " axes. the max fct supports it.")
+                axis = None
+            else:
+                axis = axis[0]
+
+        if isinstance(axis, (int, numpy.integer)):
+            axis = int(axis)
+        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+            axis = int(axis)
         elif isinstance(axis, Variable):
             if not isinstance(axis, TensorConstant):
                 raise TypeError("MaxAndArgmax needs a constant axis")
-            axis = axis.data
-            if axis.ndim == 0:
-                axis = [axis]
+            assert axis.dtype.startswith("int") or axis.dtype.startswith("uint")
+            axis = int(axis.data)
         # we make the axis all positive to make the infer_shape work
         # with negative axis
         if x.type.ndim > 0 and axis is not None:
-            for id, a in enumerate(axis):
-                if not isinstance(a, TensorVariable) and a < 0:
-                    if -a > x.type.ndim:
-                        raise ValueError('axis out of range')
-                    axis[id] = x.type.ndim + a
-        if axis is None:
-            axis = _as_tensor_variable(range(x.type.ndim))
-        else:
-            axis = _as_tensor_variable(axis)
-
+            if axis < 0:
+                if -axis > x.type.ndim:
+                    raise ValueError('axis out of range')
+                axis = x.type.ndim + axis
         # Verify that the axis is valid.
         all_axes = set()
-        for ax in axis.data:
-            if ax < 0 or ax >= x.type.ndim:
+        if axis is not None:
+            if axis < 0 or axis >= x.type.ndim:
                 raise ValueError(
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (axis, x.type.ndim))
-            all_axes.add(ax.item())
-        assert axis.ndim == 1
+            all_axes.add(axis)
+        else:
+            all_axes = range(x.ndim)
+        if axis is None:
+            axis = NoneConst.clone()
+        else:
+            axis = _as_tensor_variable(axis)
+            assert axis.ndim == 0
         inputs = [x, axis]
         # We keep the original broadcastable flags for dimensions on which
         # we do not perform the max / argmax.
@@ -1413,16 +1356,75 @@ class MaxAndArgmax(Op):
     def perform(self, node, inp, outs):
         x, axis = inp
         max, max_idx = outs
-        if python_all(axis == range(x.ndim)):
-            axis = None
         max[0] = theano._asarray(numpy.max(x, axis),
                                  dtype=node.outputs[0].dtype)
         max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int64')
 
+    def c_code(self, node, name, inp, out, sub):
+        x, axis = inp
+        max, argmax = out
+        fail = sub["fail"]
+
+        if NoneConst.equals(node.inputs[1]):
+            axis_code = "axis = NPY_MAXDIMS;"
+        else:
+            assert node.inputs[1].ndim == 0
+            axis_code = """
+            axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
+            if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
+                PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, bad axis argument");
+                %(fail)s
+            }
+            """ % locals()
+        ret = """
+        int axis;
+
+        Py_CLEAR(%(max)s);
+        Py_CLEAR(%(argmax)s);//todo pass them as out parameter.
+        %(axis_code)s
+        %(max)s = (PyArrayObject*)PyArray_Max(%(x)s, axis, NULL);
+        if(%(max)s == NULL){
+            PyErr_SetString(PyExc_ValueError,
+                         "MaxAndArgmax, max failed");
+            %(fail)s;
+        }
+        if(!PyArray_CheckExact(%(max)s)){
+            %(max)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(max)s, NULL, 0, 0, NPY_ARRAY_ENSUREARRAY, NULL);
+            if(%(max)s == NULL){
+                %(fail)s;
+            }
+        }
+
+        %(argmax)s = (PyArrayObject*)PyArray_ArgMax(%(x)s, axis, NULL);
+        if(%(argmax)s == NULL){
+            PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, argmax failed");
+            Py_CLEAR(%(max)s);
+            %(fail)s;
+        }
+        if(!PyArray_CheckExact(%(argmax)s)){
+            %(argmax)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(argmax)s, NULL, 0, 0, NPY_ARRAY_ENSUREARRAY, NULL);
+            if(%(argmax)s == NULL){
+                %(fail)s;
+            }
+        }
+        if(PyArray_TYPE(%(argmax)s) != NPY_INT64){
+            PyObject * tmp = PyArray_Cast(%(argmax)s, NPY_INT64);
+            if (NULL == tmp){
+                %(fail)s;
+            }
+            Py_DECREF(%(argmax)s);
+            %(argmax)s = (PyArrayObject*)tmp;
+        }
+        """
+        return ret % locals()
+
+    def c_code_cache_version(self):
+        return (3,)
+
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
         axis = node.inputs[1]
-        if python_all(axis.data == range(node.inputs[0].ndim)):
+        if node.inputs[1].data is None:
             return [(), ()]
         rval = tuple([ishape[i] for (i, b) in enumerate(
                     node.inputs[0].type.broadcastable) if i != axis.data])
@@ -1480,12 +1482,16 @@ class MaxAndArgmax(Op):
         # the gradient on its inputs is zero
         if g_max_disconnected:
             return [x.zeros_like(), axis_grad]
-        xmax = max(x, axis)
+        if NoneConst.equals(axis):
+            axis_ = range(x.ndim)
+        else:
+            axis_ = axis
+        xmax = max(x, axis_)
 
         # Raise the g_max and xmax to the same number of dim as the input.
         pattern = []
         out_dim = 0
-        if python_all(axis.data == range(x.ndim)):
+        if NoneConst.equals(axis):
             # We are taking the max/argmax over all dimensions.
             axis = None
         for i in range(x.ndim):
@@ -2631,12 +2637,30 @@ class Alloc(gof.Op):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (not isinstance(client[0], basestring)
-                    and isinstance(client[0].op, (
+            elif (#The following ops work inplace of their input id 0.
+                  client[1] == 0 and
+                  isinstance(client[0].op, (
+                    #Ops that will work inplace on the Alloc. So if they
+                    #get constant_folded, they would copy the
+                    #constant and this is less efficients.
+
+                    #Not doing the constant folding could also lower
+                    #the peak memory usage, as we the "constant" won't
+                    #always exists.
                         theano.tensor.subtensor.IncSubtensor,
                         theano.tensor.subtensor.AdvancedIncSubtensor1,
                         theano.tensor.subtensor.AdvancedIncSubtensor,
+                        theano.tensor.blas.Gemv,
+                        theano.tensor.blas_c.CGemv,
+                        theano.tensor.blas.Ger,
+                        theano.tensor.blas_c.CGer,
+                        theano.tensor.blas_scipy.ScipyGer
                         ))):
+                return False
+            #If the clients is a transfer to the GPU, we don't want to
+            #fold. We let the Alloc being moved to the GPU, then we
+            #let the GPU algo decide if it need to fold it or not.
+            elif client[0].op.__class__.__name__.lower().startswith("gpu"):
                 return False
         return True
 
@@ -2677,7 +2701,8 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 
 
 @constructor
-def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
+def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None,
+         no_zeros_in_input=False):
     """
     Computes the product along the given axis(es) of a tensor `input`
 
@@ -2691,7 +2716,8 @@ def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
     For full documentation see ``tensor.elemwise.Prod``.
     """
 
-    out = elemwise.Prod(axis, dtype=dtype, acc_dtype=acc_dtype)(input)
+    out = elemwise.Prod(axis, dtype=dtype, acc_dtype=acc_dtype,
+                        no_zeros_in_input=no_zeros_in_input)(input)
 
     if keepdims:
         out = makeKeepDims(input, out, axis)
@@ -3110,6 +3136,48 @@ def batched_dot(x, y):
     return result
 
 
+def batched_tensordot(x, y, axes=2):
+    """
+    :param x: A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
+    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    :param axes: an integer or array. If an integer, the number of axes
+                 to sum over. If an array, it must have two array
+                 elements containing the axes to sum over in each tensor.
+
+                 If an integer i, it is converted to an array containing
+                 the last i dimensions of the first tensor and the first
+                 i dimensions of the second tensor (excluding the first 
+                 (batch) dimension):
+                     axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+
+                 If an array, its two elements must contain compatible axes
+                 of the two tensors. For example, [[1, 2], [2, 4]] means sum
+                 over the 2nd and 3rd axes of a and the 3rd and 5th axes of b.
+                 (Remember axes are zero-indexed!) The 2nd axis of a and the
+                 3rd axis of b must have the same shape; the same is true for
+                 the 3rd axis of a and the 5th axis of b.
+    :type axes: int or array-like of length 2
+    
+    A hybrid of batch_dot and tensordot, this function computes the 
+    tensordot product between the two tensors, by iterating over the 
+    first dimension using scan to perform a sequence of tensordots.    
+    """
+    if isinstance(axes, (list, numpy.ndarray)):
+        if isinstance(axes, list):
+            axes = numpy.asarray(axes)
+        else:
+            axes = axes.copy()
+        assert numpy.greater(axes,0).all(), "All axes should be greater than one, as the first axis is iterated over (batch-wise scan)"
+        axes -= 1
+    
+    result, updates = theano.scan(fn=lambda x_mat, y_mat:
+            theano.tensor.tensordot(x_mat, y_mat, axes),
+            outputs_info=None,
+            sequences=[x, y],
+            non_sequences=None)
+    return result
+   
+
 def split(x, splits_size, n_splits, axis=0):
     the_split = Split(n_splits)
     return the_split(x, axis, splits_size)
@@ -3225,8 +3293,23 @@ class Split(Op):
 
     def grad(self, inputs, g_outputs):
         """Join the gradients along the axis that was used to split x."""
-        _, axis, n = inputs
-        return [join(axis, *g_outputs),
+        x, axis, n = inputs
+        outputs = self(*inputs, **dict(return_list=True))
+        # If all the output gradients are disconnected, then so are the inputs
+        if python_all([isinstance(g.type, DisconnectedType)
+                       for g in g_outputs]):
+            return [DisconnectedType()(),
+                    grad_undefined(self, 1, axis),
+                    grad_undefined(self, 2, n)]
+        # Else, we have to make them zeros before joining them
+        new_g_outputs = []
+        for o, g in zip(outputs, g_outputs):
+            if isinstance(g.type, DisconnectedType):
+                new_g_outputs.append(o.zeros_like())
+            else:
+                new_g_outputs.append(g)
+
+        return [join(axis, *new_g_outputs),
                 grad_undefined(self, 1, axis),
                 grad_undefined(self, 2, n)]
 
@@ -3317,6 +3400,37 @@ class Rebroadcast(Op):
             return [None]
         return self(*eval_points, **dict(return_list=True))
 
+    def c_code(self, node, nodename, inp, out, sub):
+        iname, = inp
+        oname, = out
+        fail = sub['fail']
+        if isinstance(node.inputs[0].type, TensorType):
+            code = ""
+            for axis, value in self.axis.iteritems():
+                if value:
+                    code += """
+                if(PyArray_DIMS(%(iname)s)[%(axis)s] != 1){
+                    PyErr_Format(PyExc_ValueError,
+                        "Dimension %(axis)s in Rebroadcast's input was"
+                        " supposed to be 1 (got %%d instead)",
+                        PyArray_DIMS(%(iname)s)[%(axis)s]);
+                    %(fail)s
+                }
+                """ % locals()
+
+            return code + """
+            Py_XDECREF(%(oname)s);
+            %(oname)s = %(iname)s;
+            Py_XINCREF(%(oname)s);
+            """ % locals()
+        else:
+            #TODO: if your type is not listed here, make a damn registry of
+            #      shape_i ops for various types of variables.
+            #      Do not continue this madness.
+            return super(Rebroadcast, self).c_code(node, nodename, inp, out, sub)
+
+    def c_code_cache_version(self):
+        return (1,)
 
 def addbroadcast(x, *axes):
     """
@@ -3457,13 +3571,7 @@ class Join(Op):
                 except IndexError:
                     raise ValueError('Join argument "axis" is out of range'
                                      ' (given input dimensions)')
-                as_tensor_variable_args = [unbroadcast(x, axis)
-                                           for x in as_tensor_variable_args]
             else:
-                # These unbroadcasts are for the gradient... not sure exactly
-                # why...
-                as_tensor_variable_args = [unbroadcast(x, *range(x.type.ndim))
-                                           for x in as_tensor_variable_args]
                 # When the axis may vary, no dimension can be guaranteed to be
                 # broadcastable.
                 bcastable = [False] * len(
@@ -3489,6 +3597,36 @@ class Join(Op):
         out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
                 dtype=node.outputs[0].type.dtype)
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        axis, tensors = inputs[0], inputs[1:]
+        l = len(tensors)
+        out, = outputs
+        fail = sub['fail']
+
+        code = """
+        PyObject* list = PyList_New(%(l)s);
+        """ % locals()
+        for i, inp in enumerate(tensors):
+            code += """
+            Py_INCREF(%(inp)s);
+            PyList_SetItem(list, %(i)s, (PyObject*)%(inp)s);
+            """ % locals()
+        code += """
+        //PyObject* PyArray_Concatenate(PyObject* obj, int axis)
+        Py_XDECREF(%(out)s);
+        %(out)s = (PyArrayObject *)PyArray_Concatenate(list,
+                      ((dtype_%(axis)s *)PyArray_DATA(%(axis)s))[0]);
+
+        Py_DECREF(list);
+        if(!%(out)s){
+            %(fail)s
+        }
+        """ % locals()
+        return code
+
     def R_op(self, inputs, eval_points):
         if None in eval_points[1:]:
             return [None]
@@ -3511,7 +3649,11 @@ class Join(Op):
             # If there is only one split, it might not be in a list.
             if not isinstance(split_gz, list):
                 split_gz = [split_gz]
-
+            # Split.make_node isn't always able to infer the right
+            # broadcast. As the grad need to keep the information,
+            # readd it if needed.
+            split_gz = [patternbroadcast(g, t.broadcastable)
+                        for t, g in zip(tensors, split_gz)]
             rval = rval + split_gz
         else:
             # the output has integer type, so the gradient through it

@@ -82,17 +82,17 @@ UnicodeDecodeError if there are non-ASCII characters in NEWS.txt. You
 would need to change NEWS.txt so it contains only ASCII characters (the
 problem usually comes from diacritics in people's names).
 
-On freshmeat
-------------
+On freecode (formaly freshmeat)
+-------------------------------
 
-Theano project page at freshmeat is `here <http://freshmeat.net/projects/theano>`__.
-The package itself is not uploaded to freshmeat, the only thing to update is
+Theano project page at freecode is `here <http://freecode.com/projects/theano>`__.
+The package itself is not uploaded to freecode, the only thing to update is
 the description and tags.
 
 ou can request the rights to add a release from an admin (for instance Fred),
 pointing them to `the "roles" page
-<http://freshmeat.net/projects/theano/roles>`__. Then, create a new release from
-`the "releases" page <http://freshmeat.net/projects/theano/releases>`__.
+<http://freecode.net/projects/theano/roles>`__. Then, create a new release from
+`the "releases" page <http://freecode.net/projects/theano/releases>`__.
 
 On mloss.org
 ------------
@@ -188,6 +188,7 @@ from ``NEWS.txt``, and send it to the following mailing lists:
 * theano-announce
 * numpy-discussion@scipy.org
 * scipy-user@scipy.org
+* G+, Scientific Python: https://plus.google.com/communities/108773711053400791849
 
 For release candidates, only e-mail:
 

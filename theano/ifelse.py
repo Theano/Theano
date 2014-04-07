@@ -384,7 +384,7 @@ def ifelse(condition, then_branch, else_branch, name=None):
         return tuple(rval)
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([IfElse])
 def cond_make_inplace(node):
     op = node.op
     if isinstance(op, IfElse) and not op.as_view:
@@ -445,7 +445,7 @@ acceptable_ops = (theano.tensor.basic.Dot,
                   theano.tensor.elemwise.DimShuffle)
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer(acceptable_ops)
 def ifelse_lift_single_if_through_acceptable_ops(main_node):
     """This optimization lifts up certain ifelse instances.
 
@@ -493,7 +493,7 @@ def ifelse_lift_single_if_through_acceptable_ops(main_node):
     return nw_outs
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([IfElse])
 def cond_merge_ifs_true(node):
     op = node.op
     if not isinstance(op, IfElse):
@@ -517,7 +517,7 @@ def cond_merge_ifs_true(node):
     return op(*old_ins, **dict(return_list=True))
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([IfElse])
 def cond_merge_ifs_false(node):
     op = node.op
     if not isinstance(op, IfElse):
@@ -592,7 +592,7 @@ class CondMerge(gof.Optimizer):
                 fgraph.replace_all_validate(pairs, reason='cond_merge')
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([IfElse])
 def cond_remove_identical(node):
     op = node.op
 
@@ -643,7 +643,7 @@ def cond_remove_identical(node):
     return rval
 
 
-@gof.local_optimizer([None])
+@gof.local_optimizer([IfElse])
 def cond_merge_random_op(main_node):
     if isinstance(main_node.op, IfElse):
         return False
