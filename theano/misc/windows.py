@@ -4,7 +4,9 @@ import subprocess
 
 def subprocess_Popen(command, **params):
     """
-    Utility function to work around windows behavior that open windows
+    Utility function to work around windows behavior that open windows.
+
+    :see: call_subprocess_Popen and output_subprocess_Popen
     """
     startupinfo = None
     if os.name == 'nt':
@@ -38,6 +40,10 @@ def subprocess_Popen(command, **params):
     return proc
 
 def call_subprocess_Popen(command, **params):
+    """
+    Calls subprocess_Popen and discards the output, returning only the
+    exit code.
+    """
     if 'stdout' in params or 'stderr' in params:
         raise TypeError("don't use stderr or stdout with call_subprocess_Popen")
     null = open(os.devnull, 'wb')
@@ -51,6 +57,10 @@ def call_subprocess_Popen(command, **params):
     return p.returncode
 
 def output_subprocess_Popen(command, **params):
+    """
+    Calls subprocess_Popen, returning the output, error and exit code
+    in a tuple.
+    """
     if 'stdout' in params or 'stderr' in params:
         raise TypeError("don't use stderr or stdout with output_subprocess_Popen")
     # stdin to devnull is a workaround for a crash in a weird Windows
@@ -61,5 +71,7 @@ def output_subprocess_Popen(command, **params):
     params['stdout'] = subprocess.PIPE
     params['stderr'] = subprocess.PIPE
     p = subprocess_Popen(command, **params)
+    # we need to use communicate to make sure we don't deadlock around
+    # the stdour/stderr pipe.
     out = p.communicate()
     return out + (p.returncode,)
