@@ -29,7 +29,8 @@ from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import (subprocess_Popen, call_subprocess_Popen,
+                                 output_subprocess_Popen)
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
@@ -1516,11 +1517,8 @@ def gcc_llvm():
         pass
         p = None
         try:
-            p = call_subprocess_Popen(['g++', '--version'],
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
-            p.wait()
-            output = p.stdout.read() + p.stderr.read()
+            p_out = output_subprocess_Popen(['g++', '--version'])
+            output = p_out[0] + p_out[1]
         except OSError:
             # Typically means g++ cannot be found.
             # So it is not an llvm compiler.
@@ -1573,11 +1571,11 @@ class GCC_compiler(object):
             GCC_compiler.march_flags = []
 
             def get_lines(cmd, parse=True):
-                p = call_subprocess_Popen(cmd,
-                                          stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE,
-                                          stdin=subprocess.PIPE,
-                                          shell=True)
+                p = subprocess_Popen(cmd,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     stdin=subprocess.PIPE,
+                                     shell=True)
                 # For mingw64 with GCC >= 4.7, passing os.devnull
                 # as stdin (which is the default) results in the process
                 # waiting forever without returning. For that reason,
@@ -1815,21 +1813,15 @@ class GCC_compiler(object):
                 os.write(fd, src_code)
                 os.close(fd)
                 fd = None
-                proc = call_subprocess_Popen(
-                        ['g++', path, '-o', exe_path] + flags,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
-                proc.wait()
-                if proc.returncode != 0:
+                p_ret = call_subprocess_Popen(
+                    ['g++', path, '-o', exe_path] + flags)
+                if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
                     # Try to execute the program
                     try:
-                        proc = call_subprocess_Popen([exe_path],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-                        proc.wait()
-                        run_ok = (proc.returncode == 0)
+                        p_ret = call_subprocess_Popen([exe_path])
+                        run_ok = (p_ret == 0)
                     finally:
                         os.remove(exe_path)
             finally:
@@ -1962,14 +1954,14 @@ class GCC_compiler(object):
             print >> sys.stderr, ' '.join(cmd)
 
         try:
-            p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
-            compile_stderr = decode(p.communicate()[1])
+            p_out = output_subprocess_Popen(cmd)
+            compile_stderr = decode(p_out[1])
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
             print_command_line_error()
             raise
 
-        status = p.returncode
+        status = p_out[2]
 
         if status:
             print '==============================='
