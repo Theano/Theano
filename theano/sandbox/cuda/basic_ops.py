@@ -3471,7 +3471,7 @@ class GpuSVD(GpuOp):
         else:
             raise Exception("Could not find the cula library path to import.")
 
-        return ["-I${%s}" % cula_inc_path, "-L${%s}" % cula_lib_path]
+        return ["-I${%s}" % cula_inc_path, "-L${%s}" % cula_lib_path, "-ggdb", "-Wall"]
 
     def c_support_code(self):
         return "culaStatus status;"
@@ -3532,17 +3532,17 @@ class GpuSVD(GpuOp):
         void * orig_w = %(w)s;
         void * orig_v = %(v)s;
 
-        if (CudaNdarray_prep_output(& %(w)s, 1, w_dims, fortran=1))
+        if (CudaNdarray_prep_output(& %(w)s, 1, w_dims, 1))
         {
             %(fail)s;
         }
 
-        if (CudaNdarray_prep_output(& %(u)s, 2, u_dims, fortran=1))
+        if (CudaNdarray_prep_output(& %(u)s, 2, u_dims, 1))
         {
             %(fail)s;
         }
 
-        if (CudaNdarray_prep_output(& %(v)s, 2, v_dims, fortran=1))
+        if (CudaNdarray_prep_output(& %(v)s, 2, v_dims, 1))
         {
             %(fail)s;
         }
