@@ -861,6 +861,7 @@ class Elemwise(OpenMPOp):
 
         if nout == 1:
             variables = [variables]
+        i = 0
         for variable, storage, nout in izip(variables, output_storage,
                                             node.outputs):
             if getattr(variable, "dtype", "") == 'object':
@@ -868,15 +869,17 @@ class Elemwise(OpenMPOp):
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
 
+            if i in self.inplace_pattern:
+                odat = inputs[self.inplace_pattern[i]]
+                odat[...] = variable
+                storage[0] = odat
             # Sometimes NumPy return a Python type.
-            if not isinstance(variable, numpy.ndarray):
+            elif not isinstance(variable, numpy.ndarray):
                 variable = numpy.asarray(variable, nout.dtype)
-
-            storage[0] = variable
-
-        # the following should be used instead of the previous loop,
-        # unfortunately it tends to segfault
-        # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
+                storage[0] = variable
+            else:
+                storage[0] = variable
+            i += 1
 
     def infer_shape(self, node, i_shapes):
         rval = []
