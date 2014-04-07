@@ -367,7 +367,7 @@ expandable_types = ()
 
 class FromFunctionOp(gof.Op):
     """
-    Build a basic theano Op around a function.
+    Build a basic Theano Op around a function.
 
     Since the resulting Op is very basic and is missing most of the
     optional functionality, some optimization may not apply.  If you
@@ -414,7 +414,7 @@ class FromFunctionOp(gof.Op):
 
 def as_op(itypes, otypes, infer_shape=None):
     """
-    Decorator that converts a function into a basic theano op that
+    Decorator that converts a function into a basic Theano op that
     will call the supplied function as its implementation.
 
     It takes an optional infer_shape parameter that should be a
