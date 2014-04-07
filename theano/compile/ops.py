@@ -395,7 +395,9 @@ class FromFunctionOp(gof.Op):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
 
     def make_node(self, *inputs):
-        return theano.Apply(self, self.itypes, self.otypes)
+        assert len(inputs) == len(self.itypes)
+        assert all(inp.type == it for inp, it in zip(inputs, self.itypes))
+        return theano.Apply(self, inputs, [o() for o in self.otypes])
 
     def perform(self, node, inputs, outputs):
         outs = self.__fn(*inputs)
@@ -433,8 +435,8 @@ def as_op(itypes, otypes, infer_shape=None):
 
     Example usage:
 
-       @as_op(itypes=[theano.tensor.fmatrix(), theano.tensor.fmatrix()],
-              otypes=[theano.tensor.fmatrix()])
+       @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+              otypes=[theano.tensor.fmatrix])
        def numpy_dot(a, b):
            return numpy.dot(a, b)
     """
