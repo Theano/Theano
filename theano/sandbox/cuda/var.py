@@ -52,4 +52,4 @@ class CudaNdarrayConstant(_operators, Constant):
         return "CudaNdarrayConstant{"+str(numpy.asarray(self.data))+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
-
+CudaNdarrayType.SharedVariable = tensor.sharedvar.TensorSharedVariable
