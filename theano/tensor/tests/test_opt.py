@@ -1207,6 +1207,36 @@ class test_fusion(unittest.TestCase):
         # Test it on some dummy values
         f(*[range(i, 4 + i) for i in range(35)])
 
+    def test_pickle_big_fusion(self):
+        """In the past, pickle of Composite generated in tha case
+        crashed with max recusion limit. So we where not able to
+        generate C code in that case.
+
+        """
+        factors = []
+        sd = tensor.dscalar()
+        means = tensor.dvector()
+
+        cst_05 = theano.tensor.constant(.5)
+        cst_m05 = theano.tensor.constant(-.5)
+        cst_2 = theano.tensor.constant(2)
+        cst_m2 = theano.tensor.constant(-2)
+        ones = theano.tensor.constant(numpy.ones(10))
+        n = 85
+        if theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+            n = 10
+
+        for i in range(n):
+            f = (cst_m05 * sd ** cst_m2 * (ones - means[i]) ** cst_2 +
+                 cst_05 * tensor.log(cst_05 * (sd ** cst_m2) / numpy.pi))
+            factors.append(tensor.sum(f))
+
+        logp = tensor.add(*factors)
+
+        vars = [sd, means]
+        dlogp = function(vars, [theano.grad(logp, v) for v in vars])
+        dlogp(2, numpy.random.rand(n))
+
     def speed_fusion(self, shared_fn=shared, gpu=False, s=None):
         """
         param type s: a slice object
@@ -1676,8 +1706,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y, z], tensor.exp(x + y + z)[0], mode=mode_opt)
 
         prog = f.maker.fgraph.toposort()
-        assert isinstance(prog[1].op, tensor.DimShuffle)
-        assert isinstance(prog[0].op, tensor.Subtensor)  # first subtensor
+        assert isinstance(prog[0].op, tensor.DimShuffle)
+        assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[2].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[3].op.scalar_op, theano.scalar.
             Composite)  # Composite{add,add}
@@ -1693,8 +1723,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y, z], tensor.exp(x + y + z)[0:2], mode=mode_opt)
 
         prog = f.maker.fgraph.toposort()
-        assert isinstance(prog[1].op, tensor.DimShuffle)
-        assert isinstance(prog[0].op, tensor.Subtensor)  # first subtensor
+        assert isinstance(prog[0].op, tensor.DimShuffle)
+        assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[2].op, tensor.Subtensor)  # first subtensor
         assert isinstance(prog[3].op.scalar_op, theano.scalar.
             Composite)  # Composite{add,add}
@@ -3402,7 +3432,7 @@ class T_local_erfc(unittest.TestCase):
         assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert len(f.maker.fgraph.toposort()[0].fgraph.toposort()[
-            0].op.scalar_op.fgraph.apply_nodes)==2,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
+            0].op.scalar_op.fgraph.apply_nodes)==22,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         #TODO: fix this problem
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest(
