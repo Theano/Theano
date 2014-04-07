@@ -1218,7 +1218,7 @@ class test_fusion(unittest.TestCase):
         means = tensor.dvector()
 
         cst_05 = theano.tensor.constant(.5)
-        cst_m05 = theano.tensor.constant(2)
+        cst_m05 = theano.tensor.constant(-.5)
         cst_2 = theano.tensor.constant(2)
         cst_m2 = theano.tensor.constant(-2)
         ones = theano.tensor.constant(numpy.ones(10))
