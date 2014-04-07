@@ -374,7 +374,7 @@ class FromFunctionOp(gof.Op):
     want to help, you can supply an infer_shape function that computes
     the shapes of the output given the shapes of the inputs.
 
-    Also the gradient is undefined in the resulting op and theano will
+    Also the gradient is undefined in the resulting op and Theano will
     raise an error if you attempt to get the gradient of a graph
     containing this op.
     """
@@ -443,11 +443,11 @@ def as_op(itypes, otypes, infer_shape=None):
     if not isinstance(itypes, (list, tuple)):
         itypes = [itypes]
     if any(not isinstance(t, theano.Type) for t in itypes):
-        raise TypeError("itypes has to be a list of theano types")
+        raise TypeError("itypes has to be a list of Theano types")
     if not isinstance(otypes, (list, tuple)):
         otypes = [otypes]
     if any(not isinstance(t, theano.Type) for t in otypes):
-        raise TypeError("otypes has to be a list of theano types")
+        raise TypeError("otypes has to be a list of Theano types")
 
     # make sure they are lists and not tuples
     itypes = list(itypes)
