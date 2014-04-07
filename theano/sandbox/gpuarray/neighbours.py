@@ -1,5 +1,5 @@
-# This is work in progress
 import numpy
+
 from theano import Op, Apply, config
 from theano.gof import local_optimizer
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
@@ -29,10 +29,11 @@ class GpuImages2Neibs(Images2Neibs, Op):
 
     def make_node(self, ten4, neib_shape, neib_step):
 
-        assert ten4.dtype in ['int64', 'float32', 'float64']
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
+        assert "int" in neib_shape.dtype
+        assert "int" in neib_step.dtype
 
         ten4 = as_gpuarray_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
@@ -220,6 +221,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
         z, = out
         fail = sub['fail']
         mode = self.mode
+        import pdb
+        pdb.set_trace()
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
@@ -235,19 +238,22 @@ class GpuImages2Neibs(Images2Neibs, Op):
         {
             if (PyGpuArray_NDIM(%(ten4)s) != 4)
             {
-                PyErr_Format(PyExc_TypeError, "pvals wrong rank");
+                PyErr_Format(PyExc_TypeError,
+                             "GpuImages2Neibs: pvals wrong rank");
                 %(fail)s;
             }
             if (PyArray_NDIM(%(neib_shape)s) != 1)
             {
-                PyErr_Format(PyExc_TypeError, "unis wrong rank");
+                PyErr_Format(PyExc_TypeError,
+                             "GpuImages2Neibs: unis wrong rank");
                 %(fail)s;
             }
 
             if (PyArray_DIMS(%(neib_shape)s)[0] != 2)
             {
                 PyErr_Format(PyExc_ValueError,
-                             "neib_shape has to contain two elements");
+                             "GpuImages2Neibs: neib_shape has to contain two"
+                             " elements");
                 %(fail)s;
             }
 
@@ -263,16 +269,16 @@ class GpuImages2Neibs(Images2Neibs, Op):
             if ( "%(mode)s" == "wrap_centered") {
                 if (c%%2!=1 || d%%2!=1){
                     PyErr_Format(PyExc_TypeError,
-        "Images2Neibs: in mode wrap_centered need patch with odd shapes");
+        "GpuImages2Neibs: in mode wrap_centered need patch with odd shapes");
                     %(fail)s;
                 }
                 if ( PyGpuArray_DIMS(%(ten4)s)[2] < c ||
                      PyGpuArray_DIMS(%(ten4)s)[3] < d)
                 {
                     PyErr_Format(PyExc_TypeError,
-                                 "Images2Neibs: in wrap_centered mode, don't"
-                                 " support image shapes smaller then the patch"
-                                 " shapes: neib_shape=(%%d,%%d),"
+                                 "GpuImages2Neibs: in wrap_centered mode,"
+                                 " don't support image shapes smaller then"
+                                 " the patch shapes: neib_shape=(%%d,%%d),"
                                  " ten4[2:]=[%%d,%%d]",
                                  c, d, PyGpuArray_DIMS(%(ten4)s)[2],
                                  PyGpuArray_DIMS(%(ten4)s)[3]);
@@ -288,8 +294,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 if ( ((PyGpuArray_DIMS(%(ten4)s))[2] < c) ||
                      ((((PyGpuArray_DIMS(%(ten4)s))[2]-c) %% step_x)!=0))
                 {
-                    PyErr_Format(PyExc_TypeError,
-                                 "neib_shape[0]=%%d, neib_step[0]=%%d and"
+                    PyErr_Format(PyExc_TypeError, "GpuImages2Neibs:"
+                                 " neib_shape[0]=%%d, neib_step[0]=%%d and"
                                  " ten4.shape[2]=%%d not consistent",
                                  c, step_x,
                                  PyGpuArray_DIMS(%(ten4)s)[2]);
@@ -298,8 +304,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 if ( ((PyGpuArray_DIMS(%(ten4)s))[3] < d) ||
                      ((((PyGpuArray_DIMS(%(ten4)s))[3]-d) %% step_y)!=0))
                 {
-                    PyErr_Format(PyExc_TypeError,
-                                 "neib_shape[1]=%%d, neib_step[1]=%%d and"
+                    PyErr_Format(PyExc_TypeError, "GpuImages2Neibs:"
+                                 " neib_shape[1]=%%d, neib_step[1]=%%d and"
                                  " ten4.shape[3]=%%d not consistent",
                                  d, step_y,
                                  PyGpuArray_DIMS(%(ten4)s)[3]);
@@ -316,7 +322,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
             }else{
                 PyErr_Format(PyExc_TypeError,
-                             "Images2Neibs: unknow mode '%(mode)s'");
+                             "GpuImages2Neibs:: unknow mode '%(mode)s'");
                  %(fail)s;
             }
 
@@ -340,8 +346,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                     Py_None);
                 if (!%(z)s)
                 {
-                    PyErr_SetString(PyExc_MemoryError,
-                                    "failed to alloc z output");
+                    PyErr_SetString(PyExc_MemoryError, "GpuImages2Neibs:"
+                                    " failed to alloc z output");
                     %(fail)s;
                 }
             }
@@ -419,8 +425,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
             cudaError_t sts = cudaGetLastError();
             if (cudaSuccess != sts)
             {
-                PyErr_Format(PyExc_RuntimeError,
-                             "Cuda error: %%s: %%s. (grid: %%i x %%i;"
+                PyErr_Format(PyExc_RuntimeError, "GpuImages2Neibs:"
+                             " Cuda error: %%s: %%s. (grid: %%i x %%i;"
                              " block: %%i x %%i x %%i; shared: %%i)\\n",
                     "k_multi_warp_%(name)s",
                     cudaGetErrorString(sts),
@@ -441,12 +447,10 @@ def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     return GpuImages2Neibs(mode)(ten4, neib_shape, neib_step)
 
 
-@local_optimizer([Images2Neibs])
+@op_lifter([Images2Neibs])
 def use_gpu_images2neibs(node):
     if (type(node.op) is Images2Neibs and
-        node.inputs[0].dtype in ['int64', 'float32', 'float64'] and
-        node.op.mode in ['valid', 'ignore_borders',
-                         'wrap_centered']):
+        node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']):
         return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),
                                                node.inputs[1], node.inputs[2],
                                                mode=node.op.mode))]
