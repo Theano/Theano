@@ -10,7 +10,7 @@ import warnings
 import numpy
 
 from theano import Op, Apply, shared, config, Variable
-from theano import gradient
+from theano import gradient, function
 from theano import tensor
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
                            get_vector_length, cast, opt, scal)
@@ -34,21 +34,45 @@ def matVecModM(A, s, m):
     return numpy.int32(numpy.sum((A*s) % m, 1) % m)
 
 
+dot_modulo = None
 def multMatVect(v, A, m1, B, m2):
+    """
+    multiply the first half of v by A with a modulo of m1
+    and the second half by B with a modulo of m2
+    
+    Note: The parameters of dot_modulo are passed implicitly because passing
+    them explicitly takes more time then running the function's C-code.
+    """
     #multiply the first half of v by A with a modulo of m1
     #and the second half by B with a modulo of m2
-    err_orig = numpy.seterr(over='ignore')
-    try:
-        r = numpy.zeros_like(v)
-        r[:3] = matVecModM(A, v[:3], m1)
-        r[3:] = matVecModM(B, v[3:], m2)
-    finally:
-        numpy.seterr(**err_orig)
+    global dot_modulo
+    if dot_modulo == None:
+        A_sym = tensor.lmatrix('A')
+        s_sym = tensor.ivector('s')
+        m_sym = tensor.iscalar('m')
+        
+        dot_modulo = function([A_sym, s_sym, m_sym],
+            DotModulo()(A_sym, s_sym, m_sym))
+    
+    r = numpy.zeros_like(v)
+    dot_modulo.input_storage[0].storage[0] = A
+    dot_modulo.input_storage[1].storage[0] = v[:3]
+    dot_modulo.input_storage[2].storage[0] = m1
+    r[:3] = dot_modulo.fn()[0]
+    
+    dot_modulo.input_storage[0].storage[0] = B
+    dot_modulo.input_storage[1].storage[0] = v[3:]
+    dot_modulo.input_storage[2].storage[0] = m2
+    r[3:] = dot_modulo.fn()[0]
+    
     return r
 
 
-
 class DotModulo(Op):
+    """
+    Efficient and numerically stable implementation of a dot product followed
+    by a modulo operation. This performs the same function as matVecModM.
+    """
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -61,8 +85,8 @@ class DotModulo(Op):
     def perform(self, node, (A, s, m), (out, )):
         out[0] = matVecModM(A, s, m)
     
-    #def c_code_cache_version(self):
-    #    return (2,)
+    def c_code_cache_version(self):
+        return (3,)
 
     def c_code(self, node, name, (_A, _s, _m), (_z, ), sub):
         return """
@@ -105,7 +129,7 @@ class DotModulo(Op):
                 
                 for (npy_int32 j = 0; j < N; ++j)
                 {
-                    r += Ds[j * Ss] * (npy_int64)(Ak[j * SA]);
+                    r += (npy_int64)(Ds[j * Ss] * (npy_int64)(Ak[j * SA])) %% m;
                 }
                 
                 Dz[i * Sz] = r %% m;
@@ -117,13 +141,13 @@ class DotModulo(Op):
 
 #MRG31k3p
 #generator constants :
-M1 = numpy.int32(2147483647)    #2^31 - 1
-M2 = numpy.int32(2147462579)    #2^31 - 21069
-MASK12 = numpy.int32(511)       #2^9 - 1
-MASK13 = numpy.int32(16777215)  #2^24 - 1
-MASK2 = numpy.int32(65535)      #2^16 - 1
+M1 = numpy.asarray(numpy.int32(2147483647))    #2^31 - 1
+M2 = numpy.asarray(numpy.int32(2147462579))    #2^31 - 21069
+MASK12 = numpy.int32(511)                      #2^9 - 1
+MASK13 = numpy.int32(16777215)                 #2^24 - 1
+MASK2 = numpy.int32(65535)                     #2^16 - 1
 MULT2 = numpy.int32(21069)
-NORM = 4.656612873077392578125e-10; #1./2^31
+NORM = 4.656612873077392578125e-10;            #1./2^31
 
 #A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
