@@ -99,7 +99,7 @@ def is_nvcc_available():
     """Return True iff the nvcc compiler is found."""
     def set_version():
         p_out = output_subprocess_Popen([nvcc_path, '--version'])
-        ver_line = decode(p_out[0].split('\n')[-1])
+        ver_line = decode(p_out[0]).strip().split('\n')[-1]
         build, version = ver_line.split(',')[1].strip().split()
 
         assert build == 'release'
