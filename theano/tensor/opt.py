@@ -5145,4 +5145,4 @@ else:
 # Although the op just returns its input, it should be removed from
 # the graph to make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
-    'fast_compile', name='remove_consider_constant')
+    'fast_compile', 'fast_run', name='remove_consider_constant')
