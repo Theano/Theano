@@ -1632,8 +1632,10 @@ else:
 #GpuElemwise inplace
 gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
         GpuElemwise)
+# DO NOT PLACE add a 'gpu' tag here! This would enable it in fast_compile.
+# It still will be run in fast_run with device=gpu with the current tag.
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
-               'fast_run', 'inplace', 'gpu_inplace', 'gpu')
+               'fast_run', 'inplace', 'gpu_inplace')
 
 
 @register_opt()
