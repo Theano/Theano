@@ -1580,10 +1580,8 @@ def local_upcast_elemwise_constant_inputs(node):
                     new_inputs.append(i)
                 else:
                     try:
-                        if not isinstance(i, Constant):
-                            raise NotScalarConstantError()
                         # works only for scalars
-                        cval_i = get_scalar_constant_value(i)
+                        cval_i = get_scalar_constant_value(i, elemwise=False)
                         if all(i.broadcastable):
                             new_inputs.append(T.shape_padleft(
                                 T.cast(cval_i, output_dtype),
@@ -2328,9 +2326,8 @@ def local_remove_switch_const_cond(node):
                if cond is constant and cond != 0: left
     """
     if (isinstance(node.op, T.Elemwise) and
-        isinstance(node.op.scalar_op, scalar.basic.Switch) and
-        isinstance(node.inputs[0], Constant)):
-        cond = T.extract_constant(node.inputs[0])
+        isinstance(node.op.scalar_op, scalar.basic.Switch)):
+        cond = T.extract_constant(node.inputs[0], elemwise=False)
         if type(cond) is numpy.ndarray and cond.ndim == 0:
             if cond == 0:
                 out = node.inputs[2]

@@ -532,7 +532,7 @@ get_scalar_constant_value_elemwises = (
     scal.LT, scal.GT, scal.LE, scal.GE,
     scal.Sub, scal.Add, scal.Mod, scal.Mul,
     scal.IntDiv, scal.TrueDiv)
-def get_scalar_constant_value(orig_v):
+def get_scalar_constant_value(orig_v, elemwise=True):
     """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
@@ -540,6 +540,9 @@ def get_scalar_constant_value(orig_v):
 
     If `v` is not some view of constant scalar data, then raise a
     NotScalarConstantError.
+
+    :param elemwise: If False, we won't try to go into elemwise.
+        So this call is faster.
 
     :note: There may be another function similar to this one in the
         code, but I'm not sure where it is.
@@ -590,7 +593,7 @@ def get_scalar_constant_value(orig_v):
                     ret = [[None]]
                     v.owner.op.perform(v.owner, const, ret)
                     return ret[0][0]
-            elif isinstance(v.owner.op, Elemwise):
+            elif elemwise and isinstance(v.owner.op, Elemwise):
                 if isinstance(v.owner.op.scalar_op, scal.Second):
                     # We don't need both input to be constant for second
                     shape, val = v.owner.inputs
@@ -3079,7 +3082,7 @@ pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 ##########################
 
 
-def extract_constant(x):
+def extract_constant(x, elemwise=True):
     '''
      This function is basically a call to tensor.get_scalar_constant_value. The
      main difference is the behaviour in case of failure. While
@@ -3089,7 +3092,7 @@ def extract_constant(x):
      ScalarVariable, we convert it to a tensor with tensor_from_scalar.
     '''
     try:
-        x = get_scalar_constant_value(x)
+        x = get_scalar_constant_value(x, elemwise=elemwise)
     except NotScalarConstantError:
         pass
     if (isinstance(x, scal.ScalarVariable) or
