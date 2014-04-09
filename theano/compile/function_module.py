@@ -1068,6 +1068,7 @@ class FunctionMaker(object):
             theano.config.compute_test_value = theano.config.compute_test_value_opt
             gof.Op.add_stack_trace_on_call = False
             start_optimizer = time.time()
+            import ipdb; ipdb.set_trace()
             optimizer_profile = optimizer(fgraph)
             end_optimizer = time.time()
             opt_time = end_optimizer - start_optimizer
