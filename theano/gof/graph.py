@@ -873,6 +873,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
     # Get result from the merge-based function.
     rval1 = is_same_graph_with_merge(var1=var1, var2=var2, givens=givens)
     # Get result from the function `equal_computations` from scan_utils.
+    import ipdb;ipdb.set_trace()
     use_equal_computations = True
     if givens:
         # We need to build the `in_xs` and `in_ys` lists. To do this, we need
