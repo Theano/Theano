@@ -55,10 +55,10 @@ gpu_optimizer = EquilibriumDB(ignore_newtrees=False)
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
-        'fast_run', 'inplace', 'gpu')
+        'fast_run', 'fast_compile', 'inplace', 'gpu')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
-        'fast_run', 'gpu')
-# DO NOT PUT fast_run in gpu_opt! This will ALWAYS enable the GPU!
+        'fast_run', 'fast_compile', 'gpu')
+# DO NOT PUT fast_run or fast_compile in gpu_opt! This will ALWAYS enable the GPU!
 optdb.register('gpu_opt',
                gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
@@ -72,13 +72,15 @@ optdb.register('gpu_after_fusion',
                'gpu')
 
 ## Register merge_optimizer as a global opt
-gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer, 'fast_run')
+gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer,
+                       'fast_run', 'fast_compile')
 
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        gpu_optimizer.register(name, local_opt, 'fast_run', 'gpu', *tags)
+        gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
+                               'gpu', *tags)
         return local_opt
     return f
 
@@ -163,14 +165,15 @@ def local_cut_gpu_host_gpu(node):
         return [node.inputs[0].owner.inputs[0]]
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
-        'fast_run', 'gpu')
+                        'fast_run', 'fast_compile', 'gpu')
 gpu_cut_copies.register('cut_gpu_constant_transfers',
                         tensor.opt.constant_folding,
-                        'fast_run', 'gpu')
+                        'fast_run', 'fast_compile', 'gpu')
 #register it into canonicalize to allow other optimization to work without
 #botering with this useless pattern.
 optdb['canonicalize'].register('local_cut_gpu_host_gpu',
-                               local_cut_gpu_host_gpu, 'fast_run', 'gpu')
+                               local_cut_gpu_host_gpu,
+                               'fast_run', 'fast_compile', 'gpu')
 
 # 'float64', 'complex128' and 'complex64' are not supported in elemwise
 # on the gpu.

@@ -414,6 +414,7 @@ def use(device,
 
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu_opt',
+                       'fast_compile',
                        'fast_run',
                        'inplace')
         optdb.add_tags('gpu_after_fusion',
