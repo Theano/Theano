@@ -32,11 +32,13 @@ if not theano.sandbox.gpuarray.pygpu_activated:
 
 from theano.sandbox.gpuarray.type import (GpuArrayType,
                                           gpuarray_shared_constructor)
-from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
-                                               gpu_alloc, gpu_from_cuda,
-                                               cuda_from_gpu, HostFromGpu,
-                                               GpuFromHost, GpuReshape,
-                                               GpuEye)
+from theano.sandbox.gpuarray.basic_ops import (
+    host_from_gpu, gpu_from_host,
+    gpu_alloc, GpuAlloc,
+    gpu_from_cuda,
+    cuda_from_gpu, HostFromGpu,
+    GpuFromHost, GpuReshape,
+    GpuEye)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -288,6 +290,13 @@ GpuAllocTester = makeTester(
         bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
         )
 )
+
+
+class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
+    dtype = "float32"
+    mode = mode_with_gpu
+    shared = staticmethod(gpuarray_shared_constructor)
+    allocs = [GpuAlloc, GpuAlloc, T.Alloc]
 
 
 def test_shape():

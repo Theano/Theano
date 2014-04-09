@@ -341,16 +341,19 @@ def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
 @op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
 def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
     return GpuCrossentropySoftmax1HotWithBiasDx()
-    
+
+
 @register_opt()
 @op_lifter([tensor.nnet.Softmax])
 def local_gpua_softmax(node):
     return GpuSoftmax()
 
+
 @register_opt()
 @op_lifter([tensor.nnet.SoftmaxWithBias])
 def local_gpua_softmaxwithbias(node):
     return GpuSoftmaxWithBias()
+
 
 @register_opt()
 @op_lifter([gpu_from_host, ConvOp])

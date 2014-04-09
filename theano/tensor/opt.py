@@ -174,7 +174,7 @@ def inplace_elemwise_optimizer_op(OP):
     """
     We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
-    @gof.optimizer
+    @gof.inplace_optimizer
     def inplace_elemwise_optimizer(fgraph):
         """
         Usage: inplace_elemwise_optimizer.optimize(fgraph)
@@ -587,7 +587,7 @@ class MakeVector(T.Op):
             out[0][...] = inputs
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inp, out_, sub):
         out, = out_
@@ -604,7 +604,7 @@ class MakeVector(T.Op):
         ret = """
         npy_intp dims[1];
         dims[0] = %(out_shape)s;
-        if(!%(out)s || PyArray_DIMS(%(out)s)[0] == %(out_shape)s){
+        if(!%(out)s || PyArray_DIMS(%(out)s)[0] != %(out_shape)s){
             Py_XDECREF(%(out)s);
             %(out)s = (PyArrayObject*)PyArray_EMPTY(1, dims, %(out_dtype)s, 0);
         }
@@ -1581,7 +1581,7 @@ def local_upcast_elemwise_constant_inputs(node):
                 else:
                     try:
                         # works only for scalars
-                        cval_i = get_scalar_constant_value(i)
+                        cval_i = get_scalar_constant_value(i, elemwise=False)
                         if all(i.broadcastable):
                             new_inputs.append(T.shape_padleft(
                                 T.cast(cval_i, output_dtype),
@@ -2110,7 +2110,7 @@ compile.optdb.register('pre_local_IncSubtensor_serialize',
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
 
-@gof.local_optimizer([IncSubtensor]) # XXX: GPU
+@gof.local_optimizer([IncSubtensor], inplace=True)
 def local_inplace_setsubtensor(node):
     """
     Also work for GpuIncSubtensor
@@ -2129,7 +2129,7 @@ compile.optdb.register('local_inplace_setsubtensor',
                        'fast_run', 'inplace')  # DEBUG
 
 
-@gof.local_optimizer([AdvancedIncSubtensor1]) # XXX: GPU
+@gof.local_optimizer([AdvancedIncSubtensor1], inplace=True)
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
@@ -2327,7 +2327,7 @@ def local_remove_switch_const_cond(node):
     """
     if (isinstance(node.op, T.Elemwise) and
         isinstance(node.op.scalar_op, scalar.basic.Switch)):
-        cond = T.extract_constant(node.inputs[0])
+        cond = T.extract_constant(node.inputs[0], elemwise=False)
         if type(cond) is numpy.ndarray and cond.ndim == 0:
             if cond == 0:
                 out = node.inputs[2]
@@ -2377,7 +2377,8 @@ def local_mul_switch_sink(node):
         if i.owner and i.owner.op == T.switch:
             switch = i.owner
             try:
-                if get_scalar_constant_value(switch.inputs[1]) == 0.:
+                if (isinstance(switch.inputs[0], Constant) and
+                    get_scalar_constant_value(switch.inputs[1]) == 0.):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0], 0,
                                     T.mul(*(listmul + [switch.inputs[2]])))]
@@ -2387,7 +2388,8 @@ def local_mul_switch_sink(node):
             except NotScalarConstantError:
                 pass
             try:
-                if get_scalar_constant_value(switch.inputs[2]) == 0.:
+                if (isinstance(switch.inputs[2], Constant) and
+                    get_scalar_constant_value(switch.inputs[2]) == 0.):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0],
                                     T.mul(*(listmul + [switch.inputs[1]])), 0)]
@@ -2611,8 +2613,10 @@ register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 def local_fill_sink(node):
     """
     f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
+
+    f need to be an elemwise
     """
-    if not (node.op and isinstance(node.op, T.Elemwise) and node.op != T.fill):
+    if not isinstance(node.op, T.Elemwise) or node.op == T.fill:
         return False
     models = []
     inputs = []
@@ -2622,7 +2626,7 @@ def local_fill_sink(node):
             inputs.append(input.owner.inputs[1])
         else:
             inputs.append(input)
-    if inputs == node.inputs:
+    if not models:
         return False
     c = node.op(*inputs)
     for model in models:
@@ -3782,7 +3786,7 @@ def local_abs_merge(node):
         for i in node.inputs:
             if i.owner and i.owner.op == T.abs_:
                 inputs.append(i.owner.inputs[0])
-            else:
+            elif isinstance(i, Constant):
                 try:
                     const = get_scalar_constant_value(i)
                 except NotScalarConstantError:
@@ -3790,6 +3794,8 @@ def local_abs_merge(node):
                 if not (const >= 0).all():
                     return False
                 inputs.append(i)
+            else:
+                return False
         return [T.abs_(T.mul(*inputs))]
     if node.op == T.true_div and sum([i.owner.op == T.abs_ for i in
                                       node.inputs if i.owner]) == 2:
@@ -4047,8 +4053,8 @@ def constant_folding(node):
     return rval
 
 register_canonicalize(constant_folding, 'fast_compile')
-register_stabilize(constant_folding)
-register_specialize(constant_folding)
+register_stabilize(constant_folding, 'fast_compile')
+register_specialize(constant_folding, 'fast_compile')
 
 
 def _is_1(expr):
@@ -4070,13 +4076,29 @@ def _is_minus1(expr):
     except NotScalarConstantError:
         return False
 
+def get_clients(node):
+    "Used by erf/erfc opt to track less frequent op"
+    return [c for c, i in node.outputs[0].clients
+            if c != "output"]
+
+def get_clients2(node):
+    "Used by erf/erfc opt to track less frequent op"
+    l = []
+    for c, i in node.outputs[0].clients:
+        if c != "output":
+            for var in c.outputs:
+                l.extend([cc for cc, ii in var.clients if cc != "output"])
+    return l
+
 #1+erf(x)=>erfc(-x)
 local_one_plus_erf = gof.PatternSub((T.add,
                                      dict(pattern='y', constraint=_is_1),
                                      (T.erf, 'x')),
                                     (T.erfc, (T.neg, 'x')),
                                     allow_multiple_clients=True,
-                                    name='local_one_plus_erf')
+                                    name='local_one_plus_erf',
+                                    tracks=[T.erf],
+                                    get_nodes=get_clients)
 register_canonicalize(local_one_plus_erf)
 register_stabilize(local_one_plus_erf)
 register_specialize(local_one_plus_erf)
@@ -4109,7 +4131,9 @@ local_one_plus_neg_erf = gof.PatternSub((T.add,
                                          (T.neg, (T.erf, 'x'))),
                                         (T.erfc, 'x'),
                                         allow_multiple_clients=True,
-                                        name='local_one_plus_neg_erf')
+                                        name='local_one_plus_neg_erf',
+                                        tracks=[T.erf],
+                                        get_nodes=get_clients2)
 register_canonicalize(local_one_plus_neg_erf)
 register_stabilize(local_one_plus_neg_erf)
 register_specialize(local_one_plus_neg_erf)
@@ -4121,7 +4145,9 @@ local_erf_minus_one = gof.PatternSub((T.add,
                                       (T.erf, 'x')),
                                      (T.neg, (T.erfc, 'x')),
                                      allow_multiple_clients=True,
-                                     name='local_erf_minus_one')
+                                     name='local_erf_minus_one',
+                                     tracks=[T.erf],
+                                     get_nodes=get_clients)
 register_canonicalize(local_erf_minus_one)
 register_stabilize(local_erf_minus_one)
 register_specialize(local_erf_minus_one)
@@ -4132,7 +4158,9 @@ local_one_minus_erfc = gof.PatternSub((T.sub,
                                        (T.erfc, 'x')),
                                       (T.erf, 'x'),
                                       allow_multiple_clients=True,
-                                      name='local_one_minus_erfc')
+                                      name='local_one_minus_erfc',
+                                      tracks=[T.erfc],
+                                      get_nodes=get_clients)
 register_canonicalize(local_one_minus_erfc)
 register_stabilize(local_one_minus_erfc)
 register_specialize(local_one_minus_erfc)
@@ -4142,7 +4170,9 @@ local_one_minus_erfc2 = gof.PatternSub((T.add,
                                         (T.neg, (T.erfc, 'x'))),
                                        (T.erf, 'x'),
                                        allow_multiple_clients=True,
-                                       name='local_one_minus_erfc2')
+                                       name='local_one_minus_erfc2',
+                                       tracks=[T.erfc],
+                                       get_nodes=get_clients2)
 register_canonicalize(local_one_minus_erfc2)
 register_stabilize(local_one_minus_erfc2)
 register_specialize(local_one_minus_erfc2)
@@ -4152,7 +4182,9 @@ local_one_minus_erfc3 = gof.PatternSub((T.add,
                                         (T.mul, -1, (T.erfc, 'x'))),
                                        (T.erf, 'x'),
                                        allow_multiple_clients=True,
-                                       name='local_one_minus_erfc3')
+                                       name='local_one_minus_erfc3',
+                                       tracks=[T.erfc],
+                                       get_nodes=get_clients2)
 register_canonicalize(local_one_minus_erfc3)
 register_stabilize(local_one_minus_erfc3)
 register_specialize(local_one_minus_erfc3)
@@ -4164,7 +4196,10 @@ local_one_add_neg_erfc = gof.PatternSub((T.add,
                                          (T.neg, (T.erfc, 'x'))),
                                         (T.erf, 'x'),
                                         allow_multiple_clients=True,
-                                        name='local_one_add_neg_erfc')
+                                        name='local_one_add_neg_erfc',
+                                        tracks=[T.erfc],
+                                        get_nodes=get_clients2)
+
 register_canonicalize(local_one_add_neg_erfc)
 register_stabilize(local_one_add_neg_erfc)
 register_specialize(local_one_add_neg_erfc)
@@ -4175,7 +4210,9 @@ local_erf_neg_minus_one = gof.PatternSub((T.add,
                                           (T.erfc, (T.neg, 'x'))),
                                          (T.erf, 'x'),
                                          allow_multiple_clients=True,
-                                         name='local_erf_neg_minus_one')
+                                         name='local_erf_neg_minus_one',
+                                         tracks=[T.erfc],
+                                         get_nodes=get_clients)
 register_canonicalize(local_erf_neg_minus_one)
 register_stabilize(local_erf_neg_minus_one)
 register_specialize(local_erf_neg_minus_one)
@@ -4186,7 +4223,9 @@ local_erf_neg_minus_one2 = gof.PatternSub((T.add,
                                            (T.erfc, (T.mul, -1, 'x'))),
                                           (T.erf, 'x'),
                                           allow_multiple_clients=True,
-                                          name='local_erf_neg_minus_one2')
+                                          name='local_erf_neg_minus_one2',
+                                          tracks=[T.erfc],
+                                          get_nodes=get_clients)
 register_canonicalize(local_erf_neg_minus_one2)
 register_stabilize(local_erf_neg_minus_one2)
 register_specialize(local_erf_neg_minus_one2)
@@ -4853,11 +4892,40 @@ class FusionOptimizer(Optimizer):
         print >> stream, blanc, " time_toposort", prof[7]
 
 
+def local_add_mul_fusion(node):
+    """Fuse consecutive add or mul in one such node with more inputs.
+
+    It is better to fuse add/mul that way then in a Composite node as
+    this make the inner graph of the Compiste smaller. This allow to
+    put more computation in a Composite before hitting the max
+    recusion limit when pickling Composite.
+
+    """
+    if (not isinstance(node.op, Elemwise) or
+        not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul))):
+        return False
+
+    s_op = node.op.scalar_op.__class__
+    for inp in node.inputs:
+        if (inp.owner and
+            isinstance(inp.owner.op, Elemwise) and
+            isinstance(inp.owner.op.scalar_op, s_op)):
+            l = list(node.inputs)
+            l.remove(inp)
+            return [node.op(*(l + inp.owner.inputs))]
+
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
     #Must be after gpu(48.5) and before AddDestroyHandler(49.5)
+    fuse_seqopt = gof.SequenceDB()
+    fuse_seqopt.register('local_add_mul_fusion',
+                         FusionOptimizer(local_add_mul_fusion),
+                         0, 'fast_run', 'fusion')
+    fuse_seqopt.register('composite_elemwise_fusion',
+                         FusionOptimizer(local_elemwise_fusion),
+                         1, 'fast_run', 'fusion')
     compile.optdb.register('elemwise_fusion',
-                           FusionOptimizer(local_elemwise_fusion), 49,
+                           fuse_seqopt, 49,
                            'fast_run', 'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
 else:

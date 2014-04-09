@@ -16,27 +16,17 @@ import numpy
 import theano
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import output_subprocess_Popen
 
 
 _logger = logging.getLogger("theano.gof.compiledir")
 
-# Using the dummy file descriptors below is a workaround for a crash
-# experienced in an unusual Python 2.4.4 Windows environment with the default
-# None values.
-dummy_err = open(os.devnull, 'w')
-p = None
 try:
-    p = call_subprocess_Popen(['g++', '-dumpversion'],
-                              stdout=subprocess.PIPE,
-                              stderr=dummy_err.fileno())
-    p.wait()
-    gcc_version_str = p.stdout.readline().strip().decode()
+    p_out = output_subprocess_Popen(['g++', '-dumpversion'])
+    gcc_version_str = p_out[0].strip().decode()
 except OSError:
     # Typically means gcc cannot be found.
     gcc_version_str = 'GCC_NOT_FOUND'
-del p
-del dummy_err
 
 
 def local_bitwidth():

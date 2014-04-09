@@ -1,3 +1,4 @@
+import operator
 import sys
 
 import numpy
@@ -213,20 +214,29 @@ def test_huge_elemwise_fusion():
     """
     shape = (2, 3, 4, 5, 6)
     ttype = tensor.tensor(dtype='float32', broadcastable=(False,) * len(shape))
-    vars = [tensor.tanh(ttype) for x in range(7)]
-    f = pfunc(vars, [vars[0] - vars[1] - vars[2] - vars[3] - vars[4] -
-                     vars[5] - vars[6]], mode=mode_with_gpu)
+    gpu_ptr_size = theano.sandbox.cuda.opt.get_device_type_sizes()['gpu_ptr_size']
+    if gpu_ptr_size == 8:
+        nb_in = 7
+        len_topo = 10
+    elif gpu_ptr_size == 4:
+        nb_in = 8
+        len_topo = 11
+    else:
+        raise Exception("Unexpected value for gpu_ptr_size", gpu_ptr_size)
+    vars = [tensor.tanh(ttype) for x in range(nb_in)]
+    f = pfunc(vars, [reduce(operator.sub, vars)], mode=mode_with_gpu)
+
     topo = f.maker.fgraph.toposort()
     #theano.printing.debugprint(f)
     #for i, node in enumerate(topo):
     #    print >> sys.stdout, i, node
-    assert len(topo) == 10
+    assert len(topo) == len_topo
     assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo]) == 2
-    assert isinstance(topo[7].op.scalar_op, theano.scalar.basic.Sub)
-    assert isinstance(topo[8].op.scalar_op, theano.scalar.basic.Composite)
+    assert isinstance(topo[-3].op.scalar_op, theano.scalar.basic.Sub)
+    assert isinstance(topo[-2].op.scalar_op, theano.scalar.basic.Composite)
     #let debugmode catch errors
     gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
-    f(gen(), gen(), gen(), gen(), gen(), gen(), gen())
+    f(*[gen() for i in range(nb_in)])
 
     # Test the case where we can't put the computation on the gpu! their is too
     # many dimensions to the input to have 2 inputs to the op!

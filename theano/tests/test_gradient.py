@@ -554,6 +554,52 @@ def test_disconnected_cost_grad():
         except theano.gradient.DisconnectedInputError:
             return
         raise AssertionError("A disconnected gradient has been ignored.")
+        
+def test_subgraph_grad():
+
+    # Tests that the grad method with no known_grads
+    # matches what happens if you use successive subgraph_grads
+
+    x = theano.tensor.fvector('x')
+    t = theano.tensor.fvector('t')
+    w1 = theano.shared(np.random.randn(3,4))
+    w2 = theano.shared(np.random.randn(4,2))
+    a1 = theano.tensor.tanh(theano.tensor.dot(x,w1))
+    a2 = theano.tensor.tanh(theano.tensor.dot(a1,w2))
+    cost2 = theano.tensor.sqr(a2 - t).sum() 
+    cost2 += theano.tensor.sqr(w2.sum())
+    cost1 = theano.tensor.sqr(w1.sum())
+    
+    params = [[w2],[w1]]
+    costs = [cost2,cost1]
+    grad_ends = [[a1], [x]]
+    
+    inputs = [t, x]
+    rng = np.random.RandomState([2012, 11, 15])
+    values = [rng.randn(2), rng.randn(3)]
+    values = [np.cast[ipt.dtype](value) for ipt, value in zip(inputs, values)]
+
+    wrt = [w2, w1]
+    cost = cost2 + cost1
+    true_grads = theano.grad(cost, wrt)
+    true_grads = theano.function(inputs, true_grads)
+    true_grads = true_grads(*values)
+    from theano.gof.python25 import OrderedDict
+    next_grad = None
+    param_grads = []
+    for i in xrange(2):
+        param_grad, next_grad = theano.subgraph_grad(
+            wrt=params[i], end=grad_ends[i], 
+            start=next_grad, cost=costs[i]
+        )
+        next_grad = OrderedDict(zip(grad_ends[i], next_grad))
+        param_grads.extend(param_grad)
+    
+    pgrads = theano.function(inputs, param_grads)
+    pgrads = pgrads(*values)
+    
+    for true_grad, pgrad in zip(true_grads, pgrads):
+        assert(np.sum(np.abs(true_grad - pgrad)) < 0.00001)
 
 
 class TestConsiderConstant(unittest.TestCase):
