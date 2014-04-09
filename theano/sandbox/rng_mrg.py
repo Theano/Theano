@@ -30,7 +30,6 @@ def matVecModM(A, s, m):
     return numpy.int32(numpy.sum((numpy.int64(A)*s) % m, 1) % m)
 
 
-dot_modulo = None
 def multMatVect(v, A, m1, B, m2):
     """
     multiply the first half of v by A with a modulo of m1
@@ -39,29 +38,27 @@ def multMatVect(v, A, m1, B, m2):
     Note: The parameters of dot_modulo are passed implicitly because passing
     them explicitly takes more time then running the function's C-code.
     """
-    #multiply the first half of v by A with a modulo of m1
-    #and the second half by B with a modulo of m2
-    global dot_modulo
-    if dot_modulo == None:
+    if multMatVect.dot_modulo == None:
         A_sym = tensor.lmatrix('A')
         s_sym = tensor.ivector('s')
         m_sym = tensor.iscalar('m')
         
-        dot_modulo = function([A_sym, s_sym, m_sym],
+        multMatVect.dot_modulo = function([A_sym, s_sym, m_sym],
             DotModulo()(A_sym, s_sym, m_sym))
     
     r = numpy.zeros_like(v)
-    dot_modulo.input_storage[0].storage[0] = A
-    dot_modulo.input_storage[1].storage[0] = v[:3]
-    dot_modulo.input_storage[2].storage[0] = m1
-    r[:3] = dot_modulo.fn()[0]
+    multMatVect.dot_modulo.input_storage[0].storage[0] = A
+    multMatVect.dot_modulo.input_storage[1].storage[0] = v[:3]
+    multMatVect.dot_modulo.input_storage[2].storage[0] = m1
+    r[:3] = multMatVect.dot_modulo.fn()[0]
     
-    dot_modulo.input_storage[0].storage[0] = B
-    dot_modulo.input_storage[1].storage[0] = v[3:]
-    dot_modulo.input_storage[2].storage[0] = m2
-    r[3:] = dot_modulo.fn()[0]
+    multMatVect.dot_modulo.input_storage[0].storage[0] = B
+    multMatVect.dot_modulo.input_storage[1].storage[0] = v[3:]
+    multMatVect.dot_modulo.input_storage[2].storage[0] = m2
+    r[3:] = multMatVect.dot_modulo.fn()[0]
     
     return r
+multMatVect.dot_modulo = None
 
 
 class DotModulo(Op):
