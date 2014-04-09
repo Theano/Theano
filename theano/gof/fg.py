@@ -85,6 +85,11 @@ class FunctionGraph(utils.object2):
         #TODO: document what variables are[not] set in the FunctionGraph when a feature
         is added via the constructor.  How constructed is the FunctionGraph?
 
+        Note: the intermediate nodes between 'inputs' and 'outputs' are not explicitely
+        passed.
+         
+        :param inputs: inputs nodes of the graph, usually declared by the user
+        :param outputs: outputs nodes of the graph.
         :param clone: If true, we will clone the graph. This is
         useful to remove the constant cache problem.
 
