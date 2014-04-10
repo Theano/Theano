@@ -1,4 +1,8 @@
-"""This file contain auxiliary Ops, used during the compilation phase."""
+"""This file contain auxiliary Ops, used during the compilation phase
+and Ops building class (:class:`FromFunctionOp`) and decorator
+(:func:`as_op`) that help make new Ops more rapidly.
+
+"""
 import copy
 import warnings
 
