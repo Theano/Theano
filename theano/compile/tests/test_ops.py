@@ -1,9 +1,6 @@
 """
  Tests for the Op decorator
 """
-
-import unittest
-
 import numpy as np
 
 from theano.tests import unittest_tools as utt
@@ -15,7 +12,7 @@ from numpy import allclose
 from theano.compile import as_op
 
 
-class OpDecoratorTests(unittest.TestCase):
+class OpDecoratorTests(utt.InferShapeTester):
     def test_1arg(self):
         x = dmatrix('x')
 
@@ -59,8 +56,6 @@ class OpDecoratorTests(unittest.TestCase):
         def diag_mult(x, y):
             return np.diag(x) * y
 
-        fn = function([x, y], diag_mult(x, y).shape)
-        r = fn([[1.5, 5], [2, 2]], [1, 100])
-        r0 = (2,)
-
-        assert allclose(r, r0), (r, r0)
+        self._compile_and_check([x, y], [diag_mult(x, y)],
+                                [[[1.5, 5], [2, 2]], [1, 100]],
+                                diag_mult.__class__, warn=False)
