@@ -39,7 +39,6 @@ class OpDecoratorTests(unittest.TestCase):
         fn = function([x, y], diag_mult(x, y))
         r = fn([[1.5, 5],[2, 2]], [1, 100])
         r0 = np.array([1.5, 200])
-        print r
 
         assert allclose(r, r0), (r, r0)
 
@@ -60,7 +59,6 @@ class OpDecoratorTests(unittest.TestCase):
         fn = function([x, y], diag_mult(x, y).shape)
         r = fn([[1.5, 5],[2, 2]], [1, 100])
         r0 = (2,)
-        print r
 
         assert allclose(r, r0), (r, r0)
 
