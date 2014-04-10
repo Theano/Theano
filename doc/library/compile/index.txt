@@ -16,6 +16,7 @@
     shared
     function
     io
+    ops
     mode
     module
     debugmode
