@@ -30,6 +30,12 @@ AddConfigVar('nvcc.compiler_bindir',
              StrParam(""),
              in_c_key=False)
 
+AddConfigVar('gpu.release_gil',
+             "If True, theano will release the GIL when waiting for "
+             "GPU operations, allowing other Python threads to run",
+             BoolParam(False),
+             in_c_key=True)
+
 user_provided_cuda_root = True
 
 
@@ -153,6 +159,8 @@ class NVCC_compiler(object):
         flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
         if config.nvcc.fastmath:
             flags.append('-use_fast_math')
+        if config.gpu.release_gil:
+            flags.append('-DRELEASE_GIL')
         cuda_ndarray_cuh_hash = hash_from_file(
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)

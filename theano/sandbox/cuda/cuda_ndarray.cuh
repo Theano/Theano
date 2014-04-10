@@ -68,6 +68,14 @@ typedef float real;
 #define CNDA_THREAD_SYNC cudaThreadSynchronize();
 #endif
 
+// Define shortcuts to implement the config.gpu.release_gil flag
+#ifdef RELEASE_GIL
+#define CNDA_BEGIN_ALLOW_THREADS Py_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS Py_END_ALLOW_THREADS
+#else
+#define CNDA_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS
+#endif
 
 #ifndef SHARED_SIZE
 #define SHARED_SIZE (16*1024)
