@@ -383,6 +383,8 @@ class FromFunctionOp(gof.Op):
         self.itypes = itypes
         self.otypes = otypes
         self.__infer_shape = infer_shape
+        if self.__infer_shape is not None:
+            self.infer_shape = self._infer_shape
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -407,12 +409,8 @@ class FromFunctionOp(gof.Op):
         for i in range(len(outs)):
             outputs[i][0] = outs[i]
 
-    def infer_shape(self, node, input_shapes):
-        if self.__infer_shape:
-            return self.__infer_shape(node, input_shapes)
-        else:
-            # fake method not defined
-            raise AttributeError('infer_shape')
+    def _infer_shape(self, node, input_shapes):
+        return self.__infer_shape(node, input_shapes)
 
 def as_op(itypes, otypes, infer_shape=None):
     """
