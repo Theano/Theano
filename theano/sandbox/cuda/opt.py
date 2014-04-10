@@ -350,7 +350,7 @@ def local_gpu_specifyShape_0(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host]) # XXX: broken: tensor.basic.dot is not an op
+@local_optimizer([GpuFromHost, tensor.basic.Dot])
 def local_gpu_dot_to_dot22(node):
     """
     gpu_from_host(dot) -> gpudot(gpu_from_host)
@@ -361,6 +361,8 @@ def local_gpu_dot_to_dot22(node):
     the output.
 
     A more suitable solution would be to use the right cublas call
+
+    This is needed in fast_compile
     """
 
     # In case the got do input upcast, we much check that we can
@@ -369,17 +371,18 @@ def local_gpu_dot_to_dot22(node):
         if node.outputs[0].type.dtype != 'float32':
             return False
         host_input = node.inputs[0]
-        if host_input.owner and host_input.owner.op == tensor.basic.dot:
+        if host_input.owner and isinstance(host_input.owner.op,
+                                           tensor.basic.Dot):
             x, y = host_input.owner.inputs
             # case one: vector X matrix
             if _is_real_vector(x) and _is_real_matrix(y):
-                new_op = GpuDimShuffle((False,), ['x', 0])
+                new_op = GpuDimShuffle((False,), ('x', 0))
                 shape_out = y.shape[1].dimshuffle(['x'])
                 gpu_x = new_op(gpu_from_host(x))
                 gpu_y = gpu_from_host(y)
             # case two: matrix X vector
             elif _is_real_matrix(x) and _is_real_vector(y):
-                new_op = GpuDimShuffle((False,), [0, 'x'])
+                new_op = GpuDimShuffle((False,), (0, 'x'))
                 shape_out = x.shape[0].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
@@ -387,20 +390,20 @@ def local_gpu_dot_to_dot22(node):
                 return False
 
             return [GpuReshape(1)(gpu_dot22(gpu_x, gpu_y), shape_out)]
-    if node.op == tensor.basic.dot:
+    if isinstance(node.op, tensor.basic.Dot):
         if node.outputs[0].type.dtype != 'float32':
             return False
         if any([i.owner and isinstance(i.owner.op, HostFromGpu)
                 for i in node.inputs]):
             x, y = node.inputs
             if _is_real_vector(x) and _is_real_matrix(y):
-                new_op = GpuDimShuffle((False,), ['x', 0])
+                new_op = GpuDimShuffle((False,), ('x', 0))
                 shape_out = y.shape[1].dimshuffle(['x'])
                 gpu_x = new_op(gpu_from_host(x))
                 gpu_y = gpu_from_host(y)
 
             elif _is_real_matrix(x) and _is_real_vector(y):
-                new_op = GpuDimShuffle((False,), [0, 'x'])
+                new_op = GpuDimShuffle((False,), (0, 'x'))
                 shape_out = x.shape[0].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))

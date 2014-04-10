@@ -404,6 +404,32 @@ def test_erfinvgpu():
     assert numpy.allclose(f(xv),f2(xv))
 
 
+def test_local_gpu_dot_to_dot22dot():
+    def cmp(a_shp, b_shp):
+        a0 = numpy.random.rand(*a_shp).astype('float32')
+        a = cuda.shared_constructor(a0, 'a')
+        b0 = numpy.random.rand(*b_shp).astype('float32')
+        b = cuda.shared_constructor(b0, 'a')
+
+        f = pfunc([], tensor.dot(a, b), mode=mode_with_gpu)
+        assert cuda.opt.local_gpu_dot_to_dot22.transform(
+            tensor.dot(a, b).owner)
+        out = f()
+
+        assert numpy.allclose(numpy.dot(a0, b0), out)
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+            a.get_value(borrow=True,
+                        return_internal_type=True)[::-1],
+            borrow=True)
+        f()
+
+    cmp((4,), (4, 5))
+    cmp((3, 4), (4,))
+
+
 class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
     mode = mode_with_gpu
     shared = staticmethod(cuda.shared_constructor)
