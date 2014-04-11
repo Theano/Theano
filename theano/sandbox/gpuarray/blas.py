@@ -1,6 +1,6 @@
 from theano import Op, Apply, config
 
-from theano.tensor.blas import Dot22, Gemv, Gemm
+from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
 from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
 
 try:
@@ -135,6 +135,60 @@ gpugemm_no_inplace = GpuGemm(inplace=False)
 gpugemm_inplace = GpuGemm(inplace=True)
 
 
+class GpuGer(BlasOp, Ger):
+    def make_node(self, A, alpha, x, y):
+        res = Ger.make_node(self, A, alpha, x, y)
+        A = as_gpuarray_variable(A)
+        x = as_gpuarray_variable(x)
+        y = as_gpuarray_variable(y)
+        assert A.dtype == x.dtype == y.dtype == alpha.dtype
+        return Apply(self, [A, alpha, x, y], [A.type()])
+
+    def perform(self, node, inp, out):
+        A, alpha, x, y = inp
+        inplace = self.destructive
+        if inplace and not A.flags.forc:
+            inplace = False
+        outputs[0][0] = blas.ger(alpha, x, y, A,
+                                 overwrite_a=inplace)
+
+    def c_code(self, node, name, inp, out, sub):
+        vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
+                    fail=sub['fail'], name=name)
+        if self.destructive:
+            code = """
+                   Py_XDECREF(%(out)s);
+                   %(out)s = %(A)s;
+                   Py_INCREF(%(out)s);
+                   """ % vars
+        else:
+            code = """
+                   Py_XDECREF(%(out)s);
+                   %(out)s = pygpu_copy(%(A)s, GA_ANY_ORDER);
+                   if (%(out)s == NULL) {
+                       %(fail)s
+                   }
+                   """ % vars
+        code += """
+        if (pygpu_blas_rger(((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
+                            %(x)s, %(y)s, %(out)s, 0) == -1) {
+            %(fail)s
+        }
+        """ % vars
+        if config.gpuarray.sync:
+            code += """
+            GpuArray_sync(&%(out)s->ga);
+            """ % vars
+        return code
+
+    def c_code_cache_version(self):
+        return (0,)
+
+
+gpuger_no_inplace = GpuGer(destructive=False)
+gpuger_inplace = GpuGer(destructive=True)
+
+
 class GpuDot22(BlasOp, Dot22):
     def make_node(self, x, y):
         res = Dot22.make_node(self, x, y)
@@ -210,6 +264,11 @@ def local_inplace_gpuagemv(node):
 def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
         return [gpugemm_inplace(*node.inputs)]
+
+@local_optimizer([gpuger_no_inplace], inplace=True)
+def local_inplace_gpuager(node):
+    if node.op == gpuger_no_inplace:
+        return [gpuger_inplace(*node.inputs)]
 
 gpuablas_opt_inplace = in2out(LocalOptGroup(
         local_inplace_gpuagemv, local_inplace_gpuagemm),

@@ -1,12 +1,14 @@
 from unittest import TestCase
 
 import theano
-from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22
+from theano.tensor.blas import (gemv_inplace, gemm_inplace, ger_destructive,
+                                _dot22)
 
 from theano.sandbox.gpuarray.tests.test_basic_ops import makeTester, rand
 
 from theano.sandbox.gpuarray.blas import (gpugemv_inplace,
-                                          gpugemm_inplace, gpu_dot22)
+                                          gpugemm_inplace, gpuger_inplace,
+                                          gpu_dot22)
 
 
 GpuGemvTester = makeTester('GpuGemvTester',
@@ -37,7 +39,19 @@ GpuGemmTester = makeTester('GpuGemmTester',
  #       test11=[rand(3, 0), -1.0, rand(3, 5), rand(5, 0), 1.1],
  #       test12=[rand(3, 4), -1.0, rand(3, 0), rand(0, 4), -1.1],
  #       test13=[rand(0, 0), -1.0, rand(0, 0), rand(0, 0), -1.1],
-    )
+        )
+)
+
+GpuGerTester = makeTester(
+    'GpuGerTester',
+    op=ger_destructive, gpu_op=gpuger_inplace,
+    cases=dict(
+        test1=[rand(4, 5), 1.0, rand(4), rand(5)],
+        test2=[rand(4, 5), 0.6, rand(4), rand(5)],
+        test3=[rand(4, 5), -1.0, rand(4), rand(5)],
+        test4=[rand(4, 5), -0.6, rand(4), rand(5)],
+        test5=[rand(4, 5), 0.0, rand(4), rand(5)],
+        )
 )
 
 
