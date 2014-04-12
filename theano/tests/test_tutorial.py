@@ -1156,9 +1156,9 @@ class T_scan(unittest.TestCase):
                                               outputs=[results])
 
         # test values
-        x = numpy.eye(2)
-        w = numpy.ones((2, 2))
-        b = numpy.ones((2))
+        x = numpy.eye(2, dtype=theano.config.floatX)
+        w = numpy.ones((2, 2), dtype=theano.config.floatX)
+        b = numpy.ones((2), dtype=theano.config.floatX)
         b[1] = 2
 
         print "Scan results:", compute_elementwise(x, w, b)[0]
@@ -1185,20 +1185,20 @@ class T_scan(unittest.TestCase):
                                       outputs=[results])
 
         # test values
-        x = numpy.zeros((2))
+        x = numpy.zeros((2), dtype=theano.config.floatX)
         x[1] = 1
-        w = numpy.ones((2, 2))
-        y = numpy.ones((5, 2))
+        w = numpy.ones((2, 2), dtype=theano.config.floatX)
+        y = numpy.ones((5, 2), dtype=theano.config.floatX)
         y[0, :] = -3
-        u = numpy.ones((2, 2))
-        p = numpy.ones((5, 2))
+        u = numpy.ones((2, 2), dtype=theano.config.floatX)
+        p = numpy.ones((5, 2), dtype=theano.config.floatX)
         p[0, :] = 3
-        v = numpy.ones((2, 2))
+        v = numpy.ones((2, 2), dtype=theano.config.floatX)
 
         print "Scan results", compute_seq(x, w, y, u, p, v)[0]
 
         # comparison with numpy
-        x_res = numpy.zeros((5, 2))
+        x_res = numpy.zeros((5, 2), dtype=theano.config.floatX)
         x_res[0] = numpy.tanh(x.dot(w) + y[0].dot(u) + p[4].dot(v))
         for i in range(1, 5):
             x_res[i] = numpy.tanh(x_res[i-1].dot(w) +
@@ -1218,7 +1218,7 @@ class T_scan(unittest.TestCase):
         compute_norm_cols = theano.function(inputs=[X], outputs=[results])
 
         # test value
-        x = numpy.diag(numpy.arange(1, 6), 1)
+        x = numpy.diag(numpy.arange(1, 6, dtype=theano.config.floatX), 1)
         print "Scan results:", compute_norm_lines(x)[0], \
                             compute_norm_cols(x)[0]
 
@@ -1240,8 +1240,8 @@ class T_scan(unittest.TestCase):
         compute_trace = theano.function(inputs=[X], outputs=[result])
 
         # test value
-        x = numpy.eye(5)
-        x[0] = numpy.arange(5)
+        x = numpy.eye(5, dtype=theano.config.floatX)
+        x[0] = numpy.arange(5, dtype=theano.config.floatX)
         print "Scan results:", compute_trace(x)[0]
 
         # comparison with numpy
@@ -1265,19 +1265,20 @@ class T_scan(unittest.TestCase):
                                        outputs=[results])
 
         # test values
-        x = numpy.zeros((2, 2))
+        x = numpy.zeros((2, 2), dtype=theano.config.floatX)
         # the initial value must be able to return x[-2]
         x[1, 1] = 1
-        w = 0.5 * numpy.ones((2, 2))
-        u = 0.5 * (numpy.ones((2, 2)) - numpy.eye(2))
-        v = 0.5 * numpy.ones((2, 2))
+        w = 0.5 * numpy.ones((2, 2), dtype=theano.config.floatX)
+        u = 0.5 * (numpy.ones((2, 2), dtype=theano.config.floatX) -
+                   numpy.eye(2, dtype=theano.config.floatX))
+        v = 0.5 * numpy.ones((2, 2), dtype=theano.config.floatX)
         n = 10
-        b = numpy.ones((2))
+        b = numpy.ones((2), dtype=theano.config.floatX)
 
         print "Scan results:", compute_seq2(x, u, v, w, b, n)
 
         # comparison with numpy
-        x_res = numpy.zeros((10, 2))
+        x_res = numpy.zeros((10, 2), dtype=theano.config.floatX)
         x_res[0] = x[0].dot(u) + x[1].dot(v) + numpy.tanh(x[1].dot(w) + b)
         x_res[1] = x[1].dot(u) + x_res[0].dot(v) \
                         + numpy.tanh(x_res[0].dot(w) + b)
