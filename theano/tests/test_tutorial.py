@@ -1150,10 +1150,10 @@ class T_scan(unittest.TestCase):
           W = T.matrix("W")
           b_sym = T.vector("b_sym")
 
-          results, updates = theano.scan(lambda v:T.tanh(T.dot(v,W)+b_sym), \
-                    sequences=X)
-          compute_elementwise = theano.function(inputs = [X, W, b_sym], \
-                    outputs=[results])
+          results, updates = theano.scan(lambda v:T.tanh(T.dot(v,W)+b_sym),
+                                         sequences=X)
+          compute_elementwise = theano.function(inputs = [X, W, b_sym],
+                                                outputs=[results])
 
           # test values
           x = numpy.eye(2)
@@ -1176,12 +1176,11 @@ class T_scan(unittest.TestCase):
         V = T.matrix("V")
         P = T.matrix("P")
 
-        results, updates = theano.scan(lambda \
-                        y,p,x_tm1:T.tanh(T.dot(x_tm1,W) + \
-                        T.dot(y,U)+T.dot(p,V)), \
+        results, updates = theano.scan(lambda y,p,x_tm1:T.tanh(T.dot(x_tm1,W) +
+                                                               T.dot(y,U)+T.dot(p,V)),
                                        sequences=[Y,P[::-1]], outputs_info=[X])
 
-        compute_seq = theano.function(inputs = [X, W, Y, U, P, V], \
+        compute_seq = theano.function(inputs = [X, W, Y, U, P, V],
                                       outputs=[results])
 
         # test values
@@ -1201,19 +1200,19 @@ class T_scan(unittest.TestCase):
         x_res = numpy.zeros((5,2))
         x_res[0] = numpy.tanh(x.dot(w) + y[0].dot(u) + p[4].dot(v))
         for i in range(1,5):
-            x_res[i] = numpy.tanh(x_res[i-1].dot(w) \
-                                + y[i].dot(u) + p[4-i].dot(v))
+            x_res[i] = numpy.tanh(x_res[i-1].dot(w) +
+                                  y[i].dot(u) + p[4-i].dot(v))
 
         print "Numpy results:", x_res
 
     def test_norm(self):
         # define tensor variable
         X = T.matrix("X")
-        results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()), \
+        results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()),
                                        sequences=[X])
         compute_norm_lines = theano.function(inputs = [X], outputs=[results])
 
-        results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()), \
+        results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()),
                                        sequences=[X.T])
         compute_norm_cols = theano.function(inputs = [X], outputs=[results])
 
@@ -1229,12 +1228,12 @@ class T_scan(unittest.TestCase):
     def test_trace(self):
         # define tensor variable
         X = T.matrix("X")
-        results, updates = theano.scan(lambda i, j, t_f:T.cast(X[i,j] + \
-                                t_f, theano.config.floatX), \
-                            sequences=[T.arange(X.shape[0]), \
-                                T.arange(X.shape[1])], \
-                            outputs_info=numpy.asarray(0., \
-                                dtype=theano.config.floatX))
+        results, updates = theano.scan(lambda i, j, t_f:T.cast(X[i,j] +
+                                                               t_f, theano.config.floatX),
+                                       sequences=[T.arange(X.shape[0]),
+                                                  T.arange(X.shape[1])],
+                                       outputs_info=numpy.asarray(
+                                           0., dtype=theano.config.floatX))
 
         result = results[-1]
         compute_trace = theano.function(inputs = [X], outputs=[result])
@@ -1256,13 +1255,13 @@ class T_scan(unittest.TestCase):
         V = T.matrix("V")
         n_sym = T.iscalar("n_sym")
 
-        results, updates = theano.scan(lambda x_tm2,x_tm1:T.dot(x_tm2,U) \
-                        + T.dot(x_tm1,V) + T.tanh(T.dot(x_tm1,W) + b_sym), \
-                    n_steps=n_sym, \
-                    outputs_info=[dict(initial = X, taps = [-2,-1])])
+        results, updates = theano.scan(
+            lambda x_tm2,x_tm1:T.dot(x_tm2,U) + T.dot(x_tm1,V) + T.tanh(T.dot(x_tm1,W) + b_sym),
+            n_steps=n_sym,
+            outputs_info=[dict(initial = X, taps = [-2,-1])])
 
-        compute_seq2 = theano.function(inputs = [X, U, V, W, b_sym, \
-                                                 n_sym], outputs=[results])
+        compute_seq2 = theano.function(inputs = [X, U, V, W, b_sym, n_sym],
+                                       outputs=[results])
 
         # test values
         x = numpy.zeros((2,2))
@@ -1284,8 +1283,8 @@ class T_scan(unittest.TestCase):
         x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) \
                    + numpy.tanh(x_res[1].dot(w) + b)
         for i in range(2,10):
-            x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) \
-                        + numpy.tanh(x_res[i-1].dot(w) + b))
+            x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) +
+                        numpy.tanh(x_res[i-1].dot(w) + b))
 
         print "Numpy results:", x_res
 
@@ -1294,9 +1293,9 @@ class T_scan(unittest.TestCase):
         v = T.vector()
         A = T.matrix()
         y = T.tanh(T.dot(v,A))
-        results, updates = theano.scan(lambda i:T.grad(y[i], v), \
+        results, updates = theano.scan(lambda i:T.grad(y[i], v),
                                        sequences = [T.arange(y.shape[0])])
-        compute_jac_t = theano.function([A,v], [results], \
+        compute_jac_t = theano.function([A,v], [results],
                                         allow_input_downcast = True) # shape (d_out, d_in)
 
         # test values
@@ -1331,12 +1330,12 @@ class T_scan(unittest.TestCase):
         trng = T.shared_randomstreams.RandomStreams(1234)
         d=trng.binomial(size=W[1].shape)
 
-        results, updates = theano.scan(lambda v:T.tanh(T.dot(v,W) \
-                        + b_sym)*d, sequences=X)
-        compute_with_bnoise = theano.function(inputs = [X, W, b_sym], \
-                        outputs=[results], \
-                        updates=updates, \
-                        allow_input_downcast = True)
+        results, updates = theano.scan(lambda v:T.tanh(T.dot(v,W) + b_sym)*d,
+                                       sequences=X)
+        compute_with_bnoise = theano.function(inputs = [X, W, b_sym],
+                                              outputs=[results],
+                                              updates=updates,
+                                              allow_input_downcast = True)
         x = numpy.eye(10,2)
         w = numpy.ones((2,2))
         b = numpy.ones((2))

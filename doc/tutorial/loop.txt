@@ -139,8 +139,8 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
   # define tensor variable
   X = T.matrix("X")
-  results, updates = theano.scan(lambda i, j, t_f:T.cast(X[i, j]+t_f, floatX), \
-                    sequences=[T.arange(X.shape[0]), T.arange(X.shape[1])], \
+  results, updates = theano.scan(lambda i, j, t_f:T.cast(X[i, j]+t_f, floatX),
+                    sequences=[T.arange(X.shape[0]), T.arange(X.shape[1])],
                     outputs_info=np.asarray(0., dtype=floatX))
   result = results[-1]
   compute_trace = theano.function(inputs = [X], outputs=[result])
@@ -168,8 +168,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   V = T.matrix("V")
   n_sym = T.iscalar("n_sym")
 
-  results, updates = theano.scan(lambda x_tm2, x_tm1:T.dot(x_tm2, U) + T.dot(x_tm1, V) \
-                                + T.tanh(T.dot(x_tm1, W) + b_sym), \
+  results, updates = theano.scan(lambda x_tm2, x_tm1:T.dot(x_tm2, U) + T.dot(x_tm1, V) + T.tanh(T.dot(x_tm1, W) + b_sym),
                       n_steps=n_sym, outputs_info=[dict(initial = X, taps = [-2, -1])])
   compute_seq2 = theano.function(inputs = [X, U, V, W, b_sym, n_sym], outputs=[results])
 
@@ -188,11 +187,10 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   x_res = numpy.zeros((10, 2))
   x_res[0] = x[0].dot(u) + x[1].dot(v) + numpy.tanh(x[1].dot(w) + b)
   x_res[1] = x[1].dot(u) + x_res[0].dot(v) + numpy.tanh(x_res[0].dot(w) + b)
-  x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) \
-            + numpy.tanh(x_res[1].dot(w) + b)
+  x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) + numpy.tanh(x_res[1].dot(w) + b)
   for i in range(2, 10):
-    x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) \
-            + numpy.tanh(x_res[i-1].dot(w) + b))
+    x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) +
+                numpy.tanh(x_res[i-1].dot(w) + b))
 
 **Scan Example: Computing the Jacobian of y = tanh(v.dot(A)) wrt x**
 
@@ -254,7 +252,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
   d=trng.binomial(size=W[1].shape)
 
   results, updates = theano.scan(lambda v:T.tanh(T.dot(v, W)+b_sym)*d, sequences=X)
-  compute_with_bnoise = theano.function(inputs = [X, W, b_sym], outputs=[results], \
+  compute_with_bnoise = theano.function(inputs = [X, W, b_sym], outputs=[results],
                             updates=updates, allow_input_downcast = True)
   x = np.eye(10, 2)
   w = np.ones((2, 2))
