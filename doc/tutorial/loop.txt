@@ -40,9 +40,9 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_elementwise = theano.function(inputs=[X, W, b_sym], outputs=[results])
 
   # test values
-  x = np.eye(2)
-  w = np.ones((2, 2))
-  b = np.ones((2))
+  x = np.eye(2, dtype=theano.config.floatX)
+  w = np.ones((2, 2), dtype=theano.config.floatX)
+  b = np.ones((2), dtype=theano.config.floatX)
   b[1] = 2
 
   print compute_elementwise(x, w, b)[0]
@@ -72,23 +72,24 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_seq = theano.function(inputs=[X, W, Y, U, P, V], outputs=[results])
 
   # test values
-  x = np.zeros((2))
+  x = np.zeros((2), dtype=theano.config.floatX)
   x[1] = 1
-  w = np.ones((2, 2))
-  y = np.ones((5, 2))
+  w = np.ones((2, 2), dtype=theano.config.floatX)
+  y = np.ones((5, 2), dtype=theano.config.floatX)
   y[0, :] = -3
-  u = np.ones((2, 2))
-  p = np.ones((5, 2))
+  u = np.ones((2, 2), dtype=theano.config.floatX)
+  p = np.ones((5, 2), dtype=theano.config.floatX)
   p[0, :] = 3
-  v = np.ones((2, 2))
+  v = np.ones((2, 2), dtype=theano.config.floatX)
 
   print compute_seq(x, w, y, u, p, v)[0]
 
   # comparison with numpy
-  x_res = np.zeros((5, 2))
+  x_res = np.zeros((5, 2), dtype=theano.config.floatX)
   x_res[0] = np.tanh(x.dot(w) + y[0].dot(u) + p[4].dot(v))
   for i in range(1, 5):
     x_res[i] = np.tanh(x_res[i - 1].dot(w) + y[i].dot(u) + p[4-i].dot(v))
+  print x_res
 
 **Scan Example: Computing norms of lines of X**
 
@@ -103,7 +104,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_norm_lines = theano.function(inputs=[X], outputs=[results])
 
   # test value
-  x = np.diag(np.arange(1, 6), 1)
+  x = np.diag(np.arange(1, 6, dtype=theano.config.floatX), 1)
   print compute_norm_lines(x)[0]
 
   # comparison with numpy
@@ -122,7 +123,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_norm_cols = theano.function(inputs=[X], outputs=[results])
 
   # test value
-  x = np.diag(np.arange(1, 6), 1)
+  x = np.diag(np.arange(1, 6, dtype=theano.config.floatX), 1)
   print compute_norm_cols(x)[0]
 
   # comparison with numpy
@@ -145,9 +146,9 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_trace = theano.function(inputs=[X], outputs=[result])
 
   # test value
-  x = np.eye(5)
-  x[0] = np.arange(5)
-  compute_trace(x)[0]
+  x = np.eye(5, dtype=theano.config.floatX)
+  x[0] = np.arange(5, dtype=theano.config.floatX)
+  print compute_trace(x)[0]
 
   # comparison with numpy
   print np.diagonal(x).sum()
@@ -172,24 +173,25 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_seq2 = theano.function(inputs=[X, U, V, W, b_sym, n_sym], outputs=[results])
 
   # test values
-  x = np.zeros((2, 2)) # the initial value must be able to return x[-2]
+  x = np.zeros((2, 2), dtype=theano.config.floatX) # the initial value must be able to return x[-2]
   x[1, 1] = 1
-  w = 0.5 * np.ones((2, 2))
-  u = 0.5 * (np.ones((2, 2)) - np.eye(2))
-  v = 0.5 * np.ones((2, 2))
+  w = 0.5 * np.ones((2, 2), dtype=theano.config.floatX)
+  u = 0.5 * (np.ones((2, 2), dtype=theano.config.floatX) - np.eye(2, dtype=theano.config.floatX))
+  v = 0.5 * np.ones((2, 2), dtype=theano.config.floatX)
   n = 10
-  b = np.ones((2))
+  b = np.ones((2), dtype=theano.config.floatX)
 
   print compute_seq2(x, u, v, w, b, n)
 
   # comparison with numpy
-  x_res = numpy.zeros((10, 2))
-  x_res[0] = x[0].dot(u) + x[1].dot(v) + numpy.tanh(x[1].dot(w) + b)
-  x_res[1] = x[1].dot(u) + x_res[0].dot(v) + numpy.tanh(x_res[0].dot(w) + b)
-  x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) + numpy.tanh(x_res[1].dot(w) + b)
+  x_res = np.zeros((10, 2))
+  x_res[0] = x[0].dot(u) + x[1].dot(v) + np.tanh(x[1].dot(w) + b)
+  x_res[1] = x[1].dot(u) + x_res[0].dot(v) + np.tanh(x_res[0].dot(w) + b)
+  x_res[2] = x_res[0].dot(u) + x_res[1].dot(v) + np.tanh(x_res[1].dot(w) + b)
   for i in range(2, 10):
     x_res[i] = (x_res[i - 2].dot(u) + x_res[i - 1].dot(v) +
-                numpy.tanh(x_res[i - 1].dot(w) + b))
+                np.tanh(x_res[i - 1].dot(w) + b))
+  print x_res
 
 **Scan Example: Computing the Jacobian of y = tanh(v.dot(A)) wrt x**
 
@@ -206,9 +208,9 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   compute_jac_t = theano.function([A, v], [results], allow_input_downcast=True) # shape (d_out, d_in)
 
   # test values
-  x = np.eye(5)[0]
-  w = np.eye(5, 3)
-  w[2] = np.ones((3))
+  x = np.eye(5, dtype=theano.config.floatX)[0]
+  w = np.eye(5, 3, dtype=theano.config.floatX)
+  w[2] = np.ones((3), dtype=theano.config.floatX)
   print compute_jac_t(w, x)[0]
 
   # compare with numpy
@@ -253,9 +255,9 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
   results, updates = theano.scan(lambda v: T.tanh(T.dot(v, W) + b_sym) * d, sequences=X)
   compute_with_bnoise = theano.function(inputs=[X, W, b_sym], outputs=[results],
                             updates=updates, allow_input_downcast=True)
-  x = np.eye(10, 2)
-  w = np.ones((2, 2))
-  b = np.ones((2))
+  x = np.eye(10, 2, dtype=theano.config.floatX)
+  w = np.ones((2, 2), dtype=theano.config.floatX)
+  b = np.ones((2), dtype=theano.config.floatX)
 
   print compute_with_bnoise(x, w, b)
 
