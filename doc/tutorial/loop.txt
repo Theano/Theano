@@ -15,7 +15,7 @@ Scan
 - ``sum()`` could be computed by scanning the *z + x(i)* function over a list, given an initial state of *z=0*.
 - Often a *for* loop can be expressed as a ``scan()`` operation, and ``scan`` is the closest that Theano comes to looping.
 - Advantages of using ``scan`` over *for* loops:
-  
+
   - Number of iterations to be part of the symbolic graph.
   - Minimizes GPU transfers (if GPU is involved).
   - Computes gradients through sequential steps.
@@ -30,26 +30,26 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # defining the tensor variables
   X = T.matrix("X")
   W = T.matrix("W")
   b_sym = T.vector("b_sym")
-  
+
   results, updates = theano.scan(lambda v:T.tanh(T.dot(v, W)+b_sym), sequences=X)
   compute_elementwise = theano.function(inputs = [X, W, b_sym], outputs=[results])
-  
+
   # test values
   x = np.eye(2)
   w = np.ones((2, 2))
   b = np.ones((2))
   b[1] = 2
-  
+
   print compute_elementwise(x, w, b)[0]
-  
+
   # comparison with numpy
   print np.tanh(x.dot(w) + b)
-  
+
 
 **Scan Example: Computing the sequence x(t) = tanh(x(t-1).dot(W) + y(t).dot(U) + p(T-t).dot(V))**
 
@@ -57,7 +57,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define tensor variables
   X = T.vector("X")
   W = T.matrix("W")
@@ -66,12 +66,12 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   Y = T.matrix("Y")
   V = T.matrix("V")
   P = T.matrix("P")
-  
+
   results, updates = theano.scan(lambda
             y,p,x_tm1:T.tanh(T.dot(x_tm1, W)+T.dot(y, U)+T.dot(p, V)),
             sequences=[Y, P[::-1]], outputs_info=[X])
   compute_seq = theano.function(inputs = [X, W, Y, U, P, V], outputs=[results])
-  
+
   # test values
   x = np.zeros((2))
   x[1] = 1
@@ -82,9 +82,9 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   p = np.ones((5, 2))
   p[0, :] = 3
   v = np.ones((2, 2))
-  
+
   print compute_seq(x, w, y, u, p, v)[0]
-  
+
   # comparison with numpy
   x_res = np.zeros((5, 2))
   x_res[0] = np.tanh(x.dot(w) + y[0].dot(u) + p[4].dot(v))
@@ -97,16 +97,16 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define tensor variable
   X = T.matrix("X")
   results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()), sequences=[X])
   compute_norm_lines = theano.function(inputs = [X], outputs=[results])
-  
+
   # test value
   x = np.diag(np.arange(1, 6), 1)
   print compute_norm_lines(x)[0]
-  
+
   # comparison with numpy
   print np.sqrt((x**2).sum(1))
 
@@ -116,16 +116,16 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define tensor variable
   X = T.matrix("X")
   results, updates = theano.scan(lambda x_i:T.sqrt((x_i**2).sum()), sequences=[X.T])
   compute_norm_cols = theano.function(inputs = [X], outputs=[results])
-  
+
   # test value
   x = np.diag(np.arange(1, 6), 1)
   print compute_norm_cols(x)[0]
-  
+
   # comparison with numpy
   print np.sqrt((x**2).sum(0))
 
@@ -136,7 +136,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano.tensor as T
   import numpy as np
   floatX = "float32"
-  
+
   # define tensor variable
   X = T.matrix("X")
   results, updates = theano.scan(lambda i, j, t_f:T.cast(X[i, j]+t_f, floatX), \
@@ -144,12 +144,12 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
                     outputs_info=np.asarray(0., dtype=floatX))
   result = results[-1]
   compute_trace = theano.function(inputs = [X], outputs=[result])
-  
+
   # test value
   x = np.eye(5)
   x[0] = np.arange(5)
   compute_trace(x)[0]
-  
+
   # comparison with numpy
   print np.diagonal(x).sum()
 
@@ -159,7 +159,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define tensor variables
   X = T.matrix("X")
   W = T.matrix("W")
@@ -172,7 +172,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
                                 + T.tanh(T.dot(x_tm1, W) + b_sym), \
                       n_steps=n_sym, outputs_info=[dict(initial = X, taps = [-2, -1])])
   compute_seq2 = theano.function(inputs = [X, U, V, W, b_sym, n_sym], outputs=[results])
-  
+
   # test values
   x = np.zeros((2, 2)) # the initial value must be able to return x[-2]
   x[1, 1] = 1
@@ -181,9 +181,9 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   v = 0.5*np.ones((2, 2))
   n = 10
   b = np.ones((2))
-  
+
   print compute_seq2(x, u, v, w, b, n)
-  
+
   # comparison with numpy
   x_res = numpy.zeros((10, 2))
   x_res[0] = x[0].dot(u) + x[1].dot(v) + numpy.tanh(x[1].dot(w) + b)
@@ -200,20 +200,20 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define tensor variables
   v = T.vector()
   A = T.matrix()
   y = T.tanh(T.dot(v, A))
   results, updates = theano.scan(lambda i:T.grad(y[i], v), sequences = [T.arange(y.shape[0])])
   compute_jac_t = theano.function([A, v], [results], allow_input_downcast = True) # shape (d_out, d_in)
-  
+
   # test values
   x = np.eye(5)[0]
   w = np.eye(5, 3)
   w[2] = np.ones((3))
   print compute_jac_t(w, x)[0]
-  
+
   # compare with numpy
   print ((1 - np.tanh(x.dot(w))**2)*w).T
 
@@ -225,14 +225,14 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define shared variables
   k = theano.shared(0)
   n_sym = T.iscalar("n_sym")
-  
+
   results, updates = theano.scan(lambda:{k:(k+1)}, n_steps=n_sym)
   accumulator = theano.function([n_sym], [], updates=updates, allow_input_downcast = True)
-  
+
   k.get_value()
   accumulator(5)
   k.get_value()
@@ -243,23 +243,23 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
   import theano
   import theano.tensor as T
   import numpy as np
-  
+
   # define tensor variables
   X = T.matrix("X")
   W = T.matrix("W")
   b_sym = T.vector("b_sym")
-  
+
   # define shared random stream
   trng = T.shared_randomstreams.RandomStreams(1234)
   d=trng.binomial(size=W[1].shape)
-  
+
   results, updates = theano.scan(lambda v:T.tanh(T.dot(v, W)+b_sym)*d, sequences=X)
   compute_with_bnoise = theano.function(inputs = [X, W, b_sym], outputs=[results], \
                             updates=updates, allow_input_downcast = True)
   x = np.eye(10, 2)
   w = np.ones((2, 2))
   b = np.ones((2))
-  
+
   print compute_with_bnoise(x, w, b)
 
 Note that if you want to use a random variable ``d`` that will not be updated through scan loops, you should pass this variable as a ``non_sequences`` arguments. 
@@ -286,10 +286,10 @@ Note that if you want to use a random variable ``d`` that will not be updated th
   # Scan has provided us with A ** 1 through A ** k.  Keep only the last
   # value. Scan notices this and does not waste memory saving them.
   final_result = result[-1]
-  
+
   power = theano.function(inputs=[A, k], outputs=final_result,
                         updates=updates)
-  
+
   print power(range(10), 2)
   #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
 
