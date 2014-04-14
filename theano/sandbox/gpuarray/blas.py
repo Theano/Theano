@@ -45,8 +45,15 @@ class GpuGemv(BlasOp, Gemv):
         if self.inplace:
             code = """
                    Py_XDECREF(%(out)s);
-                   %(out)s = %(y)s;
-                   Py_INCREF(%(out)s);
+                   if (%(y)s->ga.strides[0] <= 0) {
+                     %(out)s = pygpu_copy(%(y)s, GA_ANY_ORDER);
+                     if (%(out)s == NULL) {
+                       %(fail)s
+                     }
+                   } else {
+                     %(out)s = %(y)s;
+                     Py_INCREF(%(out)s);
+                   }
                    """ % vars
         else:
             code = """
@@ -72,7 +79,7 @@ class GpuGemv(BlasOp, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
@@ -101,8 +108,15 @@ class GpuGemm(BlasOp, Gemm):
         if self.inplace:
             code = """
                    Py_XDECREF(%(out)s);
-                   %(out)s = %(C)s;
-                   Py_INCREF(%(out)s);
+                   if (!GpuArray_ISONESEGMENT(&%(C)s->ga)) {
+                     %(out)s = pygpu_copy(%(C)s, GA_ANY_ORDER);
+                     if (%(out)s == NULL) {
+                       %(fail)s
+                     }
+                   } else {
+                     %(out)s = %(C)s;
+                     Py_INCREF(%(out)s);
+                   }
                    """ % vars
         else:
             code = """
@@ -128,7 +142,7 @@ class GpuGemm(BlasOp, Gemm):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
