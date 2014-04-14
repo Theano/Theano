@@ -1,4 +1,5 @@
 from unittest import TestCase
+from nose.plugins.skip import SkipTest
 
 import theano
 from theano import tensor
@@ -48,17 +49,29 @@ GpuGemmTester = makeTester('GpuGemmTester',
         )
 )
 
-GpuGerTester = makeTester(
-    'GpuGerTester',
-    op=ger_destructive, gpu_op=gpuger_inplace,
-    cases=dict(
-        test1=[rand(4, 5), 1.0, rand(4), rand(5)],
-        test2=[rand(4, 5), 0.6, rand(4), rand(5)],
-        test3=[rand(4, 5), -1.0, rand(4), rand(5)],
-        test4=[rand(4, 5), -0.6, rand(4), rand(5)],
-        test5=[rand(4, 5), 0.0, rand(4), rand(5)],
-        )
-)
+class TestGpuSger(TestGer):
+    def setUp(self):
+        self.mode = mode_with_gpu
+        dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
+        self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.ger_destructive = gpuger_inplace
+
+        # data on the gpu make the op always inplace
+        self.ger = gpuger_inplace
+        self.gemm = gpugemm_inplace
+
+    def test_f32_0_0(self):
+        raise SkipTest('0-sized objects not supported')
+    def test_f32_1_0(self):
+        raise SkipTest('0-sized objects not supported')
+    def test_f32_0_1(self):
+        raise SkipTest('0-sized objects not supported')
+
+class TestGpuSgerNoTransfer(TestGpuSger):
+    shared = staticmethod(gpuarray_shared_constructor)
 
 class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):
