@@ -303,7 +303,8 @@ def inplace_elemwise_optimizer_op(OP):
     return inplace_elemwise_optimizer
 
 inplace_elemwise_optimizer = inplace_elemwise_optimizer_op(T.Elemwise)
-compile.optdb.register('inplace_opt', inplace_elemwise_optimizer, 75,
+compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
+                       'inplace_opt',  # for historic reason
                        'inplace_elemwise_optimizer',
                        'fast_run', 'inplace')
 

@@ -248,6 +248,11 @@ class SequenceDB(DB):
                 position_cutoff = tags[0].position_cutoff
 
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
+        # We want to sort by position and then if collision by name
+        # for deterministic optimization.  Since Python 2.2, sort is
+        # stable, so sort by name first, then by position. This give
+        # the order we want.
+        opts.sort(key=lambda obj: obj.name)
         opts.sort(key=lambda obj: self.__position__[obj.name])
         ret = opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
         if hasattr(tags[0], 'name'):
