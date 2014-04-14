@@ -874,7 +874,10 @@ class Elemwise(OpenMPOp):
                 odat[...] = variable
                 storage[0] = odat
             # Sometimes NumPy return a Python type.
-            elif not isinstance(variable, numpy.ndarray):
+            # Some Theano op return a different dtype like floor, ceil,
+            # trunc, eq, ...
+            elif (not isinstance(variable, numpy.ndarray) or
+                  variable.dtype != nout.dtype):
                 variable = numpy.asarray(variable, nout.dtype)
                 storage[0] = variable
             else:
