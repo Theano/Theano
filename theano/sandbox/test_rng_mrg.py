@@ -774,7 +774,7 @@ def test_gradient_scan():
 
 
 def test_multMatVect():
-    A = tensor.imatrix('A')
+    A = tensor.lmatrix('A')
     s = tensor.ivector('s')
     m = tensor.iscalar('m')
     
