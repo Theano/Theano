@@ -158,8 +158,15 @@ class GpuGer(BlasOp, Ger):
         if self.destructive:
             code = """
                    Py_XDECREF(%(out)s);
-                   %(out)s = %(A)s;
-                   Py_INCREF(%(out)s);
+                   if (!GpuArray_ISONESEGMENT(&%(A)s->ga)) {
+                     %(out)s = pygpu_copy(%(A)s, GA_ANY_ORDER);
+                     if (%(out)s == NULL) {
+                       %(fail)s
+                     }
+                   } else {
+                     %(out)s = %(A)s;
+                     Py_INCREF(%(out)s);
+                   }
                    """ % vars
         else:
             code = """
@@ -182,7 +189,7 @@ class GpuGer(BlasOp, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 gpuger_no_inplace = GpuGer(destructive=False)
