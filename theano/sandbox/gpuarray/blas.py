@@ -271,7 +271,7 @@ def local_inplace_gpuager(node):
         return [gpuger_inplace(*node.inputs)]
 
 gpuablas_opt_inplace = in2out(LocalOptGroup(
-        local_inplace_gpuagemv, local_inplace_gpuagemm),
+        local_inplace_gpuagemv, local_inplace_gpuagemm, local_inplace_gpuager),
                               name='gpuablas_opt_inplace')
 optdb.register('InplaceGpuaBlasOpt',
                gpuablas_opt_inplace,

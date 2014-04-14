@@ -314,7 +314,7 @@ def local_gpua_gemm(node):
 
 
 @register_opt()
-@op_lifter([tensor.blas.Ger, tensor.blas_c.CGer])
+@op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
 def local_gpua_ger(node):
     return GpuGer(destructive=node.op.destructive)
 
