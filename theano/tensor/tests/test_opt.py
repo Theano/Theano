@@ -1146,7 +1146,8 @@ class test_fusion(unittest.TestCase):
         #we need the optimisation enabled and the canonicalize.
         #the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
-            'local_elemwise_fusion', 'canonicalize')
+            'local_elemwise_fusion', 'composite_elemwise_fusion',
+            'canonicalize')
         self.do(mode, shared, shp)
 
     @attr('slow')
@@ -1156,7 +1157,8 @@ class test_fusion(unittest.TestCase):
         #we need the optimisation enabled and the canonicalize.
         #the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
-            'local_elemwise_fusion', 'canonicalize')
+            'local_elemwise_fusion', 'composite_elemwise_fusion',
+            'canonicalize')
         self.do(mode, shared, shp)
 
     def test_gpu_fusion(self):
@@ -1164,10 +1166,12 @@ class test_fusion(unittest.TestCase):
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including(
-                    'local_elemwise_fusion', 'canonicalize', 'gpu')
+                'local_elemwise_fusion',  'composite_elemwise_fusion',
+                'canonicalize', 'gpu')
         else:
             mode = theano.compile.mode.get_default_mode().including(
-                    'local_elemwise_fusion', 'canonicalize', 'gpu')
+                'local_elemwise_fusion',  'composite_elemwise_fusion',
+                'canonicalize', 'gpu')
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
@@ -1179,10 +1183,12 @@ class test_fusion(unittest.TestCase):
         #we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including(
-                    'local_elemwise_fusion', 'canonicalize', 'gpu')
+                'local_elemwise_fusion',  'composite_elemwise_fusion',
+                'canonicalize', 'gpu')
         else:
             mode = theano.compile.mode.get_default_mode().including(
-                    'local_elemwise_fusion', 'canonicalize', 'gpu')
+                'local_elemwise_fusion',  'composite_elemwise_fusion',
+                'canonicalize', 'gpu')
         import theano.sandbox.cuda as cuda
         if not cuda.cuda_available:
             raise SkipTest("cuda not available")
@@ -1278,7 +1284,8 @@ class test_fusion(unittest.TestCase):
         #we need the optimisation enabled and the canonicalize.
         #the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
-            'local_elemwise_fusion', 'canonicalize', 'inplace')
+            'local_elemwise_fusion',  'composite_elemwise_fusion',
+            'canonicalize', 'inplace')
 
         x, y, z = dmatrices('xyz')
         f = theano.function([x, y, z], tensor.dot(x, y) + x + y + z, mode=mode)
