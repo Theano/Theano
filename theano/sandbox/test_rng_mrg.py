@@ -884,7 +884,7 @@ def test_multMatVect():
     g0 = rng_mrg.DotModulo()(A, s, m)
     f0 = theano.function([A, s, m], g0)
     
-    A = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, (3, 3)).astype('int32')
+    A = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, (3, 3)).astype('int64')
     s = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, 3).astype('int32')
     m = numpy.asarray(numpy.random.randint(numpy.iinfo(numpy.int32).max), dtype="int32")
     
