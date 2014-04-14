@@ -6,3 +6,4 @@ from ConvTransp3D import *
 from sigm import (softplus, sigmoid, sigmoid_inplace,
                   scalar_sigmoid, ultra_fast_sigmoid,
                   hard_sigmoid)
+from group_dot import GroupDot, GroupDotGrad

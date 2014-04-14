@@ -1,7 +1,11 @@
-from theano import Op, Apply
+import numpy
+import theano
+
+from theano import Op, Apply, tensor
+from theano.tensor import as_tensor_variable
 from theano.compat.six import StringIO
 
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import GpuOp, CudaNdarray, as_cuda_ndarray_variable
 
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
@@ -709,3 +713,339 @@ class GpuSoftmaxWithBias (GpuOp):
         return ret1 + "\n" + ret2
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
+
+
+class GpuGroupDot(GpuOp):
+    def __init__(self, n_groups):
+        self.n_groups = n_groups
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.n_groups == other.n_groups
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.n_groups)
+
+    def __str__(self):
+        return 'GpuGroupDot{%d}' % (self.n_groups)
+
+    def make_node(self, vec, mat, bias, index):
+        vec = as_cuda_ndarray_variable(vec)
+        mat = as_cuda_ndarray_variable(mat)
+        bias = as_cuda_ndarray_variable(bias)
+        index = as_tensor_variable(index)
+
+        assert vec.ndim == 2
+        assert mat.ndim == 3
+        assert bias.ndim == 2
+        assert index.ndim == 1
+        assert 'int' in index.dtype
+        return theano.gof.Apply(self, [vec, mat, bias, index], [vec.type()])
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        shared = theano.sandbox.cuda.float32_shared_constructor
+
+        self.W = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
+        self.b = shared(numpy.zeros((2,), dtype=node.inputs[2].dtype))
+        self.h = shared(numpy.zeros((2), dtype=node.inputs[0].dtype))
+        self.out = shared(numpy.zeros((2), dtype=node.outputs[0].dtype))
+
+        out = tensor.dot(self.h, self.W) + self.b
+        updates = [(self.out, out)]
+        self.step = theano.function([], [], name='GpuGroupDotStep',
+                                    updates=updates)
+
+        return super(GpuGroupDot, self).make_thunk(node, storage_map,
+                                                   compute_map, no_recycling)
+
+    def perform(self, node, ins, _outs):
+        state_below, matrix, biases, groups = ins
+        if not (_outs[0][0] and _outs[0][0].shape == state_below.shape):
+            nw_shape = (state_below.shape[0], biases.shape[1])
+            _outs[0][0] = CudaNdarray.zeros(nw_shape)
+        for pos in xrange(self.n_groups):
+            self.W.set_value(matrix[pos], borrow=True)
+            self.b.set_value(biases[pos], borrow=True)
+            for jdx in xrange(groups.shape[0]):
+                if groups[jdx] == pos:
+                    self.h.set_value(state_below[jdx], borrow=True)
+                    self.step()
+                    _outs[0][0][jdx] = self.out.get_value(borrow=True,
+                                                          return_internal_type=True)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        state_below, matrix, biases, groups = inputs
+        out0, = outputs
+        fail = sub['fail']
+        groups_ctype = node.inputs[3].dtype + '_t'
+        n_groups = self.n_groups
+        return """
+        if (%(out0)s == NULL ||
+            CudaNdarray_HOST_DIMS(%(out0)s)[0] !=
+               CudaNdarray_HOST_DIMS(%(state_below)s)[0] ||
+            CudaNdarray_HOST_DIMS(%(out0)s)[1] !=
+               CudaNdarray_HOST_DIMS(%(state_below)s)[1]) {
+            Py_XDECREF(%(out0)s);
+            int dims[2];
+            dims[0] = CudaNdarray_HOST_DIMS(%(state_below)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(biases)s)[1];
+            // I know it seems from the rest of the code that this could be _NewDims()
+            // but the code gives wrong results if we do that.
+            // TODO: find out why.
+            %(out0)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
+            if (%(out0)s == NULL) { %(fail)s; }
+        }
+        {
+        int fail = 0;
+        npy_intp ng_shp = 0;
+        CudaNdarray *proxy_W = (CudaNdarray *)CudaNdarray_new_nd(2);
+        CudaNdarray *proxy_h = (CudaNdarray *)CudaNdarray_new_nd(1);
+        CudaNdarray *proxy_o = (CudaNdarray *)CudaNdarray_new_nd(1);
+        CudaNdarray *tmp = (CudaNdarray *)CudaNdarray_new_nd(1);
+        if (!proxy_W || !proxy_h || !proxy_o || !tmp) { fail = 1; goto %(name)s_fail; }
+        CudaNdarray_set_dim(proxy_W, 0, CudaNdarray_HOST_DIMS(%(matrix)s)[2]);
+        CudaNdarray_set_dim(proxy_W, 1, CudaNdarray_HOST_DIMS(%(matrix)s)[1]);
+        CudaNdarray_set_dim(proxy_h, 0, CudaNdarray_HOST_DIMS(%(state_below)s)[1]);
+        CudaNdarray_set_dim(proxy_o, 0, CudaNdarray_HOST_DIMS(%(out0)s)[1]);
+        CudaNdarray_set_dim(tmp, 0, CudaNdarray_HOST_DIMS(%(biases)s)[1]);
+        CudaNdarray_set_stride(proxy_W, 0, CudaNdarray_HOST_STRIDES(%(matrix)s)[2]);
+        CudaNdarray_set_stride(proxy_W, 1, CudaNdarray_HOST_STRIDES(%(matrix)s)[1]);
+        CudaNdarray_set_stride(proxy_h, 0, CudaNdarray_HOST_STRIDES(%(state_below)s)[1]);
+        CudaNdarray_set_stride(proxy_o, 0, CudaNdarray_HOST_STRIDES(%(out0)s)[1]);
+        CudaNdarray_set_stride(tmp, 0, CudaNdarray_HOST_STRIDES(%(biases)s)[1]);
+        ng_shp = PyArray_DIMS(%(groups)s)[0];
+        for (npy_intp pos = 0; pos < %(n_groups)s; pos++) {
+            CudaNdarray_set_device_data(proxy_W, CudaNdarray_DEV_DATA(%(matrix)s)+(pos * CudaNdarray_HOST_STRIDES(%(matrix)s)[0]), %(matrix)s);
+            CudaNdarray_set_device_data(tmp, CudaNdarray_DEV_DATA(%(biases)s)+(pos * CudaNdarray_HOST_STRIDES(%(biases)s)[0]), %(biases)s);
+            for (npy_intp jdx = 0; jdx < ng_shp; jdx++) {
+               %(groups_ctype)s *p = (%(groups_ctype)s *)PyArray_GETPTR1(%(groups)s, jdx);
+               if (*p == pos) {
+                   CudaNdarray_set_device_data(proxy_o, CudaNdarray_DEV_DATA(%(out0)s)+(jdx * CudaNdarray_HOST_STRIDES(%(out0)s)[0]), %(out0)s);
+                   CudaNdarray_set_device_data(proxy_h, CudaNdarray_DEV_DATA(%(state_below)s)+(jdx * CudaNdarray_HOST_STRIDES(%(state_below)s)[0]), %(state_below)s);
+                   if (CudaNdarray_CopyFromCudaNdarray(proxy_o, tmp))
+                       { fail = 1; goto %(name)s_fail; }
+                   if (CudaNdarray_sgemv(1.0f, proxy_W, proxy_h,
+                                         1.0f, proxy_o)) { fail = 1; goto %(name)s_fail; }
+               }
+            }
+        }
+  %(name)s_fail:
+    Py_XDECREF(proxy_W);
+    Py_XDECREF(proxy_h);
+    Py_XDECREF(proxy_o);
+    Py_XDECREF(tmp);
+    if (fail)
+      %(fail)s;
+        }
+        """ % locals()
+
+    def grad(self, inputs, grads):
+        state_below, matrix, biases, groups = inputs
+        gout, = grads
+        rval = GpuGroupDotGrad(n_groups=self.n_groups)(state_below,
+                                                       matrix, biases,
+                                                       groups, gout)
+        return rval + [theano.gradient.grad_undefined(self, 3, groups)]
+
+
+class GpuGroupDotGrad(GpuOp):
+    def __init__(self, n_groups):
+        self.n_groups = n_groups
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.n_groups == other.n_groups
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.n_groups)
+
+    def __str__(self):
+        return 'GpuGroupDotGrad{%d}' % (self.n_groups)
+
+    def make_node(self, vec, mat, bias, index, grad_on_out):
+        vec = as_cuda_ndarray_variable(vec)
+        mat = as_cuda_ndarray_variable(mat)
+        bias = as_cuda_ndarray_variable(bias)
+        index = as_tensor_variable(index)
+        grad_on_out = as_cuda_ndarray_variable(grad_on_out)
+
+        assert vec.ndim == 2
+        assert mat.ndim == 3
+        assert bias.ndim == 2
+        assert index.ndim == 1
+        assert 'int' in index.dtype
+        return theano.gof.Apply(self,
+                                [vec, mat, bias, index, grad_on_out],
+                                [vec.type(), mat.type(), bias.type()])
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        shared = theano.sandbox.cuda.float32_shared_constructor
+
+        self.W = shared(numpy.zeros((2, 3), dtype=node.inputs[1].dtype))
+        self.h = shared(numpy.zeros((2,), dtype=node.inputs[0].dtype))
+        self.grad_on_out = shared(numpy.zeros((3,),
+                                              dtype=node.inputs[3].dtype))
+        self.gW = shared(numpy.zeros((2, 3), dtype=node.outputs[1].dtype))
+        self.gh = shared(numpy.zeros((2,), dtype=node.outputs[0].dtype))
+
+        gW = tensor.outer(self.h, self.grad_on_out)
+        gh = tensor.dot(self.grad_on_out, self.W.T)
+
+        updates = [(self.gW, gW), (self.gh, gh)]
+        self.step = theano.function([], [], updates=updates,
+                                    name='GpuGroupDotGradStep')
+
+        return super(GpuGroupDotGrad, self).make_thunk(node, storage_map,
+                                                       compute_map,
+                                                       no_recycling)
+
+    def perform(self, node, ins, _outs):
+        state_below, matrix, biases, groups, grad_on_out = ins
+
+        if not (_outs[0][0] and _outs[0][0].shape == state_below.shape):
+            _outs[0][0] = CudaNdarray.zeros(state_below.shape)
+
+        if not (_outs[1][0] and _outs[1][0].shape == matrix.shape):
+            _outs[1][0] = CudaNdarray.zeros(matrix.shape)
+
+        if not (_outs[2][0] and _outs[2][0].shape == biases.shape):
+            _outs[2][0] = CudaNdarray.zeros(biases.shape)
+
+        for pos in xrange(self.n_groups):
+            mask = groups == pos
+            if mask.sum() != 0:
+                self.W.set_value(matrix[pos], borrow=True)
+                for jdx in xrange(groups.shape[0]):
+                    if groups[jdx] == pos:
+                        self.h.set_value(state_below[jdx], borrow=True)
+                        self.grad_on_out.set_value(grad_on_out[jdx],
+                                                   borrow=True)
+                        self.step()
+                        _outs[0][0][jdx] = self.gh.get_value(borrow=True,
+                                                             return_internal_type=True)
+                        _outs[1][0][pos] += self.gW.get_value(borrow=True,
+                                                              return_internal_type=True)
+                        _outs[2][0][pos] += grad_on_out[jdx]
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        state_below, matrix, biases, groups, grad_on_out = inputs
+        out0, out1, out2 = outputs
+        fail = sub['fail']
+        n_groups = self.n_groups
+        groups_ctype = node.inputs[3].dtype + '_t'
+        return """
+        if (%(out0)s == NULL || CudaNdarray_NDIM(%(out0)s) != 2 ||
+            CudaNdarray_HOST_DIMS(%(out0)s)[0] !=
+               CudaNdarray_HOST_DIMS(%(state_below)s)[0] ||
+            CudaNdarray_HOST_DIMS(%(out0)s)[1] !=
+               CudaNdarray_HOST_DIMS(%(state_below)s)[1]) {
+            Py_XDECREF(%(out0)s);
+            int dims[2];
+            dims[0] = CudaNdarray_HOST_DIMS(%(state_below)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(state_below)s)[1];
+            %(out0)s = (CudaNdarray *)CudaNdarray_NewDims(2, dims);
+            if (%(out0)s == NULL) { %(fail)s; }
+        }
+        if (%(out1)s == NULL || CudaNdarray_NDIM(%(out1)s) != 3 ||
+            CudaNdarray_HOST_DIMS(%(out1)s)[0] !=
+               CudaNdarray_HOST_DIMS(%(matrix)s)[0] ||
+            CudaNdarray_HOST_DIMS(%(out1)s)[1] !=
+               CudaNdarray_HOST_DIMS(%(matrix)s)[1] ||
+            CudaNdarray_HOST_DIMS(%(out1)s)[2] !=
+               CudaNdarray_HOST_DIMS(%(matrix)s)[2]) {
+            Py_XDECREF(%(out1)s);
+            int dims[3];
+            dims[0] = CudaNdarray_HOST_DIMS(%(matrix)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(matrix)s)[1];
+            dims[2] = CudaNdarray_HOST_DIMS(%(matrix)s)[2];
+            %(out1)s = (CudaNdarray *)CudaNdarray_ZEROS(3, dims);
+            if (%(out1)s == NULL) { %(fail)s; }
+        } else {
+          cudaError_t err = cudaMemset(CudaNdarray_DEV_DATA(%(out1)s), 0,
+                                       CudaNdarray_SIZE(%(out1)s) * sizeof(real));
+          if (err) {
+            // Clear error flag
+            cudaGetLastError();
+            PyErr_SetString(PyExc_RuntimeError,
+                            "GpuGroupDotGrad: cudaMemset failed for output 1");
+          %(fail)s;
+          }
+        }
+        if (%(out2)s == NULL || CudaNdarray_NDIM(%(out2)s) != 2 ||
+            CudaNdarray_HOST_DIMS(%(out2)s)[0] !=
+               CudaNdarray_HOST_DIMS(%(biases)s)[0] ||
+            CudaNdarray_HOST_DIMS(%(out2)s)[1] !=
+               CudaNdarray_HOST_DIMS(%(biases)s)[1]) {
+            Py_XDECREF(%(out2)s);
+            int dims[2];
+            dims[0] = CudaNdarray_HOST_DIMS(%(biases)s)[0];
+            dims[1] = CudaNdarray_HOST_DIMS(%(biases)s)[1];
+            %(out2)s = (CudaNdarray *)CudaNdarray_ZEROS(2, dims);
+            if (%(out2)s == NULL) { %(fail)s; }
+        } else {
+          cudaError_t err = cudaMemset(CudaNdarray_DEV_DATA(%(out2)s), 0,
+                                       CudaNdarray_SIZE(%(out2)s) * sizeof(real));
+          if (err) {
+            // Clear error flag
+            cudaGetLastError();
+            PyErr_SetString(PyExc_RuntimeError,
+                            "GpuGroupDotGrad: cudaMemset failed for output 2");
+          %(fail)s;
+          }
+        }
+        {
+        int fail = 0;
+        npy_intp ng_shp = 0;
+        CudaNdarray *proxy_W = (CudaNdarray *)CudaNdarray_new_nd(2);
+        CudaNdarray *proxy_h = (CudaNdarray *)CudaNdarray_new_nd(1);
+        CudaNdarray *proxy_grad = (CudaNdarray *)CudaNdarray_new_nd(1);
+        CudaNdarray *proxy_gW = (CudaNdarray *)CudaNdarray_new_nd(2);
+        CudaNdarray *proxy_gh = (CudaNdarray *)CudaNdarray_new_nd(1);
+        CudaNdarray *proxy_o2 = (CudaNdarray *)CudaNdarray_new_nd(1);
+        if (!proxy_W || !proxy_h || !proxy_grad || !proxy_gW || !proxy_gh || !proxy_o2)
+          { fail = 1; goto %(name)s_fail; }
+        CudaNdarray_set_dim(proxy_W, 0, CudaNdarray_HOST_DIMS(%(matrix)s)[1]);
+        CudaNdarray_set_dim(proxy_W, 1, CudaNdarray_HOST_DIMS(%(matrix)s)[2]);
+        CudaNdarray_set_dim(proxy_h, 0, CudaNdarray_HOST_DIMS(%(state_below)s)[1]);
+        CudaNdarray_set_dim(proxy_grad, 0, CudaNdarray_HOST_DIMS(%(grad_on_out)s)[1]);
+        CudaNdarray_set_dim(proxy_gW, 0, CudaNdarray_HOST_DIMS(%(out1)s)[1]);
+        CudaNdarray_set_dim(proxy_gW, 1, CudaNdarray_HOST_DIMS(%(out1)s)[2]);
+        CudaNdarray_set_dim(proxy_gh, 0, CudaNdarray_HOST_DIMS(%(out0)s)[1]);
+        CudaNdarray_set_dim(proxy_o2, 0, CudaNdarray_HOST_DIMS(%(out2)s)[1]);
+        CudaNdarray_set_stride(proxy_W, 0, CudaNdarray_HOST_STRIDES(%(matrix)s)[1]);
+        CudaNdarray_set_stride(proxy_W, 1, CudaNdarray_HOST_STRIDES(%(matrix)s)[2]);
+        CudaNdarray_set_stride(proxy_h, 0, CudaNdarray_HOST_STRIDES(%(state_below)s)[1]);
+        CudaNdarray_set_stride(proxy_grad, 0, CudaNdarray_HOST_STRIDES(%(grad_on_out)s)[1]);
+        CudaNdarray_set_stride(proxy_gW, 0, CudaNdarray_HOST_STRIDES(%(out1)s)[1]);
+        CudaNdarray_set_stride(proxy_gW, 1, CudaNdarray_HOST_STRIDES(%(out1)s)[2]);
+        CudaNdarray_set_stride(proxy_gh, 0, CudaNdarray_HOST_STRIDES(%(out0)s)[1]);
+        CudaNdarray_set_stride(proxy_o2, 0, CudaNdarray_HOST_STRIDES(%(out2)s)[1]);
+        ng_shp = PyArray_DIMS(%(groups)s)[0];
+        for (npy_intp pos = 0; pos < %(n_groups)s; pos++) {
+            CudaNdarray_set_device_data(proxy_W, CudaNdarray_DEV_DATA(%(matrix)s)+(pos * CudaNdarray_HOST_STRIDES(%(matrix)s)[0]), %(matrix)s);
+            CudaNdarray_set_device_data(proxy_gW, CudaNdarray_DEV_DATA(%(out1)s)+(pos * CudaNdarray_HOST_STRIDES(%(out1)s)[0]), %(out1)s);
+            CudaNdarray_set_device_data(proxy_o2, CudaNdarray_DEV_DATA(%(out2)s)+(pos * CudaNdarray_HOST_STRIDES(%(out2)s)[0]), %(out2)s);
+            for (npy_intp jdx = 0; jdx < ng_shp; jdx++) {
+               %(groups_ctype)s *p = (%(groups_ctype)s *)PyArray_GETPTR1(%(groups)s, jdx);
+               if (*p == pos) {
+                   CudaNdarray_set_device_data(proxy_h, CudaNdarray_DEV_DATA(%(state_below)s)+(jdx * CudaNdarray_HOST_STRIDES(%(state_below)s)[0]), %(state_below)s);
+                   CudaNdarray_set_device_data(proxy_grad, CudaNdarray_DEV_DATA(%(grad_on_out)s)+(jdx * CudaNdarray_HOST_STRIDES(%(grad_on_out)s)[0]), %(grad_on_out)s);
+                   CudaNdarray_set_device_data(proxy_gh, CudaNdarray_DEV_DATA(%(out0)s)+(jdx * CudaNdarray_HOST_STRIDES(%(out0)s)[0]), %(out0)s);
+                   if (CudaNdarray_sgemv(1.0f, proxy_W, proxy_grad, 0.0f, proxy_gh))
+                     { fail = 1; goto %(name)s_fail; }
+                   if (CudaNdarray_sger(1.0f, proxy_h, proxy_grad, proxy_gW))
+                     { fail = 1; goto %(name)s_fail; }
+                   if (CudaNdarray_inplace_elemwise((PyObject *)proxy_o2, (PyObject *)proxy_grad, IADD))
+                     { fail = 1; goto %(name)s_fail; }
+               }
+            }
+        }
+  %(name)s_fail:
+    Py_XDECREF(proxy_W);
+    Py_XDECREF(proxy_h);
+    Py_XDECREF(proxy_grad);
+    Py_XDECREF(proxy_gW);
+    Py_XDECREF(proxy_gh);
+    Py_XDECREF(proxy_o2);
+    if (fail)
+      %(fail)s;
+        }
+        """ % locals()
