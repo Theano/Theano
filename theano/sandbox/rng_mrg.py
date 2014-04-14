@@ -81,7 +81,7 @@ class DotModulo(Op):
         out[0] = matVecModM(A, s, m)
     
     def c_code_cache_version(self):
-        return (3,)
+        return (5,)
 
     def c_code(self, node, name, (_A, _s, _m), (_z, ), sub):
         return """
@@ -100,6 +100,8 @@ class DotModulo(Op):
             dims[0] = PyArray_DIMS(%(_A)s)[0];
             %(_z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, PyArray_TYPE(%(_s)s));
         }
+
+        if(!%(_z)s){%(fail)s;}
 
         {   //makes it compile even though labels jump over variable definitions.
             
