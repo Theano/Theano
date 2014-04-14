@@ -189,9 +189,6 @@ optdb.register('Print1.51', PrintCurrentFunctionGraph('Post-stabilize'),
 optdb.register('specialize', gof.EquilibriumDB(),
         2, 'fast_run')
 
-optdb.register('Print2.01', PrintCurrentFunctionGraph('Post-specialize'),
-        2.01,)  # 'fast_run', 'fast_compile')
-
 # misc special cases for speed that break canonicalization
 optdb.register('uncanonicalize', gof.EquilibriumDB(),
         3, 'fast_run')
