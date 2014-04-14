@@ -6,7 +6,7 @@ from theano import tensor
 from theano.tests import unittest_tools
 from theano.tensor.blas import (gemv_inplace, gemm_inplace, ger_destructive,
                                 _dot22)
-from theano.tensor.tests.test_blas import TestGer
+from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from theano.sandbox.gpuarray import gpuarray_shared_constructor
 from theano.sandbox.gpuarray.tests.test_basic_ops import (makeTester, rand,
@@ -29,6 +29,21 @@ GpuGemvTester = makeTester('GpuGemvTester',
         test_stride=[rand(3)[::-1], 1, rand(3, 2)[::-1], rand(2)[::-1], 0],
         )
 )
+
+class TestGpuSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
+    mode = mode_with_gpu
+    dtype = 'float32'
+
+    gemv = gpugemv_no_inplace
+    gemv_inplace = gpugemv_inplace
+
+    @staticmethod
+    def shared(val):
+        try:
+            return gpuarray_shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
+
 
 GpuGemmTester = makeTester('GpuGemmTester',
                            op=gemm_inplace, gpu_op=gpugemm_inplace,
