@@ -4116,16 +4116,16 @@ class t_dot(unittest.TestCase):
                 return numpy.asarray([[1.3]], dtype=r.dtype)
             raise ValueError()
 
-        for dtype0 in ('float32', 'float64', 'complex64', 'complex128'):
-            for dtype1 in ('float32', 'float64', 'complex64', 'complex128'):
+        for dtype0 in ('float32', 'float64', 'complex64'):
+            for dtype1 in ('float32', 'complex64', 'complex128'):
                 for bc0 in ((True,), (False,), (True, True),
                             (True, False), (False, True),
                             (False, False)):
+                    x = TensorType(dtype=dtype0, broadcastable=bc0)()
                     for bc1 in ((True,), (False,), (True, True),
                                 (True, False), (False, True),
                                 (False, False)):
 
-                        x = TensorType(dtype=dtype0, broadcastable=bc0)()
                         y = TensorType(dtype=dtype1, broadcastable=bc1)()
                         z = dot(x, y)
                         t = TensorType(dtype=dtype0,
