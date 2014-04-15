@@ -17,7 +17,7 @@ from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
                                                GpuAlloc,
                                                GpuReshape,
                                                GpuEye)
-from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm
+from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
 from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                                           GpuCrossentropySoftmax1HotWithBiasDx,
@@ -302,14 +302,8 @@ def local_gpua_careduce(node):
 
 
 @register_opt()
-@op_lifter([tensor.blas.Gemv])
+@op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 def local_gpua_gemv(node):
-    return GpuGemv(inplace=node.op.inplace)
-
-
-@register_opt()
-@op_lifter([tensor.blas_c.CGemv])
-def local_gpua_gemv2(node):
     return GpuGemv(inplace=node.op.inplace)
 
 
@@ -317,6 +311,12 @@ def local_gpua_gemv2(node):
 @op_lifter([tensor.blas.Gemm])
 def local_gpua_gemm(node):
     return GpuGemm(inplace=node.op.inplace)
+
+
+@register_opt()
+@op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
+def local_gpua_ger(node):
+    return GpuGer(destructive=node.op.destructive)
 
 
 @register_opt()
