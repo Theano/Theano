@@ -28,7 +28,7 @@ class GpuGemv(BlasOp, Gemv):
         A = as_gpuarray_variable(A)
         x = as_gpuarray_variable(x)
         y = as_gpuarray_variable(y)
-        assert A.dtype == x.dtype == y.dtype == alpha.dtype == beta.dtype
+        assert A.dtype == x.dtype == y.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):
@@ -91,7 +91,7 @@ class GpuGemm(BlasOp, Gemm):
         A = as_gpuarray_variable(A)
         B = as_gpuarray_variable(B)
         C = as_gpuarray_variable(C)
-        assert A.dtype == B.dtype == C.dtype == alpha.dtype == beta.dtype
+        assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def perform(self, node, inputs, outputs):
@@ -155,7 +155,7 @@ class GpuGer(BlasOp, Ger):
         A = as_gpuarray_variable(A)
         x = as_gpuarray_variable(x)
         y = as_gpuarray_variable(y)
-        assert A.dtype == x.dtype == y.dtype == alpha.dtype
+        assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
     def perform(self, node, inp, out):
