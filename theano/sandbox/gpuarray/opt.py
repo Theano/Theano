@@ -502,6 +502,7 @@ def gpu_reconstruct_graph(inputs, outputs, tag=None):
 @op_lifter([scan_op.Scan])
 def local_scan_to_gpua(node):
     info = copy.deepcopy(node.op.info)
+    info['gpu'] = True
     info['gpua'] = True
     nw_ins = [node.inputs[0]]
     e = (1 +
@@ -528,7 +529,7 @@ def local_scan_to_gpua(node):
     tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins, scan_outs)
     local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
-#    info['gpu_hash'] = hash(_cmodule_key)
+    info['gpu_hash'] = hash(_cmodule_key)
 
     nw_op =  scan_op.Scan(scan_ins, scan_outs, info,
                           typeConstructor=GpuArrayType).make_node(*nw_ins)
@@ -536,7 +537,7 @@ def local_scan_to_gpua(node):
 
 optdb.register('gpua_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=GpuArrayType,
-                                             gpu_flag=True),
+                                             gpua_flag=True),
                75,
                'gpua',
                'fast_run',

@@ -73,6 +73,8 @@ class Scan(PureOp):
         will be moved on the GPU if the optimization gets applied (following
         Theano's philosophy of moving as much as possible on gpu).
         """
+        if 'gpua' not in info:
+            info['gpua'] = False
         # adding properties into self
         self.inputs = inputs
         self.outputs = outputs
