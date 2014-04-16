@@ -880,6 +880,9 @@ class Elemwise(OpenMPOp):
                   variable.dtype != nout.dtype):
                 variable = numpy.asarray(variable, nout.dtype)
                 storage[0] = variable
+            # numpy.real return a view!
+            elif not variable.flags.owndata:
+                storage[0] = variable.copy()
             else:
                 storage[0] = variable
             i += 1
