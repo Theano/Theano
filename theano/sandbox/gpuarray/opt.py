@@ -533,3 +533,12 @@ def local_scan_to_gpua(node):
     nw_op =  scan_op.Scan(scan_ins, scan_outs, info,
                           typeConstructor=GpuArrayType).make_node(*nw_ins)
     return nw_op.outputs
+
+optdb.register('gpua_scanOp_make_inplace',
+               scan_opt.ScanInplaceOptimizer(typeConstructor=GpuArrayType,
+                                             gpu_flag=True),
+               75,
+               'gpua',
+               'fast_run',
+               'inplace',
+               'scan')
