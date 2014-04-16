@@ -1,12 +1,14 @@
 import copy
 import theano
 import numpy
-from theano import tensor, scalar
+from theano import tensor, scalar, gof
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, ProxyDB,
                         Optimizer, toolbox,
                         InconsistencyError, EquilibriumOptimizer)
+
+from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
@@ -432,3 +434,102 @@ def local_gpu_conv(node):
     out = gpu_from_host(out)
     out.values_eq_approx = values_eq_approx
     return [out]
+
+
+def tensor_to_gpu(x):
+    if isinstance(x.type, tensor.TensorType):
+        y = GpuArrayType(broadcastable=x.type.broadcastable,
+                         dtype=x.type.dtype)()
+        if x.name:
+            y.name = x.name + '[Gpua]'
+        return y
+    else:
+        return x
+
+
+def safe_to_gpu(x):
+    if isinstance(x.type, tensor.TensorType):
+        return gpu_from_host(x)
+    else:
+        return x
+
+
+def safe_to_cpu(x):
+    if isinstance(x.type, GpuArrayType):
+        return host_from_gpu(x)
+    else:
+        return x
+
+
+def gpu_safe_new(x, tag=''):
+    """
+    Internal function that constructs a new variable from x with the same
+    type, but with a different name ( old name + tag). This function is used
+    by gradient, or the R-op to construct new variables for the inputs of
+    the inner graph such that there is no interference between the original
+    graph and the newly constructed graph.
+    """
+    if hasattr(x, 'name') and x.name is not None:
+        nw_name = x.name + tag
+    else:
+        nw_name = None
+    if isinstance(x, theano.Constant):
+        return x.clone()
+
+    nw_x = x.type()
+    nw_x.name = nw_name
+    return nw_x
+
+
+def gpu_reconstruct_graph(inputs, outputs, tag=None):
+    """
+    Different interface to clone, that allows you to pass inputs.
+    Compared to clone, this method always replaces the inputs with
+    new variables of the same type, and returns those ( in the same
+    order as the original inputs).
+    """
+    if tag is None:
+        tag = ''
+    nw_inputs = [gpu_safe_new(x, tag) for x in inputs]
+    givens = {}
+    for nw_x, x in zip(nw_inputs, inputs):
+        givens[x] = nw_x
+    nw_outputs = scan_utils.clone(outputs, replace=givens)
+    return (nw_inputs, nw_outputs)
+
+
+@register_opt('scan')
+@op_lifter([scan_op.Scan])
+def local_scan_to_gpua(node):
+    info = copy.deepcopy(node.op.info)
+    info['gpua'] = True
+    nw_ins = [node.inputs[0]]
+    e = (1 +
+         node.op.n_seqs +
+         node.op.n_mit_mot +
+         node.op.n_mit_sot +
+         node.op.n_sit_sot +
+         node.op.n_shared_outs)
+    nw_ins += [safe_to_gpu(x) for x in node.inputs[1:e]]
+    b = e
+    e = e + node.op.n_nit_sot
+    nw_ins += node.op.inputs[b:e]
+    nw_ins += [safe_to_gpu(x) for x in node.inputs[e:]]
+    scan_ins = [tensor_to_gpu(x) for x in node.op.inputs]
+    scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
+    scan_outs = scan_utils.clone(
+        scan_outs,
+        replace=zip(node.op.inputs,
+                    [safe_to_cpu(x) for x in scan_ins]))
+
+    # We need to construct the hash here, because scan
+    # __init__ does not know about cuda ndarray and can not
+    # handle graphs with inputs being Cuda Ndarrays
+    tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins, scan_outs)
+    local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
+    _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
+#    info['gpu_hash'] = hash(_cmodule_key)
+
+    nw_op =  scan_op.Scan(scan_ins, scan_outs, info,
+                          typeConstructor=GpuArrayType).make_node(*nw_ins)
+    return nw_op.outputs
