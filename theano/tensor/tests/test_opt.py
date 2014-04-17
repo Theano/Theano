@@ -3776,8 +3776,10 @@ class T_local_sum(unittest.TestCase):
 
 class T_local_reduce(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().including('canonicalize',
-                                                                'specialize')
+        self.mode = theano.compile.get_default_mode().including(
+            'canonicalize',
+            'specialize',
+            'uncanonicalize', 'local_max_and_argmax')
 
     def test_local_reduce_broadcast_all_0(self):
         for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
@@ -3826,6 +3828,28 @@ class T_local_reduce(unittest.TestCase):
             assert not any([
                 isinstance(node.op, T.CAReduce)
                 for node in f.maker.fgraph.toposort()])
+
+    def test_local_reduce_join(self):
+        vx = matrix()
+        vy = matrix()
+        vz = matrix()
+        x = numpy.asarray([[1, 0], [3, 4]], dtype=config.floatX)
+        y = numpy.asarray([[4, 0], [2, 1]], dtype=config.floatX)
+        z = numpy.asarray([[5, 0], [1, 2]], dtype=config.floatX)
+
+        for out, res in [
+            (T.max((vx, vy), 0), numpy.max((x, y), 0)),
+            (T.min((vx, vy), 0), numpy.min((x, y), 0)),
+            (T.sum((vx, vy, vz), 0), numpy.sum((x, y, z), 0)),
+            (T.prod((vx, vy, vz), 0), numpy.prod((x, y, z), 0)),
+            (T.prod((vx, vy.T, vz), 0), numpy.prod((x, y.T, z), 0)),
+        ]:
+            f = theano.function([vx, vy, vz], out,
+                                on_unused_input='ignore', mode=self.mode)
+            assert (f(x, y, z) == res).all(), out
+            topo = f.maker.fgraph.toposort()
+            assert len(topo) <= 2, out
+            assert isinstance(topo[-1].op, T.Elemwise), out
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):

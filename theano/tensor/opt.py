@@ -3309,6 +3309,41 @@ ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.ProdWithoutZeros]
 
 @register_canonicalize
+@register_uncanonicalize  # Needed for MaxAndArgmax -> CAReduce
+@gof.local_optimizer(ALL_REDUCE)
+def local_reduce_join(node):
+    """Max(Join(a,b), axis=0) -> Maximum(a,b)  """
+    if (isinstance(node.op, T.CAReduce) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, T.Join)):
+
+        join = node.inputs[0].owner
+        if T.extract_constant(join.inputs[0]) != 0:
+            return
+
+        if isinstance(node.op.scalar_op, (scalar.Maximum, scalar.Minimum)):
+            #Support only 2 inputs for now
+            if len(join.inputs) != 3:
+                return
+        elif not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul)):
+            return
+
+        new_inp = []
+        for inp in join.inputs[1:]:
+            inp = inp.owner
+            if not inp:
+                return
+            if (not isinstance(inp.op, DimShuffle) or
+                inp.op.new_order != ('x',) + tuple(range(inp.inputs[0].ndim))):
+                return
+            new_inp.append(inp.inputs[0])
+        ret = Elemwise(node.op.scalar_op)(*new_inp)
+        if ret.dtype == node.outputs[0].dtype:
+            return [ret]
+        #else the reduction do something about the dtype.
+
+
+@register_canonicalize
 @gof.local_optimizer(ALL_REDUCE)
 def local_cut_useless_reduce(node):
     """Sum(a, axis=[]) -> a  """
