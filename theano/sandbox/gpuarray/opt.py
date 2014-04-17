@@ -530,7 +530,7 @@ def local_scan_to_gpua(node):
     nw_ins += [safe_to_gpu(x) for x in node.inputs[1:e]]
     b = e
     e = e + node.op.n_nit_sot
-    nw_ins += node.op.inputs[b:e]
+    nw_ins += node.inputs[b:e]
     nw_ins += [safe_to_gpu(x) for x in node.inputs[e:]]
     scan_ins = [tensor_to_gpu(x) for x in node.op.inputs]
     scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
