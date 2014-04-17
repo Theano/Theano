@@ -13,18 +13,17 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import (host_from_gpu,
-                                               gpu_from_host,
-                                               gpu_alloc,
-                                               GpuAlloc,
-                                               GpuReshape,
-                                               GpuEye)
+from theano.sandbox.gpuarray.basic_ops import (
+    host_from_gpu, gpu_from_host, HostFromGpu,
+    gpu_alloc, GpuAlloc, GpuReshape, GpuEye
+    )
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
 from theano.sandbox.gpuarray.conv import GpuConv
-from theano.sandbox.gpuarray.nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
-                                          GpuCrossentropySoftmax1HotWithBiasDx,
-                                          GpuSoftmaxWithBias,
-                                          GpuSoftmax)
+from theano.sandbox.gpuarray.nnet import (
+    GpuCrossentropySoftmaxArgmax1HotWithBias,
+    GpuCrossentropySoftmax1HotWithBiasDx,
+    GpuSoftmaxWithBias, GpuSoftmax
+    )
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduceCuda)
 from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
@@ -134,7 +133,17 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
 @register_opt()
 @op_lifter([tensor.Alloc])
 def local_gpualloc(node):
-    return gpu_alloc
+    new_out = gpu_alloc(*node.inputs)
+    # We need to hide new broadcastable dimensions because
+    # ReplaceValidate doesn't like when they change.
+    if new_out.broadcastable != node.outputs[0].broadcastable:
+        # but if a dim is suddenly not broadcastable anymore then that's a bug
+        for b_old, b_new in zip(node.outputs[0].broadcastable,
+                                new_out.broadcastable):
+            assert b_new or (not b_old)
+        new_out = tensor.patternbroadcast(new_out,
+                                          node.outputs[0].broadcastable)
+    return (new_out,)
 
 
 @register_opt()
@@ -158,6 +167,13 @@ def local_gpureshape(node):
         name = 'Gpu' + name
     res = GpuReshape(op.ndim, op.name)
     return res
+
+
+@register_opt()
+@op_lifter([tensor.Rebroadcast])
+def local_gpu_rebroadcast(node):
+    if isinstance(node.inputs[0].owner.op, HostFromGpu):
+        return node.op(node.inputs[0].owner.inputs[0])
 
 
 @register_opt()

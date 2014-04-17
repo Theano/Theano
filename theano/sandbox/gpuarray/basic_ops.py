@@ -161,7 +161,7 @@ class HostFromGpu(Op):
             raise TypeError(x)
         return Apply(self, [x],
                      [tensor.TensorType(dtype=x.dtype,
-                                        broadcastable=x.broadcastable,)()])
+                                        broadcastable=x.broadcastable)()])
 
     def perform(self, node, inp, out):
         x, = inp
