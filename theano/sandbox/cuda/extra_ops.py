@@ -39,6 +39,9 @@ class GpuCumsum(CumsumOp, GpuOp):
         self.max_threads_dim0 = None
         self.max_grid_size1 = None
 
+    def perform(self, node, inp, out):
+        return Op.perform(self, node, inp, out)
+
     def make_node(self, x):
         assert x.dtype == 'float32'
         if not isinstance(x.type, CudaNdarrayType):
