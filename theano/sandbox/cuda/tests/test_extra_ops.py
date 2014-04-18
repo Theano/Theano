@@ -48,13 +48,15 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
         # Stepped strides
         f = theano.function([x], cumsum(x[::2]), mode=self.mode)
-        assert [n for n in f.maker.fgraph.toposort() if isinstance(n.op, GpuCumsum)]
+        assert [n for n in f.maker.fgraph.toposort()
+                if isinstance(n.op, GpuCumsum)]
         a = np.random.randint(10, size=(42,)).astype("float32")
         assert np.allclose(np.cumsum(a[::2]), f(a))
 
         # Negative strides
         f = theano.function([x], cumsum(x[::-1]), mode=self.mode)
-        assert [n for n in f.maker.fgraph.toposort() if isinstance(n.op, GpuCumsum)]
+        assert [n for n in f.maker.fgraph.toposort()
+                if isinstance(n.op, GpuCumsum)]
         a = np.random.randint(10, size=(42,)).astype("float32")
         assert np.allclose(np.cumsum(a[::-1]), f(a))
 
@@ -63,7 +65,8 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
         x = T.fvector('x')
         f = theano.function([x], cumsum(x), mode=self.mode)
-        assert [n for n in f.maker.fgraph.toposort() if isinstance(n.op, GpuCumsum)]
+        assert [n for n in f.maker.fgraph.toposort()
+                if isinstance(n.op, GpuCumsum)]
 
         # Extensive testing for the first 1k sizes
         a = np.ones((int(1e3),), dtype="float32")
@@ -85,10 +88,11 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         x = T.fmatrix('x')
         for axis in xrange(2):
             f = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
-            assert [n for n in f.maker.fgraph.toposort() if isinstance(n.op, GpuCumsum)]
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
 
             # Extensive testing for the first 1k sizes
-            a_shape = [11, 11]
+            a_shape = [5, 5]
             a_shape[axis] = int(1e3)
             a = np.ones(a_shape, dtype="float32")
             slices = [slice(None), slice(None)]
@@ -99,19 +103,19 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
                 assert np.allclose(npa, fa)
 
             # Use multiple GPU threadblocks
-            a_shape = [11, 11]
+            a_shape = [5, 5]
             a_shape[axis] = block_max_size+2
             a = np.ones(a_shape, dtype="float32")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use multiple GPU gridblocks
-            a_shape = [11, 11]
+            a_shape = [5, 5]
             a_shape[1-axis] = self.max_grid_size1+1
             a = np.ones(a_shape, dtype="float32")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use recursive cumsum
-            a_shape = [11, 11]
+            a_shape = [5, 5]
             a_shape[axis] = block_max_size*(block_max_size+1)+2
             a = np.ones(a_shape, dtype="float32")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
