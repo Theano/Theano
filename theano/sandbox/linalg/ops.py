@@ -223,6 +223,18 @@ def is_positive(v):
     return False
 
 
+@register_canonicalize
+@local_optimizer([DimShuffle])
+def transinv_to_invtrans(node):
+    if isinstance(node.op, DimShuffle):
+        if node.op.new_order == (1, 0):
+            A, = node.inputs
+            if A.owner:
+                if isinstance(A.owner.op, MatrixInverse):
+                   X, = A.owner.inputs
+                   return [A.owner.op(node.op(X))]
+
+
 @register_stabilize
 @local_optimizer([Dot, Dot22])
 def inv_as_solve(node):
