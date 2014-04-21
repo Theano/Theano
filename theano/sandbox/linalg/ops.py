@@ -264,8 +264,8 @@ def transinv_to_invtrans(node):
             A, = node.inputs
             if A.owner:
                 if isinstance(A.owner.op, MatrixInverse):
-                   X, = A.owner.inputs
-                   return [A.owner.op(node.op(X))]
+                    X, = A.owner.inputs
+                    return [A.owner.op(node.op(X))]
 
 
 @register_stabilize
@@ -286,7 +286,7 @@ def inv_as_solve(node):
 
 @register_stabilize
 @register_canonicalize
-@local_optimizer(None) # XXX: solve is defined later and can't be used here
+@local_optimizer(None)  # XXX: solve is defined later and can't be used here
 def tag_solve_triangular(node):
     """
     If a general solve() is applied to the output of a cholesky op, then
@@ -300,8 +300,16 @@ def tag_solve_triangular(node):
                     return [Solve('lower_triangular')(A, b)]
                 else:
                     return [Solve('upper_triangular')(A, b)]
+            if (isinstance(A.owner.op, DimShuffle)
+                and A.owner.op.new_order == (1, 0)):
+                A_T, = A.owner.inputs
+                if isinstance(A_T.owner.op, type(cholesky)):
+                    if A_T.owner.op.lower:
+                        return [Solve('upper_triangular')(A, b)]
+                    else:
+                        return [Solve('lower_triangular')(A, b)]
 
-
+                        
 @register_canonicalize
 @register_stabilize
 @register_specialize

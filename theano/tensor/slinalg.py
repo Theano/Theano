@@ -171,9 +171,16 @@ class Solve(Op):
 
     def perform(self, node, inputs, output_storage):
         A, b = inputs
-        #TODO: use the A_structure to go faster
-        output_storage[0][0] = scipy.linalg.solve(A, b)
-
+        if self.A_structure == 'lower_triangular':
+            rval = scipy.linalg.solve_triangular(
+                A, b, lower=True)
+        elif self.A_structure == 'upper_triangular':
+            rval = scipy.linalg.solve_triangular(
+                A, b, lower=False)
+        else:
+            rval = scipy.linalg.solve(A, b)
+        output_storage[0][0] = rval
+        
     # computes shape of x where x = inv(A) * b
     def infer_shape(self, node, shapes):
         Ashape, Bshape = shapes
