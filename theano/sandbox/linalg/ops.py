@@ -251,6 +251,24 @@ def inv_as_solve(node):
                 return [solve(r.owner.inputs[0].T, l.T).T]
 
 
+@register_stabilize
+@register_canonicalize
+@local_optimizer(None) # XXX: solve is defined later and can't be used here
+def tag_solve_triangular(node):
+    """
+    If a general solve() is applied to the output of a cholesky op, then
+    replace it with a triangular solve.
+    """
+    if node.op == solve:
+        if node.op.A_structure == 'general':
+            A, b = node.inputs  # result is solution Ax=b
+            if isinstance(A.owner.op, type(cholesky)):
+                if A.owner.op.lower:
+                    return [Solve('lower_triangular')(A, b)]
+                else:
+                    return [Solve('upper_triangular')(A, b)]
+
+
 @register_canonicalize
 @register_stabilize
 @register_specialize
