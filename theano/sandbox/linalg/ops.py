@@ -646,6 +646,9 @@ class MatrixInverse(Op):
     def __str__(self):
         return "MatrixInverse"
 
+    def infer_shape(self, node, shapes):
+        return shapes
+
 matrix_inverse = MatrixInverse()
 
 
