@@ -12,6 +12,7 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
+from theano.sandbox.cuda.basic_ops import device_properties
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
     host_from_gpu, gpu_from_host, HostFromGpu,
@@ -26,7 +27,9 @@ from theano.sandbox.gpuarray.nnet import (
     )
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduceCuda)
-from theano.sandbox.gpuarray.subtensor import GpuIncSubtensor, GpuSubtensor
+from theano.sandbox.gpuarray.subtensor import (GpuIncSubtensor, GpuSubtensor,
+                                               GpuAdvancedIncSubtensor1,
+                                               GpuAdvancedIncSubtensor1_dev20)
 from theano.sandbox.gpuarray.type import GpuArrayConstant
 
 gpu_optimizer = EquilibriumDB()
@@ -271,6 +274,23 @@ def local_gpua_incsubtensor(node):
     return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
                            node.op.set_instead_of_inc,
                            node.op.destroyhandler_tolerate_aliased)
+                           
+
+@register_opt()
+@op_lifter([tensor.AdvancedIncSubtensor1])
+def local_gpua_advanced_incsubtensor(node):
+    x, y = node.inputs[0:2]
+    coords = node.inputs[2:]
+    set_instead_of_inc = node.op.set_instead_of_inc
+    active_device_no = theano.sandbox.cuda.active_device_number()
+    compute_capability = device_properties(active_device_no)['major']
+    
+    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
+        return GpuAdvancedIncSubtensor1(
+                    set_instead_of_inc=set_instead_of_inc)
+    else:
+        return GpuAdvancedIncSubtensor1_dev20(
+                    set_instead_of_inc=set_instead_of_inc)
 
 
 @register_opt()

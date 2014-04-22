@@ -4,10 +4,11 @@ import StringIO
 import numpy
 
 import theano
-from theano import tensor, gof
+from theano import tensor, gof, Op
 from theano.gof.python25 import all, any
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
+from theano.sandbox.cuda.basic_ops import device_properties
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
@@ -359,13 +360,13 @@ class GpuIncSubtensor(IncSubtensor):
         return parent_version + elemwise_version + (0,)
 
 
-class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
+class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
     """
     def make_node(self, x, y, ilist):
-        x_ = as_cuda_ndarray_variable(x)
-        y_ = as_cuda_ndarray_variable(y)
+        x_ = as_gpuarray_variable(x)
+        y_ = as_gpuarray_variable(y)
         ilist_ = tensor.as_tensor_variable(ilist)
 
         assert x_.type.dtype == y_.type.dtype
@@ -381,7 +382,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             # the caller should have made a copy of x len(ilist) times
             raise TypeError('cannot index into a broadcastable dimension')
 
-        return Apply(self, [x_, y_, ilist_], [x_.type()])
+        return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     # CudaNdarray_Subscript() doesn't support Advanced slicing.
     # But we can't use the parent version that loops on each index
@@ -394,13 +395,15 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         if not self.inplace:
             x = x.copy()
         if self.set_instead_of_inc:
-            # CudaNdarray __setitem__ doesn't do broadcast nor support
-            # list of index.
             assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
             if y.ndim == x.ndim:
                 assert len(y) == len(idx)
                 for (j, i) in enumerate(idx):
-                    x[i] = y[j]
+                    try:
+                        x[i] = y[j]
+                    except:
+                        import pdb
+                        pdb.set_trace()
             else:
                 for i in idx:
                     x[i] = y
@@ -411,131 +414,36 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
             if y.ndim == x.ndim:
                 assert len(y) == len(idx)
-                for (j, i) in enumerate(idx):
-                    x[i] += y[j]
+                for (j, i) in enumerate(idx):                    
+                    #x[i] += y[j]
+                    pygpu.elemwise.ielemwise2(x[i], '+', y[j],  broadcast=False)
             else:
                 for i in idx:
-                    x[i] += y
-        out[0] = x
+                    #x[i] += y
+                    nb_dims_to_add = (x[i].ndim - y.ndim)
+                    reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
+                    pygpu.elemwise.ielemwise2(x[i], '+', reshaped_y, 
+                                              broadcast=True)
 
-    def c_code_cache_version(self):
-        return (3,)
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        if (self.set_instead_of_inc) or \
-           (node.inputs[0].ndim != node.inputs[1].ndim):
-            raise NotImplementedError("This case does not have C code yet.")
-
-        x = inputs[0]
-        y = inputs[1]
-        ind = inputs[2]
-        out = outputs[0]
-        fail = sub['fail']
-        inplace = int(self.inplace)
-
-        return """
-        PyObject *x_obj, *y_obj, *row_x, *row_y;
-        PyObject *x_rowind_obj, *y_rowind_obj;
-        dtype_%(ind)s *p_index;
-        int num_indices, j;
-        int ret;
-
-        num_indices = PyArray_SIZE(%(ind)s);
-        if ((num_indices - 1) > LONG_MAX) {
-            PyErr_Format(PyExc_AssertionError,
-                         "num_indices %%d exceeds LONG_MAX + 1", num_indices);
-            %(fail)s;
-        }
-
-        Py_XDECREF(%(out)s);
-        if (!%(inplace)s) {
-            %(out)s = (CudaNdarray*)CudaNdarray_Copy(%(x)s);
-        } else {
-            %(out)s = %(x)s;
-            Py_XINCREF(%(out)s);
-        }
-
-        x_obj = (PyObject*)CudaNdarray_View(%(out)s);
-        y_obj = (PyObject*)CudaNdarray_View(%(y)s);
-
-        for (j = 0;j < num_indices; j++) {
-
-             p_index = (dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
-
-             x_rowind_obj = PyInt_FromLong(*p_index);
-
-             if (PyInt_AsLong(x_rowind_obj) != (*p_index)) {
-                 PyErr_Format(PyExc_AssertionError,
-                              "Error in converting row index to integer from long");
-                 // Dec Ref what ever we have increfed or allocated so far
-                 // We deallocate objects exactly in the reverse order they were allocated.
-                 Py_XDECREF(x_rowind_obj);
-                 Py_XDECREF(y_obj);
-                 Py_XDECREF(x_obj);
-                 %(fail)s;
-             }
-
-             y_rowind_obj = PyInt_FromLong(j);
-
-             row_x = CudaNdarray_Subscript(x_obj, x_rowind_obj);
-             row_y = CudaNdarray_Subscript(y_obj, y_rowind_obj);
-
-             if ((row_x == NULL) || (row_y == NULL)) {
-                  Py_XDECREF(row_y);
-                  Py_XDECREF(row_x);
-                  Py_XDECREF(y_rowind_obj);
-                  Py_XDECREF(x_rowind_obj);
-                  Py_XDECREF(y_obj);
-                  Py_XDECREF(x_obj);
-                  %(fail)s;
-             }
-
-             ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
-             if (ret != 0) {
-                 Py_XDECREF(row_y);
-                 Py_XDECREF(row_x);
-                 Py_XDECREF(y_rowind_obj);
-                 Py_XDECREF(x_rowind_obj);
-                 Py_XDECREF(y_obj);
-                 Py_XDECREF(x_obj);
-                 %(fail)s;
-             }
-
-             Py_XDECREF(row_y);
-             Py_XDECREF(row_x);
-             Py_XDECREF(y_rowind_obj);
-             Py_XDECREF(x_rowind_obj);
-        }
-
-        Py_XDECREF(y_obj);
-        Py_XDECREF(x_obj);
-
-        if (!%(out)s) {
-            %(fail)s
-        }
-        """ % locals()
+        out[0] = x  
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     """Implement AdvancedIncSubtensor1 on the gpu, but use function
     only avail on compute capability 2.0 and more recent.
     """
-
+    
+    def __init__(self, inplace=False, set_instead_of_inc=False):
+        # The python implementation in the parent class is not applicable here
+        GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
+        
     def make_node(self, x, y, ilist):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
         the index are of type long.
         """
-        x_ = as_cuda_ndarray_variable(x)
-        y_ = as_cuda_ndarray_variable(y)
-        ilist_ = tensor.as_tensor_variable(ilist)
-
-        convert_map = {8: tensor.basic._convert_to_int8,
-                       16: tensor.basic._convert_to_int16,
-                       32: tensor.basic._convert_to_int32,
-                       64: tensor.basic._convert_to_int64
-        }
-        intwidth = theano.gof.compiledir.python_int_bitwidth()
-        ilist_ = convert_map[intwidth](ilist_)
+        x_ = as_gpuarray_variable(x)
+        y_ = as_gpuarray_variable(y)
+        ilist_ = as_gpuarray_variable(ilist)
 
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
@@ -550,10 +458,20 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
             # the caller should have made a copy of x len(ilist) times
             raise TypeError('cannot index into a broadcastable dimension')
 
-        return Apply(self, [x_, y_, ilist_], [x_.type()])
+        return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
         return (2,)
+        
+    def c_headers(self):
+        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
+                '<compyte/ext_cuda.h>']
+
+    def c_compiler(self):
+        return NVCC_compiler
+
+    def c_init_code(self):
+        return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
@@ -573,13 +491,13 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         return """
         Py_XDECREF(%(out)s);
         if (!%(inplace)s) {
-            %(out)s = (CudaNdarray*)CudaNdarray_Copy(%(x)s);
+            %(out)s = (PyGpuArrayObject*)pygpu_copy(%(x)s, GA_C_ORDER);
         } else {
             %(out)s = %(x)s;
             Py_XINCREF(%(out)s);
         }
 
-        CudaNdarray_vector_add_fast(%(out)s, %(y)s, %(ind)s);
+        GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s);
 
         if (!%(out)s) {
             %(fail)s
@@ -587,26 +505,35 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
+        dtype_x = node.inputs[0].dtype
+        dtype_y = node.inputs[1].dtype
+        dtype_ind = node.inputs[2].dtype
+        dtype_out = node.outputs[0].dtype
+        itemsize_x = numpy.dtype(dtype_x).itemsize
+        itemsize_y = numpy.dtype(dtype_y).itemsize
+        itemsize_ind = numpy.dtype(dtype_ind).itemsize
+        itemsize_out = numpy.dtype(dtype_out).itemsize
         return """
 
         __global__ void k_vector_add_fast(int numRowsX,
                                           int numColsX,
                                           int stridesX0,
                                           int stridesX1,
-                                          float *X,
+                                          npy_%(dtype_x)s *X,
                                           int numRowsY,
                                           int numColsY,
                                           int stridesY0,
                                           int stridesY1,
-                                          float *Y ,
-                                          long *d_indices_arr,
-                                          int num)
+                                          npy_%(dtype_y)s *Y,
+                                          int numIndices,
+                                          int stridesIndices,
+                                          npy_%(dtype_ind)s *indices_arr)
         {
-             for (int i = (blockIdx.x); i < num; i += gridDim.x)
+             for (int i = (blockIdx.x); i < numIndices; i += gridDim.x)
              {
                   for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
                   {
-                      int x_row = d_indices_arr[i];
+                      int x_row = indices_arr[i * stridesIndices];
                       int y_row = i;
                       atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
                   }
@@ -614,49 +541,39 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
              return;
         }
 
-        void CudaNdarray_vector_add_fast(CudaNdarray* py_self, CudaNdarray* py_other, PyArrayObject *indices_arr)
+        void GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
+                                      PyGpuArrayObject* py_other,
+                                      PyGpuArrayObject *indices_arr)
         {
-                const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
-                const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
-                const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
-                const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
-
-                unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
-                unsigned int numcolsX = shapeX[1];
-                unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
+                int num_threads_per_block = std::min(PyGpuArray_DIMS(py_self)[1],
+                                                     (size_t)256);
+                int num_blocks = std::min(PyGpuArray_SIZE(indices_arr),
+                                          (size_t)4096);
 
                 dim3 n_blocks(num_blocks);
                 dim3 n_threads(num_threads_per_block);
-                long *d_indices_arr = NULL;
 
-                PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
-
-                d_indices_arr = (long*)device_malloc(PyArray_NBYTES(cpu_indices_arr));
-                assert(d_indices_arr);
-
-                cudaError_t err = cudaMemcpy(d_indices_arr,
-                                             PyArray_DATA(cpu_indices_arr),
-                                             PyArray_NBYTES(cpu_indices_arr),
-                                             cudaMemcpyHostToDevice);
-
-                assert(err == cudaSuccess);
-
-                k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
-                                                           shapeX[1],
-                                                           strX[0],
-                                                           strX[1],
-                                                           CudaNdarray_DEV_DATA(py_self),
-                                                           shapeY[0],
-                                                           shapeY[1],
-                                                           strY[0],
-                                                           strY[1],
-                                                           CudaNdarray_DEV_DATA(py_other),
-                                                           d_indices_arr,
-                                                           PyArray_SIZE(indices_arr)
-                                                          );
-                device_free(d_indices_arr);
-                Py_XDECREF(cpu_indices_arr);
+                k_vector_add_fast<<<n_blocks, n_threads>>>(
+                        PyGpuArray_DIMS(py_self)[0],
+                        PyGpuArray_DIMS(py_self)[1],
+                        PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s,
+                        PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s,
+                        (npy_%(dtype_x)s*)(
+                            ((char *)cuda_get_ptr(py_self->ga.data)) +
+                            py_self->ga.offset),
+                        PyGpuArray_DIMS(py_other)[0],
+                        PyGpuArray_DIMS(py_other)[1],
+                        PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s,
+                        PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s,
+                        (npy_%(dtype_x)s*)(
+                            ((char *)cuda_get_ptr(py_other->ga.data)) +
+                            py_other->ga.offset),
+                        PyGpuArray_DIMS(indices_arr)[0],
+                        PyGpuArray_STRIDES(indices_arr)[0] / %(itemsize_ind)s,
+                        (npy_%(dtype_ind)s*)(
+                            ((char *)cuda_get_ptr(indices_arr->ga.data)) +
+                            indices_arr->ga.offset)
+                );
                 return;
         }
 
