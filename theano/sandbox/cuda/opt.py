@@ -1539,7 +1539,7 @@ def typeConstructor(broadcastable, dtype):
     if dtype == 'float32':
         return CudaNdarrayType(broadcastable=broadcastable)
     else:
-        return TensorType(broadcastable=broadcastable, dtype=dtype)
+        return tensor.TensorType(broadcastable=broadcastable, dtype=dtype)
 
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])
