@@ -1650,7 +1650,7 @@ def min(x, axis=None, keepdims=False):
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
     """
-
+    x = as_tensor_variable(x)
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return -max(-x, axis=axis, keepdims=keepdims)
@@ -1671,7 +1671,7 @@ def argmin(x, axis=None, keepdims=False):
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
     """
-
+    x = as_tensor_variable(x)
     str_x_type = str(x.dtype)
     if str_x_type.startswith('float') or str_x_type in int_dtypes:
         return argmax(-x, axis=axis, keepdims=keepdims)
