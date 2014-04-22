@@ -15,6 +15,7 @@ except ImportError:
 from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable,
                                                host_from_gpu, gpu_from_host)
 from theano.sandbox.gpuarray.opt import register_opt as register_gpu_opt
+from theano.sandbox.gpuarray.opt import op_lifter as op_lifter
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 
@@ -44,7 +45,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (9,)
+        return (9,1)
 
     def c_headers(self):
         return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
@@ -221,10 +222,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
         z, = out
         fail = sub['fail']
         mode = self.mode
-        import pdb
-        pdb.set_trace()
         if config.gpuarray.sync:
-            cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
+            cnda_thread_sync = "GpuArray_sync(&%(z)s->ga);" % dict(z=z)
         else:
             cnda_thread_sync = ""
         return """
@@ -322,7 +321,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 grid_d = 1+(((PyGpuArray_DIMS(%(ten4)s))[3]-d)/step_y);
             }else{
                 PyErr_Format(PyExc_TypeError,
-                             "GpuImages2Neibs:: unknow mode '%(mode)s'");
+                             "GpuImages2Neibs:: unknown mode '%(mode)s'");
                  %(fail)s;
             }
 
@@ -442,17 +441,9 @@ class GpuImages2Neibs(Images2Neibs, Op):
         } // END NESTED SCOPE
         """ % locals()
 
-
-def gpu_images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
-    return GpuImages2Neibs(mode)(ten4, neib_shape, neib_step)
-
-
 @op_lifter([Images2Neibs])
 def use_gpu_images2neibs(node):
-    if (type(node.op) is Images2Neibs and
-        node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']):
-        return [host_from_gpu(gpu_images2neibs(gpu_from_host(node.inputs[0]),
-                                               node.inputs[1], node.inputs[2],
-                                               mode=node.op.mode))]
+    if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
+        return GpuImages2Neibs(node.op.mode)
 
 register_gpu_opt()(use_gpu_images2neibs)
