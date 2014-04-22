@@ -51,8 +51,11 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag1():
 
     try:
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
+        fname = 'CudaNdarray.pkl'
+        if sys.version_info[0] == 3:
+            fname = 'CudaNdarray_py3.pkl'
 
-        with open(os.path.join(testfile_dir, 'CudaNdarray.pkl')) as fp:
+        with open(os.path.join(testfile_dir, fname), 'rb') as fp:
             mat = cPickle.load(fp)
 
         assert isinstance(mat, numpy.ndarray)
