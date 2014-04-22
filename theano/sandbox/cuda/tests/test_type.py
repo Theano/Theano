@@ -36,12 +36,10 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
         with open(os.path.join(testfile_dir, fname), 'rb') as fp:
             if cuda_available:
                 mat = cPickle.load(fp)
+                assert isinstance(mat, CudaNdarray)
+                assert numpy.asarray(mat)[0] == -42.0
             else:
-                assert_raises(ImportError, cPickle.load, fp)
-
-        if cuda_available:
-            assert isinstance(mat, CudaNdarray)
-            assert numpy.asarray(mat)[0] == -42.0
+                assert_raises(ImportError, pickle.load, fp)
 
     finally:
         config.experimental.unpickle_gpu_on_cpu = oldflag
