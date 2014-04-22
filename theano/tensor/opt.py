@@ -1411,6 +1411,10 @@ class Assert(T.Op):
         return [input_shapes[0]]
 
 assert_ = Assert()
+#Unittest.assert_ is a deprecated name for assertTrue.
+#2to3 convert theano.tensor.opt.assert_ to theano.tensor.opt.assertTrue
+#So I define a new name as a work around.
+assert_op = assert_
 
 
 @register_specialize

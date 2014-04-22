@@ -2789,7 +2789,7 @@ class test_assert(utt.InferShapeTester):
     def test0(self):
         x = T.scalar()
         y = T.scalar()
-        f = theano.function([x, y], theano.tensor.opt.assert_(x, T.eq(x, y)))
+        f = theano.function([x, y], theano.tensor.opt.assert_op(x, T.eq(x, y)))
         f(1, 1)
         self.assertRaises(AssertionError, f, 1, 0)
 
@@ -2801,7 +2801,7 @@ class test_assert(utt.InferShapeTester):
         mode = compile.mode.get_mode(mode)
 
         x = T.scalar()
-        f = theano.function([x], theano.tensor.opt.assert_(x, 1), mode=mode)
+        f = theano.function([x], theano.tensor.opt.assert_op(x, 1), mode=mode)
         assert f(1) == 1
         assert f(5) == 5
         topo = f.maker.fgraph.toposort()
@@ -2817,7 +2817,7 @@ class test_assert(utt.InferShapeTester):
 
         x = T.scalar()
         y = T.scalar()
-        f = theano.function([x, y], theano.tensor.opt.assert_(x, y, 1),
+        f = theano.function([x, y], theano.tensor.opt.assert_op(x, y, 1),
                             mode=mode)
         assert f(1, 1) == 1
         assert f(5, 1) == 5
@@ -2835,7 +2835,7 @@ class test_assert(utt.InferShapeTester):
 
         x = T.scalar()
         y = T.scalar()
-        f = theano.function([x, y], theano.tensor.opt.assert_(x, y, 0),
+        f = theano.function([x, y], theano.tensor.opt.assert_op(x, y, 0),
                             mode=mode)
         self.assertRaises(AssertionError, f, 1, 0)
         topo = f.maker.fgraph.toposort()
@@ -2849,14 +2849,14 @@ class test_assert(utt.InferShapeTester):
         bdscal = dscalar()
         adscal_val = numpy.random.rand()
         bdscal_val = numpy.random.rand() + 1
-        out = theano.tensor.opt.assert_(adscal, bdscal)
+        out = theano.tensor.opt.assert_op(adscal, bdscal)
         self._compile_and_check([adscal, bdscal], [out],
                                 [adscal_val, bdscal_val], Assert)
 
         admat = dmatrix()
         admat_val = numpy.random.rand(3, 4)
         adscal_val += 1
-        out = theano.tensor.opt.assert_(admat, adscal, bdscal)
+        out = theano.tensor.opt.assert_op(admat, adscal, bdscal)
         self._compile_and_check([admat, adscal, bdscal], [out],
                                 [admat_val, adscal_val, bdscal_val], Assert)
 
