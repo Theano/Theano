@@ -518,7 +518,6 @@ def gpu_reconstruct_graph(inputs, outputs, tag=None):
 @op_lifter([scan_op.Scan])
 def local_scan_to_gpua(node):
     info = copy.deepcopy(node.op.info)
-    info['gpu'] = True
     info['gpua'] = True
     nw_ins = [node.inputs[0]]
     e = (1 +
@@ -540,8 +539,8 @@ def local_scan_to_gpua(node):
                     [safe_to_cpu(x) for x in scan_ins]))
 
     # We need to construct the hash here, because scan
-    # __init__ does not know about cuda ndarray and can not
-    # handle graphs with inputs being Cuda Ndarrays
+    # __init__ does not know about the gpu and can not
+    # handle graphs with inputs being on the gpu
     tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins, scan_outs)
     local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])

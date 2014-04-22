@@ -56,22 +56,21 @@ class Scan(PureOp):
             the scan op (like number of different types of
             arguments, name, mode, if it should run on GPU or
             not, etc.)
-        :param typeConstructor: function that constructs a Theano TensorType
-            able to represent a float32 ndarray.
+        :param typeConstructor: function that constructs an equivalent
+            to Theano TensorType
 
-        Note: ``typeConstructor`` had been added to refactor how Theano
-        deals with the GPU. If it runs on the GPU, scan needs to construct
-        certain outputs (those who reside in the GPU memory) as CudaNdarray.
-        However we can not import cuda in this file (as it is in sandbox,
-        and not available on each machine) so the workaround is that the GPU
-        optimization (which is aware of cuda types) passes to the
-        constructor of this class a function that is able to construct
-        CudaNdarray. This way the class Scan does not need to be aware of
-        CudaNdarray, it just constructs any float32 tensor using this
-        function (which by default constructs normal tensors). Note that the
-        second assumption in this code is that any float32 output or input
-        will be moved on the GPU if the optimization gets applied (following
-        Theano's philosophy of moving as much as possible on gpu).
+
+        Note: ``typeConstructor`` had been added to refactor how
+        Theano deals with the GPU. If it runs on the GPU, scan needs
+        to construct certain outputs (those who reside in the GPU
+        memory) as the GPU-specific type.  However we can not import
+        gpu code in this file (as it is in sandbox, and not available
+        on each machine) so the workaround is that the GPU
+        optimization passes to the constructor of this class a
+        function that is able to construct a GPU type. This way the
+        class Scan does not need to be aware of the details for the
+        GPU, it just constructs any tensor using this function (which
+        by default constructs normal tensors).
         """
         if 'gpua' not in info:
             info['gpua'] = False
@@ -97,23 +96,10 @@ class Scan(PureOp):
             # Not that for mit_mot there are several output slices per
             # output sequence
             o = outputs[idx]
-            # Scan assumes that only variables of dtype float32 might need a
-            # special constructor (i.e. CudaNdarray constructor) when the
-            # code is running on GPU, as it is the only type supported by
-            # Theano yet. Therefore only for dtype float32 we use the passed
-            # type constructor ``typeConstructor``. For anything else we
-            # know that even if we run it on the GPU we still construct
-            # normal Theano tensors.
-            if o.type.dtype in ['float32']:
-                self.output_types.append(
-                    typeConstructor(
-                        broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
-            else:
-                self.output_types.append(
-                    tensorConstructor(
-                        broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
+            self.output_types.append(
+                typeConstructor(
+                    broadcastable=(False,) + o.type.broadcastable,
+                    dtype=o.type.dtype))
 
             idx += len(self.mit_mot_out_slices[jdx])
             jdx += 1
@@ -122,23 +108,11 @@ class Scan(PureOp):
         end = idx + self.n_mit_sot + self.n_sit_sot + self.n_nit_sot
 
         for o in outputs[idx:end]:
-            # Scan assumes that only variables of dtype float32 might need a
-            # special constructor (i.e. CudaNdarray constructor) when the
-            # code is running on GPU, as it is the only type supported by
-            # Theano yet. Therefore only for dtype float32 we use the passed
-            # type constructor ``typeConstructor``. For anything else we
-            # know that even if we run it on the GPU we still construct
-            # normal Theano tensors.
-            if o.type.dtype in ['float32']:
-                self.output_types.append(
-                    typeConstructor(
-                        broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
-            else:
-                self.output_types.append(
-                    tensorConstructor(
-                        broadcastable=(False,) + o.type.broadcastable,
-                        dtype=o.type.dtype))
+            self.output_types.append(
+                typeConstructor(
+                    broadcastable=(False,) + o.type.broadcastable,
+                    dtype=o.type.dtype))
+
         # shared outputs + possibly the ending condition
         for o in outputs[end:]:
             self.output_types.append(o.type)
@@ -184,14 +158,14 @@ class Scan(PureOp):
                                    self.n_shared_outs)
         self.n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         self.n_tap_outs = self.n_mit_mot + self.n_mit_sot
-        if not self.info['gpu']:
+        if self.info['gpu'] or self.info['gpua']:
+            self._hash_inner_graph = self.info['gpu_hash']
+        else:
             tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                            self.outputs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
             self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             self._hash_inner_graph = hash(self._cmodule_key)
-        else:
-            self._hash_inner_graph = self.info['gpu_hash']
 
     def make_node(self, *inputs):
         """
