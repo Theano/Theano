@@ -1,4 +1,4 @@
-"""This file contain auxiliary Ops, used during the compilation phase
+"""This file contains auxiliary Ops, used during the compilation phase
 and Ops building class (:class:`FromFunctionOp`) and decorator
 (:func:`as_op`) that help make new Ops more rapidly.
 
@@ -374,7 +374,7 @@ class FromFunctionOp(gof.Op):
     Build a basic Theano Op around a function.
 
     Since the resulting Op is very basic and is missing most of the
-    optional functionality, some optimization may not apply.  If you
+    optional functionalities, some optimizations may not apply.  If you
     want to help, you can supply an infer_shape function that computes
     the shapes of the output given the shapes of the inputs.
 

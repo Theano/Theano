@@ -17,8 +17,8 @@ those operations will run in parallel in Theano.
 
 The most frequent way to control the number of threads used is via the
 ``OMP_NUM_THREADS`` environment variable. Set it to the number of
-threads you want to use before starting the python process. Some BLAS
-implementations support other enviroment variables.
+threads you want to use before starting the Python process. Some BLAS
+implementations support other environment variables.
 
 
 Parallel element wise ops with OpenMP
@@ -35,9 +35,9 @@ tensor size for which the operation is parallelized because for short
 tensors using OpenMP can slow down the operation. The default value is
 ``200000``.
 
-For simple(fast) operation you can obtain a speed up with very large
-tensors while for more complex operation you can obtain a good speed
-up also for smaller tensor.
+For simple (fast) operations you can obtain a speed-up with very large
+tensors while for more complex operations you can obtain a good speed-up
+also for smaller tensors.
 
 There is a script ``elemwise_openmp_speedup.py`` in ``theano/misc/``
 which you can use to tune the value of ``openmp_elemwise_minsize`` for
@@ -47,4 +47,4 @@ without OpenMP and shows the time difference between the cases.
 
 The only way to control the number of threads used is via the
 ``OMP_NUM_THREADS`` environment variable. Set it to the number of threads
-you want to use before starting the python process.
+you want to use before starting the Python process.

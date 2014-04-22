@@ -71,9 +71,9 @@ def upcast(dtype, *dtypes):
 
 def get_scalar_type(dtype):
     """
-    Return an Scalar(dtype) object.
+    Return a Scalar(dtype) object.
 
-    This cache objects to save allocation and run time.
+    This caches objects to save allocation and run time.
     """
     if dtype not in get_scalar_type.cache:
         get_scalar_type.cache[dtype] = Scalar(dtype=dtype)

@@ -417,8 +417,8 @@ AddConfigVar('compute_test_value_opt',
              in_c_key=False)
 
 AddConfigVar('unpickle_function',
-             ("Replace unpickled Theano function with None",
-              "This is useful to unpickle old graph that pickled"
+             ("Replace unpickled Theano functions with None. "
+              "This is useful to unpickle old graphs that pickled"
               " them when it shouldn't"),
              BoolParam(True),
              in_c_key=False)
@@ -483,9 +483,9 @@ AddConfigVar('openmp',
          )
 
 AddConfigVar('openmp_elemwise_minsize',
-             "If OpenMP is enable, this is the minimum size of vector "
-             "for which  the openmp parallel for is enable."
-             "Used in element wise ops",
+             "If OpenMP is enabled, this is the minimum size of vectors "
+             "for which the openmp parallelization is enabled "
+             "in element wise ops.",
              IntParam(200000),
              in_c_key=False,
          )
