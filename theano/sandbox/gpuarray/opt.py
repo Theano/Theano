@@ -208,8 +208,6 @@ def local_gpuflatten(node):
 def local_gpu_elemwise(node):
     op = node.op
     name = op.name
-    if node.outputs[0].ndim == 0:
-        return
     if name:
         name = 'Gpu'+name
     res = GpuElemwise(op.scalar_op, name=name,
