@@ -2,7 +2,7 @@ from theano import scalar, gof
 from theano.gof.python25 import all, any
 
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
-                                               test_CAReduce, T_sum_dtype)
+                                               test_CAReduce, T_reduce_dtype)
 
 from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
                                                           rand_gpuarray)
@@ -152,7 +152,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
         return
 
 
-class T_gpusum_dtype(T_sum_dtype):
+class T_gpureduce_dtype(T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
     op = GpuCAReduceCuda
     #Currently we don't support reduction on 0 axis

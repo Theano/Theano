@@ -716,44 +716,47 @@ class test_IsInf_IsNan(unittest.TestCase):
         return self.run_isfunc('isnan')
 
 
-class T_sum_dtype(unittest.TestCase):
+class T_reduce_dtype(unittest.TestCase):
     mode = theano.compile.get_default_mode().excluding(
         'local_cut_useless_reduce')
     op = CAReduce
     axes = [None, 0, 1, [], [0], [1], [0, 1]]
+    methods = ['sum', 'prod']
 
-    def test_sum_default_dtype(self):
+    def test_reduce_default_dtype(self):
         """
-        Test the default dtype of a sum().
+        Test the default dtype of a method().
         """
         # We try multiple axis combinations even though axis should not matter.
-        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
-            axis = self.axes[idx % len(self.axes)]
-            x = tensor.matrix(dtype=dtype)
-            s = x.sum(axis=axis)
-            assert s.dtype == dict(
+        for method in self.methods:
+            for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+                axis = self.axes[idx % len(self.axes)]
+                x = tensor.matrix(dtype=dtype)
+                s = getattr(x, method)(axis=axis)
+                assert s.dtype == dict(
                     int8='int64',
                     int16='int64',
                     int32='int64',
                     uint8='uint64',
                     uint16='uint64',
                     uint32='uint64',
-                    ).get(dtype, dtype)
-            f = theano.function([x], s, mode=self.mode)
-            topo = f.maker.fgraph.toposort()
-            assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
-            data = numpy.random.rand(3, 4) * 10
-            data = data.astype(dtype)
-            f(data)
+                ).get(dtype, dtype)
+                f = theano.function([x], s, mode=self.mode)
+                topo = f.maker.fgraph.toposort()
+                assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+                data = numpy.random.rand(3, 4) * 10
+                data = data.astype(dtype)
+                f(data)
 
-    def test_sum_default_acc_dtype(self):
-        ##Test the default acc_dtype of a sum().
+    def test_reduce_default_acc_dtype(self):
+        ##Test the default acc_dtype of a reduce().
         # We try multiple axis combinations even though axis should not matter.
-        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
-            axis = self.axes[idx % len(self.axes)]
-            x = tensor.matrix(dtype=dtype)
-            s = x.sum(axis=axis)
-            assert s.owner.op.acc_dtype == dict(
+        for method in self.methods:
+            for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+                axis = self.axes[idx % len(self.axes)]
+                x = tensor.matrix(dtype=dtype)
+                s = getattr(x, method)(axis=axis)
+                assert s.owner.op.acc_dtype == dict(
                     int8='int64',
                     int16='int64',
                     int32='int64',
@@ -762,95 +765,102 @@ class T_sum_dtype(unittest.TestCase):
                     uint32='uint64',
                     float32='float64',
                     complex64='complex128',
-                    ).get(dtype, dtype)
-            f = theano.function([x], s, mode=self.mode)
-            topo = f.maker.fgraph.toposort()
-            assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
-            data = numpy.random.rand(3, 4) * 10
-            data = data.astype(dtype)
-            f(data)
-
-    @attr('slow')
-    def test_sum_custom_dtype(self):
-        """
-        Test the ability to provide your own output dtype for a sum.
-        """
-        # We try multiple axis combinations even though axis should not matter.
-        idx = 0
-        for input_dtype in imap(str, theano.scalar.all_types):
-            x = tensor.matrix(dtype=input_dtype)
-            for output_dtype in imap(str, theano.scalar.all_types):
-                # If the output is a complex, the gradient of the sum will
-                # cast the complex to the input dtype. We can't call the normal
-                # cast on a complex to a not complex as this is ambiguous.
-                if (not input_dtype.startswith('complex') and
-                    output_dtype.startswith('complex')):
-                    continue
-
-                axis = self.axes[idx % len(self.axes)]
-                sum_var = x.sum(dtype=output_dtype, axis=axis)
-                assert sum_var.dtype == output_dtype
-
-                f = theano.function([x], sum_var, mode=self.mode)
+                ).get(dtype, dtype)
+                f = theano.function([x], s, mode=self.mode)
                 topo = f.maker.fgraph.toposort()
                 assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
                 data = numpy.random.rand(3, 4) * 10
-                data = data.astype(input_dtype)
+                data = data.astype(dtype)
                 f(data)
-                if "complex" in input_dtype:
-                    continue
-                # Check that we can take the gradient
-                tensor.grad(sum_var.sum(), x,
-                            disconnected_inputs='ignore')
-                idx += 1
 
-    def test_sum_custom_acc_dtype(self):
+    @attr('slow')
+    def test_reduce_custom_dtype(self):
         """
-        Test the ability to provide your own accumulator dtype for a sum.
+        Test the ability to provide your own output dtype for a reduce.
         """
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
-        for input_dtype in imap(str, theano.scalar.all_types):
-            x = tensor.matrix(dtype=input_dtype)
-            for acc_dtype in imap(str, theano.scalar.all_types):
-                # If the accumulator is a complex, the gradient of the sum will
+        for method in self.methods:
+            for input_dtype in imap(str, theano.scalar.all_types):
+                x = tensor.matrix(dtype=input_dtype)
+                for output_dtype in imap(str, theano.scalar.all_types):
+                # If the output is a complex, the gradient of the reduce will
                 # cast the complex to the input dtype. We can't call the normal
                 # cast on a complex to a not complex as this is ambiguous.
-                if (not input_dtype.startswith('complex') and
-                    acc_dtype.startswith('complex')):
-                    continue
+                    if (not input_dtype.startswith('complex') and
+                        output_dtype.startswith('complex')):
+                        continue
 
-                axis = self.axes[idx % len(self.axes)]
-                # If output_dtype would force a downcast, we expect a TypeError
-                # We always allow int/uint inputs with float/complex outputs.
-                upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
-                if (acc_dtype == upcasted_dtype or
-                        (input_dtype in tensor.discrete_dtypes and
-                            acc_dtype in tensor.continuous_dtypes)
-                        ):
-                    sum_var = x.sum(acc_dtype=acc_dtype, axis=axis)
-                    assert sum_var.owner.op.acc_dtype == acc_dtype
+                    axis = self.axes[idx % len(self.axes)]
+                    var = getattr(x, method)(dtype=output_dtype, axis=axis)
+                    assert var.dtype == output_dtype
 
+                    f = theano.function([x], var, mode=self.mode)
+                    topo = f.maker.fgraph.toposort()
+                    assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+                    data = numpy.random.rand(3, 4) * 10
+                    data = data.astype(input_dtype)
+                    f(data)
                     if "complex" in input_dtype:
                         continue
                     # Check that we can take the gradient
-                    tensor.grad(sum_var.sum(), x,
+                    tensor.grad(var.sum(), x,
                                 disconnected_inputs='ignore')
-                else:
-                    self.assertRaises(TypeError,
-                            x.sum, acc_dtype=acc_dtype, axis=axis)
+                    idx += 1
 
-                idx += 1
+    def test_reduce_custom_acc_dtype(self):
+        """
+        Test the ability to provide your own accumulator dtype for a reduce.
+        """
+        # We try multiple axis combinations even though axis should not matter.
+        idx = 0
+        for method in self.methods:
+            for input_dtype in imap(str, theano.scalar.all_types):
+                x = tensor.matrix(dtype=input_dtype)
+                for acc_dtype in imap(str, theano.scalar.all_types):
+                # If the accumulator is a complex, the gradient of the reduce will
+                # cast the complex to the input dtype. We can't call the normal
+                # cast on a complex to a not complex as this is ambiguous.
+                    if (not input_dtype.startswith('complex') and
+                        acc_dtype.startswith('complex')):
+                        continue
 
-    def test_sum_precision(self):
+                    axis = self.axes[idx % len(self.axes)]
+                # If output_dtype would force a downcast, we expect a TypeError
+                # We always allow int/uint inputs with float/complex outputs.
+                    upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
+                    if (acc_dtype == upcasted_dtype or
+                        (input_dtype in tensor.discrete_dtypes and
+                            acc_dtype in tensor.continuous_dtypes)
+                        ):
+                        var = getattr(x, method)(acc_dtype=acc_dtype, axis=axis)
+                        assert var.owner.op.acc_dtype == acc_dtype
+
+                        if "complex" in input_dtype:
+                            continue
+                    # Check that we can take the gradient
+                        tensor.grad(var.sum(), x,
+                                    disconnected_inputs='ignore')
+                    else:
+                        self.assertRaises(TypeError,
+                                          getattr(x, method),
+                                          acc_dtype=acc_dtype, axis=axis)
+
+                    idx += 1
+
+    def test_reduce_precision(self):
         # Check that the default accumulator precision is sufficient
-        x = theano.shared(numpy.asarray([1e8, 1, -1e8], dtype='float32'))
-        s = x.sum()
-        f = theano.function([], s, mode=self.mode)
-        topo = f.maker.fgraph.toposort()
-        assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
-        s_val = f()
-        assert numpy.allclose(s_val, 1)
+        for method in self.methods:
+            x = theano.shared(numpy.asarray([1e8, 1, -1e8],
+                                            dtype='float32'))
+            s = getattr(x, method)()
+            f = theano.function([], s, mode=self.mode)
+            topo = f.maker.fgraph.toposort()
+            assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+            s_val = f()
+            # Use extra precision in NumPy to compute the good answer.
+            ret = getattr(numpy.asarray([1e8, 1, -1e8], dtype='float64'), method)()
+            assert numpy.allclose(s_val, ret), (s_val, ret)
 
 
 class T_mean_dtype(unittest.TestCase):
@@ -930,129 +940,6 @@ class T_mean_dtype(unittest.TestCase):
         f = theano.function([], m)
         m_val = f()
         assert numpy.allclose(m_val, 1. / 3)
-
-
-class T_prod_dtype(unittest.TestCase):
-    def test_prod_default_dtype(self):
-        """
-        Test the default dtype of a prod().
-        """
-        # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
-        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
-            axis = axes[idx % len(axes)]
-            x = tensor.matrix(dtype=dtype)
-            p = x.prod(axis=axis)
-            assert p.dtype == dict(
-                    int8='int64',
-                    int16='int64',
-                    int32='int64',
-                    uint8='uint64',
-                    uint16='uint64',
-                    uint32='uint64',
-                    ).get(dtype, dtype)
-            f = theano.function([x], p)
-            data = numpy.random.rand(3, 4) * 10
-            data = data.astype(dtype)
-            f(data)
-
-    def test_prod_default_acc_dtype(self):
-        """
-        Test the default acc_dtype of a prod().
-        """
-        # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
-        for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
-            axis = axes[idx % len(axes)]
-            x = tensor.matrix(dtype=dtype)
-            p = x.prod(axis=axis)
-            assert p.owner.op.acc_dtype == dict(
-                    int8='int64',
-                    int16='int64',
-                    int32='int64',
-                    uint8='uint64',
-                    uint16='uint64',
-                    uint32='uint64',
-                    float32='float64',
-                    complex64='complex128',
-                    ).get(dtype, dtype)
-            f = theano.function([x], p)
-            data = numpy.random.rand(3, 4) * 10
-            data = data.astype(dtype)
-            f(data)
-
-    @attr('slow')
-    def test_prod_custom_dtype(self):
-        """
-        Test the ability to provide your own output dtype for a prod.
-        """
-        # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
-        idx = 0
-        for input_dtype in imap(str, theano.scalar.all_types):
-            x = tensor.matrix(dtype=input_dtype)
-            for output_dtype in imap(str, theano.scalar.all_types):
-                axis = axes[idx % len(axes)]
-                idx += 1
-                prod_var = x.prod(dtype=output_dtype, axis=axis)
-                assert prod_var.dtype == output_dtype
-
-                if (('complex' in output_dtype or
-                    'complex' in input_dtype) and
-                    input_dtype != output_dtype):
-                    continue
-
-                f = theano.function([x], prod_var)
-                data = numpy.random.rand(3, 4) * 10
-                data = data.astype(input_dtype)
-                f(data)
-
-                if "complex" in output_dtype or "complex" in input_dtype:
-                    continue
-                # Check that we can take the gradient
-                tensor.grad(prod_var.sum(), x,
-                            disconnected_inputs='ignore')
-
-    @attr('slow')
-    def test_prod_custom_acc_dtype(self):
-        """
-        Test the ability to provide your own acc_dtype for a prod.
-        """
-        # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
-        idx = 0
-        for input_dtype in imap(str, theano.scalar.all_types):
-            x = tensor.matrix(dtype=input_dtype)
-            for acc_dtype in imap(str, theano.scalar.all_types):
-                axis = axes[idx % len(axes)]
-                # If acc_dtype would force a downcast, we expect a TypeError
-                # We always allow int/uint inputs with float/complex outputs.
-                upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
-                if (acc_dtype == upcasted_dtype or
-                        (input_dtype in tensor.discrete_dtypes and
-                            acc_dtype in tensor.continuous_dtypes)
-                        ):
-                    prod_var = x.prod(acc_dtype=acc_dtype, axis=axis)
-                    assert prod_var.owner.op.acc_dtype == acc_dtype
-
-                    if (acc_dtype.startswith('complex') and
-                        input_dtype != acc_dtype):
-                        continue
-                    f = theano.function([x], prod_var)
-                    data = numpy.random.rand(3, 4) * 10
-                    data = data.astype(input_dtype)
-                    f(data)
-
-                    if "complex" in acc_dtype:
-                        continue
-                    # Check that we can take the gradient
-                    tensor.grad(prod_var.sum(), x,
-                                disconnected_inputs='ignore')
-                else:
-                    self.assertRaises(TypeError,
-                            x.prod, acc_dtype=acc_dtype, axis=axis)
-
-                idx += 1
 
 
 class T_prod_without_zeros_dtype(unittest.TestCase):
