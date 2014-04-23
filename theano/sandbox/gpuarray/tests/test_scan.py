@@ -203,6 +203,15 @@ class T_Scan(TestCase):
         scan_node = scan_node[0]
         assert scan_node.op.gpua
 
+        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
+
+        # check that there is no gpu transfer in the inner loop.
+        assert not any([isinstance(node.op, HostFromGpu)
+                        for node in scan_node_topo])
+        assert not any([isinstance(node.op, GpuFromHost)
+                        for node in scan_node_topo])
+
+
     def test_gpu4_gibbs_chain(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
