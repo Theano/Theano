@@ -267,6 +267,14 @@ def tag_solve_triangular(node):
                     return [Solve('lower_triangular')(A, b)]
                 else:
                     return [Solve('upper_triangular')(A, b)]
+            if (isinstance(A.owner.op, DimShuffle)
+                and A.owner.op.new_order == (1, 0)):
+                A_T, = A.owner.inputs
+                if isinstance(A_T.owner.op, type(cholesky)):
+                    if A_T.owner.op.lower:
+                        return [Solve('upper_triangular')(A, b)]
+                    else:
+                        return [Solve('lower_triangular')(A, b)]
 
 
 @register_canonicalize
