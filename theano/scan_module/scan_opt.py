@@ -537,10 +537,11 @@ class PushOutSeqScan(gof.Optimizer):
 
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
-    def __init__(self, typeConstructor=None, gpu_flag=False):
+    def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):
         Optimizer.__init__(self)
         self.typeConstructor = typeConstructor
         self.gpu_flag = gpu_flag
+        self.gpua_flag = gpua_flag
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -551,7 +552,8 @@ class ScanInplaceOptimizer(Optimizer):
         nodes = fgraph.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                          x.op.info['gpu'] == self.gpu_flag)]
+                          x.op.info['gpu'] == self.gpu_flag and
+                          x.op.info['gpua'] == self.gpua_flag)]
         for scan_idx in xrange(len(scan_nodes)):
             node = scan_nodes[scan_idx]
             op = node.op
