@@ -717,14 +717,18 @@ class test_IsInf_IsNan(unittest.TestCase):
 
 
 class T_sum_dtype(unittest.TestCase):
+    mode = theano.compile.get_default_mode().excluding(
+        'local_cut_useless_reduce')
+    op = CAReduce
+    axes = [None, 0, 1, [], [0], [1], [0, 1]]
+
     def test_sum_default_dtype(self):
         """
         Test the default dtype of a sum().
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
-            axis = axes[idx % len(axes)]
+            axis = self.axes[idx % len(self.axes)]
             x = tensor.matrix(dtype=dtype)
             s = x.sum(axis=axis)
             assert s.dtype == dict(
@@ -735,7 +739,9 @@ class T_sum_dtype(unittest.TestCase):
                     uint16='uint64',
                     uint32='uint64',
                     ).get(dtype, dtype)
-            f = theano.function([x], s)
+            f = theano.function([x], s, mode=self.mode)
+            topo = f.maker.fgraph.toposort()
+            assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
             data = numpy.random.rand(3, 4) * 10
             data = data.astype(dtype)
             f(data)
@@ -743,9 +749,8 @@ class T_sum_dtype(unittest.TestCase):
     def test_sum_default_acc_dtype(self):
         ##Test the default acc_dtype of a sum().
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
-            axis = axes[idx % len(axes)]
+            axis = self.axes[idx % len(self.axes)]
             x = tensor.matrix(dtype=dtype)
             s = x.sum(axis=axis)
             assert s.owner.op.acc_dtype == dict(
@@ -758,7 +763,9 @@ class T_sum_dtype(unittest.TestCase):
                     float32='float64',
                     complex64='complex128',
                     ).get(dtype, dtype)
-            f = theano.function([x], s)
+            f = theano.function([x], s, mode=self.mode)
+            topo = f.maker.fgraph.toposort()
+            assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
             data = numpy.random.rand(3, 4) * 10
             data = data.astype(dtype)
             f(data)
@@ -769,7 +776,6 @@ class T_sum_dtype(unittest.TestCase):
         Test the ability to provide your own output dtype for a sum.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -781,11 +787,13 @@ class T_sum_dtype(unittest.TestCase):
                     output_dtype.startswith('complex')):
                     continue
 
-                axis = axes[idx % len(axes)]
+                axis = self.axes[idx % len(self.axes)]
                 sum_var = x.sum(dtype=output_dtype, axis=axis)
                 assert sum_var.dtype == output_dtype
 
-                f = theano.function([x], sum_var)
+                f = theano.function([x], sum_var, mode=self.mode)
+                topo = f.maker.fgraph.toposort()
+                assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
                 data = numpy.random.rand(3, 4) * 10
                 data = data.astype(input_dtype)
                 f(data)
@@ -801,7 +809,6 @@ class T_sum_dtype(unittest.TestCase):
         Test the ability to provide your own accumulator dtype for a sum.
         """
         # We try multiple axis combinations even though axis should not matter.
-        axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
         for input_dtype in imap(str, theano.scalar.all_types):
             x = tensor.matrix(dtype=input_dtype)
@@ -813,7 +820,7 @@ class T_sum_dtype(unittest.TestCase):
                     acc_dtype.startswith('complex')):
                     continue
 
-                axis = axes[idx % len(axes)]
+                axis = self.axes[idx % len(self.axes)]
                 # If output_dtype would force a downcast, we expect a TypeError
                 # We always allow int/uint inputs with float/complex outputs.
                 upcasted_dtype = scalar.upcast(input_dtype, acc_dtype)
@@ -839,7 +846,9 @@ class T_sum_dtype(unittest.TestCase):
         # Check that the default accumulator precision is sufficient
         x = theano.shared(numpy.asarray([1e8, 1, -1e8], dtype='float32'))
         s = x.sum()
-        f = theano.function([], s)
+        f = theano.function([], s, mode=self.mode)
+        topo = f.maker.fgraph.toposort()
+        assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
         s_val = f()
         assert numpy.allclose(s_val, 1)
 
