@@ -68,9 +68,10 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
 
 class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
-    dtypes = ["float32"]
+    dtypes = ["float32", "int64"]
+    dtypes = []
     bin_dtypes = ["uint8", "int8"]
-    bin_dtypes = []
+
     cases = [((5, 6), None),
              ((5, 6), (0, 1)),
              ((5, 6), (0, )),

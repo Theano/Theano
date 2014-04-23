@@ -311,9 +311,10 @@ def local_gpua_careduce(node):
     if isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul,
                                       scalar.Maximum, scalar.Minimum)):
         x, = node.inputs
-        greduce = GpuCAReduceCuda(node.op.scalar_op, axis=node.op.axis)
-        if x.dtype != "float32":
-            return
+        greduce = GpuCAReduceCuda(
+            node.op.scalar_op, axis=node.op.axis,
+            dtype=getattr(node.op, 'dtype', None),
+            acc_dtype=getattr(node.op, 'acc_dtype', None))
         gvar = greduce(x)
         #We need to have the make node called, otherwise the mask can
         #be None
