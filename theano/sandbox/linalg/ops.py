@@ -309,7 +309,7 @@ def tag_solve_triangular(node):
                     else:
                         return [Solve('lower_triangular')(A, b)]
 
-                        
+
 @register_canonicalize
 @register_stabilize
 @register_specialize
