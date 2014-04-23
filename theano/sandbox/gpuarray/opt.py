@@ -347,10 +347,21 @@ def local_gpua_careduce(node):
                 else:
                     new_mask.append(reduce_mask[i])
                     new_in_shp.append(x_shape[i])
+            new_axis = []
+            for idx, m in enumerate(new_mask):
+                if m == 1:
+                    new_axis.append(idx)
+            new_greduce = GpuCAReduceCuda(
+                node.op.scalar_op,
+                axis=new_axis, reduce_mask=new_mask,
+                dtype=getattr(node.op, 'dtype', None),
+                acc_dtype=getattr(node.op, 'acc_dtype', None))
 
-            new_greduce = GpuCAReduceCuda(new_mask, scalar_op)
             reshaped_x = x.reshape(tensor.stack(*new_in_shp))
             gpu_reshaped_x = gpu_from_host(reshaped_x)
+            gvar = greduce(gpu_reshaped_x)
+            #We need to have the make node called, otherwise the mask can
+            #be None
             reshaped_gpu_inputs = [gpu_reshaped_x]
             if new_greduce.supports_c_code(reshaped_gpu_inputs):
                 reduce_reshaped_x = host_from_gpu(
