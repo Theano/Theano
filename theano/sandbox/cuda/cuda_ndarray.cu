@@ -26,6 +26,21 @@
 //if you want this to work.
 #define PRECHECK_ERROR 0
 
+//If true, we release the GIL around blocking GPU calls, to allow other Python
+//threads to run in the meantime. For a single-threaded program, the overhead
+//is neglectible (about 20ms for 1 million GIL release/reclaim cycles). Can
+//still be overridden on compilation with -DRELEASE_GIL=0 in nvcc.flags.
+#ifndef RELEASE_GIL
+#define RELEASE_GIL 1
+#endif
+#if RELEASE_GIL
+#define CNDA_BEGIN_ALLOW_THREADS Py_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS Py_END_ALLOW_THREADS
+#else
+#define CNDA_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS
+#endif
+
 /////////////////////////
 // Alloc and Free
 /////////////////////////
