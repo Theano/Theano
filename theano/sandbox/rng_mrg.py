@@ -561,6 +561,11 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         else
         {
             %(o_rstate)s = (CudaNdarray*)CudaNdarray_Copy(%(rstate)s);
+            if (!%(o_rstate)s) {
+                PyErr_SetString(PyExc_RuntimeError, "GPU_mrg_uniform: "
+                                "could not copy rstate");
+                %(fail)s
+            }
         }
 
         if (PyArray_NDIM(%(o_rstate)s) != 1)
@@ -607,7 +612,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
@@ -640,6 +645,11 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                 const ga_uint Nsamples,
                 const ga_uint Nstreams_used)
         {
+            /*
+             * The cluda backend makes sure that ga_int corresponds to
+             * a 32 bit signed type on the target device.  It is not a
+             * variable width type.
+             */
             const ga_int i7 = 7;
             const ga_int i9 = 9;
             const ga_int i15 = 15;
@@ -793,6 +803,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         else
         {
             %(o_rstate)s = pygpu_copy(%(rstate)s, GA_ANY_ORDER);
+            if (!%(o_rstate)s) {
+                %(fail)s
+            }
         }
 
         if (PyGpuArray_NDIM(%(o_rstate)s) != 1)
@@ -827,7 +840,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1, self.GpuKernelBase_version)
+        return (2, self.GpuKernelBase_version)
 
 
 def guess_n_streams(size, warn=True):
