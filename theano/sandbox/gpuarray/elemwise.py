@@ -3,6 +3,8 @@ from itertools import izip
 from StringIO import StringIO
 
 import numpy
+
+import theano
 from theano import Op, Apply, scalar, config
 from theano import scalar as scal
 from theano.scalar import Scalar
@@ -583,8 +585,6 @@ class GpuCAReduceCuda(HideC, CAReduce):
         # used to make sure that calls to scalar op
         # have unique name arguments
         self._n_scalar_op_calls = 0
-        if not hasattr(scalar_op, 'identity'):
-            raise ValueError("No identity on scalar op")
         CAReduce.__init__(self, scalar_op, axis=axis)
 
     def __eq__(self, other):
@@ -1056,7 +1056,8 @@ class GpuCAReduceCuda(HideC, CAReduce):
         {
             int idx = threadNum - (threadCount >> 1) * 2;"""
 
-        new_version += self._assign_reduce(node, name, 'buf[idx]','buf[threadNum]', sub)
+        new_version += self._assign_reduce(node, name, 'buf[idx]',
+                                           'buf[threadNum]', sub)
 
         new_version += """
         }

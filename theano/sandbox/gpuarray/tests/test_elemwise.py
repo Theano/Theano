@@ -140,7 +140,8 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 #             ((5,4,3,10,11),[1,2]),
         ]
     op = GpuCAReduceCuda
-    reds = [scalar.add, scalar.mul]
+    reds = [scalar.add, scalar.mul,
+            scalar.maximum, scalar.minimum]
 
     def test_perform(self):
         return

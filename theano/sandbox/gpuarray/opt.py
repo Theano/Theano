@@ -306,10 +306,10 @@ def local_gpua_advanced_incsubtensor(node):
 
 
 @register_opt()
-@op_lifter([tensor.CAReduce, tensor.Sum])
+@op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
 def local_gpua_careduce(node):
-    if (isinstance(node.op.scalar_op, scalar.basic.Add) or
-        isinstance(node.op.scalar_op, scalar.basic.Mul)):
+    if isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul,
+                                      scalar.Maximum, scalar.Minimum)):
         x, = node.inputs
         greduce = GpuCAReduceCuda(node.op.scalar_op, axis=node.op.axis)
         if x.dtype != "float32":
