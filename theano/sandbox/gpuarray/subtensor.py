@@ -1,6 +1,5 @@
 import copy
 import StringIO
-
 import numpy
 
 import theano
@@ -392,12 +391,12 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
         # TODO opt to make this inplace
         x, y, idx = inp
         out, = out_
-        
+
         # Make sure idx is not a GpuArray otherwise we cannot use its content
         # to index x and y
         if isinstance(idx, gpuarray.GpuArray):
             idx = numpy.asarray(idx)
-            
+
         if not self.inplace:
             x = x.copy()
         if self.set_instead_of_inc:
@@ -416,7 +415,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
             assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
             if y.ndim == x.ndim:
                 assert len(y) == len(idx)
-                for (j, i) in enumerate(idx):                    
+                for (j, i) in enumerate(idx):
                     #x[i] += y[j]
                     pygpu.elemwise.ielemwise2(x[i], '+', y[j],  broadcast=False)
             else:
@@ -424,21 +423,21 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
                     #x[i] += y
                     nb_dims_to_add = (x[i].ndim - y.ndim)
                     reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
-                    pygpu.elemwise.ielemwise2(x[i], '+', reshaped_y, 
+                    pygpu.elemwise.ielemwise2(x[i], '+', reshaped_y,
                                               broadcast=True)
 
-        out[0] = x  
+        out[0] = x
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     """Implement AdvancedIncSubtensor1 on the gpu, but use function
     only avail on compute capability 2.0 and more recent.
     """
-    
+
     def __init__(self, inplace=False, set_instead_of_inc=False):
         # The python implementation in the parent class is not applicable here
         GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
-        
+
     def make_node(self, x, y, ilist):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
         the index are of type long.
@@ -464,7 +463,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
 
     def c_code_cache_version(self):
         return (2,)
-        
+
     def c_headers(self):
         return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
                 '<compyte/ext_cuda.h>']
