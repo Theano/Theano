@@ -68,19 +68,17 @@ class test_composite(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
-#    def test_sin(self):
-#        x = inputs()
-#        e = sin(x)
-#        C = Composite([x], [e])
-#        c = C.make_node(x)
-#        # print c.c_code(['x'], ['z'], dict(id = 0))
-#        g = FunctionGraph([x], [c.out])
-#        fn = gof.DualLinker().accept(g).make_function()
-#        assert fn(0) == 0
-#        assert fn(3.14159265358/2) == 1
-#        assert fn(3.14159265358) == 0
+    def test_flatten(self):
+        #Test that we flatten multiple Composite.
+        x, y, z = inputs()
+        C = Composite([x, y], [x + y])
+        CC = Composite([x, y], [C(x * y, y)])
+        assert not isinstance(CC.outputs[0].owner.op, Composite)
 
-    # WRITEME: Test for sin, pow, and other scalar ops.
+        # Test with multiple outputs
+        CC = Composite([x, y, z], [C(x * y, y), C(x * z, y)])
+        #We don't flatten that case.
+        assert isinstance(CC.outputs[0].owner.op, Composite)
 
     def test_with_constants(self):
         x, y, z = inputs()

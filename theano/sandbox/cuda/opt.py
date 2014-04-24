@@ -1535,6 +1535,11 @@ def local_gpu_extract_diagonal(node):
                 gpu_from_host(diag_node.inputs[0]))]
     return False
 
+def typeConstructor(broadcastable, dtype):
+    if dtype == 'float32':
+        return CudaNdarrayType(broadcastable=broadcastable)
+    else:
+        return tensor.TensorType(broadcastable=broadcastable, dtype=dtype)
 
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])
@@ -1593,8 +1598,6 @@ def gpuScanOptimization(node):
             _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
 
-            typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
-                    broadcastable=broadcastable)
             nw_op = scan_op.Scan(scan_ins,
                                  scan_outs,
                                  info,
@@ -1642,10 +1645,6 @@ def gpuScanOptimization(node):
             _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
 
-            def typeConstructor(broadcastable, dtype):
-                assert dtype == 'float32'
-                return CudaNdarrayType(broadcastable=broadcastable)
-
             _outputs = scan_op.Scan(
                 scan_ins,
                 scan_outs,
@@ -1662,7 +1661,7 @@ def gpuScanOptimization(node):
 
 
 optdb.register('gpu_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(typeConstructor=CudaNdarrayType,
+               scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
                                             gpu_flag=True),
                75,
                'gpu',

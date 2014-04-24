@@ -537,10 +537,11 @@ class PushOutSeqScan(gof.Optimizer):
 
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
-    def __init__(self, typeConstructor=None, gpu_flag=False):
+    def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):
         Optimizer.__init__(self)
         self.typeConstructor = typeConstructor
         self.gpu_flag = gpu_flag
+        self.gpua_flag = gpua_flag
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -551,7 +552,8 @@ class ScanInplaceOptimizer(Optimizer):
         nodes = fgraph.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                          x.op.info['gpu'] == self.gpu_flag)]
+                          x.op.info['gpu'] == self.gpu_flag and
+                          x.op.info['gpua'] == self.gpua_flag)]
         for scan_idx in xrange(len(scan_nodes)):
             node = scan_nodes[scan_idx]
             op = node.op
@@ -1681,7 +1683,6 @@ scan_eqopt1 = theano.gof.EquilibriumDB()
 scan_seqopt1 = theano.gof.SequenceDB()
 
 scan_eqopt2 = theano.gof.EquilibriumDB()
-scan_seqopt2 = theano.gof.EquilibriumDB()
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
 optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
@@ -1694,8 +1695,6 @@ optdb.register('scanOp_make_inplace',
                'inplace',
                'scan')
 
-scan_eqopt2.register(
-    'all_scan_opts', scan_seqopt2, 1, 'fast_run', 'scan')
 scan_eqopt1.register(
     'all_pushout_opt', scan_seqopt1, 1, 'fast_run', 'scan')
 
@@ -1731,7 +1730,7 @@ scan_seqopt1.register('scan_pushout_dot1',
                       'scan')
 
 
-scan_seqopt2.register('constant_folding_for_scan2',
+scan_eqopt2.register('constant_folding_for_scan2',
                       opt.in2out(tensor.opt.constant_folding,
                                  ignore_newtrees=True),
                       1,
@@ -1739,7 +1738,7 @@ scan_seqopt2.register('constant_folding_for_scan2',
                       'scan')
 
 
-scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs1',
+scan_eqopt2.register('scanOp_remove_constants_and_unused_inputs1',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       2,
@@ -1751,14 +1750,14 @@ scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs1',
 # after const merge but before stabilize so that we can have identity
 # for equivalent nodes but we still have the chance to hoist stuff out
 # of the scan later.
-scan_seqopt2.register('scanOp_merge',
+scan_eqopt2.register('scanOp_merge',
                       ScanMerge(),
                       4,
                       'fast_run',
                       'scan')
 
 # After Merge optimization
-scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
+scan_eqopt2.register('scanop_remove_constants_and_unused_inputs2',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       5,
@@ -1766,7 +1765,7 @@ scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
                       'fast_run',
                       'scan')
 
-scan_seqopt2.register('scanOp_merge_inouts',
+scan_eqopt2.register('scanOp_merge_inouts',
                       opt.in2out(scan_merge_inouts, ignore_newtrees=True),
                       6,
                       'scan_merge_inouts',
@@ -1776,14 +1775,14 @@ scan_seqopt2.register('scanOp_merge_inouts',
 # Just before specialize to have the other optimization
 # like constant folding being applied
 # This don't introduce inplace.
-scan_seqopt2.register('scanOp_save_mem',
+scan_eqopt2.register('scanOp_save_mem',
                       ScanSaveMem(),
                       7,
                       'fast_run',
                       'scan')
 
 # After everything else
-scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs3',
+scan_eqopt2.register('scanOp_remove_constants_and_unused_inputs3',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       8,

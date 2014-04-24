@@ -1,4 +1,8 @@
-"""This file contain auxiliary Ops, used during the compilation phase."""
+"""This file contains auxiliary Ops, used during the compilation phase
+and Ops building class (:class:`FromFunctionOp`) and decorator
+(:func:`as_op`) that help make new Ops more rapidly.
+
+"""
 import copy
 import warnings
 
@@ -364,3 +368,96 @@ def register_shape_i_c_code(typ, code, version=()):
 # List of Theano Types that one can add an extra dimension and for which
 # Scan can deal with.
 expandable_types = ()
+
+class FromFunctionOp(gof.Op):
+    """
+    Build a basic Theano Op around a function.
+
+    Since the resulting Op is very basic and is missing most of the
+    optional functionalities, some optimizations may not apply.  If you
+    want to help, you can supply an infer_shape function that computes
+    the shapes of the output given the shapes of the inputs.
+
+    Also the gradient is undefined in the resulting op and Theano will
+    raise an error if you attempt to get the gradient of a graph
+    containing this op.
+    """
+    def __init__(self, fn, itypes, otypes, infer_shape):
+        self.__fn = fn
+        self.itypes = itypes
+        self.otypes = otypes
+        self.__infer_shape = infer_shape
+        if self.__infer_shape is not None:
+            self.infer_shape = self._infer_shape
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.__fn == other.__fn)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.__fn)
+
+    def __str__(self):
+        return 'FromFunctionOp{%s}' % self.__fn.__name__
+
+    def make_node(self, *inputs):
+        assert len(inputs) == len(self.itypes)
+        assert all(inp.type == it for inp, it in zip(inputs, self.itypes))
+        return theano.Apply(self, inputs, [o() for o in self.otypes])
+
+    def perform(self, node, inputs, outputs):
+        outs = self.__fn(*inputs)
+        if not isinstance(outs, (list, tuple)):
+            outs = (outs,)
+        assert len(outs) == len(outputs)
+        for i in range(len(outs)):
+            outputs[i][0] = outs[i]
+
+    def _infer_shape(self, node, input_shapes):
+        return self.__infer_shape(node, input_shapes)
+
+def as_op(itypes, otypes, infer_shape=None):
+    """
+    Decorator that converts a function into a basic Theano op that
+    will call the supplied function as its implementation.
+
+    It takes an optional infer_shape parameter that should be a
+    callable with this signature:
+
+        def infer_shape(node, input_shapes):
+            ...
+            return output_shapes
+
+    Here `input_shapes` and `output_shapes` are lists of tuples that
+    represent the shape of the corresponding inputs/outputs.
+
+    This should not be used when performance is a concern since the
+    very basic nature of the resulting Op may interfere with certain
+    graph optimizations.
+
+    Example usage:
+
+       @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+              otypes=[theano.tensor.fmatrix])
+       def numpy_dot(a, b):
+           return numpy.dot(a, b)
+    """
+    if not isinstance(itypes, (list, tuple)):
+        itypes = [itypes]
+    if any(not isinstance(t, theano.Type) for t in itypes):
+        raise TypeError("itypes has to be a list of Theano types")
+    if not isinstance(otypes, (list, tuple)):
+        otypes = [otypes]
+    if any(not isinstance(t, theano.Type) for t in otypes):
+        raise TypeError("otypes has to be a list of Theano types")
+
+    # make sure they are lists and not tuples
+    itypes = list(itypes)
+    otypes = list(otypes)
+
+    if infer_shape is not None and not callable(infer_shape):
+        raise TypeError("infer_shape needs to be a callable")
+
+    def make_op(fn):
+        return FromFunctionOp(fn, itypes, otypes, infer_shape)
+    return make_op

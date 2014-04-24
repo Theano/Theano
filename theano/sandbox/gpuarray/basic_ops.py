@@ -161,7 +161,7 @@ class HostFromGpu(Op):
             raise TypeError(x)
         return Apply(self, [x],
                      [tensor.TensorType(dtype=x.dtype,
-                                        broadcastable=x.broadcastable,)()])
+                                        broadcastable=x.broadcastable)()])
 
     def perform(self, node, inp, out):
         x, = inp
@@ -672,7 +672,7 @@ class GpuAlloc(HideC, Alloc):
                       #theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
                       theano.sandbox.gpuarray.blas.GpuGemm,
                       theano.sandbox.gpuarray.blas.GpuGemv,
-                      #theano.sandbox.gpuarray.blas.GpuGer, Not Yet implemented
+                      theano.sandbox.gpuarray.blas.GpuGer,
                   ))):
                 return False
             #If the clients is a transfer, we don't want to fold. We

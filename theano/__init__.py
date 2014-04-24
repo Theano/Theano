@@ -61,7 +61,7 @@ from theano.compile import \
     Component, External, Member, Method, \
     Composite, ComponentList, ComponentDict, Module, \
     ProfileMode, ProfileStats, \
-    Param, shared
+    Param, shared, as_op
 
 from theano.misc.safe_asarray import _asarray
 

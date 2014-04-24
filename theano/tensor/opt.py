@@ -303,7 +303,8 @@ def inplace_elemwise_optimizer_op(OP):
     return inplace_elemwise_optimizer
 
 inplace_elemwise_optimizer = inplace_elemwise_optimizer_op(T.Elemwise)
-compile.optdb.register('inplace_opt', inplace_elemwise_optimizer, 75,
+compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
+                       'inplace_opt',  # for historic reason
                        'inplace_elemwise_optimizer',
                        'fast_run', 'inplace')
 
@@ -1410,6 +1411,10 @@ class Assert(T.Op):
         return [input_shapes[0]]
 
 assert_ = Assert()
+#Unittest.assert_ is a deprecated name for assertTrue.
+#2to3 convert theano.tensor.opt.assert_ to theano.tensor.opt.assertTrue
+#So I define a new name as a work around.
+assert_op = assert_
 
 
 @register_specialize
@@ -1581,7 +1586,7 @@ def local_upcast_elemwise_constant_inputs(node):
                 else:
                     try:
                         # works only for scalars
-                        cval_i = get_scalar_constant_value(i)
+                        cval_i = get_scalar_constant_value(i, elemwise=False)
                         if all(i.broadcastable):
                             new_inputs.append(T.shape_padleft(
                                 T.cast(cval_i, output_dtype),
@@ -2327,7 +2332,7 @@ def local_remove_switch_const_cond(node):
     """
     if (isinstance(node.op, T.Elemwise) and
         isinstance(node.op.scalar_op, scalar.basic.Switch)):
-        cond = T.extract_constant(node.inputs[0])
+        cond = T.extract_constant(node.inputs[0], elemwise=False)
         if type(cond) is numpy.ndarray and cond.ndim == 0:
             if cond == 0:
                 out = node.inputs[2]
@@ -2377,7 +2382,8 @@ def local_mul_switch_sink(node):
         if i.owner and i.owner.op == T.switch:
             switch = i.owner
             try:
-                if get_scalar_constant_value(switch.inputs[1]) == 0.:
+                if (isinstance(switch.inputs[0], Constant) and
+                    get_scalar_constant_value(switch.inputs[1]) == 0.):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0], 0,
                                     T.mul(*(listmul + [switch.inputs[2]])))]
@@ -2387,7 +2393,8 @@ def local_mul_switch_sink(node):
             except NotScalarConstantError:
                 pass
             try:
-                if get_scalar_constant_value(switch.inputs[2]) == 0.:
+                if (isinstance(switch.inputs[2], Constant) and
+                    get_scalar_constant_value(switch.inputs[2]) == 0.):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0],
                                     T.mul(*(listmul + [switch.inputs[1]])), 0)]
@@ -3306,6 +3313,41 @@ ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.ProdWithoutZeros]
 
 @register_canonicalize
+@register_uncanonicalize  # Needed for MaxAndArgmax -> CAReduce
+@gof.local_optimizer(ALL_REDUCE)
+def local_reduce_join(node):
+    """Max(Join(a,b), axis=0) -> Maximum(a,b)  """
+    if (isinstance(node.op, T.CAReduce) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, T.Join)):
+
+        join = node.inputs[0].owner
+        if T.extract_constant(join.inputs[0]) != 0:
+            return
+
+        if isinstance(node.op.scalar_op, (scalar.Maximum, scalar.Minimum)):
+            #Support only 2 inputs for now
+            if len(join.inputs) != 3:
+                return
+        elif not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul)):
+            return
+
+        new_inp = []
+        for inp in join.inputs[1:]:
+            inp = inp.owner
+            if not inp:
+                return
+            if (not isinstance(inp.op, DimShuffle) or
+                inp.op.new_order != ('x',) + tuple(range(inp.inputs[0].ndim))):
+                return
+            new_inp.append(inp.inputs[0])
+        ret = Elemwise(node.op.scalar_op)(*new_inp)
+        if ret.dtype == node.outputs[0].dtype:
+            return [ret]
+        #else the reduction do something about the dtype.
+
+
+@register_canonicalize
 @gof.local_optimizer(ALL_REDUCE)
 def local_cut_useless_reduce(node):
     """Sum(a, axis=[]) -> a  """
@@ -3784,7 +3826,7 @@ def local_abs_merge(node):
         for i in node.inputs:
             if i.owner and i.owner.op == T.abs_:
                 inputs.append(i.owner.inputs[0])
-            else:
+            elif isinstance(i, Constant):
                 try:
                     const = get_scalar_constant_value(i)
                 except NotScalarConstantError:
@@ -3792,6 +3834,8 @@ def local_abs_merge(node):
                 if not (const >= 0).all():
                     return False
                 inputs.append(i)
+            else:
+                return False
         return [T.abs_(T.mul(*inputs))]
     if node.op == T.true_div and sum([i.owner.op == T.abs_ for i in
                                       node.inputs if i.owner]) == 2:
@@ -4888,11 +4932,40 @@ class FusionOptimizer(Optimizer):
         print >> stream, blanc, " time_toposort", prof[7]
 
 
+def local_add_mul_fusion(node):
+    """Fuse consecutive add or mul in one such node with more inputs.
+
+    It is better to fuse add/mul that way then in a Composite node as
+    this make the inner graph of the Compiste smaller. This allow to
+    put more computation in a Composite before hitting the max
+    recusion limit when pickling Composite.
+
+    """
+    if (not isinstance(node.op, Elemwise) or
+        not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul))):
+        return False
+
+    s_op = node.op.scalar_op.__class__
+    for inp in node.inputs:
+        if (inp.owner and
+            isinstance(inp.owner.op, Elemwise) and
+            isinstance(inp.owner.op.scalar_op, s_op)):
+            l = list(node.inputs)
+            l.remove(inp)
+            return [node.op(*(l + inp.owner.inputs))]
+
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
     #Must be after gpu(48.5) and before AddDestroyHandler(49.5)
+    fuse_seqopt = gof.SequenceDB()
+    fuse_seqopt.register('local_add_mul_fusion',
+                         FusionOptimizer(local_add_mul_fusion),
+                         0, 'fast_run', 'fusion')
+    fuse_seqopt.register('composite_elemwise_fusion',
+                         FusionOptimizer(local_elemwise_fusion),
+                         1, 'fast_run', 'fusion')
     compile.optdb.register('elemwise_fusion',
-                           FusionOptimizer(local_elemwise_fusion), 49,
+                           fuse_seqopt, 49,
                            'fast_run', 'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
 else:

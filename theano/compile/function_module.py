@@ -1077,6 +1077,7 @@ class FunctionMaker(object):
         self.mode = mode
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
+        self.on_unused_input = on_unused_input  # Used only for the pickling
 
         self.required = [(i.value is None) for i in self.inputs]
         self.refeed = [
@@ -1215,6 +1216,7 @@ def _pickle_FunctionMaker(self):
                 accept_inplace=self.accept_inplace,
                 function_builder=self.function_builder,
                 profile=self.profile,
+                on_unused_input=self.on_unused_input,
                 )
     return (_constructor_FunctionMaker, (kwargs,))
 

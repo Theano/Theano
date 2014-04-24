@@ -117,19 +117,10 @@ AddConfigVar('mode',
 enum = EnumStr("g++", "")
 
 # Test whether or not g++ is present: disable C code if it is not.
-# Using the dummy file descriptor below is a workaround for a crash experienced
-# in an unusual Python 2.4.4 Windows environment with the default stdin=None.
-dummy_stdin = open(os.devnull)
 try:
-    try:
-        rc = call_subprocess_Popen(['g++', '-v'], stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   stdin=dummy_stdin).wait()
-    except OSError:
-        rc = 1
-finally:
-    dummy_stdin.close()
-    del dummy_stdin
+    rc = call_subprocess_Popen(['g++', '-v'])
+except OSError:
+    rc = 1
 if rc == 0:
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
@@ -426,8 +417,8 @@ AddConfigVar('compute_test_value_opt',
              in_c_key=False)
 
 AddConfigVar('unpickle_function',
-             ("Replace unpickled Theano function with None",
-              "This is useful to unpickle old graph that pickled"
+             ("Replace unpickled Theano functions with None. "
+              "This is useful to unpickle old graphs that pickled"
               " them when it shouldn't"),
              BoolParam(True),
              in_c_key=False)
@@ -492,9 +483,9 @@ AddConfigVar('openmp',
          )
 
 AddConfigVar('openmp_elemwise_minsize',
-             "If OpenMP is enable, this is the minimum size of vector "
-             "for which  the openmp parallel for is enable."
-             "Used in element wise ops",
+             "If OpenMP is enabled, this is the minimum size of vectors "
+             "for which the openmp parallelization is enabled "
+             "in element wise ops.",
              IntParam(200000),
              in_c_key=False,
          )
