@@ -801,9 +801,28 @@ class MRG_RandomStreams(object):
         assert n_streams > 0
         rval = numpy.zeros((n_streams, 6), dtype='int32')
         rval[0] = self.rstate
+
+        # If multMatVect.dot_modulo isn't compiled, compile it.
+        if multMatVect.dot_modulo is None:
+            multMatVect(rval[0], A1p72, M1, A2p72, M2)
+
+        f = multMatVect.dot_modulo
         for i in xrange(1, n_streams):
+            # Inline the following call to bypass Python overhead
             #rval[i] = ff_2p72(rval[i - 1])
-            rval[i] = multMatVect(rval[i - 1], A1p72, M1, A2p72, M2)
+            r = rval[i]
+            v = rval[i - 1]
+            # This way of calling the Theano fct is done to bypass Theano overhead.
+            f.input_storage[0].storage[0] = A1p72
+            f.input_storage[1].storage[0] = v[:3]
+            f.input_storage[2].storage[0] = M1
+            r[:3] = f.fn()[0]
+
+            f.input_storage[0].storage[0] = A2p72
+            f.input_storage[1].storage[0] = v[3:]
+            f.input_storage[2].storage[0] = M2
+            r[3:] = f.fn()[0]
+
         if inc_rstate:
             self.inc_rstate()
         return rval
