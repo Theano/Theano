@@ -70,25 +70,17 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                 "TensorType or CudaNdarrayType."
             )
         super(TensorSharedVariable, self).__init__(
-            type=type, name=name, owner=None, index=None
+            type=type, name=name, owner=None, index=None, 
+            container=container
         )
-        # a cache of containers.
-        self.containers = {}
         
-        if container is not None:
-            self.containers[container.type] = container
-            if (value is not None) or (strict is not None):
-                raise TypeError(
-                   'value and strict are ignored if you pass a container here')
-        else:
-            if container is not None:
-                raise TypeError('Error to specify both value and container')
-            self.containers[type] = Container(
-                self, readonly=False, strict=strict,
-                allow_downcast=allow_downcast
-                storage=[type.filter(value, strict=strict, 
-                                     allow_downcast=allow_downcast)],
-            )
+        # a cache of containers.
+        self.containers = {self.container.type: self.container}
+        # if the user provides a different type than that in container
+        if (self.type != self.container.type):
+            # TODO : convert container to new type
+            pass
+        
     
     def toGPU(self):
         pass
@@ -144,14 +136,20 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         copying.
 
         """
-        if return_internal_type or not self.get_value_return_ndarray:
-            # return a cuda_ndarray
+        if isinstance(self.container.type, TensorType):
             if borrow:
                 return self.container.value
             else:
                 return copy.deepcopy(self.container.value)
-        else: #return an ndarray
-            return numpy.asarray(self.container.value)
+        else:
+            if return_internal_type or not self.get_value_return_ndarray:
+                # return a cuda_ndarray
+                if borrow:
+                    return self.container.value
+                else:
+                    return copy.deepcopy(self.container.value)
+            else: #return an ndarray
+                return numpy.asarray(self.container.value)
 
     def set_value(self, value, borrow=False):
         """
