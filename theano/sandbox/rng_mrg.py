@@ -49,6 +49,8 @@ def multMatVect(v, A, m1, B, m2):
                                           DotModulo()(A_sym, s_sym, m_sym))
 
     r = numpy.zeros_like(v)
+
+    # This way of calling the Theano fct is done to bypass Theano overhead.
     multMatVect.dot_modulo.input_storage[0].storage[0] = A
     multMatVect.dot_modulo.input_storage[1].storage[0] = v[:3]
     multMatVect.dot_modulo.input_storage[2].storage[0] = m1
