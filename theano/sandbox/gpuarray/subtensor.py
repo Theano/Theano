@@ -391,6 +391,12 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
         # TODO opt to make this inplace
         x, y, idx = inp
         out, = out_
+        
+        # Make sure idx is not a GpuArray otherwise we cannot use its content
+        # to index x and y
+        if isinstance(idx, gpuarray.GpuArray):
+            idx = numpy.asarray(idx)
+            
         if not self.inplace:
             x = x.copy()
         if self.set_instead_of_inc:
@@ -398,11 +404,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
             if y.ndim == x.ndim:
                 assert len(y) == len(idx)
                 for (j, i) in enumerate(idx):
-                    try:
-                        x[i] = y[j]
-                    except:
-                        import pdb
-                        pdb.set_trace()
+                    x[i] = y[j]
             else:
                 for i in idx:
                     x[i] = y
