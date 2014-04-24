@@ -9,7 +9,7 @@ import warnings
 
 import numpy
 
-from theano import Op, Apply, shared, config, Variable
+from theano import Op, Apply, shared, config, Variable, Out
 from theano import gradient, function
 from theano import tensor
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
@@ -46,9 +46,9 @@ def multMatVect(v, A, m1, B, m2):
         A_sym = tensor.lmatrix('A')
         s_sym = tensor.ivector('s')
         m_sym = tensor.iscalar('m')
-
-        multMatVect.dot_modulo = function([A_sym, s_sym, m_sym],
-                                          DotModulo()(A_sym, s_sym, m_sym))
+        # We borrow the output as we will copy the answer elsewhere
+        o = Out(DotModulo()(A_sym, s_sym, m_sym), borrow=True)
+        multMatVect.dot_modulo = function([A_sym, s_sym, m_sym], o)
     r = numpy.zeros_like(v)
 
     # This way of calling the Theano fct is done to bypass Theano overhead.
