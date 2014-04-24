@@ -26,6 +26,8 @@ if cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
 
+from theano.sandbox.gpuarray.basic_ops import GpuKernelBase
+from theano.sandbox.gpuarray.type import GpuArrayType
 
 def matVecModM(A, s, m):
     assert A.dtype == 'int64'
@@ -199,7 +201,7 @@ class mrg_uniform(mrg_uniform_base):
         o_rstate, o_sample = out
         numpy_version = numpy.__version__.split('.')
         if not self.warned_numpy_version and int(numpy_version[0]) <= 1 and int(numpy_version[1]) <3 :
-            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
+            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory."
             self.warned_numpy_version = True
 
         n_elements = 1
@@ -512,7 +514,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         int must_alloc_sample = ((NULL == %(o_sample)s)
                 || !CudaNdarray_Check(py_%(o_sample)s)
                 || !CudaNdarray_is_c_contiguous(%(o_sample)s)
-                || (PyArray_NDIM(%(o_sample)s) != %(ndim)s));
+                || (CudaNdarray_NDIM(%(o_sample)s) != %(ndim)s));
 
         if (PyArray_NDIM(%(size)s) != 1)
         {
@@ -561,6 +563,11 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         else
         {
             %(o_rstate)s = (CudaNdarray*)CudaNdarray_Copy(%(rstate)s);
+            if (!%(o_rstate)s) {
+                PyErr_SetString(PyExc_RuntimeError, "GPU_mrg_uniform: "
+                                "could not copy rstate");
+                %(fail)s
+            }
         }
 
         if (PyArray_NDIM(%(o_rstate)s) != 1)
@@ -607,7 +614,235 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
+
+
+class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
+    #GpuArray version
+
+    @classmethod
+    def new(cls, rstate, ndim, dtype, size):
+        v_size = as_tensor_variable(size)
+        if ndim is None:
+            ndim = get_vector_length(v_size)
+        op = cls(GpuArrayType(dtype, (False,)*ndim))
+        return op(rstate, cast(v_size, 'int32'))
+
+    def c_headers(self):
+        return GpuKernelBase.c_headers(self) + ['numpy_compat.h']
+
+    def c_kernel_code(self, node):
+        if self.output_type.dtype == 'float32':
+            otype = 'float'
+            NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
+            # this was determined by finding the biggest number such that
+            # numpy.float32(number * M1) < 1.0
+        else:
+            otype = 'double'
+            NORM = '4.656612873077392578125e-10'
+        return """
+        KERNEL void mrg_uniform(
+                %(otype)s *sample_data,
+                ga_int *state_data,
+                const ga_uint Nsamples,
+                const ga_uint Nstreams_used)
+        {
+            /*
+             * The cluda backend makes sure that ga_int corresponds to
+             * a 32 bit signed type on the target device.  It is not a
+             * variable width type.
+             */
+            const ga_int i7 = 7;
+            const ga_int i9 = 9;
+            const ga_int i15 = 15;
+            const ga_int i16 = 16;
+            const ga_int i22 = 22;
+            const ga_int i24 = 24;
+
+            const ga_int M1 = 2147483647;      //2^31 - 1
+            const ga_int M2 = 2147462579;      //2^31 - 21069
+            const ga_int MASK12 = 511;       //2^9 - 1
+            const ga_int MASK13 = 16777215;  //2^24 - 1
+            const ga_int MASK2 = 65535;      //2^16 - 1
+            const ga_int MULT2 = 21069;
+
+            const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            ga_int y1, y2, x11, x12, x13, x21, x22, x23;
+
+            if (idx < Nstreams_used)
+            {
+            x11 = state_data[idx*6+0];
+            x12 = state_data[idx*6+1];
+            x13 = state_data[idx*6+2];
+            x21 = state_data[idx*6+3];
+            x22 = state_data[idx*6+4];
+            x23 = state_data[idx*6+5];
+
+            for (int i = idx; i < Nsamples; i += Nstreams_used)
+            {
+                y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
+                y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
+                y1 += x13;
+                y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
+                x13 = x12;
+                x12 = x11;
+                x11 = y1;
+
+                y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
+                y1 -= (y1 < 0 || y1 >= M2) ? M2 : 0;
+                y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
+                y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
+                y2 += x23;
+                y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
+                y2 += y1;
+                y2 -= (y2 < 0 || y2 >= M2) ? M2 : 0;
+
+                x23 = x22;
+                x22 = x21;
+                x21 = y2;
+
+                if (x11 <= x21) {
+                    sample_data[i] = (x11 - x21 + M1) * %(NORM)s;
+                }
+                else
+                {
+                    sample_data[i] = (x11 - x21) * %(NORM)s;
+                }
+            }
+
+            state_data[idx*6+0]= x11;
+            state_data[idx*6+1]= x12;
+            state_data[idx*6+2]= x13;
+            state_data[idx*6+3]= x21;
+            state_data[idx*6+4]= x22;
+            state_data[idx*6+5]= x23;
+            }
+        }
+
+        """ % locals()
+
+    def c_kernel_params(self, node):
+        return ["GA_BUFFER", "GA_BUFFER", "GA_UINT", "GA_UINT"]
+
+    def c_kernel_name(self):
+        return "mrg_uniform"
+
+    def c_kernel_flags(self, node):
+        return self._get_kernel_flags(self.output_type.dtype, 'int32')
+
+    def c_code(self, node, nodename, inp, out, sub):
+        rstate, size = inp
+        o_rstate, o_sample = out
+        inplace = int(self.inplace)
+        ndim = self.output_type.ndim
+        o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
+        fail = sub['fail']
+        kname = self.c_kernel_obj(nodename)
+
+        if self.output_type.dtype == 'float32':
+            otype = 'float'
+            otypecode = 'GA_FLOAT'
+        else:
+            otype = 'double'
+            otypecode = 'GA_DOUBLE'
+
+        return """
+        //////// <code generated by mrg_uniform>
+
+        size_t odims[%(ndim)s];
+        unsigned int n_elements = 1;
+        unsigned int n_streams;
+        int must_alloc_sample = ((NULL == %(o_sample)s)
+                || !pygpu_GpuArray_Check(py_%(o_sample)s)
+                || !(%(o_sample)s->ga.flags & GA_C_CONTIGUOUS)
+                || (PyGpuArray_NDIM(%(o_sample)s) != %(ndim)s));
+
+        if (PyArray_NDIM(%(size)s) != 1)
+        {
+            PyErr_SetString(PyExc_ValueError, "size must be vector");
+            %(fail)s
+        }
+        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
+        {
+            PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%li)",
+                %(ndim)s, PyArray_DIMS(%(size)s)[0]);
+            %(fail)s
+        }
+        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
+        {
+            PyErr_SetString(PyExc_ValueError, "size must be int32");
+            %(fail)s
+        }
+        for (int i = 0; i < %(ndim)s; ++i)
+        {
+            odims[i] = ((npy_int32 *)(PyArray_BYTES(%(size)s) + PyArray_STRIDES(%(size)s)[0] * i))[0];
+            n_elements *= odims[i];
+            must_alloc_sample = (must_alloc_sample
+                    || PyGpuArray_DIMS(%(o_sample)s)[i] != odims[i]);
+        }
+        if (must_alloc_sample)
+        {
+            Py_XDECREF(%(o_sample)s);
+            %(o_sample)s = pygpu_empty(%(ndim)s, odims, %(otypecode)s, GA_C_ORDER,
+                                       pygpu_default_context(), Py_None);
+            if(!%(o_sample)s)
+            {
+                %(fail)s;
+            }
+        }
+        if (!pygpu_GpuArray_Check(py_%(rstate)s))
+        {
+            PyErr_Format(PyExc_ValueError, "rstate must be gpuarray");
+            %(fail)s;
+        }
+
+        Py_XDECREF(%(o_rstate)s);
+        if (%(inplace)s)
+        {
+            Py_INCREF(%(rstate)s);
+            %(o_rstate)s = %(rstate)s;
+        }
+        else
+        {
+            %(o_rstate)s = pygpu_copy(%(rstate)s, GA_ANY_ORDER);
+            if (!%(o_rstate)s) {
+                %(fail)s
+            }
+        }
+
+        if (PyGpuArray_NDIM(%(o_rstate)s) != 1)
+        {
+            PyErr_SetString(PyExc_ValueError, "rstate must be vector");
+            %(fail)s;
+        }
+        if (PyGpuArray_DIMS(%(o_rstate)s)[0] %% 6)
+        {
+            PyErr_Format(PyExc_ValueError, "rstate len must be multiple of 6");
+            %(fail)s;
+        }
+        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0]/6;
+        if (n_streams > n_elements)
+          n_streams = n_elements;
+
+        {
+          void *args[4];
+          args[0] = &%(o_sample)s->ga;
+          args[1] = &%(o_rstate)s->ga;
+          args[2] = &n_elements;
+          args[3] = &n_streams;
+          int err = GpuKernel_call(&%(kname)s, n_elements, 0, 0, args);
+          if (err != GA_NO_ERROR) {
+              PyErr_Format(PyExc_RuntimeError, "GpuKernel_call: %%s\\n",
+                           GpuKernel_error(&%(kname)s, err));
+              %(fail)s
+          }
+        }
+
+        //////// </ code generated by mrg_uniform>
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (2, self.GpuKernelBase_version)
 
 
 def guess_n_streams(size, warn=True):
