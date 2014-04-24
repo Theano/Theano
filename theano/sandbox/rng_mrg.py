@@ -56,12 +56,14 @@ def multMatVect(v, A, m1, B, m2):
     f.input_storage[0].storage[0] = A
     f.input_storage[1].storage[0] = v[:3]
     f.input_storage[2].storage[0] = m1
-    r[:3] = f.fn()[0]
+    f.fn()
+    r[:3] = f.output_storage[0].storage[0]
 
     f.input_storage[0].storage[0] = B
     f.input_storage[1].storage[0] = v[3:]
     f.input_storage[2].storage[0] = m2
-    r[3:] = f.fn()[0]
+    f.fn()
+    r[3:] = f.output_storage[0].storage[0]
 
     return r
 multMatVect.dot_modulo = None
@@ -1052,12 +1054,14 @@ class MRG_RandomStreams(object):
             f.input_storage[0].storage[0] = A1p72
             f.input_storage[1].storage[0] = v[:3]
             f.input_storage[2].storage[0] = M1
-            r[:3] = f.fn()[0]
+            f.fn()
+            r[:3] = f.output_storage[0].storage[0]
 
             f.input_storage[0].storage[0] = A2p72
             f.input_storage[1].storage[0] = v[3:]
             f.input_storage[2].storage[0] = M2
-            r[3:] = f.fn()[0]
+            f.fn()
+            r[3:] = f.output_storage[0].storage[0]
 
         if inc_rstate:
             self.inc_rstate()
