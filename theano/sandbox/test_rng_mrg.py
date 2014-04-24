@@ -896,3 +896,14 @@ def test_multMatVect():
     r_b = f0.fn()
     
     assert numpy.allclose(r_a, r_b)
+
+
+if __name__ == "__main__":
+    rng = MRG_RandomStreams(numpy.random.randint(2147462579))
+    import time
+    print theano.__file__
+    pvals = theano.tensor.fmatrix()
+    for i in range(10):
+        t0 = time.time()
+        multinomial = rng.multinomial(pvals=pvals)
+        print time.time() - t0
