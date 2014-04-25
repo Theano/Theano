@@ -121,9 +121,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         return False
     
     def toCPU(self):
-        if not self._gpu_capable:
-            return False
-        if isinstance(self.container.type, cuda.type.CudaNdarrayType):
+        if self._isCudaType():
             self._setContainer(self.container.castClone(TensorType))
             return True
         return False
@@ -132,6 +130,10 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         del self.container
         self.container = container
         self.type = self.container.type
+    
+    def _isCudaType(self, type=None)
+        type = type or self.container.type
+        return self._gpu_capable and isinstance(type, cuda.type.CudaNdarrayType)
         
     
     """Define a few properties and conversion methods for CudaNdarray Variables.
@@ -239,9 +241,6 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             else
                 self.container.value = copy.deepcopy(value)
         
-    def _isCudaType(self, type=None)
-        type = type or self.container.type
-        return self._gpu_capable and isinstance(type, cuda.type.CudaNdarrayType)
 
     def __getitem__(self, *args):
         # Defined to explicitly use the implementation from `_operators`, since
@@ -251,24 +250,24 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     # For pickling
     def __getstate__(self):
         d = copy.copy(self.__dict__)
-        container = None
-        if TensorType in self._cache:
-            container = copy.copy(self._cache[TensorType])
-        else
-            self.toCPU()
-            container = copy.copy(self._container)
-            self.toGPU()
+        # if shared variable was on cuda when pickled, then
+        # will sent values back to cuda in any further unpickle if
+        # gpu device is detected
+        d._was_cuda = d._was_cuda or False
+        if self._isCudaType():
+            d.container = d.container.castClone(TensorType)
+            d.type = TensorType
+            d._was_cuda = True
             
-        d._cache = {container}
-        d.type = TensorType
-        d._container = container
-        d.pop('_gpu_capable')
         return d
 
     # For unpickling
     def __setstate__(self, d):
         self.__dict__.update(d)
-        d._gpu_capable = init_cuda()
+        self._gpu_capable = init_cuda()
+        if self._was_cuda:
+            self.toGPU()
+        
                     
 
 def cuda_shared_constructor(value, name=None, strict=False,
