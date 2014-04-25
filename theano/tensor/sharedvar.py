@@ -84,15 +84,16 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                             )],
                     readonly=False,
                     strict=strict,
-                    allow_downcast=allow_downcast)
-        else
+                    allow_downcast=allow_downcast
+            )
+        else:
             if not isinstance(container.type, self.validTypes()):
                 raise TypeError(
                     "TensorSharedVariable only accepts instance Type "
                     "TensorType or CudaNdarrayType."
                 )
                     
-        assert(container is not None)
+        assert container is not None 
         
         super(TensorSharedVariable, self).__init__(
             type=container.type, name=name, owner=None, index=None, 
@@ -105,9 +106,9 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             # convert container to new type
             if isinstance(type, cuda.type.CudaNdarrayType):
                 self.toGPU()
-            else
+            else:
                 self.toCPU()
-        else
+        else:
             self.type = self.container.type
         
     def validTypes(self):
@@ -117,7 +118,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         return valid_types
     
     def toGPU(self):
-        assert(self._gpu_capable, "No CUDA-capable device detected")
+        assert self._gpu_capable, "No CUDA-capable device detected"
         if isinstance(self.container.type, TensorType):
             if self.container.value.dtype.num != cuda.type.CudaNdarrayType.typenum:
                 raise TypeError('float32 required for GPU usage')
@@ -146,7 +147,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         self.container = container
         self.type = self.container.type
     
-    def _isCudaType(self, type=None)
+    def _isCudaType(self, type=None):
         type = type or self.container.type
         return self._gpu_capable and isinstance(type, cuda.type.CudaNdarrayType)
         
@@ -244,7 +245,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                 # the container will catch this and copy the ndarray 
                 # into gpu memory (refer to container.__set__)
                 self.container.value = value
-            else
+            else:
                 self.container.value = copy.deepcopy(value)
         
 
@@ -308,7 +309,7 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
             deviceval = value
         else:
             deviceval = value.copy()
-    else
+    else:
         type = TensorType(value.dtype, broadcastable=broadcastable)
         deviceval = numpy.array(value, copy=(not borrow))
     
