@@ -894,12 +894,14 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
         npy_int64 idx = indices[i0];
         if (idx<0)
             idx += dB0; // To allow negative indexing.
-        if ((idx < 0) || (idx >= dB0))
+        if ((idx < 0) || (idx >= dB0)){
             // Any value other the 0 probably work. But to be more safe, I want
             // to change all bits to prevent problem with concurrent write that
             // could cross cache line. But this should not happen with the
             // current code and driver.
             *err = 0xFFFF;
+            continue;
+        }
         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x){
             for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y){
                 int a_idx = i0*sA0 + i1*sA1 + i2*sA2;
