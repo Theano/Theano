@@ -34,6 +34,11 @@
 
 #include <numpy/arrayobject.h>
 #include <stdio.h>
+#include <stdint.h>
+#ifndef SIZE_MAX
+    #define SIZE_MAX ((size_t)-1)
+#endif
+
 
 #include <cublas.h>
 
@@ -342,7 +347,7 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
 {
     // allocate an empty ndarray with c_contiguous access
     // return 0 on success
-    int size = 1; //set up the strides for contiguous tensor
+    size_t size = 1; //set up the strides for contiguous tensor
     assert (nd >= 0);
 
     // Here we modify the host structure to have the desired shape and
@@ -357,6 +362,13 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
         {
             CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
             CudaNdarray_set_dim(self, i, dim[i]);
+            //Detect overflow on unsigned integer
+            if (size > (SIZE_MAX / dim[i])) {
+                PyErr_Format(PyExc_AssertionError,
+                             "Can't store in size_t the bytes resquested",
+                             size);
+                return -1;
+            }
             size = size * dim[i];
         }
     }
@@ -366,6 +378,14 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
         {
             CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
             CudaNdarray_set_dim(self, i, dim[i]);
+
+            //Detect overflow on unsigned integer
+            if (size > (SIZE_MAX / dim[i])) {
+                PyErr_Format(PyExc_AssertionError,
+                             "Can't store in size_t the bytes resquested",
+                             size);
+                return -1;
+            }
             size = size * dim[i];
         }
     }
@@ -390,14 +410,6 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
     {
         self->devdata = NULL;
         self->data_allocated = 0;
-        return -1;
-    }
-
-    if (size < 0)
-    {
-        PyErr_Format(PyExc_AssertionError,
-                     "size (%i) < 0",
-                     size);
         return -1;
     }
 
