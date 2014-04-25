@@ -112,7 +112,7 @@ class GpuKernelBase(object):
         return '|'.join(flags)
 
     def c_headers(self):
-        return ['compyte/types.h']
+        return ['gpuarray/types.h']
 
     def c_support_code_apply(self, node, name):
         kcode = self.c_kernel_code(node)
@@ -326,8 +326,8 @@ class GpuFromCuda(Op):
         return xshp
 
     def c_headers(self):
-        return ['<cuda_ndarray.cuh>', '<compyte/extension.h>',
-                '<compyte/types.h>', '<cuda.h>']
+        return ['<cuda_ndarray.cuh>', '<gpuarray/extension.h>',
+                '<gpuarray/types.h>', '<cuda.h>']
 
     def c_header_dirs(self):
         import cuda_ndarray
@@ -355,8 +355,8 @@ class GpuFromCuda(Op):
         """
 
     def c_init_code(self):
-        return ['cuda_get_ctx = (CUcontext (*)(void *))compyte_get_extension("cuda_get_ctx");',
-                'cuda_make_buf = (gpudata *(*)(void *, CUdeviceptr, size_t))compyte_get_extension("cuda_make_buf");']
+        return ['cuda_get_ctx = (CUcontext (*)(void *))gpuarray_get_extension("cuda_get_ctx");',
+                'cuda_make_buf = (gpudata *(*)(void *, CUdeviceptr, size_t))gpuarray_get_extension("cuda_make_buf");']
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
@@ -462,7 +462,7 @@ class CudaFromGpu(Op):
         return shp
 
     def c_headers(self):
-        return ['<cuda_ndarray.cuh>', '<compyte/extension.h>', '<cuda.h>']
+        return ['<cuda_ndarray.cuh>', '<gpuarray/extension.h>', '<cuda.h>']
 
     def c_header_dirs(self):
         import cuda_ndarray
@@ -490,8 +490,8 @@ class CudaFromGpu(Op):
         """
 
     def c_init_code(self):
-        return ['cuda_get_ctx = (CUcontext (*)(void *ctx))compyte_get_extension("cuda_get_ctx");',
-                'cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+        return ['cuda_get_ctx = (CUcontext (*)(void *ctx))gpuarray_get_extension("cuda_get_ctx");',
+                'cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
@@ -806,7 +806,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         err = GpuKernel_call(&%(kname)s, 0, 1, 256, args);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
-                         "compyte error: kEye: %%s. n%%lu, m=%%lu.",
+                         "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
                          GpuKernel_error(&%(kname)s, err),
                          (unsigned long)dims[0], (unsigned long)dims[1]);
             %(fail)s;

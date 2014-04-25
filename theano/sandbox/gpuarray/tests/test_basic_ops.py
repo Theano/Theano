@@ -219,7 +219,8 @@ def test_transfer_cpu_gpu():
 
 def test_transfer_strided():
     # This is just to ensure that it works in theano
-    # compyte has a much more comprehensive suit of tests to ensure correctness
+    # libgpuarray has a much more comprehensive suit of tests to
+    # ensure correctness
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
 

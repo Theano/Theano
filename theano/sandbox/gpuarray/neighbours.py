@@ -48,8 +48,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
         return (9,1)
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
-                '<compyte/ext_cuda.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
+                '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
