@@ -1069,7 +1069,8 @@ class FunctionMaker(object):
             gof.Op.add_stack_trace_on_call = False
             start_optimizer = time.time()
             import ipdb; ipdb.set_trace()
-            optimizer_profile = optimizer(fgraph)
+            is_same_graph(old_graph, fgraph.outputs, givens=...)
+            optimizer_profile = optimizer(fgraph)#fgraph.inputs, fgraph.outputs
             end_optimizer = time.time()
             opt_time = end_optimizer - start_optimizer
             if profile:
