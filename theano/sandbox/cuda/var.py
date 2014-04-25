@@ -53,3 +53,42 @@ class CudaNdarrayConstant(_operators, Constant):
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
 CudaNdarrayType.SharedVariable = tensor.sharedvar.TensorSharedVariable
+
+def float32_shared_constructor(value, name=None, strict=False,
+        allow_downcast=None, borrow=False, broadcastable=None):
+    """SharedVariable Constructor for CudaNdarrayType"""
+    if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
+        raise TypeError('ndarray or CudaNdarray required')
+
+    # if no broadcastable is given, then the default is to assume that
+    # the value might be resized in any dimension in the future.
+    #
+    if broadcastable is None:
+        broadcastable = (False,) * len(value.shape)
+        
+    deviceval = None
+    get_value_return_ndarray = True
+    if isinstance(value, theano.sandbox.cuda.CudaNdarray):
+        get_value_return_ndarray = False
+        if borrow:
+            deviceval = value
+        else:
+            deviceval = value.copy()
+    else:
+        deviceval = numpy.array(value, copy=(not borrow))
+    
+    # Force casting of numpy.array to cudandarray
+    type = CudaNdarrayType(broadcastable=broadcastable)
+    rval = None
+    try:
+        rval = tensor.sharedvar.TensorSharedVariable(
+            type=type, value=deviceval, name=name, 
+            strict=strict, allow_downcast=allow_downcast
+        )
+    except Exception, e:
+        print "ERROR", e
+        raise
+
+    rval.get_value_return_ndarray = get_value_return_ndarray
+    
+    return rval
