@@ -26,6 +26,21 @@
 //if you want this to work.
 #define PRECHECK_ERROR 0
 
+//If true, we release the GIL around blocking GPU calls, to allow other Python
+//threads to run in the meantime. For a single-threaded program, the overhead
+//is neglectible (about 20ms for 1 million GIL release/reclaim cycles). Can
+//still be overridden on compilation with -DRELEASE_GIL=0 in nvcc.flags.
+#ifndef RELEASE_GIL
+#define RELEASE_GIL 1
+#endif
+#if RELEASE_GIL
+#define CNDA_BEGIN_ALLOW_THREADS Py_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS Py_END_ALLOW_THREADS
+#else
+#define CNDA_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS
+#endif
+
 /////////////////////////
 // Alloc and Free
 /////////////////////////
@@ -200,7 +215,9 @@ int device_free(void *ptr)
 
     // We need sync as the Theano's GC could remove intermediate variable that
     // are still needed as the gpu kernel are running or in the queue.
+    CNDA_BEGIN_ALLOW_THREADS
     cudaThreadSynchronize();
+    CNDA_END_ALLOW_THREADS
 
     cudaError_t err =  cudaFree(ptr);
     if (cudaSuccess != err)
@@ -518,10 +535,14 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
 
     assert (PyArray_ITEMSIZE(rval) == sizeof(real));
 
-    cublasGetVector(PyArray_SIZE(rval), sizeof(real),
+    npy_intp rval_size = PyArray_SIZE(rval);
+    void *rval_data = PyArray_DATA(rval);
+    CNDA_BEGIN_ALLOW_THREADS
+    cublasGetVector(rval_size, sizeof(real),
                     contiguous_self->devdata, 1,
-                    PyArray_DATA(rval), 1);
-    CNDA_THREAD_SYNC;
+                    rval_data, 1);
+    //CNDA_THREAD_SYNC;  // unneeded because cublasGetVector is blocking anyway
+    CNDA_END_ALLOW_THREADS
 
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
@@ -894,12 +915,14 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
         npy_int64 idx = indices[i0];
         if (idx<0)
             idx += dB0; // To allow negative indexing.
-        if ((idx < 0) || (idx >= dB0))
+        if ((idx < 0) || (idx >= dB0)){
             // Any value other the 0 probably work. But to be more safe, I want
             // to change all bits to prevent problem with concurrent write that
             // could cross cache line. But this should not happen with the
             // current code and driver.
             *err = 0xFFFF;
+            continue;
+        }
         for (int i1 = threadIdx.x; i1 < d1; i1 += blockDim.x){
             for (int i2 = threadIdx.y; i2 < d2; i2 += blockDim.y){
                 int a_idx = i0*sA0 + i1*sA1 + i2*sA2;
@@ -1217,14 +1240,12 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     //-10 could be any value different then 0.
     int cpu_err_var=-10;
 
-    // We are not 100% sure that cudaMemcpy wait that the async gpu kernel are
-    // finished before doing the transfer. So we add this explicit sync as it
-    // is pretty fast. In a python loop, I ran 1 000 000 call in 1 second.
-    // It is better to be safe and not significatively slower than unsafe.
-    cudaThreadSynchronize();
-
+    CNDA_BEGIN_ALLOW_THREADS
+    // As we execute cudaMemcpy on the default stream, it waits for all
+    // kernels (on all streams) to be finished before starting to copy
     err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
                      cudaMemcpyDeviceToHost);
+    CNDA_END_ALLOW_THREADS
     if (cudaSuccess != err) {
         PyErr_Format(
             PyExc_RuntimeError,
@@ -2838,7 +2859,9 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
 PyObject *
 CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
 {
+    CNDA_BEGIN_ALLOW_THREADS
     cudaThreadSynchronize();
+    CNDA_END_ALLOW_THREADS
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -3554,11 +3577,15 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     if (!py_src) {
         return -1;
     }
-    cublasSetVector(PyArray_SIZE(py_src),
+    npy_intp py_src_size = PyArray_SIZE(py_src);
+    void *py_src_data = PyArray_DATA(py_src);
+    CNDA_BEGIN_ALLOW_THREADS
+    cublasSetVector(py_src_size,
             sizeof(real),
-            PyArray_DATA(py_src), 1,
+            py_src_data, 1,
             self->devdata, 1);
-    CNDA_THREAD_SYNC;
+    //CNDA_THREAD_SYNC;  // unneeded because cublasSetVector is blocking anyway
+    CNDA_END_ALLOW_THREADS
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
         PyErr_SetString(PyExc_RuntimeError, "error copying data to device memory");
@@ -4952,7 +4979,7 @@ cnda_copy_structure_to_device(const CudaNdarray * self)
                     1,
                     self->dev_structure,
                     1);
-    CNDA_THREAD_SYNC;
+    //CNDA_THREAD_SYNC;  // unneeded because cublasSetVector is blocking anyway
     if (CUBLAS_STATUS_SUCCESS != cublasGetError())
     {
         PyErr_SetString(PyExc_RuntimeError, "error copying structure to device memory");
@@ -5093,7 +5120,7 @@ int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self)
 
 
 int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
-        const int * dims)
+                            const int * dims, int fortran)
 {
     bool allocated = false;
     if (*arr == NULL)
@@ -5105,7 +5132,7 @@ int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
         allocated = true;
     }
 
-    if (CudaNdarray_alloc_contiguous(*arr, nd, dims))
+    if (CudaNdarray_alloc_contiguous(*arr, nd, dims, fortran))
     {
         if (allocated)
         {

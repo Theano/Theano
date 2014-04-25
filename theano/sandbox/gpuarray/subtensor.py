@@ -7,6 +7,7 @@ import theano
 from theano import tensor, gof
 from theano.gof.python25 import all, any
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
+import theano.tensor.inplace
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:

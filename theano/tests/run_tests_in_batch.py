@@ -62,7 +62,7 @@ import sys
 import time
 
 import theano
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import output_subprocess_Popen
 
 
 def main(stdout=None, stderr=None, argv=None, theano_nose=None,
@@ -271,19 +271,17 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                     time.ctime(), test_id, data["ids"][test_id]))
                 f_rawlog.flush()
 
-                proc = call_subprocess_Popen(
+                p_out = output_subprocess_Popen(
                     ([python, theano_nose, '-v', '--with-id']
-                    + [str(test_id)] + argv +
-                     ['--disabdocstring']),
+                     + [str(test_id)] + argv +
+                     ['--disabdocstring']))
                     # the previous option calls a custom Nosetests plugin
                     # precluding automatic sustitution of doc. string for
                     # test name in display
                     # (see class 'DisabDocString' in file theano-nose)
-                    stderr=subprocess.PIPE,
-                    stdout=dummy_out.fileno())
 
                 # recovering and processing data from pipe
-                err = proc.stderr.read()
+                err = p_out[1]
                 # print the raw log
                 f_rawlog.write(err)
                 f_rawlog.flush()

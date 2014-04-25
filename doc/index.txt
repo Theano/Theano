@@ -20,7 +20,9 @@ since 2007.  But it is also approachable enough to be used in the classroom
 News
 ====
 
-* Theano 0.6rc3 was released. Everybody is encouraged to update.
+* Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
+
+* Theano 0.6 was released. Everybody is encouraged to update.
 
 * New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
   However, please keep citing the other paper below in scientific work involving Theano.
