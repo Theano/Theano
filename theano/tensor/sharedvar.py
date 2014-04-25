@@ -144,13 +144,13 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     gradients.
     """
     def _as_TensorVariable(self):
-        if init_cuda() and isinstance(self.type, cuda.type.CudaNdarrayType):
+        if self._isCudaType():
             return cuda.basic_ops.HostFromGpu()(self)
         assert(isinstance(self.type, TensorType))
         return super(TensorSharedVariable, self)._as_TensorVariable(self)
     
     def _as_CudaNdarrayVariable(self):
-        assert(init_cuda() and isinstance(self.type, cuda.type.CudaNdarrayType))
+        assert(self._isCudaType())
         return self
 
     dtype = property(lambda s:'float32')
@@ -229,21 +229,15 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
 
             The inplace on gpu memory work when borrow is either True or False.
         """
-        if not borrow:
-            if not isinstance(value, numpy.ndarray):
-                # in case this is a cuda_ndarray, we copy it
-                value = copy.deepcopy(value)
-                
-            if self._isCudaType():
-                #convert ndarray to cudaarray (inplace copy)
-                value = cuda.filter(theano._asarray(value, dtype='float32'),
-                               tuple([0] * value.ndim), 0, self.value)
-        else
-            if 
-                #convert cudaarray to ndarray
-            value = numpy.asarray(x)
-        
-        self.container.value = value # this will copy a numpy ndarray
+        if borrow:
+            self.container.value = value
+        else:
+            if self._isCudaType() and isinstance(value, numpy.ndarray):
+                # the container will catch this and copy the ndarray 
+                # into gpu memory (refer to container.__set__)
+                self.container.value = value
+            else
+                self.container.value = copy.deepcopy(value)
         
     def _isCudaType(self, type=None)
         type = type or self.container.type
