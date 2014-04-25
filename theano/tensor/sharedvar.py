@@ -1,18 +1,17 @@
 import traceback
 import numpy
+import copy
 
 """
 TODO:
-toGPU, etc.
-dtype, etc
-get/set
-constructors
 unit tests
+doc
 """
 
 import theano.tensor.basic
 from theano.tensor.basic import TensorType, _tensor_py_operators
 from theano.compile import shared_constructor, SharedVariable
+from theano.gof import Container
 
 cuda = None
 
@@ -37,7 +36,8 @@ def load_shared_variable(val):
 
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 class TensorSharedVariable(_tensor_py_operators, SharedVariable):
-    dtype = property(lambda s:s.container.value.type)
+    # dtype is used for cuda only:
+    dtype = property(lambda s:'float32')
     broadcastable = property(lambda s:s.type.broadcastable)
     ndim = property(lambda s:s.type.ndim)
     get_value_return_ndarray = True
@@ -96,7 +96,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         assert container is not None 
         
         super(TensorSharedVariable, self).__init__(
-            type=container.type, name=name, owner=None, index=None, 
+            name=name, type=container.type, value=None, strict=None,
             container=container
         )
             
@@ -164,12 +164,12 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     def _as_TensorVariable(self):
         if self._isCudaType():
             return cuda.basic_ops.HostFromGpu()(self)
-        assert(isinstance(self.type, TensorType))
-        return super(TensorSharedVariable, self)._as_TensorVariable(self)
+        return self
     
     def _as_CudaNdarrayVariable(self):
-        assert(self._isCudaType())
-        return self
+        if self._isCudaType():
+            return self
+        return cuda.basic_ops.GpuFromHost()(self)
 
     def get_value(self, borrow=False, return_internal_type=False):
         """
@@ -290,7 +290,10 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
     argument will override this default.
 
     """
-    if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
+    valid_types = numpy.ndarray
+    if init_cuda():
+        valid_types = (numpy.ndarray, cuda.CudaNdarray)
+    if not isinstance(value, valid_types):
         raise TypeError('ndarray or CudaNdarray required')
 
     # if no broadcastable is given, then the default is to assume that
@@ -326,7 +329,7 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
     rval.get_value_return_ndarray = get_value_return_ndarray
     
     return rval
-
+    
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works
 # as long as we dont do purely scalar-scalar operations

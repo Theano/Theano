@@ -243,7 +243,6 @@ theano.compile.debugmode.default_make_thunk.append(
 # nvcc is not available
 from theano.sandbox.cuda.var import (CudaNdarrayVariable,
                                      CudaNdarrayConstant,
-                                     CudaNdarraySharedVariable,
                                      float32_shared_constructor)
 from theano.sandbox.cuda.type import CudaNdarrayType
 
