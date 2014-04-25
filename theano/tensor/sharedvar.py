@@ -70,36 +70,25 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                 "TensorType or CudaNdarrayType."
             )
         
+        if container is None:
+            container = Container(self,
+                    storage=[type.filter(value, strict=strict,
+                                         allow_downcast=allow_downcast)],
+                    readonly=False,
+                    strict=strict,
+                    allow_downcast=allow_downcast)
+                    
+        assert(container is not None)
+        
         super(TensorSharedVariable, self).__init__(
-            type=type, name=name, owner=None, index=None, 
+            type=container.type, name=name, owner=None, index=None, 
             container=container
         )
         
-        # a cache of cache.
-        self._cache = {self._container.type: self._container}
-        
-        # the current container will be stored in self._container
-        self._container = self._container
-        # users should not access self._container directly. 
-        # use get_value/set_value
-        self._container = None
-        
         # if the user provides a different type than that in container
-        if (self.type != self._container.type):
+        if (self.type != self.container.type):
             # TODO : convert container to new type
             pass
-            
-    def clone(self):
-        cp = self.__class__(
-                name=self.name,
-                type=self.type,
-                value=None,
-                strict=None,
-                container=self._container)
-        cp.tag = copy.copy(self.tag)
-        cp._cache = copy.copy(self._cache)
-        return cp
-        
         
     def validTypes(self):
         valid_types = TensorType
@@ -107,22 +96,9 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             valid_types = (TensorType, cuda.type.CudaNdarrayType)
         return valid_types
     
-    def setupcache(self):
-        type = None
-        if isinstance(self._container.type, TensorType):
-            type = 
-        # initialize the second container
-        container = Container(self,
-                    storage=[type.filter(self._container.value, 
-                                         strict=strict,
-                                         allow_downcast=allow_downcast)],
-                    readonly=False,
-                    strict=strict,
-                    allow_downcast=allow_downcast)
-    
     def toGPU(self):
-        assert(self._cuda_capable, "No CUDA-capable device detected")
-        if isinstance(self._container.type, TensorType):
+        assert(self._gpu_capable, "No CUDA-capable device detected")
+        if isinstance(self.container.type, TensorType):
             gpu_container = self.cache[cuda.type.CudaNdarrayType]
                 or 
     
@@ -177,22 +153,20 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         copying.
 
         """
-        ## TODO : cache conversion of cuda to cpu
-        ## TODO : use cache to return value
-        if isinstance(self._container.type, TensorType):
+        if isinstance(self.container.type, TensorType):
             if borrow:
-                return self._container.value
+                return self.container.value
             else:
-                return copy.deepcopy(self._container.value)
+                return copy.deepcopy(self.container.value)
         else:
             if return_internal_type or not self.get_value_return_ndarray:
                 # return a cuda_ndarray
                 if borrow:
-                    return self._container.value
+                    return self.container.value
                 else:
-                    return copy.deepcopy(self._container.value)
+                    return copy.deepcopy(self.container.value)
             else: #return an ndarray
-                return numpy.asarray(self._container.value)
+                return numpy.asarray(self.container.value)
 
     def set_value(self, value, borrow=False):
         """
@@ -227,12 +201,24 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             The inplace on gpu memory work when borrow is either True or False.
         """
         if not borrow:
-            #TODO: check for cuda_ndarray type
             if not isinstance(value, numpy.ndarray):
                 # in case this is a cuda_ndarray, we copy it
                 value = copy.deepcopy(value)
+                
+            if self._isCudaType():
+                #convert ndarray to cudaarray (inplace copy)
+                value = cuda.filter(theano._asarray(value, dtype='float32'),
+                               tuple([0] * value.ndim), 0, self.value)
+        else
+            if 
+                #convert cudaarray to ndarray
+            value = numpy.asarray(x)
         
-        self._container.value = value # this will copy a numpy ndarray
+        self.container.value = value # this will copy a numpy ndarray
+        
+    def _isCudaType(self, type=None)
+        type = type or self.container.type
+        return self._gpu_capable and isinstance(type, cuda.type.CudaNdarrayType)
 
     def __getitem__(self, *args):
         # Defined to explicitly use the implementation from `_operators`, since
