@@ -37,6 +37,11 @@ def load_shared_variable(val):
 
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 class TensorSharedVariable(_tensor_py_operators, SharedVariable):
+    dtype = property(lambda s:s.container.value.type)
+    broadcastable = property(lambda s:s.type.broadcastable)
+    ndim = property(lambda s:s.type.ndim)
+    get_value_return_ndarray = True
+    
     def __init__(self, name, type, value, strict,
                  allow_downcast=None, container=None):
         """
@@ -114,15 +119,25 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     def toGPU(self):
         assert(self._gpu_capable, "No CUDA-capable device detected")
         if isinstance(self.container.type, TensorType):
+            if self.container.value.dtype.num != cuda.type.CudaNdarrayType.typenum:
+                raise TypeError('float32 required for GPU usage')
             self._setContainer(
-                self.container.castClone(cuda.type.CudaNdarrayType)
+                self.container.castClone(
+                    cuda.type.CudaNdarrayType(
+                        broadcastable=broadcastable
+                    )
+                )
             )
             return True
         return False
     
     def toCPU(self):
         if self._isCudaType():
-            self._setContainer(self.container.castClone(TensorType))
+            self._setContainer(
+                self.container.castClone(
+                    TensorType(self.type.dtype, self.type.broadcastable)
+                )
+            )
             return True
         return False
         
@@ -154,15 +169,6 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     def _as_CudaNdarrayVariable(self):
         assert(self._isCudaType())
         return self
-
-    dtype = property(lambda s:'float32')
-    broadcastable = property(lambda s:s.type.broadcastable)
-    ndim = property(lambda s:s.type.ndim)
-    
-    """
-    Shared Variable interface to CUDA-allocated arrays
-    """
-    get_value_return_ndarray = True
 
     def get_value(self, borrow=False, return_internal_type=False):
         """
@@ -255,8 +261,10 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         # gpu device is detected
         d._was_cuda = d._was_cuda or False
         if self._isCudaType():
-            d.container = d.container.castClone(TensorType)
-            d.type = TensorType
+            d.type = TensorType(
+                d.container.type.dtype, d.container.type.broadcastable
+            )
+            d.container = d.container.castClone(d.type)
             d._was_cuda = True
             
         return d
@@ -267,81 +275,6 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         self._gpu_capable = init_cuda()
         if self._was_cuda:
             self.toGPU()
-        
-                    
-
-def cuda_shared_constructor(value, name=None, strict=False,
-        allow_downcast=None, borrow=False, broadcastable=None):
-    """SharedVariable Constructor for CudaNdarrayType"""
-
-    # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
-    # SO INT shared vars, float64 shared vars, etc. all end up on the card.
-    # THIS IS NOT THE DEFAULT BEHAVIOUR THAT WE WANT.
-    # SEE float32_shared_constructor
-
-    #TODO: what should strict mean in this context, since we always have to make a copy?
-    if strict:
-        _value = value
-    else:
-        _value = theano._asarray(value, dtype='float32')
-
-    if not isinstance(_value, numpy.ndarray):
-        raise TypeError('ndarray required')
-    if _value.dtype.num != CudaNdarrayType.typenum:
-        raise TypeError('float32 ndarray required')
-
-    if broadcastable is None:
-        broadcastable = (False,) * len(value.shape)
-    type = CudaNdarrayType(broadcastable=broadcastable)
-    print "trying to return?"
-    try:
-        rval = CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
-    except Exception, e:
-        print "ERROR", e
-        raise
-    return rval
-
-def float32_shared_constructor(value, name=None, strict=False,
-        allow_downcast=None, borrow=False, broadcastable=None):
-    """SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or CudaNdarray"""
-    if theano.sandbox.cuda.use.device_number is None:
-        theano.sandbox.cuda.use("gpu",
-                                force=True,
-                                default_to_move_computation_to_gpu=False,
-                                move_shared_float32_to_gpu=False,
-                                enable_cuda=False)
-
-    # if value isn't a float32 ndarray, or a CudaNdarray then raise
-
-    if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
-        raise TypeError('ndarray or CudaNdarray required')
-    if isinstance(value, numpy.ndarray) and value.dtype.num != CudaNdarrayType.typenum:
-        raise TypeError('float32 ndarray required')
-
-    if broadcastable is None:
-        broadcastable = (False,) * len(value.shape)
-    type = CudaNdarrayType(broadcastable=broadcastable)
-    get_value_return_ndarray = True
-    if isinstance(value, theano.sandbox.cuda.CudaNdarray):
-        get_value_return_ndarray = False
-        if borrow:
-            deviceval = value
-        else:
-            deviceval = value.copy()
-    else:
-        # type.broadcastable is guaranteed to be a tuple, which this next
-        # function requires
-        deviceval = type_support_filter(value, type.broadcastable, False, None)
-
-    try:
-        rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
-    except Exception, e:
-        print "ERROR", e
-        raise
-
-    rval.get_value_return_ndarray = get_value_return_ndarray
-
-    return rval
 
 
 @shared_constructor
@@ -358,20 +291,40 @@ def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
     """
     if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
         raise TypeError('ndarray or CudaNdarray required')
-    if isinstance(value, numpy.ndarray) and value.dtype.num != CudaNdarrayType.typenum:
-        raise TypeError('float32 ndarray required')
 
     # if no broadcastable is given, then the default is to assume that
     # the value might be resized in any dimension in the future.
     #
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
-    type = TensorType(value.dtype, broadcastable=broadcastable)
-    return TensorSharedVariable(type=type,
-            value=numpy.array(value, copy=(not borrow)),
-            name=name,
-            strict=strict,
-            allow_downcast=allow_downcast)
+        
+    type = None
+    deviceval = None
+    get_value_return_ndarray = True
+    if init_cuda() and isinstance(value, cuda.CudaNdarray):
+        type = cuda.type.CudaNdarrayType(broadcastable=broadcastable)
+        get_value_return_ndarray = False
+        if borrow:
+            deviceval = value
+        else:
+            deviceval = value.copy()
+    else
+        type = TensorType(value.dtype, broadcastable=broadcastable)
+        deviceval = numpy.array(value, copy=(not borrow))
+    
+    rval = None
+    try:
+        rval = TensorSharedVariable(
+            type=type, value=deviceval, name=name, 
+            strict=strict, allow_downcast=allow_downcast
+        )
+    except Exception, e:
+        print "ERROR", e
+        raise
+
+    rval.get_value_return_ndarray = get_value_return_ndarray
+    
+    return rval
 
 
 # TensorSharedVariable brings in the tensor operators, is not ideal, but works
