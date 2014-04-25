@@ -80,6 +80,12 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                     readonly=False,
                     strict=strict,
                     allow_downcast=allow_downcast)
+        else
+            if not isinstance(container.type, self.validTypes()):
+                raise TypeError(
+                    "TensorSharedVariable only accepts instance Type "
+                    "TensorType or CudaNdarrayType."
+                )
                     
         assert(container is not None)
         
@@ -90,9 +96,14 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             
         
         # if the user provides a different type than that in container
-        if (self.type != self.container.type):
-            # TODO : convert container to new type
-            pass
+        if (type != self.container.type):
+            # convert container to new type
+            if isinstance(type, cuda.type.CudaNdarrayType):
+                self.toGPU()
+            else
+                self.toCPU()
+        else
+            self.type = self.container.type
         
     def validTypes(self):
         valid_types = TensorType
