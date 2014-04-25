@@ -319,6 +319,21 @@ class Container(object):
 
     def __repr__(self):
         return "<" + repr(self.storage[0]) + ">"
+        
+    # copy value, cast it to new type, and store it in a container with
+    # the same attributes as self (except for value and type)
+    def castClone(self, type):
+        return Container(
+            type,
+            storage=[type.filter(
+                        self.value, 
+                        strict=self.strict,
+                        allow_downcast=self.allow_downcast
+                    )],
+            readonly=self.readonly,
+            strict=self.strict,
+            allow_downcast=self.allow_downcast
+        )
 
     def __deepcopy__(self, memo):
         data_was_in_memo = id(self.storage[0]) in memo
