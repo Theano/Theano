@@ -926,6 +926,10 @@ _grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand
 #empty2 case is not supported by numpy.
 _good_broadcast_pow_normal_float_pow = copy(_good_broadcast_pow_normal_float)
 del _good_broadcast_pow_normal_float_pow["empty2"]
+_grad_broadcast_pow_normal["x_eq_zero"] = (
+    numpy.asarray([0.], dtype=config.floatX),
+    numpy.asarray([2.], dtype=config.floatX)
+)
 
 PowTester = makeBroadcastTester(
         op=pow,
