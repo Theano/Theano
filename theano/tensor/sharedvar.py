@@ -71,9 +71,12 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             )
         
         if container is None:
-            container = Container(self,
-                    storage=[type.filter(value, strict=strict,
-                                         allow_downcast=allow_downcast)],
+            container = Container(
+                    type,
+                    storage=[type.filter(
+                                value, strict=strict,
+                                allow_downcast=allow_downcast
+                            )],
                     readonly=False,
                     strict=strict,
                     allow_downcast=allow_downcast)
@@ -84,6 +87,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             type=container.type, name=name, owner=None, index=None, 
             container=container
         )
+            
         
         # if the user provides a different type than that in container
         if (self.type != self.container.type):
@@ -99,11 +103,25 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     def toGPU(self):
         assert(self._gpu_capable, "No CUDA-capable device detected")
         if isinstance(self.container.type, TensorType):
-            gpu_container = self.cache[cuda.type.CudaNdarrayType]
-                or 
+            self._setContainer(
+                self.container.castClone(cuda.type.CudaNdarrayType)
+            )
+            return True
+        return False
     
     def toCPU(self):
-        pass
+        if not self._gpu_capable:
+            return False
+        if isinstance(self.container.type, cuda.type.CudaNdarrayType):
+            self._setContainer(self.container.castClone(TensorType))
+            return True
+        return False
+        
+    def _setContainer(self, container):
+        del self.container
+        self.container = container
+        self.type = self.container.type
+        
     
     """Define a few properties and conversion methods for CudaNdarray Variables.
 
