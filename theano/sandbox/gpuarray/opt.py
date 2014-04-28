@@ -1,6 +1,12 @@
 import copy
 import theano
 import numpy
+
+try:
+    import pygpu
+except ImportError:
+    pass
+
 from theano import tensor, scalar
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB,
@@ -249,6 +255,11 @@ def local_gpua_incsubtensor(node):
 @register_opt()
 @op_lifter([tensor.AdvancedIncSubtensor1])
 def local_gpua_advanced_incsubtensor(node):
+    
+    # This optimization is disabled if cuda is not active
+    if pygpu.get_default_context().kind != "cuda":
+        return None
+    
     x, y = node.inputs[0:2]
     coords = node.inputs[2:]
     set_instead_of_inc = node.op.set_instead_of_inc
