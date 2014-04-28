@@ -1036,12 +1036,93 @@ class FunctionMaker(object):
         try:
             theano.config.compute_test_value = theano.config.compute_test_value_opt
             gof.Op.add_stack_trace_on_call = False
-            start_optimizer = time.time()
-            import ipdb; ipdb.set_trace()
-            is_same_graph(old_graph, fgraph.outputs, givens=...)
-            optimizer_profile = optimizer(fgraph)#fgraph.inputs, fgraph.outputs
-            end_optimizer = time.time()
-            opt_time = end_optimizer - start_optimizer
+
+            def optimize_graph(fgraph):
+                '''
+                params
+                ------
+                fgraph: the new graph to be optimized, optimized in-place.
+                        {before_opt: after_opt, ....}
+
+                return
+                ------
+                opt_time: timing
+                ''' 
+                from theano.gof.compilelock import get_lock, release_lock
+                import cPickle
+                import os.path
+                graph_db_file = theano.config.compiledir + '/optimized_graphs.pkl'
+                # the inputs, outputs, and size of the graph to be optimized
+                inputs_new = fgraph.inputs
+                outputs_new = fgraph.outputs
+                size_new = len(fgraph.nodes)
+                need_optimize = False
+                get_lock()
+                '''
+                graph_db and need_optimize
+                '''
+                try:
+                    f = open(graph_db_file, 'r+')
+                except IOError:
+                    # create graph_db
+                    f = open(graph_db_file, 'w+b')
+                    print 'creating %s'%graph_db_file
+                                    
+                # load the graph_db dictionary
+                try:
+                    graph_db = cPickle.load(f)
+                except EOFError:
+                    # the file has nothing in it
+                    graph_db = {}
+                    
+                print 'loaded %s, size=%d'%(graph_db_file,len(graph_db))
+                need_optimize = True
+                # the sole purpose of this loop is to fill 'same_graph_found'
+                for graph_old in graph_db.keys():
+                    inputs_old = graph_old.inputs
+                    outputs_old = graph_old.outputs
+                    size_old = len(graph_old.nodes)
+
+                    # Some heuristics to check is the same graphs have
+                    # already been optimized before.
+                    if len(inputs_new) != len(inputs_old):
+                        # If the inputs are of different size,
+                        # two graphs are for sure different 
+                        continue
+                    else:
+                        # if the both inputs are of the same size
+                        givens = dict(zip(inputs_new, inputs_old))
+                        is_same = is_same_graph(outputs_new, outputs_old,
+                                                 givens=givens)
+                        if is_same:
+                            need_optimize = False
+                            break
+
+                # now optimize or not
+                if need_optimize:
+                    # this is a brand new graph, optimize it, save it to graph_db
+                    print 'Need to optimize the graph'
+                    before_opt = copy.deepcopy(fgraph)
+                    start_optimizer = time.time()
+                    optimizer_profile = optimizer(fgraph)
+                    end_optimizer = time.time()
+                    opt_time = end_optimizer - start_optimizer
+                    import ipdb; ipdb.set_trace()
+                    graph_db.update({before_opt:fgraph})
+                    cPickle.dump(graph_db, f)
+                else:
+                    print 'Do not need to optimize the graph'
+                    # just read the optmized graph from graph_db
+                    opt_time = 0
+                    fgraph = graph_db[fgraph]
+                    
+                # release stuff
+                f.close()
+                release_lock()    
+                opt_time
+                
+            opt_time = optimize_graph(fgraph)
+            
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
