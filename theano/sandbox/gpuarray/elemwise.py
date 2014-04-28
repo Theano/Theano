@@ -1132,6 +1132,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                                                    'buf[threadNum]',
                                                    'buf[threadNum+%d]' % num,
                                                    sub)
+            current_version += """
+            """
         current_version += """
                 if (threadNum == 0)
                 {
@@ -1150,6 +1152,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                                     'buf[threadNum]','buf[threadNum+%d]' % num,
                                     sub)
             current_version += this_if
+            current_version += """
+            """
         current_version += """
                 if (threadNum == 0)
                 {
