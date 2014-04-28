@@ -50,8 +50,7 @@ def multMatVect(v, A, m1, B, m2):
         s2_sym = tensor.ivector('s2')
         m2_sym = tensor.iscalar('m2')
         # We borrow the output as we will copy the answer elsewhere
-        o = Out(DotModulo()(A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym),
-                borrow=True)
+        o = DotModulo()(A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym)
         multMatVect.dot_modulo = function(
             [A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym], o)
 
