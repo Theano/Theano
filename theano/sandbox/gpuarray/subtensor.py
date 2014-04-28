@@ -359,7 +359,7 @@ class GpuIncSubtensor(IncSubtensor):
         return parent_version + elemwise_version + (0,)
 
 
-class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
+class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
     """
@@ -383,8 +383,15 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
-    # CudaNdarray_Subscript() doesn't support Advanced slicing.
-    # But we can't use the parent version that loops on each index
+    def getInplElemwiseAdditionKernel(self, a, b):
+        a_arg = pygpu.tools.as_argument(a, 'a')
+        b_arg = pygpu.tools.as_argument(b, 'b')
+        args = [a_arg, b_arg]
+        oper = "a[i] = a[i] + %(b)s" % {'b': b_arg.expr()}
+        k = pygpu.elemwise.ElemwiseKernel(a.context, args, oper)
+        return k
+
+    # We can't use the parent version that loops on each index
     # as we also need to loop when set_instead_of_inc is True and the
     # parent doesn't loop in that case.
     def perform(self, node, inp, out_):
@@ -413,18 +420,26 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, Op):
             # jointly on `x` and `y`. Otherwise, it means `y` should be
             # broadcasted to fill all relevant rows of `x`.
             assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
-            if y.ndim == x.ndim:
+
+            if len(idx) == 0:
+                pass
+            elif y.ndim == x.ndim:
                 assert len(y) == len(idx)
+
+                firstIdxY, firstIdxX = enumerate(idx).next()
+                k = self.getInplElemwiseAdditionKernel(x[firstIdxX],
+                                                       y[firstIdxY])                 
+
                 for (j, i) in enumerate(idx):
-                    #x[i] += y[j]
-                    pygpu.elemwise.ielemwise2(x[i], '+', y[j],  broadcast=False)
+                    k(x[i], y[j], broadcast=False)
             else:
+                nb_dims_to_add = (x[idx[0]].ndim - y.ndim)
+                reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
+                k = self.getInplElemwiseAdditionKernel(x[0],
+                                                       reshaped_y)
+
                 for i in idx:
-                    #x[i] += y
-                    nb_dims_to_add = (x[i].ndim - y.ndim)
-                    reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
-                    pygpu.elemwise.ielemwise2(x[i], '+', reshaped_y,
-                                              broadcast=True)
+                    k(x[i], reshaped_y, broadcast=True)
 
         out[0] = x
 
