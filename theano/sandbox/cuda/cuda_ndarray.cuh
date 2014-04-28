@@ -363,9 +363,9 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
             CudaNdarray_set_stride(self, i, (dim[i] == 1) ? 0 : size);
             CudaNdarray_set_dim(self, i, dim[i]);
             //Detect overflow on unsigned integer
-            if (size > (SIZE_MAX / dim[i])) {
+            if (dim[i] != 0 && size > (SIZE_MAX / dim[i])) {
                 PyErr_Format(PyExc_AssertionError,
-                             "Can't store in size_t the bytes resquested",
+                             "Can't store in size_t for the bytes requested",
                              size);
                 return -1;
             }
@@ -380,9 +380,9 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
             CudaNdarray_set_dim(self, i, dim[i]);
 
             //Detect overflow on unsigned integer
-            if (size > (SIZE_MAX / dim[i])) {
+            if (dim[i] != 0 && size > (SIZE_MAX / dim[i])) {
                 PyErr_Format(PyExc_AssertionError,
-                             "Can't store in size_t the bytes resquested",
+                             "Can't store in size_t for the bytes requested",
                              size);
                 return -1;
             }
