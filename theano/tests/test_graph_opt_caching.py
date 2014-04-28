@@ -52,5 +52,5 @@ def test_graph_optimization_caching():
     
 
 if __name__ == '__main__':
-    #test_graph_optimization_caching()
-    test_graph_equivalence()
+    test_graph_optimization_caching()
+    #test_graph_equivalence()
