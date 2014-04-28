@@ -2335,7 +2335,10 @@ class Expm1(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = exp(%(x)s) - 1;" % locals()
+        return "%(z)s = expm1(%(x)s);" % locals()
+
+    def c_code_cache_version(self):
+        return (5,)
 expm1 = Expm1(upgrade_to_float, name='expm1')
 
 
