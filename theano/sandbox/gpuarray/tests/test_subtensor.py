@@ -25,7 +25,7 @@ class G_subtensor(T_subtensor):
                              shared=gpuarray_shared_constructor,
                              sub=GpuSubtensor,
                              inc_sub=GpuIncSubtensor,
-                             adv_incsub1 = GpuAdvancedIncSubtensor1,
+                             adv_incsub1=GpuAdvancedIncSubtensor1,
                              mode=mode_with_gpu,
                              # avoid errors with limited devices
                              dtype='float32',

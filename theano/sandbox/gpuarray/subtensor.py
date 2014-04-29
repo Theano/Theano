@@ -426,14 +426,12 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
             elif y.ndim == x.ndim:
                 assert len(y) == len(idx)
 
-                firstIdxY, firstIdxX = enumerate(idx).next()
-                k = self.getInplElemwiseAdditionKernel(x[firstIdxX],
-                                                       y[firstIdxY])                 
+                k = self.getInplElemwiseAdditionKernel(x[0], y[0])
 
                 for (j, i) in enumerate(idx):
                     k(x[i], y[j], broadcast=False)
             else:
-                nb_dims_to_add = (x[idx[0]].ndim - y.ndim)
+                nb_dims_to_add = (x.ndim - 1) - y.ndim
                 reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
                 k = self.getInplElemwiseAdditionKernel(x[0],
                                                        reshaped_y)
