@@ -944,6 +944,7 @@ class Eig(Op):
 
 eig = Eig()
 
+
 class SVD(Op):
     """
     Singular Value Decomposition.
@@ -957,10 +958,13 @@ class SVD(Op):
         inputs :
         --------
         full_matrices : bool, optional
-            If True (default), u and v have the shapes (M, M) and (N, N), respectively.
-            Otherwise, the shapes are (M, K) and (K, N), respectively, where K = min(M, N).
+            If True (default), u and v have the shapes (M, M) and (N, N),
+            respectively.
+            Otherwise, the shapes are (M, K) and (K, N), respectively,
+            where K = min(M, N).
         compute_uv : bool, optional
-            Whether or not to compute u and v in addition to s. True by default.
+            Whether or not to compute u and v in addition to s.
+            True by default.
         """
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
@@ -973,7 +977,6 @@ class SVD(Op):
 
     def props(self):
         return self.full_matrices, self.compute_uv,
-
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -994,15 +997,167 @@ class SVD(Op):
                                                       node.inputs[0]))
             raise
 
-    def grad(self, inputs, g_outputs):
-        raise NotImplementedError("Grad method of %s is "
-                                  "not implemented." % self.__class__.__name__)
+    def __str__(self):
+        return self._numop.__name__.capitalize()
+
+
+def svd(a, full_matrices=1, compute_uv=1):
+    """
+    This function performs the SVD on CPU.
+
+    Parameters :
+    --------
+    full_matrices : bool, optional
+        If True (default), u and v have the shapes (M, M) and (N, N),
+        respectively.
+        Otherwise, the shapes are (M, K) and (K, N), respectively,
+        where K = min(M, N).
+    compute_uv : bool, optional
+        Whether or not to compute u and v in addition to s.
+        True by default.
+    """
+    return SVD(full_matrices, compute_uv)(a)
+
+
+class QRFull(Op):
+    """
+    Full QR Decomposition.
+    Computes the QR decomposition of a matrix.
+    Factor the matrix a as qr, where q is orthonormal
+    and r is upper-triangular.
+    """
+    _numop = staticmethod(numpy.linalg.qr)
+
+    def __init__(self):
+        self.mode = "full"
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim == 2, "The input of qr function should be a matrix."
+        q = theano.tensor.matrix(dtype=x.dtype)
+        r = theano.tensor.matrix(dtype=x.dtype)
+        return Apply(self, [x], [q, r])
+
+    def props(self):
+        return self.mode
+
+    def perform(self, node, (x,), (q, r)):
+        try:
+            assert x.ndim == 2, "The input of qr function should be a matrix."
+
+            q[0], r[0] = self._numop(x,
+                                     self.mode)
+            q[0] = q[0].astype(x.dtype)
+            r[0] = r[0].astype(x.dtype)
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
+                                                      node.inputs[0]))
+            raise
 
     def __str__(self):
         return self._numop.__name__.capitalize()
 
-def svd(a, full_matrices=1, compute_uv=1):
-    return SVD(full_matrices, compute_uv)(a)
+class QRIncomplete(Op):
+    """
+    Incomplete QR Decomposition.
+    Computes the QR decomposition of a matrix.
+    Factor the matrix a as qr and return a single matrix.
+    """
+    _numop = staticmethod(numpy.linalg.qr)
+
+    def __init__(self, mode="raw"):
+        assert mode != "full"
+        self.mode = mode
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def props(self):
+        return self.mode
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim == 2, "The input of qr function should be a matrix."
+        q = theano.tensor.matrix(dtype=x.dtype)
+        return Apply(self, [x], [q])
+
+    def perform(self, node, (x,), (q,)):
+        try:
+            assert x.ndim == 2, "The input of qr function should be a matrix."
+            q[0] = self._numop(x,
+                               self.mode)
+
+            q[0] = q[0].astype(x.dtype)
+
+        except numpy.linalg.LinAlgError:
+            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
+                                                      node.inputs[0]))
+            raise
+
+    def __str__(self):
+        return self._numop.__name__.capitalize()
+
+
+def qr(a, mode="full"):
+    """
+    Computes the QR decomposition of a matrix.
+    Factor the matrix a as qr, where q
+    is orthonormal and r is upper-triangular.
+
+    Parameters :
+    ------------
+
+    a : array_like, shape (M, N)
+        Matrix to be factored.
+
+    mode : {'reduced', 'complete', 'r', 'raw', 'full', 'economic'}, optional
+        If K = min(M, N), then
+        'reduced' : returns q, r with dimensions (M, K), (K, N) (default)
+        'complete' : returns q, r with dimensions (M, M), (M, N)
+        'r' : returns r only with dimensions (K, N)
+        'raw' : returns h, tau with dimensions (N, M), (K,)
+        'full' : alias of 'reduced', deprecated
+        'economic' : returns h from 'raw', deprecated. The options 'reduced',
+        'complete', and 'raw' are new in numpy 1.8, see the notes for more
+        information. The default is 'reduced' and to maintain backward
+        compatibility with earlier versions of numpy both it and the old
+        default 'full' can be omitted. Note that array h returned in 'raw'
+        mode is transposed for calling Fortran. The 'economic' mode is
+        deprecated. The modes 'full' and 'economic' may be passed using only
+        the first letter for backwards compatibility, but all others
+        must be spelled out.
+        Default mode is 'full' which is also default for numpy 1.6.1.
+
+    Returns :
+    ---------
+    q : ndarray of float or complex, optional
+    A matrix with orthonormal columns. When mode = 'complete'
+    the result is an orthogonal/unitary matrix depending on whether
+    or not a is real/complex. The determinant may be either +/- 1 in that case.
+
+    r : ndarray of float or complex, optional
+    The upper-triangular matrix.
+
+    (h, tau) : ndarrays of np.double or np.cdouble, optional
+    The array h contains the Householder reflectors that
+    generate q along with r. The tau array contains scaling
+    factors for the reflectors. In the deprecated
+    'economic' mode only h is returned.
+    """
+    if mode == "full":
+        return QRFull()(a)
+    else:
+        return QRIncomplete(mode)(a)
+
 
 def _zero_disconnected(outputs, grads):
     l = []
