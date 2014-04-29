@@ -154,6 +154,12 @@ class GpuElemwise(HideC, Elemwise):
 #define ga_half uint16_t
 
 """
+        try:
+            #We accept only some c_support_code().
+            #This filter is done in the make_node()
+            support_code += self.scalar_op.c_support_code()
+        except MethodNotDefined:
+            pass
         for npy, ga in [("npy_uint8", "ga_ubyte"),
                         ("npy_uint16", "ga_ushort"),
                         ("npy_uin32", "ga_uint"),
@@ -178,6 +184,9 @@ class GpuElemwise(HideC, Elemwise):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
         return NVCC_compiler
+
+    def c_support_code(self):
+        return self.scalar_op.c_support_code()
 
     def c_support_code_apply(self, node, nodename):
         if pygpu.get_default_context().kind == 'opencl':
