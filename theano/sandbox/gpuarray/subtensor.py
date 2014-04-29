@@ -7,7 +7,6 @@ from theano import tensor, gof, Op
 from theano.gof.python25 import all, any
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
-from theano.sandbox.cuda.basic_ops import device_properties
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
@@ -489,6 +488,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
+        device_properties = theano.sandbox.cuda.device_properties
         compute_capability = device_properties(active_device_no)['major']
         if ((self.set_instead_of_inc) or
             (node.inputs[0].ndim != node.inputs[1].ndim) or

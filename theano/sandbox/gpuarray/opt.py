@@ -18,7 +18,6 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
-from theano.sandbox.cuda.basic_ops import device_properties
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
     host_from_gpu, gpu_from_host, HostFromGpu,
@@ -294,6 +293,8 @@ def local_gpua_advanced_incsubtensor(node):
     coords = node.inputs[2:]
     set_instead_of_inc = node.op.set_instead_of_inc
     active_device_no = theano.sandbox.cuda.active_device_number()
+    device_properties = theano.sandbox.cuda.device_properties
+
     compute_capability = device_properties(active_device_no)['major']
     
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
