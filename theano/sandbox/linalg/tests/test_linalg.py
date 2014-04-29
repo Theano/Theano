@@ -24,6 +24,8 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        AllocDiag,
                                        alloc_diag,
                                        det,
+                                       svd,
+                                       qr,
                                        #PSD_hint,
                                        trace,
                                        matrix_dot,
@@ -172,6 +174,44 @@ def test_matrix_dot():
 
     assert _allclose(numpy_sol, theano_sol)
 
+def test_qr():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = tensor.matrix("A", dtype=theano.config.floatX)
+    Q, R = qr(A)
+    fn = function([A], [Q, R])
+    a = rng.rand(4, 4).astype(theano.config.floatX)
+    n_q, n_r = numpy.linalg.qr(a)
+    t_q, t_r = fn(a)
+
+    assert _allclose(n_q, t_q)
+    assert _allclose(n_r, t_r)
+
+def test_qr_reduced():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = tensor.matrix("A", dtype=theano.config.floatX)
+    Q = qr(A, mode="reduced")
+    fn = function([A], [Q])
+
+    a = rng.rand(4, 4).astype(theano.config.floatX)
+
+    n_q = numpy.linalg.qr(a, mode="reduced")
+    t_q = fn(a)
+
+    assert _allclose(n_q, t_q)
+
+
+def test_svd():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = tensor.matrix("A", dtype=theano.config.floatX)
+    U, V, T = svd(A)
+    fn = function([A], [U, V, T])
+    a = rng.rand(4, 4).astype(theano.config.floatX)
+    n_u, n_v, n_t = numpy.linalg.svd(a)
+    t_u, t_v, t_t = fn(a)
+
+    assert _allclose(n_u, t_u)
+    assert _allclose(n_v, t_v)
+    assert _allclose(n_t, t_t)
 
 def test_inverse_singular():
     singular = numpy.array([[1, 0, 0]] + [[0, 1, 0]] * 2,
@@ -184,7 +224,6 @@ def test_inverse_singular():
         return
     assert False
 
-
 def test_inverse_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(4, 4)
@@ -194,7 +233,6 @@ def test_inverse_grad():
 
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
-
 
 def test_rop_lop():
     mx = tensor.matrix('mx')
