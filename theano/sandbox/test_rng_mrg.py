@@ -874,3 +874,47 @@ def test_gradient_scan():
     gw = theano.grad(tensor.sum(values[-1]), w)
     f = theano.function([x], gw)
     f(numpy.arange(1, dtype='float32'))
+
+
+def test_multMatVect():
+    A1 = tensor.lmatrix('A1')
+    s1 = tensor.ivector('s1')
+    m1 = tensor.iscalar('m1')
+    A2 = tensor.lmatrix('A2')
+    s2 = tensor.ivector('s2')
+    m2 = tensor.iscalar('m2')
+    
+    g0 = rng_mrg.DotModulo()(A1, s1, m1, A2, s2, m2)
+    f0 = theano.function([A1, s1, m1, A2, s2, m2], g0)
+    
+    A1 = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, (3, 3)).astype('int64')
+    s1 = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, 3).astype('int32')
+    m1 = numpy.asarray(numpy.random.randint(numpy.iinfo(numpy.int32).max), dtype="int32")
+    A2 = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, (3, 3)).astype('int64')
+    s2 = numpy.random.randint(0, numpy.iinfo(numpy.int32).max, 3).astype('int32')
+    m2 = numpy.asarray(numpy.random.randint(numpy.iinfo(numpy.int32).max), dtype="int32")
+    
+    f0.input_storage[0].storage[0] = A1
+    f0.input_storage[1].storage[0] = s1
+    f0.input_storage[2].storage[0] = m1
+    f0.input_storage[3].storage[0] = A2
+    f0.input_storage[4].storage[0] = s2
+    f0.input_storage[5].storage[0] = m2
+    
+    r_a1 = rng_mrg.matVecModM(A1, s1, m1)
+    r_a2 = rng_mrg.matVecModM(A2, s2, m2)
+    r_b = f0.fn()[0]
+
+    assert numpy.allclose(r_a1, r_b[:3])
+    assert numpy.allclose(r_a2, r_b[3:])
+
+
+if __name__ == "__main__":
+    rng = MRG_RandomStreams(numpy.random.randint(2147462579))
+    import time
+    print theano.__file__
+    pvals = theano.tensor.fmatrix()
+    for i in range(10):
+        t0 = time.time()
+        multinomial = rng.multinomial(pvals=pvals)
+        print time.time() - t0
