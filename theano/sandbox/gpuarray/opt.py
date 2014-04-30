@@ -21,7 +21,7 @@ from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
     host_from_gpu, gpu_from_host, HostFromGpu,
-    gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join,
+    gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
     )
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
 from theano.sandbox.gpuarray.conv import GpuConv
@@ -272,6 +272,14 @@ def local_gpua_specifyShape(node):
 def local_gpua_join(node):
     return gpu_join
 
+
+@register_opt()
+@local_optimizer([GpuJoin])
+def local_gpuajoin_1(node):
+    # join of a single element
+    if (isinstance(node.op, GpuJoin) and
+        len(node.inputs) == 2):
+        return [node.inputs[1]]
 
 @register_opt()
 @op_lifter([tensor.Split])
