@@ -431,7 +431,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             self.assertTrue(numpy.allclose(val, good), (val, good))
 
             # Test reuse of output memory
-            if isinstance(self.adv_sub1, tensor.AdvancedSubtensor1):
+            if type(self.adv_sub1) == tensor.AdvancedSubtensor1:
                 op = self.adv_sub1()
                 # When idx is a TensorConstant.
                 if hasattr(idx, "data"):

@@ -29,6 +29,7 @@ if cuda_available:
 from theano.sandbox.gpuarray.basic_ops import GpuKernelBase
 from theano.sandbox.gpuarray.type import GpuArrayType
 
+
 def matVecModM(A, s, m):
     assert A.dtype == 'int64'
     return numpy.int32(numpy.sum((A*s) % m, 1) % m)
