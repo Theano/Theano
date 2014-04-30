@@ -3448,11 +3448,11 @@ class T_Join_and_Split(unittest.TestCase):
                         [a_val, b_val, c_val, d_val, e_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
         bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(self.floatX)
-        self.assertRaises(TypeError, g, bad_val, b_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, bad_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, bad_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, bad_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, bad_val)
+        self.assertRaises(TypeError, f, bad_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, bad_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, bad_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, c_val, bad_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, c_val, d_val, bad_val)
         # Should raise an error if any dimension other than 4 has length != 1
         bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(self.floatX)
         bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(self.floatX)
