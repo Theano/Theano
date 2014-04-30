@@ -18,6 +18,8 @@ import theano.sandbox.gpuarray
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
+# If you are writing a new test file, don't copy this code, but rather
+# import stuff from this file (like mode_with_gpu) to reuse it.
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
     if not cuda_ndarray.use.device_number:
