@@ -177,8 +177,8 @@ class GpuElemwise(HideC, Elemwise):
     def c_headers(self):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
-                '<compyte/ext_cuda.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
+                '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         if pygpu.get_default_context().kind == 'opencl':
@@ -678,8 +678,8 @@ class GpuCAReduceCuda(HideC, CAReduce):
         return True
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
-                '<compyte/ext_cuda.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
+                '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
@@ -2317,7 +2317,7 @@ class GpuCAReduceCuda(HideC, CAReduce):
 
 
 class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
-    """CAReduce that reuse the python code from compyte.
+    """CAReduce that reuse the python code from gpuarray.
 
     Too slow for now as it only have a python interface.
 
@@ -2535,7 +2535,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         err = GpuKernel_call(&%(k_var)s, 0, %(ls)s, gs, args);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
-                         "compyte error: GpuCAReduceCPY: %%s.",
+                         "gpuarray error: GpuCAReduceCPY: %%s.",
                          GpuKernel_error(&%(k_var)s, err));
             %(fail)s
         }
@@ -2544,7 +2544,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
             err = GpuArray_move(&%(output)s->ga, &tmp->ga);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "compyte error: GpuCAReduceCPY [cast]: %%s.",
+                             "gpuarray error: GpuCAReduceCPY [cast]: %%s.",
                              GpuArray_error(&tmp->ga, err));
                 %(fail)s
             }
