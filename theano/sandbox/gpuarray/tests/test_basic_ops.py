@@ -7,7 +7,9 @@ import theano
 import theano.tensor as T
 from theano.tensor import TensorType
 from theano.tensor.basic import alloc
-from theano.tensor.tests.test_basic import rand, safe_make_node, T_reshape
+from theano.tensor.tests.test_basic import (
+    rand, safe_make_node, T_reshape, T_Join_and_Split
+    )
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -38,7 +40,7 @@ from theano.sandbox.gpuarray.basic_ops import (
     gpu_from_cuda,
     cuda_from_gpu, HostFromGpu,
     GpuFromHost, GpuReshape,
-    GpuEye)
+    GpuJoin, GpuSplit, GpuEye)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -337,6 +339,20 @@ class G_reshape(T_reshape):
                                           theano.tensor.opt.Shape_i,
                                           theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
+
+
+class G_Join_and_Split(T_Join_and_Split):
+    def setUp(self):
+        super(G_Join_and_Split, self).setUp()
+        self.mode = mode_with_gpu.excluding('constant_folding')
+        self.join_op = GpuJoin
+        self.split_op = GpuSplit
+        # Use join instead of MakeVector since there is no MakeVector on GPU
+        self.make_vector_op = GpuJoin
+        # this is to avoid errors with limited devices
+        self.floatX = 'float32'
+        self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
+        self.shared = gpuarray_shared_constructor
 
 
 def test_gpueye():

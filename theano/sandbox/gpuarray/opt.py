@@ -21,7 +21,7 @@ from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
     host_from_gpu, gpu_from_host, HostFromGpu,
-    gpu_alloc, GpuAlloc, GpuReshape, GpuEye
+    gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join,
     )
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
 from theano.sandbox.gpuarray.conv import GpuConv
@@ -265,6 +265,18 @@ def local_gpua_dimshuffle(node):
 @op_lifter([tensor.SpecifyShape])
 def local_gpua_specifyShape(node):
     return tensor.specify_shape
+
+
+@register_opt()
+@op_lifter([tensor.Join])
+def local_gpua_join(node):
+    return gpu_join
+
+
+@register_opt()
+@op_lifter([tensor.Split])
+def local_gpua_split(node):
+    return GpuSplit(node.op.len_splits)
 
 
 @register_opt()

@@ -6,7 +6,7 @@ import theano
 from theano import Op, Apply
 from theano import tensor, scalar, config
 from theano.scalar import Scalar
-from theano.tensor.basic import Alloc
+from theano.tensor.basic import Alloc, Join, Split
 
 from theano.gof.python25 import any
 from theano.gof.utils import MethodNotDefined
@@ -723,6 +723,62 @@ class GpuReshape(HideC, tensor.Reshape):
             else:
                 raise ValueError("total size of new array must be unchanged")
         out[0] = x.reshape(tuple(shp))
+
+
+class GpuJoin(HideC, Join):
+    def make_node(self, axis, *tensors):
+        node = Join.make_node(self, axis, *tensors)
+
+        return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
+                                                  tensors),
+                     [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
+                                   dtype=node.outputs[0].dtype)()])
+
+    def perform(self, node, axis_and_tensors, out_):
+        out, = out_
+        axis = axis_and_tensors[0]
+        tensors = axis_and_tensors[1:]
+        out[0] = pygpu.concatenate(tensors, axis=axis).astype(
+            node.outputs[0].dtype)
+
+    def c_code_cache_version(self):
+        return (0,)
+
+    def c_code(self, node, name, inputs, out_, sub):
+        copy_to_list = []
+        restype=pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
+        for i, inp in enumerate(inputs[1:]):
+            copy_to_list.append("als[%s] = &%s->ga;" % (i, inp))
+        return """
+GpuArray **als = (GpuArray **)PyMem_Malloc(sizeof(GpuArray *) * %(n)s);
+if (als == NULL) {
+  PyErr_NoMemory();
+  %(fail)s
+}
+%(copy_inputs_to_list)s
+Py_XDECREF(%(out)s);
+%(out)s = pygpu_concatenate(als, %(n)s, PyInt_AsLong((PyObject *)%(axis)s),
+                            %(restype)s, (PyObject *)&PyGpuArrayType,
+                            pygpu_default_context());
+PyMem_Free(als);
+if (%(out)s == NULL)
+  %(fail)s
+        """ % dict(n=len(inputs[1:]), fail=sub['fail'], out=out_[0],
+                   axis=inputs[0], copy_inputs_to_list='\n'.join(copy_to_list),
+                   restype=restype)
+
+
+gpu_join = GpuJoin()
+
+
+class GpuSplit(HideC, Split):
+    def make_node(self, x, axis, splits):
+        node = Split.make_node(self, x, axis, splits)
+        x = as_gpuarray_variable(x)
+        outs = [GpuArrayType(dtype=o.dtype, broadcastable=o.broadcastable)()
+                for o in node.outputs]
+        return Apply(self, [x] + node.inputs[1:], outs)
+    # we reuse the perform of the CPU op, which is suitable
 
 
 class GpuEye(GpuKernelBase, Op):
