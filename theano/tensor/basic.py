@@ -2028,8 +2028,9 @@ def chi2sf(x, k):
     """chi squared survival function"""
 
 
-
-@_scal_elemwise_with_nfunc('real', 1, -1)
+#numpy.real(float32) return a view on the inputs.
+#@_scal_elemwise_with_nfunc('real', 1, -1)
+@_scal_elemwise
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 _tensor_py_operators.real = property(real)
