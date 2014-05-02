@@ -61,137 +61,141 @@ class HideC(object):
         return self.c_code_cache_version()
 
 
-class GpuKernelBase(object):
-    def c_kernel_code(self, node):
-        """
-        Return the source code of the kernel.
-        """
-        raise AttributeError("c_kernel_code", type(self))
+class Kernel(object):
+    def __init__(self, code, params, name, flags,
+                 codevar=None, binvar=None, objvar=None):
+        self.code = code
+        self.params = params
+        self.name = name
+        self.flags = flags
+        if codevar is None:
+            codevar = 'kcode_' + name
+        self.codevar = codevar
+        if binvar is None:
+            binvar = 'kbin_' + name
+        self.binvar = binvar
+        if objvar is None:
+            self.objvar = 'k_' + name
+        self.objvar = objvar
 
-    def c_kernel_params(self, node):
-        """
-        Return the list of typecodes for kernel parameters.
-
-        The list can contain strings ( "GA_BUFFER" ) or direct int values.
-        """
-        raise AttributeError("c_kernel_params", type(self))
-
-    def c_kernel_name(self):
-        """
-        Return the name of the kernel in the source.
-        """
-        raise AttributeError("c_kernel_name", type(self))
-
-    def c_kernel_flags(self, node):
-        """
-        Return a string representing the C flags for the kernel.
-
-        Example:
-          "GA_USE_CLUDA|GA_USE_DOUBLE"
-
-        self._get_kernel_flags(*dtypes) returns an appropritate string
-        for the result of this function.
-        """
-        raise AttributeError("c_kernel_flags", type(self))
-
-    def c_kernel_codevar(self, name):
-        return 'kcode_' + name
-
-    def c_kernel_obj(self, name):
-        return 'k_' + name
-
-    def _get_kernel_flags(self, *dtypes):
-        dtypes = [numpy.dtype(d) for d in dtypes]
-        flags = ['GA_USE_CLUDA']
+    @staticmethod
+    def get_flags(*types):
+        def get_dtype(t):
+            if isinstance(t, (str, unicode)):
+                return numpy.dtype(t)
+            elif isinstance(t, Type):
+                return t.dtype
+            elif isinstance(t, Variable):
+                return t.type.dtype
+            else:
+                raise TypeError, "can't get a dtype from %s" % (type(t),)
+        dtypes = [get_dtype(t) for t in types]
+        flags = dict(cluda=True)
         if any(d == numpy.float64 for d in dtypes):
-            flags.append('GA_USE_DOUBLE')
+            flags['have_double'] = True
         if any(d.itemsize < 4 for d in dtypes):
-            flags.append('GA_USE_SMALL')
-        return '|'.join(flags)
+            flags['have_small'] = True
+        if any(d.kind == 'c' for d in dtypes):
+            flags['have_complex'] = True
+        if any(d == numpy.float16 for d in dtypes):
+            flags['have_half'] = True
+        return flags
+
+    def _get_c_flags(self):
+        res = []
+        if self.flags.get('cluda', False):
+            res.append('GA_USE_CLUDA')
+        if self.flags.get('have_double', False):
+            res.append('GA_USE_DOUBLE')
+        if self.flags.get('have_small', False):
+            res.append('GA_USE_SMALL')
+        if self.flags.get('have_complex', False):
+            res.append('GA_USE_COMPLEX')
+        if self.flags.get('have_half', False):
+            res.append('GA_USE_SMALL')
+        return '|'.join(res)
+
+    def _get_c_types(self):
+        def m(t):
+            if t == gpuarray.GpuArray:
+                return "GA_BUFFER"
+            else:
+                return gpuarray.dtype_to_typecode(t)
+        return ', '.join(m(t) for t in self.params)
+
+
+class GpuKernelBase(object):
+    def gpu_kernels(self, node, name):
+        """
+        This is the method to override.  This should return an
+        iterable of Kernel objects that describe the kernels this op
+        will need.
+        """
+        raise MethodNotDefined, 'gpu_kernels'
 
     def c_headers(self):
-        return ['gpuarray/types.h']
+        try:
+            o = super(GpuKernelBase, self).c_headers()
+        except MethodNotDefined:
+            o = []
+        return o + ['gpuarray/types.h']
 
-    TMAP = {
-        "GA_BUFFER": gpuarray.GpuArray,
-        "GA_BOOL": 'bool',
-        "GA_BYTE": 'int8',
-        "GA_UBYTE": 'uint8',
-        "GA_SHORT": 'int16',
-        "GA_USHORT": 'uint16',
-        "GA_INT": 'int32',
-        "GA_UINT": 'uint32',
-        "GA_LONG": 'int64',
-        "GA_ULONG": 'uint64',
-        "GA_FLOAT": 'float32',
-        "GA_DOUBLE": 'float64',
-        "GA_CFLOAT": 'complex64',
-        "GA_CDOUBLE": 'complex128',
-    }
+    def _generate_kernel_bin(self, k):
+        k = gpuarray.GpuKernel(k.code, k.name, k.params, **k.flags)
+        bin = k._binary
+        bocde = ','.join(hex(ord(c)) for c in bin)
+        return ("""static const char %(bname)s[] = { %(bcode)s };""" %
+                dict(bname=k.binvar, bcode=bcode))
 
-    def _types_to_pytypes(self, types):
-        def tmap(t):
-            if t in self.TMAP:
-                return self.TMAP[t]
-            return gpuarray.typecode_to_dtype(t)
-        return [tmap(t) for t in types]
+    def _generate_kernel_code(self, k):
+        code = '\\n'.join(l for l in k.code.split('\n'))
+        code = code.replace('"', '\\"')
+        return ("""static const char *%(cname)s = "%(code)s";""" %
+                dict(cname=k.codevar, code=code))
 
-    FMAP = {
-        "GA_USE_CLUDA": 'cluda',
-        "GA_USE_DOUBLE": 'have_double',
-        "GA_USE_SMALL": 'have_small',
-        "GA_USE_COMPLEX": 'have_complex',
-        "GA_USE_HALF": 'have_half',
-    }
-
-    def _flags_to_pyflags(self, flags):
-        res = dict()
-        for fl in flags.split('|'):
-            res[self.FMAP[fl]] = True
-        return res
+    def _generate_kernel_vars(self, k):
+        return """static GpuKernel %(kname)s;""" % dict(k.objname)
 
     def c_support_code_apply(self, node, name):
-        kcode = self.c_kernel_code(node)
-        vname = self.c_kernel_codevar(name)
-        kname = self.c_kernel_obj(name)
-        k = gpuarray.GpuKernel(kcode, self.c_kernel_name(),
-                      self._types_to_pytypes(self.c_kernel_params(node)),
-                      **self._flags_to_pyflags(self.c_kernel_flags(node)))
-        bin = k._binary
-        bcode = ','.join(hex(ord(c)) for c in bin)
-        return """static const char %(vname)s[] = { %(bcode)s };
-static GpuKernel %(kname)s;""" % dict(vname=vname, kname=kname, bcode=bcode)
+        kernels = self.gpu_kernels(node, name)
+        bins = '\n'.join(self._generate_kernel_bin(k) for k in kernels)
+        codes = '\n'.join(self._generate_kernel_code(k) for k in kernels)
+        vars = '\n'.join(self._generate_kernel_vars(k) for k in kernels)
+        return '\n'.join([bins, codes, vars])
 
-    def c_init_code_apply(self, node, name):
-        types = self.c_kernel_params(node)
-        numargs = len(types)
-        kname = self.c_kernel_name()
-        vname = self.c_kernel_codevar(name)
-        oname = self.c_kernel_obj(name)
-        flags = self.c_kernel_flags(node)
-        # TODO: find a way to release the kernel once the module is unloaded
-        error_out = ""
+    def _generate_kernel_init(self, k, err):
         if PY3:
             error_out = "NULL"
-        return """
-int types_%(name)s[%(numargs)u] = {%(types)s};
-int err;
-const char *kcode = %(vname)s;
-size_t sz = sizeof(%(vname)s);
-if ((err = GpuKernel_init(&%(oname)s, pygpu_default_context()->ops,
-                   pygpu_default_context()->ctx, 1, &kcode, &sz, "%(kname)s",
-                   %(numargs)s, types_%(name)s, %(flags)s)) != GA_NO_ERROR) {
-    PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                 err, Gpu_error(pygpu_default_context()->ops,
-                                pygpu_default_context()->ctx, err));
-    return %(error_out)s;
-}
-""" % dict(types=','.join(types), numargs=numargs, kname=kname, oname=oname,
-           vname=vname, flags="GA_USE_BINARY", error_out=error_out, name=name)
+        else:
+            error_out = ""
+        return """{
+  int types[%(numargs)u] = {%(types)s};
+  const char *bcode = %(bvar)s;
+  size_t sz = sizeof(%(bvar)s);
+  GpuContext *c = pygpu_default_context();
+  if (GpuKernel_init(%(ovar)s, c->ops, c->ctx, 1, &bcode, &sz, "%(kname)s",
+                     %(numargs)u, types, GA_USE_BINARY) != GA_NO_ERROR) {
+    if ((%(err)s = GpuKernel_init(%(ovar)s, c->ops, c->ctx, 1, &%(cname)s,
+                                  NULL, "%(kname)s", %(numargs)u, types,
+                                  %(flags)s)) != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
+                   err, Gpu_error(c->ops, c->ctx, err));
+      return %(error_out)s;
+    }
+  }
+}""" % dict(numargs=len(k.params), types=k._get_c_types(), bvar=k.binvar,
+            ovar=k.objvar, kname=k.name, err=err, cname=k.codevar,
+            flags=k._get_c_flags(), error_out=error_out)
+
+    def c_init_code_apply(self, node, name):
+        err = 'err_' + name
+        kernels = self.gpu_kernels(node, name)
+        inits ='\n'.join(self._generate_kernel_init(k, err) for k in kernels)
+        return ("int %(err)s;\n" % dict(err=err)) + inits
 
     def _GpuKernelBase_version(self):
         ctx = gpuarray.get_default_context()
-        return (1, ctx.kind, ctx.devname)
+        return (2, ctx.kind, ctx.devname)
 
     GpuKernelBase_version = property(_GpuKernelBase_version)
 
@@ -808,23 +812,20 @@ class GpuEye(GpuKernelBase, Op):
     def __hash__(self):
         return hash(self.dtype) ^ hash(type(self))
 
-    def c_kernel_code(self, node):
-        return """
+    def gpu_kernels(self, node, name):
+        code = """
 KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
     ga_size nb = n < m ? n : m;
     for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = 1;
     }
-}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype))
-
-    def c_kernel_params(self, node):
-        return ["GA_BUFFER", "GA_SIZE", "GA_SIZE"]
-
-    def c_kernel_name(self):
-        return "k"
-
-    def c_kernel_flags(self, node):
-        return self._get_kernel_flags(self.dtype)
+}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype), name=name)
+        return [Kernel(
+                code=code, name="k",
+                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
+                flags=Kernel.get_flags(self.dtype)
+                objname='k_eye_'+name,
+                )]
 
     def c_code(self, node, name, inp, out, sub):
         n, m = inp
@@ -832,7 +833,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         fail = sub['fail']
         typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
-        kname = self.c_kernel_obj(name)
+        kname = 'k_eye_'+name
         s = """
         size_t dims[2] = {0, 0};
         void *args[3];

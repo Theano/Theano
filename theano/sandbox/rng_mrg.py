@@ -26,7 +26,7 @@ if cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
 
-from theano.sandbox.gpuarray.basic_ops import GpuKernelBase
+from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 
@@ -772,9 +772,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return op(rstate, cast(v_size, 'int32'))
 
     def c_headers(self):
-        return GpuKernelBase.c_headers(self) + ['numpy_compat.h']
+        return super(GPUA_mrg_uniform, self) + ['numpy_compat.h']
 
-    def c_kernel_code(self, node):
+    def gpu_kernels(self, node):
         if self.output_type.dtype == 'float32':
             otype = 'float'
             NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
@@ -783,7 +783,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         else:
             otype = 'double'
             NORM = '4.656612873077392578125e-10'
-        return """
+        code = """
         KERNEL void mrg_uniform(
                 %(otype)s *sample_data,
                 ga_int *state_data,
@@ -864,14 +864,11 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 
         """ % locals()
 
-    def c_kernel_params(self, node):
-        return ["GA_BUFFER", "GA_BUFFER", "GA_UINT", "GA_UINT"]
-
-    def c_kernel_name(self):
-        return "mrg_uniform"
-
-    def c_kernel_flags(self, node):
-        return self._get_kernel_flags(self.output_type.dtype, 'int32')
+        return [Kernel(code=code, name="mrg_uniform",
+                       params=[gpuarray.GpuArray, gpuarray.GpuArray,
+                               'uint32', 'uint32'],
+                       flags=Kernel.get_flags(self.output_type.dtype, 'int32'),
+                       objname='k_mrg_uniform')]
 
     def c_code(self, node, nodename, inp, out, sub):
         rstate, size = inp
@@ -880,7 +877,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
-        kname = self.c_kernel_obj(nodename)
+        kname = 'k_mrg_uniform'
 
         if self.output_type.dtype == 'float32':
             otype = 'float'
