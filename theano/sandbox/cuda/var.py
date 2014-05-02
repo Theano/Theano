@@ -54,6 +54,10 @@ CudaNdarrayType.Constant = CudaNdarrayConstant
 
 CudaNdarrayType.SharedVariable = tensor.sharedvar.TensorSharedVariable
 
+# This is a legacy constructor from before the time 
+# CudaNdarraySharedVariable and TensorSharedVariable weren't merged.
+# It is used by unit tests for CUDA. It hard codes the visible type
+# of the TensorSharedVariable to be an instance of CudaNdarrayType.
 def float32_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
     """SharedVariable Constructor for CudaNdarrayType"""
