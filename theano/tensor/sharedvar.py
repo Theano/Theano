@@ -37,9 +37,6 @@ def load_shared_variable(val):
 # _tensor_py_operators is first to have its version of __{gt,ge,lt,le}__
 class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     # dtype is used for cuda only:
-    dtype = property(lambda s:'float32')
-    broadcastable = property(lambda s:s.type.broadcastable)
-    ndim = property(lambda s:s.type.ndim)
     get_value_return_ndarray = True
     
     def __init__(self, name, type, value, strict,
@@ -252,7 +249,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     def __getitem__(self, *args):
         # Defined to explicitly use the implementation from `_operators`, since
         # the definition in `SharedVariable` is only meant to raise an error.
-        return _operators.__getitem__(self, *args)
+        return _tensor_py_operators.__getitem__(self, *args)
     
     # For pickling
     def __getstate__(self):
@@ -260,7 +257,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         # if shared variable was on cuda when pickled, then
         # will sent values back to cuda in any further unpickle if
         # gpu device is detected
-        d._was_cuda = d._was_cuda or False
+        d['_was_cuda'] = getattr(d, '_was_cuda', False)
         if self._isCudaType():
             d.type = TensorType(
                 d.container.type.dtype, d.container.type.broadcastable
