@@ -94,15 +94,17 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         )
             
         
+        # visible type is hard coded at construction.
+        # theano.shared will always make this an instance of TensorType
+        self.type = type
+        
         # if the user provides a different type than that in container
-        if (type != self.container.type):
+        if (self.type != self.container.type):
             # convert container to new type
             if isinstance(type, cuda.type.CudaNdarrayType):
                 self.toGPU()
             else:
                 self.toCPU()
-        else:
-            self.type = self.container.type
         
     def validTypes(self):
         valid_types = TensorType
@@ -118,7 +120,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             self._setContainer(
                 self.container.castClone(
                     cuda.type.CudaNdarrayType(
-                        broadcastable=broadcastable
+                        broadcastable=self.type.broadcastable
                     )
                 )
             )
@@ -137,8 +139,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         
     def _setContainer(self, container):
         del self.container
-        self.container = container
-        self.type = self.container.type
+        self.container = containera
     
     def _isCudaType(self, type=None):
         type = type or self.container.type
@@ -255,11 +256,8 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         # gpu device is detected
         d['_was_cuda'] = getattr(d, '_was_cuda', False)
         if self._isCudaType():
-            d.type = TensorType(
-                d.container.type.dtype, d.container.type.broadcastable
-            )
-            d.container = d.container.castClone(d.type)
-            d._was_cuda = True
+            d['container'] = d['container'].castClone(d['type'])
+            d['_was_cuda'] = True
             
         return d
 
