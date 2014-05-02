@@ -65,7 +65,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         if not isinstance(type, self.validTypes()):
             raise TypeError(
                 "TensorSharedVariable only accepts type of instance "
-                "TensorType or CudaNdarrayType."
+                "TensorType or CudaNdarrayType. Got: %s" % str(type)
             )
         
         if container is None:
@@ -139,7 +139,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         
     def _setContainer(self, container):
         del self.container
-        self.container = containera
+        self.container = container
     
     def _isCudaType(self, type=None):
         type = type or self.container.type

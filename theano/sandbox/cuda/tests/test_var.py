@@ -125,3 +125,20 @@ class T_updates(unittest.TestCase):
         output_func = theano.function(inputs=[], outputs=[],
                                       updates=[(output_var, up)])
         output_func()
+
+
+def test_shared():
+    """
+    Test that shared variable outside type is TensorType,
+    but that we don't input insert transfer in the graph
+    """
+    data = numpy.random.rand(4, 5).astype('float32')
+    data = theano.shared(data)
+    assert isinstance(data.type, tensor.TensorType)
+    f = theano.function([], [data + 1], mode=mode_with_gpu)
+    theano.printing.debugprint(f)
+    f()
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0], cuda.GpuElemwise)
+    assert isinstance(data.type, tensor.TensorType)
