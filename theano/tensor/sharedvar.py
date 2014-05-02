@@ -265,7 +265,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     def __setstate__(self, d):
         self.__dict__.update(d)
         self._gpu_capable = init_cuda()
-        if self._was_cuda:
+        if self._gpu_capable and self._was_cuda:
             self.toGPU()
 
 
