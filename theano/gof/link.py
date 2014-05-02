@@ -319,7 +319,7 @@ class Container(object):
 
     def __repr__(self):
         return "<" + repr(self.storage[0]) + ">"
-        
+
     # copy value, cast it to new type, and store it in a container with
     # the same attributes as self (except for value and type)
     def castClone(self, type):

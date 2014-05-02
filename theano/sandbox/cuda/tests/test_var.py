@@ -7,7 +7,9 @@ from theano import tensor
 
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
 from theano.sandbox.cuda import CudaNdarrayType, cuda_available
+from theano.sandbox.cuda.tests.test_basic_ops import mode_with_gpu
 import theano.sandbox.cuda as cuda
+
 # Skip test if cuda_ndarray is not available.
 if cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -50,6 +52,10 @@ def test_givens():
     y = x ** 2
     f = theano.function([], y, givens={x: x + 1})
     f()
+    assert isinstance(f.maker.fgraph.toposort()[-1].op, tensor.Elemwise)
+    f = theano.function([], y, givens={x: x + 1}, mode=mode_with_gpu)
+    f()
+    assert isinstance(f.maker.fgraph.toposort()[-2].op, cuda.GpuElemwise)
 
 
 class T_updates(unittest.TestCase):
