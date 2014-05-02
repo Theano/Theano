@@ -903,7 +903,8 @@ def test_multMatVect():
     
     r_a1 = rng_mrg.matVecModM(A1, s1, m1)
     r_a2 = rng_mrg.matVecModM(A2, s2, m2)
-    r_b = f0.fn()[0]
+    f0.fn()
+    r_b = f0.output_storage[0].value
 
     assert numpy.allclose(r_a1, r_b[:3])
     assert numpy.allclose(r_a2, r_b[3:])
