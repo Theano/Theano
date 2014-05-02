@@ -42,7 +42,7 @@ from theano.sandbox.gpuarray.basic_ops import (
     gpu_from_cuda,
     cuda_from_gpu, HostFromGpu,
     GpuFromHost, GpuReshape,
-    GpuJoin, GpuSplit, GpuEye)
+    gpu_join, GpuJoin, GpuSplit, GpuEye)
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -355,6 +355,32 @@ class G_Join_and_Split(T_Join_and_Split):
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
         self.shared = gpuarray_shared_constructor
+
+
+def test_gpujoin_gpualloc():
+    a = T.fmatrix('a')
+    a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
+    b = T.fmatrix('b')
+    b_val = numpy.asarray(numpy.random.rand(3, 5), dtype='float32')
+
+    f = theano.function([a, b], T.join(0, T.zeros_like(a), T.ones_like(b)) + 4,
+                        mode=mode_without_gpu)
+    f_gpu = theano.function([a, b], T.join(0, T.zeros_like(a), T.ones_like(b)),
+                            mode=mode_with_gpu)
+    f_gpu2 = theano.function([a, b], T.join(0, T.zeros_like(a),
+                                            T.ones_like(b)) + 4,
+                             mode=mode_with_gpu)
+    assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
+    assert sum([isinstance(node.op, GpuAlloc)
+                for node in f_gpu.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == gpu_join
+                for node in f_gpu.maker.fgraph.toposort()]) == 1
+    assert sum([isinstance(node.op, GpuAlloc)
+                for node in f_gpu2.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == gpu_join
+                for node in f_gpu2.maker.fgraph.toposort()]) == 1
+    assert numpy.allclose(f(a_val, b_val), f_gpu2(a_val, b_val))
 
 
 def test_gpueye():
