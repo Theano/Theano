@@ -3,6 +3,7 @@
 __docformat__ = 'restructuredtext en'
 
 
+import theano
 from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
@@ -480,7 +481,31 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                 '`theano.function([x], '
                 'theano.clone(f(x), replace={x: g(x)}))`.'
                 % x)
-
+    mode = theano.compile.mode.get_mode(mode)
+    # If we want to make the inner type of TensorSharedVariable to be
+    # on the GPU.
+    if (isinstance(mode.provided_optimizer, theano.gof.Query) and
+        "gpu" in mode.provided_optimizer.include):
+        if not isinstance(updates, dict):
+            updates = dict(updates)
+        o = outputs
+        if isinstance(o, theano.gof.Variable):
+            o = [o]
+        inp = theano.gof.graph.inputs(o + updates.values() + updates.keys(),
+                                      blockers=inputs)
+        shared_inputs = [v for v in inp
+                         if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
+                         #TODO: And not forced on the CPU
+                         isinstance(v.type, theano.tensor.TensorType)]
+        import pdb;pdb.set_trace()
+        #TODO check for collision with givens
+#        for sv in shared_inputs:
+#            sv.toGPU()
+#            givens[sv] = sv.__class__(name=sv.name, type=sv.container.type, value=None,
+#                                      strict=True, allow_downcast=False,
+#                                      container=sv.container)._as_TensorVariable()
+        pass
+    
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
                                          replace=givens,
