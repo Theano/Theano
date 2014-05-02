@@ -18,13 +18,9 @@ cuda = None
 def init_cuda():
     global cuda
     if cuda is None:
-        try:
-            import theano.sandbox.cuda
-            #from theano.sandbox.cuda.type import CudaNdarrayType
-            cuda = theano.sandbox.cuda
-        except ImportError:
-            return False
-    return True
+        import theano.sandbox.cuda
+        cuda = theano.sandbox.cuda
+    return cuda.cuda_available
 
 
 def load_shared_variable(val):
