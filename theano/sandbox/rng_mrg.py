@@ -868,7 +868,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                        params=[gpuarray.GpuArray, gpuarray.GpuArray,
                                'uint32', 'uint32'],
                        flags=Kernel.get_flags(self.output_type.dtype, 'int32'),
-                       objname='k_mrg_uniform')]
+                       objvar='k_mrg_uniform')]
 
     def c_code(self, node, nodename, inp, out, sub):
         rstate, size = inp

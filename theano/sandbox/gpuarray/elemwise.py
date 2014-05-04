@@ -2395,7 +2395,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
                        flags=Kernel.get_flags(node.inputs[0].type.dtype,
                                               acc_dtype,
                                               node.outputs[0].type.dtype),
-                       objname='k_reduk_'+name)]
+                       objvar='k_reduk_'+name)]
 
     def c_code(self, node, name, inp, out, sub):
         if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):

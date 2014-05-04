@@ -120,7 +120,7 @@ class Kernel(object):
             if t == gpuarray.GpuArray:
                 return "GA_BUFFER"
             else:
-                return gpuarray.dtype_to_typecode(t)
+                return str(gpuarray.dtype_to_typecode(t))
         return ', '.join(m(t) for t in self.params)
 
 
@@ -141,9 +141,9 @@ class GpuKernelBase(object):
         return o + ['gpuarray/types.h']
 
     def _generate_kernel_bin(self, k):
-        k = gpuarray.GpuKernel(k.code, k.name, k.params, **k.flags)
-        bin = k._binary
-        bocde = ','.join(hex(ord(c)) for c in bin)
+        gk = gpuarray.GpuKernel(k.code, k.name, k.params, **k.flags)
+        bin = gk._binary
+        bcode = ','.join(hex(ord(c)) for c in bin)
         return ("""static const char %(bname)s[] = { %(bcode)s };""" %
                 dict(bname=k.binvar, bcode=bcode))
 
@@ -154,7 +154,7 @@ class GpuKernelBase(object):
                 dict(cname=k.codevar, code=code))
 
     def _generate_kernel_vars(self, k):
-        return """static GpuKernel %(kname)s;""" % dict(k.objname)
+        return """static GpuKernel %(kname)s;""" % dict(kname=k.objvar)
 
     def c_support_code_apply(self, node, name):
         kernels = self.gpu_kernels(node, name)
@@ -172,14 +172,14 @@ class GpuKernelBase(object):
   int types[%(numargs)u] = {%(types)s};
   const char *bcode = %(bvar)s;
   size_t sz = sizeof(%(bvar)s);
-  GpuContext *c = pygpu_default_context();
-  if (GpuKernel_init(%(ovar)s, c->ops, c->ctx, 1, &bcode, &sz, "%(kname)s",
+  PyGpuContextObject *c = pygpu_default_context();
+  if (GpuKernel_init(&%(ovar)s, c->ops, c->ctx, 1, &bcode, &sz, "%(kname)s",
                      %(numargs)u, types, GA_USE_BINARY) != GA_NO_ERROR) {
-    if ((%(err)s = GpuKernel_init(%(ovar)s, c->ops, c->ctx, 1, &%(cname)s,
+    if ((%(err)s = GpuKernel_init(&%(ovar)s, c->ops, c->ctx, 1, &%(cname)s,
                                   NULL, "%(kname)s", %(numargs)u, types,
                                   %(flags)s)) != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   err, Gpu_error(c->ops, c->ctx, err));
+                   %(err)s, Gpu_error(c->ops, c->ctx, %(err)s));
       return %(error_out)s;
     }
   }
@@ -823,8 +823,8 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         return [Kernel(
                 code=code, name="k",
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
-                flags=Kernel.get_flags(self.dtype)
-                objname='k_eye_'+name,
+                flags=Kernel.get_flags(self.dtype),
+                objvar='k_eye_'+name,
                 )]
 
     def c_code(self, node, name, inp, out, sub):
