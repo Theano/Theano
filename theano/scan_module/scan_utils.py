@@ -15,10 +15,10 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import copy
 import logging
+import warnings
 from itertools import izip
 
 import numpy
-import warnings
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
@@ -157,10 +157,12 @@ def hash_listsDictsTuples(x):
     return hash_value
 
 
+DEPRECATED_ARG = object()
 def clone(output,
           replace=None,
           strict=True,
-          copy_inputs=True):
+          share_inputs=True,
+          copy_inputs=DEPRECATED_ARG):
     """
     Function that allows replacing subgraphs of a computational
     graph. It returns a copy of the initial subgraph with the corresponding
@@ -174,12 +176,17 @@ def clone(output,
     :param replace: dictionary describing which subgraphs should be
                     replaced by what
 
-    :type copy_inputs: bool
-    :param copy_inputs: If True, use the same inputs (and shared variables)
+    :type share_inputs: bool
+    :param share_inputs: If True, use the same inputs (and shared variables)
         as the original graph. If False, clone them. Note that cloned
         shared variables still use the same underlying storage, so they
         will always have the same value.
     """
+    if copy_inputs is not DEPRECATED_ARG:
+        warnings.warn('In `clone()` function, the argument `copy_inputs` has been deprecated and renamed into `share_inputs`')
+        assert share_inputs  # since we used `copy_inputs` we should have default value for `share_inputs`
+        share_inputs = copy_inputs
+
     if isinstance(replace, dict):
         items = replace.items()
     elif isinstance(replace, (list, tuple)):
@@ -198,14 +205,15 @@ def clone(output,
                                          tmp_replace,
                                          [],
                                          strict,
-                                         copy_inputs)
+                                         share_inputs)
 
+    # TODO Explain why we call it twice ?!
     _, outs, _ = rebuild_collect_shared(_outs,
                                         [],
                                         new_replace,
                                         [],
                                         strict,
-                                        copy_inputs)
+                                        share_inputs)
 
     return outs
 
