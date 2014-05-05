@@ -988,7 +988,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                 const int threadNum = threadIdx.z * blockDim.x * blockDim.y
                 + threadIdx.y * blockDim.x + threadIdx.x;
                 extern __shared__ %(acc_dtype)s buf[];
-                %(acc_dtype)s myresult = 0.0f;
+                %(acc_dtype)s myresult = 0;
 
                 //This is caught in cuda/init.py when we init the gpu. I keep
                 //it here to ease finding code that rely on this.
@@ -1999,7 +1999,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             {
                 const int threadCount = blockDim.x;
                 const int threadNum = threadIdx.x;
-                %(acc_dtype)s myresult = 0.0f;
+                %(acc_dtype)s myresult = 0;
 
                 if (warpSize != 32)
                 {
