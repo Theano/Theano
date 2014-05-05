@@ -669,7 +669,8 @@ class GpuAlloc(HideC, Alloc):
                     #always exists.
                       #theano.tensor.subtensor.AdvancedIncSubtensor,
                       theano.sandbox.gpuarray.subtensor.GpuIncSubtensor,
-                      #theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
+                      theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
+                      theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1_dev20,
                       theano.sandbox.gpuarray.blas.GpuGemm,
                       theano.sandbox.gpuarray.blas.GpuGemv,
                       theano.sandbox.gpuarray.blas.GpuGer,
