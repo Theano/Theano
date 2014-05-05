@@ -5,11 +5,11 @@ from StringIO import StringIO
 import numpy
 
 import theano
-from theano import Op, Apply, scalar, config
+from theano import Apply, scalar, config
 from theano import scalar as scal
 from theano.scalar import Scalar
 from theano.tensor.elemwise import (Elemwise, DimShuffle,
-                                    CAReduce, CAReduceDtype)
+                                    CAReduceDtype)
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
@@ -76,12 +76,8 @@ class GpuElemwise(HideC, Elemwise):
 
         # Try to generate the kernel to catch SupportCodeErrors
         try:
-            inps = [make_argument(i, 'i%d' % (n,)) for n, i in
-                    enumerate(node.inputs)]
             scal_ins = [scalar.get_scalar_type(i.dtype) for i in node.inputs]
 
-            outs = [make_argument(o, 'o%d' % (n,)) for n, o in
-                    enumerate(node.outputs) if not n in self.inplace_pattern]
             scal_out = [scalar.get_scalar_type(o.dtype) for o in node.outputs]
 
             fake_node = Apply(self.scalar_op, [i() for i in scal_ins],
@@ -404,7 +400,7 @@ class GpuElemwise(HideC, Elemwise):
                 param.append("PyGpuArray_DIMS(%(name)s)[%(i)d] == 1 ? 0 : PyGpuArray_STRIDES(%(name)s)[%(i)d]" % locals())
         code += ',\n'.join(param) + ");\n"
         if config.gpuarray.sync:
-            code += "GpuArray_sync(&%(zz)s->ga);\n" % dict(zz=zz)
+            code += "GpuArray_sync(&%(z)s->ga);\n" % dict(z=z)
         return str(code)
 
     def perform(self, node, inputs, output_storage):
@@ -845,7 +841,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                         );
                 [
         if config.gpuarray.sync:
-            code += "GpuArray_sync(&%(zz)s->ga);\n" % dict(zz=zz)
+            code += "GpuArray_sync(&%(z)s->ga);\n" % dict(z=z)
                 ]
                 if (cudaSuccess != cudaGetLastError())
                 {
