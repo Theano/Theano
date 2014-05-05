@@ -27,6 +27,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing tanh(x(t).dot(W) + b) elementwise**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -54,6 +55,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing the sequence x(t) = tanh(x(t - 1).dot(W) + y(t).dot(U) + p(T - t).dot(V))**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -94,6 +96,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing norms of lines of X**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -113,6 +116,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing norms of columns of X**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -132,6 +136,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing trace of X**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -156,6 +161,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing the sequence x(t) = x(t - 2).dot(U) + x(t - 1).dot(V) +  tanh(x(t - 1).dot(W)  + b)**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -196,6 +202,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 **Scan Example: Computing the Jacobian of y = tanh(v.dot(A)) wrt x**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -221,6 +228,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
 **Scan Example: Accumulate number of loop during a scan**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
@@ -239,6 +247,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
 **Scan Example: Computing tanh(v.dot(W) + b) * d where b is binomial**
 
 .. code-block:: python
+
   import theano
   import theano.tensor as T
   import numpy as np
