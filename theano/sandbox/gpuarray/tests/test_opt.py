@@ -46,16 +46,18 @@ def test_flatten():
                           for node in f.maker.fgraph.toposort()]
 
 
-def test_sum_prod():
-    for method in ['sum']:
+def test_reduce():
+    for method in ['sum', 'prod', 'max', 'min']:
         m = theano.tensor.fmatrix()
-        f = theano.function([m], getattr(m, method)(), mode=mode_with_gpu)
+        f = theano.function([m], getattr(m, method)(axis=0),
+                            mode=mode_with_gpu)
         val = numpy.random.rand(10, 11).astype("float32")
         res = f(val)
-        utt.assert_allclose(res, val.sum())
-        assert res.shape == ()
+        utt.assert_allclose(res, getattr(val, method)(axis=0))
+        assert res.shape == (11,)
+        topo = f.maker.fgraph.toposort()
         assert GpuCAReduceCuda in [type(node.op)
-                                   for node in f.maker.fgraph.toposort()]
+                                   for node in topo], topo
 
 
 def test_local_gpualloc_memset_0():

@@ -442,7 +442,7 @@ def local_gpu_lazy_ifelse(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas._dot22])
+@local_optimizer([gpu_from_host, tensor.blas.Dot22])
 def local_gpu_dot22(node):
     """
     gpu_from_host(dot22) -> gpudot(gpu_from_host)
@@ -465,7 +465,7 @@ def local_gpu_dot22(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas._dot22scalar])
+@local_optimizer([gpu_from_host, tensor.blas.Dot22Scalar])
 def local_gpu_dot22scalar(node):
     """
     gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
@@ -571,7 +571,7 @@ def local_gpu_ger(node):
 
 
 @register_opt()
-@local_optimizer([tensor.blas.gemm_no_inplace, gpu_from_host])
+@local_optimizer([tensor.blas.Gemm, gpu_from_host])
 def local_gpu_gemm(node):
     """
     gpu_from_host(gemm) -> gpu_gemm(gpu_from_host)
