@@ -48,6 +48,8 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
     def test_perform_nan(self):
         for dtype in self.dtypes:
+            if not dtype.startswith('float'):
+                continue
             for op in self.reds:
                 self.with_linker(gof.PerformLinker(), op, dtype=dtype,
                                  test_nan=True)
@@ -59,6 +61,8 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
     def test_c_nan(self):
         for dtype in self.dtypes:
+            if not dtype.startswith('float'):
+                continue
             for op in self.reds:
                 self.with_linker(gof.CLinker(), op, dtype=dtype,
                                  test_nan=True)
@@ -70,7 +74,6 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
 class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     dtypes = ["float32", "int64"]
-    dtypes = []
     bin_dtypes = ["uint8", "int8"]
 
     cases = [((5, 6), None),
@@ -131,7 +134,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              ((4100,4,3,2),[0,2,3]),((4,4100,3,2),[0,2,3]),((4,3,4100,2),[0,2,3]),#((4,3,2,4100),[0,2,3]),#1011
              ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
              ((65,4,3,2),[1,2,3]),((4,65,3,2),[1,2,3]),((4,3,65,2),[1,2,3]),((4,3,2,65),[1,2,3]),#0111
-             ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),((128,1,3,3), [0,1,2,3]),#1111
+             ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),((128,1,2,3), [0,1,2,3]),#1111
 
              #test pattern implemented by reshape
              #Skip them as this test the op directly, not the optimization with reshape
