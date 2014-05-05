@@ -11,6 +11,8 @@ from theano.sandbox.gpuarray.tests.test_basic_ops import (
     rand_gpuarray, mode_with_gpu, mode_without_gpu
     )
 from theano.tests.unittest_tools import SkipTest
+from theano.tensor.tests.test_basic import TestSpecifyShape
+
 
 def test_flatten():
     m = theano.tensor.fmatrix()
@@ -108,3 +110,9 @@ def test_rebroadcast():
 
     assert isinstance(rebr.inputs[0].type, GpuArrayType)
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
+
+
+class TestSpecifyShape(TestSpecifyShape):
+    mode = mode_with_gpu
+    input_type = GpuArrayType
+    pass

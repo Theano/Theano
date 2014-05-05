@@ -282,7 +282,10 @@ def local_gpua_dimshuffle(node):
 @register_opt()
 @op_lifter([tensor.SpecifyShape])
 def local_gpua_specifyShape(node):
-    return tensor.specify_shape
+    if isinstance(node.inputs[0].type, GpuArrayType):
+        return
+    inp = [gpu_from_host(node.inputs[0])] + node.inputs[1:]
+    return tensor.specify_shape(*inp)
 
 
 @register_opt()

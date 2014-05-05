@@ -613,7 +613,8 @@ class Rebroadcast(gof.Op):
         return tuple(version)
 
 
-def register_specify_shape_c_code(typ, code, version=()):
+def register_specify_shape_c_code(typ, code, version=(),
+                                  c_support_code_apply=None):
     """ Tell SpecifyShape how to generate C code for a Theano Type
 
     :param typ: A Theano type. It must be the Theano class itself and not an
@@ -623,8 +624,9 @@ def register_specify_shape_c_code(typ, code, version=()):
                  variable names respectively.
                  %(axis)s for the axis that we need to check.
     :param version: A number indicating the version of the code, for cache.
+    :param c_support_code_apply: extra code.
     """
-    SpecifyShape.c_code_and_version[typ] = (code, version)
+    SpecifyShape.c_code_and_version[typ] = (code, version, c_support_code_apply)
 
 
 class SpecifyShape(gof.Op):
@@ -710,6 +712,14 @@ class SpecifyShape(gof.Op):
             return [None]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
+    def c_support_code_apply(self, node, name):
+        itype = node.inputs[0].type.__class__
+        if itype in self.c_code_and_version:
+            _, _, support_code = self.c_code_and_version[itype]
+            if support_code:
+                return support_code
+        return super(SpecifyShape, self).c_support_code_apply(node, name)
+
     def c_code(self, node, name, inames, onames, sub):
         iname, shape = inames
         oname, = onames
@@ -717,7 +727,7 @@ class SpecifyShape(gof.Op):
 
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
-            code, version = self.c_code_and_version[itype]
+            code, version, _ = self.c_code_and_version[itype]
             return code % locals()
 
         return super(SpecifyShape, self).c_code(node, node, inames, onames, sub)
@@ -726,7 +736,7 @@ class SpecifyShape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v, _) in sorted(self.c_code_and_version.items(),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for SpecifyShape, but it has "
