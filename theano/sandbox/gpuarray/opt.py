@@ -153,8 +153,26 @@ optdb['canonicalize'].register('local_cut_gpua_host_gpua',
 
 
 @register_opt()
+@local_optimizer([tensor.Alloc])
+def local_gpuaalloc2(node):
+    """
+    Join(axis, Alloc, Alloc, ...) -> Join(axis, GpuAlloc, Alloc, ...)
+
+    Moves an alloc that is an input to join to the gpu.
+    """
+    if (isinstance(node.op, tensor.Alloc) and
+        all(c != 'output' and
+            c.op == tensor.join and
+            all(i.owner and
+                i.owner.op in [host_from_gpu, tensor.alloc]
+                for i in c.inputs[1:])
+            for c, idx in node.outputs[0].clients)):
+        return [host_from_gpu(gpu_alloc(*node.inputs))]
+
+
+@register_opt()
 @op_lifter([tensor.Alloc])
-def local_gpualloc(node):
+def local_gpuaalloc(node):
     new_out = gpu_alloc(*node.inputs)
     # We need to hide new broadcastable dimensions because
     # ReplaceValidate doesn't like when they change.
