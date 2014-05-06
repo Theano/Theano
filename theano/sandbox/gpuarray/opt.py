@@ -22,14 +22,14 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
     host_from_gpu, gpu_from_host, HostFromGpu,
     gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
-    )
+)
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
 from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
     GpuCrossentropySoftmax1HotWithBiasDx,
     GpuSoftmaxWithBias, GpuSoftmax
-    )
+)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
                                               GpuDimShuffle, GpuCAReduceCuda)
 from theano.sandbox.gpuarray.subtensor import (GpuIncSubtensor, GpuSubtensor,
@@ -220,7 +220,7 @@ def local_gpu_rebroadcast(node):
 @op_lifter([tensor.Flatten])
 def local_gpuflatten(node):
     op = node.op
-    shp =[]
+    shp = []
     if op.outdim != 1:
         shp = [node.inputs[0].shape[i] for i in range(op.outdim - 1)]
     shp += [-1]
@@ -325,11 +325,11 @@ def local_gpua_incsubtensor(node):
 @register_opt()
 @op_lifter([tensor.AdvancedIncSubtensor1])
 def local_gpua_advanced_incsubtensor(node):
-    
+
     # This optimization is disabled if cuda is not active
     if pygpu.get_default_context().kind != "cuda":
         return None
-    
+
     x, y = node.inputs[0:2]
     coords = node.inputs[2:]
     set_instead_of_inc = node.op.set_instead_of_inc
@@ -337,13 +337,13 @@ def local_gpua_advanced_incsubtensor(node):
     device_properties = theano.sandbox.cuda.device_properties
 
     compute_capability = device_properties(active_device_no)['major']
-    
+
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
         return GpuAdvancedIncSubtensor1(
-                    set_instead_of_inc=set_instead_of_inc)
+            set_instead_of_inc=set_instead_of_inc)
     else:
         return GpuAdvancedIncSubtensor1_dev20(
-                    set_instead_of_inc=set_instead_of_inc)
+            set_instead_of_inc=set_instead_of_inc)
 
 
 @register_opt()
@@ -486,15 +486,15 @@ def local_gpu_conv(node):
         #print op.kshp, op.imshp[1:3]
         #print op.kshp_logical, logical_img_hw
         ret = GpuConv(border_mode=op.out_mode,
-                    subsample=(op.dx, op.dy),
-                    logical_img_hw=logical_img_hw,
-                    logical_kern_hw=op.kshp_logical,
-                    logical_kern_align_top=op.kshp_logical_top_aligned,
-                    kshp=op.kshp,
-                    version=op.version,
-                    verbose=op.verbose,
-                    imshp=op.imshp,
-                    )
+                      subsample=(op.dx, op.dy),
+                      logical_img_hw=logical_img_hw,
+                      logical_kern_hw=op.kshp_logical,
+                      logical_kern_align_top=op.kshp_logical_top_aligned,
+                      kshp=op.kshp,
+                      version=op.version,
+                      verbose=op.verbose,
+                      imshp=op.imshp,
+                  )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
@@ -629,8 +629,8 @@ def local_scan_to_gpua(node):
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
     info['gpu_hash'] = hash(_cmodule_key)
 
-    nw_op =  scan_op.Scan(scan_ins, scan_outs, info,
-                          typeConstructor=GpuArrayType).make_node(*nw_ins)
+    nw_op = scan_op.Scan(scan_ins, scan_outs, info,
+                         typeConstructor=GpuArrayType).make_node(*nw_ins)
     return nw_op.outputs
 
 optdb.register('gpua_scanOp_make_inplace',
