@@ -288,6 +288,22 @@ def local_gpua_specifyShape(node):
     return tensor.specify_shape(*inp)
 
 
+def gpu_print_wrapper(op, cnda):
+    op.old_op.global_fn(op.old_op, numpy.asarray(cnda))
+
+
+@register_opt()
+@op_lifter([tensor.printing.Print])
+def local_gpu_print_op(node):
+    x, = node.inputs
+    if x.owner and isinstance(x.owner.op, HostFromGpu):
+        gpu_x, = x.owner.inputs
+        new_op = node.op.__class__(global_fn=gpu_print_wrapper)
+        new_op.old_op = node.op
+        return new_op(gpu_x)
+    return False
+
+
 @register_opt()
 @op_lifter([tensor.Join])
 def local_gpua_join(node):
