@@ -3,7 +3,8 @@ from theano.compile.ops import (
         Shape, shape, register_shape_c_code,
         Shape_i, register_shape_i_c_code,
         ViewOp, view_op, register_view_op_c_code, FromFunctionOp, 
-        as_op, Rebroadcast, register_rebroadcast_c_code)
+        as_op, Rebroadcast, register_rebroadcast_c_code,
+        SpecifyShape, specify_shape, register_specify_shape_c_code)
 
 from theano.compile.function_module import *
 

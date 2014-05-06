@@ -25,7 +25,8 @@ from theano.gof.python25 import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
-from theano.compile import Rebroadcast, Shape, shape  #For history
+#For history
+from theano.compile import Rebroadcast, Shape, shape, SpecifyShape, specify_shape
 
 
 # We use these exceptions as well.
@@ -1162,129 +1163,6 @@ def old_shape(a):
         # all shape components are known at compile time, so we return
         # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
         return va.type.shape
-
-
-class SpecifyShape(Op):
-    """
-    L{Op} that puts into the graph the user-provided shape.
-
-    In the case where this op stays in the final graph, we assert the shape.
-    For this the output of this op must be used in the graph. This is not
-    the case most of the time if we only take the shape of the output.
-    Maybe there are other optimizations that will mess with this.
-
-    @note:     Maybe in the future we will never do the assert!
-    @note:     We currently don't support specifying partial shape information.
-
-    @todo:     test this op with sparse and cuda ndarray.
-               Do C code for them too.
-    """
-    view_map = {0: [0]}
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def make_node(self, x, shape):
-        if not isinstance(x, Variable):
-            x = as_tensor_variable(x)
-        shape = as_tensor_variable(shape)
-        assert shape.ndim == 1
-        assert "int" in shape.dtype
-        if isinstance(shape, TensorConstant):
-            assert shape.data.size == x.ndim
-        return Apply(self, [x, shape], [x.type()])
-
-    def perform(self, node, inp, out_):
-        x, shape = inp
-        out, = out_
-        assert x.ndim == shape.size
-        assert numpy.all(x.shape == shape), ("got shape", x.shape,
-                                           "expected", shape)
-        out[0] = x
-
-    def infer_shape(self, node, shapes):
-        xshape, sshape = shapes
-        new_shape = []
-        for dim in xrange(node.inputs[0].ndim):
-            try:
-                s = get_scalar_constant_value(node.inputs[1][dim])
-                s = as_tensor_variable(s)
-                new_shape.append(s)
-            except NotScalarConstantError:
-                new_shape.append(node.inputs[1][dim])
-
-        assert len(new_shape) == len(xshape)
-        return [new_shape]
-
-    def connection_pattern(self, node):
-        return [[True], [False]]
-
-    def grad(self, inp, grads):
-        x, s = inp
-        gz, = grads
-        # Should I set an SpecifyShape on gz? I think so
-        # But I don't do it now as we need to make an optimization
-        # to remove that op from the graph to don't block other optimization
-        # Should I do an optimizer that will remove the SpecifyShape?
-        # I think Yes
-        return [gz, DisconnectedType()()]
-        return [specify_shape(gz, s), DisconnectedType()()]
-
-    def R_op(self, inputs, eval_points):
-        if eval_points[0] is None:
-            # It means that the this op sits on top of a non-differentiable
-            # path
-            return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
-
-    def c_code(self, node, nodename, inp, out, sub):
-        if not isinstance(node.inputs[0], TensorVariable):
-            # The C code below supports only Tensor.  super.c_code
-            # will raise an exception to tell that there is no C code
-            # for the other cases.
-            return super(SpecifyShape, self).c_code(node, nodename,
-                                                    inp, out, sub)
-        iname, shape = inp
-        oname, = out
-        fail = sub['fail']
-
-        return """
-        if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
-            PyErr_Format(PyExc_AssertionError,
-                         "SpecifyShape: vector of shape has %%d elements,"
-                         " but the input has %%d dimensions.",
-                         PyArray_NDIM(%(iname)s),
-                         PyArray_DIMS(%(shape)s)[0]);
-            %(fail)s;
-        }
-        for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){
-            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
-                                                                     i))[0];
-            if (PyArray_DIMS(%(iname)s)[i] != shp) {
-                PyErr_Format(PyExc_AssertionError,
-                             "SpecifyShape: dim %%d of input has shape %%d,"
-                             " expected %%d.",
-                             i, PyArray_DIMS(%(iname)s)[i],
-                             shp);
-                %(fail)s;
-            }
-        }
-        Py_XDECREF(%(oname)s);
-        %(oname)s = %(iname)s;
-        Py_XINCREF(%(oname)s);
-        """ % locals()
-
-    def c_code_cache_version(self):
-        return (1,)
-
-
-specify_shape = SpecifyShape()
 
 
 class MaxAndArgmax(Op):

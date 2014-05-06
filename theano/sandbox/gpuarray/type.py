@@ -339,4 +339,34 @@ theano.compile.register_rebroadcast_c_code(
         %(fail)s
     }
     """,
-        version=1)
+    version=1)
+
+theano.compile.register_specify_shape_c_code(
+    GpuArrayType,
+    """
+        if (PyGpuArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: vector of shape has %%d elements,"
+                         " but the input has %%d dimensions.",
+                         PyGpuArray_NDIM(%(iname)s),
+                         PyArray_DIMS(%(shape)s)[0]);
+            %(fail)s;
+        }
+        for(int i = 0; i < PyGpuArray_NDIM(%(iname)s); i++){
+            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                     i))[0];
+            if (PyGpuArray_DIMS(%(iname)s)[i] != shp) {
+                PyErr_Format(PyExc_AssertionError,
+                             "SpecifyShape: dim %%d of input has shape %%d,"
+                             " expected %%d.",
+                             i, PyGpuArray_DIMS(%(iname)s)[i],
+                             shp);
+                %(fail)s;
+            }
+        }
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+    """,
+    version=1,
+    c_support_code_apply='#include <numpy_compat.h>')
