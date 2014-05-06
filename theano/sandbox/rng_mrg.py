@@ -772,9 +772,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return op(rstate, cast(v_size, 'int32'))
 
     def c_headers(self):
-        return super(GPUA_mrg_uniform, self) + ['numpy_compat.h']
+        return super(GPUA_mrg_uniform, self).c_headers() + ['numpy_compat.h']
 
-    def gpu_kernels(self, node):
+    def gpu_kernels(self, node, name):
         if self.output_type.dtype == 'float32':
             otype = 'float'
             NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
@@ -785,8 +785,8 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             NORM = '4.656612873077392578125e-10'
         code = """
         KERNEL void mrg_uniform(
-                %(otype)s *sample_data,
-                ga_int *state_data,
+                GLOBAL_MEM %(otype)s *sample_data,
+                GLOBAL_MEM ga_int *state_data,
                 const ga_uint Nsamples,
                 const ga_uint Nstreams_used)
         {
@@ -809,7 +809,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             const ga_int MASK2 = 65535;      //2^16 - 1
             const ga_int MULT2 = 21069;
 
-            const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            const ga_uint idx = GID_0 * LDIM_0 + LID_0;
             ga_int y1, y2, x11, x12, x13, x21, x22, x23;
 
             if (idx < Nstreams_used)
@@ -821,7 +821,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             x22 = state_data[idx*6+4];
             x23 = state_data[idx*6+5];
 
-            for (int i = idx; i < Nsamples; i += Nstreams_used)
+            for (ga_uint i = idx; i < Nsamples; i += Nstreams_used)
             {
                 y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
                 y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
@@ -864,6 +864,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 
         """ % locals()
 
+        # we shouldn't get to this line if it's about to fail
+        from pygpu import gpuarray
+
         return [Kernel(code=code, name="mrg_uniform",
                        params=[gpuarray.GpuArray, gpuarray.GpuArray,
                                'uint32', 'uint32'],
@@ -877,7 +880,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
-        kname = self.gpu_kernels()[0].objvar
+        kname = self.gpu_kernels(node, nodename)[0].objvar
 
         if self.output_type.dtype == 'float32':
             otype = 'float'

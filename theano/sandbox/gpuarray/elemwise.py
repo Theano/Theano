@@ -12,6 +12,7 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
     import pygpu
+    from pygpu import gpuarray
     from pygpu.tools import ScalarArg, ArrayArg
     from pygpu.elemwise import ElemwiseKernel
     from pygpu.reduction import ReductionKernel
@@ -2414,7 +2415,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
            sync=bool(config.gpuarray.sync))
         k = self.get_kernel_cache(node)
         _, src, _, ls = k._get_basic_kernel(k.init_local_size,
-                                           node.inputs[0].ndim)
+                                            node.inputs[0].ndim)
         if self.axis is None:
             redux = [True] * node.inputs[0].ndim
         else:
