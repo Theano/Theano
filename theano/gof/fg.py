@@ -743,3 +743,19 @@ class FunctionGraph(utils.object2):
         for feature in self._features:
             e.attach_feature(feature)
         return e, equiv
+
+    def __getstate__(self):
+        """This is needed as some feature introduce instancemethod and
+        this is not pickable.
+        """
+        d = self.__dict__.copy()
+        for feature in self._features:
+            for attr in getattr(feature, "pickle_rm_attr", []):
+                del d[attr]
+        return d
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        for feature in self._features:
+            if hasattr(feature, "unpickle"):
+                feature.unpickle(self)
