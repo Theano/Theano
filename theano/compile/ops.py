@@ -521,14 +521,13 @@ class Rebroadcast(gof.Op):
         self.axis = dict(axis)
         for axis, broad in self.axis.iteritems():
             assert isinstance(axis, (numpy.integer, int)), (
-                "Rebroadcast need integers axis. Got ", axis)
+                "Rebroadcast needs integer axes. Got ", axis)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axis == other.axis
 
     def __hash__(self):
-        items = self.axis.items()
-        items.sort()  # no ambiguity because each item key is unique
+        items = sorted(self.axis.iteritems())  # no ambiguity because each item key is unique
         return hash(type(self)) ^ hash(tuple(items))
 
     def __str__(self):
@@ -536,7 +535,7 @@ class Rebroadcast(gof.Op):
             broadcast_pattern = []
         else:
             broadcast_pattern = ['?' for i
-                                 in xrange(1 + numpy.max(self.axis.keys()))]
+                                 in xrange(1 + max(self.axis))]
         for k, v in self.axis.iteritems():
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__,
