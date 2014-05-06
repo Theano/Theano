@@ -62,6 +62,9 @@ class HideC(object):
 
 
 class Kernel(object):
+    """
+    This class groups together all the attributes of a gpu kernel.
+    """
     def __init__(self, code, params, name, flags,
                  codevar=None, binvar=None, objvar=None):
         self.code = code
@@ -833,7 +836,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         fail = sub['fail']
         typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
-        kname = 'k_eye_'+name
+        kname = self.gpu_kernels()[0].objvar
         s = """
         size_t dims[2] = {0, 0};
         void *args[3];
