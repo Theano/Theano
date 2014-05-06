@@ -18,7 +18,7 @@ def register_view_op_c_code(type, code, version=()):
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
+    :param code: C code that return a view for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
@@ -193,7 +193,8 @@ def register_shape_c_code(type, code, version=()):
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
+    :param code: C code that return a vector representing the shape
+                 for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
@@ -372,7 +373,7 @@ def register_shape_i_c_code(typ, code, version=()):
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
+    :param code: C code that get the shape of dimensions %(i)s for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
@@ -479,14 +480,16 @@ def as_op(itypes, otypes, infer_shape=None):
 
 
 def register_rebroadcast_c_code(typ, code, version=()):
-    """ Tell Rebroadcast how to generate C code for a Theano Type
+    """Tell Rebroadcast how to generate C code for a Theano Type
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-                 %(axis)s for the axis that we need to check.
+
+    :param code: C code that check if the dimensions %(axis) is of
+                 shape 1 for the Theano type 'typ'.  Use %(iname)s and
+                 %(oname)s for the input and output C variable names
+                 respectively.  %(axis)s for the axis that we need to
+                 check. This code is put in a loop for all axis
     :param version: A number indicating the version of the code, for cache.
     """
     Rebroadcast.c_code_and_version[typ] = (code, version)
@@ -619,10 +622,10 @@ def register_specify_shape_c_code(typ, code, version=(),
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
+    :param code: C code that check the shape and return a view for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
-                 %(axis)s for the axis that we need to check.
+                 %(axis)s for the axis that we need to check in a loop on iname.ndim.
     :param version: A number indicating the version of the code, for cache.
     :param c_support_code_apply: extra code.
     """
