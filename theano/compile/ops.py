@@ -625,7 +625,8 @@ def register_specify_shape_c_code(typ, code, version=(),
     :param code: C code that check the shape and return a view for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
-                 %(axis)s for the axis that we need to check in a loop on iname.ndim.
+                 %(shape)s is the vector of shape of %(iname)s.
+                 Check that its length is good.
     :param version: A number indicating the version of the code, for cache.
     :param c_support_code_apply: extra code.
     """
