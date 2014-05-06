@@ -296,12 +296,10 @@ def gpu_print_wrapper(op, cnda):
 @op_lifter([tensor.printing.Print])
 def local_gpu_print_op(node):
     x, = node.inputs
-    if x.owner and isinstance(x.owner.op, HostFromGpu):
-        gpu_x, = x.owner.inputs
-        new_op = node.op.__class__(global_fn=gpu_print_wrapper)
-        new_op.old_op = node.op
-        return new_op(gpu_x)
-    return False
+    gpu_x, = x.owner.inputs
+    new_op = node.op.__class__(global_fn=gpu_print_wrapper)
+    new_op.old_op = node.op
+    return new_op(gpu_x)
 
 
 @register_opt()
