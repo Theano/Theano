@@ -14,6 +14,7 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
     import pygpu
+    from pygpu import gpuarray
     from pygpu.tools import ScalarArg, ArrayArg
     from pygpu.elemwise import ElemwiseKernel
     from pygpu.reduction import ReductionKernel
@@ -22,7 +23,7 @@ except ImportError:
     pass
 
 from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable, HideC,
-                                               GpuKernelBase)
+                                               GpuKernelBase, Kernel)
 from theano.sandbox.gpuarray.type import GpuArrayType
 
 from theano.gof.utils import MethodNotDefined
@@ -2406,40 +2407,29 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         if any(redux):
             return getattr(node, attr)
 
-    def c_kernel_code(self, node):
+    def gpu_kernels(self, node, name):
         if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
             # Some OpenCL compilers do not accept no-arguments kernels
-            return "KERNEL void reduk(GLOBAL_MEM float *a) {}"
+            src = "KERNEL void reduk(GLOBAL_MEM float *a) {}"
+            params = ['float32']
         else:
             k = self.get_kernel_cache(node)
             _, src, _, _ = k._get_basic_kernel(k.init_local_size,
                                                node.inputs[0].ndim)
-            return src
-
-    def c_kernel_name(self):
-        return "reduk"
-
-    def c_kernel_params(self, node):
-        if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
-            return ["GA_FLOAT"]
-        else:
-            # Make sure this is synced with the call definition in
-            # pygpu/reduction.py
             nd = node.inputs[0].ndim
-            res = ["GA_UINT", "GA_BUFFER"]
-            res.extend("GA_UINT" for _ in range(nd))
-            res.append("GA_BUFFER")
-            res.append("GA_UINT")
-            res.extend("GA_INT" for _ in range(nd))
-            return res
-
-    def c_kernel_flags(self, node):
+            params = ['uint32', gpuarray.GpuArray]
+            params.extend('uint32' for _ in range(nd))
+            params.append(gpuarray.GpuArray)
+            params.append('uint32')
+            params.extend('int32' for _ in range(nd))
         acc_dtype = getattr(self, 'acc_dtype', None)
         if acc_dtype is None:
             acc_dtype = node.outputs[0].type.dtype
-        return self._get_kernel_flags(node.inputs[0].type.dtype,
-                                      acc_dtype,
-                                      node.outputs[0].type.dtype)
+        return [Kernel(code=src, name="reduk", params=params,
+                       flags=Kernel.get_flags(node.inputs[0].type.dtype,
+                                              acc_dtype,
+                                              node.outputs[0].type.dtype),
+                       objvar='k_reduk_'+name)]
 
     def c_code(self, node, name, inp, out, sub):
         if not any(getattr(self, 'redux', [node.inputs[0].ndim != 0])):
@@ -2458,7 +2448,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
            sync=bool(config.gpuarray.sync))
         k = self.get_kernel_cache(node)
         _, src, _, ls = k._get_basic_kernel(k.init_local_size,
-                                           node.inputs[0].ndim)
+                                            node.inputs[0].ndim)
         if self.axis is None:
             redux = [True] * node.inputs[0].ndim
         else:
@@ -2588,14 +2578,14 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
 
         if (%(sync)d)
             GpuArray_sync(&%(output)s->ga);
-""" % dict(k_var=self.c_kernel_obj(name), sync=bool(config.gpuarray.sync),
+""" % dict(k_var='k_reduk_'+name, sync=bool(config.gpuarray.sync),
            ls=ls, fail=sub['fail'], output=output, input=input,
            cast_out=bool(acc_dtype != node.outputs[0].type.dtype))
 
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (0, self.GpuKernelBase_version)
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):
