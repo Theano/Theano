@@ -1341,6 +1341,15 @@ class MRG_RandomStreams(object):
         assert final_samples.dtype == dtype
         return final_samples
 
+from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
+                                         op_lifter as gpua_lifter)
+
+@register_gpua()
+@gpua_lifter([mrg_uniform])
+def local_gpua_mrg(node):
+    return GPUA_mrg_uniform.new(node.inputs[0], node.op.output_type.ndim,
+                                node.op.output_type.dtype, node.inputs[1])
+
 
 @local_optimizer([mrg_uniform])
 def mrg_random_make_inplace(node):
