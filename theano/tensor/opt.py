@@ -1024,9 +1024,9 @@ class ShapeFeature(object):
         #   elements of the tuple can be either strings, or ints
         if len(o_shapes) != len(node.outputs):
             raise Exception(
-                'The infer_shape method for the Op "%s" returned a list ' +
+                ('The infer_shape method for the Op "%s" returned a list ' +
                 'with the wrong number of element: len(o_shapes) = %d ' +
-                ' != len(node.outputs) = %d' % (str(node.op),
+                ' != len(node.outputs) = %d') % (str(node.op),
                                                 len(o_shapes),
                                                 len(node.outputs)))
 
