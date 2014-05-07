@@ -91,8 +91,7 @@ class DotModulo(Op):
         out[0] = numpy.concatenate((o1, o2))
 
     def c_code_cache_version(self):
-        return
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, (_A, _s, _m, _A2, _s2, _m2), (_z, ), sub):
         return """
