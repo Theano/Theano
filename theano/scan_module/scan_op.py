@@ -280,7 +280,7 @@ class Scan(PureOp):
                                       (str(outer_mitmot),
                                        argoffset + idx,
                                        outer_mitmot.type.dtype,
-                                       outer_mitmot.ndim,
+                                       outer_mitmot.ndim - 1,
                                        inner_mitmot_outs[opos + k].type.dtype,
                                        inner_mitmot_outs[opos + k].ndim))
             opos += len(otaps)
