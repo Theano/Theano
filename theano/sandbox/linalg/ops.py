@@ -489,7 +489,8 @@ class MatrixPinv(Op):
     :math:`Ax = b`," i.e., if :math:`\\bar{x}` is said solution, then
     :math:`A^+` is that matrix such that :math:`\\bar{x} = A^+b`.
 
-    Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
+    Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity
+    matrix.
     This method is not faster then `matrix_inverse`. Its strength comes from
     that it works for non-square matrices.
     If you have a square matrix though, `matrix_inverse` can be both more
@@ -519,14 +520,10 @@ class MatrixPinv(Op):
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z, )):
-        try:
-            if imported_scipy:
-                z[0] = scipy.linalg.pinv(x).astype(x.dtype)
-            else:
-                z[0] = numpy.linalg.pinv(x).astype(x.dtype)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to invert %s' % str(node.inputs[0]))
-            raise
+        if imported_scipy:
+            z[0] = scipy.linalg.pinv(x).astype(x.dtype)
+        else:
+            z[0] = numpy.linalg.pinv(x).astype(x.dtype)
 
     def __str__(self):
         return "MatrixPseudoInverse"
@@ -857,6 +854,7 @@ def spectral_radius_bound(X, log2_exponent):
     if log2_exponent <= 0:
         raise ValueError('spectral_radius_bound requires a strictly positive '
                          'exponent', log2_exponent)
+
     XX = X
     for i in xrange(log2_exponent):
         XX = tensor.dot(XX, XX)
@@ -876,7 +874,7 @@ class A_Xinv_b(Op):
         assert a.ndim == 2
         assert X.ndim == 2
         assert b.ndim == 2
-        o = theano.tensor.matrix(dtype=x.dtype)
+        o = theano.tensor.matrix(dtype=X.dtype)
         return Apply(self, [a, X, b], [o])
 
     def perform(self, ndoe, inputs, outstor):
@@ -896,7 +894,7 @@ class A_Xinv_b(Op):
         iX = matrix_inverse(X)
         ga = matrix_dot(gz, b.T, iX.T)
         gX = -matrix_dot(iX.T, a, gz, b.T, iX.T)
-        gb = matrix_dot(ix.T, a.T, gz)
+        gb = matrix_dot(iX.T, a.T, gz)
         return [ga, gX, gb]
 
 
@@ -928,12 +926,7 @@ class Eig(Op):
         return Apply(self, [x], [w, v])
 
     def perform(self, node, (x,), (w, v)):
-        try:
-            w[0], v[0] = [z.astype(x.dtype) for z in self._numop(x)]
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0]))
-            raise
+        w[0], v[0] = [z.astype(x.dtype) for z in self._numop(x)]
 
     def infer_shape(self, node, shapes):
         n = shapes[0][0]
@@ -987,15 +980,10 @@ class SVD(Op):
         return Apply(self, [x], [w, u, v])
 
     def perform(self, node, (x,), (w, u, v)):
-        try:
-            assert x.ndim == 2, "The input of svd function should be a matrix."
-            w[0], u[0], v[0] = self._numop(x,
-                                           self.full_matrices,
-                                           self.compute_uv)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0]))
-            raise
+        assert x.ndim == 2, "The input of svd function should be a matrix."
+        w[0], u[0], v[0] = self._numop(x,
+                                       self.full_matrices,
+                                       self.compute_uv)
 
     def __str__(self):
         return self._numop.__name__.capitalize()
@@ -1006,7 +994,8 @@ def svd(a, full_matrices=1, compute_uv=1):
     This function performs the SVD on CPU.
 
     Parameters :
-    --------
+    ------------
+
     full_matrices : bool, optional
         If True (default), u and v have the shapes (M, M) and (N, N),
         respectively.
@@ -1015,6 +1004,10 @@ def svd(a, full_matrices=1, compute_uv=1):
     compute_uv : bool, optional
         Whether or not to compute u and v in addition to s.
         True by default.
+
+    Returns :
+    -------
+    U, V and D matrices.
     """
     return SVD(full_matrices, compute_uv)(a)
 
@@ -1048,20 +1041,16 @@ class QRFull(Op):
         return self.mode
 
     def perform(self, node, (x,), (q, r)):
-        try:
-            assert x.ndim == 2, "The input of qr function should be a matrix."
+        assert x.ndim == 2, "The input of qr function should be a matrix."
 
-            q[0], r[0] = self._numop(x,
-                                     self.mode)
-            q[0] = q[0].astype(x.dtype)
-            r[0] = r[0].astype(x.dtype)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0]))
-            raise
+        q[0], r[0] = self._numop(x,
+                                 self.mode)
+        q[0] = q[0].astype(x.dtype)
+        r[0] = r[0].astype(x.dtype)
 
     def __str__(self):
         return self._numop.__name__.capitalize()
+
 
 class QRIncomplete(Op):
     """
@@ -1091,17 +1080,11 @@ class QRIncomplete(Op):
         return Apply(self, [x], [q])
 
     def perform(self, node, (x,), (q,)):
-        try:
-            assert x.ndim == 2, "The input of qr function should be a matrix."
-            q[0] = self._numop(x,
-                               self.mode)
+        assert x.ndim == 2, "The input of qr function should be a matrix."
+        q[0] = self._numop(x,
+                           self.mode)
 
-            q[0] = q[0].astype(x.dtype)
-
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0]))
-            raise
+        q[0] = q[0].astype(x.dtype)
 
     def __str__(self):
         return self._numop.__name__.capitalize()
@@ -1139,19 +1122,14 @@ def qr(a, mode="full"):
 
     Returns :
     ---------
-    q : ndarray of float or complex, optional
+    q : matrix of float or complex, optional
     A matrix with orthonormal columns. When mode = 'complete'
     the result is an orthogonal/unitary matrix depending on whether
     or not a is real/complex. The determinant may be either +/- 1 in that case.
 
-    r : ndarray of float or complex, optional
+    r : matrix of float or complex, optional
     The upper-triangular matrix.
 
-    (h, tau) : ndarrays of np.double or np.cdouble, optional
-    The array h contains the Householder reflectors that
-    generate q along with r. The tau array contains scaling
-    factors for the reflectors. In the deprecated
-    'economic' mode only h is returned.
     """
     if mode == "full":
         return QRFull()(a)
