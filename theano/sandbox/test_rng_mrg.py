@@ -325,7 +325,8 @@ def test_consistency_GPUA_serial():
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            substream_rstate = numpy.array(stream_rstate.copy(), dtype='int32')
+            substream_rstate = numpy.array([stream_rstate.copy()],
+                                           dtype='int32')
             # Transfer to device
             rstate = gpuarray_shared_constructor(substream_rstate)
 
@@ -380,7 +381,7 @@ def test_consistency_GPUA_parallel():
         rstate = [curr_rstate.copy()]
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-        rstate = numpy.asarray(rstate).flatten()
+        rstate = numpy.asarray(rstate)
         rstate = gpuarray_shared_constructor(rstate)
 
         new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate, ndim=None,

@@ -952,17 +952,25 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             }
         }
 
-        if (PyGpuArray_NDIM(%(o_rstate)s) != 1)
+        if (PyGpuArray_NDIM(%(o_rstate)s) != 2)
         {
-            PyErr_SetString(PyExc_ValueError, "rstate must be vector");
-            %(fail)s;
+            PyErr_SetString(PyExc_ValueError, "rstate must be a matrix");
+            %(fail)s
         }
-        if (PyGpuArray_DIMS(%(o_rstate)s)[0] %% 6)
+        if (PyGpuArray_DIMS(%(o_rstate)s)[1] != 6)
         {
-            PyErr_Format(PyExc_ValueError, "rstate len must be multiple of 6");
-            %(fail)s;
+            PyErr_Format(PyExc_ValueError, "rstate must have 6 columns");
+            %(fail)s
         }
-        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0]/6;
+        if (%(o_rstate)s->ga.typecode != GA_INT) {
+            PyErr_Format(PyExc_ValueError, "rstate must be int32");
+            %(fail)s
+        }
+        if (!GpuArray_CHKFLAGS(&%(o_rstate)s->ga, GA_C_CONTIGUOUS)) {
+            PyErr_Format(PyExc_ValueError, "rstate must be C contiguous");
+            %(fail)s
+        }
+        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0];
         if (n_streams > n_elements)
           n_streams = n_elements;
 
