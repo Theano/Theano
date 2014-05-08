@@ -214,6 +214,7 @@ if __name__ == "__main__":
         M2050(Amazon)                   0.25s
         C1060                                                       0.46s
 
+        GTX Titan Black   0.05s
         GTX Titan(D15U-50)       0.06s  0.06s  don't work
         GTX 680                  0.11s  0.12s  0.154s               0.218s
         GTX 580                  0.16s  0.16s  0.164s               0.203s
@@ -226,6 +227,7 @@ if __name__ == "__main__":
         GTX 285                  0.42s         0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
         750M                            0.49s
         GTX 550 Ti                                           0.57s
+        GTX 765M          1.2s
         GT 520                                 2.68s                3.06s
         520M                            2.44s                       3.19s        # with bumblebee on Ubuntu 12.04
         GT 220                                                      3.80s
