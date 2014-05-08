@@ -78,7 +78,7 @@ class Kernel(object):
             binvar = 'kbin_' + name
         self.binvar = binvar
         if objvar is None:
-            self.objvar = 'k_' + name
+            objvar = 'k_' + name
         self.objvar = objvar
 
     @staticmethod
@@ -893,7 +893,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         fail = sub['fail']
         typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
-        kname = self.gpu_kernels()[0].objvar
+        kname = self.gpu_kernels(node, name)[0].objvar
         s = """
         size_t dims[2] = {0, 0};
         void *args[3];

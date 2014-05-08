@@ -952,17 +952,25 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             }
         }
 
-        if (PyGpuArray_NDIM(%(o_rstate)s) != 1)
+        if (PyGpuArray_NDIM(%(o_rstate)s) != 2)
         {
-            PyErr_SetString(PyExc_ValueError, "rstate must be vector");
-            %(fail)s;
+            PyErr_SetString(PyExc_ValueError, "rstate must be a matrix");
+            %(fail)s
         }
-        if (PyGpuArray_DIMS(%(o_rstate)s)[0] %% 6)
+        if (PyGpuArray_DIMS(%(o_rstate)s)[1] != 6)
         {
-            PyErr_Format(PyExc_ValueError, "rstate len must be multiple of 6");
-            %(fail)s;
+            PyErr_Format(PyExc_ValueError, "rstate must have 6 columns");
+            %(fail)s
         }
-        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0]/6;
+        if (%(o_rstate)s->ga.typecode != GA_INT) {
+            PyErr_Format(PyExc_ValueError, "rstate must be int32");
+            %(fail)s
+        }
+        if (!GpuArray_CHKFLAGS(&%(o_rstate)s->ga, GA_C_CONTIGUOUS)) {
+            PyErr_Format(PyExc_ValueError, "rstate must be C contiguous");
+            %(fail)s
+        }
+        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0];
         if (n_streams > n_elements)
           n_streams = n_elements;
 
@@ -984,7 +992,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2, self.GpuKernelBase_version)
+        return (3, self.GpuKernelBase_version)
 
 
 def guess_n_streams(size, warn=True):
@@ -1341,11 +1349,26 @@ class MRG_RandomStreams(object):
         assert final_samples.dtype == dtype
         return final_samples
 
+from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
+                                         host_from_gpu as host_from_gpua)
 
+@register_gpua()
 @local_optimizer([mrg_uniform])
+def local_gpua_mrg(node):
+    if (type(node.op) == mrg_uniform and
+        isinstance(node.inputs[0].type, GpuArrayType)):
+        outs = GPUA_mrg_uniform.new(node.inputs[0],
+                                    node.op.output_type.ndim,
+                                    node.op.output_type.dtype,
+                                    node.inputs[1])
+        return [outs[0], host_from_gpua(outs[1])]
+
+
+MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)
+@local_optimizer(MRG_RNGs)
 def mrg_random_make_inplace(node):
     op = node.op
-    if isinstance(op, mrg_uniform) and not op.inplace:
+    if isinstance(op, MRG_RNGs) and not op.inplace:
         # op might be gpu version
         new_op = op.__class__(op.output_type, inplace=True)
         return new_op.make_node(*node.inputs).outputs
