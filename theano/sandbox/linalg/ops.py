@@ -1099,7 +1099,7 @@ class EighGrad(Op):
         return [shapes[0]]
 
 
-class GEigvalsh(Op):
+class Eigvalsh(Op):
     """Generalized eigenvalues of a Hermetian positive definite eigensystem
     """
 
@@ -1133,14 +1133,14 @@ class GEigvalsh(Op):
     def grad(self, inputs, g_outputs):
         a, b = inputs
         gw, = g_outputs
-        return GEigvalshGrad(self.lower)(a, b, gw)
+        return EigvalshGrad(self.lower)(a, b, gw)
 
     def infer_shape(self, node, shapes):
         n = shapes[0][0]
         return [(n,)]
 
 
-class GEigvalshGrad(Op):
+class EigvalshGrad(Op):
     """Gradient of generalized eigenvalues of a Hermetian positive definite
     eigensystem
     """
@@ -1192,5 +1192,5 @@ class GEigvalshGrad(Op):
         return [shapes[0], shapes[1]]
 
 
-def geigvalsh(a, b, lower=True):
-    return GEigvalsh(lower)(a, b)
+def eigvalsh(a, b, lower=True):
+    return Eigvalsh(lower)(a, b)

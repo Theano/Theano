@@ -32,7 +32,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        Eig,
                                        inv_as_solve,
                                        )
-from theano.sandbox.linalg import eig, eigh, geigvalsh
+from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 
@@ -575,29 +575,28 @@ def test_matrix_inverse_solve():
     assert isinstance(out.owner.op, Solve)
 
 
-def test_geigvalsh():
+def test_eigvalsh():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the geigvalsh op.")
     import scipy.linalg
 
     A = theano.tensor.dmatrix('a')
     B = theano.tensor.dmatrix('b')
-    f = function([A, B], geigvalsh(A, B))
+    f = function([A, B], eigvalsh(A, B))
 
     rng = numpy.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
-    b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
+    for b in [10 * numpy.eye(5, 5) + rng.randn(5, 5), None]:
+        w = f(a, b)
+        refw = scipy.linalg.eigvalsh(a, b)
+        numpy.testing.assert_array_almost_equal(w, refw)
 
-    w = f(a, b)
-    refw = scipy.linalg.eigvalsh(a, b)
-    numpy.testing.assert_array_almost_equal(w, refw)
 
-
-def test_geigvalsh_grad():
+def test_eigvalsh_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
     b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
-    tensor.verify_grad(lambda a, b: geigvalsh(a, b).dot([1, 2, 3, 4, 5]),
+    tensor.verify_grad(lambda a, b: eigvalsh(a, b).dot([1, 2, 3, 4, 5]),
                        [a, b], rng=numpy.random)
