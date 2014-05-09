@@ -481,29 +481,38 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                 'theano.clone(f(x), replace={x: g(x)}))`.'
                 % x)
     mode = theano.compile.mode.get_mode(mode)
-    # If we want to make the inner type of TensorSharedVariable to be
-    # on the GPU.
-    if (isinstance(mode.provided_optimizer, theano.gof.Query) and
-        "gpu" in mode.provided_optimizer.include):
-        if not isinstance(updates, dict):
-            updates = dict(updates)
-        o = outputs
-        if isinstance(o, theano.gof.Variable):
-            o = [o]
-        inp = theano.gof.graph.inputs(o + updates.values() + updates.keys(),
-                                      blockers=inputs)
-        shared_inputs = [v for v in inp
-                         if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
-                         #TODO: And not forced on the CPU
-                         isinstance(v.type, theano.tensor.TensorType)]
-        import pdb;pdb.set_trace()
-        #TODO check for collision with givens
-#        for sv in shared_inputs:
-#            sv.toGPU()
-#            givens[sv] = sv.__class__(name=sv.name, type=sv.container.type, value=None,
-#                                      strict=True, allow_downcast=False,
-#                                      container=sv.container)._as_TensorVariable()
-        pass
+    
+    # Extract TensorSharedVariables
+    if not isinstance(updates, dict):
+        updates = dict(updates)
+    if not isinstance(givens, dict):
+        givens = dict(givens)
+    o = outputs or []
+    if isinstance(o, theano.gof.Variable):
+        o = [o]
+    inp = theano.gof.graph.inputs(o + updates.values() + updates.keys(),
+                                  blockers=inputs)
+    shared_inputs = [v for v in inp
+                     if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
+                     (not v.force_type) and isinstance(v.type, theano.tensor.TensorType)]
+    
+    # Do we want to make the inner type of TensorSharedVariable
+    # resize on GPU.
+    gpu = (isinstance(mode.provided_optimizer, theano.gof.Query) and
+            "gpu" in mode.provided_optimizer.include)
+    #TODO check for collision with givens
+    for sv in shared_inputs:
+        # clone is a FunctionTensorSharedVariable pointing to 
+        # original. It is transfered to GPU or CPU if gpu is True or
+        # false, respectively.
+        clone = sv.functionClone(gpu)
+        # clone should have same type as original
+        if sv._isCudaType(sv.type):
+            clone = clone._as_CudaNdarrayVariable()
+        else:
+            clone = clone._as_TensorVariable()
+            
+        givens[sv] = clone
     
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
