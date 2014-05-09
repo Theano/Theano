@@ -1,3 +1,5 @@
+import numpy
+
 from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
@@ -298,7 +300,8 @@ optdb.register('InplaceGpuaBlasOpt',
                gpuablas_opt_inplace,
                70.0, 'fast_run', 'inplace', 'gpuarray')
 
-class GpuDownsampleFactorMax(BlasOp):
+
+class GpuDownsampleFactorMax(Op):
     """
     Implement downsample with max on the gpu.
     """
@@ -503,7 +506,7 @@ class GpuDownsampleFactorMax(BlasOp):
       return NVCC_compiler
 
     def c_headers(self):
-      return ['cuda.h', 'compyte/extension.h', 'numpy_compat.h']
+      return ['cuda.h', 'gpuarray/extension.h', 'numpy_compat.h']
 
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
@@ -512,7 +515,7 @@ class GpuDownsampleFactorMax(BlasOp):
         return (6)
 
 
-class GpuDownsampleFactorMaxGrad(BlasOp):
+class GpuDownsampleFactorMaxGrad(Op):
     """
     Implement the grad of downsample with max on the gpu.
     """
@@ -745,7 +748,7 @@ class GpuDownsampleFactorMaxGrad(BlasOp):
       return NVCC_compiler
 
     def c_headers(self):
-      return ['cuda.h', 'compyte/extension.h', 'numpy_compat.h']
+      return ['cuda.h', 'gpuarray/extension.h', 'numpy_compat.h']
 
     def c_code_cache_version(self):
         return

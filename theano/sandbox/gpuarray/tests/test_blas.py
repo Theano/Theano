@@ -1,6 +1,8 @@
 from unittest import TestCase
 from nose.plugins.skip import SkipTest
 
+import numpy
+
 import theano
 from theano import tensor
 from theano.tests import unittest_tools
@@ -10,13 +12,19 @@ from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from theano.sandbox.gpuarray import gpuarray_shared_constructor
 from theano.sandbox.gpuarray.tests.test_basic_ops import (makeTester, rand,
-                                                          mode_with_gpu)
+                                                          mode_with_gpu,
+                                                          mode_without_gpu)
 
 from theano.sandbox.gpuarray.blas import (gpugemv_inplace, gpugemv_no_inplace,
                                           gpugemm_inplace, gpugemm_no_inplace,
                                           gpuger_inplace, gpuger_no_inplace,
-                                          GpuGer, gpu_dot22)
+                                          GpuGer, gpu_dot22, )
+from theano.tensor.signal.downsample import (DownsampleFactorMax,
+                                             DownsampleFactorMaxGrad)
 
+
+def my_rand(*shape):
+    return theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
 GpuGemvTester = makeTester('GpuGemvTester',
                            op=gemv_inplace, gpu_op=gpugemv_inplace,
@@ -160,10 +168,10 @@ def test_downsample():
                 #print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
-                a = theano.sandbox.gpuarray.shared_constructor(my_rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a)),
+                a = gpuarray_shared_constructor(my_rand(*shp), 'a')
+                f = theano.function([], ds_op(tensor.as_tensor_variable(a)),
                         mode=mode_with_gpu)
-                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)),
+                f2 = theano.function([], ds_op(tensor.as_tensor_variable(a)),
                         mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        theano.sandbox.gpuarray.blas.GpuDownsampleFactorMax)
@@ -180,12 +188,12 @@ def test_downsample():
                 if shp[0] > 30000 or shp[1] > 30000:
                     continue
 
-                g = pfunc(
+                g = theano.function(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
                             a),
                         mode=mode_with_gpu)
-                g2 = pfunc(
+                g2 = theano.function(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
                             a),

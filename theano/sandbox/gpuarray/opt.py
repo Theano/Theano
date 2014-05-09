@@ -23,7 +23,9 @@ from theano.sandbox.gpuarray.basic_ops import (
     host_from_gpu, gpu_from_host, HostFromGpu,
     gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
 )
-from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
+from theano.sandbox.gpuarray.blas import (
+    gpu_dot22, GpuGemv, GpuGemm, GpuGer,
+    GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad)
 from theano.sandbox.gpuarray.conv import GpuConv
 from theano.sandbox.gpuarray.nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -482,6 +484,18 @@ def local_gpua_softmax(node):
 @op_lifter([tensor.nnet.SoftmaxWithBias])
 def local_gpua_softmaxwithbias(node):
     return GpuSoftmaxWithBias()
+
+
+@register_opt()
+@op_lifter([theano.tensor.signal.downsample.DownsampleFactorMax])
+def local_gpua_downsample_factor_max(node):
+    return GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
+
+
+@register_opt()
+@op_lifter([theano.tensor.signal.downsample.DownsampleFactorMaxGrad])
+def local_gpua_downsample_factor_max_grad(node):
+    return GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
 
 
 @register_opt()
