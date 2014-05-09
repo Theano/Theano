@@ -1128,12 +1128,7 @@ class GEigvalsh(Op):
         return Apply(self, [a, b], [w])
 
     def perform(self, node, (a, b), (w,)):
-        try:
-            w[0] = scipy.linalg.eigvalsh(a=a, b=b, lower=self.lower)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find generalized eigs of %s' % (
-                node.inputs[0]))
-            raise
+        w[0] = scipy.linalg.eigvalsh(a=a, b=b, lower=self.lower)
 
     def grad(self, inputs, g_outputs):
         a, b = inputs
@@ -1183,9 +1178,7 @@ class GEigvalshGrad(Op):
         return Apply(self, [a, b, gw], [out1, out2])
 
     def perform(self, node, (a, b, gw), outputs):
-        N = a.shape[0]
-        w, v = scipy.linalg.eigh(a, b, lower=True)
-
+        w, v = scipy.linalg.eigh(a, b, lower=self.lower)
         gA = v.dot(numpy.diag(gw).dot(v.T))
         gB = - v.dot(numpy.diag(gw*w).dot(v.T))
 
