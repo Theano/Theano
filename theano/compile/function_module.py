@@ -1108,7 +1108,7 @@ class FunctionMaker(object):
                     
                 print 'loaded %s, size=%d'%(graph_db_file,len(graph_db))
                 need_optimize = True
-                # the sole purpose of this loop is to fill 'same_graph_found'
+                # the sole purpose of this loop is to set 'need_optimize'
                 for graph_old in graph_db.keys():
                     inputs_old = graph_old.inputs
                     outputs_old = graph_old.outputs
@@ -1121,24 +1121,40 @@ class FunctionMaker(object):
                         # two graphs are for sure different 
                         continue
                     else:
-                        # if the both inputs are of the same size
+                        # when the both inputs are of the same size
                         givens = dict(zip(inputs_new, inputs_old))
                         is_same = is_same_graph(outputs_new, outputs_old,
                                                  givens=givens)
                         if is_same:
+                            # found the match
+                            print 'found the match'
                             need_optimize = False
                             break
 
                 # now optimize or not
                 if need_optimize:
                     # this is a brand new graph, optimize it, save it to graph_db
+                    import ipdb; ipdb.set_trace()
+                    test_file = open(theano.config.compiledir + '/test.pkl', 'w+')
+                    cPickle.dump(fgraph, test_file)
+                    test_file.close()
+                    test_file = open(theano.config.compiledir + '/test.pkl', 'r')
+                    cPickle.load(test_file)
+                    
                     print 'Need to optimize the graph'
                     before_opt = copy.deepcopy(fgraph)
                     start_optimizer = time.time()
                     optimizer_profile = optimizer(fgraph)
                     end_optimizer = time.time()
                     opt_time = end_optimizer - start_optimizer
+
                     import ipdb; ipdb.set_trace()
+                    test_file = open(theano.config.compiledir + '/test.pkl', 'w+')
+                    cPickle.dump(fgraph, test_file)
+                    test_file.close()
+                    test_file = open(theano.config.compiledir + '/test.pkl', 'r')
+                    cPickle.load(test_file)
+                    
                     graph_db.update({before_opt:fgraph})
                     cPickle.dump(graph_db, f)
                 else:
@@ -1150,7 +1166,7 @@ class FunctionMaker(object):
                 # release stuff
                 f.close()
                 release_lock()    
-                opt_time
+                return opt_time
                 
             opt_time = optimize_graph(fgraph)
             
