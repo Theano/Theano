@@ -1196,8 +1196,8 @@ class GEigvalshGrad(Op):
         outputs[1][0] = numpy.asarray(out2, dtype=node.outputs[1].dtype)
 
     def infer_shape(self, node, shapes):
-         return [shapes[0], shapes[1]]
+        return [shapes[0], shapes[1]]
 
 
 def geigvalsh(a, b, lower=True):
-     return GEigvalsh(lower)(a, b)
+    return GEigvalsh(lower)(a, b)
