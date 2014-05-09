@@ -105,12 +105,31 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                 self.toGPU()
             else:
                 self.toCPU()
+                
+        # holds the FunctionTensorSharedVariables referenced by this
+        # TensorSharedVariable
+        self._infunc = {}
         
     def validTypes(self):
         valid_types = TensorType
         if self._gpu_capable:
             valid_types = (TensorType, cuda.type.CudaNdarrayType)
         return valid_types
+    
+    def functionClone(self):
+        return FunctionTensorSharedVariable(
+            self, self.name, self.type, self.container
+        )
+        
+    def gpuClone(self):
+        clone = self.functionClone()
+        clone.toGPU()
+        return clone
+    
+    def cpuClone(self):
+        clone = self.functionClone()
+        clone.toCPU()
+        return clone
     
     def toGPU(self):
         assert self._gpu_capable, "No CUDA-capable device detected"
@@ -267,6 +286,17 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         self._gpu_capable = init_cuda()
         if self._gpu_capable and self._was_cuda:
             self.toGPU()
+            
+class FunctionTensorSharedVariable(TensorSharedVariable):
+    def __init__(self, origin, name, type, container):
+        """
+        :param origin: The original TensorSharedVariable that gave birth
+        to this copy
+        """
+        self._origin = origin
+        super(FunctionTensorSharedVariable, self).__init__(
+            name=name, type=type, container=container
+        )
 
 
 @shared_constructor
