@@ -577,7 +577,7 @@ def test_matrix_inverse_solve():
 
 def test_geigvalsh():
     if not imported_scipy:
-        raise SkipTest("Scipy needed for the Solve op.")
+        raise SkipTest("Scipy needed for the geigvalsh op.")
     import scipy.linalg
 
     A = theano.tensor.dmatrix('a')
