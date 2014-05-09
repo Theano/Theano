@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle, hessian,ptp)
+        stacklists, DimShuffle, hessian, ptp)
 
 from theano.tests import unittest_tools as utt
 
@@ -6777,6 +6777,7 @@ def test_norm():
     f = theano.function([x], n)
     assert numpy.allclose(f([1, 1]), numpy.sqrt(2))
 
+
 class test_ptp(unittest.TestCase):
     def test_scalar(self):
         """
@@ -6785,54 +6786,55 @@ class test_ptp(unittest.TestCase):
         x = scalar('x')
         p = ptp(x)
         f = theano.function([x], p)
-        self.assertTrue(f(rand()*20000-10000)==0)
-        
+        self.assertTrue(f(rand() * 20000 - 10000) == 0)
+
     def test_vector(self):
-        
+
         x = vector('x')
-        p = ptp(x,0)
+        p = ptp(x, 0)
         f = theano.function([x], p)
-        
+
         y = rand_ranged(-1000, 1000, {100})
         result = f(y)
-        maxLessMin=[numpy.amax(y)-numpy.amin(y)]
-        
-        self.assertTrue(result==maxLessMin)
-    
+        maxLessMin = [numpy.amax(y) - numpy.amin(y)]
+
+        self.assertTrue(result == maxLessMin)
+
     def test_matrix_first_axis(self):
-        
+
         x = matrix('x')
-        p = ptp(x,1)
+        p = ptp(x, 1)
         f = theano.function([x], p)
-        
-        y = rand_ranged(-1000, 1000, [100,100])
+
+        y = rand_ranged(-1000, 1000, [100, 100])
         result = f(y)
-        maxLessMin=[numpy.amax(i)-numpy.amin(i) for i in y]
-        
-        self.assertTrue(numpy.array_equal(result,maxLessMin))
-        
+        maxLessMin = [numpy.amax(i) - numpy.amin(i) for i in y]
+
+        self.assertTrue(numpy.array_equal(result, maxLessMin))
+
     def test_matrix_second_axis(self):
         x = matrix('x')
-        p = ptp(x,0)
+        p = ptp(x, 0)
         f = theano.function([x], p)
-        
-        y = rand_ranged(-1000, 1000, [100,100])
+
+        y = rand_ranged(-1000, 1000, [100, 100])
         result = f(y)
-        y = numpy.swapaxes(y, 0,1)
-        maxLessMin=[numpy.amax(i)-numpy.amin(i) for i in y]
-        
-        self.assertTrue(numpy.array_equal(result,maxLessMin))
-        
+        y = numpy.swapaxes(y, 0, 1)
+        maxLessMin = [numpy.amax(i) - numpy.amin(i) for i in y]
+
+        self.assertTrue(numpy.array_equal(result, maxLessMin))
+
     def test_matrix_neg_axis(self):
         x = matrix('x')
-        p = ptp(x,-1)
+        p = ptp(x, -1)
         f = theano.function([x], p)
-        
-        y = rand_ranged(-1000, 1000, [100,100])
+
+        y = rand_ranged(-1000, 1000, [100, 100])
         result = f(y)
-        maxLessMin=[numpy.amax(i)-numpy.amin(i) for i in y]
-        
-	
+        maxLessMin = [numpy.amax(i) - numpy.amin(i) for i in y]
+
+        self.assertTrue(numpy.array_equal(result, maxLessMin))
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')

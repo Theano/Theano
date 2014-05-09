@@ -552,6 +552,11 @@ class _tensor_py_operators:
     def cumprod(self, axis=None):
         return theano.tensor.extra_ops.cumprod(self, axis)
 
+    def ptp(self, axis=None):
+        """see 'theano.tensor.ptp'"""
+
+        return theano.tensor.ptp(self, axis)
+
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
