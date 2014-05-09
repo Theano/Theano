@@ -36,7 +36,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     get_value_return_ndarray = True
     
     def __init__(self, name, type, value, strict,
-                 allow_downcast=None, container=None):
+                 allow_downcast=None, container=None, force_type=False):
         """
         :param name: The name for this variable (see `Variable`).
 
@@ -55,6 +55,10 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
 
         :param container: The container to use for this
         variable. Illegal to pass this as well as a value.
+        
+        :param force_type: When True, forces the internal type 
+        (CudaNdarrayType or TensorType) be the same as `type`. In other,
+        words, it cannot be transfered between CPU and GPU.
 
         :note: For more user-friendly constructor, see `shared`
 
@@ -94,9 +98,9 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
         )
             
         
-        # visible type is hard coded at construction.
-        # theano.shared will always make this an instance of TensorType
+        # Note: theano.shared will always make this an instance of TensorType
         self.type = type
+        self.force_type = force_type
         
         # if the user provides a different type than that in container
         if (self.type != self.container.type):
@@ -108,7 +112,7 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                 
         # holds the FunctionTensorSharedVariables referenced by this
         # TensorSharedVariable
-        self._infunc = {}
+        self._infunc = []
         
     def validTypes(self):
         valid_types = TensorType
@@ -116,24 +120,25 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             valid_types = (TensorType, cuda.type.CudaNdarrayType)
         return valid_types
     
-    def functionClone(self):
-        return FunctionTensorSharedVariable(
-            self, self.name, self.type, self.container
-        )
-        
-    def gpuClone(self):
-        clone = self.functionClone()
-        clone.toGPU()
-        return clone
-    
-    def cpuClone(self):
-        clone = self.functionClone()
-        clone.toCPU()
+    def functionClone(self, gpu):
+        # if gpu is true, then returned as CudaNdarrayType
+        # else, return as TensorType
+        if gpu:
+            self.toGPU()
+        else:
+            self.toCPU()
+        # a clone of its original self
+        clone = FunctionTensorSharedVariable(self)
+        # original keeps a reference to its clone
+        self._infunc.append(clone)
         return clone
     
     def toGPU(self):
         assert self._gpu_capable, "No CUDA-capable device detected"
         if isinstance(self.container.type, TensorType):
+            if any(isinstance(f.type, TensorType) for f in self._infunc):
+                raise RuntimeError('''trying to send shared variable to 
+                    GPU while a function was compiled with it on CPU''')                     
             if self.container.value.dtype.num != cuda.type.CudaNdarrayType.typenum:
                 raise TypeError('float32 required for GPU usage')
             self._setContainer(
@@ -148,6 +153,9 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
     
     def toCPU(self):
         if self._isCudaType():
+            if any(isinstance(f.type, cuda.type.CudaNdarrayType) for f in self._infunc):
+                raise RuntimeError('''trying to send shared variable to 
+                    CPU while a function was compiled with it on GPU''')
             self._setContainer(
                 self.container.castClone(
                     TensorType(self.type.dtype, self.type.broadcastable)
@@ -288,15 +296,36 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             self.toGPU()
             
 class FunctionTensorSharedVariable(TensorSharedVariable):
-    def __init__(self, origin, name, type, container):
-        """
+    def __init__(self, origin):
+        """FunctionTensorSharedVariable is used to refer to a 
+        TensorSharedVariable. Its container is hardcoded on GPU or 
+        CPU at construction. It is created inside a theano.function 
+        for any TensorSharedVariable used in the graph. The original 
+        TensorSharedVariable holds a table of references to these 
+        instances (one per theano.function) in order to ensure that
+        all are located on the same device (GPU or CPU). This is to 
+        keep them all consistent.        
+        
         :param origin: The original TensorSharedVariable that gave birth
-        to this copy
+        to this copy.
         """
         self._origin = origin
         super(FunctionTensorSharedVariable, self).__init__(
-            name=name, type=type, container=container
+            name=origin.name, type=origin.container.type, value=None, 
+            strict=None, container=origin.container, force_type=True
         )
+        
+    def clone(self):
+        cp = self.__class__(self._origin)
+        cp.tag = copy.copy(self.tag)
+        return cp
+        
+    def toGPU(self):
+        raise RuntimeError("A theano.function shouldn't call toGPU")
+        
+    def toCPU(self):
+        raise RuntimeError("A theano.function shouldn't call toCPU")
+        
 
 
 @shared_constructor
