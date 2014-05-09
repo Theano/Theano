@@ -6898,6 +6898,22 @@ if __name__ == '__main__':
     t.setUp()
     t.test_infer_shape()
 
+class T_swapaxesbadinput(unittest.TestCase):                            
+	def test_no_dimensional_input(self):                                                        
+		self.assertRaises(IndexError, Axes.swapaxes, 2,0,1)
+        
+	def test_unidimensional_input(self):
+		self.assertRaises(IndexError, Axes.swapaxes, [2,1],0,1)
+		
+	def test_not_enough_dimension(self):
+		self.assertRaises(IndexError, Axes.swapaxes, [[2,1],[3,4]], 3, 4) 
+					
+	def test_doubleswap(self):
+			y = matrix()
+			n = Axes.swapaxes(y,0,1)
+			f = function([y], n)
+			testMatrix = [[2,1],[3,4]]
+			self.assertTrue(numpy.array_equal(testMatrix,f(f(testMatrix))))
 
 class T_Power():
     def test_numpy_compare(self):
