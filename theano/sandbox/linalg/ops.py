@@ -1118,7 +1118,7 @@ class Eigvalsh(Op):
 
     def make_node(self, a, b):
         assert imported_scipy, (
-            "Scipy not available. Scipy is needed for the GEigvalsh op")
+            "Scipy not available. Scipy is needed for the Eigvalsh op")
         a, b = map(as_tensor_variable, (a, b))
         assert a.ndim == 2
         assert b.ndim == 2
