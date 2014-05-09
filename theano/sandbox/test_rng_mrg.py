@@ -166,7 +166,8 @@ def test_consistency_cpu_parallel():
         rstate = theano.shared(rstate)
 
         new_rstate, sample = rng_mrg.mrg_uniform.new(rstate, ndim=None,
-                dtype=config.floatX, size=(n_substreams,))
+                                                     dtype=config.floatX,
+                                                     size=(n_substreams,))
         # Not really necessary, just mimicking
         # rng_mrg.MRG_RandomStreams' behavior
         sample.rstate = rstate
@@ -219,7 +220,8 @@ def test_consistency_GPU_serial():
             rstate = float32_shared_constructor(tmp_float_buf)
 
             new_rstate, sample = rng_mrg.GPU_mrg_uniform.new(rstate, ndim=None,
-                    dtype='float32', size=(1,))
+                                                             dtype='float32',
+                                                             size=(1,))
             rstate.default_update = new_rstate
 
             # Not really necessary, just mimicking
@@ -278,7 +280,8 @@ def test_consistency_GPU_parallel():
         rstate = float32_shared_constructor(tmp_float_buf)
 
         new_rstate, sample = rng_mrg.GPU_mrg_uniform.new(rstate, ndim=None,
-                dtype='float32', size=(n_substreams,))
+                                                         dtype='float32',
+                                                         size=(n_substreams,))
         rstate.default_update = new_rstate
 
         # Not really necessary, just mimicking
@@ -322,7 +325,8 @@ def test_consistency_GPUA_serial():
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            substream_rstate = numpy.array(stream_rstate.copy(), dtype='int32')
+            substream_rstate = numpy.array([stream_rstate.copy()],
+                                           dtype='int32')
             # Transfer to device
             rstate = gpuarray_shared_constructor(substream_rstate)
 
@@ -377,11 +381,12 @@ def test_consistency_GPUA_parallel():
         rstate = [curr_rstate.copy()]
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-        rstate = numpy.asarray(rstate).flatten()
+        rstate = numpy.asarray(rstate)
         rstate = gpuarray_shared_constructor(rstate)
 
         new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate, ndim=None,
-                dtype='float32', size=(n_substreams,))
+                                                          dtype='float32',
+                                                          size=(n_substreams,))
         rstate.default_update = new_rstate
 
         # Not really necessary, just mimicking
@@ -452,7 +457,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
     #print prefix, 'std', std
     if target_std is not None:
         assert abs(std - target_std) < std_tol * (1 + abs(target_std)), (
-                'bad std? %f %f %f' % (std, target_std, std_tol))
+            'bad std? %f %f %f' % (std, target_std, std_tol))
     #print prefix, 'time', dt
     #print prefix, 'elements', steps * sample_size[0] * sample_size[1]
     #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
@@ -522,8 +527,8 @@ def test_uniform():
             # well, it's really that this test w GPU doesn't make sense otw
             assert u.dtype == 'float32'
             f = theano.function(var_input, theano.Out(
-                    theano.sandbox.cuda.basic_ops.gpu_from_host(u),
-                    borrow=True), mode=mode_with_gpu)
+                theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                borrow=True), mode=mode_with_gpu)
             assert any([isinstance(node.op,
                                    theano.sandbox.rng_mrg.GPU_mrg_uniform)
                         for node in f.maker.fgraph.toposort()])
@@ -613,8 +618,8 @@ def test_binomial():
                 #well, it's really that this test w GPU doesn't make sense otw
                 assert u.dtype == 'float32'
                 f = theano.function(var_input, theano.Out(
-                        theano.sandbox.cuda.basic_ops.gpu_from_host(u),
-                        borrow=True), mode=mode_with_gpu)
+                    theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                    borrow=True), mode=mode_with_gpu)
                 #theano.printing.debugprint(f)
                 gpu_out = numpy.asarray(f(*input))
                 #print 'random?[:10]\n', gpu_out[0, 0:10]
@@ -799,9 +804,9 @@ def test_multinomial():
         #well, it's really that this test w GPU doesn't make sense otw
         assert n.dtype == 'float32'
         f = theano.function(
-                [],
-                theano.sandbox.cuda.basic_ops.gpu_from_host(n),
-                mode=mode_.including('gpu'))
+            [],
+            theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+            mode=mode_.including('gpu'))
 
         #theano.printing.debugprint(f)
         gpu_out = f()
@@ -874,3 +879,50 @@ def test_gradient_scan():
     gw = theano.grad(tensor.sum(values[-1]), w)
     f = theano.function([x], gw)
     f(numpy.arange(1, dtype='float32'))
+
+
+def test_multMatVect():
+    A1 = tensor.lmatrix('A1')
+    s1 = tensor.ivector('s1')
+    m1 = tensor.iscalar('m1')
+    A2 = tensor.lmatrix('A2')
+    s2 = tensor.ivector('s2')
+    m2 = tensor.iscalar('m2')
+
+    g0 = rng_mrg.DotModulo()(A1, s1, m1, A2, s2, m2)
+    f0 = theano.function([A1, s1, m1, A2, s2, m2], g0)
+
+    i32max = numpy.iinfo(numpy.int32).max
+
+    A1 = numpy.random.randint(0, i32max, (3, 3)).astype('int64')
+    s1 = numpy.random.randint(0, i32max, 3).astype('int32')
+    m1 = numpy.asarray(numpy.random.randint(i32max), dtype="int32")
+    A2 = numpy.random.randint(0, i32max, (3, 3)).astype('int64')
+    s2 = numpy.random.randint(0, i32max, 3).astype('int32')
+    m2 = numpy.asarray(numpy.random.randint(i32max), dtype="int32")
+
+    f0.input_storage[0].storage[0] = A1
+    f0.input_storage[1].storage[0] = s1
+    f0.input_storage[2].storage[0] = m1
+    f0.input_storage[3].storage[0] = A2
+    f0.input_storage[4].storage[0] = s2
+    f0.input_storage[5].storage[0] = m2
+
+    r_a1 = rng_mrg.matVecModM(A1, s1, m1)
+    r_a2 = rng_mrg.matVecModM(A2, s2, m2)
+    f0.fn()
+    r_b = f0.output_storage[0].value
+
+    assert numpy.allclose(r_a1, r_b[:3])
+    assert numpy.allclose(r_a2, r_b[3:])
+
+
+if __name__ == "__main__":
+    rng = MRG_RandomStreams(numpy.random.randint(2147462579))
+    import time
+    print theano.__file__
+    pvals = theano.tensor.fmatrix()
+    for i in range(10):
+        t0 = time.time()
+        multinomial = rng.multinomial(pvals=pvals)
+        print time.time() - t0

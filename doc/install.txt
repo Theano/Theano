@@ -20,9 +20,10 @@ instructions below for detailed installation steps):
         We develop mainly on 64-bit Linux machines. other architectures are
         not well-tested.
 
-    Python_ >= 2.4
+    Python_ >= 2.6
         The development package (``python-dev`` or ``python-devel``
         on most Linux distributions) is recommended (see just below).
+	Python 2.4 was supported up to and including the release 0.6.
 
     ``g++``, ``python-dev``
         Not technically required but *highly* recommended, in order to compile

@@ -258,7 +258,7 @@ class Container(object):
         """WRITEME
 
         :Parameters:
-         `r`: a variable
+         `r`: a Variable or a Type
          `storage`: a list of length 1, whose element is the value for `r`
          `readonly`: True indicates that this should not be setable by Function[r] = val
          `strict`: if True, we don't allow type casting.

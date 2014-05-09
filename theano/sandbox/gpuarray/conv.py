@@ -183,14 +183,14 @@ class GpuConv(gof.Op):
 
     def c_headers(self):
         return ['<stdio.h>', 'cuda.h',
-                '<compyte/extension.h>', '<numpy_compat.h>']
+                '<gpuarray/extension.h>', '<numpy_compat.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
         return (0, 20)
 
     def c_init_code(self):
-        return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+        return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of

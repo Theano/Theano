@@ -5,12 +5,15 @@ from theano import tensor
 from theano.tests import unittest_tools as utt
 import theano.sandbox.gpuarray
 from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import GpuAlloc, GpuReshape, gpu_alloc
-from theano.sandbox.gpuarray.elemwise import GpuCAReduceCuda
+from theano.sandbox.gpuarray.basic_ops import (
+    GpuAlloc, GpuReshape, gpu_alloc, gpu_from_host, host_from_gpu)
+from theano.sandbox.gpuarray.elemwise import GpuCAReduceCuda, GpuElemwise
 from theano.sandbox.gpuarray.tests.test_basic_ops import (
     rand_gpuarray, mode_with_gpu, mode_without_gpu
     )
 from theano.tests.unittest_tools import SkipTest
+from theano.tensor.tests.test_basic import TestSpecifyShape
+
 
 def test_flatten():
     m = theano.tensor.fmatrix()
@@ -46,16 +49,18 @@ def test_flatten():
                           for node in f.maker.fgraph.toposort()]
 
 
-def test_sum_prod():
-    for method in ['sum']:
+def test_reduce():
+    for method in ['sum', 'prod', 'max', 'min']:
         m = theano.tensor.fmatrix()
-        f = theano.function([m], getattr(m, method)(), mode=mode_with_gpu)
+        f = theano.function([m], getattr(m, method)(axis=0),
+                            mode=mode_with_gpu)
         val = numpy.random.rand(10, 11).astype("float32")
         res = f(val)
-        utt.assert_allclose(res, val.sum())
-        assert res.shape == ()
+        utt.assert_allclose(res, getattr(val, method)(axis=0))
+        assert res.shape == (11,)
+        topo = f.maker.fgraph.toposort()
         assert GpuCAReduceCuda in [type(node.op)
-                                   for node in f.maker.fgraph.toposort()]
+                                   for node in topo], topo
 
 
 def test_local_gpualloc_memset_0():
@@ -106,3 +111,25 @@ def test_rebroadcast():
 
     assert isinstance(rebr.inputs[0].type, GpuArrayType)
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
+
+
+class TestSpecifyShape(TestSpecifyShape):
+    mode = mode_with_gpu
+    input_type = GpuArrayType
+    pass
+
+
+def test_print_op():
+    """ Test that print ops don't block gpu optimization"""
+    b = tensor.fmatrix()
+    f = theano.function([b], theano.printing.Print()(b) * 2,
+                        mode=mode_with_gpu)
+    theano.printing.debugprint(f)
+    #print f.maker.fgraph.toposort()
+#[GpuFromHost(<TensorType(float32, matrix)>), <theano.printing.Print object at 0x3581210>(GpuFromHost.0), GpuElemwise{mul}(CudaNdarray{[[ 2.]]}, <theano.printing.Print object at 0x3581210>.0), HostFromGpu(GpuElemwise{mul}.0)]
+    topo = f.maker.fgraph.toposort()
+    assert topo[0].op == gpu_from_host
+    assert isinstance(topo[1].op, theano.printing.Print)
+    assert isinstance(topo[2].op, GpuElemwise)
+    assert topo[3].op == host_from_gpu
+    f(numpy.random.random((5, 5)).astype('float32'))

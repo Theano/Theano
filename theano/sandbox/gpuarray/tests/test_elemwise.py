@@ -2,9 +2,10 @@ from theano import scalar, gof
 from theano.gof.python25 import all, any
 
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
-                                               test_CAReduce)
+                                               test_CAReduce, T_reduce_dtype)
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import rand_gpuarray
+from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
+                                                          rand_gpuarray)
 from theano.sandbox.gpuarray.elemwise import (GpuElemwise, GpuDimShuffle,
                                               GpuCAReduceCuda, GpuCAReduceCPY)
 from theano.sandbox.gpuarray.type import GpuArrayType
@@ -47,6 +48,8 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
     def test_perform_nan(self):
         for dtype in self.dtypes:
+            if not dtype.startswith('float'):
+                continue
             for op in self.reds:
                 self.with_linker(gof.PerformLinker(), op, dtype=dtype,
                                  test_nan=True)
@@ -58,6 +61,8 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
     def test_c_nan(self):
         for dtype in self.dtypes:
+            if not dtype.startswith('float'):
+                continue
             for op in self.reds:
                 self.with_linker(gof.CLinker(), op, dtype=dtype,
                                  test_nan=True)
@@ -68,9 +73,9 @@ class test_GpuCAReduceCPY(test_CAReduce):
 
 
 class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
-    dtypes = ["float32"]
+    dtypes = ["float32", "int64"]
     bin_dtypes = ["uint8", "int8"]
-    bin_dtypes = []
+
     cases = [((5, 6), None),
              ((5, 6), (0, 1)),
              ((5, 6), (0, )),
@@ -129,9 +134,10 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              ((4100,4,3,2),[0,2,3]),((4,4100,3,2),[0,2,3]),((4,3,4100,2),[0,2,3]),#((4,3,2,4100),[0,2,3]),#1011
              ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
              ((65,4,3,2),[1,2,3]),((4,65,3,2),[1,2,3]),((4,3,65,2),[1,2,3]),((4,3,2,65),[1,2,3]),#0111
-             ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),((128,1,3,3), [0,1,2,3]),#1111
+             ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),((128,1,2,3), [0,1,2,3]),#1111
 
              #test pattern implemented by reshape
+             #Skip them as this test the op directly, not the optimization with reshape
 #             ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
 #             ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
 #             ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
@@ -140,10 +146,18 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 #             ((5,4,3,10,11),[1,2]),
         ]
     op = GpuCAReduceCuda
-    reds = [scalar.add, scalar.mul]
+    reds = [scalar.add, scalar.mul,
+            scalar.maximum, scalar.minimum]
 
     def test_perform(self):
         return
 
     def test_perform_nan(self):
         return
+
+
+class T_gpureduce_dtype(T_reduce_dtype):
+    mode = mode_with_gpu.excluding('local_cut_useless_reduce')
+    op = GpuCAReduceCuda
+    #Currently we don't support reduction on 0 axis
+    axes = [None, 0, 1, 1, [0], [1], [0, 1]]

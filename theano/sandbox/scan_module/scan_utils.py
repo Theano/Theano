@@ -15,6 +15,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import copy
 import logging
+import warnings
 from itertools import izip
 
 import numpy
@@ -146,7 +147,8 @@ def get_updates_and_outputs(ls):
             raise ValueError(error_msg)
 
 
-def clone(output, replace=None, strict=True, copy_inputs=True):
+DEPRECATED_ARG = object()
+def clone(output, replace=None, strict=True, share_inputs=True, copy_inputs=DEPRECATED_ARG):
     """
     Function that allows replacing subgraphs of a computational
     graph. It returns a copy of the initial subgraph with the corresponding
@@ -159,14 +161,24 @@ def clone(output, replace=None, strict=True, copy_inputs=True):
     :type replace: dict
     :param replace: dictionary describing which subgraphs should be
                     replaced by what
+
+    :type share_inputs: bool
+    :param share_inputs: If True, use the same inputs (and shared variables)
+        as the original graph. If False, clone them. Note that cloned
+        shared variables still use the same underlying storage, so they
+        will always have the same value.
     """
+    if copy_inputs is not DEPRECATED_ARG:
+        warnings.warn('In `clone()` function, the argument `copy_inputs` has been deprecated and renamed into `share_inputs`')
+        assert share_inputs  # since we used `copy_inputs` we should have default value for `share_inputs`
+        share_inputs = copy_inputs
 
     inps, outs, other_stuff = rebuild_collect_shared(output,
                                                      [],
                                                      replace,
                                                      [],
                                                      strict,
-                                                     copy_inputs)
+                                                     share_inputs)
     return outs
 
 

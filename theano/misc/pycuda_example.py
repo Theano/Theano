@@ -369,7 +369,7 @@ pycuda_optimizer = EquilibriumDB()
 gpu_seqopt.register("pycuda_optimizer", pycuda_optimizer, 1.5, "fast_run")
 
 
-@local_optimizer([])
+@local_optimizer([GpuElemwise])
 def local_pycuda_gpu_elemwise(node):
     """
        GpuElemwise -> PycudaElemwiseSourceModuleOp
@@ -386,7 +386,7 @@ pycuda_optimizer.register("local_pycuda_gpu_elemwise",
                           local_pycuda_gpu_elemwise)
 
 
-@local_optimizer([])
+@local_optimizer([GpuElemwise])
 def local_pycuda_gpu_elemwise_kernel(node):
     """
        GpuElemwise -> PycudaElemwiseKernelOp

@@ -25,7 +25,8 @@ from theano.gof.python25 import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
-from theano.compile import Shape, shape  #For history
+#For history
+from theano.compile import Rebroadcast, Shape, shape, SpecifyShape, specify_shape
 
 
 # We use these exceptions as well.
@@ -1164,129 +1165,6 @@ def old_shape(a):
         return va.type.shape
 
 
-class SpecifyShape(Op):
-    """
-    L{Op} that puts into the graph the user-provided shape.
-
-    In the case where this op stays in the final graph, we assert the shape.
-    For this the output of this op must be used in the graph. This is not
-    the case most of the time if we only take the shape of the output.
-    Maybe there are other optimizations that will mess with this.
-
-    @note:     Maybe in the future we will never do the assert!
-    @note:     We currently don't support specifying partial shape information.
-
-    @todo:     test this op with sparse and cuda ndarray.
-               Do C code for them too.
-    """
-    view_map = {0: [0]}
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def make_node(self, x, shape):
-        if not isinstance(x, Variable):
-            x = as_tensor_variable(x)
-        shape = as_tensor_variable(shape)
-        assert shape.ndim == 1
-        assert "int" in shape.dtype
-        if isinstance(shape, TensorConstant):
-            assert shape.data.size == x.ndim
-        return Apply(self, [x, shape], [x.type()])
-
-    def perform(self, node, inp, out_):
-        x, shape = inp
-        out, = out_
-        assert x.ndim == shape.size
-        assert numpy.all(x.shape == shape), ("got shape", x.shape,
-                                           "expected", shape)
-        out[0] = x
-
-    def infer_shape(self, node, shapes):
-        xshape, sshape = shapes
-        new_shape = []
-        for dim in xrange(node.inputs[0].ndim):
-            try:
-                s = get_scalar_constant_value(node.inputs[1][dim])
-                s = as_tensor_variable(s)
-                new_shape.append(s)
-            except NotScalarConstantError:
-                new_shape.append(node.inputs[1][dim])
-
-        assert len(new_shape) == len(xshape)
-        return [new_shape]
-
-    def connection_pattern(self, node):
-        return [[True], [False]]
-
-    def grad(self, inp, grads):
-        x, s = inp
-        gz, = grads
-        # Should I set an SpecifyShape on gz? I think so
-        # But I don't do it now as we need to make an optimization
-        # to remove that op from the graph to don't block other optimization
-        # Should I do an optimizer that will remove the SpecifyShape?
-        # I think Yes
-        return [gz, DisconnectedType()()]
-        return [specify_shape(gz, s), DisconnectedType()()]
-
-    def R_op(self, inputs, eval_points):
-        if eval_points[0] is None:
-            # It means that the this op sits on top of a non-differentiable
-            # path
-            return [None]
-        return self.make_node(eval_points[0], *inputs[1:]).outputs
-
-    def c_code(self, node, nodename, inp, out, sub):
-        if not isinstance(node.inputs[0], TensorVariable):
-            # The C code below supports only Tensor.  super.c_code
-            # will raise an exception to tell that there is no C code
-            # for the other cases.
-            return super(SpecifyShape, self).c_code(node, nodename,
-                                                    inp, out, sub)
-        iname, shape = inp
-        oname, = out
-        fail = sub['fail']
-
-        return """
-        if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
-            PyErr_Format(PyExc_AssertionError,
-                         "SpecifyShape: vector of shape has %%d elements,"
-                         " but the input has %%d dimensions.",
-                         PyArray_NDIM(%(iname)s),
-                         PyArray_DIMS(%(shape)s)[0]);
-            %(fail)s;
-        }
-        for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){
-            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
-                                                                     i))[0];
-            if (PyArray_DIMS(%(iname)s)[i] != shp) {
-                PyErr_Format(PyExc_AssertionError,
-                             "SpecifyShape: dim %%d of input has shape %%d,"
-                             " expected %%d.",
-                             i, PyArray_DIMS(%(iname)s)[i],
-                             shp);
-                %(fail)s;
-            }
-        }
-        Py_XDECREF(%(oname)s);
-        %(oname)s = %(iname)s;
-        Py_XINCREF(%(oname)s);
-        """ % locals()
-
-    def c_code_cache_version(self):
-        return (1,)
-
-
-specify_shape = SpecifyShape()
-
-
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis or over all axes.
     """
@@ -2028,8 +1906,9 @@ def chi2sf(x, k):
     """chi squared survival function"""
 
 
-
-@_scal_elemwise_with_nfunc('real', 1, -1)
+#numpy.real(float32) return a view on the inputs.
+#@_scal_elemwise_with_nfunc('real', 1, -1)
+@_scal_elemwise
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 _tensor_py_operators.real = property(real)
@@ -3325,119 +3204,6 @@ class Split(Op):
             return [None for i in self.len_splits]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
-
-class Rebroadcast(Op):
-    """
-    Change the input's broadcastable fields in
-    some predetermined way.
-    e.g.: Rebroadcast((0, True), (1, False))(x)
-          would make x broadcastable in axis 0
-          and not broadcastable in axis 1
-    See also the unbroadcast, addbroadcast and patternbroadcast functions.
-
-    ..note: work inplace and work for CudaNdarrayType
-    """
-    view_map = {0: [0]}
-
-    def __init__(self, *axis):
-        self.axis = dict(axis)
-        for axis, broad in self.axis.iteritems():
-            assert isinstance(axis, (numpy.integer, int)), (
-                "Rebroadcast need integers axis. Got ", axis)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.axis == other.axis
-
-    def __hash__(self):
-        items = self.axis.items()
-        items.sort()  # no ambiguity because each item key is unique
-        return hash(type(self)) ^ hash(tuple(items))
-
-    def __str__(self):
-        if len(self.axis) == 0:
-            broadcast_pattern = []
-        else:
-            broadcast_pattern = ['?' for i
-                                 in xrange(1 + numpy.max(self.axis.keys()))]
-        for k, v in self.axis.iteritems():
-            broadcast_pattern[k] = str(int(v))
-        return '%s{%s}' % (self.__class__.__name__,
-                           ','.join(broadcast_pattern))
-
-    def make_node(self, x):
-        if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
-            raise ValueError('Trying to rebroadcast nonexistant dimension')
-        t = x.type.__class__(dtype=x.type.dtype,
-                             broadcastable=[self.axis.get(i, b)
-                                            for i, b in enumerate(
-                                                x.type.broadcastable)])
-        return Apply(self, [x], [t()])
-
-    def perform(self, node, inp, out_):
-        x, = inp
-        out, = out_
-        for axis, value in self.axis.iteritems():
-            if value and x.shape[axis] != 1:
-                raise ValueError('Dimension %s in Rebroadcast\'s input was'
-                                 ' supposed to be 1 (got %s instead)' %
-                                 (axis, x.shape[axis]))
-        out[0] = x
-
-    def grad(self, inp, grads):
-        x, = inp
-        gz, = grads
-        # restore the broadcasting pattern of the input
-        return Rebroadcast(*[(axis, x.type.broadcastable[axis])
-                             for axis, value in self.axis.iteritems()])(gz),
-
-    def infer_shape(self, node, ishapes):
-        assert len(ishapes) == 1
-        l = []
-        one = constant(1)
-        for ax in xrange(len(ishapes[0])):
-            if self.axis.get(ax, False):
-                l.append(one)
-            else:
-                l.append(ishapes[0][ax])
-
-        return [tuple(l)]
-
-    def R_op(self, inputs, eval_points):
-        if eval_points[0] is None:
-            return [None]
-        return self(*eval_points, **dict(return_list=True))
-
-    def c_code(self, node, nodename, inp, out, sub):
-        iname, = inp
-        oname, = out
-        fail = sub['fail']
-        if isinstance(node.inputs[0].type, TensorType):
-            code = ""
-            for axis, value in self.axis.iteritems():
-                if value:
-                    code += """
-                if(PyArray_DIMS(%(iname)s)[%(axis)s] != 1){
-                    PyErr_Format(PyExc_ValueError,
-                        "Dimension %(axis)s in Rebroadcast's input was"
-                        " supposed to be 1 (got %%d instead)",
-                        PyArray_DIMS(%(iname)s)[%(axis)s]);
-                    %(fail)s
-                }
-                """ % locals()
-
-            return code + """
-            Py_XDECREF(%(oname)s);
-            %(oname)s = %(iname)s;
-            Py_XINCREF(%(oname)s);
-            """ % locals()
-        else:
-            #TODO: if your type is not listed here, make a damn registry of
-            #      shape_i ops for various types of variables.
-            #      Do not continue this madness.
-            return super(Rebroadcast, self).c_code(node, nodename, inp, out, sub)
-
-    def c_code_cache_version(self):
-        return (1,)
 
 def addbroadcast(x, *axes):
     """

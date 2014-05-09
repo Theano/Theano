@@ -184,7 +184,7 @@ Here is the state of that vision as of December 3th, 2013 (after Theano release
 
 * We have a CUDA backend for tensors of type `float32` only.
 * Efforts have begun towards a generic GPU ndarray (GPU tensor) (started in the
-  `compyte <https://github.com/inducer/compyte/wiki>`_ project)
+  `libgpuarray <https://github.com/abergeron/libgpuarray>`_ project)
 
   * Move GPU backend outside of Theano (on top of PyCUDA/PyOpenCL)
   * Will provide better support for GPU on Windows and use an OpenCL backend on CPU.

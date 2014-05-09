@@ -9,8 +9,8 @@ import warnings
 
 import numpy
 
-from theano import Op, Apply, shared, config, Variable
-from theano import gradient
+from theano import Op, Apply, shared, config, Variable, Out
+from theano import gradient, function
 from theano import tensor
 from theano.tensor import (raw_random, TensorType, as_tensor_variable,
                            get_vector_length, cast, opt, scal)
@@ -26,8 +26,9 @@ if cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
 
-from theano.sandbox.gpuarray.basic_ops import GpuKernelBase
+from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
 from theano.sandbox.gpuarray.type import GpuArrayType
+
 
 def matVecModM(A, s, m):
     assert A.dtype == 'int64'
@@ -35,27 +36,164 @@ def matVecModM(A, s, m):
 
 
 def multMatVect(v, A, m1, B, m2):
-    #multiply the first half of v by A with a modulo of m1
-    #and the second half by B with a modulo of m2
-    err_orig = numpy.seterr(over='ignore')
-    try:
-        r = numpy.zeros_like(v)
-        r[:3] = matVecModM(A, v[:3], m1)
-        r[3:] = matVecModM(B, v[3:], m2)
-    finally:
-        numpy.seterr(**err_orig)
+    """
+    multiply the first half of v by A with a modulo of m1
+    and the second half by B with a modulo of m2
+
+    Note: The parameters of dot_modulo are passed implicitly because passing
+    them explicitly takes more time then running the function's C-code.
+    """
+    if multMatVect.dot_modulo is None:
+        A_sym = tensor.lmatrix('A')
+        s_sym = tensor.ivector('s')
+        m_sym = tensor.iscalar('m')
+        A2_sym = tensor.lmatrix('A2')
+        s2_sym = tensor.ivector('s2')
+        m2_sym = tensor.iscalar('m2')
+        o = DotModulo()(A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym)
+        multMatVect.dot_modulo = function(
+            [A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym], o)
+
+    # This way of calling the Theano fct is done to bypass Theano overhead.
+    f = multMatVect.dot_modulo
+    f.input_storage[0].storage[0] = A
+    f.input_storage[1].storage[0] = v[:3]
+    f.input_storage[2].storage[0] = m1
+    f.input_storage[3].storage[0] = B
+    f.input_storage[4].storage[0] = v[3:]
+    f.input_storage[5].storage[0] = m2
+    f.fn()
+    r = f.output_storage[0].storage[0]
+
     return r
+multMatVect.dot_modulo = None
+
+
+class DotModulo(Op):
+    """
+    Efficient and numerically stable implementation of a dot product followed
+    by a modulo operation. This performs the same function as matVecModM.
+
+    We do this 2 times on 2 triple inputs and concatenating the output
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, A, s, m, A2, s2, m2):
+        return Apply(self, [A, s, m, A2, s2, m2], [s.type()])
+
+    def perform(self, node, (A, s, m, A2, s2, m2), (out, )):
+        o1 = matVecModM(A, s, m)
+        o2 = matVecModM(A2, s2, m2)
+        out[0] = numpy.concatenate((o1, o2))
+
+    def c_code_cache_version(self):
+        return (6,)
+
+    def c_code(self, node, name, (_A, _s, _m, _A2, _s2, _m2), (_z, ), sub):
+        return """
+        int osize = -1;
+        if (PyArray_NDIM(%(_A)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(A) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(_s)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(v) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(_m)s) != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(m) != 0"); %(fail)s;}
+        if (PyArray_NDIM(%(_A2)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(A2) != 2"); %(fail)s;}
+        if (PyArray_NDIM(%(_s2)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(v2) != 1"); %(fail)s;}
+        if (PyArray_NDIM(%(_m2)s) != 0) {PyErr_SetString(PyExc_NotImplementedError, "rank(m2) != 0"); %(fail)s;}
+
+        if( PyArray_DIMS(%(_A)s)[1] != PyArray_DIMS(%(_s)s)[0])
+        {PyErr_SetString(PyExc_NotImplementedError, "A and s shapes don't agree."); %(fail)s;}
+        if( PyArray_DIMS(%(_A2)s)[1] != PyArray_DIMS(%(_s2)s)[0])
+        {PyErr_SetString(PyExc_NotImplementedError, "A2 and s2 shapes don't agree."); %(fail)s;}
+
+        osize = PyArray_DIMS(%(_A)s)[0] + PyArray_DIMS(%(_A2)s)[0];
+        if (!%(_z)s
+            || (PyArray_DIMS(%(_z)s)[0] != osize))
+        {
+            {Py_XDECREF(%(_z)s);}
+            npy_intp dims[] = {0,};
+            dims[0] = osize;
+            %(_z)s = (PyArrayObject*) PyArray_SimpleNew(1, dims, PyArray_TYPE(%(_s)s));
+        }
+
+        if(!%(_z)s){%(fail)s;}
+
+        {   //makes it compile even though labels jump over variable definitions.
+
+            // A has size MxN, s has N, output M
+            npy_intp M = PyArray_DIMS(%(_A)s)[0];
+            npy_intp N = PyArray_DIMS(%(_A)s)[1];
+
+            const dtype_%(_A)s* __restrict__ DA = (dtype_%(_A)s*)PyArray_DATA(%(_A)s);
+            dtype_%(_s)s* __restrict__ Ds = (dtype_%(_s)s*)PyArray_DATA(%(_s)s);
+            dtype_%(_z)s* __restrict__ Dz = (dtype_%(_z)s*)PyArray_DATA(%(_z)s);
+            const dtype_%(_m)s m = ((dtype_%(_m)s*)PyArray_DATA(%(_m)s))[0];
+
+            npy_intp SA = PyArray_STRIDES(%(_A)s)[1] / PyArray_DESCR(%(_A)s)->elsize;
+            npy_intp Ss = PyArray_STRIDES(%(_s)s)[0] / PyArray_DESCR(%(_s)s)->elsize;
+            npy_intp Sz = PyArray_STRIDES(%(_z)s)[0] / PyArray_DESCR(%(_z)s)->elsize;
+
+            for (npy_int32 i = 0; i < M; ++i)
+            {
+                const dtype_%(_A)s* __restrict__ Ak = (dtype_%(_A)s*)(PyArray_BYTES(%(_A)s) + PyArray_STRIDES(%(_A)s)[0] * i);
+
+                npy_int64 r = 0;
+
+                for (npy_int32 j = 0; j < N; ++j)
+                {
+                    r += (npy_int64)(Ds[j * Ss] * (npy_int64)(Ak[j * SA])) %% m;
+                }
+
+                Dz[i * Sz] = r %% m;
+            }
+        }
+
+        //redo it with the second triple of inputs
+        {
+            // A has size MxN, s has N, output M
+            npy_intp M = PyArray_DIMS(%(_A2)s)[0];
+            npy_intp N = PyArray_DIMS(%(_A2)s)[1];
+
+            const dtype_%(_A2)s* __restrict__ DA = (dtype_%(_A2)s*)PyArray_DATA(%(_A2)s);
+            dtype_%(_s2)s* __restrict__ Ds = (dtype_%(_s2)s*)PyArray_DATA(%(_s2)s);
+            const dtype_%(_m2)s m = ((dtype_%(_m2)s*)PyArray_DATA(%(_m2)s))[0];
+
+            npy_intp SA = PyArray_STRIDES(%(_A2)s)[1] / PyArray_DESCR(%(_A2)s)->elsize;
+            npy_intp Ss = PyArray_STRIDES(%(_s2)s)[0] / PyArray_DESCR(%(_s2)s)->elsize;
+            npy_intp Sz = PyArray_STRIDES(%(_z)s)[0] / PyArray_DESCR(%(_z)s)->elsize;
+
+            dtype_%(_z)s* __restrict__ Dz = (dtype_%(_z)s*)PyArray_DATA(%(_z)s) + PyArray_DIMS(%(_A)s)[0] * Sz;
+
+            for (npy_int32 i = 0; i < M; ++i)
+            {
+                const dtype_%(_A2)s* __restrict__ Ak = (dtype_%(_A2)s*)(PyArray_BYTES(%(_A2)s) + PyArray_STRIDES(%(_A2)s)[0] * i);
+
+                npy_int64 r = 0;
+
+                for (npy_int32 j = 0; j < N; ++j)
+                {
+                    r += (npy_int64)(Ds[j * Ss] * (npy_int64)(Ak[j * SA])) %% m;
+                }
+
+                Dz[i * Sz] = r %% m;
+            }
+
+        }
+
+        """ % dict(locals(), **sub)
 
 
 #MRG31k3p
 #generator constants :
-M1 = numpy.int32(2147483647)    #2^31 - 1
-M2 = numpy.int32(2147462579)    #2^31 - 21069
-MASK12 = numpy.int32(511)       #2^9 - 1
-MASK13 = numpy.int32(16777215)  #2^24 - 1
-MASK2 = numpy.int32(65535)      #2^16 - 1
+M1 = numpy.asarray(numpy.int32(2147483647))    #2^31 - 1
+M2 = numpy.asarray(numpy.int32(2147462579))    #2^31 - 21069
+MASK12 = numpy.int32(511)                      #2^9 - 1
+MASK13 = numpy.int32(16777215)                 #2^24 - 1
+MASK2 = numpy.int32(65535)                     #2^16 - 1
 MULT2 = numpy.int32(21069)
-NORM = 4.656612873077392578125e-10; #1./2^31
+NORM = 4.656612873077392578125e-10;            #1./2^31
 
 #A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
@@ -96,42 +234,41 @@ def mrg_next_value(rstate, new_rstate):
     x11, x12, x13, x21, x22, x23 = rstate
     assert type(x11) == numpy.int32
 
-    #i0, i7, i9, i15, i16, i22, i24 = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
     i0, i7, i9, i15, i16, i22, i24 = np_int32_vals
     #first component
     y1 = (((x12 & MASK12) << i22) + (x12 >> i9) +
           ((x13 & MASK13) << i7) + (x13 >> i24))
 
     assert type(y1) == numpy.int32
-    if (y1 < 0 or y1 >= M1):     #must also check overflow
-        y1 -= M1;
-    y1 += x13;
+    if (y1 < 0 or y1 >= M1):  # must also check overflow
+        y1 -= M1
+    y1 += x13
     if (y1 < 0 or y1 >= M1):
-        y1 -= M1;
+        y1 -= M1
 
-    x13 = x12;
-    x12 = x11;
-    x11 = y1;
+    x13 = x12
+    x12 = x11
+    x11 = y1
 
     #second component
-    y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16));
+    y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16))
     assert type(y1) == numpy.int32
     if (y1 < 0 or y1 >= M2):
-        y1 -= M2;
-    y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16));
+        y1 -= M2
+    y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16))
     assert type(y2) == numpy.int32
     if (y2 < 0 or y2 >= M2):
-        y2 -= M2;
-    y2 += x23;
+        y2 -= M2
+    y2 += x23
     if (y2 < 0 or y2 >= M2):
-        y2 -= M2;
-    y2 += y1;
+        y2 -= M2
+    y2 += y1
     if (y2 < 0 or y2 >= M2):
-        y2 -= M2;
+        y2 -= M2
 
-    x23 = x22;
-    x22 = x21;
-    x21 = y2;
+    x23 = x22
+    x22 = x21
+    x21 = y2
 
     # Must never return either 0 or M1+1
     new_rstate[...] = [x11, x12, x13, x21, x22, x23]
@@ -146,9 +283,9 @@ class mrg_uniform_base(Op):
     def __init__(self, output_type, inplace=False):
         Op.__init__(self)
         self.output_type = output_type
-        self.inplace=inplace
+        self.inplace = inplace
         if inplace:
-            self.destroy_map = {0:[0]}
+            self.destroy_map = {0: [0]}
         self.warned_numpy_version = False
 
     def __eq__(self, other):
@@ -200,8 +337,12 @@ class mrg_uniform(mrg_uniform_base):
         rstate, size = inp
         o_rstate, o_sample = out
         numpy_version = numpy.__version__.split('.')
-        if not self.warned_numpy_version and int(numpy_version[0]) <= 1 and int(numpy_version[1]) <3 :
-            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory."
+
+        if (not self.warned_numpy_version and
+            int(numpy_version[0]) <= 1 and
+            int(numpy_version[1]) < 3):
+
+            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
             self.warned_numpy_version = True
 
         n_elements = 1
@@ -226,8 +367,9 @@ class mrg_uniform(mrg_uniform_base):
         finally:
             numpy.seterr(**err_orig)
 
-        o_rstate[0] = node.outputs[0].type.filter(rstate)  # send to GPU if necessary
-        o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))  # send to GPU if necessary
+        # send to GPU if necessary
+        o_rstate[0] = node.outputs[0].type.filter(rstate)
+        o_sample[0] = node.outputs[1].type.filter(rval.reshape(size))
 
     def c_code(self, node, name, inp, out, sub):
         rstate, size = inp
@@ -629,9 +771,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return op(rstate, cast(v_size, 'int32'))
 
     def c_headers(self):
-        return GpuKernelBase.c_headers(self) + ['numpy_compat.h']
+        return super(GPUA_mrg_uniform, self).c_headers() + ['numpy_compat.h']
 
-    def c_kernel_code(self, node):
+    def gpu_kernels(self, node, name):
         if self.output_type.dtype == 'float32':
             otype = 'float'
             NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
@@ -640,10 +782,10 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         else:
             otype = 'double'
             NORM = '4.656612873077392578125e-10'
-        return """
+        code = """
         KERNEL void mrg_uniform(
-                %(otype)s *sample_data,
-                ga_int *state_data,
+                GLOBAL_MEM %(otype)s *sample_data,
+                GLOBAL_MEM ga_int *state_data,
                 const ga_uint Nsamples,
                 const ga_uint Nstreams_used)
         {
@@ -666,7 +808,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             const ga_int MASK2 = 65535;      //2^16 - 1
             const ga_int MULT2 = 21069;
 
-            const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+            const ga_uint idx = GID_0 * LDIM_0 + LID_0;
             ga_int y1, y2, x11, x12, x13, x21, x22, x23;
 
             if (idx < Nstreams_used)
@@ -678,7 +820,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             x22 = state_data[idx*6+4];
             x23 = state_data[idx*6+5];
 
-            for (int i = idx; i < Nsamples; i += Nstreams_used)
+            for (ga_uint i = idx; i < Nsamples; i += Nstreams_used)
             {
                 y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
                 y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
@@ -721,14 +863,14 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 
         """ % locals()
 
-    def c_kernel_params(self, node):
-        return ["GA_BUFFER", "GA_BUFFER", "GA_UINT", "GA_UINT"]
+        # we shouldn't get to this line if it's about to fail
+        from pygpu import gpuarray
 
-    def c_kernel_name(self):
-        return "mrg_uniform"
-
-    def c_kernel_flags(self, node):
-        return self._get_kernel_flags(self.output_type.dtype, 'int32')
+        return [Kernel(code=code, name="mrg_uniform",
+                       params=[gpuarray.GpuArray, gpuarray.GpuArray,
+                               'uint32', 'uint32'],
+                       flags=Kernel.get_flags(self.output_type.dtype, 'int32'))
+                ]
 
     def c_code(self, node, nodename, inp, out, sub):
         rstate, size = inp
@@ -737,7 +879,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
-        kname = self.c_kernel_obj(nodename)
+        kname = self.gpu_kernels(node, nodename)[0].objvar
 
         if self.output_type.dtype == 'float32':
             otype = 'float'
@@ -810,17 +952,25 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             }
         }
 
-        if (PyGpuArray_NDIM(%(o_rstate)s) != 1)
+        if (PyGpuArray_NDIM(%(o_rstate)s) != 2)
         {
-            PyErr_SetString(PyExc_ValueError, "rstate must be vector");
-            %(fail)s;
+            PyErr_SetString(PyExc_ValueError, "rstate must be a matrix");
+            %(fail)s
         }
-        if (PyGpuArray_DIMS(%(o_rstate)s)[0] %% 6)
+        if (PyGpuArray_DIMS(%(o_rstate)s)[1] != 6)
         {
-            PyErr_Format(PyExc_ValueError, "rstate len must be multiple of 6");
-            %(fail)s;
+            PyErr_Format(PyExc_ValueError, "rstate must have 6 columns");
+            %(fail)s
         }
-        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0]/6;
+        if (%(o_rstate)s->ga.typecode != GA_INT) {
+            PyErr_Format(PyExc_ValueError, "rstate must be int32");
+            %(fail)s
+        }
+        if (!GpuArray_CHKFLAGS(&%(o_rstate)s->ga, GA_C_CONTIGUOUS)) {
+            PyErr_Format(PyExc_ValueError, "rstate must be C contiguous");
+            %(fail)s
+        }
+        n_streams = PyGpuArray_DIMS(%(o_rstate)s)[0];
         if (n_streams > n_elements)
           n_streams = n_elements;
 
@@ -842,7 +992,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2, self.GpuKernelBase_version)
+        return (3, self.GpuKernelBase_version)
 
 
 def guess_n_streams(size, warn=True):
@@ -862,7 +1012,7 @@ def guess_n_streams(size, warn=True):
         for s in size:
             r *= s
         if r > 6:
-            r = r // 6 # chosen as fastest for rbm_benchmark
+            r = r // 6  # chosen as fastest for rbm_benchmark
 
         # The purpose of sampling from many streams is to be able to use
         # the GPU to its full capacity.  It just wastes RAM and stream-initialization time to
@@ -875,8 +1025,8 @@ def guess_n_streams(size, warn=True):
     else:
         if warn:
             warnings.warn((
-                    "MRG_RandomStreams Can't determine #streams from "
-                    "size (%s), guessing 60*256") % str(size),
+                "MRG_RandomStreams Can't determine #streams from "
+                "size (%s), guessing 60*256") % str(size),
                     stacklevel=3)
         return 60 * 256
 
@@ -928,7 +1078,8 @@ class MRG_RandomStreams(object):
 
     def inc_rstate(self):
         """Update self.rstate to be skipped 2^134 steps forward to the next stream start"""
-        self.rstate = ff_2p134(self.rstate)
+        #self.rstate = ff_2p134(self.rstate)
+        self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
         assert self.rstate.dtype == numpy.int32
 
     def get_substream_rstates(self, n_streams, inc_rstate=True):
@@ -939,8 +1090,26 @@ class MRG_RandomStreams(object):
         assert n_streams > 0
         rval = numpy.zeros((n_streams, 6), dtype='int32')
         rval[0] = self.rstate
+
+        # If multMatVect.dot_modulo isn't compiled, compile it.
+        if multMatVect.dot_modulo is None:
+            multMatVect(rval[0], A1p72, M1, A2p72, M2)
+
+        # This way of calling the Theano fct is done to bypass Theano overhead.
+        f = multMatVect.dot_modulo
+        f.input_storage[0].storage[0] = A1p72
+        f.input_storage[2].storage[0] = M1
+        f.input_storage[3].storage[0] = A2p72
+        f.input_storage[5].storage[0] = M2
         for i in xrange(1, n_streams):
-            rval[i] = ff_2p72(rval[i - 1])
+            # Inline the following call to bypass Python overhead
+            #rval[i] = ff_2p72(rval[i - 1])
+            v = rval[i - 1]
+            f.input_storage[1].storage[0] = v[:3]
+            f.input_storage[4].storage[0] = v[3:]
+            f.fn()
+            rval[i] = f.output_storage[0].storage[0]
+
         if inc_rstate:
             self.inc_rstate()
         return rval
@@ -992,7 +1161,8 @@ class MRG_RandomStreams(object):
             msg = "size must be a tuple of int or a Theano variable"
             assert all([isinstance(i, (numpy.integer, int, Variable))
                         for i in size]), msg
-            if any([isinstance(i, (numpy.integer, int)) and i <= 0 for i in size]):
+            if any([isinstance(i, (numpy.integer, int)) and i <= 0
+                    for i in size]):
                 raise ValueError(
                     "The specified size contains a dimension with value <= 0",
                     size)
@@ -1179,11 +1349,26 @@ class MRG_RandomStreams(object):
         assert final_samples.dtype == dtype
         return final_samples
 
+from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
+                                         host_from_gpu as host_from_gpua)
 
+@register_gpua()
 @local_optimizer([mrg_uniform])
+def local_gpua_mrg(node):
+    if (type(node.op) == mrg_uniform and
+        isinstance(node.inputs[0].type, GpuArrayType)):
+        outs = GPUA_mrg_uniform.new(node.inputs[0],
+                                    node.op.output_type.ndim,
+                                    node.op.output_type.dtype,
+                                    node.inputs[1])
+        return [outs[0], host_from_gpua(outs[1])]
+
+
+MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)
+@local_optimizer(MRG_RNGs)
 def mrg_random_make_inplace(node):
     op = node.op
-    if isinstance(op, mrg_uniform) and not op.inplace:
+    if isinstance(op, MRG_RNGs) and not op.inplace:
         # op might be gpu version
         new_op = op.__class__(op.output_type, inplace=True)
         return new_op.make_node(*node.inputs).outputs

@@ -3448,11 +3448,11 @@ class T_Join_and_Split(unittest.TestCase):
                         [a_val, b_val, c_val, d_val, e_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
         bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(self.floatX)
-        self.assertRaises(TypeError, g, bad_val, b_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, bad_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, bad_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, bad_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, bad_val)
+        self.assertRaises(TypeError, f, bad_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, bad_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, bad_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, c_val, bad_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, c_val, d_val, bad_val)
         # Should raise an error if any dimension other than 4 has length != 1
         bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(self.floatX)
         bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(self.floatX)
@@ -6178,7 +6178,11 @@ def test_stacklists():
     x = numpy.ones((4, 4), 'float32')
     assert f(x,x,x,x).shape == (2, 2, 4, 4)
 
+
 class TestSpecifyShape(unittest.TestCase):
+    mode = None
+    input_type = TensorType
+
     def shortDescription(self):
         return None
 
@@ -6189,14 +6193,21 @@ class TestSpecifyShape(unittest.TestCase):
 
         x = vector()
         xval = numpy.random.rand(2).astype(floatX)
-        f = theano.function([x], specify_shape(x, [2]))
+        f = theano.function([x], specify_shape(x, [2]), mode=self.mode)
         f(xval)
         xval = numpy.random.rand(3).astype(floatX)
         self.assertRaises(AssertionError, f, xval)
+        theano.printing.debugprint(f)
+        assert isinstance([n for n in f.maker.fgraph.toposort()
+                           if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                          self.input_type)
 
         x = matrix()
         xval = numpy.random.rand(2, 3).astype(floatX)
-        f = theano.function([x], specify_shape(x, [2, 3]))
+        f = theano.function([x], specify_shape(x, [2, 3]), mode=self.mode)
+        assert isinstance([n for n in f.maker.fgraph.toposort()
+                           if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                          self.input_type)
         f(xval)
         for shape in [(1, 3), (2, 2), (5, 5)]:
             xval = numpy.random.rand(*shape).astype(floatX)
@@ -6212,7 +6223,11 @@ class TestSpecifyShape(unittest.TestCase):
         self.assertRaises(AssertionError, specify_shape, x, [])
         self.assertRaises(AssertionError, specify_shape, x, [2, 2])
 
-        f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+        f = theano.function([x, shape_vec], specify_shape(x, shape_vec),
+                            mode=self.mode)
+        assert isinstance([n for n in f.maker.fgraph.toposort()
+                           if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                          self.input_type)
         self.assertRaises(AssertionError, f, xval, [])
         self.assertRaises(AssertionError, f, xval, [2, 2])
 
@@ -6222,7 +6237,11 @@ class TestSpecifyShape(unittest.TestCase):
                       (1,),
                       (2, 3, 4)]:
             self.assertRaises(AssertionError, specify_shape, x, shape)
-            f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+            f = theano.function([x, shape_vec], specify_shape(x, shape_vec),
+                                mode=self.mode)
+            assert isinstance([n for n in f.maker.fgraph.toposort()
+                               if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                              self.input_type)
             self.assertRaises(AssertionError, f, xval, shape)
 
 
