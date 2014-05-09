@@ -1099,7 +1099,6 @@ class EighGrad(Op):
         return [shapes[0]]
 
 
-
 class GEigvalsh(Op):
     """Generalized eigenvalues of a Hermetian positive definite eigensystem
     """
