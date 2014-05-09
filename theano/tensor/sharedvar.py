@@ -141,6 +141,9 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
                     GPU while a function was compiled with it on CPU''')                     
             if self.container.value.dtype.num != cuda.type.CudaNdarrayType.typenum:
                 raise TypeError('float32 required for GPU usage')
+            if self.force_type:
+                raise TypeError('''CPU type hardcoded (force_type=True)
+                    at construction, cannot send data to GPU''')
             self._setContainer(
                 self.container.castClone(
                     cuda.type.CudaNdarrayType(
@@ -156,6 +159,9 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
             if any(isinstance(f.type, cuda.type.CudaNdarrayType) for f in self._infunc):
                 raise RuntimeError('''trying to send shared variable to 
                     CPU while a function was compiled with it on GPU''')
+            if self.force_type:
+                raise TypeError('''GPU type hardcoded (force_type=True)
+                    at construction, cannot send data to CPU''')
             self._setContainer(
                 self.container.castClone(
                     TensorType(self.type.dtype, self.type.broadcastable)
