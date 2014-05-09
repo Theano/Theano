@@ -582,14 +582,14 @@ def test_geigvalsh():
 
     A = theano.tensor.dmatrix('a')
     B = theano.tensor.dmatrix('b')
-    f = function([A,B], geigvalsh(A, B))
+    f = function([A, B], geigvalsh(A, B))
 
     rng = numpy.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
     b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
 
-    w = f(a,b)
+    w = f(a, b)
     refw = scipy.linalg.eigvalsh(a, b)
     numpy.testing.assert_array_almost_equal(w, refw)
 
@@ -599,5 +599,5 @@ def test_geigvalsh_grad():
     a = rng.randn(5, 5)
     a = a + a.T
     b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
-    tensor.verify_grad(lambda a, b: geigvalsh(a, b).dot([1,2,3,4,5]), [a, b],
-        rng=numpy.random)
+    tensor.verify_grad(lambda a, b: geigvalsh(a, b).dot([1, 2, 3, 4, 5]),
+                       [a, b], rng=numpy.random)
