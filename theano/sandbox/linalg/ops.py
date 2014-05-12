@@ -1145,6 +1145,14 @@ class EigvalshGrad(Op):
     eigensystem
     """
 
+    # Note: This Op (EigvalshGrad), should be removed and replaced with a graph
+    # of theano ops that is constructed directly in Eigvalsh.grad.
+    # But this can only be done once scipy.linalg.eigh is available as an Op
+    # (currently the Eigh uses numpy.linalg.eigh, which doesn't let you
+    # pass the right-hand-side matrix for a generalized eigenproblem.) See the
+    # discussion on github at
+    # https://github.com/Theano/Theano/pull/1846#discussion-diff-12486764
+
     def __init__(self, lower=True):
         assert lower in [True, False]
         self.lower = lower
