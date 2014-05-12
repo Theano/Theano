@@ -1,19 +1,19 @@
 #!/bin/bash
 date
 START=`date +%s`
-ARGS=$@
+ARGS="$@"
 PROFILING=""
 RELEASE=""
 
 if [ "$1" == "--release" ]; then
     RELEASE="True"
     shift
-    ARGS=$@
+    ARGS="$@"
 fi
 
 if [ "$1" == "--buildbot" ]; then
     shift
-    ARGS=$@
+    ARGS="$@"
     #we set the compiledir to the /Tmp dir to make the test faster by bypassing the nfs network.
     COMPILEDIR=/Tmp/lisa_theano_compile_dir_theano
     ROOT_CWD=/Tmp/nightly_build
