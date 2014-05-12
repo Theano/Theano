@@ -1097,3 +1097,108 @@ class EighGrad(Op):
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
+
+
+class Eigvalsh(Op):
+    """Generalized eigenvalues of a Hermetian positive definite eigensystem
+    """
+
+    def __init__(self, lower=True):
+        assert lower in [True, False]
+        self.lower = lower
+
+    def props(self):
+        return (self.lower,)
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def make_node(self, a, b):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Eigvalsh op")
+        a, b = map(as_tensor_variable, (a, b))
+        assert a.ndim == 2
+        assert b.ndim == 2
+
+        out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
+        w = theano.tensor.vector(dtype=out_dtype)
+        return Apply(self, [a, b], [w])
+
+    def perform(self, node, (a, b), (w,)):
+        w[0] = scipy.linalg.eigvalsh(a=a, b=b, lower=self.lower)
+
+    def grad(self, inputs, g_outputs):
+        a, b = inputs
+        gw, = g_outputs
+        return EigvalshGrad(self.lower)(a, b, gw)
+
+    def infer_shape(self, node, shapes):
+        n = shapes[0][0]
+        return [(n,)]
+
+
+class EigvalshGrad(Op):
+    """Gradient of generalized eigenvalues of a Hermetian positive definite
+    eigensystem
+    """
+
+    # Note: This Op (EigvalshGrad), should be removed and replaced with a graph
+    # of theano ops that is constructed directly in Eigvalsh.grad.
+    # But this can only be done once scipy.linalg.eigh is available as an Op
+    # (currently the Eigh uses numpy.linalg.eigh, which doesn't let you
+    # pass the right-hand-side matrix for a generalized eigenproblem.) See the
+    # discussion on github at
+    # https://github.com/Theano/Theano/pull/1846#discussion-diff-12486764
+
+    def __init__(self, lower=True):
+        assert lower in [True, False]
+        self.lower = lower
+        if lower:
+            self.tri0 = numpy.tril
+            self.tri1 = lambda a: numpy.triu(a, 1)
+        else:
+            self.tri0 = numpy.triu
+            self.tri1 = lambda a: numpy.tril(a, -1)
+
+    def props(self):
+        return (self.lower,)
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def make_node(self, a, b, gw):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the GEigvalsh op")
+        a, b, gw = map(as_tensor_variable, (a, b, gw))
+        assert a.ndim == 2
+        assert b.ndim == 2
+        assert gw.ndim == 1
+
+        out_dtype = theano.scalar.upcast(a.dtype, b.dtype, gw.dtype)
+        out1 = theano.tensor.matrix(dtype=out_dtype)
+        out2 = theano.tensor.matrix(dtype=out_dtype)
+        return Apply(self, [a, b, gw], [out1, out2])
+
+    def perform(self, node, (a, b, gw), outputs):
+        w, v = scipy.linalg.eigh(a, b, lower=self.lower)
+        gA = v.dot(numpy.diag(gw).dot(v.T))
+        gB = - v.dot(numpy.diag(gw*w).dot(v.T))
+
+        # See EighGrad comments for an explanation of these lines
+        out1 = self.tri0(gA) + self.tri1(gA).T
+        out2 = self.tri0(gB) + self.tri1(gB).T
+        outputs[0][0] = numpy.asarray(out1, dtype=node.outputs[0].dtype)
+        outputs[1][0] = numpy.asarray(out2, dtype=node.outputs[1].dtype)
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0], shapes[1]]
+
+
+def eigvalsh(a, b, lower=True):
+    return Eigvalsh(lower)(a, b)
