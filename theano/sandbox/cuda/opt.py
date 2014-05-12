@@ -32,6 +32,7 @@ from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
         GpuDownsampleFactorMaxGrad)
+from theano.sandbox.cuda.fftconv import conv2d_fft
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
@@ -1117,6 +1118,17 @@ def local_gpu_conv(node):
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
             return [out]
+
+
+@register_opt()
+@local_optimizer([GpuConv])
+def local_conv_fft(node):
+    if (isinstance(node.op, GpuConv) and
+        node.op.border_mode == 'valid'):
+        return [conv2d_fft(node.inputs[0], node.inputs[1],
+                           image_shape=node.op.imgshp,
+                           filter_shape=node.op.kshp)]
+
 
 import theano.tensor.signal.downsample as downsample
 
