@@ -5000,3 +5000,24 @@ def stacklists(arg):
         return stack(*map(stacklists, arg))
     else:
         return arg
+
+
+def ptp(a, axis=None):
+    """
+    Range of values (maximum - minimum) along an axis.
+
+    The name of the function comes from the acronym for peak to peak.
+
+    :param a : Input tensor.
+
+    :param axis : Axis along which to find the peaks. By default,
+                flatten the array.
+
+    :return : A new array holding the result.
+    """
+
+    a = as_tensor_variable(a)
+
+    out = max(a, axis) - min(a, axis)
+
+    return out

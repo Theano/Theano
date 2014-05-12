@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle, hessian)
+        stacklists, DimShuffle, hessian, ptp)
 
 from theano.tests import unittest_tools as utt
 
@@ -6776,6 +6776,74 @@ def test_norm():
     n = x.norm(2)
     f = theano.function([x], n)
     assert numpy.allclose(f([1, 1]), numpy.sqrt(2))
+
+
+class test_ptp(unittest.TestCase):
+    def test_scalar(self):
+        """
+        Should return 0 for all scalar
+        """
+        x = scalar('x')
+        p = ptp(x)
+        f = theano.function([x], p)
+        self.assertTrue(f(rand() * 20000 - 10000) == 0)
+
+    def test_vector(self):
+
+        x = vector('x')
+        p = ptp(x, 0)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100])
+        result = f(y)
+        numpyResult = numpy.ptp(y, 0)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
+
+    def test_matrix_first_axis(self):
+
+        x = matrix('x')
+        p = ptp(x, 1)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100, 100])
+        result = f(y)
+        numpyResult = numpy.ptp(y, 1)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
+
+    def test_matrix_second_axis(self):
+        x = matrix('x')
+        p = ptp(x, 0)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100, 100])
+        result = f(y)
+        numpyResult = numpy.ptp(y, 0)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
+
+    def test_matrix_neg_axis(self):
+        x = matrix('x')
+        p = ptp(x, -1)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100, 100])
+        result = f(y)
+        numpyResult = numpy.ptp(y, -1)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
+
+    def test_matrix_no_axis(self):
+        x = matrix('x')
+        p = ptp(x)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100, 100])
+        result = f(y)
+        numpyResult = numpy.ptp(y)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
 
 if __name__ == '__main__':
 
