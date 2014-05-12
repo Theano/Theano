@@ -657,6 +657,10 @@ class test_comparison(unittest.TestCase):
                          dtype=config.floatX)
 
     def test_equalss_csr(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csr_matrix()
         y = sparse.csr_matrix()
 
@@ -670,6 +674,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
 
     def test_equalss_csc(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csc_matrix()
         y = sparse.csc_matrix()
 
@@ -683,6 +691,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
 
     def test_not_equalss_csr(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csr_matrix()
         y = sparse.csr_matrix()
 
@@ -696,6 +708,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
 
     def test_not_equalss_csc(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csc_matrix()
         y = sparse.csc_matrix()
 
@@ -709,6 +725,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
 
     def test_equalsd_csr(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csr_matrix()
         y = theano.tensor.matrix()
 
@@ -722,6 +742,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
 
     def test_equalsd_csc(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csc_matrix()
         y = theano.tensor.matrix()
 
@@ -735,6 +759,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
 
     def test_not_equalsd_csr(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csr_matrix()
         y = theano.tensor.matrix()
 
@@ -748,6 +776,10 @@ class test_comparison(unittest.TestCase):
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
 
     def test_not_equalsd_csc(self):
+
+        if (scipy.__version__ < '0.14.0'):
+            raise SkipTest("comparison operators need newer release of scipy")
+
         x = sparse.csc_matrix()
         y = theano.tensor.matrix()
 

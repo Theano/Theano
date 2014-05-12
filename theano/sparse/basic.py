@@ -2259,6 +2259,8 @@ def equal(x, y):
     :note: At least one of `x` and `y` must be a sparse matrix.
     """
 
+    assert scipy.__version__ >= '0.14.0'
+
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
     if hasattr(y, 'getnnz'):
