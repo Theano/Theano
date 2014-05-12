@@ -40,7 +40,7 @@ from theano.sparse import (
     Diag, diag, SquareDiagonal, square_diagonal,
     EnsureSortedIndices, ensure_sorted_indices, clean,
     ConstructSparseFromList, construct_sparse_from_list,
-    TrueDot, true_dot)
+    TrueDot, true_dot, equal, notEqual)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -645,6 +645,63 @@ class T_AddMul(unittest.TestCase):
                             b = b.data
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=False)
+
+
+class test_comparison(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def test_equalss_csr(self):
+        x = sparse.csr_matrix()
+        y = sparse.csr_matrix()
+
+        equality = equal(x, y)
+
+        f = theano.function([x, y], equality)
+
+        m1 = sp.csr_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = sp.csr_matrix(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
+
+    def test_equalss_csc(self):
+        x = sparse.csc_matrix()
+        y = sparse.csc_matrix()
+
+        equality = equal(x, y)
+
+        f = theano.function([x, y], equality)
+
+        m1 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
+
+    def test_not_equalss_csr(self):
+        x = sparse.csr_matrix()
+        y = sparse.csr_matrix()
+
+        unequality = notEqual(x, y)
+
+        f = theano.function([x, y], unequality)
+
+        m1 = sp.csr_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = sp.csr_matrix(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
+
+    def test_not_equalss_csc(self):
+        x = sparse.csc_matrix()
+        y = sparse.csc_matrix()
+
+        unequality = notEqual(x, y)
+
+        f = theano.function([x, y], unequality)
+
+        m1 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
 
 
 class T_conversion(unittest.TestCase):
