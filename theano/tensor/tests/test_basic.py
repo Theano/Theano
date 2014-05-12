@@ -6796,9 +6796,9 @@ class test_ptp(unittest.TestCase):
 
         y = rand_ranged(-1000, 1000, [100])
         result = f(y)
-        maxLessMin = [numpy.amax(y) - numpy.amin(y)]
+        numpyResult = numpy.ptp(y, 0)
 
-        self.assertTrue(result == maxLessMin)
+        self.assertTrue(numpy.array_equal(result, numpyResult))
 
     def test_matrix_first_axis(self):
 
@@ -6808,9 +6808,9 @@ class test_ptp(unittest.TestCase):
 
         y = rand_ranged(-1000, 1000, [100, 100])
         result = f(y)
-        maxLessMin = [numpy.amax(i) - numpy.amin(i) for i in y]
+        numpyResult = numpy.ptp(y, 1)
 
-        self.assertTrue(numpy.array_equal(result, maxLessMin))
+        self.assertTrue(numpy.array_equal(result, numpyResult))
 
     def test_matrix_second_axis(self):
         x = matrix('x')
@@ -6819,10 +6819,9 @@ class test_ptp(unittest.TestCase):
 
         y = rand_ranged(-1000, 1000, [100, 100])
         result = f(y)
-        y = numpy.swapaxes(y, 0, 1)
-        maxLessMin = [numpy.amax(i) - numpy.amin(i) for i in y]
+        numpyResult = numpy.ptp(y, 0)
 
-        self.assertTrue(numpy.array_equal(result, maxLessMin))
+        self.assertTrue(numpy.array_equal(result, numpyResult))
 
     def test_matrix_neg_axis(self):
         x = matrix('x')
@@ -6831,9 +6830,20 @@ class test_ptp(unittest.TestCase):
 
         y = rand_ranged(-1000, 1000, [100, 100])
         result = f(y)
-        maxLessMin = [numpy.amax(i) - numpy.amin(i) for i in y]
+        numpyResult = numpy.ptp(y, -1)
 
-        self.assertTrue(numpy.array_equal(result, maxLessMin))
+        self.assertTrue(numpy.array_equal(result, numpyResult))
+
+    def test_matrix_no_axis(self):
+        x = matrix('x')
+        p = ptp(x)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100, 100])
+        result = f(y)
+        numpyResult = numpy.ptp(y)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
 
 if __name__ == '__main__':
 

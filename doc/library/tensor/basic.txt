@@ -973,7 +973,7 @@ Reductions
 
     :Parameter: *x* Input tensor.
 
-    :Parameter: *axis Axis along which to find the peaks. By default,
+    :Parameter: *axis* Axis along which to find the peaks. By default,
                 flatten the array.
 
     :Returns: A new array holding the result.
