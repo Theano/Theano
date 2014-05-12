@@ -45,7 +45,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle, hessian, ptp)
+        stacklists, DimShuffle, hessian, ptp, swapaxes)
+        stacklists, DimShuffle, hessian, swapaxes)
 
 from theano.tests import unittest_tools as utt
 
@@ -6880,22 +6881,23 @@ if __name__ == '__main__':
     t.setUp()
     t.test_infer_shape()
 
-class T_swapaxesbadinput(unittest.TestCase):                            
+class T_swapaxes(unittest.TestCase):                            
 	def test_no_dimensional_input(self):                                                        
-		self.assertRaises(IndexError, Axes.swapaxes, 2,0,1)
+		self.assertRaises(IndexError, swapaxes, 2,0,1)
         
 	def test_unidimensional_input(self):
-		self.assertRaises(IndexError, Axes.swapaxes, [2,1],0,1)
+		self.assertRaises(IndexError, swapaxes, [2,1],0,1)
 		
 	def test_not_enough_dimension(self):
-		self.assertRaises(IndexError, Axes.swapaxes, [[2,1],[3,4]], 3, 4) 
-					
+		self.assertRaises(IndexError, swapaxes, [[2,1],[3,4]], 3, 4)
+
 	def test_doubleswap(self):
-			y = matrix()
-			n = Axes.swapaxes(y,0,1)
-			f = function([y], n)
-			testMatrix = [[2,1],[3,4]]
-			self.assertTrue(numpy.array_equal(testMatrix,f(f(testMatrix))))
+		y = matrix()
+		n = swapaxes(y,0,1)
+		f = function([y], n)
+		testMatrix = [[2,1],[3,4]]
+
+		self.assertTrue(numpy.array_equal(testMatrix,f(f(testMatrix))))
 
 """
 
