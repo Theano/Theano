@@ -62,6 +62,11 @@ AddConfigVar('cmodule.compilation_warning',
              BoolParam(False))
 
 
+AddConfigVar('cmodule.preload_cache',
+             "If set to True, will preload the C module cache at import time",
+             BoolParam(False, allow_override=False),
+             in_c_key=False)
+
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
 
