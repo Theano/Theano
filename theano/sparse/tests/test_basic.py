@@ -651,6 +651,11 @@ class test_comparison(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    #took from tensor basic_test.py
+    def _rand_ranged(self, min, max, shape):
+        return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+                         dtype=config.floatX)
+
     def test_equalss_csr(self):
         x = sparse.csr_matrix()
         y = sparse.csr_matrix()
@@ -700,6 +705,58 @@ class test_comparison(unittest.TestCase):
 
         m1 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
         m2 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
+
+    def test_equalsd_csr(self):
+        x = sparse.csr_matrix()
+        y = theano.tensor.matrix()
+
+        equality = equal(x, y)
+
+        f = theano.function([x, y], equality)
+
+        m1 = sp.csr_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
+
+    def test_equalsd_csc(self):
+        x = sparse.csc_matrix()
+        y = theano.tensor.matrix()
+
+        equality = equal(x, y)
+
+        f = theano.function([x, y], equality)
+
+        m1 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 == m2).data))
+
+    def test_not_equalsd_csr(self):
+        x = sparse.csr_matrix()
+        y = theano.tensor.matrix()
+
+        unequality = notEqual(x, y)
+
+        f = theano.function([x, y], unequality)
+
+        m1 = sp.csr_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
+
+    def test_not_equalsd_csc(self):
+        x = sparse.csc_matrix()
+        y = theano.tensor.matrix()
+
+        unequality = notEqual(x, y)
+
+        f = theano.function([x, y], unequality)
+
+        m1 = sp.csc_matrix(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
 
         self.assertTrue(numpy.array_equal(f(m1, m2).data, (m1 != m2).data))
 

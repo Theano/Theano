@@ -2208,6 +2208,45 @@ class EqualSS(gof.op.Op):
 equal_s_s = EqualSS()
 
 
+class EqualSD(gof.op.Op):
+
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x==y
+    """
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
+        assert y.type.ndim == 2
+        return gof.Apply(self,
+                         [x, y],
+                         [SparseType(dtype='uint8',
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
+        assert _is_sparse(x)
+        assert x.shape == y.shape
+        assert _is_dense(y)
+        out[0] = (x == y).astype('uint8')
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+equal_s_d = EqualSD()
+
+
 def equal(x, y):
     """
     Add two matrices, the two of which are sparse.
@@ -2236,9 +2275,9 @@ def equal(x, y):
     if x_is_sparse_variable and y_is_sparse_variable:
         return equal_s_s(x, y)
     elif x_is_sparse_variable and not y_is_sparse_variable:
-        raise NotImplementedError()
+        return equal_s_d(x, y)
     elif y_is_sparse_variable and not x_is_sparse_variable:
-        raise NotImplementedError()
+        return equal_s_d(y, x)
     else:
         raise NotImplementedError()
 
@@ -2283,6 +2322,45 @@ class NotEqualSS(gof.op.Op):
 not_equal_s_s = NotEqualSS()
 
 
+class NotEqualSD(gof.op.Op):
+
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x==y
+    """
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
+        assert y.type.ndim == 2
+        return gof.Apply(self,
+                         [x, y],
+                         [SparseType(dtype='uint8',
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
+        assert _is_sparse(x)
+        assert x.shape == y.shape
+        assert _is_dense(y)
+        out[0] = (x != y).astype('uint8')
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+not_equal_s_d = NotEqualSD()
+
+
 def notEqual(x, y):
     """
     Add two matrices, the two of which are sparse.
@@ -2311,9 +2389,9 @@ def notEqual(x, y):
     if x_is_sparse_variable and y_is_sparse_variable:
         return not_equal_s_s(x, y)
     elif x_is_sparse_variable and not y_is_sparse_variable:
-        raise NotImplementedError()
+        return not_equal_s_d(x, y)
     elif y_is_sparse_variable and not x_is_sparse_variable:
-        raise NotImplementedError()
+        return not_equal_s_d(y, x)
     else:
         raise NotImplementedError()
 

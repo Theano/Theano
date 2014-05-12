@@ -153,6 +153,8 @@ List of Implemented Operations
 - Basic Arithmetic
     - :class:`Neg <theano.sparse.basic.Neg>`.
       The grad implemented is regular.
+    - :class:`equal <theano.sparse.basic.equal>`.
+    - :class:`notEqual <theano.sparse.basic.notEqual>`. 
     - :func:`add <theano.sparse.basic.add>`.
       The grad implemented is regular.
     - :func:`sub <theano.sparse.basic.sub>`.
