@@ -6794,7 +6794,7 @@ class test_ptp(unittest.TestCase):
         p = ptp(x, 0)
         f = theano.function([x], p)
 
-        y = rand_ranged(-1000, 1000, {100})
+        y = rand_ranged(-1000, 1000, [100])
         result = f(y)
         maxLessMin = [numpy.amax(y) - numpy.amin(y)]
 
