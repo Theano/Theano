@@ -35,8 +35,8 @@ def test_graph_equivalence():
     assert is_same_graph(g1_y, g1_y)
     assert is_same_graph(g1_y, g1_yy)
     assert is_same_graph(g1_y, g3_y, givens={g1_a: g3_a, g1_b: g3_b})
-    l1=theano.gof.graph.inputs(g1_y)
-    l2=theano.gof.graph.inputs(g3_y)
+    l1 = theano.gof.graph.inputs([g1_y])
+    l2 = theano.gof.graph.inputs([g3_y])
     assert len(l1) == len(l2)
     
     #FunctionGraph([], g1_y)
