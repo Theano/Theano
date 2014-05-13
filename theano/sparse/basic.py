@@ -408,11 +408,17 @@ def csr_matrix(name=None, dtype=None):
     return matrix('csr', name, dtype)
 
 
+def bsr_matrix(name=None, dtype=None):
+    return matrix('bsr', name, dtype)
+
+
 # for more dtypes, call SparseType(format, dtype)
 csc_dmatrix = SparseType(format='csc', dtype='float64')
 csr_dmatrix = SparseType(format='csr', dtype='float64')
+bsr_dmatrix = SparseType(format='bsr', dtype='float64')
 csc_fmatrix = SparseType(format='csc', dtype='float32')
 csr_fmatrix = SparseType(format='csr', dtype='float32')
+bsr_fmatrix = SparseType(format='bsr', dtype='float32')
 
 all_dtypes = SparseType.dtype_set
 complex_dtypes = [t for t in all_dtypes if t[:7] == 'complex']
@@ -480,6 +486,7 @@ class CSMProperties(gof.Op):
 
     def make_node(self, csm):
         csm = as_sparse_variable(csm)
+        assert csm.format in ["csr", "csc"]
         data = tensor.TensorType(dtype=csm.type.dtype,
                                  broadcastable=(False,)).make_variable()
         return gof.Apply(self, [csm],
@@ -803,6 +810,7 @@ class Cast(gof.op.Op):
 
     def make_node(self, x):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(
             self, [x],
             [SparseType(dtype=self.out_type, format=x.format).make_variable()])
@@ -1020,6 +1028,7 @@ class GetItem2d(gof.op.Op):
 
     def make_node(self, x, index):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         assert len(index) in [1, 2]
 
         input_op = [x]
@@ -1115,6 +1124,7 @@ class GetItemScalar(gof.op.Op):
 
     def make_node(self, x, index):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         assert len(index) == 2
 
         input_op = [x]
@@ -1177,6 +1187,7 @@ class Transpose(gof.op.Op):
 
     def make_node(self, x):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(self,
                          [x],
                          [SparseType(dtype=x.type.dtype,
@@ -1217,6 +1228,7 @@ class Neg(gof.op.Op):
 
     def make_node(self, x):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, (x, ), (out, )):
@@ -1302,6 +1314,8 @@ class RowScaleCSC(gof.op.Op):
         return hash(type(self))
 
     def make_node(self, x, s):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x, s], [x.type()])
 
     def perform(self, node, (x, s), (z,)):
@@ -1416,6 +1430,7 @@ class SpSum(gof.op.Op):
 
     def make_node(self, x):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         b = ()
         if self.axis is not None:
             b = (False,)
@@ -1497,6 +1512,8 @@ class Diag(gof.op.Op):
         return hash(type(self))
 
     def make_node(self, x):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [tensor.tensor(broadcastable=(False,),
                                                    dtype=x.dtype)])
 
@@ -1591,6 +1608,8 @@ class EnsureSortedIndices(gof.op.Op):
         return hash(type(self))
 
     def make_node(self, x):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, (x, ), (z, )):
@@ -1654,6 +1673,8 @@ class AddSS(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
+        assert x.format in ["csr", "csc"]
+        assert y.format in ["csr", "csc"]
         out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if x.type.format != y.type.format:
             raise NotImplementedError()
@@ -1701,6 +1722,8 @@ class AddSSData(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
+        assert x.format in ["csr", "csc"]
+        assert y.format in ["csr", "csc"]
         if x.type.dtype != y.type.dtype:
             raise NotImplementedError()
         if x.type.format != y.type.format:
@@ -1755,6 +1778,7 @@ class AddSD(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+        assert x.format in ["csr", "csc"]
         out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
 
         # The magic number two here arises because L{scipy.sparse}
@@ -1807,6 +1831,7 @@ class StructuredAddSV(gof.op.Op):
 
     def make_node(self, x, y):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         y = tensor.as_tensor_variable(y)
 
         assert y.type.ndim == 1
@@ -1917,6 +1942,8 @@ class MulSS(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
+        assert x.format in ["csr", "csc"]
+        assert y.format in ["csr", "csc"]
         out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
         if x.type.format != y.type.format:
             raise NotImplementedError(
@@ -1926,7 +1953,6 @@ class MulSS(gof.op.Op):
                          [SparseType(dtype=out_dtype,
                                      format=x.type.format
                                     )()])
-
 
     def perform(self, node, (x, y), (out, )):
         assert _is_sparse(x) and _is_sparse(y)
@@ -1967,6 +1993,9 @@ class MulSD(gof.op.Op):
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
+        assert x.format in ["csr", "csc"]
+    
 
         # upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
@@ -2066,6 +2095,7 @@ class MulSV(gof.op.Op):
 
     def make_node(self, x, y):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         y = tensor.as_tensor_variable(y)
 
         assert y.type.ndim == 1
@@ -2185,6 +2215,10 @@ class HStack(gof.op.Op):
         if not mat:
             raise ValueError('Cannot join an empty list of sparses.')
         var = [as_sparse_variable(x) for x in mat]
+
+        for x in var:
+            assert x.format in ["csr", "csc"]
+
         return gof.Apply(
             self, var,
             [SparseType(dtype=self.dtype, format=self.format).make_variable()])
@@ -2359,6 +2393,8 @@ class Remove0(gof.Op):
         return self.__class__.__name__ + '{%s}' % ', '.join(l)
 
     def make_node(self, x):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z,)):
@@ -2388,6 +2424,7 @@ def structured_monoid(tensor_op):
     def decorator(f):
         def wrapper(*args):
             x = as_sparse_variable(args[0])
+            assert x.format in ["csr", "csc"]
 
             xs = [scalar.as_scalar(arg) for arg in args[1:]]
 
@@ -2734,8 +2771,10 @@ def true_dot(x, y, grad_preserves_dense=True):
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
     if hasattr(y, 'getnnz'):
         y = as_sparse_variable(y)
+        assert y.format in ["csr", "csc"]
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
@@ -2776,6 +2815,10 @@ class StructuredDot(gof.Op):
         return self.__class__.__name__
 
     def make_node(self, a, b):
+
+        a = as_sparse_variable(a)
+        assert a.format in ["csr", "csc", "bsr"]
+
         if not _is_sparse_variable(a):
             raise TypeError('First argument must be of type SparseVariable '
                             'or SparseConstant')
@@ -2868,8 +2911,10 @@ def structured_dot(x, y):
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
     if hasattr(y, 'getnnz'):
         y = as_sparse_variable(y)
+        assert y.format in ["csr", "csc"]
 
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
@@ -3211,6 +3256,7 @@ class SamplingDot(gof.op.Op):
         x = tensor.as_tensor_variable(x)
         y = tensor.as_tensor_variable(y)
         p = as_sparse_variable(p)
+        assert p.format in ["csr", "csc"]
 
         if not _is_sparse_variable(p):
             raise TypeError(p)
@@ -3304,6 +3350,7 @@ class Dot(gof.op.Op):
 
         if not x_is_sparse_var:
             x = tensor.as_tensor_variable(x)
+            assert y.format in ["csr", "csc"]
             if x.ndim not in (1, 2):
                 raise TypeError(
                     'theano.sparse.Dot: input 0 (0-indexed) must have ndim of '
@@ -3311,6 +3358,7 @@ class Dot(gof.op.Op):
 
         if not y_is_sparse_var:
             y = tensor.as_tensor_variable(y)
+            assert x.format in ["csr", "csc"]
             if y.ndim not in (1, 2):
                 raise TypeError(
                     'theano.sparse.Dot: input 1 (1-indexed) must have ndim of '
@@ -3425,9 +3473,11 @@ class Usmm(gof.op.Op):
         assert alpha.type.broadcastable == (True,) * alpha.ndim
         if not _is_sparse_variable(x):
             x = tensor.as_tensor_variable(x)
+            assert y.format in ["csr", "csc"]
             assert x.ndim == 2
         if not _is_sparse_variable(y):
             y = tensor.as_tensor_variable(y)
+            assert x.format in ["csr", "csc"]
             assert y.ndim == 2
 
         return gof.Apply(self, [alpha, x, y, z],
