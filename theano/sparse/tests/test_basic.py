@@ -658,7 +658,9 @@ class test_comparison(unittest.TestCase):
 
     def test_equalss_csr(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csr_matrix()
@@ -675,7 +677,9 @@ class test_comparison(unittest.TestCase):
 
     def test_equalss_csc(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()
@@ -692,7 +696,9 @@ class test_comparison(unittest.TestCase):
 
     def test_not_equalss_csr(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csr_matrix()
@@ -709,7 +715,9 @@ class test_comparison(unittest.TestCase):
 
     def test_not_equalss_csc(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()
@@ -726,7 +734,9 @@ class test_comparison(unittest.TestCase):
 
     def test_equalsd_csr(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csr_matrix()
@@ -743,7 +753,9 @@ class test_comparison(unittest.TestCase):
 
     def test_equalsd_csc(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()
@@ -760,7 +772,9 @@ class test_comparison(unittest.TestCase):
 
     def test_not_equalsd_csr(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csr_matrix()
@@ -777,7 +791,9 @@ class test_comparison(unittest.TestCase):
 
     def test_not_equalsd_csc(self):
 
-        if (scipy.__version__ < '0.14.0'):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()

@@ -2259,7 +2259,9 @@ def equal(x, y):
     :note: At least one of `x` and `y` must be a sparse matrix.
     """
 
-    assert scipy.__version__ >= '0.14.0'
+    scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+    assert scipy_ver >= [0, 14]
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
@@ -2374,6 +2376,10 @@ def notEqual(x, y):
 
     :note: At least one of `x` and `y` must be a sparse matrix.
     """
+
+    scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+    assert scipy_ver >= [0, 14]
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
