@@ -298,11 +298,6 @@ class _sparse_py_operators:
     def __ge__(self, other):
         pass
 
-
-
-    def __ne__(self, other):
-        pass
-
     # extra pseudo-operator symbols
 
     def __dot__(left, right):
@@ -2247,7 +2242,7 @@ class EqualSD(gof.op.Op):
 equal_s_d = EqualSD()
 
 
-def equal(x, y):
+def eq(x, y):
     """
     Add two matrices, the two of which are sparse.
 
@@ -2365,7 +2360,7 @@ class NotEqualSD(gof.op.Op):
 not_equal_s_d = NotEqualSD()
 
 
-def notEqual(x, y):
+def neq(x, y):
     """
     Add two matrices, the two of which are sparse.
 

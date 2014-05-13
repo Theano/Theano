@@ -40,7 +40,7 @@ from theano.sparse import (
     Diag, diag, SquareDiagonal, square_diagonal,
     EnsureSortedIndices, ensure_sorted_indices, clean,
     ConstructSparseFromList, construct_sparse_from_list,
-    TrueDot, true_dot, equal, notEqual)
+    TrueDot, true_dot, eq, neq)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -666,7 +666,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csr_matrix()
         y = sparse.csr_matrix()
 
-        equality = equal(x, y)
+        equality = eq(x, y)
 
         f = theano.function([x, y], equality)
 
@@ -685,7 +685,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csc_matrix()
         y = sparse.csc_matrix()
 
-        equality = equal(x, y)
+        equality = eq(x, y)
 
         f = theano.function([x, y], equality)
 
@@ -704,7 +704,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csr_matrix()
         y = sparse.csr_matrix()
 
-        unequality = notEqual(x, y)
+        unequality = neq(x, y)
 
         f = theano.function([x, y], unequality)
 
@@ -723,7 +723,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csc_matrix()
         y = sparse.csc_matrix()
 
-        unequality = notEqual(x, y)
+        unequality = neq(x, y)
 
         f = theano.function([x, y], unequality)
 
@@ -742,7 +742,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csr_matrix()
         y = theano.tensor.matrix()
 
-        equality = equal(x, y)
+        equality = eq(x, y)
 
         f = theano.function([x, y], equality)
 
@@ -761,7 +761,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csc_matrix()
         y = theano.tensor.matrix()
 
-        equality = equal(x, y)
+        equality = eq(x, y)
 
         f = theano.function([x, y], equality)
 
@@ -780,7 +780,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csr_matrix()
         y = theano.tensor.matrix()
 
-        unequality = notEqual(x, y)
+        unequality = neq(x, y)
 
         f = theano.function([x, y], unequality)
 
@@ -799,7 +799,7 @@ class test_comparison(unittest.TestCase):
         x = sparse.csc_matrix()
         y = theano.tensor.matrix()
 
-        unequality = notEqual(x, y)
+        unequality = neq(x, y)
 
         f = theano.function([x, y], unequality)
 
