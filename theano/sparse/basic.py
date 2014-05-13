@@ -1995,7 +1995,6 @@ class MulSD(gof.op.Op):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
         assert x.format in ["csr", "csc"]
-    
 
         # upcast the tensor. Is the cast of sparse done implemented?
         dtype = scalar.upcast(x.type.dtype, y.type.dtype)
