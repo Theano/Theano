@@ -6845,6 +6845,17 @@ class test_ptp(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(result, numpyResult))
 
+    def test_interface(self):
+        x = matrix('x')
+        p = x.ptp(1)
+        f = theano.function([x], p)
+
+        y = rand_ranged(-1000, 1000, [100, 100])
+        result = f(y)
+        numpyResult = numpy.ptp(y, 1)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
+
 if __name__ == '__main__':
 
     t = TestInferShape('setUp')
