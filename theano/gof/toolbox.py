@@ -162,18 +162,18 @@ class Validator(Feature):
         # Don't call unpickle here, as ReplaceValidate.on_attach()
         # call to History.on_attach() will call the
         # ReplaceValidate.unpickle and not History.unpickle
-        fgraph.validate = partial(self.validate, fgraph)
-        fgraph.consistent = partial(self.consistent, fgraph)
+        fgraph.validate = partial(self.validate_, fgraph)
+        fgraph.consistent = partial(self.consistent_, fgraph)
 
     def unpickle(self, fgraph):
-        fgraph.validate = partial(self.validate, fgraph)
-        fgraph.consistent = partial(self.consistent, fgraph)
+        fgraph.validate = partial(self.validate_, fgraph)
+        fgraph.consistent = partial(self.consistent_, fgraph)
 
     def on_detach(self, fgraph):
         del fgraph.validate
         del fgraph.consistent
 
-    def validate(self, fgraph):
+    def validate_(self, fgraph):
         t0 = time.time()
         ret = fgraph.execute_callbacks('validate')
         t1 = time.time()
@@ -181,7 +181,7 @@ class Validator(Feature):
             fgraph.profile.validate_time += t1 - t0
         return ret
 
-    def consistent(self, fgraph):
+    def consistent_(self, fgraph):
         try:
             fgraph.validate()
             return True
