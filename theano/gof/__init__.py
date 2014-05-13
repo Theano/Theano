@@ -81,3 +81,8 @@ from theano.gof.type import \
 
 from theano.gof.utils import \
     hashtype, object2, MethodNotDefined
+
+import theano
+
+if theano.config.cmodule.preload_cache:
+    cc.get_module_cache()
