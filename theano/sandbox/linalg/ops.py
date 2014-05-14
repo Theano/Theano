@@ -1202,3 +1202,87 @@ class EigvalshGrad(Op):
 
 def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
+
+
+def norm(x,ord,axis):
+	x = as_tensor_variable(x)
+	ndim = x.ndim
+	if ndim == 0:
+		raise TypeError
+	elif ndim == 1:
+		if ord == None:
+			z = (tensor.sum(x**2))**(0.5)
+			return z
+		elif ord == 'inf':
+			z = tensor.max(abs(x))
+			return z
+		elif ord == '-inf':
+			z = tensor.min(abs(x))
+			return z
+		elif ord == 0:
+			z = (x[x.nonzero()]).shape[0]
+			return z
+		else:
+			try:
+				z = (tensor.sum(abs(x**ord)))**(1./ord)
+			except TypeError:
+				raise ValueError
+			return z
+	elif ndim >= 2:
+		if axis == None:
+			if ord == None or ord == 'fro':
+				z = (tensor.sum(abs(x**2)))**(0.5)
+				return z
+			elif ord == 'inf':
+				z = tensor.sum(abs(x),1)
+				return tensor.max(z)
+			elif ord == '-inf':
+				z = tensor.sum(abs(x),1)
+				return tensor.min(z)
+			elif ord == 1:
+				z = tensor.sum(abs(x),0)
+				return tensor.max(z)
+			elif ord == -1:
+				z = tensor.sum(abs(x),0)
+				return tensor.min(z)
+			else:
+				raise ValueError(0)
+		else:
+			try:
+				axis + 1
+				if ord == None:
+					z = (tensor.sum(x**2,axis))**(0.5)
+					return z
+				elif ord == 'inf':
+					z = tensor.max(abs(x),axis)
+					return z
+				elif ord == '-inf':
+					z = tensor.min(abs(x),axis)
+					return z
+				elif ord == 0:
+					z = tensor.sum(tensor.neq(x,0),1)
+					return z
+				else:
+					try:
+						z = (tensor.sum(abs(x**ord),axis))**(1./ord)
+					except TypeError:
+						raise ValueError
+					return z
+			except TypeError:
+				if ord == None or ord == 'fro':
+					z = (tensor.sum(abs(x**2),axis))**(0.5)
+					return z
+				elif ord == 'inf':
+					z = tensor.sum(abs(x),1)
+					return tensor.max(z,axis)
+				elif ord == '-inf':
+					z = tensor.sum(abs(x),1)
+					return tensor.min(z,axis)
+				elif ord == 1:
+					z = tensor.sum(abs(x),0)
+					return tensor.max(z,axis)
+				elif ord == -1:
+					z = tensor.sum(abs(x),0)
+					return tensor.min(z,axis)
+				else:
+					raise ValueError(0)
