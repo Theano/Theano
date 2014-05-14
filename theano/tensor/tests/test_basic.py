@@ -6786,7 +6786,12 @@ class test_ptp(unittest.TestCase):
         x = scalar('x')
         p = ptp(x)
         f = theano.function([x], p)
-        self.assertTrue(f(rand() * 20000 - 10000) == 0)
+
+        y = numpy.asarray(rand() * 2000 - 1000, dtype=config.floatX)
+        result = f(y)
+        numpyResult = numpy.ptp(y)
+
+        self.assertTrue(numpy.array_equal(result, numpyResult))
 
     def test_vector(self):
 
