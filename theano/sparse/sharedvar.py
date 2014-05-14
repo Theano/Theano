@@ -5,8 +5,8 @@ from theano.sparse.basic import SparseType, _sparse_py_operators
 
 
 class SparseTensorSharedVariable(_sparse_py_operators, SharedVariable):
-
-    format = ""
+    dtype = property(lambda self: self.type.dtype)
+    format = property(lambda self: self.type.format)
 
 
 @shared_constructor
@@ -25,7 +25,5 @@ def sparse_constructor(value, name=None, strict=False, allow_downcast=None,
     type = SparseType(format=format, dtype=value.dtype)
     if not borrow:
         value = copy.deepcopy(value)
-    toReturn = SparseTensorSharedVariable(type=type, value=value, name=name,
+    return SparseTensorSharedVariable(type=type, value=value, name=name,
                                       strict=strict, allow_downcast=allow_downcast)
-    toReturn.format = format
-    return toReturn
