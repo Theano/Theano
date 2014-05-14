@@ -109,6 +109,7 @@ class CuIFFTOp(ScikitsCudaOp):
             broadcastable=[False] * (inp.type.ndim - 1))
 
     def make_thunk(self, node, storage_map, _, _2):
+        from theano.misc.pycuda_utils import to_gpuarray
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
