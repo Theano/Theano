@@ -2244,8 +2244,6 @@ equal_s_d = EqualSD()
 
 def eq(x, y):
     """
-    Add two matrices, the two of which are sparse.
-
     :param x: A matrix variable.
     :param y: A matrix variable.
 
@@ -2362,8 +2360,6 @@ not_equal_s_d = NotEqualSD()
 
 def neq(x, y):
     """
-    Add two matrices, the two of which are sparse.
-
     :param x: A matrix variable.
     :param y: A matrix variable.
 
