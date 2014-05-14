@@ -941,6 +941,34 @@ class test_comparison(unittest.TestCase):
         self.__generalized_ds_test(gt, sparse.csc_matrix,
                               opT, sp.csc_matrix)
 
+    def test_equality_case(self):
+        """
+        Test assuring normal behaviour when values
+        in the matrices are equal
+        """
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 14])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = sparse.csc_matrix()
+        y = theano.tensor.matrix()
+
+        m1 = sp.csc_matrix((2, 2), dtype=theano.config.floatX)
+        m2 = numpy.asarray([[0, 0], [0, 0]])
+
+        test = {gt: lambda x, y: x > y, lt: lambda x, y: x < y,
+                ge: lambda x, y: x >= y, le: lambda x, y: x <= y}
+
+        for func in test:
+
+            op = func(y, x)
+            f = theano.function([y, x], op)
+
+            self.assertTrue(numpy.array_equal(f(m2, m1),
+                                              test[func](m2, m1)))
+
 
 class T_conversion(unittest.TestCase):
     def setUp(self):
