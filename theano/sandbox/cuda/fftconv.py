@@ -1,9 +1,11 @@
+import string
+
 import numpy as np
 import theano
 import theano.tensor as T
 
-import theano.sandbox.cuda as cuda
-from theano.misc.pycuda_utils import to_gpuarray
+from theano.sandbox.cuda import (GpuOp, basic_ops, CudaNdarrayType,
+                                 CudaNdarray)
 
 import scikits.cuda
 from scikits.cuda import fft, linalg, cublas
@@ -11,8 +13,6 @@ from scikits.cuda import fft, linalg, cublas
 import pycuda.gpuarray
 
 import theano.misc.pycuda_init
-
-import string
 
 linalg.init()
 
@@ -25,7 +25,7 @@ linalg.init()
 
 
 # base class for shared code between scikits.cuda-based ops
-class ScikitsCudaOp(cuda.GpuOp):
+class ScikitsCudaOp(GpuOp):
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -39,8 +39,8 @@ class ScikitsCudaOp(cuda.GpuOp):
         raise NotImplementedError
 
     def make_node(self, inp):
-        inp = cuda.basic_ops.gpu_contiguous(
-            cuda.basic_ops.as_cuda_ndarray_variable(inp))
+        inp = basic_ops.gpu_contiguous(
+            basic_ops.as_cuda_ndarray_variable(inp))
 
         assert inp.dtype == "float32"
 
@@ -50,10 +50,11 @@ class ScikitsCudaOp(cuda.GpuOp):
 class CuFFTOp(ScikitsCudaOp):
     def output_type(self, inp):
         # add one extra dim for real/imag
-        return cuda.CudaNdarrayType(
+        return CudaNdarrayType(
             broadcastable=[False] * (inp.type.ndim + 1))
 
     def make_thunk(self, node, storage_map, _, _2):
+        from theano.misc.pycuda_utils import to_gpuarray
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
@@ -77,7 +78,7 @@ class CuFFTOp(ScikitsCudaOp):
             # only allocate if there is no previous allocation of the
             # right size.
             if z[0] is None or z[0].shape != output_shape:
-                z[0] = cuda.CudaNdarray.zeros(output_shape)
+                z[0] = CudaNdarray.zeros(output_shape)
 
             input_pycuda = to_gpuarray(inputs[0][0])
             # I thought we'd need to change the type on output_pycuda
@@ -104,7 +105,7 @@ class CuFFTOp(ScikitsCudaOp):
 class CuIFFTOp(ScikitsCudaOp):
     def output_type(self, inp):
         # remove extra real/imag dim
-        return cuda.CudaNdarrayType(
+        return CudaNdarrayType(
             broadcastable=[False] * (inp.type.ndim - 1))
 
     def make_thunk(self, node, storage_map, _, _2):
@@ -129,7 +130,7 @@ class CuIFFTOp(ScikitsCudaOp):
             # only allocate if there is no previous allocation of the
             # right size.
             if z[0] is None or z[0].shape != output_shape:
-                z[0] = cuda.CudaNdarray.zeros(output_shape)
+                z[0] = CudaNdarray.zeros(output_shape)
 
             input_pycuda = to_gpuarray(inputs[0][0])
             # input_pycuda is a float32 array with an extra dimension,
@@ -162,7 +163,7 @@ def to_complex_gpuarray(x, copyif=False):
     real/imaginary parts, and turns it into a complex64 PyCUDA
     GPUArray.
     """
-    if not isinstance(x, cuda.CudaNdarray):
+    if not isinstance(x, CudaNdarray):
         raise ValueError("We can transfer only CudaNdarray "
                          "to pycuda.gpuarray.GPUArray")
     else:
@@ -280,10 +281,10 @@ class BatchedComplexDotOp(ScikitsCudaOp):
     doing multiple cublasCgemm calls.
     """
     def make_node(self, inp1, inp2):
-        inp1 = cuda.basic_ops.gpu_contiguous(
-            cuda.basic_ops.as_cuda_ndarray_variable(inp1))
-        inp2 = cuda.basic_ops.gpu_contiguous(
-            cuda.basic_ops.as_cuda_ndarray_variable(inp2))
+        inp1 = basic_ops.gpu_contiguous(
+            basic_ops.as_cuda_ndarray_variable(inp1))
+        inp2 = basic_ops.gpu_contiguous(
+            basic_ops.as_cuda_ndarray_variable(inp2))
 
         assert inp1.dtype == "float32"
         assert inp2.dtype == "float32"
@@ -293,7 +294,7 @@ class BatchedComplexDotOp(ScikitsCudaOp):
         return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
 
     def output_type(self, inp):
-        return cuda.CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
+        return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
 
     def make_thunk(self, node, storage_map, _, _2):
         inputs = [storage_map[v] for v in node.inputs]
@@ -314,7 +315,7 @@ class BatchedComplexDotOp(ScikitsCudaOp):
             # only allocate if there is no previous allocation of the
             # right size.
             if bz[0] is None or bz[0].shape != output_shape:
-                bz[0] = cuda.CudaNdarray.zeros(output_shape)
+                bz[0] = CudaNdarray.zeros(output_shape)
 
             input_bx_pycuda = to_complex_gpuarray(bx[0])
             input_by_pycuda = to_complex_gpuarray(by[0])
