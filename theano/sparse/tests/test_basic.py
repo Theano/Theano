@@ -971,10 +971,11 @@ class test_structureddot(unittest.TestCase):
         #test dot for 2 input sparse matrix
         sparse_dtype = 'float64'
         sp_mat = {'csc': sp.csc_matrix,
-                  'csr': sp.csr_matrix}
+                  'csr': sp.csr_matrix,
+                  'bsr': sp.csr_matrix}
 
-        for sparse_format_a in ['csc', 'csr']:
-            for sparse_format_b in ['csc', 'csr']:
+        for sparse_format_a in ['csc', 'csr', 'bsr']:
+            for sparse_format_b in ['csc', 'csr', 'bsr']:
                 a = SparseType(sparse_format_a, dtype=sparse_dtype)()
                 b = SparseType(sparse_format_b, dtype=sparse_dtype)()
                 d = theano.dot(a, b)

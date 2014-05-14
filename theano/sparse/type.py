@@ -33,7 +33,8 @@ class SparseType(gof.Type):
     """
     if imported_scipy:
         format_cls = {'csr': scipy.sparse.csr_matrix,
-                      'csc': scipy.sparse.csc_matrix}
+                      'csc': scipy.sparse.csc_matrix,
+                      'bsr': scipy.sparse.bsr_matrix}
     dtype_set = set(['int8', 'int16', 'int32', 'int64', 'float32',
                      'uint8', 'uint16', 'uint32', 'uint64',
                      'float64', 'complex64', 'complex128'])
