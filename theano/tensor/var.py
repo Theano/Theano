@@ -699,4 +699,11 @@ class TensorConstant(_tensor_py_operators, Constant):
                           copy.deepcopy(self.data, memo),
                           copy.deepcopy(self.name, memo))
 
+def swapaxes(self, axis1, axis2)
+	"""Return 'tensor.swapaxes(self, axis1, axis2)
+
+	If a matrix is provided with the right axes, its transpose will be returned.
+	"""
+	return theano.tensor.basic.swapaxes(self, axis1, axis2)
+
 TensorType.Constant = TensorConstant
