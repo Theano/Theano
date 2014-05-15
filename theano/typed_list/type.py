@@ -35,8 +35,6 @@ class TypedListType(gof.Type):
                 raise TypeError('Expected a python list')
         else:
             x = list(x)
-            #check all member of list are of the same type
-            #for the moment only one dimension list accepted
 
             x = [self.ttype.filter(y) for y in x]
 

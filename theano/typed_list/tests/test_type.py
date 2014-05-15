@@ -187,5 +187,3 @@ class test_typed_list_type(unittest.TestCase):
 
         self.assertFalse(myManualNestedType1 == myManualNestedType2)
         self.assertFalse(myManualNestedType2 == myManualNestedType1)
-
-        
