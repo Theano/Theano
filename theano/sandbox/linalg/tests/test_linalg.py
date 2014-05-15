@@ -650,3 +650,7 @@ class T_NormTests(unittest.TestCase):
 		self.assertRaises(TypeError, norm, 3, None, None)
 	def test_no_enough_dimensions(self):
 		self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
+
+	def test(self):
+            x = theano.tensor.matrix()
+            x.swapaxes()
