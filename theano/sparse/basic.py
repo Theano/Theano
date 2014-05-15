@@ -284,6 +284,20 @@ class _sparse_py_operators:
     def __rmul__(left, right):
         return mul(left, right)
 
+    # comparison operators
+
+    def __lt__(self, other):
+        return lt(self, other)
+
+    def __le__(self, other):
+        return le(self, other)
+
+    def __gt__(self, other):
+        return gt(self, other)
+
+    def __ge__(self, other):
+        return ge(self, other)
+
     # extra pseudo-operator symbols
 
     def __dot__(left, right):
@@ -337,7 +351,7 @@ class _sparse_py_operators:
         return ret
 
 
-class SparseVariable(gof.Variable, _sparse_py_operators):
+class SparseVariable(_sparse_py_operators, gof.Variable):
     dtype = property(lambda self: self.type.dtype)
     format = property(lambda self: self.type.format)
 
@@ -2176,6 +2190,371 @@ def mul(x, y):
         return mul_s_d(y, x)
     else:
         raise NotImplementedError()
+
+
+class __ComparisonOpSS(gof.op.Op):
+    """
+    Used as a superclass for all comparisons between
+    two sparses matrices
+
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: Comparison(x,y)
+    """
+
+    #Function to override
+    def comparison(self, x, y):
+        raise NotImplementedError()
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x = as_sparse_variable(x)
+        y = as_sparse_variable(y)
+
+        if x.type.format != y.type.format:
+            raise NotImplementedError()
+        return gof.Apply(self,
+                         [x, y],
+                         [SparseType(dtype='uint8',
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
+        assert _is_sparse(x) and _is_sparse(y)
+        assert x.shape == y.shape
+        out[0] = self.comparison(x, y).astype('uint8')
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+class __ComparisonOpSD(gof.op.Op):
+    """
+    Used as a superclass for all comparisons between
+    sparse and dense matrix
+
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: Comparison(x,y)
+    """
+
+    #Function to override
+    def comparison(self, x, y):
+        raise NotImplementedError()
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
+
+        assert y.type.ndim == 2
+        return gof.Apply(self,
+                         [x, y],
+                         [SparseType(dtype='uint8',
+                                 format=x.type.format).make_variable()])
+
+    def perform(self, node, (x, y), (out, )):
+        assert _is_sparse(x)
+        assert x.shape == y.shape
+        assert _is_dense(y)
+        out[0] = self.comparison(x, y).astype('uint8')
+
+    def infer_shape(self, node, ins_shapes):
+        return [ins_shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+def __ComparisonSwitch(SS, SD, DS):
+    """
+    :param SS: function to apply between two sparses matrices.
+    :param SD: function to apply between a sparse and a dense matrix.
+    :param DS: function to apply between a dense and a sparse matrix.
+
+    :return: switch function taking two matrices as input
+
+    :note: At least one of `x` and `y` must be a sparse matrix.
+    :note: DS swap input as a dense matrix cannot be a left operand.
+    """
+
+    def helper(x, y):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        assert scipy_ver >= [0, 13]
+
+        if hasattr(x, 'getnnz'):
+            x = as_sparse_variable(x)
+        if hasattr(y, 'getnnz'):
+            y = as_sparse_variable(y)
+        if not isinstance(x, theano.Variable):
+            x = theano.tensor.as_tensor_variable(x)
+        if not isinstance(y, theano.Variable):
+            y = theano.tensor.as_tensor_variable(y)
+
+        x_is_sparse_variable = _is_sparse_variable(x)
+        y_is_sparse_variable = _is_sparse_variable(y)
+
+        assert x_is_sparse_variable or y_is_sparse_variable
+        if x_is_sparse_variable and y_is_sparse_variable:
+            return SS(x, y)
+        elif x_is_sparse_variable and not y_is_sparse_variable:
+            return SD(x, y)
+        elif y_is_sparse_variable and not x_is_sparse_variable:
+            return DS(y, x)
+        else:
+            raise NotImplementedError()
+
+    return helper
+
+
+class EqualSS(__ComparisonOpSS):
+    """
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: x==y
+    """
+
+    def comparison(self, x, y):
+        return x == y
+
+
+equal_s_s = EqualSS()
+
+
+class EqualSD(__ComparisonOpSD):
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x==y
+    """
+
+    def comparison(self, x, y):
+        return x == y
+
+equal_s_d = EqualSD()
+
+
+class NotEqualSS(__ComparisonOpSS):
+    """
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: x!=y
+    """
+
+    def comparison(self, x, y):
+        return x != y
+
+not_equal_s_s = NotEqualSS()
+
+
+class NotEqualSD(__ComparisonOpSD):
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x!=y
+    """
+
+    def comparison(self, x, y):
+        return x != y
+
+not_equal_s_d = NotEqualSD()
+
+
+class LessThanSS(__ComparisonOpSS):
+    """
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: x<y
+    """
+
+    def comparison(self, x, y):
+        return x < y
+
+less_than_s_s = LessThanSS()
+
+
+class LessThanSD(__ComparisonOpSD):
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x<y
+    """
+
+    def comparison(self, x, y):
+        return x < y
+
+less_than_s_d = LessThanSD()
+
+
+class GreaterThanSS(__ComparisonOpSS):
+    """
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: x>y
+    """
+
+    def comparison(self, x, y):
+        return x > y
+
+greater_than_s_s = GreaterThanSS()
+
+
+class GreaterThanSD(__ComparisonOpSD):
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x>y
+    """
+
+    def comparison(self, x, y):
+        return x > y
+
+greater_than_s_d = GreaterThanSD()
+
+
+class LessEqualSS(__ComparisonOpSS):
+    """
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: x<=y
+    """
+
+    def comparison(self, x, y):
+        return x <= y
+
+less_equal_s_s = LessEqualSS()
+
+
+class LessEqualSD(__ComparisonOpSD):
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x<=y
+    """
+
+    def comparison(self, x, y):
+        return x <= y
+
+less_equal_s_d = LessEqualSD()
+
+
+class GreaterEqualSS(__ComparisonOpSS):
+    """
+    :param x:first compared sparse matrix
+    :param y:second compared sparse matrix
+
+    :return: x>=y
+    """
+
+    def comparison(self, x, y):
+        return x >= y
+
+greater_equal_s_s = GreaterEqualSS()
+
+
+class GreaterEqualSD(__ComparisonOpSD):
+    """
+    :param x:sparse matrix
+    :param y:dense matrix
+
+    :return: x>=y
+    """
+
+    def comparison(self, x, y):
+        return x >= y
+
+greater_equal_s_d = GreaterEqualSD()
+
+"""
+:param x: A matrix variable.
+:param y: A matrix variable.
+
+:return: `x` == `y`
+
+:note: At least one of `x` and `y` must be a sparse matrix.
+"""
+eq = __ComparisonSwitch(equal_s_s, equal_s_d, equal_s_d)
+
+
+"""
+:param x: A matrix variable.
+:param y: A matrix variable.
+
+:return: `x` != `y`
+
+:note: At least one of `x` and `y` must be a sparse matrix.
+"""
+neq = __ComparisonSwitch(not_equal_s_s, not_equal_s_d, not_equal_s_d)
+
+
+"""
+:param x: A matrix variable.
+:param y: A matrix variable.
+
+:return: `x` < `y`
+
+:note: At least one of `x` and `y` must be a sparse matrix.
+"""
+lt = __ComparisonSwitch(less_than_s_s, less_than_s_d, greater_than_s_d)
+
+
+"""
+:param x: A matrix variable.
+:param y: A matrix variable.
+
+:return: `x` > `y`
+
+:note: At least one of `x` and `y` must be a sparse matrix.
+"""
+
+gt = __ComparisonSwitch(greater_than_s_s, greater_than_s_d, less_than_s_d)
+
+"""
+:param x: A matrix variable.
+:param y: A matrix variable.
+
+:return: `x` <= `y`
+
+:note: At least one of `x` and `y` must be a sparse matrix.
+"""
+le = __ComparisonSwitch(less_equal_s_s, less_equal_s_d, greater_equal_s_d)
+
+"""
+:param x: A matrix variable.
+:param y: A matrix variable.
+
+:return: `x` >= `y`
+
+:note: At least one of `x` and `y` must be a sparse matrix.
+"""
+
+ge = __ComparisonSwitch(greater_equal_s_s, greater_equal_s_d,
+                             less_equal_s_d)
 
 
 class HStack(gof.op.Op):

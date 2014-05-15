@@ -40,7 +40,7 @@ from theano.sparse import (
     Diag, diag, SquareDiagonal, square_diagonal,
     EnsureSortedIndices, ensure_sorted_indices, clean,
     ConstructSparseFromList, construct_sparse_from_list,
-    TrueDot, true_dot)
+    TrueDot, true_dot, eq, neq, le, ge, gt, lt)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -645,6 +645,329 @@ class T_AddMul(unittest.TestCase):
                             b = b.data
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=False)
+
+
+class test_comparison(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    #took from tensor basic_test.py
+    def _rand_ranged(self, min, max, shape):
+        return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+                         dtype=config.floatX)
+
+    def __generalized_ss_test(self, theanop, symbolicType, testOp, scipyType):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = symbolicType()
+        y = symbolicType()
+
+        op = theanop(x, y)
+
+        f = theano.function([x, y], op)
+
+        m1 = scipyType(random_lil((10, 40), config.floatX, 3))
+        m2 = scipyType(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, testOp(m1, m2).data))
+
+    def __generalized_sd_test(self, theanop, symbolicType, testOp, scipyType):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = symbolicType()
+        y = theano.tensor.matrix()
+
+        op = theanop(x, y)
+
+        f = theano.function([x, y], op)
+
+        m1 = scipyType(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, testOp(m1, m2).data))
+
+    def __generalized_ds_test(self, theanop, symbolicType, testOp, scipyType):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = symbolicType()
+        y = theano.tensor.matrix()
+
+        op = theanop(y, x)
+
+        f = theano.function([y, x], op)
+
+        m1 = scipyType(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m2, m1).data, testOp(m2, m1).data))
+
+    def test_equalss_csr(self):
+
+        self.__generalized_ss_test(eq, sparse.csr_matrix,
+                              lambda x, y: x == y, sp.csr_matrix)
+
+    def test_equalss_csc(self):
+
+        self.__generalized_ss_test(eq, sparse.csc_matrix,
+                              lambda x, y: x == y, sp.csc_matrix)
+
+    def test_not_equalss_csr(self):
+
+        self.__generalized_ss_test(neq, sparse.csr_matrix,
+                              lambda x, y: x != y, sp.csr_matrix)
+
+    def test_not_equalss_csc(self):
+
+        self.__generalized_ss_test(neq, sparse.csc_matrix,
+                              lambda x, y: x != y, sp.csc_matrix)
+
+    def test_less_equalss_csr(self):
+
+        opT = lambda x, y: x <= y
+
+        self.__generalized_ss_test(le, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_less_equalss_csc(self):
+
+        opT = lambda x, y: x <= y
+
+        self.__generalized_ss_test(le, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_less_thanss_csr(self):
+
+        opT = lambda x, y: x < y
+
+        self.__generalized_ss_test(opT, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_less_thanss_csc(self):
+
+        opT = lambda x, y: x < y
+
+        self.__generalized_ss_test(opT, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_greater_equalss_csr(self):
+
+        opT = lambda x, y: x >= y
+
+        self.__generalized_ss_test(opT, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_greater_equalss_csc(self):
+
+        opT = lambda x, y: x >= y
+
+        self.__generalized_ss_test(opT, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_greater_thanss_csr(self):
+
+        opT = lambda x, y: x > y
+
+        self.__generalized_ss_test(opT, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_greater_thanss_csc(self):
+
+        opT = lambda x, y: x > y
+
+        self.__generalized_ss_test(opT, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_equalsd_csr(self):
+
+        self.__generalized_sd_test(eq, sparse.csr_matrix,
+                              lambda x, y: x == y, sp.csr_matrix)
+
+    def test_equalsd_csc(self):
+
+        self.__generalized_sd_test(eq, sparse.csc_matrix,
+                              lambda x, y: x == y, sp.csc_matrix)
+
+    def test_not_equalsd_csr(self):
+
+        self.__generalized_sd_test(neq, sparse.csr_matrix,
+                              lambda x, y: x != y, sp.csr_matrix)
+
+    def test_not_equalsd_csc(self):
+
+        self.__generalized_sd_test(neq, sparse.csc_matrix,
+                              lambda x, y: x != y, sp.csc_matrix)
+
+    def test_less_equalsd_csr(self):
+
+        opT = lambda x, y: x <= y
+
+        self.__generalized_sd_test(le, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_less_equalsd_csc(self):
+
+        opT = lambda x, y: x <= y
+
+        self.__generalized_sd_test(le, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_less_thansd_csr(self):
+
+        opT = lambda x, y: x < y
+
+        self.__generalized_sd_test(opT, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_less_thansd_csc(self):
+
+        opT = lambda x, y: x < y
+
+        self.__generalized_sd_test(opT, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_greater_equalsd_csr(self):
+
+        opT = lambda x, y: x >= y
+
+        self.__generalized_sd_test(opT, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_greater_equalsd_csc(self):
+
+        opT = lambda x, y: x >= y
+
+        self.__generalized_sd_test(opT, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_greater_thansd_csr(self):
+
+        opT = lambda x, y: x > y
+
+        self.__generalized_sd_test(opT, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_greater_thansd_csc(self):
+
+        opT = lambda x, y: x > y
+
+        self.__generalized_sd_test(opT, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_equalds_csr(self):
+
+        self.__generalized_ds_test(eq, sparse.csr_matrix,
+                              lambda x, y: x == y, sp.csr_matrix)
+
+    def test_equalds_csc(self):
+
+        self.__generalized_ds_test(eq, sparse.csc_matrix,
+                              lambda x, y: x == y, sp.csc_matrix)
+
+    def test_not_equalds_csr(self):
+
+        self.__generalized_ds_test(neq, sparse.csr_matrix,
+                              lambda x, y: x != y, sp.csr_matrix)
+
+    def test_not_equalds_csc(self):
+
+        self.__generalized_ds_test(neq, sparse.csc_matrix,
+                              lambda x, y: x != y, sp.csc_matrix)
+
+    def test_less_equalds_csr(self):
+
+        opT = lambda x, y: x <= y
+
+        self.__generalized_ds_test(le, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_less_equalds_csc(self):
+
+        opT = lambda x, y: x <= y
+
+        self.__generalized_ds_test(le, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_less_thands_csr(self):
+
+        opT = lambda x, y: x < y
+
+        self.__generalized_ds_test(lt, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_less_thands_csc(self):
+
+        opT = lambda x, y: x < y
+
+        self.__generalized_ds_test(lt, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_greater_equalds_csr(self):
+
+        opT = lambda x, y: x >= y
+
+        self.__generalized_ds_test(ge, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_greater_equalds_csc(self):
+
+        opT = lambda x, y: x >= y
+
+        self.__generalized_ds_test(ge, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_greater_thands_csr(self):
+
+        opT = lambda x, y: x > y
+
+        self.__generalized_ds_test(gt, sparse.csr_matrix,
+                              opT, sp.csr_matrix)
+
+    def test_greater_thands_csc(self):
+
+        opT = lambda x, y: x > y
+
+        self.__generalized_ds_test(gt, sparse.csc_matrix,
+                              opT, sp.csc_matrix)
+
+    def test_equality_case(self):
+        """
+        Test assuring normal behaviour when values
+        in the matrices are equal
+        """
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = sparse.csc_matrix()
+        y = theano.tensor.matrix()
+
+        m1 = sp.csc_matrix((2, 2), dtype=theano.config.floatX)
+        m2 = numpy.asarray([[0, 0], [0, 0]])
+
+        test = {gt: lambda x, y: x > y, lt: lambda x, y: x < y,
+                ge: lambda x, y: x >= y, le: lambda x, y: x <= y}
+
+        for func in test:
+
+            op = func(y, x)
+            f = theano.function([y, x], op)
+
+            self.assertTrue(numpy.array_equal(f(m2, m1),
+                                              test[func](m2, m1)))
 
 
 class T_conversion(unittest.TestCase):
