@@ -922,27 +922,36 @@ _grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand
                                   #complex3 = (rand(2,3),randcomplex(2,3)),
                                   #empty1 = (numpy.asarray([]), numpy.asarray([1])),
                                   #empty2 = (numpy.asarray([0]), numpy.asarray([])),
+                                  x_eq_zero = (
+                                      numpy.asarray([0.], dtype=config.floatX),
+                                      numpy.asarray([2.], dtype=config.floatX)
+                                  ),  # Test for issue 1780
                                   )
 #empty2 case is not supported by numpy.
 _good_broadcast_pow_normal_float_pow = copy(_good_broadcast_pow_normal_float)
 del _good_broadcast_pow_normal_float_pow["empty2"]
-_grad_broadcast_pow_normal["x_eq_zero"] = (
-    numpy.asarray([0.], dtype=config.floatX),
-    numpy.asarray([2.], dtype=config.floatX)
-)
+
+# Disable NAN checking for pow operator per issue #1780
+m = copy(theano.compile.get_default_mode())
+m.check_isfinite = False
 
 PowTester = makeBroadcastTester(
-        op=pow,
-        expected=lambda x, y: check_floatX((x, y), x ** y),
-        good=_good_broadcast_pow_normal_float,
-        grad=_grad_broadcast_pow_normal,
-        name='Pow')
+    op=pow,
+    expected=lambda x, y: check_floatX((x, y), x ** y),
+    good=_good_broadcast_pow_normal_float,
+    grad=_grad_broadcast_pow_normal,
+    name='Pow',
+    mode=m
+)
 
-PowInplaceTester = makeBroadcastTester(op=inplace.pow_inplace,
-                                       expected=lambda x, y: x ** y,
-                                       good = _good_broadcast_pow_normal_float_pow,
-                                       grad = _grad_broadcast_pow_normal,
-                                       inplace = True)
+PowInplaceTester = makeBroadcastTester(
+    op=inplace.pow_inplace,
+    expected=lambda x, y: x ** y,
+    good=_good_broadcast_pow_normal_float_pow,
+    grad=_grad_broadcast_pow_normal,
+    inplace=True,
+    mode=m
+)
 
 #Those are corner case when rounding. Their is many rounding algo.
 #c round() fct and numpy round are not the same!
