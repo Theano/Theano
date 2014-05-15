@@ -1712,6 +1712,7 @@ class Pow(BinaryScalarOp):
         first_part = gz * y * x ** (y - 1)
 
         second_part = gz * log(x) * x ** y
+        second_part = switch(eq(x, 0), 0, second_part)
 
         return (first_part, second_part)
 
