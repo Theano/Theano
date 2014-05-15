@@ -1260,7 +1260,7 @@ def norm(x,ord,axis):
 					z = tensor.min(abs(x),axis)
 					return z
 				elif ord == 0:
-					z = tensor.sum(tensor.neq(x,0),1)
+					z = tensor.sum(tensor.neq(x,0),axis)
 					return z
 				else:
 					try:
