@@ -660,7 +660,7 @@ class test_comparison(unittest.TestCase):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
-        if (bool(scipy_ver < [0, 14])):
+        if (bool(scipy_ver < [0, 13])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = symbolicType()
@@ -679,7 +679,7 @@ class test_comparison(unittest.TestCase):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
-        if (bool(scipy_ver < [0, 14])):
+        if (bool(scipy_ver < [0, 13])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = symbolicType()
@@ -698,7 +698,7 @@ class test_comparison(unittest.TestCase):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
-        if (bool(scipy_ver < [0, 14])):
+        if (bool(scipy_ver < [0, 13])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = symbolicType()
@@ -949,7 +949,7 @@ class test_comparison(unittest.TestCase):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
-        if (bool(scipy_ver < [0, 14])):
+        if (bool(scipy_ver < [0, 13])):
             raise SkipTest("comparison operators need newer release of scipy")
 
         x = sparse.csc_matrix()

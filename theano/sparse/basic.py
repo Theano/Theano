@@ -2266,7 +2266,7 @@ def __ComparisonSwitch(SS, SD, DS):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
-        assert scipy_ver >= [0, 14]
+        assert scipy_ver >= [0, 13]
 
         if hasattr(x, 'getnnz'):
             x = as_sparse_variable(x)
