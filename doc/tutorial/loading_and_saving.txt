@@ -131,7 +131,7 @@ matrix *W* and a bias *b*, you can define:
 .. code-block:: python
 
     def __getstate__(self):
-        return (W, b)
+        return (self.W, self.b)
 
     def __setstate__(self, state):
         W, b = state
@@ -145,7 +145,7 @@ functions to reflect the change in name:
 .. code-block:: python
 
     def __getstate__(self):
-        return (weights, bias)
+        return (self.weights, self.bias)
 
     def __setstate__(self, state):
         W, b = state
