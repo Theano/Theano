@@ -1,9 +1,10 @@
-from nose.plugins.attrib import attr
-
-import numpy
-from theano import tensor, function
-
 import unittest
+
+from nose.plugins.attrib import attr
+import numpy
+
+import theano
+from theano import tensor, function
 
 
 # this tests other ops to ensure they keep the dimensions of their
@@ -40,6 +41,9 @@ class TestKeepDims(unittest.TestCase):
 
         x = tensor.dtensor3()
         a = numpy.random.rand(3, 2, 4)
+        # We don't need to test all opt and C code, as this is tested
+        # by the ops tests.
+        mode = theano.compile.Mode(optimizer="fast_compile", linker="py")
 
         # 'max_and_argmax' has two outputs and can be specified with either
         # a single or every axis:
@@ -51,7 +55,8 @@ class TestKeepDims(unittest.TestCase):
             f = function([x], [op(x, axis=axis, keepdims=True)[0],
                                self.makeKeepDims_local(
                                    x, op(x, axis=axis, keepdims=False)[0],
-                                   axis)])
+                                   axis)],
+                         mode=mode)
             ans1, ans2 = f(a)
             assert numpy.allclose(ans1, ans2)
             assert ans1.shape == ans2.shape
@@ -59,7 +64,8 @@ class TestKeepDims(unittest.TestCase):
             f = function([x], [op(x, axis=axis, keepdims=True)[1],
                                self.makeKeepDims_local(
                                    x, op(x, axis=axis, keepdims=False)[1],
-                                   axis)])
+                                   axis)],
+                         mode=mode)
             ans1, ans2 = f(a)
             assert numpy.allclose(ans1, ans2)
             assert ans1.shape == ans2.shape
@@ -73,7 +79,8 @@ class TestKeepDims(unittest.TestCase):
                 f = function([x], [op(x, axis=axis, keepdims=True),
                                    self.makeKeepDims_local(
                                        x, op(x, axis=axis, keepdims=False),
-                                       axis)])
+                                       axis)],
+                             mode=mode)
                 ans1, ans2 = f(a)
                 assert numpy.allclose(ans1, ans2)
                 assert ans1.shape == ans2.shape
@@ -90,7 +97,8 @@ class TestKeepDims(unittest.TestCase):
                 f = function([x], [op(x, axis=axis, keepdims=True),
                                    self.makeKeepDims_local(
                                        x, op(x, axis=axis, keepdims=False),
-                                       axis)])
+                                       axis)],
+                             mode=mode)
 
                 ans1, ans2 = f(a)
                 assert numpy.allclose(ans1, ans2)
