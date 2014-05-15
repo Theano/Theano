@@ -80,21 +80,13 @@ class TestKeepDims(unittest.TestCase):
                 assert numpy.allclose(ans1, ans2)
                 assert ans1.shape == ans2.shape
 
-            keep_param = function([x], op(x, axis=None, keepdims=True))
-            keep_synth = function([x], self.makeKeepDims_local(x,
-                                op(x, axis=None, keepdims=False), None))
-
-            ans1 = keep_param(a)
-            ans2 = keep_synth(a)
-            assert numpy.allclose(ans1, ans2)
-            assert ans1.shape == ans2.shape
-
         # the following ops can be specified with a freely specified axis
         # parameter
         for op in ([tensor.sum, tensor.prod, tensor.mean, tensor.var,
                     tensor.std, tensor.all, tensor.any,
                     tensor.max, tensor.min]):
-            for axis in [0, 1, 2, [0], [1], [2], [0, 1], [1, 2], [0, 1, 2],
+            for axis in [0, 1, 2, [0], [1], [2], None,
+                         [0, 1], [1, 2], [0, 1, 2],
                          [-1], [-2], [-3], [-1, -2], [-1, -2, -3], [0, -2, 2]]:
 
                 keep_param = function([x], op(x, axis=axis, keepdims=True))
@@ -105,12 +97,3 @@ class TestKeepDims(unittest.TestCase):
                 ans2 = keep_synth(a)
                 assert numpy.allclose(ans1, ans2)
                 assert ans1.shape == ans2.shape
-
-            keep_param = function([x], op(x, axis=None, keepdims=True))
-            keep_synth = function([x], self.makeKeepDims_local(x,
-                                op(x, axis=None, keepdims=False), None))
-
-            ans1 = keep_param(a)
-            ans2 = keep_synth(a)
-            assert numpy.allclose(ans1, ans2)
-            assert ans1.shape == ans2.shape
