@@ -739,6 +739,8 @@ class FunctionGraph(utils.object2):
         for feature in self._features:
             for attr in getattr(feature, "pickle_rm_attr", []):
                 del d[attr]
+        # The class Updater take fct as parameter and they are lambda function, so unpicklable.
+#        del d["execute_callbacks_times"]
         return d
 
     def __setstate__(self, dct):

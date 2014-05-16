@@ -43,6 +43,8 @@ if MutableSet is not None:
     from weakref import proxy
 
     class Link(object):
+        # This make that we need to use a different pickle protocol
+        # then the default.  Othewise, there is pickling errors
         __slots__ = 'prev', 'next', 'key', '__weakref__'
 
     class OrderedSet(collections.MutableSet):
