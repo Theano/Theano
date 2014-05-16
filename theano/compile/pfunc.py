@@ -499,7 +499,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
             oo = shared(oo)
         o2.append(oo)
     inp = theano.gof.graph.inputs(o2,
-                                  blockers=inputs)
+                                  blockers=[i.variable for i in inputs])
     shared_inputs = [v for v in inp
                      if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
                      (not v.force_type) and isinstance(v.type, theano.tensor.TensorType)]
