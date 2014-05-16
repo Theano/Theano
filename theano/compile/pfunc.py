@@ -481,7 +481,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                 'theano.clone(f(x), replace={x: g(x)}))`.'
                 % x)
     mode = theano.compile.mode.get_mode(mode)
-    
+
     # Extract TensorSharedVariables
     if not isinstance(updates, dict):
         updates = dict(updates)
@@ -495,14 +495,14 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     shared_inputs = [v for v in inp
                      if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
                      (not v.force_type) and isinstance(v.type, theano.tensor.TensorType)]
-    
+
     # Do we want to make the inner type of TensorSharedVariable
     # resize on GPU.
     gpu = (isinstance(mode.provided_optimizer, theano.gof.Query) and
-            "gpu" in mode.provided_optimizer.include)
+           "gpu" in mode.provided_optimizer.include)
     #TODO check for collision with givens
     for sv in shared_inputs:
-        # clone is a FunctionTensorSharedVariable pointing to 
+        # clone is a FunctionTensorSharedVariable pointing to
         # original. It is transfered to GPU or CPU if gpu is True or
         # false, respectively.
         clone = sv.functionClone(gpu)
