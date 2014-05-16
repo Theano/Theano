@@ -52,6 +52,9 @@ class SliceType(Type):
     def __str__(self):
         return "slice"
 
+    def __eq__(self, other):
+        return type(self) is SliceType and type(other) is SliceType
+
 slicetype = SliceType()
 
 

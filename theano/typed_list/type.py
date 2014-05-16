@@ -23,6 +23,8 @@ class TypedListType(gof.Type):
         else:
             self.ttype = TypedListType(ttype, depth - 1)
 
+        self.Variable.ttype = self.ttype
+
     def filter(self, x, strict=False, allow_downcast=None):
         """
         :Parameters:
@@ -67,3 +69,13 @@ class TypedListType(gof.Type):
             return self.ttype.get_depth() + 1
         else:
             return 0
+
+    def make_variable(self, name=None):
+        """Return a `TypedListVariable` of this type
+
+        :Parameters:
+         - `name`: str
+           A pretty name to identify this `Variable` when printing and
+           debugging
+        """
+        return self.Variable(self, name=name)
