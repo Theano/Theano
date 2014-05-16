@@ -141,6 +141,12 @@ class VM(object):
             profile.variable_shape = self.variable_shape.copy()
             profile.variable_strides = self.variable_strides.copy()
 
+        if hasattr(self, 'node_executed_order'):
+            profile.node_executed_order = self.node_executed_order.copy()
+
+        if hasattr(self, 'node_cleared_order'):
+            profile.node_cleared_order = self.node_cleared_order.copy()
+
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
             self.call_times[i] = 0.0
@@ -298,7 +304,7 @@ class Stack(VM):
         idx = self.node_idx[node]
         t0 = time.time()
         rval = self.thunks[idx]()
-        self.node_order.append(idx)
+        self.node_executed_order.append(idx)
         
         # Some thunks on some computers run faster than the granularity
         # of the time.time clock.
@@ -319,7 +325,8 @@ class Stack(VM):
         compute_map = self.compute_map
         thunks = self.thunks
         dependencies = self.dependencies
-        self.node_order = []
+        self.node_executed_order = []
+        self.node_cleared_order = []
         
         for k in self.storage_map:
             compute_map[k][0] = (k.owner is None)
@@ -502,6 +509,7 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
+                                    self.node_cleared_order.append(storage_map[v]) 
                                     #See the not lazy gc code for explanations
                                     #of compute_map change
                                     compute_map[i][0] = 2

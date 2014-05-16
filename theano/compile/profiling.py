@@ -651,6 +651,9 @@ class ProfileStats(object):
             # after the execution of the corresponding node.
             # It mean that after executing the node,
             # the corresponding variable can be gc.
+            new_order = fgraph.profile.node_executed_order
+            new_storage = fgraph.profile.node_cleared_order
+
             post_thunk_old_storage = []
             computed, last_user = theano.gof.link.gc_helper(order)
             for node in order:
@@ -682,6 +685,24 @@ class ProfileStats(object):
                             old_v = var_mem[node.inputs[old_s]]
                             if not isinstance(old_v, str):
                                 running_memory_size -= old_v
+
+            for node in new_order:
+                val = nodes_mem[node]
+                dmap = getattr(node.op, 'destroy_map', None)
+                vmap = getattr(node.op, 'view_map', None)
+
+                for idx, v in enumerate(val):
+                    if dmap and idx in dmap:
+                        new_node_memory_saved_by_inplace += v
+                    elif vmap and idx in vmap:
+                        new_node_memory_saved_by_view += v
+                    elif not isinstance(v, str):
+                        new_node_memory_size += v
+                        new_running_memory_size += v
+                        for new_s in new_storage:
+                            new_v = var_mem[node.inputs[new_s]]
+                            if not isinstance(new_v, str):
+                                new_running_memory_size -= new_v
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
