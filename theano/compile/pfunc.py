@@ -264,11 +264,17 @@ def rebuild_collect_shared(outputs,
     i = 0
     while i < len(update_expr):
         v, v_update = update_expr[i]
+        cloned_v = clone_v_get_shared_updates(v,
+                                              copy_inputs_over)
+        import pdb;pdb.set_trace()
+        # If we clone v, we fix some bug, but introduces new one.
+        cloned_v = v
         cloned_v_update = clone_v_get_shared_updates(v_update,
                                                      copy_inputs_over)
-        update_d[v] = cloned_v_update
-        if isinstance(v, SharedVariable) and v not in shared_inputs:
-            shared_inputs.append(v)
+        update_d[cloned_v] = cloned_v_update
+        if (isinstance(cloned_v, SharedVariable) and
+            cloned_v not in shared_inputs):
+            shared_inputs.append(cloned_v)
         i += 1
 
     return (input_variables, cloned_outputs,
