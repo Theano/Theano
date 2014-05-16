@@ -488,9 +488,16 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     if not isinstance(givens, dict):
         givens = dict(givens)
     o = outputs or []
-    if isinstance(o, theano.gof.Variable):
+    if isinstance(o, (theano.gof.Variable, Out)):
         o = [o]
-    inp = theano.gof.graph.inputs(o + updates.values() + updates.keys(),
+    o2 = []
+    for oo in list(o) + updates.values() + updates.keys():
+        if isinstance(oo, Out):
+            oo = oo.variable
+        elif not isinstance(oo, Variable):
+            oo = shared(oo)
+        o2.append(oo)
+    inp = theano.gof.graph.inputs(o2,
                                   blockers=inputs)
     shared_inputs = [v for v in inp
                      if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
@@ -511,9 +518,16 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
             clone = clone._as_CudaNdarrayVariable()
         else:
             clone = clone._as_TensorVariable()
-            
-        givens[sv] = clone
-    
+
+        if sv in givens:
+            import pdb;pdb.set_trace()
+        else:
+            givens[sv] = clone
+        if sv in updates:
+            repl = updates[sv]
+            del updates[sv]
+            updates[clone] = repl
+
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
                                          replace=givens,
