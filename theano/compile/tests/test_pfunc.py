@@ -686,8 +686,8 @@ class Test_aliasing_rules(unittest.TestCase):
     library code.
     """
 
-    def shared(self, x):
-        return tensor._shared(x)
+    def shared(self, x, name=None):
+        return tensor._shared(x, name)
 
     def test_shared_constructor_copies(self):
         # shared constructor makes copy
@@ -890,8 +890,8 @@ class Test_aliasing_rules(unittest.TestCase):
     def test_no_aliasing_0(self):
         # B is a shared variable, A is updated with B's contents
         # we need A to be copied to avoid aliasing
-        A = self.shared(numpy.zeros((2, 2)) + .5)
-        B = self.shared(numpy.zeros((2, 2)) - .5)
+        A = self.shared(numpy.zeros((2, 2)) + .5, name='A')
+        B = self.shared(numpy.zeros((2, 2)) - .5, name='B')
         f = pfunc([], [], updates=[(A, B)])
         f()
         assert not numpy.may_share_memory(data_of(A), data_of(B))

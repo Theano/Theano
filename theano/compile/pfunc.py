@@ -3,6 +3,7 @@
 __docformat__ = 'restructuredtext en'
 
 
+import theano
 from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
@@ -263,11 +264,17 @@ def rebuild_collect_shared(outputs,
     i = 0
     while i < len(update_expr):
         v, v_update = update_expr[i]
+        cloned_v = clone_v_get_shared_updates(v,
+                                              copy_inputs_over)
+        import pdb;pdb.set_trace()
+        # If we clone v, we fix some bug, but introduces new one.
+        cloned_v = v
         cloned_v_update = clone_v_get_shared_updates(v_update,
                                                      copy_inputs_over)
-        update_d[v] = cloned_v_update
-        if isinstance(v, SharedVariable) and v not in shared_inputs:
-            shared_inputs.append(v)
+        update_d[cloned_v] = cloned_v_update
+        if (isinstance(cloned_v, SharedVariable) and
+            cloned_v not in shared_inputs):
+            shared_inputs.append(cloned_v)
         i += 1
 
     return (input_variables, cloned_outputs,
@@ -479,6 +486,53 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                 '`theano.function([x], '
                 'theano.clone(f(x), replace={x: g(x)}))`.'
                 % x)
+    mode = theano.compile.mode.get_mode(mode)
+
+    # Extract TensorSharedVariables
+    if not isinstance(givens, dict):
+        givens = dict(givens)
+    o = outputs or []
+    if isinstance(o, (theano.gof.Variable, Out)):
+        o = [o]
+    for oo in (
+               #Check in the updates keys or values have inputs
+               [x for x, y in iter_over_pairs(updates)] +
+               [y for x, y in iter_over_pairs(updates)]):
+        if isinstance(oo, Out):
+            oo = oo.variable
+        elif not isinstance(oo, Variable):
+            oo = shared(oo)
+        o.append(oo)
+    inp = theano.gof.graph.inputs(o,
+                                  blockers=[i.variable for i in inputs])
+    shared_inputs = [v for v in inp
+                     if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
+                     (not v.force_type) and isinstance(v.type, theano.tensor.TensorType)]
+
+    # Do we want to make the inner type of TensorSharedVariable
+    # resize on GPU.
+    gpu = (isinstance(mode.provided_optimizer, theano.gof.Query) and
+           "gpu" in mode.provided_optimizer.include)
+    #TODO check for collision with givens
+    for sv in shared_inputs:
+        # clone is a FunctionTensorSharedVariable pointing to
+        # original. It is transfered to GPU or CPU if gpu is True or
+        # false, respectively.
+        clone = sv.functionClone(gpu)
+        # clone should have same type as original
+        if sv._isCudaType(sv.type):
+            clone = clone._as_CudaNdarrayVariable()
+        else:
+            clone = clone._as_TensorVariable()
+
+        if sv in givens:
+            import pdb;pdb.set_trace()
+        else:
+            givens[sv] = clone
+        if sv in updates:
+            repl = updates[sv]
+            del updates[sv]
+            updates[clone] = repl
 
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,
