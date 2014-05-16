@@ -494,8 +494,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     o = outputs or []
     if isinstance(o, (theano.gof.Variable, Out)):
         o = [o]
-    o2 = []
-    for oo in (list(o) +
+    for oo in (
                #Check in the updates keys or values have inputs
                [x for x, y in iter_over_pairs(updates)] +
                [y for x, y in iter_over_pairs(updates)]):
@@ -503,8 +502,8 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
             oo = oo.variable
         elif not isinstance(oo, Variable):
             oo = shared(oo)
-        o2.append(oo)
-    inp = theano.gof.graph.inputs(o2,
+        o.append(oo)
+    inp = theano.gof.graph.inputs(o,
                                   blockers=[i.variable for i in inputs])
     shared_inputs = [v for v in inp
                      if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
