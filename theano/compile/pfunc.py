@@ -483,15 +483,16 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     mode = theano.compile.mode.get_mode(mode)
 
     # Extract TensorSharedVariables
-    if not isinstance(updates, dict):
-        updates = dict(updates)
     if not isinstance(givens, dict):
         givens = dict(givens)
     o = outputs or []
     if isinstance(o, (theano.gof.Variable, Out)):
         o = [o]
     o2 = []
-    for oo in list(o) + updates.values() + updates.keys():
+    for oo in (list(o) +
+               #Check in the updates keys or values have inputs
+               [x for x, y in iter_over_pairs(updates)] +
+               [y for x, y in iter_over_pairs(updates)]):
         if isinstance(oo, Out):
             oo = oo.variable
         elif not isinstance(oo, Variable):
