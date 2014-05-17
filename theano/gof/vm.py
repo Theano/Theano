@@ -304,7 +304,7 @@ class Stack(VM):
         idx = self.node_idx[node]
         t0 = time.time()
         rval = self.thunks[idx]()
-        self.node_executed_order.append(idx)
+        self.node_executed_order.append(node)
         
         # Some thunks on some computers run faster than the granularity
         # of the time.time clock.
@@ -509,7 +509,7 @@ class Stack(VM):
                                         break
                                 if empty_storage_map:
                                     storage_map[i][0] = None
-                                    self.node_cleared_order.append(storage_map[v]) 
+                                    self.node_cleared_order.append(storage_map[i]) 
                                     #See the not lazy gc code for explanations
                                     #of compute_map change
                                     compute_map[i][0] = 2
