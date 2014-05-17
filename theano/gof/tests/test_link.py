@@ -1,4 +1,7 @@
+from copy import deepcopy
 import unittest
+
+import numpy
 
 from theano.gof import graph
 from theano.gof.graph import Variable, Apply, Constant
@@ -8,6 +11,7 @@ from theano.gof import fg
 
 from theano.gof.link import *
 from theano.compat import cmp
+
 
 def as_variable(x):
     assert isinstance(x, Variable)
@@ -178,3 +182,15 @@ def test_sort_schedule_fn():
     for a, b in zip(nodes[:-1], nodes[1:]):
         if not depends((b,a)):
             assert str(a) < str(b)
+
+
+def test_container_deepcopy():
+    """
+    This is a test to a work around a NumPy.
+    """
+    t = theano.tensor.scalar()
+    v = numpy.asarray(0.)
+    c = Container(t, [v])
+    assert isinstance(c.storage[0], numpy.ndarray)
+    deepcopy(c)
+    assert isinstance(c.storage[0], numpy.ndarray)

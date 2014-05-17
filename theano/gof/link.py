@@ -1,8 +1,10 @@
 """WRITEME"""
-from copy import copy
+from copy import copy, deepcopy
 import StringIO
 import sys
 import traceback
+
+import numpy
 
 import theano
 from theano.gof import utils
@@ -317,6 +319,24 @@ class Container(object):
 
     def __repr__(self):
         return "<" + repr(self.storage[0]) + ">"
+
+    def __deepcopy__(self, memo):
+        # this exists because copy.deepcopy on numpy arrays is broken
+        a = self.storage[0]
+        if type(a) in (numpy.ndarray, numpy.memmap):
+            a = a.copy()
+        else:
+            a = copy.deepcopy(a)
+
+        r = type(self)(
+            deepcopy(self.type, memo),
+            [a],
+            deepcopy(self.readonly),
+            deepcopy(self.strict),
+            deepcopy(self.allow_downcast),
+            deepcopy(self.name, memo),
+            )
+        return r
 
 
 def map_storage(fgraph, order, input_storage, output_storage):
