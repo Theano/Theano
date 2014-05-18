@@ -88,7 +88,8 @@ register_opt(name='gpu_constant_folding')(
 
 
 class InputToGpuOptimizer(Optimizer):
-    """Transfert the input of a graph to the gpu if needed
+    """
+    Transfer the input of a graph to the gpu if it is necessary.
     It should make this part of the optimizer faster we will will need only 1
     pass on the fgraph.
     """
@@ -505,7 +506,6 @@ def local_gpu_gemv(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, gemvs):
-            op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
             return [gpu_gemv_no_inplace(
                     gpu_from_host(z),
@@ -546,7 +546,6 @@ def local_gpu_ger(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, gers):
-            op = host_input.owner.op
             z, a, x, y = host_input.owner.inputs
             return [gpu_ger_no_inplace(
                     gpu_from_host(z),
@@ -582,7 +581,6 @@ def local_gpu_gemm(node):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op,
                                            tensor.blas.Gemm):
-            op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
             return [gpu_gemm_no_inplace(gpu_from_host(z),
                                         a,
@@ -1515,7 +1513,6 @@ def local_gpu_extract_diagonal(node):
     """
     global linalg
     if linalg is None:
-        from theano.sandbox import linalg
         linalg = theano.sandbox.linalg
 
     if (isinstance(node.op, linalg.ops.ExtractDiag) and
