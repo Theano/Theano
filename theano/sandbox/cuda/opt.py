@@ -1513,6 +1513,7 @@ def local_gpu_extract_diagonal(node):
     """
     global linalg
     if linalg is None:
+        from theano.sandbox import linalg
         linalg = theano.sandbox.linalg
 
     if (isinstance(node.op, linalg.ops.ExtractDiag) and
