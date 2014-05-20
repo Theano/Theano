@@ -656,6 +656,12 @@ class test_comparison(unittest.TestCase):
         return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
                          dtype=config.floatX)
 
+    tests = [lambda x, y: x > y, lambda x, y: x < y,
+                lambda x, y: x >= y, lambda x, y: x <= y]
+
+    testsDic = {gt: lambda x, y: x > y, lt: lambda x, y: x < y,
+                ge: lambda x, y: x >= y, le: lambda x, y: x <= y}
+
     def __generalized_ss_test(self, theanop, symbolicType, testOp, scipyType):
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
@@ -713,233 +719,41 @@ class test_comparison(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(f(m2, m1).data, testOp(m2, m1).data))
 
-    def test_equalss_csr(self):
+    def test_ss_csr_comparison(self):
 
-        self.__generalized_ss_test(eq, sparse.csr_matrix,
-                              lambda x, y: x == y, sp.csr_matrix)
+        for op in self.tests:
+            self.__generalized_ss_test(op, sparse.csr_matrix,
+                              op, sp.csr_matrix)
 
-    def test_equalss_csc(self):
+    def test_ss_csc_comparison(self):
 
-        self.__generalized_ss_test(eq, sparse.csc_matrix,
-                              lambda x, y: x == y, sp.csc_matrix)
+        for op in self.tests:
+            self.__generalized_ss_test(op, sparse.csc_matrix,
+                              op, sp.csc_matrix)
 
-    def test_not_equalss_csr(self):
+    def test_sd_csr_comparison(self):
 
-        self.__generalized_ss_test(neq, sparse.csr_matrix,
-                              lambda x, y: x != y, sp.csr_matrix)
+        for op in self.tests:
+            self.__generalized_sd_test(op, sparse.csr_matrix,
+                              op, sp.csr_matrix)
 
-    def test_not_equalss_csc(self):
+    def test_sd_csc_comparison(self):
 
-        self.__generalized_ss_test(neq, sparse.csc_matrix,
-                              lambda x, y: x != y, sp.csc_matrix)
+        for op in self.tests:
+            self.__generalized_sd_test(op, sparse.csc_matrix,
+                              op, sp.csc_matrix)
 
-    def test_less_equalss_csr(self):
+    def test_ds_csc_comparison(self):
 
-        opT = lambda x, y: x <= y
+        for op in self.testsDic:
+            self.__generalized_ds_test(op, sparse.csc_matrix,
+                              self.testsDic[op], sp.csc_matrix)
 
-        self.__generalized_ss_test(le, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
+    def test_ds_csr_comparison(self):
 
-    def test_less_equalss_csc(self):
-
-        opT = lambda x, y: x <= y
-
-        self.__generalized_ss_test(le, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_less_thanss_csr(self):
-
-        opT = lambda x, y: x < y
-
-        self.__generalized_ss_test(opT, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_less_thanss_csc(self):
-
-        opT = lambda x, y: x < y
-
-        self.__generalized_ss_test(opT, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_greater_equalss_csr(self):
-
-        opT = lambda x, y: x >= y
-
-        self.__generalized_ss_test(opT, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_greater_equalss_csc(self):
-
-        opT = lambda x, y: x >= y
-
-        self.__generalized_ss_test(opT, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_greater_thanss_csr(self):
-
-        opT = lambda x, y: x > y
-
-        self.__generalized_ss_test(opT, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_greater_thanss_csc(self):
-
-        opT = lambda x, y: x > y
-
-        self.__generalized_ss_test(opT, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_equalsd_csr(self):
-
-        self.__generalized_sd_test(eq, sparse.csr_matrix,
-                              lambda x, y: x == y, sp.csr_matrix)
-
-    def test_equalsd_csc(self):
-
-        self.__generalized_sd_test(eq, sparse.csc_matrix,
-                              lambda x, y: x == y, sp.csc_matrix)
-
-    def test_not_equalsd_csr(self):
-
-        self.__generalized_sd_test(neq, sparse.csr_matrix,
-                              lambda x, y: x != y, sp.csr_matrix)
-
-    def test_not_equalsd_csc(self):
-
-        self.__generalized_sd_test(neq, sparse.csc_matrix,
-                              lambda x, y: x != y, sp.csc_matrix)
-
-    def test_less_equalsd_csr(self):
-
-        opT = lambda x, y: x <= y
-
-        self.__generalized_sd_test(le, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_less_equalsd_csc(self):
-
-        opT = lambda x, y: x <= y
-
-        self.__generalized_sd_test(le, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_less_thansd_csr(self):
-
-        opT = lambda x, y: x < y
-
-        self.__generalized_sd_test(opT, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_less_thansd_csc(self):
-
-        opT = lambda x, y: x < y
-
-        self.__generalized_sd_test(opT, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_greater_equalsd_csr(self):
-
-        opT = lambda x, y: x >= y
-
-        self.__generalized_sd_test(opT, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_greater_equalsd_csc(self):
-
-        opT = lambda x, y: x >= y
-
-        self.__generalized_sd_test(opT, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_greater_thansd_csr(self):
-
-        opT = lambda x, y: x > y
-
-        self.__generalized_sd_test(opT, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_greater_thansd_csc(self):
-
-        opT = lambda x, y: x > y
-
-        self.__generalized_sd_test(opT, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_equalds_csr(self):
-
-        self.__generalized_ds_test(eq, sparse.csr_matrix,
-                              lambda x, y: x == y, sp.csr_matrix)
-
-    def test_equalds_csc(self):
-
-        self.__generalized_ds_test(eq, sparse.csc_matrix,
-                              lambda x, y: x == y, sp.csc_matrix)
-
-    def test_not_equalds_csr(self):
-
-        self.__generalized_ds_test(neq, sparse.csr_matrix,
-                              lambda x, y: x != y, sp.csr_matrix)
-
-    def test_not_equalds_csc(self):
-
-        self.__generalized_ds_test(neq, sparse.csc_matrix,
-                              lambda x, y: x != y, sp.csc_matrix)
-
-    def test_less_equalds_csr(self):
-
-        opT = lambda x, y: x <= y
-
-        self.__generalized_ds_test(le, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_less_equalds_csc(self):
-
-        opT = lambda x, y: x <= y
-
-        self.__generalized_ds_test(le, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_less_thands_csr(self):
-
-        opT = lambda x, y: x < y
-
-        self.__generalized_ds_test(lt, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_less_thands_csc(self):
-
-        opT = lambda x, y: x < y
-
-        self.__generalized_ds_test(lt, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_greater_equalds_csr(self):
-
-        opT = lambda x, y: x >= y
-
-        self.__generalized_ds_test(ge, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_greater_equalds_csc(self):
-
-        opT = lambda x, y: x >= y
-
-        self.__generalized_ds_test(ge, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
-
-    def test_greater_thands_csr(self):
-
-        opT = lambda x, y: x > y
-
-        self.__generalized_ds_test(gt, sparse.csr_matrix,
-                              opT, sp.csr_matrix)
-
-    def test_greater_thands_csc(self):
-
-        opT = lambda x, y: x > y
-
-        self.__generalized_ds_test(gt, sparse.csc_matrix,
-                              opT, sp.csc_matrix)
+        for op in self.testsDic:
+            self.__generalized_ds_test(op, sparse.csr_matrix,
+                              self.testsDic[op], sp.csr_matrix)
 
     def test_equality_case(self):
         """
@@ -958,16 +772,13 @@ class test_comparison(unittest.TestCase):
         m1 = sp.csc_matrix((2, 2), dtype=theano.config.floatX)
         m2 = numpy.asarray([[0, 0], [0, 0]])
 
-        test = {gt: lambda x, y: x > y, lt: lambda x, y: x < y,
-                ge: lambda x, y: x >= y, le: lambda x, y: x <= y}
-
-        for func in test:
+        for func in self.testsDic:
 
             op = func(y, x)
             f = theano.function([y, x], op)
 
             self.assertTrue(numpy.array_equal(f(m2, m1),
-                                              test[func](m2, m1)))
+                                              self.testsDic[func](m2, m1)))
 
 
 class T_conversion(unittest.TestCase):
