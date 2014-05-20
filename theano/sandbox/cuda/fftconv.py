@@ -382,7 +382,7 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
     input: (b, ic, i0, i1)
     filters: (oc, ic, f0, f1)
 
-    bocder_mode: 'valid' of 'full'
+    border_mode: 'valid' of 'full'
     """
 
     # use symbolic shapes to compute shape info at runtime if not specified
@@ -405,13 +405,13 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
         filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1],
                                          filters)
         input_padded = input
-    elif mode == 'full':
+    elif border_mode == 'full':
         o0 = i0 + f0 - 1
         o1 = i1 + f1 - 1
         filters_padded = T.zeros((oc, ic, o0, o1), dtype='float32')
         filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1],
                                          filters)
-        input_padded = T.zeros((oc, ic, o0, o1), dtype='float32')
+        input_padded = T.zeros((b, ic, o0, o1), dtype='float32')
         input_padded = T.set_subtensor(input_padded[:, :, :i0, :i1],
                                        input)
     else:
