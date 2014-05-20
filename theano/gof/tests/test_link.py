@@ -186,11 +186,11 @@ def test_sort_schedule_fn():
 
 def test_container_deepcopy():
     """
-    This is a test to a work around a NumPy.
+    This is a test to a work around a NumPy bug.
     """
     t = theano.tensor.scalar()
     v = numpy.asarray(0.)
     c = Container(t, [v])
     assert isinstance(c.storage[0], numpy.ndarray)
-    deepcopy(c)
-    assert isinstance(c.storage[0], numpy.ndarray)
+    d = deepcopy(c)
+    assert isinstance(d.storage[0], numpy.ndarray)

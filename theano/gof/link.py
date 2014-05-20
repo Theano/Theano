@@ -4,8 +4,6 @@ import StringIO
 import sys
 import traceback
 
-import numpy
-
 import theano
 from theano.gof import utils
 from theano.gof import graph
@@ -321,21 +319,18 @@ class Container(object):
         return "<" + repr(self.storage[0]) + ">"
 
     def __deepcopy__(self, memo):
-        # this exists because copy.deepcopy on numpy arrays is broken
-        a = self.storage[0]
-        if type(a) in (numpy.ndarray, numpy.memmap):
-            a = a.copy()
-        else:
-            a = copy.deepcopy(a)
-
         r = type(self)(
             deepcopy(self.type, memo),
-            [a],
+            deepcopy(self.storage),
             deepcopy(self.readonly),
             deepcopy(self.strict),
             deepcopy(self.allow_downcast),
             deepcopy(self.name, memo),
             )
+        # To force the call to filter.  This is a work around NumPy
+        # deepcopy of ndarray with 0 dimention that don't return an
+        # ndarray.
+        r.data = r.data
         return r
 
 
