@@ -34,6 +34,7 @@ def test_graph_equivalence():
     # This does not work.
     assert is_same_graph(g1_y, g1_y)
     assert is_same_graph(g1_y, g1_yy)
+    import ipdb; ipdb.set_trace()
     assert is_same_graph(g1_y, g3_y, givens={g1_a: g3_a, g1_b: g3_b})
     l1 = theano.gof.graph.inputs([g1_y])
     l2 = theano.gof.graph.inputs([g3_y])
