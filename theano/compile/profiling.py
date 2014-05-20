@@ -646,13 +646,30 @@ class ProfileStats(object):
             # The maximum of running_memory_size during the function
             running_max_memory_size = 0
 
+            new_node_memory_size = 0
+            # The sum of memory saved by returning view instead of new
+            # allocation with new node executed order
+            new_node_memory_saved_by_view = 0
+            # The sum of memory saved by reusing the input instead of
+            # new allocation with new node executed order
+            new_node_memory_saved_by_inplace = 0
+            # The memory allocated after the current apply node with 
+            # new node executed order
+            new_running_memory_size = 0
+            # The maximum of running_memory_size during the function
+            # with new node executed order
+            new_running_max_memory_size = 0            
+
             order = fgraph.toposort()
             # A list of intermediate variable that are not need
             # after the execution of the corresponding node.
             # It mean that after executing the node,
             # the corresponding variable can be gc.
+            
             new_order = fgraph.profile.node_executed_order
+            # A list of new executed node order
             new_storage = fgraph.profile.node_cleared_order
+            # A list of variables that get freed
 
             post_thunk_old_storage = []
             computed, last_user = theano.gof.link.gc_helper(order)
@@ -699,6 +716,8 @@ class ProfileStats(object):
                     elif not isinstance(v, str):
                         new_node_memory_size += v
                         new_running_memory_size += v
+                        if new_running_memory_size > new_running_max_memory_size:
+                            new_running_max_memory_size = new_running_memory_size
                         for new_s in new_storage:
                             new_v = var_mem[node.inputs[new_s]]
                             if not isinstance(new_v, str):
