@@ -16,6 +16,8 @@ class _typed_list_py_operators:
     def extend(self, toAppend):
         return Extend()(self, toAppend)
 
+    ttype = property(lambda self: self.type.ttype)
+
 
 class TypedListVariable(_typed_list_py_operators, Variable):
     """
@@ -37,6 +39,7 @@ class GetItem(Op):
 
     def make_node(self, x, index):
         assert isinstance(x.type, TypedListType)
+        assert isinstance(index, Variable)
         if isinstance(index.type, SliceType):
             return Apply(self, [x, index], [x.type()])
         elif isinstance(index, T.TensorVariable) and index.ndim == 0:
@@ -75,6 +78,8 @@ class Append(Op):
     def __str__(self):
         return self.__class__.__name__
 
+    destroy_map = {0: [0]}
+
 
 class Extend(Op):
     """
@@ -97,3 +102,5 @@ class Extend(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+    destroy_map = {0: [0]}

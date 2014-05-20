@@ -23,8 +23,6 @@ class TypedListType(gof.Type):
         else:
             self.ttype = TypedListType(ttype, depth - 1)
 
-        self.Variable.ttype = self.ttype
-
     def filter(self, x, strict=False, allow_downcast=None):
         """
         :Parameters:
@@ -49,9 +47,6 @@ class TypedListType(gof.Type):
         """
         two list are equals if they contains the same type.
         """
-
-        if not hasattr(other, 'ttype'):
-            return False
 
         return  type(self) == type(other) and self.ttype == other.ttype
 
