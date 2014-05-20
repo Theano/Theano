@@ -39,7 +39,13 @@ class GetItem(Op):
 
     def make_node(self, x, index):
         assert isinstance(x.type, TypedListType)
-        assert isinstance(index, Variable)
+        if not isinstance(index, Variable):
+            if isinstance(index, slice):
+                index = Constant(SliceType(), index)
+                return Apply(self, [x, index], [x.type()])
+            else:
+                index = T.constant(index, ndim=0)
+                return Apply(self, [x, index], [x.ttype()])
         if isinstance(index.type, SliceType):
             return Apply(self, [x, index], [x.type()])
         elif isinstance(index, T.TensorVariable) and index.ndim == 0:
