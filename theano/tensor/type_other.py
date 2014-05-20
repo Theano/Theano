@@ -2,7 +2,7 @@
 # Slice type and Op. None Type and NoneConst.
 #
 import theano
-from theano.gof import Apply, Constant, Generic, Op, Type
+from theano.gof import Apply, Constant, Generic, Op, Type, hashtype
 from theano.gradient import DisconnectedType
 
 
@@ -54,6 +54,9 @@ class SliceType(Type):
 
     def __eq__(self, other):
         return type(self) is SliceType and type(other) is SliceType
+
+    def __hash__(self):
+        return hashtype(self)
 
 slicetype = SliceType()
 

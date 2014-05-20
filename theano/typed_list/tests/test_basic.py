@@ -1,17 +1,13 @@
 import unittest
 
-from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
-from numpy.testing import dec, assert_array_equal, assert_allclose
-from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.typed_list
 from theano import tensor as T
 from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
-from theano.typed_list.basic import (get_item, append, extend)
+from theano.typed_list.basic import (GetItem, Append, Extend)
 from theano.tests import unittest_tools as utt
 
 
@@ -33,14 +29,14 @@ class test_get_item(unittest.TestCase):
 
         mySymbolicSlice = SliceType()()
 
-        z = get_item()(mySymbolicMatricesList, mySymbolicSlice)
+        z = GetItem()(mySymbolicMatricesList, mySymbolicSlice)
 
         self.assertFalse(isinstance(z, T.TensorVariable))
 
         f = theano.function([mySymbolicMatricesList, mySymbolicSlice],
                             z)
 
-        x = rand_ranged_matrix(-1000, 1000, [100, 100])
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], slice(0, 1, 1)), [x]))
 
@@ -51,12 +47,12 @@ class test_get_item(unittest.TestCase):
 
         mySymbolicScalar = T.scalar()
 
-        z = get_item()(mySymbolicMatricesList, mySymbolicScalar)
+        z = GetItem()(mySymbolicMatricesList, mySymbolicScalar)
 
         f = theano.function([mySymbolicMatricesList, mySymbolicScalar],
                             z)
 
-        x = rand_ranged_matrix(-1000, 1000, [100, 100])
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0)), x))
 
@@ -70,7 +66,7 @@ class test_get_item(unittest.TestCase):
         f = theano.function([mySymbolicMatricesList, mySymbolicScalar],
                             z)
 
-        x = rand_ranged_matrix(-1000, 1000, [100, 100])
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0)), x))
 
@@ -79,7 +75,7 @@ class test_get_item(unittest.TestCase):
                             theano.config.floatX, (False, False)))()
         mySymbolicMatrix = T.matrix()
 
-        self.assertRaises(TypeError, get_item(), mySymbolicMatricesList,
+        self.assertRaises(TypeError, GetItem(), mySymbolicMatricesList,
                           mySymbolicMatrix)
 
 
@@ -90,13 +86,13 @@ class test_append(unittest.TestCase):
                             theano.config.floatX, (False, False)))()
         myMatrix = T.matrix()
 
-        z = append()(mySymbolicMatricesList, myMatrix)
+        z = Append()(mySymbolicMatricesList, myMatrix)
 
         f = theano.function([mySymbolicMatricesList, myMatrix], z)
 
-        x = rand_ranged_matrix(-1000, 1000, [100, 100])
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        y = rand_ranged_matrix(-1000, 1000, [100, 100])
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
 
@@ -109,13 +105,13 @@ class test_extend(unittest.TestCase):
         mySymbolicMatricesList2 = TypedListType(T.TensorType(
                             theano.config.floatX, (False, False)))()
 
-        z = extend()(mySymbolicMatricesList1, mySymbolicMatricesList2)
+        z = Extend()(mySymbolicMatricesList1, mySymbolicMatricesList2)
 
         f = theano.function([mySymbolicMatricesList1, mySymbolicMatricesList2],
                             z)
 
-        x = rand_ranged_matrix(-1000, 1000, [100, 100])
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        y = rand_ranged_matrix(-1000, 1000, [100, 100])
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))

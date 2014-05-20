@@ -1,10 +1,6 @@
 import unittest
 
-from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
-from numpy.testing import dec, assert_array_equal, assert_allclose
-from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.typed_list
@@ -91,15 +87,14 @@ class test_typed_list_type(unittest.TestCase):
 
     def test_intern_filter(self):
         """
-        (supposing theano.config.floatX = floatX)
         Test checking if values contained are themselves
         filtered. If they weren't this code would raise
         an exception.
         """
-        myType = TypedListType(T.TensorType(theano.config.floatX,
+        myType = TypedListType(T.TensorType('float64',
                                             (False, False)))
 
-        x = numpy.asarray([[4, 5], [4, 5]], dtype='Float32')
+        x = numpy.asarray([[4, 5], [4, 5]], dtype='float32')
 
         self.assertTrue(numpy.array_equal(myType.filter([x]), [x]))
 

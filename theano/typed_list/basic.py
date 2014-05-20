@@ -8,13 +8,13 @@ from theano import tensor as T
 class _typed_list_py_operators:
 
     def __getitem__(self, index):
-        return get_item()(self, index)
+        return GetItem()(self, index)
 
     def append(self, toAppend):
-        return append()(self, toAppend)
+        return Append()(self, toAppend)
 
     def extend(self, toAppend):
-        return extend()(self, toAppend)
+        return Extend()(self, toAppend)
 
 
 class TypedListVariable(_typed_list_py_operators, Variable):
@@ -25,7 +25,7 @@ class TypedListVariable(_typed_list_py_operators, Variable):
 TypedListType.Variable = TypedListVariable
 
 
-class get_item(Op):
+class GetItem(Op):
     """
     get specified slice of a typed list
     """
@@ -37,7 +37,7 @@ class get_item(Op):
 
     def make_node(self, x, index):
         assert isinstance(x.type, TypedListType)
-        if index.type == SliceType():
+        if isinstance(index.type, SliceType):
             return Apply(self, [x, index], [x.type()])
         elif isinstance(index, T.TensorVariable) and index.ndim == 0:
             return Apply(self, [x, index], [x.ttype()])
@@ -53,7 +53,7 @@ class get_item(Op):
         return self.__class__.__name__
 
 
-class append(Op):
+class Append(Op):
     """
     #append an element at the end of another list
     """
@@ -76,7 +76,7 @@ class append(Op):
         return self.__class__.__name__
 
 
-class extend(Op):
+class Extend(Op):
     """
     append all element of a list at the end of another list
     """
