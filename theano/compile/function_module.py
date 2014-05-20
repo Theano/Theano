@@ -18,6 +18,7 @@ from theano.gof.python25 import partial
 import theano.compile.mode
 from theano.compile.io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
 from theano.compile.ops import deep_copy_op, view_op
+from theano.gof.graph import is_same_graph
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -1061,71 +1062,97 @@ class FunctionMaker(object):
                 '''
                 try:
                     f = open(graph_db_file, 'r+')
+                    print 'graph_db exists'
                 except IOError:
                     # create graph_db
                     f = open(graph_db_file, 'w+b')
-                    print 'creating %s'%graph_db_file
+                    print 'created new graph_db %s'%graph_db_file
                                     
                 # load the graph_db dictionary
                 try:
                     graph_db = cPickle.load(f)
+                    print 'graph_db is not empty'
                 except EOFError:
                     # the file has nothing in it
+                    print 'graph_db is empty'
                     graph_db = {}
                     
-                print 'loaded %s, size=%d'%(graph_db_file,len(graph_db))
+                print 'loaded graph_db from %s, size=%d'%(graph_db_file,len(graph_db))
                 need_optimize = True
                 # the sole purpose of this loop is to set 'need_optimize'
-                for graph_old in graph_db.keys():
+                for i, graph_old in enumerate(graph_db.keys()):
                     inputs_old = graph_old.inputs
                     outputs_old = graph_old.outputs
                     size_old = len(graph_old.nodes)
-
+                    print 'looping through graph_db %d/%d'%(i+1,len(graph_db))
                     # Some heuristics to check is the same graphs have
                     # already been optimized before.
                     if len(inputs_new) != len(inputs_old):
                         # If the inputs are of different size,
-                        # two graphs are for sure different 
+                        # two graphs are for sure different
+                        print 'need to optimize, because input size is different'
+                        continue
+                    elif len(outputs_new) != len(outputs_old):
+                        # If the inputs are of different size,
+                        # two graphs are for sure different
+                        print 'need to optimize, because output size is different'
                         continue
                     else:
                         # when the both inputs are of the same size
                         givens = dict(zip(inputs_new, inputs_old))
-                        is_same = is_same_graph(outputs_new, outputs_old,
-                                                 givens=givens)
+                        '''
+                        # strip .fgraph off the givens
+                        i_new = [copy.deepcopy(input_new) for input_new in inputs_new]
+                        i_old = [copy.deepcopy(input_old) for input_old in inputs_old]
+                        for node in i_new:
+                            node.fgraph = None
+                        for node in i_old:
+                            node.fgraph = None
+                        givens = dict(zip(i_new, i_old))
+                        '''
+                        # each element indicates if one of the outputs has the same graph
+                        flags = []
+                        for output_new, output_old in zip(outputs_new, outputs_old):
+                            print 'loop through outputs node for both graphs'
+                            '''
+                            t1 = copy.deepcopy(output_new)
+                            t2 = copy.deepcopy(output_old)
+                            # is_same_graph complains if fgraph is not None
+                            t1.fgraph = None
+                            t2.fgraph = None
+                            '''
+                            flag = is_same_graph(output_new, output_old,givens=givens)
+                            flags.append(flag)
+                            
+                        is_same = all(flags)
                         if is_same:
                             # found the match
-                            print 'found the match'
+                            print 'found #TODO: he match, no need to optimize'
                             need_optimize = False
                             break
 
                 # now optimize or not
                 if need_optimize:
                     # this is a brand new graph, optimize it, save it to graph_db
-                    import ipdb; ipdb.set_trace()
-                    test_file = open(theano.config.compiledir + '/test.pkl', 'w+')
-                    cPickle.dump(fgraph, test_file)
-                    test_file.close()
-                    test_file = open(theano.config.compiledir + '/test.pkl', 'r')
-                    cPickle.load(test_file)
-                    
-                    print 'Need to optimize the graph'
+                    print 'optimizing the graph'
                     before_opt = copy.deepcopy(fgraph)
                     start_optimizer = time.time()
                     optimizer_profile = optimizer(fgraph)
                     end_optimizer = time.time()
                     opt_time = end_optimizer - start_optimizer
-
+                    '''
                     import ipdb; ipdb.set_trace()
                     test_file = open(theano.config.compiledir + '/test.pkl', 'w+')
-                    cPickle.dump(fgraph, test_file)
+                    cPickle.dump(fgraph, test_file, -1)
                     test_file.close()
                     test_file = open(theano.config.compiledir + '/test.pkl', 'r')
                     cPickle.load(test_file)
-                    
+                    '''
                     graph_db.update({before_opt:fgraph})
-                    cPickle.dump(graph_db, f)
+                    cPickle.dump(graph_db, f, -1)
+                    print 'saved into graph_db'
                 else:
-                    print 'Do not need to optimize the graph'
+                    print 'no opt, get graph from graph_db'
                     # just read the optmized graph from graph_db
                     opt_time = 0
                     fgraph = graph_db[fgraph]
@@ -1137,6 +1164,8 @@ class FunctionMaker(object):
                 
             opt_time = optimize_graph(fgraph)
             
+            print 'opt took %s'%opt_time
+            import ipdb; ipdb.set_trace()
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
