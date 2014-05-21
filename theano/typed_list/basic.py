@@ -120,7 +120,7 @@ class ExtendInplace(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def make_node(self, x, toAppend, inplace=False):
+    def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
         assert x.type == toAppend.type
         return Apply(self, [x, toAppend], [x.type()])
@@ -145,7 +145,7 @@ class Extend(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def make_node(self, x, toAppend, inplace=False):
+    def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
         assert x.type == toAppend.type
         return Apply(self, [x, toAppend], [x.type()])
