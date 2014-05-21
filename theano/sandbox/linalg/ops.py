@@ -1286,3 +1286,29 @@ def norm(x,ord,axis):
 					return tensor.min(z,axis)
 				else:
 					raise ValueError(0)
+
+class lstsq(theano.Op):
+    def __eq__(self, other):
+        pass
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, x, y, rcond):
+        x = theano.tensor.as_tensor_variable(x)
+        y = theano.tensor.as_tensor_variable(y)
+        rcond = theano.tensor.as_tensor_variable(rcond)
+        return theano.Apply(self, [x, y, rcond], [y.type(), theano.tensor.dvector(), theano.tensor.lscalar(), theano.tensor.dvector()])
+
+    def perform(self, node, inputs, outputs):
+        x = inputs[0]
+        y = inputs[1]
+        rcond = inputs[2]
+        zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])            
+        outputs[0][0] = zz[0]
+        outputs[1][0] = zz[1]
+        outputs[2][0] = zz[2]
+        outputs[3][0] = zz[3]

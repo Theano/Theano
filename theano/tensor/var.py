@@ -556,7 +556,13 @@ class _tensor_py_operators:
         """see 'theano.tensor.ptp'"""
 
         return theano.tensor.ptp(self, axis)
+        
+    def swapaxes(self, axis1, axis2):
+        """Return 'tensor.swapaxes(self, axis1, axis2)
 
+        If a matrix is provided with the right axes, its transpose will be returned.
+        """
+        return theano.tensor.basic.swapaxes(self, axis1, axis2)
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
@@ -698,12 +704,5 @@ class TensorConstant(_tensor_py_operators, Constant):
         return type(self)(copy.deepcopy(self.type, memo),
                           copy.deepcopy(self.data, memo),
                           copy.deepcopy(self.name, memo))
-
-    def swapaxes(self, axis1, axis2):
-	"""Return 'tensor.swapaxes(self, axis1, axis2)
-
-	If a matrix is provided with the right axes, its transpose will be returned.
-	"""
-	return theano.tensor.basic.swapaxes(self, axis1, axis2)
 
 TensorType.Constant = TensorConstant

@@ -619,6 +619,34 @@ class T_NormTests(unittest.TestCase):
 	def test_no_enough_dimensions(self):
 		self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
 
-	def test(self):
-            x = theano.tensor.matrix()
-            x.swapaxes()
+def test():
+    x = theano.tensor.matrix()
+    x.swapaxes(0,1)
+
+class T_lstsq(unittest.TestCase):
+    def test_correct_solution(self):
+        x = tensor.lmatrix()
+        y = tensor.lmatrix()
+        z = tensor.lscalar()
+        b = theano.sandbox.linalg.ops.lstsq()(x,y,z)
+        f = function([x,y,z], b)
+        TestMatrix1 = numpy.asarray([[2,1],[3,4]])
+        TestMatrix2 = numpy.asarray([[17,20],[43,50]])
+        TestScalar = numpy.asarray(1)
+        f = function([x,y,z], b)
+        m = f(TestMatrix1, TestMatrix2, TestScalar)
+        self.assertTrue(numpy.allclose(TestMatrix2, numpy.dot(TestMatrix1, m[0])))
+    def test_wrong_coefficient_matrix(self):
+        x = tensor.vector()
+        y = tensor.vector()
+        z = tensor.scalar()
+        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        f = function([x, y, z], b)
+        self.assertRaises(numpy.linalg.linalg.LinAlgError, f, [2,1],[2,1],1)
+    def test_wrong_rcond_dimension(self):
+        x = tensor.vector()
+        y = tensor.vector()
+        z = tensor.vector()
+        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        f = function([x, y, z], b)
+        self.assertRaises(numpy.linalg.LinAlgError, f, [2,1],[2,1],[2,1])
