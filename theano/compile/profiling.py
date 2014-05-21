@@ -629,7 +629,7 @@ class ProfileStats(object):
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
 
-        def count_running_memory(order, old_storage, nodes_mem):
+        def count_running_memory(order, thunk_old_storage, nodes_mem):
             for node in order:
                 val = nodes_mem[node]
                 dmap = getattr(node.op, 'destroy_map', None)
@@ -647,7 +647,7 @@ class ProfileStats(object):
                         running_memory_size += v
                         if running_memory_size > running_max_memory_size:
                             running_max_memory_size = running_memory_size
-                        old_storage = post_thunk_old_storage[order.index(node)]
+                        old_storage = thunk_old_storage[order.index(node)]
                         for old_s in old_storage:
                             old_v = var_mem[node.inputs[old_s]]
                             if not isinstance(old_v, str):
@@ -701,6 +701,7 @@ class ProfileStats(object):
                     if (input in computed) and
                     (input not in fgraph.outputs) and
                     node == last_user[input]])
+
             node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_view, node_memory_saved_by_inplace = count_running_memory(order, post_thunk_old_storage, nodes_mem)
 
             new_order = fgraph.profile.node_executed_order
