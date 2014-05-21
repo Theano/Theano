@@ -145,7 +145,7 @@ class Insert(Op):
         assert isinstance(x.type, TypedListType)
         assert x.ttype == toInsert.type
         if not isinstance(index, Variable):
-            index = index = T.constant(index, ndim=0)
+            index = T.constant(index, ndim=0)
         else:
             assert isinstance(index, T.TensorVariable) and index.ndim == 0
         return Apply(self, [x, index, toInsert], [x.type()])
