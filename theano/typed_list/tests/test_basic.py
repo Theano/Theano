@@ -7,7 +7,8 @@ import theano.typed_list
 from theano import tensor as T
 from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
-from theano.typed_list.basic import (GetItem, Append, Extend)
+from theano.typed_list.basic import (GetItem, AppendInplace, ExtendInplace,
+                                      Append, Extend)
 from theano.tests import unittest_tools as utt
 
 
@@ -113,10 +114,25 @@ class test_append(unittest.TestCase):
                             theano.config.floatX, (False, False)))()
         myMatrix = T.matrix()
 
-        z = Append()(mySymbolicMatricesList, myMatrix)
+        z = AppendInplace()(mySymbolicMatricesList, myMatrix)
 
         f = theano.function([mySymbolicMatricesList, myMatrix], z,
                             accept_inplace=True)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
+
+    def test_sanity_check(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+
+        z = Append()(mySymbolicMatricesList, myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myMatrix], z)
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
@@ -133,10 +149,27 @@ class test_extend(unittest.TestCase):
         mySymbolicMatricesList2 = TypedListType(T.TensorType(
                             theano.config.floatX, (False, False)))()
 
-        z = Extend()(mySymbolicMatricesList1, mySymbolicMatricesList2)
+        z = ExtendInplace()(mySymbolicMatricesList1, mySymbolicMatricesList2)
 
         f = theano.function([mySymbolicMatricesList1, mySymbolicMatricesList2],
                             z, accept_inplace=True)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+
+    def test_sanity_check(self):
+        mySymbolicMatricesList1 = TypedListType(T.TensorType(
+                            theano.config.floatX, (False, False)))()
+        mySymbolicMatricesList2 = TypedListType(T.TensorType(
+                            theano.config.floatX, (False, False)))()
+
+        z = Extend()(mySymbolicMatricesList1, mySymbolicMatricesList2)
+
+        f = theano.function([mySymbolicMatricesList1, mySymbolicMatricesList2],
+                            z)
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 

@@ -62,7 +62,7 @@ class GetItem(Op):
         return self.__class__.__name__
 
 
-class Append(Op):
+class AppendInplace(Op):
     """
     #append an element at the end of another list
     """
@@ -87,7 +87,30 @@ class Append(Op):
     destroy_map = {0: [0]}
 
 
-class Extend(Op):
+class Append(Op):
+    """
+    #append an element at the end of another list
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, toAppend):
+        assert isinstance(x.type, TypedListType)
+        assert x.ttype == toAppend.type
+        return Apply(self, [x, toAppend], [x.type()])
+
+    def perform(self, node, (x, toAppend), (out, )):
+        out[0] = list(x)
+        out[0].append(toAppend)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+class ExtendInplace(Op):
     """
     append all element of a list at the end of another list
     """
@@ -97,7 +120,7 @@ class Extend(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def make_node(self, x, toAppend):
+    def make_node(self, x, toAppend, inplace=False):
         assert isinstance(x.type, TypedListType)
         assert x.type == toAppend.type
         return Apply(self, [x, toAppend], [x.type()])
@@ -110,3 +133,26 @@ class Extend(Op):
         return self.__class__.__name__
 
     destroy_map = {0: [0]}
+
+
+class Extend(Op):
+    """
+    append all element of a list at the end of another list
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, toAppend, inplace=False):
+        assert isinstance(x.type, TypedListType)
+        assert x.type == toAppend.type
+        return Apply(self, [x, toAppend], [x.type()])
+
+    def perform(self, node, (x, toAppend), (out, )):
+        out[0] = list(x)
+        out[0].extend(toAppend)
+
+    def __str__(self):
+        return self.__class__.__name__
