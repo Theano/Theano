@@ -629,7 +629,7 @@ class ProfileStats(object):
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
 
-        def count_running_memory(order, old_storage):
+        def count_running_memory(order, old_storage, nodes_mem):
             for node in order:
                 val = nodes_mem[node]
                 dmap = getattr(node.op, 'destroy_map', None)
@@ -701,14 +701,14 @@ class ProfileStats(object):
                     if (input in computed) and
                     (input not in fgraph.outputs) and
                     node == last_user[input]])
-            node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_view, node_memory_saved_by_inplace = count_running_memory(order, post_thunk_old_storage)
+            node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_view, node_memory_saved_by_inplace = count_running_memory(order, post_thunk_old_storage, nodes_mem)
 
             new_order = fgraph.profile.node_executed_order
             # A list of new executed node order
             new_storage = fgraph.profile.node_cleared_order
             # A list of variables that get freed
 
-            new_node_memory_size, new_running_memory_size, new_running_max_memory_size, new_node_memory_saved_by_view, new_node_memory_saved_by_inplace = count_running_memory(new_order, new_storage)
+            new_node_memory_size, new_running_memory_size, new_running_max_memory_size, new_node_memory_saved_by_view, new_node_memory_saved_by_inplace = count_running_memory(new_order, new_storage, nodes_mem)
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
