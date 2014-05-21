@@ -91,6 +91,12 @@ class Append(Op):
     """
     #append an element at the end of another list
     """
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -103,17 +109,26 @@ class Append(Op):
         return Apply(self, [x, toAppend], [x.type()])
 
     def perform(self, node, (x, toAppend), (out, )):
-        out[0] = list(x)
+        if self.inplace:
+            out[0] = list(x)
+        else:
+            out[0] = x
         out[0].append(toAppend)
 
     def __str__(self):
         return self.__class__.__name__
 
 
-class ExtendInplace(Op):
+class Extend(Op):
     """
     append all element of a list at the end of another list
     """
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -126,19 +141,18 @@ class ExtendInplace(Op):
         return Apply(self, [x, toAppend], [x.type()])
 
     def perform(self, node, (x, toAppend), (out, )):
-        out[0] = x
+        if self.inplace:
+            out[0] = list(x)
+        else:
+            out[0] = x
         out[0].extend(toAppend)
 
     def __str__(self):
         return self.__class__.__name__
 
-    destroy_map = {0: [0]}
 
+class Insert(Op):
 
-class Extend(Op):
-    """
-    append all element of a list at the end of another list
-    """
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -150,7 +164,7 @@ class Extend(Op):
         assert x.type == toAppend.type
         return Apply(self, [x, toAppend], [x.type()])
 
-    def perform(self, node, (x, toAppend), (out, )):
+    def perform(self, node, (x, index, toAppend), (out, )):
         out[0] = list(x)
         out[0].extend(toAppend)
 

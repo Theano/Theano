@@ -7,7 +7,7 @@ import theano.typed_list
 from theano import tensor as T
 from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
-from theano.typed_list.basic import (GetItem, AppendInplace, ExtendInplace,
+from theano.typed_list.basic import (GetItem,
                                       Append, Extend)
 from theano.tests import unittest_tools as utt
 
@@ -114,7 +114,7 @@ class test_append(unittest.TestCase):
                             theano.config.floatX, (False, False)))()
         myMatrix = T.matrix()
 
-        z = AppendInplace()(mySymbolicMatricesList, myMatrix)
+        z = Append(True)(mySymbolicMatricesList, myMatrix)
 
         f = theano.function([mySymbolicMatricesList, myMatrix], z,
                             accept_inplace=True)
@@ -164,7 +164,7 @@ class test_extend(unittest.TestCase):
         mySymbolicMatricesList2 = TypedListType(T.TensorType(
                             theano.config.floatX, (False, False)))()
 
-        z = ExtendInplace()(mySymbolicMatricesList1, mySymbolicMatricesList2)
+        z = Extend(True)(mySymbolicMatricesList1, mySymbolicMatricesList2)
 
         f = theano.function([mySymbolicMatricesList1, mySymbolicMatricesList2],
                             z, accept_inplace=True)
