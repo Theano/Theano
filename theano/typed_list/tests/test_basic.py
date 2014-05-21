@@ -140,6 +140,21 @@ class test_append(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
 
+    def test_interfaces(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+
+        z = mySymbolicMatricesList.append(myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myMatrix], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], y), [x, y]))
+
 
 class test_extend(unittest.TestCase):
 
@@ -167,6 +182,23 @@ class test_extend(unittest.TestCase):
                             theano.config.floatX, (False, False)))()
 
         z = Extend()(mySymbolicMatricesList1, mySymbolicMatricesList2)
+
+        f = theano.function([mySymbolicMatricesList1, mySymbolicMatricesList2],
+                            z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+
+    def test_interface(self):
+        mySymbolicMatricesList1 = TypedListType(T.TensorType(
+                            theano.config.floatX, (False, False)))()
+        mySymbolicMatricesList2 = TypedListType(T.TensorType(
+                            theano.config.floatX, (False, False)))()
+
+        z = mySymbolicMatricesList1.extend(mySymbolicMatricesList2)
 
         f = theano.function([mySymbolicMatricesList1, mySymbolicMatricesList2],
                             z)
