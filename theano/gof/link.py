@@ -1,5 +1,5 @@
 """WRITEME"""
-from copy import copy
+from copy import copy, deepcopy
 import StringIO
 import sys
 import traceback
@@ -317,6 +317,30 @@ class Container(object):
 
     def __repr__(self):
         return "<" + repr(self.storage[0]) + ">"
+
+    def __deepcopy__(self, memo):
+        data_was_in_memo = id(self.storage[0]) in memo
+        r = type(self)(
+            deepcopy(self.type, memo=memo),
+            deepcopy(self.storage, memo=memo),
+            deepcopy(self.readonly, memo=memo),
+            deepcopy(self.strict, memo=memo),
+            deepcopy(self.allow_downcast, memo=memo),
+            deepcopy(self.name, memo=memo),
+            )
+        # Work around NumPy deepcopy of ndarray with 0 dimention that
+        # don't return an ndarray.
+        if (r.storage[0] is not None and
+            not self.type.is_valid_value(r.storage[0])):
+
+            assert not data_was_in_memo
+            assert self.type.is_valid_value(self.storage[0])
+            # This should also work for read only container.
+            r.storage[0] = self.type.filter(r.storage[0],
+                                            strict=False,
+                                            allow_downcast=False)
+            memo[id(self.storage[0])] = r.storage[0]
+        return r
 
 
 def map_storage(fgraph, order, input_storage, output_storage):

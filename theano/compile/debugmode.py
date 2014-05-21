@@ -847,6 +847,7 @@ def _lessbroken_deepcopy(a):
     called on a 0-d array will return a numpy scalar, not an array.
     """
     # this exists because copy.deepcopy on numpy arrays is broken
+    # This logic is also in link.py
     if type(a) in (numpy.ndarray, numpy.memmap):
         rval = a.copy()
     else:
