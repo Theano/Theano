@@ -46,7 +46,9 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes)
+        swapaxes
+        )
+
 
 from theano.tests import unittest_tools as utt
 

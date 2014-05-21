@@ -1215,14 +1215,14 @@ def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
 
 
-<<<<<<< HEAD
 def matrix_power(M, n):
     result = 1
     for i in xrange(n):
         result = theano.dot(result, M)
     return result
-=======
-def norm(x,ord,axis):
+
+
+def norm(x,ord):
 	x = as_tensor_variable(x)
 	ndim = x.ndim
 	if ndim == 0:
@@ -1246,62 +1246,50 @@ def norm(x,ord,axis):
 			except TypeError:
 				raise ValueError
 			return z
-	elif ndim >= 2:
-		if axis == None:
-			if ord == None or ord == 'fro':
-				z = (tensor.sum(abs(x**2)))**(0.5)
-				return z
-			elif ord == 'inf':
-				z = tensor.sum(abs(x),1)
-				return tensor.max(z)
-			elif ord == '-inf':
-				z = tensor.sum(abs(x),1)
-				return tensor.min(z)
-			elif ord == 1:
-				z = tensor.sum(abs(x),0)
-				return tensor.max(z)
-			elif ord == -1:
-				z = tensor.sum(abs(x),0)
-				return tensor.min(z)
-			else:
-				raise ValueError(0)
+	elif ndim == 2:
+		if ord == None or ord == 'fro':
+			z = (tensor.sum(abs(x**2)))**(0.5)
+			return z
+		elif ord == 'inf':
+			z = tensor.sum(abs(x),1)
+			return tensor.max(z)
+		elif ord == '-inf':
+			z = tensor.sum(abs(x),1)
+			return tensor.min(z)
+		elif ord == 1:
+			z = tensor.sum(abs(x),0)
+			return tensor.max(z)
+        elif ord == -1:
+			z = tensor.sum(abs(x),0)
+			return tensor.min(z)
 		else:
-			try:
-				axis + 1
-				if ord == None:
-					z = (tensor.sum(x**2,axis))**(0.5)
-					return z
-				elif ord == 'inf':
-					z = tensor.max(abs(x),axis)
-					return z
-				elif ord == '-inf':
-					z = tensor.min(abs(x),axis)
-					return z
-				elif ord == 0:
-					z = tensor.sum(tensor.neq(x,0),axis)
-					return z
-				else:
-					try:
-						z = (tensor.sum(abs(x**ord),axis))**(1./ord)
-					except TypeError:
-						raise ValueError
-					return z
-			except TypeError:
-				if ord == None or ord == 'fro':
-					z = (tensor.sum(abs(x**2),axis))**(0.5)
-					return z
-				elif ord == 'inf':
-					z = tensor.sum(abs(x),1)
-					return tensor.max(z,axis)
-				elif ord == '-inf':
-					z = tensor.sum(abs(x),1)
-					return tensor.min(z,axis)
-				elif ord == 1:
-					z = tensor.sum(abs(x),0)
-					return tensor.max(z,axis)
-				elif ord == -1:
-					z = tensor.sum(abs(x),0)
-					return tensor.min(z,axis)
-				else:
-					raise ValueError(0)
->>>>>>> Added norm function.
+			raise ValueError(0)
+
+
+
+class lstsq(theano.Op):
+    def __eq__(self, other):
+        pass
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, x, y, rcond):
+        x = theano.tensor.as_tensor_variable(x)
+        y = theano.tensor.as_tensor_variable(y)
+        rcond = theano.tensor.as_tensor_variable(rcond)
+        return theano.Apply(self, [x, y, rcond], [y.type(), theano.tensor.dvector(), theano.tensor.lscalar(), theano.tensor.dvector()])
+
+    def perform(self, node, inputs, outputs):
+        x = inputs[0]
+        y = inputs[1]
+        rcond = inputs[2]
+        zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])            
+        outputs[0][0] = zz[0]
+        outputs[1][0] = zz[1]
+        outputs[2][0] = zz[2]
+        outputs[3][0] = zz[3]
+>>>>>>> Fixed swapaxes function in var, indentation error in test_basic and added lstsq function in ops with tests.
