@@ -521,6 +521,7 @@ class Stack(VM):
             for v in storage_map:
                 if v.owner and not v in self.outputs:
                     storage_map[v][0] = None
+                    self.node_cleared_order.append(storage_map[v])
 
 
 try:

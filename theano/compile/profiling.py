@@ -628,6 +628,33 @@ class ProfileStats(object):
         max_running_max_memory_size = 0
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
+
+        def count_running_memory(order, old_storage):
+            for node in order:
+                val = nodes_mem[node]
+                dmap = getattr(node.op, 'destroy_map', None)
+                vmap = getattr(node.op, 'view_map', None)
+
+                for idx, v in enumerate(val):
+                    # TODO check the op returned a view
+                    if dmap and idx in dmap:
+                        node_memory_saved_by_inplace += v
+                    # TODO check the op returned a view
+                    elif vmap and idx in vmap:
+                        node_memory_saved_by_view += v
+                    elif not isinstance(v, str):
+                        node_memory_size += v
+                        running_memory_size += v
+                        if running_memory_size > running_max_memory_size:
+                            running_max_memory_size = running_memory_size
+                        old_storage = post_thunk_old_storage[order.index(node)]
+                        for old_s in old_storage:
+                            old_v = var_mem[node.inputs[old_s]]
+                            if not isinstance(old_v, str):
+                                running_memory_size -= old_v
+
+            return node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view
+
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
             sum_size = sum([sum([v for v in val if not isinstance(v, str)])
@@ -665,12 +692,6 @@ class ProfileStats(object):
             # after the execution of the corresponding node.
             # It mean that after executing the node,
             # the corresponding variable can be gc.
-            
-            new_order = fgraph.profile.node_executed_order
-            # A list of new executed node order
-            new_storage = fgraph.profile.node_cleared_order
-            # A list of variables that get freed
-
             post_thunk_old_storage = []
             computed, last_user = theano.gof.link.gc_helper(order)
             for node in order:
@@ -680,58 +701,24 @@ class ProfileStats(object):
                     if (input in computed) and
                     (input not in fgraph.outputs) and
                     node == last_user[input]])
-            for node in order:
-                val = nodes_mem[node]
-                dmap = getattr(node.op, 'destroy_map', None)
-                vmap = getattr(node.op, 'view_map', None)
+            node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_view, node_memory_saved_by_inplace = count_running_memory(order, post_thunk_old_storage)
 
-                for idx, v in enumerate(val):
-                    # TODO check the op returned a view
-                    if dmap and idx in dmap:
-                        node_memory_saved_by_inplace += v
-                    # TODO check the op returned a view
-                    elif vmap and idx in vmap:
-                        node_memory_saved_by_view += v
-                    elif not isinstance(v, str):
-                        node_memory_size += v
-                        running_memory_size += v
-                        if running_memory_size > running_max_memory_size:
-                            running_max_memory_size = running_memory_size
-                        old_storage = post_thunk_old_storage[order.index(node)]
-                        for old_s in old_storage:
-                            old_v = var_mem[node.inputs[old_s]]
-                            if not isinstance(old_v, str):
-                                running_memory_size -= old_v
+            new_order = fgraph.profile.node_executed_order
+            # A list of new executed node order
+            new_storage = fgraph.profile.node_cleared_order
+            # A list of variables that get freed
 
-            for node in new_order:
-                val = nodes_mem[node]
-                dmap = getattr(node.op, 'destroy_map', None)
-                vmap = getattr(node.op, 'view_map', None)
-
-                for idx, v in enumerate(val):
-                    if dmap and idx in dmap:
-                        new_node_memory_saved_by_inplace += v
-                    elif vmap and idx in vmap:
-                        new_node_memory_saved_by_view += v
-                    elif not isinstance(v, str):
-                        new_node_memory_size += v
-                        new_running_memory_size += v
-                        if new_running_memory_size > new_running_max_memory_size:
-                            new_running_max_memory_size = new_running_memory_size
-                        for new_s in new_storage:
-                            new_v = var_mem[node.inputs[new_s]]
-                            if not isinstance(new_v, str):
-                                new_running_memory_size -= new_v
+            new_node_memory_size, new_running_memory_size, new_running_max_memory_size, new_node_memory_saved_by_view, new_node_memory_saved_by_inplace = count_running_memory(new_order, new_storage)
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size, node_memory_size)
+            max_node_memory_size = max(max_node_memory_size, node_memory_size, new_node_memory_size)
             max_running_max_memory_size = max(max_running_max_memory_size,
-                                          running_max_memory_size)
+                                          running_max_memory_size, new_running_max_memory_size)
             max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                node_memory_saved_by_view)
+                                                node_memory_saved_by_view, new_node_memory_saved_by_view)
             max_node_memory_saved_by_inplace = max(
-                max_node_memory_saved_by_inplace, node_memory_saved_by_inplace)
+                max_node_memory_saved_by_inplace, node_memory_saved_by_inplace, new_node_memory_saved_by_inplace)
 
             del fgraph, nodes_mem, post_thunk_old_storage, node
 
