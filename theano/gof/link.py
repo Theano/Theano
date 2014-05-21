@@ -334,7 +334,11 @@ class Container(object):
             not self.type.is_valid_value(r.storage[0])):
 
             assert not data_was_in_memo
-            r.data = r.storage[0]
+            assert self.type.is_valid_value(self.storage[0])
+            # This should also work for read only container.
+            r.storage[0] = self.type.filter(r.storage[0],
+                                            strict=False,
+                                            allow_downcast=False)
             memo[id(self.storage[0])] = r.storage[0]
         return r
 

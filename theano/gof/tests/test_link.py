@@ -193,7 +193,8 @@ def test_container_deepcopy():
     """
     t = theano.tensor.scalar()
     v = numpy.asarray(0.)
-    c = Container(t, [v])
-    assert isinstance(c.storage[0], numpy.ndarray)
-    d = deepcopy(c)
-    assert isinstance(d.storage[0], numpy.ndarray)
+    for readonly in [True, False]:
+        c = Container(t, [v], readonly=readonly)
+        assert isinstance(c.storage[0], numpy.ndarray)
+        d = deepcopy(c)
+        assert isinstance(d.storage[0], numpy.ndarray)
