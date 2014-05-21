@@ -4,6 +4,8 @@ from theano.gof import Apply, Constant, Op, Variable
 from theano.tensor.type_other import SliceType
 from theano import tensor as T
 
+import numpy
+
 
 class _typed_list_py_operators:
 
@@ -146,7 +148,7 @@ class Insert(Op):
             index = index = T.constant(index, ndim=0)
         else:
             assert isinstance(index, T.TensorVariable) and index.ndim == 0
-        return Apply(self, [x, index, toInsert], [x.ttype()])
+        return Apply(self, [x, index, toInsert], [x.type()])
 
     def perform(self, node, (x, index, toInsert), (out, )):
         if not self.inplace:
@@ -154,6 +156,48 @@ class Insert(Op):
         else:
             out[0] = x
         out[0].insert(index, toInsert)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+class Remove(Op):
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, toRemove):
+        assert isinstance(x.type, TypedListType)
+        assert x.ttype == toRemove.type
+        return Apply(self, [x, toRemove], [x.type()])
+
+    def perform(self, node, (x, toRemove), (out, )):
+
+        if not self.inplace:
+            out[0] = list(x)
+        else:
+            out[0] = x
+
+        """
+        inelegant workaround for ValueError: The truth value of an
+        array with more than one element is ambiguous. Use a.any() or a.all()
+        being thrown when trying to remove a matrix from a matrices list
+        """
+        if isinstance(toRemove, numpy.ndarray):
+            for y in x:
+                if numpy.array_equal(y, toRemove):
+                    toRemove = y
+                    break
+
+        out[0].remove(toRemove)
 
     def __str__(self):
         return self.__class__.__name__
