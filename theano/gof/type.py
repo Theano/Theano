@@ -401,10 +401,15 @@ class SingletonType(Type):
     It saves having to implement __eq__ and __hash__
     """
     __instance = None
+
     def __new__(cls):
-        if cls.__instance is None:
+        # I don't understand why the subclass of subclass of
+        # SingletonType would share the __instance. So I add the check
+        # for the type.
+        if cls.__instance is None or not isinstance(cls.__instance, cls):
             cls.__instance = Type.__new__(cls)
         return cls.__instance
+
     def __str__(self):
         return self.__class__.__name__
 
