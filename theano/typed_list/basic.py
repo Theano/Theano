@@ -62,31 +62,6 @@ class GetItem(Op):
         return self.__class__.__name__
 
 
-class AppendInplace(Op):
-    """
-    #append an element at the end of another list
-    """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, x, toAppend):
-        assert isinstance(x.type, TypedListType)
-        assert x.ttype == toAppend.type
-        return Apply(self, [x, toAppend], [x.type()])
-
-    def perform(self, node, (x, toAppend), (out, )):
-        out[0] = x
-        out[0].append(toAppend)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    destroy_map = {0: [0]}
-
-
 class Append(Op):
     """
     #append an element at the end of another list
@@ -109,7 +84,7 @@ class Append(Op):
         return Apply(self, [x, toAppend], [x.type()])
 
     def perform(self, node, (x, toAppend), (out, )):
-        if self.inplace:
+        if not self.inplace:
             out[0] = list(x)
         else:
             out[0] = x
@@ -141,7 +116,7 @@ class Extend(Op):
         return Apply(self, [x, toAppend], [x.type()])
 
     def perform(self, node, (x, toAppend), (out, )):
-        if self.inplace:
+        if not self.inplace:
             out[0] = list(x)
         else:
             out[0] = x
@@ -153,20 +128,32 @@ class Extend(Op):
 
 class Insert(Op):
 
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
     def __hash__(self):
         return hash(type(self))
 
-    def make_node(self, x, toAppend):
+    def make_node(self, x, index, toInsert):
         assert isinstance(x.type, TypedListType)
-        assert x.type == toAppend.type
-        return Apply(self, [x, toAppend], [x.type()])
+        assert x.ttype == toInsert.type
+        if not isinstance(index, Variable):
+            index = index = T.constant(index, ndim=0)
+        else:
+            assert isinstance(index, T.TensorVariable) and index.ndim == 0
+        return Apply(self, [x, index, toInsert], [x.ttype()])
 
-    def perform(self, node, (x, index, toAppend), (out, )):
-        out[0] = list(x)
-        out[0].extend(toAppend)
+    def perform(self, node, (x, index, toInsert), (out, )):
+        if not self.inplace:
+            out[0] = list(x)
+        else:
+            out[0] = x
+        out[0].insert(index, toInsert)
 
     def __str__(self):
         return self.__class__.__name__

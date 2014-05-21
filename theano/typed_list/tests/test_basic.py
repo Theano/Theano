@@ -7,7 +7,7 @@ import theano.typed_list
 from theano import tensor as T
 from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
-from theano.typed_list.basic import (GetItem,
+from theano.typed_list.basic import (GetItem, Insert,
                                       Append, Extend)
 from theano.tests import unittest_tools as utt
 
@@ -208,3 +208,40 @@ class test_extend(unittest.TestCase):
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], [y]), [x, y]))
+
+
+class test_insert(unittest.TestCase):
+
+    #FAILING ValueError: expected an ndarray
+    def test_inplace(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                            theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+        myScalar = T.scalar()
+
+        z = Insert(True)(mySymbolicMatricesList, myScalar, myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myScalar, myMatrix], z,
+                            accept_inplace=True)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
+
+    def test_sanity_check(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+        myScalar = T.scalar()
+
+        z = Insert()(mySymbolicMatricesList, myScalar, myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myScalar, myMatrix], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
