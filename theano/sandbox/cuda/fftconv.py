@@ -17,12 +17,8 @@ import theano.misc.pycuda_init
 linalg.init()
 
 
-# TODO: investigate FFTW compatibility modes. Can probably set this to
-# the fastest setting.
-
 # TODO: investigate the effect of enabling fastmath on FFT performance
 # (how can it be enabled?).
-
 
 # base class for shared code between scikits.cuda-based ops
 class ScikitsCudaOp(GpuOp):

@@ -33,6 +33,23 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
+AddConfigVar('enable_conv2d_fft'
+             """
+             Use an fft implementation of conv2d on the GPU rather
+             than a direct one.
+
+             The current implementation cannot handle inputs that have
+             an odd number of columns in the images. You have to
+             pad/unpad manually if you want to use this
+             implementation.  This also means that you need to make
+             sure all your filters have an odd number of columns if
+             doing stacked convolutions since otherwise you will end
+             up with odd images.
+
+             You can also call conv2d_fft() with pad=True
+             """,
+             BoolParam(False),
+             in_c_key=False)
 
 #is_nvcc_available called here to initialize global vars in
 #nvcc_compiler module

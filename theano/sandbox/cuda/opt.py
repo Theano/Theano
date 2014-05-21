@@ -1123,7 +1123,8 @@ def local_gpu_conv(node):
 @register_opt()
 @local_optimizer([GpuConv])
 def local_conv_fft(node):
-    if (isinstance(node.op, GpuConv) and
+    if (theano.config.enable_conv2d_fft and
+        isinstance(node.op, GpuConv) and
         node.op.border_mode == 'valid' and
         node.op.subsample == (1, 1)):
         return [conv2d_fft(node.inputs[0], node.inputs[1])]
