@@ -987,6 +987,21 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
         assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
 
+    def test_adv1_inc_with_reshape(self):
+        # Reported by Alex Boulanger
+        A = tensor.arange(10*10).reshape((10, 10))
+        B = numpy.array([[9, 9, 9, 4, 6, 7, 0],
+                         [9, 9, 9, 4, 1, 0, 0],
+                         [9, 9, 9, 4, 6, 7, 8]])
+        C = A[B]
+        C2 = C*0.01
+
+        v = inc_subtensor(C, -C2)
+        f = theano.function([], v)
+
+        # We only check that the execution works, no need to test the results
+        f()
+
 
 class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor
