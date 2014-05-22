@@ -418,13 +418,29 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
                                          filters)
 
     elif border_mode == 'full':
-        o0 = i0 + f0 - 1
-        o1 = i1 + f1 - 1
+
+        # In this particular case, the values of (o0, o1) represent
+        # the dimensions of the work buffer more than the actual dimensions
+        # of the desired output.
+        o0 = i0 + 2 * (f0 - 1)
+        o1 = i1 + 2 * (f1 - 1)
+
+        if pad_last_dim:
+            o1 = o1 + 1
+
+        # We line up the filters and the images in a way
+        # such that the filters are tightly placed against the
+        # top-left of the array, and the images intersect with
+        # them on one pixel. The top-left pixel of the images
+        # is the bottom-right pixel of the filters when we
+        # do the layout here.
+        
         filters_padded = T.zeros((oc, ic, o0, o1), dtype='float32')
         filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1],
                                          filters)
+
         input_padded = T.zeros((b, ic, o0, o1), dtype='float32')
-        input_padded = T.set_subtensor(input_padded[:, :, :i0, :i1],
+        input_padded = T.set_subtensor(input_padded[:, :, (f0 - 1):(f0 - 1 + i0), (f1 - 1):(f1 - 1 + i1)],
                                        input)
     else:
         raise ValueError('invalid mode')
@@ -457,16 +473,21 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
     # reshape
     output_circ = output_flat.reshape((b, oc, o0, o1))  # circular!
 
-    # slice because the convolution was circular, we need it to be valid
+    # Now we extract the region of interest.
+    # We just cut it out from the output_circ
+    # array that was used for the computation.
+    # We do not need to handle pad_last_dim in a
+    # special way because we specify explicitly here
+    # how much values are expected.
     if border_mode == 'valid':
-        if pad_last_dim:
-            output = output_circ[:, :, f0 - 1:, f1 - 1:(o1-1)]
-        else:
-            output = output_circ[:, :, f0 - 1:, f1 - 1:o1]
+        output = output_circ[:, :, (f0-1):(f0-1 + i0-f0+1), (f1-1):(f1-1 + i1-f1+1)]
+    elif border_mode == 'full':
+        output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1)]
     else:
-        output = output_circ
+        raise ValueError('invalid mode')
 
-    # rescale manually
+    # Rescale manually. This is just a factor that comes in during the
+    # trip through FFT and inverse FFT.
     output = (1.0 / T.cast(o0 * o1, 'float32')) * output
 
     # output should now be the result of a batched valid convolution
