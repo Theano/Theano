@@ -1226,10 +1226,10 @@ def norm(x,ord):
 	x = as_tensor_variable(x)
 	ndim = x.ndim
 	if ndim == 0:
-		raise TypeError
+		raise ValueError("'axis' entry is out of bounds.")
 	elif ndim == 1:
 		if ord == None:
-			z = (tensor.sum(x**2))**(0.5)
+			z = tensor.sum(x**2)**0.5
 			return z
 		elif ord == 'inf':
 			z = tensor.max(abs(x))
@@ -1238,13 +1238,13 @@ def norm(x,ord):
 			z = tensor.min(abs(x))
 			return z
 		elif ord == 0:
-			z = (x[x.nonzero()]).shape[0]
+			z = x[x.nonzero()].shape[0]
 			return z
 		else:
 			try:
-				z = (tensor.sum(abs(x**ord)))**(1./ord)
+				z = tensor.sum(abs(x**ord))**(1./ord)
 			except TypeError:
-				raise ValueError
+				raise ValueError("Invalid norm order for vectors.")
 			return z
 	elif ndim == 2:
 		if ord == None or ord == 'fro':
@@ -1264,7 +1264,6 @@ def norm(x,ord):
 			return tensor.min(z)
 		else:
 			raise ValueError(0)
-
 
 
 class lstsq(theano.Op):
@@ -1292,4 +1291,3 @@ class lstsq(theano.Op):
         outputs[1][0] = zz[1]
         outputs[2][0] = zz[2]
         outputs[3][0] = zz[3]
->>>>>>> Fixed swapaxes function in var, indentation error in test_basic and added lstsq function in ops with tests.
