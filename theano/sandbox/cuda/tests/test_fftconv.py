@@ -2,6 +2,7 @@ import unittest
 import numpy
 
 import theano
+from theano import unittest_tools as utt
 
 # Skip tests if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -44,7 +45,7 @@ def TestConv2dFFT(unittest.TestCase):
         res_ref = f_ref()
         res_fft = f_fft()
 
-        numpy.testing.assert_allclose(res_ref, res_fft)
+        utt.assert_allclose(res_ref, res_fft)
 
     def test_valid(self):
         self.run_conv(inputs_shape=(5, 3, 7, 6),
@@ -85,4 +86,4 @@ def TestConv2dFFT(unittest.TestCase):
         res_ref = f_ref()
         res_fft = f_fft()
 
-        numpy.testing.assert_allclose(res_ref, res_fft)
+        utt.assert_allclose(res_ref, res_fft)
