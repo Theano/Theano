@@ -6901,13 +6901,13 @@ if __name__ == '__main__':
     t.setUp()
     t.test_infer_shape()
 
-class T_swapaxes(unittest.TestCase):                            
-    def test_no_dimensional_input(self):                                                        
+class T_swapaxes(unittest.TestCase):
+    def test_no_dimensional_input(self):
 		self.assertRaises(IndexError, swapaxes, 2, 0, 1)
-        
+
 	def test_unidimensional_input(self):
 		self.assertRaises(IndexError, swapaxes, [2, 1], 0, 1)
-		
+
 	def test_not_enough_dimension(self):
 		self.assertRaises(IndexError, swapaxes, [[2, 1], [3, 4]], 3, 4)
 
