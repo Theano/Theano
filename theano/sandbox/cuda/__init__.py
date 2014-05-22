@@ -33,7 +33,7 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
-AddConfigVar('enable_conv2d_fft'
+AddConfigVar('enable_conv2d_fft',
              """
              Use an fft implementation of conv2d on the GPU rather
              than a direct one.
