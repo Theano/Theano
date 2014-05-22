@@ -6883,21 +6883,20 @@ if __name__ == '__main__':
 
 class T_swapaxes(unittest.TestCase):
     def test_no_dimensional_input(self):
-		self.assertRaises(IndexError, swapaxes, 2, 0, 1)
+        self.assertRaises(IndexError, swapaxes, 2, 0, 1)
 
-	def test_unidimensional_input(self):
-		self.assertRaises(IndexError, swapaxes, [2, 1], 0, 1)
+    def test_unidimensional_input(self):
+        self.assertRaises(IndexError, swapaxes, [2, 1], 0, 1)
 
-	def test_not_enough_dimension(self):
-		self.assertRaises(IndexError, swapaxes, [[2, 1], [3, 4]], 3, 4)
+    def test_not_enough_dimension(self):
+        self.assertRaises(IndexError, swapaxes, [[2, 1], [3, 4]], 3, 4)
 
-	def test_doubleswap(self):
-		y = matrix()
-		n = swapaxes(y, 0, 1)
-		f = function([y], n)
-		testMatrix = [[2, 1], [3, 4]]
-
-		self.assertTrue(numpy.array_equal(testMatrix, f(f(testMatrix))))
+    def test_doubleswap(self):
+        y = matrix()
+        n = swapaxes(y, 0, 1)
+        f = function([y], n)
+        testMatrix = [[2, 1], [3, 4]]
+        self.assertTrue(numpy.array_equal(testMatrix, f(f(testMatrix))))
 
 """
 
