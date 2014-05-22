@@ -27,7 +27,7 @@ TODO: Give examples for how to use these things! They are pretty complicated.
 - Conv implemented
     - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
-    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
+    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`. Don't work on the GPU.
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
       It is faster in some cases than conv3d, specifically on the GPU.
