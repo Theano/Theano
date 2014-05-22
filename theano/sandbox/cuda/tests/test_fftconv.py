@@ -18,7 +18,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-def TestConv2dFFT(unittest.TestCase):
+class TestConv2dFFT(unittest.TestCase):
     def setUp(self):
         self._prev = theano.confg.enable_conv2d_fft
         theano.confg.enable_conv2d_fft = True
