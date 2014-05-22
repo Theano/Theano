@@ -1208,10 +1208,10 @@ def norm(x,ord,axis):
 	x = as_tensor_variable(x)
 	ndim = x.ndim
 	if ndim == 0:
-		raise TypeError
+		raise ValueError("'axis' entry is out of bounds.")
 	elif ndim == 1:
 		if ord == None:
-			z = (tensor.sum(x**2))**(0.5)
+			z = tensor.sum(x**2)**0.5
 			return z
 		elif ord == 'inf':
 			z = tensor.max(abs(x))
@@ -1220,18 +1220,18 @@ def norm(x,ord,axis):
 			z = tensor.min(abs(x))
 			return z
 		elif ord == 0:
-			z = (x[x.nonzero()]).shape[0]
+			z = x[x.nonzero()].shape[0]
 			return z
 		else:
 			try:
-				z = (tensor.sum(abs(x**ord)))**(1./ord)
+				z = tensor.sum(abs(x**ord))**(1./ord)
 			except TypeError:
-				raise ValueError
+				raise ValueError("Invalid norm order for vectors.")
 			return z
 	elif ndim >= 2:
 		if axis == None:
 			if ord == None or ord == 'fro':
-				z = (tensor.sum(abs(x**2)))**(0.5)
+				z = tensor.sum(abs(x**2))**(0.5)
 				return z
 			elif ord == 'inf':
 				z = tensor.sum(abs(x),1)
@@ -1246,12 +1246,12 @@ def norm(x,ord,axis):
 				z = tensor.sum(abs(x),0)
 				return tensor.min(z)
 			else:
-				raise ValueError(0)
+				raise ValueError("Invalid norm order for matrices.")
 		else:
 			try:
 				axis + 1
 				if ord == None:
-					z = (tensor.sum(x**2,axis))**(0.5)
+					z = tensor.sum(x**2,axis)**0.5
 					return z
 				elif ord == 'inf':
 					z = tensor.max(abs(x),axis)
@@ -1264,13 +1264,13 @@ def norm(x,ord,axis):
 					return z
 				else:
 					try:
-						z = (tensor.sum(abs(x**ord),axis))**(1./ord)
+						z = tensor.sum(abs(x**ord),axis)**(1./ord)
 					except TypeError:
-						raise ValueError
+						raise ValueError("Invalid norm order for vectors.")
 					return z
 			except TypeError:
 				if ord == None or ord == 'fro':
-					z = (tensor.sum(abs(x**2),axis))**(0.5)
+					z = tensor.sum(abs(x**2),axis)**0.5
 					return z
 				elif ord == 'inf':
 					z = tensor.sum(abs(x),1)
@@ -1285,7 +1285,7 @@ def norm(x,ord,axis):
 					z = tensor.sum(abs(x),0)
 					return tensor.min(z,axis)
 				else:
-					raise ValueError(0)
+					raise ValueError("Invalid norm order for matrices.")
 
 class lstsq(theano.Op):
     def __eq__(self, other):

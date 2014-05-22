@@ -556,7 +556,7 @@ class _tensor_py_operators:
         """see 'theano.tensor.ptp'"""
 
         return theano.tensor.ptp(self, axis)
-        
+
     def swapaxes(self, axis1, axis2):
         """Return 'tensor.swapaxes(self, axis1, axis2)
 
