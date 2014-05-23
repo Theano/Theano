@@ -1581,10 +1581,11 @@ class GemmOptimizer(Optimizer):
         print >> stream, blanc, " time_toposort", prof[9]
         print >> stream, blanc, " validate_time", prof[10]
         print >> stream, blanc, " callback_time", prof[11]
-        print >> stream, blanc, " callbacks_time"
-        for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if prof[11] > 1:
+            print >> stream, blanc, " callbacks_time"
+            for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
 
 
 class Dot22(GemmRelated):
