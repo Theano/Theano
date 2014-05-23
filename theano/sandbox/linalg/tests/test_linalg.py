@@ -647,7 +647,7 @@ class T_NormTests(unittest.TestCase):
 	def test_wrong_type_of_ord_for_matrix_in_tensor(self):
 		self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],0,None)
 	def test_non_tensorial_input(self):
-		self.assertRaises(TypeError, norm, 3, None, None)
+		self.assertRaises(ValueError, norm, 3, None, None)
 	def test_no_enough_dimensions(self):
 		self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
 
