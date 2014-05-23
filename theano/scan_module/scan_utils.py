@@ -391,6 +391,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     or `ys`.
 
     '''
+    assert len(xs) == len(ys)
     if in_xs is None:
         in_xs = []
     if in_ys is None:
@@ -401,7 +402,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
             return False
         if y.owner and not x.owner:
             return False
-        if x.owner and y.owner:
+        if x.owner:  # Check above tell that y.owner eval to True too.
             if x.owner.outputs.index(x) != y.owner.outputs.index(y):
                 return False
     if len(in_xs) != len(in_ys):
@@ -415,12 +416,10 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     if len(nds_x) != len(nds_y):
         return False
     common = set(zip(in_xs, in_ys))
-    n_nodes = len(nds_x)
     for dx, dy in izip(xs, ys):
-        if not dx.owner or not dy.owner:
-            if dy.owner or dx.owner:
-                return False
-            elif (isinstance(dx, tensor.Constant) and
+        # We checked above that both dx and dy have an other or not
+        if not dx.owner:
+            if (isinstance(dx, tensor.Constant) and
                   isinstance(dy, tensor.Constant)):
                 if not (numpy.all(dx.data == dy.data) and
                         dx.type.dtype == dy.type.dtype and
@@ -431,6 +430,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
             elif (dx, dy) not in common and dx != dy:
                 return False
 
+    n_nodes = len(nds_x)
     idx = 0
     while idx < n_nodes:
         nd_x = nds_x[idx]
