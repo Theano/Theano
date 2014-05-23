@@ -1135,8 +1135,8 @@ def local_conv_fft_full(node):
         node.op.subsample == (1, 1)):
         return [conv2d_fft(node.inputs[0], node.inputs[1], border_mode='full')]
 
-gpu_optimizer.register("local_conv_fft_valid", local_conv_fft_valid)
-gpu_optimizer.register("local_conv_fft_full", local_conv_fft_full)
+gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
+gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
 
 
 import theano.tensor.signal.downsample as downsample

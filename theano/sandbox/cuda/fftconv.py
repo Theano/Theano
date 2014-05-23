@@ -4,18 +4,17 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from theano.sandbox.cuda import (GpuOp, basic_ops, CudaNdarrayType,
-                                 CudaNdarray)
+from theano.sandbox.cuda import GpuOp, basic_ops, CudaNdarrayType
 
 import scikits.cuda
-from scikits.cuda import fft, linalg, cublas
+from scikits.cuda import fft, cublas, misc
 
 import pycuda.gpuarray
 
 import theano.misc.pycuda_init
 
-linalg.init()
 
+misc.init()
 
 # TODO: investigate the effect of enabling fastmath on FFT performance
 # (how can it be enabled?).

@@ -19,13 +19,6 @@ else:
 
 
 class TestConv2dFFT(unittest.TestCase):
-    def setUp(self):
-        self._prev = theano.confg.enable_conv2d_fft
-        theano.confg.enable_conv2d_fft = True
-
-    def tearDown(self):
-        theano.confg.enable_conv2d_fft = self._prev
-
     def run_conv(self, inputs_shape, filters_shape, pad=False, **other_args):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -63,7 +56,7 @@ class TestConv2dFFT(unittest.TestCase):
                       filters_shape=(2, 3, 3, 3),
                       border_mode='full', pad=True)
 
-    def test_opt(self):
+    def test_opt_valid(self):
         inputs_shape = (5, 3, 7, 6)
         filters_shape = (2, 3, 3, 3)
 
@@ -74,6 +67,36 @@ class TestConv2dFFT(unittest.TestCase):
         filters = shared(filters_val)
 
         conv = theano.tensor.nnet.conv.conv2d(inputs, filters)
+
+        mode = mode_with_gpu.optimizer_including('conv2d_fft_valid')
+
+        f_ref = theano.function([], conv)
+        f_fft = theano.function([], conv, mode=mode_with_gpu)
+
+        # make sure we inserted the fft trickery
+        topo = f_fft.maker.fgraph.toposort()
+        assert len(op for op in topo
+                   if isinstance(op, theano.sandbox.cuda.fftconv.CuFFTOp)) == 1
+
+        res_ref = f_ref()
+        res_fft = f_fft()
+
+        utt.assert_allclose(res_ref, res_fft)
+
+    def test_opt_full(self):
+        inputs_shape = (5, 3, 7, 6)
+        filters_shape = (2, 3, 3, 3)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+
+        conv = theano.tensor.nnet.conv.conv2d(inputs, filters,
+                                              border_mode='full')
+
+        mode = mode_with_gpu.optimizer_including('conv2d_fft_full')
 
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode_with_gpu)
