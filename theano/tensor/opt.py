@@ -4941,10 +4941,11 @@ class FusionOptimizer(Optimizer):
         print >> stream, blanc, " nb_inconsistency_replace", prof[3]
         print >> stream, blanc, " validate_time", prof[4]
         print >> stream, blanc, " callback_time", prof[5]
-        print >> stream, blanc, " callbacks_time"
-        for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if prof[5] > 1:
+            print >> stream, blanc, " callbacks_time"
+            for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
         print >> stream, blanc, " time_toposort", prof[7]
 
 
