@@ -1557,7 +1557,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  optimizers,
                  failure_callback=None,
                  ignore_newtrees=True,
-                 max_use_ratio=None):
+                 max_use_ratio=None,
+                 max_nb_iter=float('inf')):
         """ Apply optimizations until equilibrium point.
 
         :param optimizers:  list or set of local or global optimizations to
@@ -1567,6 +1568,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             (size of graph * this number) times
         :param ignore_newtrees: See EquilibriumDB ignore_newtrees
             parameter definition
+        :param max_nb_iter: The maximum number of iteration.  Don't warn
+            if we attain this number. By default, we use the max_use_ratio
+            option to make sure we don't iterate infinitly and warn if it
+            hit that max.
 
         """
 
@@ -1577,6 +1582,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.local_optimizers_map = dict()
         self.local_optimizers_all = []
         self.global_optimizers = []
+        self.max_nb_iter = max_nb_iter
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
@@ -1635,7 +1641,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
 
-        while changed and not max_use_abort:
+        while (changed and
+               not max_use_abort and
+               len(loop_timing) < self.max_nb_iter):
             process_count = {}
             t0 = time.time()
             changed = False

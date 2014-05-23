@@ -189,15 +189,21 @@ class EquilibriumDB(DB):
         could result in less fgraph iterations, but this don't mean it
         will be faster globally.
 
+    :param max_nb_iter: The maximum number of iteration.  Don't warn
+        if we attain this number. By default, we use the max_use_ratio
+        option to make sure we don't iterate infinitly and warn if it
+        hit that max.
+
     .. note::
 
         We can put LocalOptimizer and Optimizer as EquilibriumOptimizer
         suppor both.
 
     """
-    def __init__(self, ignore_newtrees=True):
+    def __init__(self, ignore_newtrees=True, max_nb_iter=float('inf')):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
+        self.max_nb_iter = max_nb_iter
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
@@ -205,7 +211,8 @@ class EquilibriumDB(DB):
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
-            failure_callback=opt.NavigatorOptimizer.warn_inplace)
+            failure_callback=opt.NavigatorOptimizer.warn_inplace,
+            max_nb_iter=self.max_nb_iter)
 
 
 class SequenceDB(DB):
