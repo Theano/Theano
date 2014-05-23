@@ -372,21 +372,29 @@ def mult_and_reduce(input_fft_v, filters_fft_v, input_shape=None,
 def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
                border_mode='valid', pad_last_dim=False):
     """
-    expects bc01 input
-    performs a valid/full convolution
+    Perform a convolution through fft.
+
+    Only support input which will be even on the last dimension
+    (width).  All other dimensions can be anything and the filters can
+    have an even or odd width.
+
+    If you must use input which has an odd width, you can either pad
+    it or use the `pad_last_dim` argument which will do it for you and
+    take care to strip the padding before returning.  Don't use this
+    argument if you are not sure the input is odd since the padding is
+    unconditional and will make even input odd, thus leading to
+    problems.
+
+    On valid mode the filters must be smaller than the input.
 
     input: (b, ic, i0, i1)
     filters: (oc, ic, f0, f1)
 
     border_mode: 'valid' of 'full'
 
-    pad_last_dim: This code does not support
-    images for which the last dimension (the "width") is odd. To support
-    this, you can either pad your images on your own, or call this function
-    with the `pad_last_dim` flag set to `True`.
-    This introduces an extra copying step and consumes memory.
-    The return value will still be of the appropriate shape because
-    the padding is trimmed right before the output is returned.
+    pad_last_dim: Unconditionally pad the last dimension of the input
+                  to to turn it from odd to even.  Will strip the
+                  padding before returning the result.
     """
 
     # use symbolic shapes to compute shape info at runtime if not specified
@@ -434,7 +442,7 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
         # them on one pixel. The top-left pixel of the images
         # is the bottom-right pixel of the filters when we
         # do the layout here.
-        
+
         filters_padded = T.zeros((oc, ic, o0, o1), dtype='float32')
         filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1],
                                          filters)
