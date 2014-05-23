@@ -2526,6 +2526,10 @@ def local_reshape_lift(node):
         len(node.inputs[0].owner.inputs) == 1):
         r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
         e = node.inputs[0].owner.op(r)
+        # In rare case the original broadcast was (False, True), but
+        # the new one is (False, False). So don't crash in that case.
+        if e.type != node.outputs[0].type:
+            e = T.patternbroadcast(e, node.outputs[0].broadcastable)
         return [e]
 
 
