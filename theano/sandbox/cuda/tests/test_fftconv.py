@@ -2,7 +2,7 @@ import unittest
 import numpy
 
 import theano
-from theano import unittest_tools as utt
+from theano.tests import unittest_tools as utt
 
 # Skip tests if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -10,7 +10,7 @@ import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-import theano.sandbox.cuda.float32_shared_constructor as shared
+from theano.sandbox.cuda import float32_shared_constructor as shared
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -68,15 +68,16 @@ class TestConv2dFFT(unittest.TestCase):
 
         conv = theano.tensor.nnet.conv.conv2d(inputs, filters)
 
-        mode = mode_with_gpu.optimizer_including('conv2d_fft_valid')
+        mode = mode_with_gpu.including('conv_fft_valid')
 
         f_ref = theano.function([], conv)
-        f_fft = theano.function([], conv, mode=mode_with_gpu)
+        f_fft = theano.function([], conv, mode=mode)
 
         # make sure we inserted the fft trickery
         topo = f_fft.maker.fgraph.toposort()
-        assert len(op for op in topo
-                   if isinstance(op, theano.sandbox.cuda.fftconv.CuFFTOp)) == 1
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 2
+
 
         res_ref = f_ref()
         res_fft = f_fft()
@@ -96,15 +97,15 @@ class TestConv2dFFT(unittest.TestCase):
         conv = theano.tensor.nnet.conv.conv2d(inputs, filters,
                                               border_mode='full')
 
-        mode = mode_with_gpu.optimizer_including('conv2d_fft_full')
+        mode = mode_with_gpu.including('conv_fft_full')
 
         f_ref = theano.function([], conv)
-        f_fft = theano.function([], conv, mode=mode_with_gpu)
+        f_fft = theano.function([], conv, mode=mode)
 
         # make sure we inserted the fft trickery
         topo = f_fft.maker.fgraph.toposort()
-        assert len(op for op in topo
-                   if isinstance(op, theano.sandbox.cuda.fftconv.CuFFTOp)) == 1
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 2
 
         res_ref = f_ref()
         res_fft = f_fft()

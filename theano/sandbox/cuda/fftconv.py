@@ -4,7 +4,8 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from theano.sandbox.cuda import GpuOp, basic_ops, CudaNdarrayType
+from theano.sandbox.cuda import (GpuOp, basic_ops, CudaNdarrayType,
+                                 CudaNdarray)
 
 import scikits.cuda
 from scikits.cuda import fft, cublas, misc
