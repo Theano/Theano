@@ -28,7 +28,8 @@ from theano.compile.function_module import deep_copy_op
 
 from theano.scan_module import scan_op
 from theano.scan_module import scan_utils
-from theano.scan_module.scan_utils import equal_computations, find_up, scan_args
+from theano.scan_module.scan_utils import (
+    equal_computations, find_up, scan_args)
 from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 
 # Logging function for sending warning or info
@@ -1187,7 +1188,7 @@ class ScanMerge(gof.Optimizer):
             flat_inner_outs = sum(inner_outs[idx], [])
             # clone
             flat_inner_ins, flat_inner_outs = scan_utils.reconstruct_graph(
-                    flat_inner_ins, flat_inner_outs)
+                flat_inner_ins, flat_inner_outs)
             # split the new inner variables again in seq, mitmot, etc.
             new_inner_ins = []
             count = 0
@@ -1631,8 +1632,8 @@ class PushOutDot1(gof.Optimizer):
                         if type(new_outs) not in (list, tuple):
                             new_outs = [new_outs]
 
-                        # We need now to pair correctly the new outputs with the
-                        # old ones
+                        # We need now to pair correctly the new
+                        # outputs with the old ones
                         outer_mitmot_outs = new_op.outer_mitmot_outs(new_outs)
                         outer_mitsot_outs = new_op.outer_mitsot_outs(new_outs)
                         outer_sitsot_outs = new_op.outer_sitsot_outs(new_outs)
@@ -1679,10 +1680,10 @@ class PushOutDot1(gof.Optimizer):
 # I've added an equilibrium because later scan optimization in the sequence
 # can make it such that earlier optimizations should apply. However, in
 # general I do not expect the sequence to run more then once
-scan_eqopt1 = theano.gof.EquilibriumDB()
-scan_seqopt1 = theano.gof.SequenceDB()
+scan_eqopt1 = theano.gof.EquilibriumDB(ignore_newtrees=False, max_nb_iter=1)
 
-scan_eqopt2 = theano.gof.EquilibriumDB()
+scan_eqopt2 = theano.gof.EquilibriumDB(ignore_newtrees=False, max_nb_iter=1)
+
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
 optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
@@ -1695,97 +1696,64 @@ optdb.register('scanOp_make_inplace',
                'inplace',
                'scan')
 
-scan_eqopt1.register(
-    'all_pushout_opt', scan_seqopt1, 1, 'fast_run', 'scan')
+
+scan_eqopt1.register('scanOp_remove_constants_and_unused_inputs0',
+                     remove_constants_and_unused_inputs_scan,
+                     'remove_constants_and_unused_inputs_scan',
+                     'fast_run',
+                     'scan')
 
 
-scan_seqopt1.register('scanOp_remove_constants_and_unused_inputs0',
-                      opt.in2out(remove_constants_and_unused_inputs_scan,
-                                 ignore_newtrees=True),
-                      1,
-                      'remove_constants_and_unused_inputs_scan',
-                      'fast_run',
-                      'scan')
+scan_eqopt1.register('scanOp_pushout_nonseqs_ops',
+                     PushOutNonSeqScan(),
+                     'fast_run',
+                     'scan')
 
 
-scan_seqopt1.register('scanOp_pushout_nonseqs_ops',
-                      PushOutNonSeqScan(),
-                      2,
-                      'fast_run',
-                      'scan')
+scan_eqopt1.register('scanOp_pushout_seqs_ops',
+                     PushOutSeqScan(),
+                     'fast_run',
+                     'scan')
 
 
-scan_seqopt1.register('scanOp_pushout_seqs_ops',
-                      PushOutSeqScan(),
-                      3,
-                      'fast_run',
-                      'scan')
-
-
-scan_seqopt1.register('scan_pushout_dot1',
-                      PushOutDot1(),
-                      4,
-                      'fast_run',
-                      'more_mem',
-                      'scan')
+scan_eqopt1.register('scan_pushout_dot1',
+                     PushOutDot1(),
+                     'fast_run',
+                     'more_mem',
+                     'scan')
 
 
 scan_eqopt2.register('constant_folding_for_scan2',
-                      opt.in2out(tensor.opt.constant_folding,
-                                 ignore_newtrees=True),
-                      1,
-                      'fast_run',
-                      'scan')
+                     tensor.opt.constant_folding,
+                     'fast_run',
+                     'scan')
 
 
 scan_eqopt2.register('scanOp_remove_constants_and_unused_inputs1',
-                      opt.in2out(remove_constants_and_unused_inputs_scan,
-                                 ignore_newtrees=True),
-                      2,
-                      'remove_constants_and_unused_inputs_scan',
-                      'fast_run',
-                      'scan')
+                     remove_constants_and_unused_inputs_scan,
+                     'remove_constants_and_unused_inputs_scan',
+                     'fast_run',
+                     'scan')
 
 
 # after const merge but before stabilize so that we can have identity
 # for equivalent nodes but we still have the chance to hoist stuff out
 # of the scan later.
 scan_eqopt2.register('scanOp_merge',
-                      ScanMerge(),
-                      4,
-                      'fast_run',
-                      'scan')
-
-# After Merge optimization
-scan_eqopt2.register('scanop_remove_constants_and_unused_inputs2',
-                      opt.in2out(remove_constants_and_unused_inputs_scan,
-                                 ignore_newtrees=True),
-                      5,
-                      'remove_constants_and_unused_inputs_scan',
-                      'fast_run',
-                      'scan')
+                     ScanMerge(),
+                     'fast_run',
+                     'scan')
 
 scan_eqopt2.register('scanOp_merge_inouts',
-                      opt.in2out(scan_merge_inouts, ignore_newtrees=True),
-                      6,
-                      'scan_merge_inouts',
-                      'fast_run',
-                      'scan')
+                     scan_merge_inouts,
+                     'scan_merge_inouts',
+                     'fast_run',
+                     'scan')
 
 # Just before specialize to have the other optimization
 # like constant folding being applied
 # This don't introduce inplace.
 scan_eqopt2.register('scanOp_save_mem',
-                      ScanSaveMem(),
-                      7,
-                      'fast_run',
-                      'scan')
-
-# After everything else
-scan_eqopt2.register('scanOp_remove_constants_and_unused_inputs3',
-                      opt.in2out(remove_constants_and_unused_inputs_scan,
-                                 ignore_newtrees=True),
-                      8,
-                      'remove_constants_and_unused_inputs_scan',
-                      'fast_run',
-                      'scan')
+                     ScanSaveMem(),
+                     'fast_run',
+                     'scan')
