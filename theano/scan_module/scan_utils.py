@@ -411,10 +411,6 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
         if _x.type != _y.type:
             return False
 
-    nds_x = gof.graph.io_toposort(in_xs, xs)
-    nds_y = gof.graph.io_toposort(in_ys, ys)
-    if len(nds_x) != len(nds_y):
-        return False
     common = set(zip(in_xs, in_ys))
     for dx, dy in izip(xs, ys):
         # We checked above that both dx and dy have an owner or not
@@ -427,6 +423,11 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
                     pass
             elif (dx, dy) not in common and dx != dy:
                 return False
+
+    nds_x = gof.graph.io_toposort(in_xs, xs)
+    nds_y = gof.graph.io_toposort(in_ys, ys)
+    if len(nds_x) != len(nds_y):
+        return False
 
     n_nodes = len(nds_x)
     idx = 0
