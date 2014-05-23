@@ -405,6 +405,8 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
         if x.owner:  # Check above tell that y.owner eval to True too.
             if x.owner.outputs.index(x) != y.owner.outputs.index(y):
                 return False
+        if x not in in_xs and x.type != y.type:
+            return False
     if len(in_xs) != len(in_ys):
         return False
     for _x, _y in izip(in_xs, in_ys):
