@@ -192,12 +192,12 @@ class Remove(Op):
         being thrown when trying to remove a matrix from a matrices list
         """
         if isinstance(toRemove, numpy.ndarray):
-            for y in x:
-                if numpy.array_equal(y, toRemove):
-                    toRemove = y
+            for y in range(out[0].__len__()):
+                if numpy.array_equal(out[0][y], toRemove):
+                    del out[0][y]
                     break
-
-        out[0].remove(toRemove)
+        else:
+            out[0].remove(toRemove)
 
     def __str__(self):
         return self.__class__.__name__
