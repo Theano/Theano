@@ -629,6 +629,12 @@ class ProfileStats(object):
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
 
+        # statistic with the new order
+        new_max_node_memory_size = 0
+        new_max_running_max_memory_size = 0
+        new_max_node_memory_saved_by_view = 0
+        new_max_node_memory_saved_by_inplace = 0
+
         def count_running_memory(order, thunk_old_storage, nodes_mem):
             for node in order:
                 val = nodes_mem[node]
@@ -713,13 +719,22 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size, node_memory_size, new_node_memory_size)
+            max_node_memory_size = max(max_node_memory_size, node_memory_size)
             max_running_max_memory_size = max(max_running_max_memory_size,
-                                          running_max_memory_size, new_running_max_memory_size)
+                                          running_max_memory_size)
             max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                node_memory_saved_by_view, new_node_memory_saved_by_view)
+                                                node_memory_saved_by_view)
             max_node_memory_saved_by_inplace = max(
-                max_node_memory_saved_by_inplace, node_memory_saved_by_inplace, new_node_memory_saved_by_inplace)
+                max_node_memory_saved_by_inplace, node_memory_saved_by_inplace)
+
+            # Store max of some stats with new order
+            new_max_node_memory_size = max(new_max_node_memory_size, new_node_memory_size)
+            new_max_running_max_memory_size = max(new_max_running_max_memory_size,
+                                        new_running_max_memory_size)
+            new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
+                                                new_node_memory_saved_by_view)
+            new_max_node_memory_saved_by_inplace = max(
+                new_max_node_memory_saved_by_inplace, new_node_memory_saved_by_inplace)
 
             del fgraph, nodes_mem, post_thunk_old_storage, node
 
@@ -739,12 +754,30 @@ class ProfileStats(object):
                              max_node_memory_size / 1024.))
         print >> file,  "    Max if linker=c|py: %dKB" % int(round(
             max_running_max_memory_size / 1024.))
-#        print >> file,  "    Memory saved if views are used: %dKB" % int(
-#            round(max_node_memory_saved_by_view / 1024.))
-#        print >> file,  "    Memory saved if inplace ops are used: %dKB" % \
-#            int(round(max_node_memory_saved_by_inplace / 1024.))
+        print >> file,  "    Memory saved if views are used: %dKB" % int(
+            round(max_node_memory_saved_by_view / 1024.))
+        print >> file,  "    Memory saved if inplace ops are used: %dKB" % \
+            int(round(max_node_memory_saved_by_inplace / 1024.))
         print >> file,  "    Memory saved if gc is enabled (linker=c|py): %dKB" % int(
             round(max_node_memory_size - max_running_max_memory_size) / 1024.)
+
+        print >> file,  "    Memory Profile with new executed node order"
+        print >> file,  "---"
+
+#        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
+#            round(max_sum_size / 1024))
+        print >> file,  "    Max if linker=cvm (default): unknown"
+        print >> file,  "    Max if no gc (allow_gc=False): %dKB" % int(round(
+                             new_max_node_memory_size / 1024.))
+        print >> file,  "    Max if linker=c|py: %dKB" % int(round(
+            new_max_running_max_memory_size / 1024.))
+        print >> file,  "    Memory saved if views are used: %dKB" % int(
+            round(new_max_node_memory_saved_by_view / 1024.))
+        print >> file,  "    Memory saved if inplace ops are used: %dKB" % \
+            int(round(new_max_node_memory_saved_by_inplace / 1024.))
+        print >> file,  "    Memory saved if gc is enabled (linker=c|py): %dKB" % int(
+            round(new_max_node_memory_size - new_max_running_max_memory_size) / 1024.)
+
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
             hasattr(theano.sandbox.cuda, 'cuda_ndarray') and
