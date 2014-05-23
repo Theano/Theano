@@ -70,7 +70,9 @@ def remove_constants_and_unused_inputs_scan(node):
                          op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
     st += op.n_sit_sot
     st += op.n_shared_outs
-    op_ins, op_outs = scan_utils.reconstruct_graph(op.inputs, op.outputs)
+
+    op_ins = op.inputs
+    op_outs = op.outputs
 
     # Corresponds to the initial states, which should stay untouched.
     # We put those variables aside, and put them back at the end.
