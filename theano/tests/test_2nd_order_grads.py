@@ -153,14 +153,14 @@ def test_jacobian_disconnected_inputs():
     jacobian_v = theano.gradient.jacobian(1 + v1, v2,
         disconnected_inputs='ignore')
     func_v = theano.function([v1, v2], jacobian_v)
-    val = np.arange(4.0).astype(theano.config.floatX)
-    assert np.allclose(func_v(val, val), np.zeros((4, 4)))
+    val = numpy.arange(4.0).astype(theano.config.floatX)
+    assert numpy.allclose(func_v(val, val), numpy.zeros((4, 4)))
 
     s1 = tensor.scalar()
     s2 = tensor.scalar()
     jacobian_s = theano.gradient.jacobian(1 + s1, s2,
         disconnected_inputs='ignore')
     func_s = theano.function([s2], jacobian_s)
-    val = np.array(1.0).astype(theano.config.floatX)
-    assert np.allclose(func_s(val), np.zeros(1))
+    val = numpy.array(1.0).astype(theano.config.floatX)
+    assert numpy.allclose(func_s(val), numpy.zeros(1))
 
