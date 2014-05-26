@@ -69,12 +69,17 @@ The following libraries and software are optional:
         To be able to make picture of Theano computation graph.
 
     `NVIDIA CUDA drivers and SDK`_
-        Required for GPU code generation/execution. Only NVIDIA GPUs using
-        32-bit floating point numbers are currently supported.
+        Required for GPU code generation/execution on NVIDIA gpus
+
+    `libgpuarray`_
+        Required for GPU/CPU code generation on CUDA and OpenCL devices
+
+        :note: OpenCL support is still minimal for now.
 
 .. _LaTeX: http://www.latex-project.org/
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
+.. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
 
 Linux
 -----
