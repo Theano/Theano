@@ -654,6 +654,12 @@ class ProfileStats(object):
                 new allocation
             
             """
+            node_memory_size = 0
+            running_memory_size = 0
+            running_max_memory_size = 0
+            node_memory_saved_by_view = 0
+            node_memory_saved_by_inplace = 0
+            
             for node in order:
                 val = nodes_mem[node]
                 dmap = getattr(node.op, 'destroy_map', None)
