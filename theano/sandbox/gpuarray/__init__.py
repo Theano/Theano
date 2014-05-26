@@ -39,6 +39,10 @@ def init_dev(dev):
     pygpu_activated = True
     if config.print_active_device:
         print >> sys.stderr, "Using device %s: %s" % (dev, context.devname)
+    # remember the active device
+    init_dev.device = dev
+
+init_dev.device = None
 
 if pygpu:
     try:
