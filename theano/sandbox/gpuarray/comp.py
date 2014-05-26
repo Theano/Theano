@@ -42,7 +42,10 @@ class NVCC_compiler(NVCC_base):
             if dev.startswith("opencl"):
                 raise Exception, "Trying to call nvcc with an OpenCL context"
             assert dev.startswith('cuda')
-            n = int(dev[4:])
+            if dev == 'cuda':
+                n = theano.sandbox.cuda.use.device_number
+            else:
+                n = int(dev[4:])
             p = theano.sandbox.cuda.device_properties(n)
             flags.append('-arch=sm_' + str(p['major']) + str(p['minor']))
 
