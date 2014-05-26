@@ -68,14 +68,17 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         x = TensorType('float64', ib)('x')
         self.assertRaises(ValueError, DimShuffle, ib, shuffle)
 
+    @attr('slow')
     def test_perform(self):
         self.with_linker(gof.PerformLinker())
 
+    @attr('slow')
     def test_c_or_py(self):
         # Shape op don't have C code.
         # But This will test DimShuffle c code
         self.with_linker(gof.OpWiseCLinker())
 
+    @attr('slow')
     def test_infer_shape(self):
 
         for xsh, shuffle in [((2, 3), (1, 'x', 0)),
@@ -95,6 +98,7 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                                     [adtens_val], self.op,
                                     warn=False)
 
+    @attr('slow')
     def test_too_big_rank(self):
         x = tensor.dscalar()
         y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
@@ -230,6 +234,7 @@ class test_Broadcast(unittest.TestCase):
         self.with_linker(gof.PerformLinker(), self.op, self.type,
                          self.rand_val)
 
+    @attr('slow')
     def test_c(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
@@ -239,12 +244,14 @@ class test_Broadcast(unittest.TestCase):
         self.with_linker_inplace(gof.PerformLinker(), self.op, self.type,
                                  self.rand_val)
 
+    @attr('slow')
     def test_c_inplace(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
         self.with_linker_inplace(gof.CLinker(), self.cop, self.ctype,
                                  self.rand_cval)
 
+    @attr('slow')
     def test_fill(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
@@ -441,6 +448,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     # GpuCAReduce don't implement all cases when size is 0
                     assert xv.size == 0
 
+    @attr('slow')
     def test_perform(self):
         for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype)
@@ -456,6 +464,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.PerformLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.PerformLinker(), scalar.xor, dtype=dtype)
 
+    @attr('slow')
     def test_perform_nan(self):
         for dtype in ["floatX", "complex64", "complex128"]:
             self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype,
@@ -505,6 +514,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
 
+    @attr('slow')
     def test_infer_shape(self, dtype=None):
         if dtype is None:
             dtype = theano.config.floatX
@@ -532,6 +542,7 @@ class test_Prod(unittest.TestCase):
 
         self.mode = mode
 
+    @attr('slow')
     def test_verify_grad(self):
 
         # including zeros, as the case with zeros is important
@@ -548,6 +559,7 @@ class test_Prod(unittest.TestCase):
 
         unittest_tools.verify_grad(fn, [x_val], mode=self.mode)
 
+    @attr('slow')
     def test_verify_grad_with_zeros(self):
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
@@ -588,6 +600,7 @@ class test_Prod(unittest.TestCase):
 
         #unittest_tools.verify_grad(fn5, [x_val])
 
+    @attr('slow')
     def test_prod_no_zeros_in_input(self):
         x = theano.tensor.dmatrix()
         x_val = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
@@ -667,6 +680,7 @@ class test_Prod(unittest.TestCase):
 
         fn_debug(a)
 
+    @attr('slow')
     def test_pickle_bug(self):
         # Regression test for bug fixed in 24d4fd291054.
         o = Prod()
@@ -709,9 +723,11 @@ class test_IsInf_IsNan(unittest.TestCase):
                 n_out = numpy_isfunc(x)
                 assert (t_out == n_out).all(), (t_out, n_out)
 
+    @attr('slow')
     def test_isinf(self):
         return self.run_isfunc('isinf')
 
+    @attr('slow')
     def test_isnan(self):
         return self.run_isfunc('isnan')
 
@@ -748,6 +764,7 @@ class T_reduce_dtype(unittest.TestCase):
                 data = data.astype(dtype)
                 f(data)
 
+    @attr('slow')
     def test_reduce_default_acc_dtype(self):
         ##Test the default acc_dtype of a reduce().
         # We try multiple axis combinations even though axis should not matter.
@@ -848,6 +865,7 @@ class T_reduce_dtype(unittest.TestCase):
 
                     idx += 1
 
+    @attr('slow')
     def test_reduce_precision(self):
         # Check that the default accumulator precision is sufficient
         for method in self.methods:
@@ -933,6 +951,7 @@ class T_mean_dtype(unittest.TestCase):
 
                 idx += 1
 
+    @attr('slow')
     def test_mean_precision(self):
         # Check that the default accumulator precision is sufficient
         x = theano.shared(numpy.asarray([1e8, 1, -1e8], dtype='float32'))
@@ -1053,6 +1072,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
 
 class TestElemwise(unittest_tools.InferShapeTester):
 
+    @attr('slow')
     def test_infer_shape(self):
 
         for s_left, s_right in [((5, 6), (5, 6)),
@@ -1121,7 +1141,7 @@ if __name__ == '__main__':
     unittest.TextTestRunner().run(suite)
 """
 
-
+@attr('slow')
 def test_clip_grad():
 
     # test the gradient of clip
@@ -1132,7 +1152,7 @@ def test_clip_grad():
     unittest_tools.verify_grad(func,
             [numpy.asarray([-1., 0.5, 2.]), 0., 1.])
 
-
+@attr('slow')
 def test_clip_grad_int():
 
     # test that integers don't crash clip gradient

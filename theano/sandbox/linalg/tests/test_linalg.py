@@ -93,8 +93,6 @@ def test_cholesky_grad():
     yield (lambda: utt.verify_grad(Cholesky(lower=False), [pd], 3,
                                    rng, eps=eps))
 
-
-@attr('slow')
 def test_cholesky_and_cholesky_grad_shape():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the Cholesky op.")
@@ -195,7 +193,7 @@ def test_inverse_grad():
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
 
-
+@attr('slow')
 def test_rop_lop():
     mx = tensor.matrix('mx')
     mv = tensor.matrix('mv')
@@ -397,7 +395,6 @@ class test_diag(unittest.TestCase):
         x = rng.rand(5, 4).astype(self.floatX)
         tensor.verify_grad(extract_diag, [x], rng=rng)
 
-    @attr('slow')
     def test_extract_diag_empty(self):
         c = self.shared(numpy.array([[], []], self.floatX))
         f = theano.function([], extract_diag(c), mode=self.mode)
@@ -553,13 +550,13 @@ class test_Eigh(test_Eig):
         assert_array_almost_equal(vu * numpy.sign(vu[0, :]),
                                   vl * numpy.sign(vl[0, :]))
 
+    @attr('slow')
     def test_grad(self):
         S = self.S
         utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng)
-
 
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'

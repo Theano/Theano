@@ -219,6 +219,7 @@ class TestConv3D(utt.InferShapeTester):
                     videoWidth, videoDur, inputChannels), borrow=True)
         self.rb.set_value(self.random_tensor(inputChannels), borrow=True)
 
+    @attr('slow')
     def test_c_against_python(self):
         self.randomize()
         self.check_c_against_python(self.V.get_value(borrow=True).shape[1:4])
@@ -291,6 +292,7 @@ class TestConv3D(utt.InferShapeTester):
                 str(N.abs(W.get_value(borrow=True)).min())
             assert False
 
+    @attr('slow')
     def test_c_against_mat_transp_mul(self):
     # Use a filter of the same size as the image, so the convolution is just a
     # dense matrix multiply.
@@ -361,6 +363,7 @@ class TestConv3D(utt.InferShapeTester):
                         str(V_mat[qq, qqq], Vv_mat[qq, qqq]))
                         assert False
 
+    @attr('slow')
     def test_c_against_sparse_mat_transp_mul(self):
     # like test_c_against_mat_transp_mul but using a sparse matrix and a kernel
     # that is smaller than the image
@@ -480,6 +483,7 @@ class TestConv3D(utt.InferShapeTester):
                                % (i, j, V_mat[i, j], Vv_mat[i, j]))
             assert False
 
+    @attr('slow')
     def test_infer_shape(self):
         self.randomize()
         # Conv3D
@@ -496,6 +500,7 @@ class TestConv3D(utt.InferShapeTester):
                                             T.grad(self.reconsObj, self.b)],
                     [self.V.get_value(borrow=True).shape[1:4]], ConvGrad3D)
 
+    @attr('slow')
     def test_gradient(self):
         self.randomize()
         rng, V, W, b, d, rb = self.rng, self.V, self.W, self.b, self.d, self.rb

@@ -2554,6 +2554,7 @@ class T_max_and_argmax(unittest.TestCase):
         val = tensor.get_scalar_constant_value(gx)
         assert val == 0.0
 
+    @attr('slow')
     def test_grad(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
