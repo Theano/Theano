@@ -24,6 +24,7 @@ class OpFromGraph(gof.Op):
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
+
     :note:
         - We support shared variables in the inner graph. This is automatic and
           invisible to the user. They can be as input to the node or in the

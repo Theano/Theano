@@ -5,14 +5,16 @@
 Using the GPU
 =============
 
-For an introductory discussion of *Graphical Processing Units* (GPU) and their use for
-intensive parallel computation purposes, see `GPGPU <http://en.wikipedia.org/wiki/GPGPU>`_.
+For an introductory discussion of *Graphical Processing Units* (GPU)
+and their use for intensive parallel computation purposes, see `GPGPU
+<http://en.wikipedia.org/wiki/GPGPU>`_.
 
-One of Theano's design goals is to specify computations at an
-abstract level, so that the internal function compiler has a lot of flexibility
-about how to carry out those computations.  One of the ways we take advantage of
-this flexibility is in carrying out calculations on an Nvidia graphics card when
-the device present in the computer is CUDA-enabled.
+One of Theano's design goals is to specify computations at an abstract
+level, so that the internal function compiler has a lot of flexibility
+about how to carry out those computations.  One of the ways we take
+advantage of this flexibility is in carrying out calculations on an
+Nvidia graphics card when the device present in the computer is
+CUDA-enabled.
 
 Setting Up CUDA
 ----------------

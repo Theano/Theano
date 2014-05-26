@@ -490,6 +490,7 @@ def register_rebroadcast_c_code(typ, code, version=()):
                  %(oname)s for the input and output C variable names
                  respectively.  %(axis)s for the axis that we need to
                  check. This code is put in a loop for all axis
+
     :param version: A number indicating the version of the code, for cache.
     """
     Rebroadcast.c_code_and_version[typ] = (code, version)
@@ -497,14 +498,18 @@ def register_rebroadcast_c_code(typ, code, version=()):
 
 class Rebroadcast(gof.Op):
     """
-    Change the input's broadcastable fields in
-    some predetermined way.
-    e.g.: Rebroadcast((0, True), (1, False))(x)
-          would make x broadcastable in axis 0
-          and not broadcastable in axis 1
-    See also the unbroadcast, addbroadcast and patternbroadcast functions.
+    Change the input's broadcastable fields in some predetermined way.
 
-    ..note: work inplace and work for CudaNdarrayType
+    :code:`Rebroadcast((0, True), (1, False))(x)` would make :code:`x`
+    broadcastable in axis 0 and not broadcastable in axis 1
+
+    .. seealso::
+
+      :func:`unbroadcast <theano.tensor.unbroadcast>`
+      :func:`addbroadcast <theano.tensor.addbroadcast>`
+      :func:`patternbroadcast <theano.tensor.patternbroadcast>`
+
+    ..note: works inplace and works for CudaNdarrayType
     """
     view_map = {0: [0]}
     # Mapping from Type to C code (and version) to use.
