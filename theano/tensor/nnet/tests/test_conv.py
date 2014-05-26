@@ -145,6 +145,7 @@ class TestConv2D(utt.InferShapeTester):
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full')
         # test filter same size as input
 
+    @attr('slow')
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'full')
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid')
@@ -441,6 +442,7 @@ class TestConv2D(utt.InferShapeTester):
                         print t2 - t1,
                     print
 
+    @attr('slow')
     def test_infer_shape(self):
     # Note: infer_shape is incomplete and thus input and filter shapes
     # must be provided explicitly
