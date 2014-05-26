@@ -80,6 +80,14 @@ class GetItem(Op):
     def __str__(self):
         return self.__class__.__name__
 
+    def c_code(self, node, name, inp, out, sub):
+        x_name, index = inp[0], inp[1]
+        output_name = out[0]
+        return """
+        %(output_name)s = (typeof %(output_name)s) PyList_GetItem( (PyObject*) %(x_name)s, *((double *) PyArray_DATA(%(index)s)));
+        Py_INCREF(%(output_name)s);
+        """ % locals()
+
 getitem = GetItem()
 
 
@@ -113,6 +121,22 @@ class Append(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+    def c_code(self, node, name, inp, out, sub):
+        x_name, toAppend = inp[0], inp[1]
+        output_name = out[0]
+        if not self.inplace:
+            init = """
+            %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
+            """ % locals()
+        else:
+            init = """
+            %(output_name)s =  %(x_name)s;
+            """ % locals()
+        return init + """
+        PyList_Append( (PyObject*) %(output_name)s,(PyObject*) %(toAppend)s);
+        Py_INCREF(%(output_name)s);
+        """ % locals()
 
 append = Append()
 
@@ -148,6 +172,26 @@ class Extend(Op):
     def __str__(self):
         return self.__class__.__name__
 
+    def c_code(self, node, name, inp, out, sub):
+        x_name, toAppend = inp[0], inp[1]
+        output_name = out[0]
+        if not self.inplace:
+            init = """
+            %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
+            """ % locals()
+        else:
+            init = """
+            %(output_name)s =  %(x_name)s;
+            """ % locals()
+        return init + """
+        int i =0;
+        int length = PyList_GET_SIZE((PyObject*) %(x_name)s);
+        for(i; i < length; i++){
+            PyList_Append( (PyObject*) %(output_name)s,(PyObject*) PyList_GetItem((PyObject*) %(toAppend)s,i));
+        }
+        Py_INCREF(%(output_name)s);
+        """ % locals()
+
 extend = Extend()
 
 
@@ -182,6 +226,22 @@ class Insert(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+    def c_code(self, node, name, inp, out, sub):
+        x_name, index, toInsert = inp[0], inp[1], inp[2]
+        output_name = out[0]
+        if not self.inplace:
+            init = """
+            %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
+            """ % locals()
+        else:
+            init = """
+            %(output_name)s =  %(x_name)s;
+            """ % locals()
+        return init + """
+        PyList_Insert((PyObject*) %(output_name)s, *((double *) PyArray_DATA(%(index)s)), (PyObject*) %(toInsert)s);
+        Py_INCREF(%(output_name)s);
+        """ % locals()
 
 insert = Insert()
 

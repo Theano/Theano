@@ -43,6 +43,7 @@ def random_lil(shape, dtype, nnz):
 class test_get_item(unittest.TestCase):
 
     def setUp(self):
+        theano.config.nocleanup = True
         utt.seed_rng()
 
     def test_sanity_check_slice(self):
@@ -76,6 +77,7 @@ class test_get_item(unittest.TestCase):
                             z)
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0,
                                     dtype=theano.config.floatX)), x))

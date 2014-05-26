@@ -66,6 +66,7 @@ class TypedListType(gof.Type):
         else:
             return 0
 
+<<<<<<< HEAD
     def values_eq(self, a, b):
         if not len(a) == len(b):
             return False
@@ -75,3 +76,34 @@ class TypedListType(gof.Type):
                 return False
 
         return True
+=======
+    def c_declare(self, name, sub):
+        return """
+        PyListObject* %(name)s;
+        """ % dict(name=name)
+
+    def c_init(self, name, sub):
+        return """
+        %(name)s = NULL;
+        """ % dict(name=name)
+
+    def c_extract(self, name, sub):
+        return """
+        if (!PyList_Check(py_%(name)s)) {
+            PyErr_SetString(PyExc_TypeError, "expected a list");
+            %(fail)s
+        }
+        %(name)s = (PyListObject*) (py_%(name)s);
+        """ % dict(name=name, fail=sub['fail'])
+
+    def c_sync(self, name, sub):
+
+        return """
+        Py_XDECREF(py_%(name)s);
+        py_%(name)s = (PyObject*)(%(name)s);
+        Py_INCREF(py_%(name)s);
+        """ % dict(name=name)
+
+    def c_cleanup(self, name, sub):
+        return ""
+>>>>>>> Added C interface for TypedListType, GetItem op, insert op, append op and extend op.
