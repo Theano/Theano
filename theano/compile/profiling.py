@@ -741,12 +741,13 @@ class ProfileStats(object):
         print >> file,  "---"
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
-        print >> file,  "    Max if linker=cvm (default): %dKB" %int(round(
-                             new_max_node_memory_size / 1024.))
-        print >> file,  "    Max if no gc (allow_gc=False): %dKB" % int(round(
-                             max_node_memory_size / 1024.))
-        print >> file,  "    Max if linker=c|py: %dKB" % int(round(
-            max_running_max_memory_size / 1024.))
+
+        print >> file,  "    Max if no gc (allow_gc=False): %dKB" % (int(round(
+                             new_max_node_memory_size / 1024.)), int(round(
+                             max_node_memory_size / 1024.)))
+        print >> file,  "    Max if linker=cvm(default): %dKB %dKB" % (int(round(
+            new_max_running_max_memory_size / 1024.)), int(round(
+            max_running_max_memory_size / 1024.)))
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
             round(max_node_memory_saved_by_view / 1024.)))
