@@ -636,6 +636,24 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_inplace = 0
 
         def count_running_memory(order, thunk_old_storage, nodes_mem):
+            """
+            Calculate memory with specific node order 
+            Return a list including the following values
+            1.  node_memory_size
+                Sum of the size of all variables that actually allocate
+                memory (excluding views, and inplace);
+            2. running_memory_size
+                The memory allocated after the current apply node
+            3. running_max_memory_size
+                The maximum of running_memory_size during the function   
+            4.  node_memory_saved_by_view
+                The sum of memory saved by returning view instead of new
+                allocation 
+            5.  node_memory_saved_by_inplace
+                The sum of memory saved by reusing the input instead of
+                new allocation
+            
+            """
             for node in order:
                 val = nodes_mem[node]
                 dmap = getattr(node.op, 'destroy_map', None)
@@ -659,39 +677,12 @@ class ProfileStats(object):
                             if not isinstance(old_v, str):
                                 running_memory_size -= old_v
 
-            return node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view
+            return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
 
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
             sum_size = sum([sum([v for v in val if not isinstance(v, str)])
-                            for key, val in nodes_mem.iteritems()])
-            # Sum of the size of all variables that actually allocate
-            # memory (excluding views, and inplace);
-            node_memory_size = 0
-            # The sum of memory saved by returning view instead of new
-            # allocation
-            node_memory_saved_by_view = 0
-            # The sum of memory saved by reusing the input instead of
-            # new allocation
-            node_memory_saved_by_inplace = 0
-            # The memory allocated after the current apply node
-            running_memory_size = 0
-            # The maximum of running_memory_size during the function
-            running_max_memory_size = 0
-
-            new_node_memory_size = 0
-            # The sum of memory saved by returning view instead of new
-            # allocation with new node executed order
-            new_node_memory_saved_by_view = 0
-            # The sum of memory saved by reusing the input instead of
-            # new allocation with new node executed order
-            new_node_memory_saved_by_inplace = 0
-            # The memory allocated after the current apply node with 
-            # new node executed order
-            new_running_memory_size = 0
-            # The maximum of running_memory_size during the function
-            # with new node executed order
-            new_running_max_memory_size = 0            
+                            for key, val in nodes_mem.iteritems()])    
 
             order = fgraph.toposort()
             # A list of intermediate variable that are not need
@@ -708,33 +699,33 @@ class ProfileStats(object):
                     (input not in fgraph.outputs) and
                     node == last_user[input]])
 
-            node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_view, node_memory_saved_by_inplace = count_running_memory(order, post_thunk_old_storage, nodes_mem)
+            old_running_memory = count_running_memory(order, post_thunk_old_storage, nodes_mem)
 
             new_order = fgraph.profile.node_executed_order
             # A list of new executed node order
             new_storage = fgraph.profile.node_cleared_order
             # A list of variables that get freed
 
-            new_node_memory_size, new_running_memory_size, new_running_max_memory_size, new_node_memory_saved_by_view, new_node_memory_saved_by_inplace = count_running_memory(new_order, new_storage, nodes_mem)
+            new_running_memory = count_running_memory(new_order, new_storage, nodes_mem)
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size, node_memory_size)
+            max_node_memory_size = max(max_node_memory_size, old_running_memory[0])
             max_running_max_memory_size = max(max_running_max_memory_size,
-                                          running_max_memory_size)
+                                          old_running_memory[2])
             max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                node_memory_saved_by_view)
+                                                old_running_memory[4])
             max_node_memory_saved_by_inplace = max(
-                max_node_memory_saved_by_inplace, node_memory_saved_by_inplace)
+                max_node_memory_saved_by_inplace, old_running_memory[3])
 
             # Store max of some stats with new order
-            new_max_node_memory_size = max(new_max_node_memory_size, new_node_memory_size)
+            new_max_node_memory_size = max(new_max_node_memory_size, new_running_memory[0])
             new_max_running_max_memory_size = max(new_max_running_max_memory_size,
-                                        new_running_max_memory_size)
+                                        new_running_memory[2])
             new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
-                                                new_node_memory_saved_by_view)
+                                                new_running_memory[4])
             new_max_node_memory_saved_by_inplace = max(
-                new_max_node_memory_saved_by_inplace, new_node_memory_saved_by_inplace)
+                new_max_node_memory_saved_by_inplace, new_running_memory[3])
 
             del fgraph, nodes_mem, post_thunk_old_storage, node
 
@@ -745,38 +736,25 @@ class ProfileStats(object):
             print >> file,  "Memory Profile"
 
         print >> file, "(Sparse variables are ignored)"
+        print >> file, "(For values in brackets, it's for linker = c|py"
 
         print >> file,  "---"
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
-        print >> file,  "    Max if linker=cvm (default): unknown"
+        print >> file,  "    Max if linker=cvm (default): %dKB" %int(round(
+                             new_max_node_memory_size / 1024.))
         print >> file,  "    Max if no gc (allow_gc=False): %dKB" % int(round(
                              max_node_memory_size / 1024.))
         print >> file,  "    Max if linker=c|py: %dKB" % int(round(
             max_running_max_memory_size / 1024.))
-        print >> file,  "    Memory saved if views are used: %dKB" % int(
-            round(max_node_memory_saved_by_view / 1024.))
-        print >> file,  "    Memory saved if inplace ops are used: %dKB" % \
-            int(round(max_node_memory_saved_by_inplace / 1024.))
-        print >> file,  "    Memory saved if gc is enabled (linker=c|py): %dKB" % int(
-            round(max_node_memory_size - max_running_max_memory_size) / 1024.)
-
-        print >> file,  "    Memory Profile with new executed node order"
-        print >> file,  "---"
-
-#        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
-#            round(max_sum_size / 1024))
-        print >> file,  "    Max if linker=cvm (default): unknown"
-        print >> file,  "    Max if no gc (allow_gc=False): %dKB" % int(round(
-                             new_max_node_memory_size / 1024.))
-        print >> file,  "    Max if linker=c|py: %dKB" % int(round(
-            new_max_running_max_memory_size / 1024.))
-        print >> file,  "    Memory saved if views are used: %dKB" % int(
-            round(new_max_node_memory_saved_by_view / 1024.))
-        print >> file,  "    Memory saved if inplace ops are used: %dKB" % \
-            int(round(new_max_node_memory_saved_by_inplace / 1024.))
-        print >> file,  "    Memory saved if gc is enabled (linker=c|py): %dKB" % int(
-            round(new_max_node_memory_size - new_max_running_max_memory_size) / 1024.)
+        print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
+            round(new_max_node_memory_saved_by_view / 1024.)), int(
+            round(max_node_memory_saved_by_view / 1024.)))
+        print >> file,  "    Memory saved if inplace ops are used: %dKB (%dKB)" % \
+            (int(round(new_max_node_memory_saved_by_inplace / 1024.)), int(round(max_node_memory_saved_by_inplace / 1024.)))
+        print >> file,  "    Memory saved if gc is enabled: %dKB (%dKB)" % (int(
+            round(new_max_node_memory_size - new_max_running_max_memory_size) / 1024.), int(
+            round(max_node_memory_size - max_running_max_memory_size) / 1024.))
 
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
