@@ -1666,9 +1666,11 @@ def jacobian(expression, wrt, consider_constant=None,
 
     if expression.ndim == 0:
         # expression is just a scalar, use grad
-        return format_as(
-            using_list, using_tuple,
-            grad(expression, wrt, disconnected_inputs=disconnected_inputs))
+        return format_as(using_list, using_tuple,
+                         grad(expression,
+                              wrt,
+                              consider_constant=consider_constant,
+                              disconnected_inputs=disconnected_inputs))
 
     def inner_function(*args):
         idx = args[0]
