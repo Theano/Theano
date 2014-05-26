@@ -1327,6 +1327,29 @@ Mathematical
 
     Returns a variable representing the inverse error function or the inverse complementary error function. `wikipedia <http://en.wikipedia.org/wiki/Error_function#Inverse_functions>`__
 
+.. function:: gamma(a)
+
+   Returns a variable representing the gamma function.
+
+.. function:: gammaln(a)
+
+   Returns a variable representing the logarithm of the gamma function.
+
+.. function:: psi(a)
+
+   Returns a variable representing the derivative of the logarithm of
+   the gamma function (also called the digamma function).
+
+.. function:: chi2sf(a, df)
+
+   Returns a variable representing the survival function (1-cdf —
+   sometimes more accurate).
+
+   C code is provided in the Theano_lgpl repository.
+   This make it faster.
+
+   https://github.com/Theano/Theano_lgpl.git
+
 
 .. _libdoc_tensor_broadcastable:
 
