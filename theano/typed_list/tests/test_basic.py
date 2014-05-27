@@ -43,7 +43,6 @@ def random_lil(shape, dtype, nnz):
 class test_get_item(unittest.TestCase):
 
     def setUp(self):
-        theano.config.nocleanup = True
         utt.seed_rng()
 
     def test_sanity_check_slice(self):
