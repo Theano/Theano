@@ -18,6 +18,15 @@ class _typed_list_py_operators:
     def extend(self, toAppend):
         return Extend()(self, toAppend)
 
+    def insert(self, index, toInsert):
+        return Insert()(self, index, toInsert)
+
+    def remove(self, toRemove):
+        return Remove()(self, toRemove)
+
+    def reverse(self):
+        return Reverse()(self)
+
     ttype = property(lambda self: self.type.ttype)
 
 

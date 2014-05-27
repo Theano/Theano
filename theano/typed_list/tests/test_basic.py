@@ -245,6 +245,22 @@ class test_insert(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
 
+    def test_interface(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+        myScalar = T.scalar()
+
+        z = mySymbolicMatricesList.insert(myScalar, myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myScalar, myMatrix], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
+
 
 class test_remove(unittest.TestCase):
 
@@ -279,6 +295,21 @@ class test_remove(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
 
+    def test_interface(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+
+        z = mySymbolicMatricesList.remove(myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myMatrix], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+
 
 class test_reverse(unittest.TestCase):
 
@@ -302,6 +333,20 @@ class test_reverse(unittest.TestCase):
                                 theano.config.floatX, (False, False)))()
 
         z = Reverse()(mySymbolicMatricesList)
+
+        f = theano.function([mySymbolicMatricesList], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+
+    def test_interface(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+
+        z = mySymbolicMatricesList.reverse()
 
         f = theano.function([mySymbolicMatricesList], z)
 
