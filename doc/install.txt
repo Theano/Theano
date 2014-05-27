@@ -72,7 +72,7 @@ The following libraries and software are optional:
         Required for GPU code generation/execution on NVIDIA gpus
 
     `libgpuarray`_
-        Required for GPU/CPU code generation on CUDA and OpenCL devices
+        Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
 
         :note: OpenCL support is still minimal for now.
 

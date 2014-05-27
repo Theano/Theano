@@ -438,6 +438,13 @@ While all types of devices are supported if using OpenCL, for the
 remainder of this section, whatever compute device you are using will
 be referred to as GPU.
 
+.. warning::
+
+  While it is fully our intention to support OpenCL, as of May 2014
+  this support is still in its infancy.  A lot of very useful ops
+  still do not support it because they were ported from the old
+  backend with minimal change.
+
 Testing Theano with GPU
 -----------------------
 
@@ -557,7 +564,7 @@ of execution on GPUs, meaning that the work isn't completed yet, just
 The object returned is a GpuArray from pygpu.  It mostly acts as a
 numpy ndarray with some exceptions due to its data being on the GPU.
 You can copy it to the host and convert it to a regular ndarray by
-using usual numpy casting.
+using usual numpy casting such as ``numpy.asarray()``.
 
 
 Running the GPU at Full Speed
