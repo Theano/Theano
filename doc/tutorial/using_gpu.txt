@@ -144,97 +144,14 @@ The output from this program is
       1.62323296]
     Used the gpu
 
-Here we've shaved off about 50% of the run-time by simply not copying the
-resulting array back to the host.
-The object returned by each function call is now not a NumPy array but a
-"CudaNdarray" which can be converted to a NumPy ndarray by the normal
-NumPy casting mechanism using something like ``numpy.asarray()``.
+Here we've shaved off about 50% of the run-time by simply not copying
+the resulting array back to the host.  The object returned by each
+function call is now not a NumPy array but a "CudaNdarray" which can
+be converted to a NumPy ndarray by the normal NumPy casting mechanism
+using something like ``numpy.asarray()``.
 
-
-Running the GPU at Full Speed
-------------------------------
-
-To really get maximum performance in this simple example, we need to use an
-:class:`out<function.Out>` instance with the flag ``borrow=True`` to tell Theano not to copy
-the output it returns to us. This is because Theano pre-allocates memory for internal use
-(like working buffers), and by default will never return a result that is aliased to one of
-its internal buffers: instead, it will copy the buffers associated to outputs into newly
-allocated memory at each function call. This is to ensure that subsequent function calls will
-not overwrite previously computed outputs. Although this is normally what you want, our last
-example was so simple that it had the unwanted side-effect of really slowing things down.
-
-
-..
-    TODO:
-    The story here about copying and working buffers is misleading and potentially not correct
-    ... why exactly does borrow=True cut 75% of the runtime ???
-
-..  TODO: Answer by Olivier D: it sounds correct to me -- memory allocations must be slow.
-
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_3
-.. code-block:: python
-
-    from theano import function, config, shared, sandbox, Out
-    import theano.tensor as T
-    import numpy
-    import time
-
-    vlen = 10 * 30 * 768  # 10 x # cores x # threads per core
-    iters = 1000
-
-    rng = numpy.random.RandomState(22)
-    x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-    f = function([],
-            Out(sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)),
-                borrow=True))
-    print f.maker.fgraph.toposort()
-    t0 = time.time()
-    for i in xrange(iters):
-        r = f()
-    t1 = time.time()
-    print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-    print 'Result is', r
-    print 'Numpy result is', numpy.asarray(r)
-    if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
-        print 'Used the cpu'
-    else:
-        print 'Used the gpu'
-
-Running this version of the code takes just over 0.05 seconds, that is 60x faster than
-the CPU implementation!
-
-.. code-block:: text
-
-    With *flag* ``borrow=False``:
-
-    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python using_gpu_solution_1.py
-    Using gpu device 0: GeForce GTX 580
-    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
-    Looping 1000 times took 0.31614613533 seconds
-    Result is <CudaNdarray object at 0x77e9270>
-    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761
-      1.62323296]
-    Used the gpu
-
-    With *flag* ``borrow=True``:
-
-    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python using_gpu_solution_1.py
-    Using gpu device 0: GeForce GTX 580
-    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
-    Looping 1000 times took 0.0502779483795 seconds
-    Result is <CudaNdarray object at 0x83e5cb0>
-    Numpy result is [ 1.23178029  1.61879349  1.52278066 ...,  2.20771813  2.29967761
-      1.62323296]
-    Used the gpu
-
-
-This version of the code including the flag ``borrow=True`` is slightly less safe because if we had saved
-the *r* returned from one function call, we would have to take care and remember that its value might
-be over-written by a subsequent function call.  Although ``borrow=True`` makes a dramatic difference
-in this example, be careful!  The advantage of ``borrow=True`` is much weaker in larger graphs, and
-there is a lot of potential for making a mistake by failing to account for the resulting memory aliasing.
-
+For even more speed you can play with the ``borrow`` flag.  See
+:ref:`borrowfunction`.
 
 What Can Be Accelerated on the GPU
 ----------------------------------
@@ -566,69 +483,8 @@ numpy ndarray with some exceptions due to its data being on the GPU.
 You can copy it to the host and convert it to a regular ndarray by
 using usual numpy casting such as ``numpy.asarray()``.
 
-
-Running the GPU at Full Speed
------------------------------
-
-Theano, in the interest of safety, usually returns a copy of the
-internal compute memory from its functions.  If it didn't do that
-there are instance where calling the same function again would
-overwrite the returned results which could cause quite a few debugging
-headaches.
-
-If you are really sure that it is safe for your program, you can ask
-theano to return the internal buffer.
-
-.. code-block:: python
-  :emphasize-lines: 10-11
-
-  from theano import function, config, shared, tensor, sandbox
-  import numpy
-  import time
-
-  vlen = 10 * 30 * 768  # 10 x #cores x # threads per core
-  iters = 1000
-
-  rng = numpy.random.RandomState(22)
-  x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-  f = function([], Out(sandbox.gpuarray.basic_ops.gpu_from_host(tensor.exp(x)),
-                       borrow=True))
-  print f.maker.fgraph.toposort()
-  t0 = time.time()
-  for i in xrange(iters):
-      r = f()
-  t1 = time.time()
-  print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-  print 'Result is', numpy.asarray(r)
-  if numpy.any([isinstance(x.op, tensor.Elemwise) and
-                ('Gpu' not in type(x.op).__name__)
-                for x in f.maker.fgraph.toposort()]):
-      print 'Used the cpu'
-  else:
-      print 'Used the gpu'
-
-Running this version produces the following output
-
-.. code-block:: text
-
-  Using device cuda0: GeForce GTX 275
-  [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
-  Looping 1000 times took 0.0259871482849 seconds
-  Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
-    1.62323285]
-  Used the gpu
-
-It is again much faster, but the same explanation about asynchronous
-execution applies.
-
-.. note::
-
-   The advantages that ``borrow=True`` confers tend to diminish as the
-   graph gets bigger.  It also has the notable disadvantage of
-   introducing more potential for bugs.  In order to avoid output
-   copies, it is recommended to investigate :ref:`shared variable updates
-   <functionstateexample>` instead.
-
+For even more speed, you can play with the ``borrow`` flag.  See
+:ref:`borrowfunction`.
 
 What Can be Accelerated on the GPU
 ----------------------------------
