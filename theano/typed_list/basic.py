@@ -27,6 +27,9 @@ class _typed_list_py_operators:
     def reverse(self):
         return Reverse()(self)
 
+    def count(self, elem):
+        return Count()(self, elem)
+
     #name "index" is already used by an attribute
     def ind(self, elem):
         return Index()(self, elem)
@@ -271,6 +274,38 @@ class Index(Op):
                     break
         else:
             out[0] = numpy.asarray([x.index(elem)])
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+class Count(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, elem):
+        assert isinstance(x.type, TypedListType)
+        assert x.ttype == elem.type
+        return Apply(self, [x, elem], [T.scalar()])
+
+    def perform(self, node, (x, elem), (out, )):
+        """
+        inelegant workaround for ValueError: The truth value of an
+        array with more than one element is ambiguous. Use a.any() or a.all()
+        being thrown when trying to remove a matrix from a matrices list
+        """
+        if isinstance(elem, numpy.ndarray):
+            out[0] = 0
+            for y in range(x.__len__()):
+                if numpy.array_equal(x[y], elem):
+                    out[0] += 1
+            out[0] = numpy.asarray([out[0]])
+        else:
+            out[0] = numpy.asarray([x.count(elem)])
 
     def __str__(self):
         return self.__class__.__name__
