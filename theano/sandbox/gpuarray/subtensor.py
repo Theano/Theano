@@ -7,7 +7,6 @@ from theano import tensor, gof, Op
 from theano.gof.python25 import all, any
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
     import pygpu
@@ -18,6 +17,8 @@ except ImportError:
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
 from theano.sandbox.gpuarray.elemwise import GpuElemwise
+from theano.sandbox.gpuarray.comp import NVCC_compiler
+
 
 
 class GpuSubtensor(HideC, Subtensor):
