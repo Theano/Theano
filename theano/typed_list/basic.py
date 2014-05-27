@@ -201,3 +201,32 @@ class Remove(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+
+class Reverse(Op):
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        assert isinstance(x.type, TypedListType)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, inp, (out, )):
+
+        if not self.inplace:
+            out[0] = list(inp[0])
+        else:
+            out[0] = inp[0]
+        out[0].reverse()
+
+    def __str__(self):
+        return self.__class__.__name__

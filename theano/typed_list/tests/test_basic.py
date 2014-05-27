@@ -8,7 +8,7 @@ from theano import tensor as T
 from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
 from theano.typed_list.basic import (GetItem, Insert,
-                                      Append, Extend, Remove)
+                                      Append, Extend, Remove, Reverse)
 from theano.tests import unittest_tools as utt
 
 
@@ -278,3 +278,35 @@ class test_remove(unittest.TestCase):
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+
+
+class test_reverse(unittest.TestCase):
+
+    def test_inplace(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                            theano.config.floatX, (False, False)))()
+
+        z = Reverse(True)(mySymbolicMatricesList)
+
+        f = theano.function([mySymbolicMatricesList], z,
+                            accept_inplace=True)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+
+    def test_sanity_check(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+
+        z = Reverse()(mySymbolicMatricesList)
+
+        f = theano.function([mySymbolicMatricesList], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
