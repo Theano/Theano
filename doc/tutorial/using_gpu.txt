@@ -148,7 +148,7 @@ Here we've shaved off about 50% of the run-time by simply not copying the
 resulting array back to the host.
 The object returned by each function call is now not a NumPy array but a
 "CudaNdarray" which can be converted to a NumPy ndarray by the normal
-NumPy casting mechanism.
+NumPy casting mechanism using something like ``numpy.asarray()``.
 
 
 Running the GPU at Full Speed
