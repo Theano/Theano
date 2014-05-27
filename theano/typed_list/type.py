@@ -1,5 +1,5 @@
 from theano import gof
-
+from theano import numpy
 
 class TypedListType(gof.Type):
 
@@ -65,3 +65,9 @@ class TypedListType(gof.Type):
             return self.ttype.get_depth() + 1
         else:
             return 0
+
+    def values_eq(self, a, b):
+        if isinstance(a, numpy.ndarray):
+            return numpy.array_equal(a, b)
+        else:
+            return a == b

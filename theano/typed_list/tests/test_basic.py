@@ -56,7 +56,8 @@ class test_get_item(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0)), x))
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0,
+                                    dtype=theano.config.floatX)), x))
 
     def test_interface(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -70,7 +71,8 @@ class test_get_item(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0)), x))
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(0,
+                                dtype=theano.config.floatX)), x))
 
         z = mySymbolicMatricesList[0: 1: 1]
 
