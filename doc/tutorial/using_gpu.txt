@@ -28,7 +28,7 @@ We provide installation instructions for :ref:`Linux <gpu_linux>`,
 :ref:`MacOS <gpu_macos>` and :ref:`Windows <gpu_windows>`.
 
 Testing Theano with GPU
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.
@@ -92,7 +92,7 @@ Note that GPU operations in Theano require for now ``floatX`` to be *float32* (s
 
 
 Returning a Handle to Device-Allocated Data
--------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The speedup is not greater in the preceding example because the function is
 returning its result as a NumPy ndarray which has already been copied from the
@@ -154,7 +154,7 @@ For even more speed you can play with the ``borrow`` flag.  See
 :ref:`borrowfunction`.
 
 What Can Be Accelerated on the GPU
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The performance characteristics will change as we continue to optimize our
 implementations, and vary from device to device, but to give a rough idea of
@@ -179,7 +179,7 @@ what to expect right now:
   the device pay off.
 
 Tips for Improving Performance on GPU
--------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * Consider
   adding ``floatX=float32`` to your ``.theanorc`` file if you plan to do a lot of
@@ -218,7 +218,7 @@ Tips for Improving Performance on GPU
 .. _gpu_async:
 
 GPU Async capabilities
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 Ever since Theano 0.6 we started to use the asynchronous capability of
 GPUs. This allows us to be faster but with the possibility that some
@@ -236,7 +236,7 @@ as it inserts synchronization points in the graph. Set the Theano flag
 usage.
 
 Changing the Value of Shared Variables
---------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To change the value of a ``shared`` variable, e.g. to provide new data to processes,
 use ``shared_variable.set_value(new_value)``. For a lot more detail about this,
@@ -244,7 +244,7 @@ see :ref:`aliasing`.
 
 
 Exercise
-========
+++++++++
 
 Consider again the logistic regression:
 
@@ -363,7 +363,7 @@ be referred to as GPU.
   backend with minimal change.
 
 Testing Theano with GPU
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 To see if your GPU is being used, cut and paste the following program
 into a file and run it.
@@ -416,7 +416,7 @@ input *x* is stored on the GPU.
   Used the gpu
 
 Returning a Handle to Device-Allocated Data
--------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default functions that execute on the GPU still return a standard
 numpy ndarray.  A transfer operation is inserted just before the
@@ -487,7 +487,7 @@ For even more speed, you can play with the ``borrow`` flag.  See
 :ref:`borrowfunction`.
 
 What Can be Accelerated on the GPU
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The performance characteristics will of course vary from device to
 device, and also as we refine our implementation.
@@ -505,7 +505,7 @@ faster.
 
 
 GPU Async Capabilities
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 By default, all operations on the GPU are run asynchronously.  This
 means that they are only scheduled to run and the function returns.
@@ -662,7 +662,7 @@ you feel competent enough, you may try yourself on the corresponding exercises.
 
 
 Exercise
-========
+~~~~~~~~
 
 Run the preceding example.
 
@@ -725,7 +725,7 @@ Use this code to test it:
 
 
 Exercise
-========
+~~~~~~~~
 
 Run the preceding example.
 
