@@ -230,7 +230,8 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1, dtype=theano.config.floatX
+                                                               ), y), [x, y]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -246,7 +247,8 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
+                        dtype=theano.config.floatX), y), [x, y]))
 
     def test_interface(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -262,7 +264,8 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1), y), [x, y]))
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
+                                    dtype=theano.config.floatX), y), [x, y]))
 
 
 class test_remove(unittest.TestCase):

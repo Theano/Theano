@@ -1,5 +1,6 @@
 from type import TypedListType
 
+import theano
 from theano.gof import Apply, Constant, Op, Variable
 from theano.tensor.type_other import SliceType
 from theano import tensor as T
@@ -270,10 +271,10 @@ class Index(Op):
         if isinstance(elem, numpy.ndarray):
             for y in range(x.__len__()):
                 if numpy.array_equal(x[y], elem):
-                    out[0] = numpy.asarray([y])
+                    out[0] = numpy.asarray([y], dtype=theano.config.floatX)
                     break
         else:
-            out[0] = numpy.asarray([x.index(elem)])
+            out[0] = numpy.asarray([x.index(elem)], dtype=theano.config.floatX)
 
     def __str__(self):
         return self.__class__.__name__
@@ -303,9 +304,9 @@ class Count(Op):
             for y in range(x.__len__()):
                 if numpy.array_equal(x[y], elem):
                     out[0] += 1
-            out[0] = numpy.asarray([out[0]])
+            out[0] = numpy.asarray([out[0]], dtype=theano.config.floatX)
         else:
-            out[0] = numpy.asarray([x.count(elem)])
+            out[0] = numpy.asarray([x.count(elem)], dtype=theano.config.floatX)
 
     def __str__(self):
         return self.__class__.__name__
