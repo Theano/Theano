@@ -3236,6 +3236,7 @@ class T_local_switch_sink(unittest.TestCase):
         self.mode = copy.copy(self.mode)
         self.mode.check_isfinite = False
 
+    @attr('slow')
     def test_local_mul_switch_sink(self):
         c = T.dscalar()
         idx = 0
@@ -4300,6 +4301,7 @@ class TestShape_i(utt.InferShapeTester):
             out = f(admat_val)
             assert numpy.allclose(out, admat_val.shape[i])
 
+    @attr('slow')
     def test_infer_shape(self):
         admat = matrix()
         admat_val = numpy.random.rand(3, 4).astype(config.floatX)

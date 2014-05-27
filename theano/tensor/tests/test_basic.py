@@ -279,6 +279,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 os.close(f)
                 os.remove(fname)
 
+        @attr('slow')
         def test_good(self):
             if skip:
                 raise SkipTest(skip)
@@ -377,6 +378,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 # instantiated on the following bad inputs: %s"
                 # % (self.op, testname, node, inputs))
 
+        @attr('slow')
         def test_bad_runtime(self):
             if skip:
                 raise SkipTest(skip)
@@ -405,6 +407,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 # one or the subset that get raised.
                 self.assertRaises(Exception, f, [])
 
+        @attr('slow')
         def test_grad(self):
             if skip:
                 raise SkipTest(skip)
@@ -1913,6 +1916,7 @@ class TestAlloc(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
+    @attr('slow')
     def test_alloc_constant_folding(self):
         test_params = numpy.asarray(self.rng.randn(50 * 60),
                                     self.dtype)
@@ -1952,6 +1956,7 @@ class TestAlloc(unittest.TestCase):
             fobj(test_params)
             fgrad(test_params)
 
+    @attr('slow')
     def test_alloc_output(self):
         val = tensor.constant(self.rng.randn(1, 1), dtype=self.dtype)
         for alloc in self.allocs:
@@ -1965,6 +1970,7 @@ class TestAlloc(unittest.TestCase):
                               for node in topo]) == 1
             assert not isinstance(topo[0].op, DeepCopyOp)
 
+    @attr('slow')
     def test_ones(self):
         for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
             ones = theano.function([], [tensor.ones(shp)])
@@ -1983,6 +1989,7 @@ class TestAlloc(unittest.TestCase):
             assert numpy.allclose(ones_tensor(inp),
                                   numpy.ones(shp))
 
+    @attr('slow')
     def test_zeros(self):
         for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
             zeros = theano.function([], [tensor.zeros(shp)])
@@ -2140,6 +2147,7 @@ class test_nonzero(unittest.TestCase):
         rand4d[:4] = 0
         check(rand4d)
 
+    @attr('slow')
     def test_flatnonzero(self):
         def check(m):
             m_symb = theano.tensor.tensor(dtype=m.dtype,
@@ -2167,6 +2175,7 @@ class test_nonzero(unittest.TestCase):
         rand4d[:4] = 0
         check(rand4d)
 
+    @attr('slow')
     def test_nonzero_values(self):
         def check(m):
             m_symb = theano.tensor.tensor(dtype=m.dtype,
@@ -2307,7 +2316,7 @@ def _approx_eq(a, b, eps=1.0e-4):
     return  True
 _approx_eq.debug = 0
 
-
+@attr('slow')
 def test_batched_dot():
     first = theano.tensor.tensor3("first")
     second = theano.tensor.tensor3("second")
@@ -2378,7 +2387,7 @@ def test_tensor_values_eq_approx():
     b = numpy.asarray([-numpy.inf, -1, 0, 1, numpy.inf, 6])
     assert not TensorType.values_eq_approx(a, b, allow_remove_nan=False)
 
-
+@attr('slow')
 def test_nan_inf_constant_signature():
     # Test that the signature of a constant tensor containing NaN and Inf
     # values is correct.
@@ -2632,6 +2641,7 @@ class T_argmin_argmax(unittest.TestCase):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
+    @attr('slow')
     def test_scalar(self):
         for fct in [argmin, argmax]:
             n = as_tensor_variable(5.0)
@@ -2640,6 +2650,7 @@ class T_argmin_argmax(unittest.TestCase):
             v = eval_outputs(fct(n).shape)
             assert len(v) == 0
 
+    @attr('slow')
     def test_list(self):
         n = as_tensor_variable([1, 2, 3, 2, -6])
         i = eval_outputs(argmin(n))
@@ -2721,6 +2732,7 @@ class T_argmin_argmax(unittest.TestCase):
                 v_shape = eval_outputs(fct(n, axis).shape)
                 assert tuple(v_shape) == nfct(data, np_axis).shape
 
+    @attr('slow')
     def test_grad_argmin(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
@@ -2743,6 +2755,7 @@ class T_argmin_argmax(unittest.TestCase):
         except TypeError:
             pass
 
+    @attr('slow')
     def test_grad_argmax(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
@@ -2768,6 +2781,7 @@ class T_min_max(unittest.TestCase):
         utt.seed_rng()
         MaxAndArgmax.debug = 0
 
+    @attr('slow')
     def test_scalar(self):
         for fct in [max, min]:
             n = as_tensor_variable(5.0)
@@ -2867,6 +2881,7 @@ class T_min_max(unittest.TestCase):
                 v_shape = eval_outputs(fct(n, axis).shape)
                 assert tuple(v_shape) == np_v.shape
 
+    @attr('slow')
     def test_grad_max(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
@@ -2901,6 +2916,7 @@ class T_min_max(unittest.TestCase):
         utt.verify_grad(lambda v: max(v.flatten()), [data])
         check_grad_max(data, eval_outputs(grad(max(n.flatten()), n)))
 
+    @attr('slow')
     def test_grad_min(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
@@ -2951,6 +2967,7 @@ class T_min_max(unittest.TestCase):
 
 
 class T_outer(unittest.TestCase):
+    @attr('slow')
     def test_outer(self):
         for m in range(4):
             for n in range(4):
@@ -3035,6 +3052,7 @@ class T_Join_and_Split(unittest.TestCase):
             return
         self.fail()
 
+    @attr('slow')
     def test_stack_mixed_type_constants(self):
         # tested only on cpu as gpu support only float32
         a = as_tensor_variable(1)
@@ -3101,6 +3119,7 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
+    @attr('slow')
     def test_stack_hessian(self):
         # Test the gradient of stack when used in hessian, see gh-1589
         a = tensor.dvector('a')
@@ -3162,6 +3181,7 @@ class T_Join_and_Split(unittest.TestCase):
         out = self.eval_outputs_and_check_join([s])
         self.assertTrue((out == want).all())
 
+    @attr('slow')
     def test_roll(self):
 
         for get_shift in [lambda a:a, lambda x:theano.shared(x)]:
@@ -3416,6 +3436,7 @@ class T_Join_and_Split(unittest.TestCase):
                           rng.rand(2, 4, 1).astype(self.floatX))
         #self.assertRaises(TypeError, f, bad_a_val)
 
+    @attr('slow')
     def test_broadcastable_flags_many_dims_and_inputs(self):
         # Test that the right broadcastable flags get set for a join
         # with many inputs and many input dimensions.
@@ -3466,6 +3487,7 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(ValueError, f, a_val, b_val, c_val, bad_d_val, e_val)
         self.assertRaises(ValueError, f, a_val, b_val, c_val, d_val, bad_e_val)
 
+    @attr('slow')
     def test_infer_shape_join(self):
         x1 = matrix()
         x2 = matrix()
@@ -3513,6 +3535,7 @@ class T_Join_and_Split(unittest.TestCase):
         # This line used to crash.
         z = tensor.concatenate([x, -u], axis=2)
 
+    @attr('slow')
     def test_concatenate_same(self):
         # Test that we can concatenate the same tensor multiple time.
 
@@ -3546,6 +3569,7 @@ class test_comparison(unittest.TestCase):
      work(futur behavior) or raise an error(current NumPy release).
 
     """
+    @attr('slow')
     def test_gt(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
@@ -3564,6 +3588,7 @@ class test_comparison(unittest.TestCase):
                 except TypeError:
                     assert err
 
+    @attr('slow')
     def test_lt(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
@@ -3582,6 +3607,7 @@ class test_comparison(unittest.TestCase):
                 except TypeError:
                     assert err
 
+    @attr('slow')
     def test_le(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
@@ -3600,6 +3626,7 @@ class test_comparison(unittest.TestCase):
                 except TypeError:
                     assert err
 
+    @attr('slow')
     def test_ge(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
@@ -3618,6 +3645,7 @@ class test_comparison(unittest.TestCase):
                 except TypeError:
                     assert err
 
+    @attr('slow')
     def test_eq(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
@@ -3636,6 +3664,7 @@ class test_comparison(unittest.TestCase):
                 except TypeError:
                     assert err
 
+    @attr('slow')
     def test_neq(self):
         for dtype in ['float64', 'float32', 'complex64', 'complex128']:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
@@ -3658,6 +3687,7 @@ class test_comparison(unittest.TestCase):
 class test_bitwise(unittest.TestCase):
     dtype = ['int8', 'int16', 'int32', 'int64', ]
 
+    @attr('slow')
     def test_or(self):
         for dtype in self.dtype:
             x, y = vector(dtype=dtype), vector(dtype=dtype)
@@ -3682,6 +3712,7 @@ class test_bitwise(unittest.TestCase):
             #test the in-place stuff
             self.assertTrue(numpy.all(l == numpy.asarray([0, 1, 1, 0])), l)
 
+    @attr('slow')
     def test_and(self):
         for dtype in self.dtype:
             x, y = vector(dtype=dtype), vector(dtype=dtype)
@@ -3691,6 +3722,7 @@ class test_bitwise(unittest.TestCase):
             v = fn(l, r)
             self.assertTrue(numpy.all(v == (operator.and_(l, r))), (l, r, v))
 
+    @attr('slow')
     def test_inv(self):
         for dtype in self.dtype:
             x = vector(dtype=dtype)
@@ -3715,6 +3747,7 @@ class T_add(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_complex_all_ops(self):
         for nbits in (64, 128):
             a = shared(numpy.ones(3, dtype='complex%i' % nbits) + 0.5j)
@@ -3730,15 +3763,19 @@ class T_add(unittest.TestCase):
                 self.assertTrue(a.type.values_eq_approx(fn(
                     a.get_value(), b.get_value()), f()))
 
+    @attr('slow')
     def test_grad_scalar_l(self):
         utt.verify_grad(add, [numpy.asarray([3.0]), rand(3)])
 
+    @attr('slow')
     def test_grad_scalar_r(self):
         utt.verify_grad(add, [rand(3), numpy.asarray([3.0])])
 
+    @attr('slow')
     def test_grad_row(self):
         utt.verify_grad(add, [rand(3, 5), rand(1, 5)])
 
+    @attr('slow')
     def test_grad_col(self):
         utt.verify_grad(add, [rand(3, 5), rand(3, 1)])
 
@@ -3774,6 +3811,7 @@ class T_exp(unittest.TestCase):
 
 
 class T_divimpl(unittest.TestCase):
+    @attr('slow')
     def test_impls(self):
         i = iscalar()
         ii = lscalar()
@@ -4067,6 +4105,7 @@ class t_dot(unittest.TestCase):
     def test_align_3_3(self):
         self.not_aligned(rand(5, 4, 3), rand(6, 7, 8))
 
+    @attr('slow')
     def test_grad(self):
         utt.verify_grad(dot, [rand(2, 3), rand(3, 2)])
         utt.verify_grad(dot, [rand(2), rand(2, 3)])
@@ -4358,6 +4397,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         tval = f()
         return tval
 
+    @attr('slow')
     def test_reshape(self):
         a = dvector()
         b = dmatrix()
@@ -4449,6 +4489,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T,
                               numpy.arange(5.))
 
+    @attr('slow')
     def test_bad_shape(self):
         a = matrix('a')
         shapes = ivector('shapes')
@@ -4849,6 +4890,7 @@ class TestARange(unittest.TestCase):
         assert out2.owner.op is out3.owner.op
         assert out3.owner.op is not out4.owner.op
 
+    @attr('slow')
     def test_infer_shape(self):
         start, stop, step = iscalars('start', 'stop', 'step')
         out = arange(start, stop, step)
@@ -5201,6 +5243,7 @@ class test_tensordot(unittest.TestCase):
         # Test invalid scalar axes given inputs are matrices
         self.assertRaises(ValueError, tensordot, amat, bvec, 2)
 
+    @attr('slow')
     def test_weird_valid_axes(self):
         # Test matrix-matrix
         amat = matrix()
@@ -5220,6 +5263,7 @@ class test_tensordot(unittest.TestCase):
                                            f3(aval, bval)))
             utt.verify_grad(self.TensorDot(axes), [aval, bval])
 
+    @attr('slow')
     def test_scalar_axes(self):
         # Test matrix-matrix
         amat = fmatrix()
@@ -5259,7 +5303,7 @@ class test_tensordot(unittest.TestCase):
                                        f3(aval, bval)))
         utt.verify_grad(self.TensorDot(axes), [aval, bval])
 
-
+@attr('slow')
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
 
@@ -5267,7 +5311,7 @@ def test_smallest_stack():
     assert type(rval) == numpy.ndarray
     assert [-4, -2] == list(rval)
 
-
+@attr('slow')
 def test_smallest():
     x = dvector()
     y = dvector()
@@ -5288,6 +5332,7 @@ def test_reshape_member_fn():
     assert y.owner.op == Reshape(3)
 
 
+@attr('slow')
 def test_var():
     a = Tensor(dtype='float64', broadcastable=[False, False, False])()
     f = function([a], var(a))
@@ -5855,7 +5900,7 @@ def test_mod_compile():
 
     f = theano.function([x, y], out)
 
-
+@attr('slow')
 def test_unalign():
     if config.floatX == 'float64':
         dtype = "b1,f8"
@@ -6104,7 +6149,7 @@ class test_numpy_assumptions(unittest.TestCase):
             for dtype2 in dtypes[dtype1_idx + 1:]:
                 assert (dtype1 == dtype2) == (str(dtype1) == str(dtype2))
 
-
+@attr('slow')
 def test_transpose():
     x1 = tensor.dvector('x1')
     x2 = tensor.dmatrix('x2')
@@ -6152,6 +6197,7 @@ def test_transpose():
     assert tensor.transpose(x3).name == 'x3.T'
     assert tensor.transpose(tensor.dmatrix()).name is None
 
+@attr('slow')
 def test_stacklists():
     a,b,c,d = map(scalar, 'abcd')
     X = stacklists([[a, b],
@@ -6248,6 +6294,7 @@ class TestSpecifyShape(unittest.TestCase):
 
 class TestInferShape(utt.InferShapeTester):
 
+    @attr('slow')
     def test_infer_shape(self):
 
         # Flatten
@@ -6662,6 +6709,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.argsort().eval({X: x}), x.argsort())
         assert_array_equal(X.argsort(1).eval({X: x}), x.argsort(1))
 
+    @attr('slow')
     def test_clip(self):
         X, Y = self.vars
         x, y = self.vals
@@ -6703,6 +6751,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
         x, _ = self.vals
         assert_array_equal(X.round().eval({X: x}), x.round())
 
+    @attr('slow')
     def test_std(self):
         X, _ = self.vars
         x, _ = self.vals
@@ -6736,6 +6785,7 @@ class TestTensorInstanceMethods(unittest.TestCase):
             assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
                                x.diagonal(offset, axis1, axis2))
 
+    @attr('slow')
     def test_take(self):
         X, _ = self.vars
         x, _ = self.vals
@@ -6761,17 +6811,19 @@ class TestTensorInstanceMethods(unittest.TestCase):
         # Test equivalent advanced indexing
         assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
 
+    @attr('slow')
     def test_cumsum(self):
         X, _ = self.vars
         x, _ = self.vals
         assert_array_equal(X.cumsum().eval({X: x}), x.cumsum())
 
+    @attr('slow')
     def test_cumprod(self):
         X, _ = self.vars
         x, _ = self.vals
         assert_array_equal(X.cumprod().eval({X: x}), x.cumprod())
 
-
+@attr('slow')
 def test_norm():
     x = theano.tensor.vector('x')
     n = x.norm(2)
@@ -6794,6 +6846,7 @@ class test_ptp(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(result, numpyResult))
 
+    @attr('slow')
     def test_vector(self):
 
         x = vector('x')
@@ -6818,6 +6871,7 @@ class test_ptp(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(result, numpyResult))
 
+    @attr('slow')
     def test_matrix_second_axis(self):
         x = matrix('x')
         p = ptp(x, 0)
@@ -6851,6 +6905,7 @@ class test_ptp(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(result, numpyResult))
 
+    @attr('slow')
     def test_interface(self):
         x = matrix('x')
         p = x.ptp(1)

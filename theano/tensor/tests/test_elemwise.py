@@ -230,6 +230,7 @@ class test_Broadcast(unittest.TestCase):
 
                 assert xv.shape == zv.shape
 
+    @attr('slow')
     def test_perform(self):
         self.with_linker(gof.PerformLinker(), self.op, self.type,
                          self.rand_val)

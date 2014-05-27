@@ -197,10 +197,12 @@ class test_RopLop(RopLop_checker):
     def test_shape(self):
         self.check_nondiff_rop(self.x.shape[0])
 
+    @attr('slow')
     def test_specifyshape(self):
         self.check_rop_lop(tensor.specify_shape(self.x, self.in_shape),
                            self.in_shape)
 
+    @attr('slow')
     def test_max(self):
         ## If we call max directly, we will return an CAReduce object
         ## and he don't have R_op implemented!
@@ -214,6 +216,7 @@ class test_RopLop(RopLop_checker):
     def test_argmax(self):
         self.check_nondiff_rop(tensor.argmax(self.mx, axis=1))
 
+    @attr('slow')
     def test_subtensor(self):
         self.check_rop_lop(self.x[:4], (4,))
 
@@ -238,6 +241,7 @@ class test_RopLop(RopLop_checker):
         out = tensor.set_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
 
+    @attr('slow')
     def test_print(self):
         out = theano.printing.Print('x', attrs=('shape',))(self.x)
         self.check_rop_lop(out, self.in_shape)
@@ -249,12 +253,14 @@ class test_RopLop(RopLop_checker):
         out = tensor.set_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
 
+    @attr('slow')
     def test_dimshuffle(self):
         # I need the sum, because the setup expects the output to be a
         # vector
         self.check_rop_lop(self.x[:4].dimshuffle('x', 0).sum(axis=0),
                            (4,))
 
+    @attr('slow')
     def test_rebroadcast(self):
         # I need the sum, because the setup expects the output to be a
         # vector
@@ -262,6 +268,7 @@ class test_RopLop(RopLop_checker):
             self.x[:4].dimshuffle('x', 0), 0).sum(axis=1),
             (1,))
 
+    @attr('slow')
     def test_join(self):
         tv = numpy.asarray(self.rng.uniform(size=(10,)),
                            theano.config.floatX)
@@ -283,6 +290,7 @@ class test_RopLop(RopLop_checker):
         self.check_rop_lop(self.x + tensor.cast(self.x, 'int32'),
                            self.in_shape)
 
+    @attr('slow')
     def test_reshape(self):
         new_shape = tensor.constant(numpy.asarray([
             self.mat_in_shape[0] * self.mat_in_shape[1]],
@@ -291,17 +299,21 @@ class test_RopLop(RopLop_checker):
         self.check_mat_rop_lop(self.mx.reshape(new_shape),
                                (self.mat_in_shape[0] * self.mat_in_shape[1],))
 
+    @attr('slow')
     def test_flatten(self):
         self.check_mat_rop_lop(self.mx.flatten(),
                                (self.mat_in_shape[0] * self.mat_in_shape[1],))
 
+    @attr('slow')
     def test_sum(self):
         self.check_mat_rop_lop(self.mx.sum(axis=1), (self.mat_in_shape[0],))
 
+    @attr('slow')
     def test_softmax(self):
         # Softmax adds an extra dimnesion !
         self.check_rop_lop(tensor.nnet.softmax(self.x)[0], self.in_shape[0])
 
+    @attr('slow')
     def test_alloc(self):
         # Alloc of the sum of x into a vector
         out1d = tensor.alloc(self.x.sum(), self.in_shape[0])
