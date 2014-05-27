@@ -8,7 +8,8 @@ from theano import tensor as T
 from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
 from theano.typed_list.basic import (GetItem, Insert,
-                                      Append, Extend, Remove, Reverse)
+                                      Append, Extend, Remove, Reverse,
+                                      Index)
 from theano.tests import unittest_tools as utt
 
 
@@ -355,3 +356,53 @@ class test_reverse(unittest.TestCase):
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x, y]), [y, x]))
+
+
+class test_index(unittest.TestCase):
+
+    def test_sanity_check(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+
+        z = Index()(mySymbolicMatricesList, myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myMatrix], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(f([x, y], y) == 1)
+
+    def test_interface(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        myMatrix = T.matrix()
+
+        z = mySymbolicMatricesList.ind(myMatrix)
+
+        f = theano.function([mySymbolicMatricesList, myMatrix], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(f([x, y], y) == 1)
+
+    def test_non_tensor_type(self):
+        mySymbolicNestedMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)), 1)()
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+
+        z = mySymbolicNestedMatricesList.ind(mySymbolicMatricesList)
+
+        f = theano.function([mySymbolicNestedMatricesList,
+                             mySymbolicMatricesList], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(f([[x, y], [x, y, y]], [x, y]) == 0)
