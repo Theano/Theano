@@ -198,6 +198,7 @@ class T_verify_grad_sparse(unittest.TestCase):
         def infer_shape(self, node, shapes):
             return [shapes[0]]
 
+    @attr('slow')
     def test_grad_fail(self):
         self.assertRaises(verify_grad_sparse.E_grad,
                           verify_grad_sparse,
@@ -316,6 +317,7 @@ class SparseInferShapeTester(utt.InferShapeTester):
                                                config.floatX, 3))],
                                 AddSS)
 
+    @attr('slow')
     def test_add_sd(self):
         x = SparseType('csr', dtype=config.floatX)()
         y = tensor.matrix()
@@ -512,9 +514,11 @@ class T_AddMul(unittest.TestCase):
     def testAddSS(self):
         self._testSS(add)
 
+    @attr('slow')
     def testAddSD(self):
         self._testSD(add)
 
+    @attr('slow')
     def testAddDS(self):
         self._testDS(add)
 
@@ -523,6 +527,7 @@ class T_AddMul(unittest.TestCase):
                      numpy.array([[1., 0], [3, 0], [0, 6]]),
                      numpy.array([[1., 2], [3, 0], [0, 6]]))
 
+    @attr('slow')
     def testMulSD(self):
         self._testSD(mul,
                      numpy.array([[1., 0], [3, 0], [0, 6]]),
@@ -837,6 +842,7 @@ class T_conversion(unittest.TestCase):
         f(numpy.array(0, dtype=config.floatX, ndmin=ndim))
         f(numpy.array(7, dtype=config.floatX, ndmin=ndim))
 
+    @attr('slow')
     def test_format_ndim(self):
         for format in 'csc', 'csr':
             for ndim in 0, 1, 2:
@@ -850,6 +856,7 @@ class test_csm_properties(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_csm_properties_grad(self):
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
@@ -893,6 +900,7 @@ class test_csm(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_csm_grad(self):
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
@@ -986,6 +994,7 @@ class test_structureddot(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_structureddot_csc_grad(self):
 
         #shortcut: testing csc in float32, testing csr in float64
@@ -1002,6 +1011,7 @@ class test_structureddot(unittest.TestCase):
 
         verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
 
+    @attr('slow')
     def test_structureddot_csr_grad(self):
 
         #shortcut: testing csc in float32, testing csr in float64
@@ -1018,6 +1028,7 @@ class test_structureddot(unittest.TestCase):
 
         verify_grad_sparse(buildgraph_T, [spmat, mat], structured=True)
 
+    @attr('slow')
     def test_upcast(self):
 
         typenames = ('float32', 'int64', 'int8', 'int32',
@@ -1101,6 +1112,7 @@ class test_structureddot(unittest.TestCase):
         outvals = f(kernvals, imvals)
         #print outvals
 
+    @attr('slow')
     def test_dot_sparse_sparse(self):
         #test dot for 2 input sparse matrix
         sparse_dtype = 'float64'
@@ -1126,6 +1138,7 @@ class test_structureddot(unittest.TestCase):
                         random_lil((N, K), sparse_dtype, nnz))
                     f(a_val, b_val)
 
+    @attr('slow')
     def test_csc_correct_output_faster_than_scipy(self):
         sparse_dtype = 'float64'
         dense_dtype = 'float64'
@@ -1171,6 +1184,7 @@ class test_structureddot(unittest.TestCase):
                 self.assertFalse(theano_time > overhead_rtol * scipy_time +
                                  overhead_tol)
 
+    @attr('slow')
     def test_csr_correct_output_faster_than_scipy(self):
 
         #contrast with test_grad, we put csr in float32, csc in float64
@@ -1271,6 +1285,7 @@ class DotTests(utt.InferShapeTester):
                                     [x_v, y_v],
                                     (Dot, Usmm, UsmmCscDense))
 
+    @attr('slow')
     def test_sparse_sparse(self):
         for d1, d2 in [('float32', 'float32'),
                        ('float32', 'float64'),
@@ -1362,6 +1377,7 @@ class UsmmTests(unittest.TestCase):
                                dtype=theano.config.floatX)
 
     # this is slow, but it's the only test for the op.
+    @attr('slow')
     def test(self):
         def mat(format, name, dtype):
             if format == 'dense':
@@ -1484,6 +1500,7 @@ class UsmmTests(unittest.TestCase):
                 assert topo[1].op == theano.tensor.neg
                 assert isinstance(topo[2].op, theano.sparse.Usmm)
 
+    @attr('slow')
     def test_infer_shape(self):
         def mat(format, name, dtype):
             if format == 'dense':
@@ -1726,6 +1743,7 @@ class RowScaleCSCTester(utt.InferShapeTester):
                                     data,
                                     cls)
 
+    @attr('slow')
     def test_grad(self):
         for format in sparse.sparse_formats:
             variable, data = sparse_random_inputs(format, shape=(8, 10))
@@ -1842,6 +1860,7 @@ class SquareDiagonalTester(utt.InferShapeTester):
                 assert tested.dtype == expected.dtype
                 assert tested.shape == expected.shape
 
+    @attr('slow')
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             for size in range(5, 9):
@@ -1882,6 +1901,7 @@ class EnsureSortedIndicesTester(utt.InferShapeTester):
 
                 utt.assert_allclose(expected, tested)
 
+    @attr('slow')
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             for shape in zip(range(5, 9), range(3, 7)[::-1]):
@@ -1925,6 +1945,7 @@ class CleanTester(utt.InferShapeTester):
                 expected = expected.toarray()
                 utt.assert_allclose(expected, tested)
 
+    @attr('slow')
     def test_grad(self):
         for format in sparse.sparse_formats:
             for shape in zip(range(5, 9), range(3, 7)[::-1]):
@@ -2236,6 +2257,7 @@ class CastTester(utt.InferShapeTester):
                     utt.assert_allclose(expected, t_cls)
                     utt.assert_allclose(expected, t_prop)
 
+    @attr('slow')
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.all_dtypes:
@@ -2798,6 +2820,7 @@ class StructuredAddSVTester(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_structured_add_s_v_grad(self):
         sp_types = {'csc': sp.csc_matrix,
                     'csr': sp.csr_matrix}
@@ -2838,6 +2861,7 @@ class TrueDotTester(utt.InferShapeTester):
         self.op = true_dot
         self.op_class = TrueDot
 
+    @attr('slow')
     def test_op_ss(self):
         for format in sparse.sparse_formats:
             for dtype in sparse.all_dtypes:
@@ -2935,6 +2959,7 @@ class SamplingDotTester(utt.InferShapeTester):
         super(SamplingDotTester, self).setUp()
         self.op_class = SamplingDot
 
+    @attr('slow')
     def test_op(self):
         f = theano.function(
             self.x,
@@ -2955,6 +2980,7 @@ class SamplingDotTester(utt.InferShapeTester):
                                 self.op_class,
                                 excluding=['local_sampling_dot_csr'])
 
+    @attr('slow')
     def test_grad(self):
         def _helper(x, y):
             return sampling_dot(x, y, self.a[2])
