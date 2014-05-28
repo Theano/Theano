@@ -9,6 +9,7 @@ import theano.tensor as tensor
 #from theano.tensor import matrix,max_and_argmax,MaaxAndArgmax,neg
 from theano.tensor.elemwise import CAReduce, Elemwise
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 
 
 class T_max_and_argmax(unittest.TestCase):
