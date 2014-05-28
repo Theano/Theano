@@ -67,7 +67,14 @@ class TypedListType(gof.Type):
             return 0
 
     def values_eq(self, a, b):
-        if isinstance(a, numpy.ndarray):
-            return numpy.array_equal(a, b)
-        else:
-            return a == b
+        if not a.__len__() == b.__len__():
+            return False
+
+        equal = True
+
+        for x in range(a.__len__()):
+            if not self.ttype.values_eq(a[x], b[x]):
+                equal = False
+                break
+
+        return equal

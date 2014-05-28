@@ -260,6 +260,7 @@ class Index(Op):
     def make_node(self, x, elem):
         assert isinstance(x.type, TypedListType)
         assert x.ttype == elem.type
+        self.values_eq = x.ttype.values_eq
         return Apply(self, [x, elem], [T.scalar()])
 
     def perform(self, node, (x, elem), (out, )):
@@ -268,13 +269,10 @@ class Index(Op):
         array with more than one element is ambiguous. Use a.any() or a.all()
         being thrown when trying to remove a matrix from a matrices list
         """
-        if isinstance(elem, numpy.ndarray):
-            for y in range(x.__len__()):
-                if numpy.array_equal(x[y], elem):
-                    out[0] = numpy.asarray([y], dtype=theano.config.floatX)
-                    break
-        else:
-            out[0] = numpy.asarray([x.index(elem)], dtype=theano.config.floatX)
+        for y in range(x.__len__()):
+            if self.values_eq(x[y], elem):
+                out[0] = numpy.asarray(y, dtype=theano.config.floatX)
+                break
 
     def __str__(self):
         return self.__class__.__name__
@@ -291,6 +289,7 @@ class Count(Op):
     def make_node(self, x, elem):
         assert isinstance(x.type, TypedListType)
         assert x.ttype == elem.type
+        self.values_eq = x.ttype.values_eq
         return Apply(self, [x, elem], [T.scalar()])
 
     def perform(self, node, (x, elem), (out, )):
@@ -299,14 +298,11 @@ class Count(Op):
         array with more than one element is ambiguous. Use a.any() or a.all()
         being thrown when trying to remove a matrix from a matrices list
         """
-        if isinstance(elem, numpy.ndarray):
-            out[0] = 0
-            for y in range(x.__len__()):
-                if numpy.array_equal(x[y], elem):
-                    out[0] += 1
-            out[0] = numpy.asarray([out[0]], dtype=theano.config.floatX)
-        else:
-            out[0] = numpy.asarray([x.count(elem)], dtype=theano.config.floatX)
+        out[0] = 0
+        for y in range(x.__len__()):
+            if self.values_eq(x[y], elem):
+                out[0] += 1
+        out[0] = numpy.asarray(out[0], dtype=theano.config.floatX)
 
     def __str__(self):
         return self.__class__.__name__
