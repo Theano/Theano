@@ -3,6 +3,7 @@ from itertools import imap
 
 import numpy
 
+from nose.plugins.attrib import attr
 from theano.compat.python2x import any
 import theano.tensor.inplace
 from theano.tensor import basic as tensor

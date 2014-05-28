@@ -8,6 +8,7 @@ except ImportError:
     pass
 
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import numpy
 
 from theano import function
