@@ -1,5 +1,5 @@
 from theano import gof
-from theano import numpy
+
 
 class TypedListType(gof.Type):
 
@@ -67,14 +67,11 @@ class TypedListType(gof.Type):
             return 0
 
     def values_eq(self, a, b):
-        if not a.__len__() == b.__len__():
+        if not len(a) == len(b):
             return False
 
-        equal = True
-
-        for x in range(a.__len__()):
+        for x in range(len(a)):
             if not self.ttype.values_eq(a[x], b[x]):
-                equal = False
-                break
+                return False
 
-        return equal
+        return True
