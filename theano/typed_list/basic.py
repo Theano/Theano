@@ -94,7 +94,7 @@ class Append(Op):
             self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
         return hash(type(self)) ^ self.inplace
@@ -128,7 +128,7 @@ class Extend(Op):
             self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
         return hash(type(self)) ^ self.inplace
