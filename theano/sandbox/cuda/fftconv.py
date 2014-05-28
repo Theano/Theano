@@ -454,7 +454,7 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
         raise ValueError('invalid mode')
 
     input_padded = T.opt.Assert("in conv2d_fft: width is not even")(
-        input_padded, o1 % 2 == 0)
+        input_padded, T.eq(o1 % 2, 0))
 
     # reshape for FFT
     input_flat = input_padded.reshape((b * ic, o0, o1))
