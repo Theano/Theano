@@ -19,6 +19,7 @@ from theano.compat import next
 from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 from theano.sparse import verify_grad_sparse
 from theano.sparse.tests.test_basic import sparse_random_inputs
 

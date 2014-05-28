@@ -300,6 +300,7 @@ class T_sigmoid_opts(unittest.TestCase):
             ux_v = f([[50]], 0.1)
             assert not numpy.isnan(ux_v)
 
+    @attr('slow')
     def test_local_ultra_fast_sigmoid(self):
         x = tensor.matrix('x')
         s = sigmoid(x)
@@ -317,6 +318,7 @@ class T_sigmoid_opts(unittest.TestCase):
         assert len(topo) == 1
         ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
 
+    @attr('slow')
     def test_local_hard_sigmoid(self):
         x = tensor.matrix('x')
         s = sigmoid(x)
@@ -346,6 +348,7 @@ class T_softplus_opts(unittest.TestCase):
         self.m = m
         utt.seed_rng()
 
+    @attr('slow')
     def test_logsigm_to_softplus(self):
         x = T.vector()
 

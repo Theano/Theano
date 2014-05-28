@@ -14,6 +14,7 @@ import unittest
 import theano
 from theano.gof import FunctionGraph
 from theano import gof
+from nose.plugins.attrib import attr
 
 from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,

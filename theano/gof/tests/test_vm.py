@@ -55,7 +55,7 @@ class TestCallbacks(unittest.TestCase):
         f(1, 2, 3)
         assert self.n_callbacks['IfElse'] == 2
 
-
+@attr('slow')
 def test_speed():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
