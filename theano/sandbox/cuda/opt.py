@@ -40,6 +40,7 @@ from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
+from theano.sandbox.cuda.fftconv import conv2d_fft
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 linalg = None
@@ -1118,8 +1119,27 @@ def local_gpu_conv(node):
             # differently then the gpu ConvOp
             return [out]
 
-import theano.tensor.signal.downsample as downsample
 
+@local_optimizer([GpuConv])
+def local_conv_fft_valid(node):
+    if (isinstance(node.op, GpuConv) and
+        node.op.border_mode == 'valid' and
+        node.op.subsample == (1, 1)):
+        return [conv2d_fft(node.inputs[0], node.inputs[1])]
+
+
+@local_optimizer([GpuConv])
+def local_conv_fft_full(node):
+    if (isinstance(node.op, GpuConv) and
+        node.op.border_mode == 'full' and
+        node.op.subsample == (1, 1)):
+        return [conv2d_fft(node.inputs[0], node.inputs[1], border_mode='full')]
+
+gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
+gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
+
+
+import theano.tensor.signal.downsample as downsample
 
 @register_opt()
 @local_optimizer([downsample.DownsampleFactorMax])

@@ -1,7 +1,7 @@
 import numpy
 import pycuda.gpuarray
 
-import theano.sandbox.cuda as cuda
+from theano.sandbox import cuda
 if cuda.cuda_available == False:
     raise ImportError('Optional theano package cuda disabled')
 

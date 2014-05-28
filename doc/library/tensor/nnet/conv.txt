@@ -27,6 +27,12 @@ TODO: Give examples for how to use these things! They are pretty complicated.
 - Conv implemented
     - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
+    - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>`
+      This is a GPU-only version of conv2d that uses an FFT transform
+      to perform the work.  You can enable it by setting
+      'THEANO_FLAGS=optimizer_including=conv_fft_valid:conv_fft_full'
+      in your environement.  This is not enabled by default because it
+      has some restrictions on input and uses more memory.
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`. Doesn't work on the GPU.
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.

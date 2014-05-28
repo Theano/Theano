@@ -33,7 +33,6 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
-
 #is_nvcc_available called here to initialize global vars in
 #nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
