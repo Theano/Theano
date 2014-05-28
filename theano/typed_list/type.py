@@ -65,3 +65,13 @@ class TypedListType(gof.Type):
             return self.ttype.get_depth() + 1
         else:
             return 0
+
+    def values_eq(self, a, b):
+        if not len(a) == len(b):
+            return False
+
+        for x in range(len(a)):
+            if not self.ttype.values_eq(a[x], b[x]):
+                return False
+
+        return True

@@ -1,5 +1,6 @@
 from type import TypedListType
 
+import theano
 from theano.gof import Apply, Constant, Op, Variable
 from theano.tensor.type_other import SliceType
 from theano import tensor as T
@@ -10,13 +11,29 @@ import numpy
 class _typed_list_py_operators:
 
     def __getitem__(self, index):
-        return GetItem()(self, index)
+        return getitem(self, index)
 
     def append(self, toAppend):
-        return Append()(self, toAppend)
+        return append(self, toAppend)
 
     def extend(self, toAppend):
-        return Extend()(self, toAppend)
+        return extend(self, toAppend)
+
+    def insert(self, index, toInsert):
+        return insert(self, index, toInsert)
+
+    def remove(self, toRemove):
+        return remove(self, toRemove)
+
+    def reverse(self):
+        return reverse(self)
+
+    def count(self, elem):
+        return count(self, elem)
+
+    #name "index" is already used by an attribute
+    def ind(self, elem):
+        return index_(self, elem)
 
     ttype = property(lambda self: self.type.ttype)
 
@@ -63,6 +80,8 @@ class GetItem(Op):
     def __str__(self):
         return self.__class__.__name__
 
+getitem = GetItem()
+
 
 class Append(Op):
     """
@@ -75,10 +94,10 @@ class Append(Op):
             self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ self.inplace
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
@@ -95,6 +114,8 @@ class Append(Op):
     def __str__(self):
         return self.__class__.__name__
 
+append = Append()
+
 
 class Extend(Op):
     """
@@ -107,10 +128,10 @@ class Extend(Op):
             self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ self.inplace
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
@@ -127,6 +148,8 @@ class Extend(Op):
     def __str__(self):
         return self.__class__.__name__
 
+extend = Extend()
+
 
 class Insert(Op):
 
@@ -136,10 +159,10 @@ class Insert(Op):
             self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ self.inplace
 
     def make_node(self, x, index, toInsert):
         assert isinstance(x.type, TypedListType)
@@ -160,6 +183,8 @@ class Insert(Op):
     def __str__(self):
         return self.__class__.__name__
 
+insert = Insert()
+
 
 class Remove(Op):
 
@@ -169,10 +194,10 @@ class Remove(Op):
             self.destroy_map = {0: [0]}
 
     def __eq__(self, other):
-        return type(self) == type(other)
+        return type(self) == type(other) and self.inplace == other.inplace
 
     def __hash__(self):
-        return hash(type(self))
+        return hash(type(self)) ^ self.inplace
 
     def make_node(self, x, toRemove):
         assert isinstance(x.type, TypedListType)
@@ -201,3 +226,99 @@ class Remove(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+remove = Remove()
+
+
+class Reverse(Op):
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return hash(type(self)) ^ self.inplace
+
+    def make_node(self, x):
+        assert isinstance(x.type, TypedListType)
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, inp, (out, )):
+
+        if not self.inplace:
+            out[0] = list(inp[0])
+        else:
+            out[0] = inp[0]
+        out[0].reverse()
+
+    def __str__(self):
+        return self.__class__.__name__
+
+reverse = Reverse()
+
+
+class Index(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, elem):
+        assert isinstance(x.type, TypedListType)
+        assert x.ttype == elem.type
+        self.values_eq = x.ttype.values_eq
+        return Apply(self, [x, elem], [T.scalar()])
+
+    def perform(self, node, (x, elem), (out, )):
+        """
+        inelegant workaround for ValueError: The truth value of an
+        array with more than one element is ambiguous. Use a.any() or a.all()
+        being thrown when trying to remove a matrix from a matrices list
+        """
+        for y in range(len(x)):
+            if self.values_eq(x[y], elem):
+                out[0] = numpy.asarray(y, dtype=theano.config.floatX)
+                break
+
+    def __str__(self):
+        return self.__class__.__name__
+
+index_ = Index()
+
+
+class Count(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, elem):
+        assert isinstance(x.type, TypedListType)
+        assert x.ttype == elem.type
+        self.values_eq = x.ttype.values_eq
+        return Apply(self, [x, elem], [T.scalar()])
+
+    def perform(self, node, (x, elem), (out, )):
+        """
+        inelegant workaround for ValueError: The truth value of an
+        array with more than one element is ambiguous. Use a.any() or a.all()
+        being thrown when trying to remove a matrix from a matrices list
+        """
+        out[0] = 0
+        for y in range(len(x)):
+            if self.values_eq(x[y], elem):
+                out[0] += 1
+        out[0] = numpy.asarray(out[0], dtype=theano.config.floatX)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+count = Count()
