@@ -11,29 +11,29 @@ import numpy
 class _typed_list_py_operators:
 
     def __getitem__(self, index):
-        return GetItem()(self, index)
+        return getitem(self, index)
 
     def append(self, toAppend):
-        return Append()(self, toAppend)
+        return append(self, toAppend)
 
     def extend(self, toAppend):
-        return Extend()(self, toAppend)
+        return extend(self, toAppend)
 
     def insert(self, index, toInsert):
-        return Insert()(self, index, toInsert)
+        return insert(self, index, toInsert)
 
     def remove(self, toRemove):
-        return Remove()(self, toRemove)
+        return remove(self, toRemove)
 
     def reverse(self):
-        return Reverse()(self)
+        return reverse(self)
 
     def count(self, elem):
-        return Count()(self, elem)
+        return count(self, elem)
 
     #name "index" is already used by an attribute
     def ind(self, elem):
-        return Index()(self, elem)
+        return index_(self, elem)
 
     ttype = property(lambda self: self.type.ttype)
 
@@ -80,6 +80,8 @@ class GetItem(Op):
     def __str__(self):
         return self.__class__.__name__
 
+getitem = GetItem()
+
 
 class Append(Op):
     """
@@ -111,6 +113,8 @@ class Append(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+append = Append()
 
 
 class Extend(Op):
@@ -144,6 +148,8 @@ class Extend(Op):
     def __str__(self):
         return self.__class__.__name__
 
+extend = Extend()
+
 
 class Insert(Op):
 
@@ -176,6 +182,8 @@ class Insert(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+insert = Insert()
 
 
 class Remove(Op):
@@ -219,6 +227,8 @@ class Remove(Op):
     def __str__(self):
         return self.__class__.__name__
 
+remove = Remove()
+
 
 class Reverse(Op):
 
@@ -247,6 +257,8 @@ class Reverse(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+reverse = Reverse()
 
 
 class Index(Op):
@@ -277,6 +289,8 @@ class Index(Op):
     def __str__(self):
         return self.__class__.__name__
 
+index_ = Index()
+
 
 class Count(Op):
 
@@ -306,3 +320,5 @@ class Count(Op):
 
     def __str__(self):
         return self.__class__.__name__
+
+count = Count()
