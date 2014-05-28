@@ -546,59 +546,65 @@ def grad(cost, wrt, consider_constant=None,
 
 def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     '''
-    With respect to `wrt`, computes gradients of cost and/or from existing 
-    `start` gradients, up to the `end` variables of a symbolic digraph. 
-    In other words, computes gradients for a subgraph of the
-    symbolic theano function. Ignores all disconnected inputs.
+    With respect to `wrt`, computes gradients of cost and/or from
+    existing `start` gradients, up to the `end` variables of a
+    symbolic digraph.  In other words, computes gradients for a
+    subgraph of the symbolic theano function. Ignores all disconnected
+    inputs.
     
-    This can be useful when one needs to perform the gradient descent 
-    iteratively (e.g. one layer at a time in an MLP), or when a particular 
-    operation is not differentiable in theano (e.g. stochastic sampling 
-    from a multinomial). In the latter case, the gradient of the 
-    non-differentiable process could be approximated by user-defined 
-    formula, which could be calculated using the gradients of a cost 
-    with respect to samples (0s and 1s). These gradients are obtained 
-    by performing a subgraph_grad from the `cost` or previously known gradients 
-    (`start`) up to the outputs of the stochastic process (`end`). 
-    A dictionary mapping gradients obtained from the user-defined 
-    differentiation of the process, to variables, could then be fed into 
-    another subgraph_grad as `start` with any other `cost` (e.g. weight decay).
+    This can be useful when one needs to perform the gradient descent
+    iteratively (e.g. one layer at a time in an MLP), or when a
+    particular operation is not differentiable in theano
+    (e.g. stochastic sampling from a multinomial). In the latter case,
+    the gradient of the non-differentiable process could be
+    approximated by user-defined formula, which could be calculated
+    using the gradients of a cost with respect to samples (0s and
+    1s). These gradients are obtained by performing a subgraph_grad
+    from the `cost` or previously known gradients (`start`) up to the
+    outputs of the stochastic process (`end`).  A dictionary mapping
+    gradients obtained from the user-defined differentiation of the
+    process, to variables, could then be fed into another
+    subgraph_grad as `start` with any other `cost` (e.g. weight
+    decay).
     
-    :type wrt : List of Variables.
-        Gradients are computed with respect to `wrt`.
+    :type wrt: list of variables
+    :param wrt:
+      Gradients are computed with respect to `wrt`.
     
-    :type end : List of Variables.
-        Theano variables at which to end gradient descent
-        (they are considered constant in theano.grad). 
-        For convenience, the gradients with respect to these variables 
-        are also returned.
+    :type end: list of variables
+    :param end:
+      Theano variables at which to end gradient descent (they are
+      considered constant in theano.grad).  For convenience, the
+      gradients with respect to these variables are also returned.
     
-    :type start : Dictionary of Variables
-    :param start: If not None, a dictionary mapping variables to 
-            their gradients. This is useful when the gradient on some 
-            variables are known. These are used to compute the gradients
-            backwards up to the variables in `end` 
-            (they are used as known_grad in theano.grad).
+    :type start: dictionary of variables
+    :param start:
+      If not None, a dictionary mapping variables to their
+      gradients. This is useful when the gradient on some variables
+      are known. These are used to compute the gradients backwards up
+      to the variables in `end` (they are used as known_grad in
+      theano.grad).
     
-    :type cost: Scalar (0-dimensional) Variable.
+    :type cost: scalar (0-dimensional) variable
     :param cost: 
-            Additional costs for which to compute the gradients.  
-            For example, these could be weight decay, an l1 constraint,
-            MSE, NLL, etc. May optionally be None if start is provided.
-            Warning : If the gradients of `cost` with respect to any 
-            of the `start` variables is already part of the `start` 
-            dictionary, then it may be counted twice with respect to `wrt` 
-            and `end`.
+      Additional costs for which to compute the gradients.  For
+      example, these could be weight decay, an l1 constraint, MSE,
+      NLL, etc. May optionally be None if start is provided.  Warning
+      : If the gradients of `cost` with respect to any of the `start`
+      variables is already part of the `start` dictionary, then it may
+      be counted twice with respect to `wrt` and `end`.
     
-    :type details: bool.
-    :param details: When True, additionally returns the 
-        list of gradients from `start` and of `cost`, respectively, 
-        with respect to `wrt` (not `end`).
+    :type details: bool
+    :param details:
+      When True, additionally returns the list of gradients from
+      `start` and of `cost`, respectively, with respect to `wrt` (not
+      `end`).
     
     :rtype: Tuple of 2 or 4 Lists of Variables
     
     :return: Returns lists of gradients with respect to `wrt` and `end`, 
             respectively.
+
     '''
     assert ((cost is not None) or (start is not None))
     assert isinstance(end, list)

@@ -999,8 +999,9 @@ def guess_n_streams(size, warn=True):
     """
     Return a guess at a good number of streams.
 
-    :param warn: If True, warn when a guess cannot be made (in which case
-    we return 60 * 256).
+    :param warn:
+      If True, warn when a guess cannot be made (in which case we
+      return 60 * 256).
     """
     # TODO: a smart way of choosing the number of streams, see #612.
     # Note that this code was moved out of `MRG_RandomStreams` so that it can
@@ -1134,20 +1135,25 @@ class MRG_RandomStreams(object):
         ndim may be a plain integer to supplement the missing
         information.
 
-        :param low: Lower bound of the interval on which values are sampled.
-        If the ``dtype`` arg is provided, ``low`` will be cast into dtype.
-        This bound is excluded.
+        :param low:
+          Lower bound of the interval on which values are sampled.  If
+          the ``dtype`` arg is provided, ``low`` will be cast into
+          dtype.  This bound is excluded.
 
-        :param high: Higher bound of the interval on which values are sampled.
-        If the ``dtype`` arg is provided, ``high`` will be cast into dtype.
-        This bound is excluded.
+        :param high:
+          Higher bound of the interval on which values are sampled.
+          If the ``dtype`` arg is provided, ``high`` will be cast into
+          dtype.  This bound is excluded.
 
-        :param size: Can be a list of integer or Theano variable
-                (ex: the shape of other Theano Variable)
+        :param size:
+          Can be a list of integer or Theano variable (ex: the shape
+          of other Theano Variable)
 
-        :param dtype: The output data type. If dtype is not specified, it will
-        be inferred from the dtype of low and high, but will be at least as
-        precise as floatX.
+        :param dtype:
+          The output data type. If dtype is not specified, it will be
+          inferred from the dtype of low and high, but will be at
+          least as precise as floatX.
+
         """
         low = as_tensor_variable(low)
         high = as_tensor_variable(high)
@@ -1274,14 +1280,18 @@ class MRG_RandomStreams(object):
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):
         """
-        :param size: Can be a list of integers or Theano variables (ex: the
-        shape of another Theano Variable)
+        :param size:
+          Can be a list of integers or Theano variables (ex: the shape
+          of another Theano Variable)
 
-        :param dtype: The output data type. If dtype is not specified, it will
-        be inferred from the dtype of low and high, but will be at least as
-        precise as floatX.
+        :param dtype:
+          The output data type. If dtype is not specified, it will be
+          inferred from the dtype of low and high, but will be at
+          least as precise as floatX.
 
-        :param nstreams: Number of streams.
+        :param nstreams:
+          Number of streams.
+
         """
         # We need an even number of ]0,1[ samples. Then we split them
         # in two halves. First half becomes our U1's for Box-Muller,

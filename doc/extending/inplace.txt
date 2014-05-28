@@ -216,5 +216,3 @@ optimization can pre-check whether it will get rejected by using the
 which Ops can be performed inplace. You may then skip the optimization if it is
 incompatible with this check. Note however that this check does not cover all
 cases where an optimization may be rejected (it will not detect cycles).
-
-.. _optdb:

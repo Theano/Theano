@@ -137,7 +137,7 @@ Theano defines the following modes by name:
 - ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python 
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
-- ``'ProfileMode'``(deprecated): Same optimization as FAST_RUN, but print some profiling information.
+- ``'ProfileMode'`` (deprecated): Same optimization as FAST_RUN, but print some profiling information.
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`,

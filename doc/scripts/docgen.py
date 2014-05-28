@@ -65,10 +65,11 @@ if __name__ == '__main__':
     options.update(dict([x, y or True] for x, y in
         getopt.getopt(sys.argv[1:],
                       'o:',
-                      ['epydoc', 'rst', 'help', 'nopdf'])[0]))
+                      ['epydoc', 'rst', 'help', 'nopdf', 'cache'])[0]))
     if options['--help']:
         print 'Usage: %s [OPTIONS]' % sys.argv[0]
         print '  -o <dir>: output the html files in the specified dir'
+        print '  --cache: use the doctree cache'
         print '  --rst: only compile the doc (requires sphinx)'
         print '  --nopdf: do not produce a PDF file from the doc, only HTML'
         print '  --epydoc: only compile the api documentation',
@@ -114,16 +115,22 @@ if __name__ == '__main__':
 
     if options['--all'] or options['--rst']:
         mkdir("doc")
-        import sphinx
         sys.path[0:0] = [os.path.join(throot, 'doc')]
-        sphinx.main(['', '-E', os.path.join(throot, 'doc'), '.'])
+        def call_sphinx(builder, workdir, extraopts=None):
+            import sphinx
+            if extraopts is None:
+                extraopts = []
+            if not options['--cache']:
+                extraopts.append('-E')
+            sphinx.main(['', '-b', builder] + extraopts +
+                        [os.path.join(throot, 'doc'), workdir])
+        call_sphinx('html', '.')
 
         if not options['--nopdf']:
             # Generate latex file in a temp directory
             import tempfile
             workdir = tempfile.mkdtemp()
-            sphinx.main(['', '-E', '-b', 'latex',
-                os.path.join(throot, 'doc'), workdir])
+            call_sphinx('latex', workdir)
             # Compile to PDF
             os.chdir(workdir)
             os.system('make')
