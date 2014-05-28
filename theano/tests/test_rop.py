@@ -21,6 +21,7 @@ import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from numpy.testing.noseclasses import KnownFailureTest
+from nose.plugins.attrib import attr
 
 '''
 Special Op created to test what happens when you have one op that is not

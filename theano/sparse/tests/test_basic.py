@@ -15,7 +15,7 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.gof.python25 import all, any, product
-
+from nose.plugins.attrib import attr
 
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
