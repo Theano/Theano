@@ -5,6 +5,7 @@ import theano
 from theano import config
 from theano import tensor as T
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 
 mode = theano.compile.mode.get_mode(config.mode)
 
@@ -103,11 +104,13 @@ class TestGaussNewton(unittest.TestCase):
         # execute
         f()
 
+    @attr('slow')
     def test_batch(self):
         # This runs fine. The batch size is set to something greater than 1,
         # i.e. the data is represented by a tensor3 object.
         self._run(100, 10, batch_size=5, mode=mode)
 
+    @attr('slow')
     def test_nobatch(self):
         # This used to give an error due to optimization "scan_merge_inouts".
         # The batch size is set to 1 and the data is represented by a matrix.

@@ -32,6 +32,7 @@ class TestRealImag(unittest.TestCase):
         x = zvector()
         self.assertRaises(TypeError, cast, x, 'int32')
 
+    @attr('slow')
     def test_complex(self):
         rng = numpy.random.RandomState(2333)
         m = fmatrix()

@@ -5,6 +5,7 @@ import subprocess
 import os
 from theano.gof.sched import sort_schedule_fn
 from theano.gof.python25 import all
+from nose.plugins.attrib import attr
 
 mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)
@@ -27,6 +28,7 @@ def test_send():
     assert sendnode.op.dest == 1
     assert sendnode.op.tag  == 11
 
+@attr('slow')
 def test_can_make_function():
     x = recv((5,5), 'float32', 0, 11)
     y = x+1
@@ -66,6 +68,7 @@ def test_mpi_tag_ordering():
     assert all(node.op.tag == tag
             for node, tag in zip(nodes, (11, 12, 13, 11, 12, 13)))
 
+@attr('slow')
 def test_mpi_schedule():
     x = theano.tensor.matrix('x')
     y = send(x, 1, 11)
