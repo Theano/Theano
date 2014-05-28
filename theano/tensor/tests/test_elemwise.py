@@ -257,6 +257,10 @@ class test_Broadcast(unittest.TestCase):
         f(xv, yv)
         assert (xv == yv).all()
 
+    def test_fill_var(self):
+        x = tensor.matrix()
+        x.fill(3)
+
     def test_fill_grad(self):
         # Fix bug reported at
         # https://groups.google.com/d/topic/theano-users/nQshB8gUA6k/discussion
