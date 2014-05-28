@@ -1,6 +1,7 @@
 __docformat__ = "restructuredtext en"
 import numpy
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 
 from theano.tensor.raw_random import *
 from theano.tensor import (raw_random, ivector, dvector, iscalar, dcol,
@@ -1002,6 +1003,7 @@ class T_random_function(utt.InferShapeTester):
     def setUp(self):
         super(T_random_function, self).setUp()
 
+    @attr('slow')
     def test_infer_shape(self):
         rng_R = random_state_type()
         rng_R_val = numpy.random.RandomState(utt.fetch_seed())

@@ -39,6 +39,7 @@ class T_min_max(unittest.TestCase):
         self.mode = theano.compile.mode.get_default_mode().including(
             'canonicalize', 'fast_run')
 
+    @attr('slow')
     def test_optimization_max(self):
         data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()
@@ -72,6 +73,7 @@ class T_min_max(unittest.TestCase):
             assert isinstance(topo[0].op, CAReduce)  # min
             f(data)
 
+    @attr('slow')
     def test_optimization_min(self):
         data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()

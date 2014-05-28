@@ -3389,6 +3389,7 @@ class T_local_erfc(unittest.TestCase):
             not theano.scalar.basic_scipy.imported_scipy_special):
             raise SkipTest("erfc need a c++ compiler or scipy")
 
+    @attr('slow')
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
         """

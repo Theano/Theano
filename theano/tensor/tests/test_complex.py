@@ -2,6 +2,7 @@ import unittest
 import theano
 from theano.tensor import *
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 
 from numpy.testing import dec
 
