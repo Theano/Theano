@@ -10,13 +10,34 @@ from theano.typed_list.type import TypedListType
 from theano.typed_list.basic import (GetItem, Insert,
                                       Append, Extend, Remove, Reverse,
                                       Index, Count)
+from theano import sparse
 from theano.tests import unittest_tools as utt
+import scipy.sparse as sp
 
 
 #took from tensors/tests/test_basic.py
 def rand_ranged_matrix(minimum, maximum, shape):
     return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum)
                          + minimum, dtype=theano.config.floatX)
+
+
+#took from sparse/tests/test_basic.py
+def random_lil(shape, dtype, nnz):
+    rval = sp.lil_matrix(shape, dtype=dtype)
+    huge = 2 ** 30
+    for k in range(nnz):
+        # set non-zeros in random locations (row x, col y)
+        idx = numpy.random.random_integers(huge, size=2) % shape
+        value = numpy.random.rand()
+        #if dtype *int*, value will always be zeros!
+        if "int" in dtype:
+            value = int(value * 100)
+        # The call to tuple is needed as scipy 0.13.1 do not support
+        # ndarray with lenght 2 as idx tuple.
+        rval.__setitem__(
+            tuple(idx),
+            value)
+    return rval
 
 
 class test_get_item(unittest.TestCase):
@@ -230,8 +251,8 @@ class test_insert(unittest.TestCase):
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
-        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1, dtype=theano.config.floatX
-                                                               ), y), [x, y]))
+        self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
+                                dtype=theano.config.floatX), y), [x, y]))
 
     def test_sanity_check(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
@@ -412,6 +433,20 @@ class test_index(unittest.TestCase):
 
         self.assertTrue(f([[x, y], [x, y, y]], [x, y]) == 0)
 
+    def test_sparse(self):
+        mySymbolicSparseList = TypedListType(sparse.SparseType('csr',
+                                                theano.config.floatX))()
+        mySymbolicSparse = sparse.csr_matrix()
+
+        z = Index()(mySymbolicSparseList, mySymbolicSparse)
+
+        f = theano.function([mySymbolicSparseList, mySymbolicSparse], z)
+
+        x = sp.csr_matrix(random_lil((10, 40), theano.config.floatX, 3))
+        y = sp.csr_matrix(random_lil((10, 40), theano.config.floatX, 3))
+
+        self.assertTrue(f([x, y], y) == 1)
+
 
 class test_count(unittest.TestCase):
 
@@ -461,3 +496,17 @@ class test_count(unittest.TestCase):
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(f([[x, y], [x, y, y]], [x, y]) == 1)
+
+    def test_sparse(self):
+        mySymbolicSparseList = TypedListType(sparse.SparseType('csr',
+                                                theano.config.floatX))()
+        mySymbolicSparse = sparse.csr_matrix()
+
+        z = Count()(mySymbolicSparseList, mySymbolicSparse)
+
+        f = theano.function([mySymbolicSparseList, mySymbolicSparse], z)
+
+        x = sp.csr_matrix(random_lil((10, 40), theano.config.floatX, 3))
+        y = sp.csr_matrix(random_lil((10, 40), theano.config.floatX, 3))
+
+        self.assertTrue(f([x, y, y], y) == 2)
