@@ -433,55 +433,60 @@ class TensorType(Type):
 
     def c_extract(self, name, sub):
         """Override `CLinkerType.c_extract` """
-        return """
-        %(name)s = NULL;
-        if (py_%(name)s == Py_None) {
-            // We can either fail here or set %(name)s to NULL and rely on Ops
-            // using tensors to handle the NULL case, but if they fail to do so
-            // they'll end up with nasty segfaults, so this is public service.
-            PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
-            %(fail)s
-        }
-        if (!PyArray_Check(py_%(name)s)) {
-            PyErr_SetString(PyExc_ValueError, "expected an ndarray");
-            %(fail)s
-        }
-        // We expect %(type_num)s
-        type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
-        if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
-            PyArrayObject * tmp = (PyArrayObject*) py_%(name)s;
-            PyErr_Format(PyExc_NotImplementedError,
-                         "expected an aligned array of type %%ld "
-                         "(%(type_num)s), got non-aligned array of type %%ld"
-                         " with %%ld dimensions, with 3 last dims "
-                         "%%ld, %%ld, %%ld"
-                         " and 3 last strides %%ld %%ld, %%ld.",
-                         (long int) %(type_num)s,
-                         (long int) type_num_%(name)s,
-                         (long int) PyArray_NDIM(tmp),
-                         (long int) PyArray_NDIM(tmp) >= 3 ?
-        PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 2 ?
-        PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-2] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 1 ?
-        PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-1] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 3 ?
-        PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-3] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 2 ?
-        PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-2] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 1 ?
-        PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-1] : -1
-        );
-            %(fail)s
-        }
-        // This is a TypeError to be consistent with DEBUG_MODE
-        // Note: DEBUG_MODE also tells the name of the container
-        if (type_num_%(name)s != %(type_num)s) {
-            PyErr_Format(PyExc_TypeError,
-                         "expected type_num %%d (%(type_num)s) got %%d",
-                         %(type_num)s, type_num_%(name)s);
-            %(fail)s
-        }
+        if(theano.compile.ops.Shape.check_input):
+            check = """
+            %(name)s = NULL;
+            if (py_%(name)s == Py_None) {
+                // We can either fail here or set %(name)s to NULL and rely on Ops
+                // using tensors to handle the NULL case, but if they fail to do so
+                // they'll end up with nasty segfaults, so this is public service.
+                PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
+                %(fail)s
+            }
+            if (!PyArray_Check(py_%(name)s)) {
+                PyErr_SetString(PyExc_ValueError, "expected an ndarray");
+                %(fail)s
+            }
+            // We expect %(type_num)s
+            type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
+            if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
+                PyArrayObject * tmp = (PyArrayObject*) py_%(name)s;
+                PyErr_Format(PyExc_NotImplementedError,
+                             "expected an aligned array of type %%ld "
+                             "(%(type_num)s), got non-aligned array of type %%ld"
+                             " with %%ld dimensions, with 3 last dims "
+                             "%%ld, %%ld, %%ld"
+                             " and 3 last strides %%ld %%ld, %%ld.",
+                             (long int) %(type_num)s,
+                             (long int) type_num_%(name)s,
+                             (long int) PyArray_NDIM(tmp),
+                             (long int) PyArray_NDIM(tmp) >= 3 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 2 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-2] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 1 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-1] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 3 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-3] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 2 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-2] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 1 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-1] : -1
+            );
+                %(fail)s
+            }
+            // This is a TypeError to be consistent with DEBUG_MODE
+            // Note: DEBUG_MODE also tells the name of the container
+            if (type_num_%(name)s != %(type_num)s) {
+                PyErr_Format(PyExc_TypeError,
+                             "expected type_num %%d (%(type_num)s) got %%d",
+                             %(type_num)s, type_num_%(name)s);
+                %(fail)s
+            }
+            """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
+        else:
+            check = ""
+        return check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])

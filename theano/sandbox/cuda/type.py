@@ -303,51 +303,58 @@ class CudaNdarrayType(Type):
             }
             //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
         """ % locals()
-        for i, b in enumerate(self.broadcastable):
-            if b:
-                print >> sio, """
-            if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
+        if(theano.compile.ops.Shape.check_input):
+            for i, b in enumerate(self.broadcastable):
+                if b:
+                    print >> sio, """
+                if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "c_extract: Some CudaNdarray has dim %%i on broadcastable dimension %%i",
+                                 CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                    %(name)s = NULL;
+                    %(fail)s;
+                }
+                //std::cerr << "c_extract " << %(name)s << "dim check %(i)s passed\\n";
+                //std::cerr << "c_extract " << %(name)s << "checking bcast %(i)s <" << %(name)s->str<< ">\\n";
+                //std::cerr << "c_extract " << %(name)s->str[%(i)s] << "\\n";
+                if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
+                {
+                    //std::cerr << "c_extract bad stride detected...\\n";
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "c_extract: Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i",
+                                 CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                    %(name)s = NULL;
+                    %(fail)s;
+                }
+                //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
+                    """ % locals()
+            print >> sio, """
+                assert(%(name)s);
+                Py_INCREF(py_%(name)s);
+            }
+            else if (py_%(name)s == Py_None)
             {
-                PyErr_Format(PyExc_RuntimeError,
-                             "c_extract: Some CudaNdarray has dim %%i on broadcastable dimension %%i",
-                             CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                PyErr_SetString(PyExc_TypeError,
+                                "expected a CudaNdarray, not None");
                 %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << %(name)s << "dim check %(i)s passed\\n";
-            //std::cerr << "c_extract " << %(name)s << "checking bcast %(i)s <" << %(name)s->str<< ">\\n";
-            //std::cerr << "c_extract " << %(name)s->str[%(i)s] << "\\n";
-            if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
+            else
             {
-                //std::cerr << "c_extract bad stride detected...\\n";
-                PyErr_Format(PyExc_RuntimeError,
-                             "c_extract: Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i",
-                             CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
+                PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
                 %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
-                """ % locals()
-        print >> sio, """
-            assert(%(name)s);
-            Py_INCREF(py_%(name)s);
-        }
-        else if (py_%(name)s == Py_None)
-        {
-            PyErr_SetString(PyExc_TypeError,
-                            "expected a CudaNdarray, not None");
-            %(name)s = NULL;
-            %(fail)s;
-        }
-        else
-        {
-            //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
-            PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
-            %(name)s = NULL;
-            %(fail)s;
-        }
-        //std::cerr << "c_extract done " << %(name)s << '\\n';
-        """ % locals()
+            //std::cerr << "c_extract done " << %(name)s << '\\n';
+            """ % locals()
+        else:
+            print >> sio, """
+                assert(%(name)s);
+                Py_INCREF(py_%(name)s);
+            }
+            """ % locals()
         #print sio.getvalue()
         return sio.getvalue()
 
