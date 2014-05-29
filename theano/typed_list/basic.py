@@ -87,7 +87,6 @@ class GetItem(Op):
         return """
         %(output_name)s = (typeof %(output_name)s) PyList_GetItem( (PyObject*) %(x_name)s, *((double *) PyArray_DATA(%(index)s)));
         if(%(output_name)s == NULL){
-             PyErr_SetString(PyExc_TypeError, "Get Item Failed");
             %(fail)s
         }
         Py_INCREF(%(output_name)s);
@@ -141,7 +140,6 @@ class Append(Op):
             """ % locals()
         return init + """
         if(PyList_Append( (PyObject*) %(output_name)s,(PyObject*) %(toAppend)s)){
-            PyErr_SetString(PyExc_TypeError, "Append failed");
             %(fail)s
         };
         Py_INCREF(%(output_name)s);
@@ -195,10 +193,12 @@ class Extend(Op):
             """ % locals()
         return init + """
         int i =0;
-        int length = PyList_GET_SIZE((PyObject*) %(x_name)s);
+        int length = PyList_GET_SIZE((PyObject*) %(toAppend)s);
+        if(%(output_name)s==NULL){
+                %(fail)s
+        };
         for(i; i < length; i++){
             if(PyList_Append( (PyObject*) %(output_name)s,(PyObject*) PyList_GetItem((PyObject*) %(toAppend)s,i))==-1){
-                 PyErr_SetString(PyExc_TypeError, "Append failed");
                 %(fail)s
             };
         }
@@ -254,7 +254,6 @@ class Insert(Op):
             """ % locals()
         return init + """
         if(PyList_Insert((PyObject*) %(output_name)s, *((double *) PyArray_DATA(%(index)s)), (PyObject*) %(toInsert)s)==-1){
-             PyErr_SetString(PyExc_TypeError, "Insert failed");
             %(fail)s
         };
         Py_INCREF(%(output_name)s);
@@ -349,7 +348,6 @@ class Reverse(Op):
             """ % locals()
         return init + """
         if(PyList_Reverse((PyObject*) %(output_name)s)==-1){
-            PyErr_SetString(PyExc_TypeError, "Reverse failed");
             %(fail)s
         };
         Py_INCREF(%(output_name)s);
