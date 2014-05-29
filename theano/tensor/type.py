@@ -416,13 +416,20 @@ class TensorType(Type):
         return str(self)
         #"TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         """Override `CLinkerType.c_declare` """
-        return """
+        if(check_input):
+            check = """
+            typedef %(dtype)s dtype_%(name)s;
+            """ % dict(sub, name=name, dtype=self.dtype_specs()[1])
+        else:
+            check = ""
+        declaration = """
         PyArrayObject* %(name)s;
         int type_num_%(name)s;
-        typedef %(dtype)s dtype_%(name)s;
         """ % dict(sub, name=name, dtype=self.dtype_specs()[1])
+
+        return declaration + check
 
     def c_init(self, name, sub):
         """Override `CLinkerType.c_init` """
@@ -485,7 +492,9 @@ class TensorType(Type):
             }
             """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
         else:
-            check = ""
+            check = """
+            type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
+            """
         return check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);

@@ -293,17 +293,19 @@ class CudaNdarrayType(Type):
             //fprintf(stderr, "c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
             %(name)s = (CudaNdarray*)py_%(name)s;
             //std::cerr << "c_extract " << %(name)s << '\\n';
-            if (%(name)s->nd != %(nd)s)
-            {
-                PyErr_Format(PyExc_RuntimeError,
-                             "c_extract: Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s",
-                             %(name)s->nd);
-                %(name)s = NULL;
-                %(fail)s;
-            }
-            //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
         """ % locals()
         if(check_input):
+            print >> sio, """
+                if (%(name)s->nd != %(nd)s)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "c_extract: Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s",
+                                 %(name)s->nd);
+                    %(name)s = NULL;
+                    %(fail)s;
+                }
+                //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
+            """ % locals()
             for i, b in enumerate(self.broadcastable):
                 if b:
                     print >> sio, """
