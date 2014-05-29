@@ -431,9 +431,9 @@ class TensorType(Type):
         type_num_%(name)s = %(type_num)s;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         """Override `CLinkerType.c_extract` """
-        if(theano.compile.ops.Shape.check_input):
+        if(check_input):
             check = """
             %(name)s = NULL;
             if (py_%(name)s == Py_None) {

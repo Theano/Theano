@@ -213,6 +213,8 @@ class Shape(gof.Op):
     # the output variable is %(oname)s.
     c_code_and_version = {}
 
+    check_input = True
+
     def __hash__(self):
         return hash(type(self))
 
