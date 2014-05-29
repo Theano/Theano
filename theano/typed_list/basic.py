@@ -83,8 +83,13 @@ class GetItem(Op):
     def c_code(self, node, name, inp, out, sub):
         x_name, index = inp[0], inp[1]
         output_name = out[0]
+        fail = sub['fail']
         return """
         %(output_name)s = (typeof %(output_name)s) PyList_GetItem( (PyObject*) %(x_name)s, *((double *) PyArray_DATA(%(index)s)));
+        if(%(output_name)s == NULL){
+             PyErr_SetString(PyExc_TypeError, "Get Item Failed");
+            %(fail)s
+        }
         Py_INCREF(%(output_name)s);
         """ % locals()
 
@@ -125,6 +130,7 @@ class Append(Op):
     def c_code(self, node, name, inp, out, sub):
         x_name, toAppend = inp[0], inp[1]
         output_name = out[0]
+        fail = sub['fail']
         if not self.inplace:
             init = """
             %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
@@ -134,7 +140,10 @@ class Append(Op):
             %(output_name)s =  %(x_name)s;
             """ % locals()
         return init + """
-        PyList_Append( (PyObject*) %(output_name)s,(PyObject*) %(toAppend)s);
+        if(PyList_Append( (PyObject*) %(output_name)s,(PyObject*) %(toAppend)s)){
+            PyErr_SetString(PyExc_TypeError, "Append failed");
+            %(fail)s
+        };
         Py_INCREF(%(output_name)s);
         """ % locals()
 
@@ -175,6 +184,7 @@ class Extend(Op):
     def c_code(self, node, name, inp, out, sub):
         x_name, toAppend = inp[0], inp[1]
         output_name = out[0]
+        fail = sub['fail']
         if not self.inplace:
             init = """
             %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
@@ -187,7 +197,10 @@ class Extend(Op):
         int i =0;
         int length = PyList_GET_SIZE((PyObject*) %(x_name)s);
         for(i; i < length; i++){
-            PyList_Append( (PyObject*) %(output_name)s,(PyObject*) PyList_GetItem((PyObject*) %(toAppend)s,i));
+            if(PyList_Append( (PyObject*) %(output_name)s,(PyObject*) PyList_GetItem((PyObject*) %(toAppend)s,i))==-1){
+                 PyErr_SetString(PyExc_TypeError, "Append failed");
+                %(fail)s
+            };
         }
         Py_INCREF(%(output_name)s);
         """ % locals()
@@ -230,6 +243,7 @@ class Insert(Op):
     def c_code(self, node, name, inp, out, sub):
         x_name, index, toInsert = inp[0], inp[1], inp[2]
         output_name = out[0]
+        fail = sub['fail']
         if not self.inplace:
             init = """
             %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
@@ -239,7 +253,10 @@ class Insert(Op):
             %(output_name)s =  %(x_name)s;
             """ % locals()
         return init + """
-        PyList_Insert((PyObject*) %(output_name)s, *((double *) PyArray_DATA(%(index)s)), (PyObject*) %(toInsert)s);
+        if(PyList_Insert((PyObject*) %(output_name)s, *((double *) PyArray_DATA(%(index)s)), (PyObject*) %(toInsert)s)==-1){
+             PyErr_SetString(PyExc_TypeError, "Insert failed");
+            %(fail)s
+        };
         Py_INCREF(%(output_name)s);
         """ % locals()
 
@@ -321,6 +338,7 @@ class Reverse(Op):
     def c_code(self, node, name, inp, out, sub):
         x_name = inp[0] 
         output_name = out[0]
+        fail = sub['fail']
         if not self.inplace:
             init = """
             %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
@@ -330,7 +348,10 @@ class Reverse(Op):
             %(output_name)s =  %(x_name)s;
             """ % locals()
         return init + """
-        PyList_Reverse((PyObject*) %(output_name)s);
+        if(PyList_Reverse((PyObject*) %(output_name)s)==-1){
+            PyErr_SetString(PyExc_TypeError, "Reverse failed");
+            %(fail)s
+        };
         Py_INCREF(%(output_name)s);
         """ % locals()
 
