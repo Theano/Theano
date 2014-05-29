@@ -517,10 +517,16 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     """
     Perform a convolution through fft.
 
-    Only support input which will be even on the last dimension
-    (width).  All other dimensions can be anything and the filters can
-    have an even or odd width.
+    Only supports input whose shape is even on the last dimension.
+    All other dimensions can be anything and the filters can
+    have an even or odd last dimension.
 
+    The semantics associated with the last three dimensions
+    are not important as long as they are in the same order between
+    the inputs and the filters. For example, when the convolution
+    is done on a sequence of images, they could be either
+    (duration, height, width) or (height, width, duration).
+    
     If you must use input which has an odd width, you can either pad
     it or use the `pad_last_dim` argument which will do it for you and
     take care to strip the padding before returning.  Don't use this
