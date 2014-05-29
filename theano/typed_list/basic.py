@@ -318,6 +318,22 @@ class Reverse(Op):
     def __str__(self):
         return self.__class__.__name__
 
+    def c_code(self, node, name, inp, out, sub):
+        x_name = inp[0] 
+        output_name = out[0]
+        if not self.inplace:
+            init = """
+            %(output_name)s = (PyListObject*) PyList_GetSlice((PyObject*) %(x_name)s, 0, PyList_GET_SIZE((PyObject*) %(x_name)s)) ;
+            """ % locals()
+        else:
+            init = """
+            %(output_name)s =  %(x_name)s;
+            """ % locals()
+        return init + """
+        PyList_Reverse((PyObject*) %(output_name)s);
+        Py_INCREF(%(output_name)s);
+        """ % locals()
+
 reverse = Reverse()
 
 
