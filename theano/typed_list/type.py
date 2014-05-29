@@ -66,7 +66,6 @@ class TypedListType(gof.Type):
         else:
             return 0
 
-<<<<<<< HEAD
     def values_eq(self, a, b):
         if not len(a) == len(b):
             return False
@@ -76,7 +75,7 @@ class TypedListType(gof.Type):
                 return False
 
         return True
-=======
+
     def c_declare(self, name, sub):
         return """
         PyListObject* %(name)s;
@@ -106,4 +105,3 @@ class TypedListType(gof.Type):
 
     def c_cleanup(self, name, sub):
         return ""
->>>>>>> Added C interface for TypedListType, GetItem op, insert op, append op and extend op.
