@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
-        tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
+        tensor4permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
@@ -6918,6 +6918,11 @@ class T_swapaxes(unittest.TestCase):
         testMatrix = [[2, 1], [3, 4]]
         self.assertTrue(numpy.array_equal(testMatrix, f(f(testMatrix))))
 
+    def test_infeshape(self):
+        x = theano.tensor.matrix()
+        x.swapaxes(0,1)
+
+
 class T_Power():
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -6943,6 +6948,18 @@ class T_Power():
         z = power(x, y)
         f = function([x], z)
         self.assertRaise(ValueError, f, [1, 2, 3, 4])
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = swapaxes(A, 0, 1)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_s = numpy.swapaxes(a, 0, 1)
+        t_s = fn(a)
+        assert numpy.allclose(n_s, t_s)
+
 
 """
 
