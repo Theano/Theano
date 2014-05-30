@@ -255,8 +255,6 @@ def test_sqr_sum_ax0():
     z = (x**2).sum(axis=0)
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    theano.printing.debugprint(f_gpu)
-    theano.printing.debugprint(f_gpu2)
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       cuda.nnet.GpuSqrSumAx0)
 

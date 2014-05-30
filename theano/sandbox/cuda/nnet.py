@@ -364,7 +364,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 
-class GpuSoftmax(Op):
+class GpuSoftmax(GpuOp):
     """
     Implement Softmax on the gpu.
     """
