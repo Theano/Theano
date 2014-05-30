@@ -6898,6 +6898,21 @@ class T_swapaxes(unittest.TestCase):
         testMatrix = [[2, 1], [3, 4]]
         self.assertTrue(numpy.array_equal(testMatrix, f(f(testMatrix))))
 
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = swapaxes(A, 0, 1)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_s = numpy.swapaxes(a, 0, 1)
+        t_s = fn(a)
+        assert numpy.allclose(n_s, t_s)
+
+def test():
+    x = theano.tensor.matrix()
+    x.swapaxes(0,1)
+
 """
 
 if __name__ == '__main__':
