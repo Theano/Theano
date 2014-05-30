@@ -1,7 +1,7 @@
 from theano import Op, Apply
 from theano.compat.six import StringIO
 
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import GpuOp, as_cuda_ndarray_variable
 
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
@@ -709,3 +709,130 @@ class GpuSoftmaxWithBias (GpuOp):
         return ret1 + "\n" + ret2
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
+
+
+class GpuSqrSumAx0(GpuOp):
+    """
+    sqr all element of the input then, sum on axis 0.
+    work only with matrix input.
+    """
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, x):
+        x = as_cuda_ndarray_variable(x)
+        assert x.ndim == 2
+        out = x.type.__class__(dtype='float32', broadcastable=(False,))()
+        return Apply(self, [x], [out])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, nodename, inp, out, sub):
+        x, = inp
+        z, = out
+        fail = sub['fail']
+        return """
+        if (%(x)s->nd != 2)
+        {
+            PyErr_SetString(PyExc_ValueError, "rank error");
+            %(fail)s;
+        }
+        if ((NULL == %(z)s) ||
+            (CudaNdarray_HOST_DIMS(%(z)s)[0] !=
+             CudaNdarray_HOST_DIMS(%(x)s)[1]))
+        {
+            Py_XDECREF(%(z)s);
+            %(z)s = (CudaNdarray*)CudaNdarray_New();
+            if ((NULL == %(z)s)
+                || CudaNdarray_alloc_contiguous(%(z)s, 1,
+                                                CudaNdarray_HOST_DIMS(%(x)s) + 1))
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = NULL;
+                %(fail)s;
+            }
+        }
+        {
+            int n_blocks = std::min(CudaNdarray_HOST_DIMS(%(x)s)[1],
+                                    32 * 1024);
+//TODO, detect the maximum number of thread per block.
+            int n_threads = std::min(CudaNdarray_HOST_DIMS(%(x)s)[0], 512);
+            int n_shared_bytes = n_threads * sizeof(float);
+
+            if (CudaNdarray_HOST_DIMS(%(x)s)[0] > 0 &&
+                CudaNdarray_HOST_DIMS(%(x)s)[1] > 0)
+            {
+             KSqrSumAx0
+                    <<<
+                        n_blocks,
+                        n_threads,
+                        n_threads * sizeof(float)
+                    >>>(
+                            CudaNdarray_HOST_DIMS(%(x)s)[0],
+                            CudaNdarray_HOST_DIMS(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(x)s),
+                            CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                            CudaNdarray_HOST_STRIDES(%(x)s)[1],
+
+                            CudaNdarray_DEV_DATA(%(z)s),
+                            CudaNdarray_HOST_STRIDES(%(z)s)[0]
+                    );
+              CNDA_THREAD_SYNC;
+              cudaError_t err = cudaGetLastError();
+              if( cudaSuccess != err)
+              {
+                  PyErr_Format(PyExc_RuntimeError,
+                               "Cuda error: %%s: %%s.\\n Used %%d blocks,"
+                               " %%d threads %%d bytes of shared memory",
+                               "kSoftmax[_fixed_shared]%(nodename)s",
+                               cudaGetErrorString(err),
+                               n_blocks, n_threads, n_shared_bytes);
+                  %(fail)s;
+              }
+            }
+            else if (CudaNdarray_HOST_DIMS(%(z)s)[0] > 0){
+                cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float));
+            }
+
+        }
+        assert(%(z)s);
+        """ % locals()
+
+    def c_support_code(self):
+        return """
+//Not well optimized, we don't read in contiguous blocks
+__global__ void KSqrSumAx0(int nb_row, int nb_col,
+        const float* x, int x_str0, int x_str1, float* z, int z_str0) {
+    const int blockCount = gridDim.x;
+    const int blockNum = blockIdx.x;
+    const int threadCount = blockDim.x;
+    const int threadNum = threadIdx.x;
+    extern __shared__ float buf[];
+    float myresult = 0.0f;
+    for (int i = blockIdx.x; i < nb_col; i += gridDim.x) {
+        myresult = 0;
+        for (int j = threadIdx.x; j < nb_row; j += blockDim.x) {
+            float val = x[i + j*nb_col];
+            myresult += val * val;
+        }
+        __syncthreads();
+        buf[threadIdx.x] = myresult;
+        __syncthreads();
+        if(threadIdx.x==0){
+            for(int j=1;j<blockDim.x;j++)
+                myresult += buf[j];
+            z[i] = myresult;
+        }
+        __syncthreads();
+    }
+}"""
+
+gpu_sqr_sum_ax0 = GpuSqrSumAx0()

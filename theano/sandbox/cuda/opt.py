@@ -35,7 +35,7 @@ from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
-        GpuSoftmax, GpuSoftmaxWithBias)
+        GpuSoftmax, GpuSoftmaxWithBias, GpuSqrSumAx0)
 from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
@@ -683,6 +683,19 @@ def local_gpu_careduce(node):
                             return None
 
     return False
+
+
+@register_opt()#"fast_compile")
+@local_optimizer([GpuCAReduce])
+def local_gpu_sqr_sum_ax0(node):
+    if (isinstance(node.op, GpuCAReduce) and
+        isinstance(node.op.scalar_op, theano.scalar.basic.Add) and
+        node.op.reduce_mask == (1, 0) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, GpuElemwise) and
+        isinstance(node.inputs[0].owner.op.scalar_op, theano.scalar.basic.Sqr)
+        ):
+        return [GpuSqrSumAx0()(node.inputs[0].owner.inputs[0])]
 
 
 @register_opt()

@@ -247,3 +247,31 @@ def test_softmax():
     cmp(2, 10000)
     cmp(128, 16 * 1024)
     cmp(128, 64 * 1024)
+
+
+def test_sqr_sum_ax0():
+    x = T.fmatrix('x')
+
+    z = (x**2).sum(axis=0)
+    f = theano.function([x], z, mode=mode_without_gpu)
+    f_gpu = theano.function([x], z, mode=mode_with_gpu)
+    theano.printing.debugprint(f_gpu)
+    theano.printing.debugprint(f_gpu2)
+    assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
+                      cuda.nnet.GpuSqrSumAx0)
+
+    def cmp(n, m):
+        #print "test_softmax",n,m
+        print n, m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data)
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+
+    cmp(10, 15)
+    cmp(120000, 15)
+    cmp(15, 120000)
+    cmp(4000, 4000)
+    cmp(0, 15)
+    cmp(10, 0)
+    cmp(0, 0)
