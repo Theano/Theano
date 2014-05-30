@@ -142,10 +142,10 @@ class VM(object):
             profile.variable_strides = self.variable_strides.copy()
 
         if hasattr(self, 'node_executed_order'):
-            profile.node_executed_order = self.node_executed_order.copy()
+            profile.node_executed_order = self.node_executed_order[:]
 
         if hasattr(self, 'node_cleared_order'):
-            profile.node_cleared_order = self.node_cleared_order.copy()
+            profile.node_cleared_order = self.node_cleared_order[:]
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
