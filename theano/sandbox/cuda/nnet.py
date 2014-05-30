@@ -8,7 +8,7 @@ from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax_fixed_shared)
 
 
-class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
+class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
     """
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
     """
@@ -216,7 +216,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 
-class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
+class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
     """
@@ -364,7 +364,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 
-class GpuSoftmax (GpuOp):
+class GpuSoftmax(Op):
     """
     Implement Softmax on the gpu.
     """
@@ -483,8 +483,8 @@ class GpuSoftmax (GpuOp):
     def c_support_code_apply(self, node, nodename):
         ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                        'const float * x', 'const int sx0', 'const int sx1',
+                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
@@ -506,8 +506,8 @@ class GpuSoftmax (GpuOp):
                 ])
         ret2 = nvcc_kernel("kSoftmax_fixed_shared%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                        'const float * x', 'const int sx0', 'const int sx1',
+                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
@@ -525,7 +525,7 @@ class GpuSoftmax (GpuOp):
 gpu_softmax = GpuSoftmax()
 
 
-class GpuSoftmaxWithBias (GpuOp):
+class GpuSoftmaxWithBias(GpuOp):
     """
     Implement SoftmaxWithBias on the gpu.
     """
@@ -545,7 +545,7 @@ class GpuSoftmaxWithBias (GpuOp):
         return Apply(self, [x, b], [x.type()])
 
     def infer_shape(self, node, shape):
-        return  [shape[0]]
+        return [shape[0]]
 
     def c_code_cache_version(self):
         #return ()
@@ -660,12 +660,13 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
-                params=['int M', 'int N',
-                        'const float * x', 'const int sx0', 'const int sx1',
-                        'const float * b', 'const int sb0',
-                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
-                body=[
+        ret1 = nvcc_kernel(
+            "kSoftmaxWithBias_%s" % nodename,
+            params=['int M', 'int N',
+                    'const float * x', 'const int sx0', 'const int sx1',
+                    'const float * b', 'const int sb0',
+                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+            body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
@@ -683,7 +684,7 @@ class GpuSoftmaxWithBias (GpuOp):
                       "}",
                       "__syncthreads()",
                     "}",
-                    ])
+            ])
         ret2 = nvcc_kernel("kSoftmaxWithBias_fixed_shared%s" % nodename,
                            params=['int M', 'int N',
                                    'const float * x',
@@ -799,7 +800,8 @@ class GpuSqrSumAx0(GpuOp):
               }
             }
             else if (CudaNdarray_HOST_DIMS(%(z)s)[0] > 0){
-                cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float));
+                cudaMemset(%(z)s->devdata, 0,
+                           CudaNdarray_SIZE(%(z)s) * sizeof(float));
             }
 
         }
