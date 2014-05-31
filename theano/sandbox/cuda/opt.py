@@ -88,7 +88,8 @@ register_opt(name='gpu_constant_folding')(
 
 
 class InputToGpuOptimizer(Optimizer):
-    """Transfert the input of a graph to the gpu if needed
+    """
+    Transfer the input of a graph to the gpu if it is necessary.
     It should make this part of the optimizer faster we will will need only 1
     pass on the fgraph.
     """
@@ -284,7 +285,7 @@ def local_gpu_dimshuffle_0(node):
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
             new_op = GpuDimShuffle(node.op.input_broadcastable,
-                    node.op.new_order)
+                                   node.op.new_order)
             return [host_from_gpu(new_op(gpu_from_host(input)))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -292,7 +293,7 @@ def local_gpu_dimshuffle_0(node):
                                            tensor.DimShuffle):
             dimshuffle_node = host_input.owner
             new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable,
-                    dimshuffle_node.op.new_order)
+                                   dimshuffle_node.op.new_order)
             return [new_op(gpu_from_host(dimshuffle_node.inputs[0]))]
     return False
 
@@ -442,7 +443,7 @@ def local_gpu_lazy_ifelse(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas._dot22])
+@local_optimizer([gpu_from_host, tensor.blas.Dot22])
 def local_gpu_dot22(node):
     """
     gpu_from_host(dot22) -> gpudot(gpu_from_host)
@@ -465,7 +466,7 @@ def local_gpu_dot22(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas._dot22scalar])
+@local_optimizer([gpu_from_host, tensor.blas.Dot22Scalar])
 def local_gpu_dot22scalar(node):
     """
     gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
@@ -505,7 +506,6 @@ def local_gpu_gemv(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, gemvs):
-            op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
             return [gpu_gemv_no_inplace(
                     gpu_from_host(z),
@@ -546,7 +546,6 @@ def local_gpu_ger(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, gers):
-            op = host_input.owner.op
             z, a, x, y = host_input.owner.inputs
             return [gpu_ger_no_inplace(
                     gpu_from_host(z),
@@ -571,7 +570,7 @@ def local_gpu_ger(node):
 
 
 @register_opt()
-@local_optimizer([tensor.blas.gemm_no_inplace, gpu_from_host])
+@local_optimizer([tensor.blas.Gemm, gpu_from_host])
 def local_gpu_gemm(node):
     """
     gpu_from_host(gemm) -> gpu_gemm(gpu_from_host)
@@ -582,7 +581,6 @@ def local_gpu_gemm(node):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op,
                                            tensor.blas.Gemm):
-            op = host_input.owner.op
             z, a, x, y, b = host_input.owner.inputs
             return [gpu_gemm_no_inplace(gpu_from_host(z),
                                         a,
@@ -1535,6 +1533,12 @@ def local_gpu_extract_diagonal(node):
                 gpu_from_host(diag_node.inputs[0]))]
     return False
 
+def typeConstructor(broadcastable, dtype):
+    if dtype == 'float32':
+        return CudaNdarrayType(broadcastable=broadcastable)
+    else:
+        return tensor.TensorType(broadcastable=broadcastable, dtype=dtype)
+
 @register_opt()
 @local_optimizer([tensor.nnet.GroupDot])
 def gd_to_gpu(node):
@@ -1607,13 +1611,11 @@ def gpuScanOptimization(node):
             # __init__ does not know about cuda ndarray and can not
             # handle graphs with inputs being Cuda Ndarrays
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
-                                                       scan_outs)
+                                                    scan_outs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
             _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
 
-            typeConstructor = lambda broadcastable, dtype: CudaNdarrayType(
-                    broadcastable=broadcastable)
             nw_op = scan_op.Scan(scan_ins,
                                  scan_outs,
                                  info,
@@ -1656,14 +1658,10 @@ def gpuScanOptimization(node):
             # __init__ does not know about cuda ndarray and can not
             # handle graphs with inputs being Cuda Ndarrays
             tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins,
-                                                       scan_outs)
+                                                    scan_outs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out)
             _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             info['gpu_hash'] = hash(_cmodule_key)
-
-            def typeConstructor(broadcastable, dtype):
-                assert dtype == 'float32'
-                return CudaNdarrayType(broadcastable=broadcastable)
 
             _outputs = scan_op.Scan(
                 scan_ins,
@@ -1681,8 +1679,8 @@ def gpuScanOptimization(node):
 
 
 optdb.register('gpu_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(typeConstructor=CudaNdarrayType,
-                                            gpu_flag=True),
+               scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
+                                             gpu_flag=True),
                75,
                'gpu',
                'fast_run',
