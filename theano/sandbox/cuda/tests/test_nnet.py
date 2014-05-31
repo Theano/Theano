@@ -259,8 +259,6 @@ def test_sqr_sum_ax0():
                       cuda.nnet.GpuSqrSumAx0)
 
     def cmp(n, m):
-        #print "test_softmax",n,m
-        print n, m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
