@@ -38,6 +38,7 @@ class GroupDot(theano.gof.Op):
         self.b = shared(numpy.zeros((2,), dtype=node.inputs[2].dtype))
         self.h = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
         self.out = shared(numpy.zeros((2, 2), dtype=node.outputs[0].dtype))
+
         out = theano.tensor.dot(self.h, self.W) + self.b
         updates = [(self.out, out)]
         self.step = theano.function([], [], name='GroupDotStep',
@@ -109,8 +110,7 @@ class GroupDotGrad(theano.gof.Op):
 
         self.W = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
         self.h = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
-        self.grad_on_out = shared(numpy.zeros((2, 2),
-                                              dtype=node.inputs[3].dtype))
+        self.grad_on_out = shared(numpy.zeros((2, 2),dtype=node.inputs[4].dtype))
         self.gW = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
         self.gh = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
         self.gb = shared(numpy.zeros((2,), dtype=node.outputs[2].dtype))
@@ -118,8 +118,8 @@ class GroupDotGrad(theano.gof.Op):
         gW = theano.tensor.dot(self.h.T, self.grad_on_out)
         gh = theano.tensor.dot(self.grad_on_out, self.W.T)
         gb = self.grad_on_out.sum(0)
-
-        updates = [(self.gW, gW), (self.gb, gb), (self.gh, gh)]
+        # 
+        updates = [(self.gW, gW),(self.gb, gb), (self.gh, gh)]
         self.step = theano.function([], [], updates=updates,
                                     name='GroupDotGradStep')
 
@@ -141,7 +141,7 @@ class GroupDotGrad(theano.gof.Op):
             mask = groups == pos
             if mask.sum() != 0:
                 self.W.set_value(matrix[pos], borrow=True)
-                self.b.set_value(biases[pos], borrow=True)
+                #self.b.set_value(biases[pos], borrow=True)
 
                 self.h.set_value(state_below[mask],
                                  borrow=True)

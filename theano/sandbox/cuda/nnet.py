@@ -4,9 +4,7 @@ import theano
 from theano import Op, Apply, tensor
 from theano.tensor import as_tensor_variable
 from theano.compat.six import StringIO
-
 from theano.sandbox.cuda import GpuOp, CudaNdarray, as_cuda_ndarray_variable
-
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
                                                 inline_softmax_fixed_shared)
@@ -715,6 +713,7 @@ class GpuSoftmaxWithBias (GpuOp):
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
 
 
+
 class GpuGroupDot(GpuOp):
     def __init__(self, n_groups):
         self.n_groups = n_groups
@@ -882,13 +881,12 @@ class GpuGroupDotGrad(GpuOp):
         self.W = shared(numpy.zeros((2, 3), dtype=node.inputs[1].dtype))
         self.h = shared(numpy.zeros((2,), dtype=node.inputs[0].dtype))
         self.grad_on_out = shared(numpy.zeros((3,),
-                                              dtype=node.inputs[3].dtype))
+                                              dtype=node.inputs[4].dtype))
         self.gW = shared(numpy.zeros((2, 3), dtype=node.outputs[1].dtype))
         self.gh = shared(numpy.zeros((2,), dtype=node.outputs[0].dtype))
 
         gW = tensor.outer(self.h, self.grad_on_out)
         gh = tensor.dot(self.grad_on_out, self.W.T)
-
         updates = [(self.gW, gW), (self.gh, gh)]
         self.step = theano.function([], [], updates=updates,
                                     name='GpuGroupDotGradStep')
@@ -908,8 +906,8 @@ class GpuGroupDotGrad(GpuOp):
 
         if not (_outs[2][0] and _outs[2][0].shape == biases.shape):
             _outs[2][0] = CudaNdarray.zeros(biases.shape)
-
-        for pos in xrange(self.n_groups):
+        
+        for pos in xrange(self.n_groups):         
             mask = groups == pos
             if mask.sum() != 0:
                 self.W.set_value(matrix[pos], borrow=True)
@@ -1049,3 +1047,4 @@ class GpuGroupDotGrad(GpuOp):
       %(fail)s;
         }
         """ % locals()
+
