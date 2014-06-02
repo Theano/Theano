@@ -163,7 +163,7 @@ class GpuArrayType(Type):
     def c_init(self, name, sub):
         return "%s = NULL;" % (name,)
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         # TODO I don't check broadcast stuff for now.
         return """
         %(name)s = NULL;

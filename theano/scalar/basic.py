@@ -266,7 +266,7 @@ class Scalar(Type):
         %(name)s = 0;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         specs = self.dtype_specs()
         return """
         if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))

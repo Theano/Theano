@@ -247,7 +247,7 @@ class T_extending(unittest.TestCase):
 
 
 
-        def c_extract(name, sub):
+        def c_extract(name, sub, check_input=True):
             return """
             if (!PyFloat_Check(py_%(name)s)) {
                 PyErr_SetString(PyExc_TypeError, "expected a float");
@@ -308,7 +308,7 @@ class T_extending(unittest.TestCase):
                 %(name)s = 0.0;
                 """ % dict(name = name)
 
-            def c_extract(self, name, sub):
+            def c_extract(self, name, sub, check_input=True):
                 return """
                 if (!PyFloat_Check(py_%(name)s)) {
                     PyErr_SetString(PyExc_TypeError, "expected a float");

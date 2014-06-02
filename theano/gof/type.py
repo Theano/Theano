@@ -96,7 +96,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_init", type(self), self.__class__.__name__)
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         """Required: Return c code to extract a PyObject * instance.
 
         The code returned from this function must be templated using

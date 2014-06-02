@@ -329,7 +329,7 @@ def get_c_extract(r, name, sub):
         c_extract = r.type.c_extract(name, sub,
                     getattr(r.owner.op, 'check_input', True))
     else:
-        c_extract = r.type.c_extract(name, sub)
+        c_extract = r.type.c_extract(name, sub, True)
 
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
@@ -344,7 +344,7 @@ def get_c_extract_out(r, name, sub):
         c_extract = r.type.c_extract(name, sub,
                     getattr(r.owner.op, 'check_input', True))
     else:
-        c_extract = r.type.c_extract(name, sub)
+        c_extract = r.type.c_extract(name, sub, True)
 
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
