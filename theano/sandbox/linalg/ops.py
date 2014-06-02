@@ -1229,17 +1229,13 @@ def norm(x,ord):
 		raise ValueError("'axis' entry is out of bounds.")
 	elif ndim == 1:
 		if ord == None:
-			z = tensor.sum(x**2)**0.5
-			return z
+			return tensor.sum(x**2)**0.5
 		elif ord == 'inf':
-			z = tensor.max(abs(x))
-			return z
+			return tensor.max(abs(x))
 		elif ord == '-inf':
-			z = tensor.min(abs(x))
-			return z
+			return tensor.min(abs(x))
 		elif ord == 0:
-			z = x[x.nonzero()].shape[0]
-			return z
+			return x[x.nonzero()].shape[0]
 		else:
 			try:
 				z = tensor.sum(abs(x**ord))**(1./ord)
