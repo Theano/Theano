@@ -82,7 +82,9 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     output = op(input4D, filters4D)
 
     # flatten to 3D tensor if convolving with single filter or single image
-    if input.ndim==2 or filters.ndim==2:
+    if input.ndim == 2 and filters.ndim == 2:
+        output = tensor.flatten(output.T, outdim=2).T
+    elif input.ndim == 2 or filters.ndim == 2:
         output = tensor.flatten(output.T, outdim=3).T
 
     return output
