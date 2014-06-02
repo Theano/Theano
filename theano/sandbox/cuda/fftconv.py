@@ -4,8 +4,11 @@ import numpy as np
 import theano
 import theano.tensor as T
 
-from theano.sandbox.cuda import (GpuOp, basic_ops, CudaNdarrayType,
-                                 CudaNdarray)
+from theano.sandbox.cuda import cuda_available, GpuOp
+
+if cuda_available:
+    from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
+                                     CudaNdarray)
 import theano.misc.pycuda_init
 from theano.misc.pycuda_init import pycuda_available
 if pycuda_available:
