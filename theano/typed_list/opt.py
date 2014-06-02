@@ -5,56 +5,42 @@ from theano.typed_list.basic import (Reverse,
                     Append, Extend, Insert)
 
 
-@gof.local_optimizer([Reverse], inplace=True)
-def local_inplace_reverse(node):
-    if isinstance(node.op, Reverse) and not node.op.inplace:
-        new_op = node.op.__class__(
-            inplace=True)
-        new_node = new_op(*node.inputs)
-        return [new_node]
-    return False
+def generic_opt_creator(op):
+
+    @gof.local_optimizer([op], inplace=True)
+    def generic_inplace_opt(node):
+            if isinstance(node.op, op) and not node.op.inplace:
+                new_op = node.op.__class__(
+                    inplace=True)
+                new_node = new_op(*node.inputs)
+                return [new_node]
+            return False
+
+    return generic_inplace_opt
+
+
+local_inplace_reverse = generic_opt_creator(Reverse)
 compile.optdb.register('local_inplace_reverse',
                        TopoOptimizer(local_inplace_reverse,
     failure_callback=TopoOptimizer.warn_inplace), 60,
-                       'fast_run', 'inplace')  # DEBUG
+                       'fast_run', 'inplace')
 
 
-@gof.local_optimizer([Append], inplace=True)
-def local_inplace_append(node):
-    if isinstance(node.op, Append) and not node.op.inplace:
-        new_op = node.op.__class__(
-            inplace=True)
-        new_node = new_op(*node.inputs)
-        return [new_node]
-    return False
+local_inplace_append = generic_opt_creator(Append)
 compile.optdb.register('local_inplace_append',
                        TopoOptimizer(local_inplace_append,
     failure_callback=TopoOptimizer.warn_inplace), 60,
-                       'fast_run', 'inplace')  # DEBUG
+                       'fast_run', 'inplace')
 
 
-@gof.local_optimizer([Extend], inplace=True)
-def local_inplace_extend(node):
-    if isinstance(node.op, Extend) and not node.op.inplace:
-        new_op = node.op.__class__(
-            inplace=True)
-        new_node = new_op(*node.inputs)
-        return [new_node]
-    return False
+local_inplace_extend = generic_opt_creator(Extend)
 compile.optdb.register('local_inplace_extend',
                        TopoOptimizer(local_inplace_extend,
     failure_callback=TopoOptimizer.warn_inplace), 60,
-                       'fast_run', 'inplace')  # DEBUG
+                       'fast_run', 'inplace')
 
 
-@gof.local_optimizer([Insert], inplace=True)
-def local_inplace_insert(node):
-    if isinstance(node.op, Insert) and not node.op.inplace:
-        new_op = node.op.__class__(
-            inplace=True)
-        new_node = new_op(*node.inputs)
-        return [new_node]
-    return False
+local_inplace_insert = generic_opt_creator(Insert)
 compile.optdb.register('local_inplace_insert',
                        TopoOptimizer(local_inplace_insert,
     failure_callback=TopoOptimizer.warn_inplace), 60,
