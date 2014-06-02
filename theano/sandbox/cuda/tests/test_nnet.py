@@ -264,10 +264,24 @@ def test_sqr_sum_ax0():
         gout = f_gpu(data)
         assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
-    cmp(10, 15)
-    cmp(120000, 15)
-    cmp(15, 120000)
-    cmp(4000, 4000)
-    cmp(0, 15)
-    cmp(10, 0)
-    cmp(0, 0)
+    #cmp(10, 15)
+    #cmp(120000, 15)
+    #cmp(15, 120000)
+    #cmp(4000, 4000)
+    #cmp(0, 15)
+    #cmp(10, 0)
+    #cmp(0, 0)
+
+    m = mode_with_gpu.excluding("local_gpu_sqr_sum_ax0")
+    f_gpu2 = theano.function([x], z, mode=m)
+    n, m = 4000, 4000
+    data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+    import time
+    t0 = time.time()
+    for i in range(1000):
+        f_gpu(data)
+    t1 = time.time()
+    for i in range(1000):
+        f_gpu2(data)
+    t2 = time.time()
+    print t1 - t0, t2 - t1

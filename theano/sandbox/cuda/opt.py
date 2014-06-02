@@ -35,7 +35,7 @@ from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
-        GpuSoftmax, GpuSoftmaxWithBias, GpuSqrSumAx0)
+        GpuSoftmax, GpuSoftmaxWithBias)
 from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
@@ -685,17 +685,22 @@ def local_gpu_careduce(node):
     return False
 
 
-@register_opt()#"fast_compile")
+@register_opt("low_memory")
 @local_optimizer([GpuCAReduce])
-def local_gpu_sqr_sum_ax0(node):
+def local_gpu_elemwise_careduce(node):
     if (isinstance(node.op, GpuCAReduce) and
-        isinstance(node.op.scalar_op, theano.scalar.basic.Add) and
-        node.op.reduce_mask == (1, 0) and
+        node.op.pre_scalar_op is None and
         node.inputs[0].owner and
         isinstance(node.inputs[0].owner.op, GpuElemwise) and
-        isinstance(node.inputs[0].owner.op.scalar_op, theano.scalar.basic.Sqr)
+        # The Op support all scalar with 1 inputs.  We don't
+        # automatically add more case, as some like trigonometic
+        # operation with some reduction pattern will probably result
+        # to slow down.
+        isinstance(node.inputs[0].owner.op.scalar_op, scal.basic.Sqr)
         ):
-        return [GpuSqrSumAx0()(node.inputs[0].owner.inputs[0])]
+        op = node.op
+        inp = node.inputs[0].owner.inputs[0]
+        return [GpuCAReduce(op.reduce_mask, op.scalar_op, scal.basic.sqr)(inp)]
 
 
 @register_opt()
