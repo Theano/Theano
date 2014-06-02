@@ -1121,6 +1121,7 @@ def local_gpu_conv(node):
 
 @local_optimizer([GpuConv])
 def local_conv_fft_valid(node):
+    # import locally to avoid pycuda warnings
     from theano.sandbox.cuda.fftconv import conv2d_fft
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'valid' and
@@ -1130,6 +1131,7 @@ def local_conv_fft_valid(node):
 
 @local_optimizer([GpuConv])
 def local_conv_fft_full(node):
+    # import locally to avoid pycuda warnings
     from theano.sandbox.cuda.fftconv import conv2d_fft
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'full' and
