@@ -325,20 +325,32 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
+    if r.owner:
+        c_extract = r.type.c_extract(name, sub,
+                    getattr(r.owner.op, 'check_input', True))
+    else:
+        c_extract = r.type.c_extract(name, sub)
+
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
     """ % locals()
-    return pre + r.type.c_extract(name, sub)
+    return pre + c_extract
 
 
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
+    if r.owner:
+        c_extract = r.type.c_extract(name, sub,
+                    getattr(r.owner.op, 'check_input', True))
+    else:
+        c_extract = r.type.c_extract(name, sub)
+
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
     """ % locals()
-    return pre + r.type.c_extract_out(name, sub)
+    return pre + c_extract
 
 
 def get_c_cleanup(r, name, sub):

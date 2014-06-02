@@ -284,6 +284,9 @@ class Shape(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
+
         return tuple(version)
 
 
