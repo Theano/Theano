@@ -1211,17 +1211,13 @@ def norm(x,ord,axis):
 		raise ValueError("'axis' entry is out of bounds.")
 	elif ndim == 1:
 		if ord == None:
-			z = tensor.sum(x**2)**0.5
-			return z
+			return tensor.sum(x**2)**0.5
 		elif ord == 'inf':
-			z = tensor.max(abs(x))
-			return z
+			return tensor.max(abs(x))
 		elif ord == '-inf':
-			z = tensor.min(abs(x))
-			return z
+			return tensor.min(abs(x))
 		elif ord == 0:
-			z = x[x.nonzero()].shape[0]
-			return z
+			return x[x.nonzero()].shape[0]
 		else:
 			try:
 				z = tensor.sum(abs(x**ord))**(1./ord)
@@ -1231,59 +1227,45 @@ def norm(x,ord,axis):
 	elif ndim >= 2:
 		if axis == None:
 			if ord == None or ord == 'fro':
-				z = tensor.sum(abs(x**2))**(0.5)
-				return z
+				return tensor.sum(abs(x**2))**(0.5)
 			elif ord == 'inf':
-				z = tensor.sum(abs(x),1)
-				return tensor.max(z)
+				return tensor.max(tensor.sum(abs(x), 1))
 			elif ord == '-inf':
-				z = tensor.sum(abs(x),1)
-				return tensor.min(z)
+				return tensor.min(tensor.sum(abs(x), 1))
 			elif ord == 1:
-				z = tensor.sum(abs(x),0)
-				return tensor.max(z)
+				return tensor.max(tensor.sum(abs(x), 0))
 			elif ord == -1:
-				z = tensor.sum(abs(x),0)
-				return tensor.min(z)
+				return tensor.min(tensor.sum(abs(x), 0))
 			else:
 				raise ValueError("Invalid norm order for matrices.")
 		else:
 			try:
 				axis + 1
 				if ord == None:
-					z = tensor.sum(x**2,axis)**0.5
-					return z
+					return tensor.sum(x**2, axis)**0.5
 				elif ord == 'inf':
-					z = tensor.max(abs(x),axis)
-					return z
+					return tensor.max(abs(x), axis)
 				elif ord == '-inf':
-					z = tensor.min(abs(x),axis)
-					return z
+					return tensor.min(abs(x), axis)
 				elif ord == 0:
-					z = tensor.sum(tensor.neq(x,0),axis)
-					return z
+					return tensor.sum(tensor.neq(x, 0), axis)
 				else:
 					try:
-						z = tensor.sum(abs(x**ord),axis)**(1./ord)
+						z = tensor.sum(abs(x**ord), axis)**(1./ord)
 					except TypeError:
 						raise ValueError("Invalid norm order for vectors.")
 					return z
 			except TypeError:
 				if ord == None or ord == 'fro':
-					z = tensor.sum(abs(x**2),axis)**0.5
-					return z
+					return tensor.sum(abs(x**2), axis)**0.5
 				elif ord == 'inf':
-					z = tensor.sum(abs(x),1)
-					return tensor.max(z,axis)
+					return tensor.max(tensor.sum(abs(x),1), axis)
 				elif ord == '-inf':
-					z = tensor.sum(abs(x),1)
-					return tensor.min(z,axis)
+					return tensor.min(tensor.sum(abs(x),1), axis)
 				elif ord == 1:
-					z = tensor.sum(abs(x),0)
-					return tensor.max(z,axis)
+					return tensor.max(tensor.sum(abs(x),0), axis)
 				elif ord == -1:
-					z = tensor.sum(abs(x),0)
-					return tensor.min(z,axis)
+					return tensor.min(tensor.sum(abs(x),0), axis)
 				else:
 					raise ValueError("Invalid norm order for matrices.")
 
