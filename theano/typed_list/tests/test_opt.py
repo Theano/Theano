@@ -30,7 +30,7 @@ class test_inplace(unittest.TestCase):
         f = theano.function([In(mySymbolicMatricesList, borrow=True,
                         mutable=True)], z, accept_inplace=True)
         self.assertTrue(f.maker.fgraph.toposort()[0].op.inplace)
-        
+
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
@@ -47,8 +47,8 @@ class test_inplace(unittest.TestCase):
                         mutable=True), In(mySymbolicMatrix, borrow=True,
                         mutable=True)], z, accept_inplace=True)
         self.assertTrue(f.maker.fgraph.toposort()[0].op.inplace)
-        
-         x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
@@ -93,3 +93,20 @@ class test_inplace(unittest.TestCase):
 
         self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
                                 dtype=theano.config.floatX), y), [x, y]))
+
+    def test_remove_inplace(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                    theano.config.floatX, (False, False)))()
+        mySymbolicMatrix = T.matrix()
+        z = Remove()(mySymbolicMatricesList, mySymbolicMatrix)
+
+        f = theano.function([In(mySymbolicMatricesList, borrow=True,
+                            mutable=True), In(mySymbolicMatrix, borrow=True,
+                            mutable=True)], z, accept_inplace=True)
+        self.assertTrue(f.maker.fgraph.toposort()[0].op.inplace)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        y = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(numpy.array_equal(f([x, y], y), [x,]))
