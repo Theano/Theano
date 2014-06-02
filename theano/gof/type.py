@@ -137,7 +137,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_extract", type(self), self.__class__.__name__)
 
-    def c_extract_out(self, name, sub):
+    def c_extract_out(self, name, sub, check_input=True):
         """Optional: C code to extract a PyObject * instance.
 
         Unlike c_extract, c_extract_out has to accept Py_None,
@@ -155,7 +155,7 @@ class CLinkerType(CLinkerObject):
         """ % dict(
                 name=name,
                 c_init_code=self.c_init(name, sub),
-                c_extract_code=self.c_extract(name, sub))
+                c_extract_code=self.c_extract(name, sub, check_input))
 
     def c_cleanup(self, name, sub):
         """Optional: Return c code to clean up after `c_extract`.

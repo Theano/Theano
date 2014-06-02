@@ -494,7 +494,7 @@ class TensorType(Type):
         else:
             check = """
             type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
-            """
+            """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
         return check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);
