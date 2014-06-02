@@ -1346,7 +1346,7 @@ Mathematical
    sometimes more accurate).
 
    C code is provided in the Theano_lgpl repository.
-   This make it faster.
+   This makes it faster.
 
    https://github.com/Theano/Theano_lgpl.git
 
