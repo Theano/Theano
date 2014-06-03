@@ -177,8 +177,8 @@ def test_matrix_dot():
 def test_qr():
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = tensor.matrix("A", dtype=theano.config.floatX)
-    Q, R = qr(A)
-    fn = function([A], [Q, R])
+    Q = qr(A)
+    fn = function([A], Q)
     a = rng.rand(4, 4).astype(theano.config.floatX)
     n_q, n_r = numpy.linalg.qr(a)
     t_q, t_r = fn(a)
@@ -190,7 +190,7 @@ def test_qr_reduced():
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = tensor.matrix("A", dtype=theano.config.floatX)
     Q = qr(A, mode="reduced")
-    fn = function([A], [Q])
+    fn = function([A], Q)
 
     a = rng.rand(4, 4).astype(theano.config.floatX)
 

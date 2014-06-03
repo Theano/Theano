@@ -1021,8 +1021,8 @@ class QRFull(Op):
     """
     _numop = staticmethod(numpy.linalg.qr)
 
-    def __init__(self):
-        self.mode = "full"
+    def __init__(self, mode):
+        self.mode = mode
 
     def __hash__(self):
         return hash((type(self), self.props()))
@@ -1060,8 +1060,7 @@ class QRIncomplete(Op):
     """
     _numop = staticmethod(numpy.linalg.qr)
 
-    def __init__(self, mode="raw"):
-        assert mode != "full"
+    def __init__(self, mode):
         self.mode = mode
 
     def __hash__(self):
@@ -1132,8 +1131,8 @@ def qr(a, mode="full"):
 
     """
     x = [[2, 1], [3, 4]]
-    if hasattr(numpy.linalg.qr(x,mode), tuple):
-        return QRFull()(a)
+    if isinstance(numpy.linalg.qr(x,mode), tuple):
+        return QRFull(mode)(a)
     else:
         return QRIncomplete(mode)(a)
 
