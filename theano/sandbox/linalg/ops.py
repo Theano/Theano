@@ -1202,3 +1202,7 @@ class EigvalshGrad(Op):
 
 def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
+
+
+def power(x,y):
+    return x**y
