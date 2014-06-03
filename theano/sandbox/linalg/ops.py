@@ -1131,7 +1131,8 @@ def qr(a, mode="full"):
     The upper-triangular matrix.
 
     """
-    if mode == "full":
+    x = [[2, 1], [3, 4]]
+    if hasattr(numpy.linalg.qr(x,mode), tuple):
         return QRFull()(a)
     else:
         return QRIncomplete(mode)(a)
