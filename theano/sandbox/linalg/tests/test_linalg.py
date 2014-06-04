@@ -637,20 +637,20 @@ class Matrix_power():
         self.assertRaises(ValueError, f, a)
 
 class T_NormTests(unittest.TestCase):
-        def test_wrong_type_of_ord_for_vector(self):
-            self.assertRaises(ValueError, norm, [2,1],'fro',0)
-        def test_wrong_type_of_ord_for_vector_in_matrix(self):
-            self.assertRaises(ValueError, norm, [[2,1],[3,4]],'fro',0)
-        def test_wrong_type_of_ord_for_vector_in_tensor(self):
-            self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],'fro',0)
-        def test_wrong_type_of_ord_for_matrix(self):
-            self.assertRaises(ValueError, norm, [[2,1],[3,4]],0,None)
-        def test_wrong_type_of_ord_for_matrix_in_tensor(self):
-            self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],0,None)
-        def test_non_tensorial_input(self):
-            self.assertRaises(ValueError, norm, 3, None, None)
-        def test_no_enough_dimensions(self):
-            self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
+    def test_wrong_type_of_ord_for_vector(self):
+        self.assertRaises(ValueError, norm, [2,1],'fro',0)
+    def test_wrong_type_of_ord_for_vector_in_matrix(self):
+        self.assertRaises(ValueError, norm, [[2,1],[3,4]],'fro',0)
+    def test_wrong_type_of_ord_for_vector_in_tensor(self):
+        self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],'fro',0)
+    def test_wrong_type_of_ord_for_matrix(self):
+        self.assertRaises(ValueError, norm, [[2,1],[3,4]],0,None)
+    def test_wrong_type_of_ord_for_matrix_in_tensor(self):
+        self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],0,None)
+    def test_non_tensorial_input(self):
+        self.assertRaises(ValueError, norm, 3, None, None)
+    def test_no_enough_dimensions(self):
+        self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
     try:
         def test_numpy_compare(self):
             rng = numpy.random.RandomState(utt.fetch_seed())
