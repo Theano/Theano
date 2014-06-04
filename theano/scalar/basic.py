@@ -254,7 +254,7 @@ class Scalar(Type):
             raise NotImplementedError("No literal for complex values.")
         return str(data)
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """
         %(dtype)s %(name)s;
         typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.

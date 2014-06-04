@@ -155,7 +155,7 @@ class GpuArrayType(Type):
         else:
             return numpy.dtype(self.dtype).itemsize
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """
         PyGpuArrayObject *%(name)s;
         """ % locals()

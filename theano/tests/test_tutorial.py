@@ -232,7 +232,7 @@ class T_extending(unittest.TestCase):
         div = BinaryDoubleOp(name = 'div',
                             fn = lambda x, y: x / y)
 
-        def c_declare(name, sub):
+        def c_declare(name, sub, check_input=True):
             return """
             double %(name)s;
             """ % dict(name = name)

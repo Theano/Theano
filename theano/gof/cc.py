@@ -308,10 +308,15 @@ def get_nothing(r, name, sub):
 
 def get_c_declare(r, name, sub):
     """Wrapper around c_declare that declares py_name"""
+    if r.owner:
+        c_declare = r.type.c_declare(name, sub,
+                    getattr(r.owner.op, 'check_input', True))
+    else:
+        c_declare = r.type.c_declare(name, sub, True)
     pre = """
     PyObject* py_%(name)s;
     """ % locals()
-    return pre + r.type.c_declare(name, sub)
+    return pre + c_declare
 
 
 def get_c_init(r, name, sub):

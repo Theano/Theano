@@ -274,7 +274,7 @@ class CudaNdarrayType(Type):
         return str(self)
         #"CudaNdarrayType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """ CudaNdarray * %(name)s;""" % locals()
 
     def c_init(self, name, sub):

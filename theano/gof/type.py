@@ -44,7 +44,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_literal", type(self), self.__class__.__name__)
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         """Required: Return c code to declare variables that will be
         instantiated by `c_extract`.
 
@@ -434,7 +434,7 @@ class Generic(SingletonType):
     def is_valid_value(self, a):
         return True
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """
         PyObject* %(name)s;
         """ % locals()
