@@ -105,3 +105,6 @@ class TypedListType(gof.Type):
 
     def c_cleanup(self, name, sub):
         return ""
+
+    def c_code_cache_version(self):
+        return (1,)

@@ -77,7 +77,7 @@ class test_inplace(unittest.TestCase):
     def test_insert_inplace(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(
                                 theano.config.floatX, (False, False)))()
-        mySymbolicIndex = T.scalar(dtype='int32')
+        mySymbolicIndex = T.scalar(dtype='int64')
         mySymbolicMatrix = T.matrix()
 
         z = Insert()(mySymbolicMatricesList, mySymbolicIndex, mySymbolicMatrix)
@@ -93,7 +93,7 @@ class test_inplace(unittest.TestCase):
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x], numpy.asarray(1,
-                                dtype='int32'), y), [x, y]))
+                                dtype='int64'), y), [x, y]))
 
     def test_remove_inplace(self):
         mySymbolicMatricesList = TypedListType(T.TensorType(

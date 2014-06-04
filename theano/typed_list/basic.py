@@ -63,12 +63,12 @@ class GetItem(Op):
                 index = Constant(SliceType(), index)
                 return Apply(self, [x, index], [x.type()])
             else:
-                index = T.constant(index, ndim=0, dtype='int32')
+                index = T.constant(index, ndim=0, dtype='int64')
                 return Apply(self, [x, index], [x.ttype()])
         if isinstance(index.type, SliceType):
             return Apply(self, [x, index], [x.type()])
         elif isinstance(index, T.TensorVariable) and index.ndim == 0:
-            assert index.dtype == 'int32'
+            assert index.dtype == 'int64'
             return Apply(self, [x, index], [x.ttype()])
         else:
             raise TypeError('Expected scalar or slice as index.')
@@ -86,12 +86,15 @@ class GetItem(Op):
         output_name = out[0]
         fail = sub['fail']
         return """
-        %(output_name)s = (typeof %(output_name)s) PyList_GetItem( (PyObject*) %(x_name)s, *((int *) PyArray_DATA(%(index)s)));
+        %(output_name)s = (typeof %(output_name)s) PyList_GetItem( (PyObject*) %(x_name)s, *((npy_int64 *) PyArray_DATA(%(index)s)));
         if(%(output_name)s == NULL){
             %(fail)s
         }
         Py_INCREF(%(output_name)s);
         """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 getitem = GetItem()
 
@@ -148,6 +151,9 @@ class Append(Op):
         };
         Py_INCREF(%(output_name)s);
         """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 append = Append()
 
@@ -209,6 +215,9 @@ class Extend(Op):
         Py_INCREF(%(output_name)s);
         """ % locals()
 
+    def c_code_cache_version(self):
+        return (1,)
+
 extend = Extend()
 
 
@@ -229,9 +238,9 @@ class Insert(Op):
         assert isinstance(x.type, TypedListType)
         assert x.ttype == toInsert.type
         if not isinstance(index, Variable):
-            index = T.constant(index, ndim=0, dtype='int32')
+            index = T.constant(index, ndim=0, dtype='int64')
         else:
-            assert index.dtype == 'int32'
+            assert index.dtype == 'int64'
             assert isinstance(index, T.TensorVariable) and index.ndim == 0
         return Apply(self, [x, index, toInsert], [x.type()])
 
@@ -261,11 +270,14 @@ class Insert(Op):
         if(%(output_name)s==NULL){
                 %(fail)s
         };
-        if(PyList_Insert((PyObject*) %(output_name)s, *((int *) PyArray_DATA(%(index)s)), (PyObject*) %(toInsert)s)==-1){
+        if(PyList_Insert((PyObject*) %(output_name)s, *((npy_int64 *) PyArray_DATA(%(index)s)), (PyObject*) %(toInsert)s)==-1){
             %(fail)s
         };
         Py_INCREF(%(output_name)s);
         """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 insert = Insert()
 
@@ -360,6 +372,9 @@ class Reverse(Op):
         };
         Py_INCREF(%(output_name)s);
         """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 reverse = Reverse()
 
