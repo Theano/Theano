@@ -1367,8 +1367,9 @@ class Assert(T.Op):
         self.msg = msg
 
     def __setstate__(self, attrs):
-        self.msg = attrs.pop('msg', "Theano Assert failed!")
-        super(Assert, self).__setstate__(attrs)
+        self.__dict__.update(attrs)
+        if not hasattr(self, 'msg'):
+            self.msg = "Theano Assert failed!"
 
     def make_node(self, value, *conds):
         cond = [T.as_tensor_variable(c) for c in conds]
