@@ -38,6 +38,7 @@ from theano.sandbox.linalg.ops import (cholesky,
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
+from nose.tools import assert_raises
 
 
 def check_lower_triangular(pd, ch_f):
@@ -672,13 +673,48 @@ def test_eigvalsh_grad():
                        [a, b], rng=numpy.random)
 
 
-def test_A_Xinv_b():
-    x = tensor.matrix()
-    y = tensor.matrix()
-    z = tensor.matrix()
-    m = A_Xinv_b()(x, y, z)
-    f = function([x, y, z], m)
-    X = [[1, 1], [1, 1]]
-    Y = [[2, 1], [3, 4]]
-    Z = [[1, 1], [1, 1]]
-    assert numpy.allclose(f(X, Y, Z), [[0.20408163, 0.20408163], [0.20408163, 0.20408163]])
+class test_A_Xinv_b():
+    def test_A_Xinv_b(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        z = tensor.matrix()
+        m = A_Xinv_b()(x, y, z)
+        f = function([x, y, z], m)
+        X = [[1, 1], [1, 1]]
+        Y = [[2, 1], [3, 4]]
+        Z = [[1, 1], [1, 1]]
+        assert numpy.allclose(f(X, Y, Z), [[0.20408163, 0.20408163], [0.20408163, 0.20408163]])
+
+    def test_definite_positive(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        z = tensor.matrix()
+        m = A_Xinv_b()(x, y, z)
+        f = function([x, y, z], m)
+        X = [[1, 1], [1, 1]]
+        Y = [[2, -9], [3, 4]]
+        Z = [[1, 1], [1, 1]]
+        assert_raises(numpy.linalg.LinAlgError, f, X, Y, Z)
+
+    def test_shape_conflict(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        z = tensor.matrix()
+        m = A_Xinv_b()(x, y, z)
+        f = function([x, y, z], m)
+        X = [[1, 1, 1], [1, 1, 1]]
+        Y = [[2, -9], [3, 4]]
+        Z = [[1, 1], [1, 1]]
+        assert_raises(numpy.linalg.LinAlgError, f, X, Y, Z)
+
+    def test_grad(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        z = tensor.matrix()
+        m = A_Xinv_b()(x, y, z)
+        f = function([x, y, z], m)
+        X = numpy.asarray([[1, 1], [1, 1]], dtype='float32')
+        Y = numpy.asarray([[2, 1], [3, 4]], dtype='float32')
+        Z = numpy.asarray([[1, 1], [1, 1]], dtype='float32')
+        theano.tests.unittest_tools.verify_grad(A_Xinv_b(),
+                                                [X, Y, Z])
