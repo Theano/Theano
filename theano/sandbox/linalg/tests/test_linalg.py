@@ -4,7 +4,6 @@ import numpy
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
 from numpy.testing import dec, assert_array_equal, assert_allclose
-from nose.plugins.skip import SkipTest
 
 import theano
 from theano import tensor, function
@@ -38,7 +37,7 @@ from theano.sandbox.linalg.ops import (cholesky,
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
-
+from nose.plugins.skip import SkipTest
 
 def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
@@ -620,8 +619,8 @@ class T_NormTests(unittest.TestCase):
         self.assertRaises(ValueError, norm, 3, None, None)
     def test_no_enough_dimensions(self):
         self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
-    try:
-        def test_numpy_compare(self):
+    def test_numpy_compare(self):
+        try:
             rng = numpy.random.RandomState(utt.fetch_seed())
             A = tensor.matrix("A", dtype=theano.config.floatX)
             Q = norm(A, None, None)
@@ -631,8 +630,8 @@ class T_NormTests(unittest.TestCase):
             n_n = numpy.linalg.norm(a, None, None)
             t_n = fn(a)
             assert _allclose(n_n, t_n)
-    except TypeError:
-        raise SkipTest('Your numpy version is outdated.')
+        except TypeError:
+            raise SkipTest('Your numpy version is outdated.')
 
 class T_lstsq(unittest.TestCase):
     def test_correct_solution(self):
