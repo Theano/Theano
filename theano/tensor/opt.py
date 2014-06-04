@@ -1366,6 +1366,11 @@ class Assert(T.Op):
     def __init__(self, msg="Theano Assert failed!"):
         self.msg = msg
 
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
+        if not hasattr(self, 'msg'):
+            self.msg = "Theano Assert failed!"
+
     def make_node(self, value, *conds):
         cond = [T.as_tensor_variable(c) for c in conds]
         assert numpy.all([c.type.ndim == 0 for c in cond])
