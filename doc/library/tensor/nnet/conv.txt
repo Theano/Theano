@@ -52,3 +52,4 @@ TODO: Give examples for how to use these things! They are pretty complicated.
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
 .. autofunction:: theano.tensor.nnet.conv3d2d.conv3d
+.. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
