@@ -601,23 +601,3 @@ def test_eigvalsh_grad():
     b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
     tensor.verify_grad(lambda a, b: eigvalsh(a, b).dot([1, 2, 3, 4, 5]),
                        [a, b], rng=numpy.random)
-
-
-class T_Power():
-    def test_numpy_compare(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        A = tensor.matrix("A", dtype=theano.config.floatX)
-        Q = power(A, 3)
-        fn = function([A], [Q])
-        a = rng.rand(4, 4).astype(theano.config.floatX)
-
-        n_p = numpy.power(a, 3)
-        t_p = fn(a)
-        assert numpy.allclose(n_p, t_p)
-
-    def test_multiple_power(self):
-        x = tensor.matrix()
-        y = [1, 2, 3]
-        z = power(x,y)
-        f = function([x], z)
-        assert allclose(f([1, 2, 3]), [1, 4, 27])
