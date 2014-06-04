@@ -1045,8 +1045,6 @@ class QRFull(Op):
 
         q[0], r[0] = self._numop(x,
                                  self.mode)
-        q[0] = q[0].astype(x.dtype)
-        r[0] = r[0].astype(x.dtype)
 
     def __str__(self):
         return self._numop.__name__.capitalize()
@@ -1082,8 +1080,6 @@ class QRIncomplete(Op):
         assert x.ndim == 2, "The input of qr function should be a matrix."
         q[0] = self._numop(x,
                            self.mode)
-
-        q[0] = q[0].astype(x.dtype)
 
     def __str__(self):
         return self._numop.__name__.capitalize()
