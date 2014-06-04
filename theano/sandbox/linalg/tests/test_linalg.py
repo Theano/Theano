@@ -30,8 +30,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        spectral_radius_bound,
                                        imported_scipy,
                                        Eig,
-                                       inv_as_solve,
-                                       power
+                                       inv_as_solve
                                        )
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
