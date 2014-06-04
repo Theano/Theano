@@ -308,15 +308,19 @@ class test_CAReduce(unittest_tools.InferShapeTester):
          ]
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
+                    pre_scalar_op=None,
                     test_nan=False, tensor_op=None):
         for xsh, tosum in self.cases:
             if dtype == "floatX":
                 dtype = theano.config.floatX
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            d = {}
+            if pre_scalar_op is not None:
+                d = {"pre_scalar_op": pre_scalar_op}
             if tensor_op is None:
-                e = as_tensor_variable(self.op(scalar_op, axis=tosum)(x))
+                e = as_tensor_variable(self.op(scalar_op, axis=tosum, **d)(x))
             else:
-                e = as_tensor_variable(tensor_op(x, axis=tosum))
+                e = as_tensor_variable(tensor_op(x, axis=tosum, **d))
 
             if tosum is None:
                 tosum = range(len(xsh))
@@ -337,6 +341,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 else:
                     xv = numpy.asarray(numpy.nan, dtype=dtype)
             zv = xv
+            if pre_scalar_op is not None:
+                zv = Elemwise(scalar_op=pre_scalar_op)(x).eval({x: xv})
             numpy_raised = False
             if len(tosum) > 1 and any([a < 0 for a in tosum]):
                 #In that case, we need to use the good order of axis
@@ -505,16 +511,22 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype,
                              test_nan=True)
 
-    def test_infer_shape(self, dtype=None):
+    def test_infer_shape(self, dtype=None, pre_scalar_op=None):
         if dtype is None:
             dtype = theano.config.floatX
         for xsh, tosum in self.cases:
             x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            if pre_scalar_op is not None:
+                x = pre_scalar_op(x)
             if tosum is None:
                 tosum = range(len(xsh))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
+            d = {}
+            if pre_scalar_op is not None:
+                xv = x.eval({x.owner.inputs[0]: xv})
+                d = {pre_scalar_op: pre_scalar_op}
             self._compile_and_check([x],
-                                    [self.op(scalar.add, axis=tosum)(x)],
+                                    [self.op(scalar.add, axis=tosum, *d)(x)],
                                     [xv], self.op,
                                     ["local_cut_useless_reduce"],
                                     warn=0 not in xsh)
