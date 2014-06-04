@@ -33,6 +33,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        imported_scipy,
                                        Eig,
                                        inv_as_solve,
+                                       A_Xinv_b
                                        )
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
@@ -174,7 +175,7 @@ def test_matrix_dot():
 
     assert _allclose(numpy_sol, theano_sol)
 
-def test_qr():
+def test_qr_default():
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = tensor.matrix("A", dtype=theano.config.floatX)
     Q = qr(A)
@@ -186,18 +187,48 @@ def test_qr():
     assert _allclose(n_q, t_q)
     assert _allclose(n_r, t_r)
 
-def test_qr_reduced():
+
+def test_qr_modes():
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = tensor.matrix("A", dtype=theano.config.floatX)
     Q = qr(A, mode="reduced")
-    fn = function([A], Q)
+    R = qr(A, mode="complete")
+    S = qr(A, mode="r")
+    T = qr(A, mode="raw")
+    U = qr(A, mode="full")
+    V = qr(A, mode="economic")
+    fq = function([A], Q)
+    fr = function([A], R)
+    fs = function([A], S)
+    ft = function([A], T)
+    fu = function([A], U)
+    fv = function([A], V)
 
     a = rng.rand(4, 4).astype(theano.config.floatX)
 
     n_q = numpy.linalg.qr(a, mode="reduced")
-    t_q = fn(a)
+    t_q = fq(a)
+
+    n_r = numpy.linalg.qr(a, mode="complete")
+    t_r = fr(a)
+
+    n_s = numpy.linalg.qr(a, mode="r")
+    t_s = fs(a)
+
+    n_t = numpy.linalg.qr(a, mode="raw")
+    t_t = ft(a)
+
+    n_u = numpy.linalg.qr(a, mode="full")
+    t_u = fu(a)
+
+    n_v = numpy.linalg.qr(a, mode="economic")
+    t_v = fv(a)
 
     assert _allclose(n_q, t_q)
+    assert _allclose(n_r, t_r)
+    assert _allclose(n_s, t_s)
+    assert _allclose(n_u, t_u)
+    assert _allclose(n_v, t_v)
 
 
 def test_svd():
@@ -233,6 +264,7 @@ def test_inverse_grad():
 
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
+
 
 def test_rop_lop():
     mx = tensor.matrix('mx')
@@ -638,3 +670,15 @@ def test_eigvalsh_grad():
     b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
     tensor.verify_grad(lambda a, b: eigvalsh(a, b).dot([1, 2, 3, 4, 5]),
                        [a, b], rng=numpy.random)
+
+
+def test_A_Xinv_b():
+    x = tensor.matrix()
+    y = tensor.matrix()
+    z = tensor.matrix()
+    m = A_Xinv_b()(x, y, z)
+    f = function([x, y, z], m)
+    X = [[1, 1], [1, 1]]
+    Y = [[2, 1], [3, 4]]
+    Z = [[1, 1], [1, 1]]
+    assert numpy.allclose(f(X, Y, Z), [[0.20408163, 0.20408163], [0.20408163, 0.20408163]])

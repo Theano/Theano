@@ -1133,6 +1133,7 @@ def qr(a, mode="full"):
     x = [[2, 1], [3, 4]]
     if isinstance(numpy.linalg.qr(x,mode), tuple):
         return QRFull(mode)(a)
+
     else:
         return QRIncomplete(mode)(a)
 
