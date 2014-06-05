@@ -3993,12 +3993,13 @@ def dense_dot(x, y, grad_preserves_dense=True, _structured_grad=True)
     y_is_sparse_variable = _is_sparse_variable(y)
 
     if not x_is_sparse_variable and not y_is_sparse_variable:
-        raise TypeError()
+        raise DenseDot(grad_preserves_dense, structured_grad)(x, y)
     if x_is_sparse_variable:
-        return DenseDot(grad_preserves_dense, grad)(x, y)
+        return DenseDot(grad_preserves_dense, structured_grad)(x, y)
     else:
         assert y_is_sparse_variable
-        return transpose(DenseDot(grad_preserves_dense, grad)(y.T, x.T))
+        return transpose(DenseDot(grad_preserves_dense, structured_grad)(y.T, x.T))
+
 
 class DenseDot(gof.op.Op):
 
@@ -4007,13 +4008,13 @@ class DenseDot(gof.op.Op):
         self.structured_grad = structured_grad
 
     def __eq__(self, other):
-            return type(self) == type(other)
+        return type(self) == type(other)
 
     def __hash__(self):
         return hash(type(self))
 
     def __str__(self):
-        return "Sparse" + self.__class__.__name__
+        return self.__class__.__name__
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
@@ -4026,6 +4027,7 @@ class DenseDot(gof.op.Op):
             return [(xshp[0],)]
         if x.ndim == 1 and y.ndim == 1:
             return [()]
+        else:
             raise NotImplementedError()
 
     def make_node(self, x, y):
@@ -4078,18 +4080,7 @@ class DenseDot(gof.op.Op):
         out[0] = theano._asarray(rval, dtype=node.outputs[0].dtype)
 
     def grad(self, (x, y), (gz,)):
-
-        if self.structured_grad:
-            assert _is_sparse_variable(gz)
-            assert _is_sparse_variable(x)
-
-            rval = [true_dot(gz, y.T), true_dot(x.T, gz)]
-            if _is_dense_variable(y):
-                if self.grad_preserves_dense:
-                    rval[1] = dense_from_sparse(rval[1])
-            return rval
-
-        else:
+        if structured_grad:
             assert _is_sparse_variable(x) or _is_sparse_variable(y)
             rval = []
 
@@ -4103,6 +4094,11 @@ class DenseDot(gof.op.Op):
                 rval.append(dot(x.T, gz))
 
             return rval
+        else:
+            # a is sparse, b is dense, g_out is dense
+            # ga = g_out x b.T
+            # gb = a.T x g_out
+            return [structured_dot_grad(x, y, g_out), structured_dot(x.T, g_out)]
 
 def sparse_dot(x, y, grad_preserves_dense=True, _structured_grad=True)
 
@@ -4117,12 +4113,12 @@ def sparse_dot(x, y, grad_preserves_dense=True, _structured_grad=True)
     y_is_sparse_variable = _is_sparse_variable(y)
 
     if not x_is_sparse_variable and not y_is_sparse_variable:
-        raise TypeError()
+        return SparseDot(grad_preserves_dense, structured_grad)(x, y)
     if x_is_sparse_variable:
-        return SparseDot(grad_preserves_dense, grad)(x, y)
+        return SparseDot(grad_preserves_dense, structured_grad)(x, y)
     else:
         assert y_is_sparse_variable
-        return transpose(SparseDot(grad_preserves_dense, grad)(y.T, x.T))
+        return transpose(SparseDot(grad_preserves_dense, structured_grad)(y.T, x.T))
 
 class SparseDot(gof.op.Op):
 
@@ -4131,13 +4127,13 @@ class SparseDot(gof.op.Op):
         self.structured_grad = structured_grad
 
     def __eq__(self, other):
-            return type(self) == type(other)
+        return type(self) == type(other)
 
     def __hash__(self):
         return hash(type(self))
 
     def __str__(self):
-        return "Sparse" + self.__class__.__name__
+        return self.__class__.__name__
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
@@ -4150,6 +4146,7 @@ class SparseDot(gof.op.Op):
             return [(xshp[0],)]
         if x.ndim == 1 and y.ndim == 1:
             return [()]
+        else:
             raise NotImplementedError()
     def make_node(self, x, y):
             dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
@@ -4221,18 +4218,7 @@ class SparseDot(gof.op.Op):
         out[0] = rval
 
     def grad(self, (x, y), (gz,)):
-
-        if self.structured_grad:
-            assert _is_sparse_variable(gz)
-            assert _is_sparse_variable(x)
-
-            rval = [true_dot(gz, y.T), true_dot(x.T, gz)]
-            if _is_dense_variable(y):
-                if self.grad_preserves_dense:
-                    rval[1] = dense_from_sparse(rval[1])
-            return rval
-
-        else:
+        if structured_grad:
             assert _is_sparse_variable(x) or _is_sparse_variable(y)
             rval = []
 
@@ -4246,3 +4232,8 @@ class SparseDot(gof.op.Op):
                 rval.append(dot(x.T, gz))
 
             return rval
+        else:
+            # a is sparse, b is dense, g_out is dense
+            # ga = g_out x b.T
+            # gb = a.T x g_out
+            return [structured_dot_grad(x, y, g_out), structured_dot(x.T, g_out)]
