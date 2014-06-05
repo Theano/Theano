@@ -1047,7 +1047,7 @@ class QRFull(Op):
                                  self.mode)
 
     def __str__(self):
-        return self._numop.__name__.capitalize()
+        return self._numop.__class__.__name__
 
 
 class QRIncomplete(Op):
@@ -1082,7 +1082,7 @@ class QRIncomplete(Op):
                            self.mode)
 
     def __str__(self):
-        return self._numop.__name__.capitalize()
+        return self._numop.__class__.__name__
 
 
 def qr(a, mode="full"):
@@ -1115,6 +1115,9 @@ def qr(a, mode="full"):
         must be spelled out.
         Default mode is 'full' which is also default for numpy 1.6.1.
 
+        Note:   Default mode was left to full as full and reduced are both doing
+                the same thing in the new numpy version but only full works on the old
+                previous numpy version.
     Returns :
     ---------
     q : matrix of float or complex, optional

@@ -176,6 +176,7 @@ def test_matrix_dot():
 
     assert _allclose(numpy_sol, theano_sol)
 
+
 def test_qr_default():
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = tensor.matrix("A", dtype=theano.config.floatX)
@@ -245,6 +246,7 @@ def test_svd():
     assert _allclose(n_v, t_v)
     assert _allclose(n_t, t_t)
 
+
 def test_inverse_singular():
     singular = numpy.array([[1, 0, 0]] + [[0, 1, 0]] * 2,
                            dtype=theano.config.floatX)
@@ -255,6 +257,7 @@ def test_inverse_singular():
     except numpy.linalg.LinAlgError:
         return
     assert False
+
 
 def test_inverse_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
