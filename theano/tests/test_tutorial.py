@@ -298,7 +298,7 @@ class T_extending(unittest.TestCase):
             def __str__(self):
                 return "double"
 
-            def c_declare(self, name, sub):
+            def c_declare(self, name, sub, check_input=True):
                 return """
                 double %(name)s;
                 """ % dict(name = name)

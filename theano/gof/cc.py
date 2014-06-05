@@ -306,13 +306,12 @@ def get_nothing(r, name, sub):
     return ""
 
 
-def get_c_declare(r, name, sub):
+def get_c_declare(r, name, sub, check_input=True):
     """Wrapper around c_declare that declares py_name"""
-    if r.owner:
-        c_declare = r.type.c_declare(name, sub,
-                    getattr(r.owner.op, 'check_input', True))
-    else:
+    if any([c == 'output' or getattr(c.op, 'check_input', True) for (c, _) in r.clients]):
         c_declare = r.type.c_declare(name, sub, True)
+    else:
+        c_declare = r.type.c_declare(name, sub, False)
     pre = """
     PyObject* py_%(name)s;
     """ % locals()
@@ -330,11 +329,12 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if r.owner:
+    if any([getattr(c.op, 'check_input', True) for (c, _) in r.clients]):
+
         c_extract = r.type.c_extract(name, sub,
-                    getattr(r.owner.op, 'check_input', True))
+                    True)
     else:
-        c_extract = r.type.c_extract(name, sub, True)
+        c_extract = r.type.c_extract(name, sub, False)
 
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
@@ -345,11 +345,8 @@ def get_c_extract(r, name, sub):
 
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
-    if r.owner:
-        c_extract = r.type.c_extract_out(name, sub,
+    c_extract = r.type.c_extract_out(name, sub,
                     getattr(r.owner.op, 'check_input', True))
-    else:
-        c_extract = r.type.c_extract_out(name, sub, True)
 
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);

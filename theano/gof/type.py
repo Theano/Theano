@@ -444,7 +444,7 @@ class Generic(SingletonType):
         %(name)s = NULL;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         return """
         Py_INCREF(py_%(name)s);
         %(name)s = py_%(name)s;

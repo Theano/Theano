@@ -294,6 +294,7 @@ shape = Shape()
 _shape = shape  # was used in the past, now use shape directly.
 #pprint.assign(_shape, printing.MemberPrinter('shape'))
 
+
 class Shape_i(gof.Op):
     """
     L{Op} to return the shape of a matrix.
@@ -304,6 +305,8 @@ class Shape_i(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+
+    check_input = False
 
     def __init__(self, i):
         self.i = i
@@ -349,6 +352,9 @@ class Shape_i(gof.Op):
                         stacklevel=2)
                 return ()
             version.append((str(t), v))
+
+        if version:
+            version.append(1)
 
         return tuple(version)
 
