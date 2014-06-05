@@ -686,18 +686,7 @@ class test_A_Xinv_b():
         X = [[1, 1], [1, 1]]
         Y = [[2, 1], [3, 4]]
         Z = [[1, 1], [1, 1]]
-        assert numpy.allclose(f(X, Y, Z), [[0.20408163, 0.20408163], [0.20408163, 0.20408163]])
-
-    def test_definite_positive(self):
-        x = tensor.matrix()
-        y = tensor.matrix()
-        z = tensor.matrix()
-        m = A_Xinv_b()(x, y, z)
-        f = function([x, y, z], m)
-        X = [[1, 1], [1, 1]]
-        Y = [[2, -9], [3, 4]]
-        Z = [[1, 1], [1, 1]]
-        assert_raises(numpy.linalg.LinAlgError, f, X, Y, Z)
+        assert numpy.allclose(f(X, Y, Z), [[0.4, 0.4], [0.4, 0.4]])
 
     def test_shape_conflict(self):
         x = tensor.matrix()
@@ -708,7 +697,7 @@ class test_A_Xinv_b():
         X = [[1, 1, 1], [1, 1, 1]]
         Y = [[2, -9], [3, 4]]
         Z = [[1, 1], [1, 1]]
-        assert_raises(numpy.linalg.LinAlgError, f, X, Y, Z)
+        assert_raises(ValueError, f, X, Y, Z)
 
     def test_grad(self):
         x = tensor.matrix()

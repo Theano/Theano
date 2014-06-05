@@ -879,13 +879,8 @@ class A_Xinv_b(Op):
 
     def perform(self, ndoe, inputs, outstor):
         a, X, b = inputs
-        if 1:
-            L_factor = scipy.linalg.cho_factor(X)
-            xb = scipy.linalg.cho_solve(L_factor, b)
-            xa = scipy.linalg.cho_solve(L_factor, a.T)
-            z = numpy.dot(xa.T, xb)
-        else:
-            raise NotImplementedError(self.X_structure)
+        iX = numpy.linalg.inv(X)
+        z = numpy.dot(numpy.dot(a, iX), b)
         outstor[0][0] = z
 
     def grad(self, inputs, g_outputs):
