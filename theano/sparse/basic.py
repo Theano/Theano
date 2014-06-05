@@ -3980,7 +3980,7 @@ class ConstructSparseFromList(gof.Op):
 
 construct_sparse_from_list = ConstructSparseFromList()
 
-def dense_dot(x, y, grad_preserves_dense=True, _structured_grad=True)
+def dense_dot(x, y, grad_preserves_dense=True, _structured_grad=True):
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
