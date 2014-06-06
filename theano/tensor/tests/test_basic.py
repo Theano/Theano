@@ -49,7 +49,6 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         swapaxes
         )
 
-
 from theano.tests import unittest_tools as utt
 
 
@@ -6901,7 +6900,9 @@ if __name__ == '__main__':
     t.setUp()
     t.test_infer_shape()
 
+
 class T_swapaxes(unittest.TestCase):
+
     def test_no_dimensional_input(self):
         self.assertRaises(IndexError, swapaxes, 2, 0, 1)
 
@@ -6918,7 +6919,7 @@ class T_swapaxes(unittest.TestCase):
         testMatrix = [[2, 1], [3, 4]]
         self.assertTrue(numpy.array_equal(testMatrix, f(f(testMatrix))))
 
-    def test_infeshape(self):
+    def test_interface(self):
         x = theano.tensor.matrix()
         x.swapaxes(0,1)
 
@@ -6959,7 +6960,6 @@ class T_Power():
         n_s = numpy.swapaxes(a, 0, 1)
         t_s = fn(a)
         assert numpy.allclose(n_s, t_s)
-
 
 """
 

@@ -4,6 +4,7 @@ import numpy
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
 from numpy.testing import dec, assert_array_equal, assert_allclose
+from numpy import inf
 
 import theano
 from theano import tensor, function
@@ -636,58 +637,219 @@ class Matrix_power():
         self.assertRaises(ValueError, f, a)
 
 class T_NormTests(unittest.TestCase):
+
     def test_wrong_type_of_ord_for_vector(self):
-        self.assertRaises(ValueError, norm, [2,1],'fro',0)
+        self.assertRaises(ValueError, norm, [2, 1], 'fro', 0)
+
     def test_wrong_type_of_ord_for_vector_in_matrix(self):
-        self.assertRaises(ValueError, norm, [[2,1],[3,4]],'fro',0)
+        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 'fro', 0)
+
     def test_wrong_type_of_ord_for_vector_in_tensor(self):
-        self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],'fro',0)
+        self.assertRaises(ValueError, norm, [[[2, 1], [3, 4]], [[6, 5], [7, 8]]], 'fro', 0)
+
     def test_wrong_type_of_ord_for_matrix(self):
-        self.assertRaises(ValueError, norm, [[2,1],[3,4]],0,None)
+        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 0, None)
+
     def test_wrong_type_of_ord_for_matrix_in_tensor(self):
-        self.assertRaises(ValueError, norm, [[[2,1],[3,4]],[[6,5],[7,8]]],0,None)
+        self.assertRaises(ValueError, norm, [[[2, 1], [3, 4]], [[6, 5], [7, 8]]], 0, None)
+
     def test_non_tensorial_input(self):
         self.assertRaises(ValueError, norm, 3, None, None)
+
     def test_no_enough_dimensions(self):
-        self.assertRaises(ValueError, norm, [[2,1],[3,4]], None, 3)
+        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], None, 3)
+
     def test_numpy_compare(self):
         try:
             rng = numpy.random.RandomState(utt.fetch_seed())
-            A = tensor.matrix("A", dtype=theano.config.floatX)
-            Q = norm(A, None, None)
-            fn = function([A], [Q])
-            a = rng.rand(4, 4).astype(theano.config.floatX)
+            M = tensor.matrix("A", dtype=theano.config.floatX)
+            N = tensor.vector("N", dtype=theano.config.floatX)
+            B = tensor.tensor3("B", dtype=theano.config.floatX)
 
-            n_n = numpy.linalg.norm(a, None, None)
-            t_n = fn(a)
-            assert _allclose(n_n, t_n)
+            Q = norm(M, None, None)
+            W = norm(M, 'fro', None)
+            E = norm(M, 'inf', None)
+            R = norm(M, '-inf', None)
+            T = norm(M, 1, None)
+            Y = norm(M, -1, None)
+            U = norm(N, None, None)
+            I = norm(N, 'inf', None)
+            O = norm(N, '-inf', None)
+            P = norm(N, 0, None)
+            L = norm(N, 1, None)
+            K = norm(N, -1, None)
+            J = norm(N, 2, None)
+            H = norm(N, -2, None)
+
+            QQ = norm(B, None, [0,1])
+            WW = norm(B, 'fro', [0,1])
+            EE = norm(B, 'inf', [0,1])
+            RR = norm(B, '-inf', [0,1])
+            TT = norm(B, 1, [0,1])
+            YY = norm(B, -1, [0,1])
+            UU = norm(B, None, 0)
+            II = norm(B, 'inf', 0)
+            OO = norm(B, '-inf', 0)
+            PP = norm(B, 0, 0)
+            LL = norm(B, 1, 0)
+            KK = norm(B, -1, 0)
+            JJ = norm(B, 2, 0)
+            HH = norm(B, -2, 0)
+
+            fQ = function([M], [Q])
+            fW = function([M], [W])
+            fE = function([M], [E])
+            fR = function([M], [R])
+            fT = function([M], [T])
+            fY = function([M], [Y])
+            fU = function([N], [U])
+            fI = function([N], [I])
+            fO = function([N], [O])
+            fP = function([N], [P])
+            fL = function([N], [L])
+            fK = function([N], [K])
+            fJ = function([N], [J])
+            fH = function([N], [H])
+
+            fQQ = function([B], [QQ])
+            fWW = function([B], [WW])
+            fEE = function([B], [EE])
+            fRR = function([B], [RR])
+            fTT = function([B], [TT])
+            fYY = function([B], [YY])
+            fUU = function([B], [UU])
+            fII = function([B], [II])
+            fOO = function([B], [OO])
+            fPP = function([B], [PP])
+            fLL = function([B], [LL])
+            fKK = function([B], [KK])
+            fJJ = function([B], [JJ])
+            fHH = function([B], [HH])
+
+            a = rng.rand(4, 4).astype(theano.config.floatX)
+            b = rng.rand(4).astype(theano.config.floatX)
+            c = rng.rand(4, 4, 4).astype(theano.config.floatX)
+
+            n_nQ = numpy.linalg.norm(a, None, None)
+            n_nW = numpy.linalg.norm(a, 'fro', None)
+            n_nE = numpy.linalg.norm(a, inf, None)
+            n_nR = numpy.linalg.norm(a, -inf, None)
+            n_nT = numpy.linalg.norm(a, 1, None)
+            n_nY = numpy.linalg.norm(a, -1, None)
+            n_nU = numpy.linalg.norm(b, None, None)
+            n_nI = numpy.linalg.norm(b, inf, None)
+            n_nO = numpy.linalg.norm(b, -inf, None)
+            n_nP = numpy.linalg.norm(b, 0, None)
+            n_nL = numpy.linalg.norm(b, 1, None)
+            n_nK = numpy.linalg.norm(b, -1, None)
+            n_nJ = numpy.linalg.norm(b, 2, None)
+            n_nH = numpy.linalg.norm(b, -2, None)
+
+            n_nQQ = numpy.linalg.norm(c, None, [0,1])
+            n_nWW = numpy.linalg.norm(c, 'fro', [0,1])
+            n_nEE = numpy.linalg.norm(c, inf, [0,1])
+            n_nRR = numpy.linalg.norm(c, -inf, [0,1])
+            n_nTT = numpy.linalg.norm(c, 1, [0,1])
+            n_nYY = numpy.linalg.norm(c, -1, [0,1])
+            n_nUU = numpy.linalg.norm(c, None, 0)
+            n_nII = numpy.linalg.norm(c, inf, 0)
+            n_nOO = numpy.linalg.norm(c, -inf, 0)
+            n_nPP = numpy.linalg.norm(c, 0, 0)
+            n_nLL = numpy.linalg.norm(c, 1, 0)
+            n_nKK = numpy.linalg.norm(c, -1, 0)
+            n_nJJ = numpy.linalg.norm(c, 2, 0)
+            n_nHH = numpy.linalg.norm(c, -2, 0)
+
+            t_nQ = fQ(a)
+            t_nW = fW(a)
+            t_nE = fE(a)
+            t_nR = fR(a)
+            t_nT = fT(a)
+            t_nY = fY(a)
+            t_nU = fU(b)
+            t_nI = fI(b)
+            t_nO = fO(b)
+            t_nP = fP(b)
+            t_nL = fL(b)
+            t_nK = fK(b)
+            t_nJ = fJ(b)
+            t_nH = fH(b)
+
+            t_nQQ = fQ(c)
+            t_nWW = fW(c)
+            t_nEE = fE(c)
+            t_nRR = fR(c)
+            t_nTT = fT(c)
+            t_nYY = fY(c)
+            t_nUU = fU(c)
+            t_nII = fI(c)
+            t_nOO = fO(c)
+            t_nPP = fP(c)
+            t_nLL = fL(c)
+            t_nKK = fK(c)
+            t_nJJ = fJ(c)
+            t_nHH = fH(c)
+
+            assert _allclose(n_nQ, t_nQ)
+            assert _allclose(n_nW, t_nW)
+            assert _allclose(n_nE, t_nE)
+            assert _allclose(n_nR, t_nR)
+            assert _allclose(n_nT, t_nT)
+            assert _allclose(n_nY, t_nY)
+            assert _allclose(n_nU, t_nU)
+            assert _allclose(n_nI, t_nI)
+            assert _allclose(n_nO, t_nO)
+            assert _allclose(n_nP, t_nP)
+            assert _allclose(n_nL, t_nL)
+            assert _allclose(n_nK, t_nK)
+            assert _allclose(n_nJ, t_nJ)
+            assert _allclose(n_nH, t_nH)
+
+            assert _allclose(n_nQQ, t_nQQ)
+            assert _allclose(n_nWW, t_nWW)
+            assert _allclose(n_nEE, t_nEE)
+            assert _allclose(n_nRR, t_nRR)
+            assert _allclose(n_nTT, t_nTT)
+            assert _allclose(n_nYY, t_nYY)
+            assert _allclose(n_nUU, t_nUU)
+            assert _allclose(n_nII, t_nII)
+            assert _allclose(n_nOO, t_nOO)
+            assert _allclose(n_nPP, t_nPP)
+            assert _allclose(n_nLL, t_nLL)
+            assert _allclose(n_nKK, t_nKK)
+            assert _allclose(n_nJJ, t_nJJ)
+            assert _allclose(n_nHH, t_nHH)
+
         except TypeError:
             raise SkipTest('Your numpy version is outdated.')
 
 class T_lstsq(unittest.TestCase):
+
     def test_correct_solution(self):
         x = tensor.lmatrix()
         y = tensor.lmatrix()
         z = tensor.lscalar()
-        b = theano.sandbox.linalg.ops.lstsq()(x,y,z)
-        f = function([x,y,z], b)
-        TestMatrix1 = numpy.asarray([[2,1],[3,4]])
-        TestMatrix2 = numpy.asarray([[17,20],[43,50]])
+        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        f = function([x, y, z], b)
+        TestMatrix1 = numpy.asarray([[2, 1], [3, 4]])
+        TestMatrix2 = numpy.asarray([[17, 20], [43, 50]])
         TestScalar = numpy.asarray(1)
-        f = function([x,y,z], b)
+        f = function([x, y, z], b)
         m = f(TestMatrix1, TestMatrix2, TestScalar)
         self.assertTrue(numpy.allclose(TestMatrix2, numpy.dot(TestMatrix1, m[0])))
+
     def test_wrong_coefficient_matrix(self):
         x = tensor.vector()
         y = tensor.vector()
         z = tensor.scalar()
         b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
         f = function([x, y, z], b)
-        self.assertRaises(numpy.linalg.linalg.LinAlgError, f, [2,1],[2,1],1)
+        self.assertRaises(numpy.linalg.linalg.LinAlgError, f, [2, 1], [2, 1], 1)
+
     def test_wrong_rcond_dimension(self):
         x = tensor.vector()
         y = tensor.vector()
         z = tensor.vector()
         b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
         f = function([x, y, z], b)
-        self.assertRaises(numpy.linalg.LinAlgError, f, [2,1],[2,1],[2,1])
+        self.assertRaises(numpy.linalg.LinAlgError, f, [2, 1], [2, 1], [2, 1])
