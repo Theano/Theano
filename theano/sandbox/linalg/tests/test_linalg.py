@@ -33,7 +33,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        imported_scipy,
                                        Eig,
                                        inv_as_solve,
-                                       A_Xinv_b
+                                       A_Xinv_B
                                        )
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
@@ -674,39 +674,3 @@ def test_eigvalsh_grad():
     b = 10 * numpy.eye(5, 5) + rng.randn(5, 5)
     tensor.verify_grad(lambda a, b: eigvalsh(a, b).dot([1, 2, 3, 4, 5]),
                        [a, b], rng=numpy.random)
-
-
-class test_A_Xinv_b():
-    def test_A_Xinv_b(self):
-        x = tensor.matrix()
-        y = tensor.matrix()
-        z = tensor.matrix()
-        m = A_Xinv_b()(x, y, z)
-        f = function([x, y, z], m)
-        X = [[1, 1], [1, 1]]
-        Y = [[2, 1], [3, 4]]
-        Z = [[1, 1], [1, 1]]
-        assert numpy.allclose(f(X, Y, Z), [[0.4, 0.4], [0.4, 0.4]])
-
-    def test_shape_conflict(self):
-        x = tensor.matrix()
-        y = tensor.matrix()
-        z = tensor.matrix()
-        m = A_Xinv_b()(x, y, z)
-        f = function([x, y, z], m)
-        X = [[1, 1, 1], [1, 1, 1]]
-        Y = [[2, -9], [3, 4]]
-        Z = [[1, 1], [1, 1]]
-        assert_raises(ValueError, f, X, Y, Z)
-
-    def test_grad(self):
-        x = tensor.matrix()
-        y = tensor.matrix()
-        z = tensor.matrix()
-        m = A_Xinv_b()(x, y, z)
-        f = function([x, y, z], m)
-        X = numpy.asarray([[1, 1], [1, 1]], dtype='float32')
-        Y = numpy.asarray([[2, 1], [3, 4]], dtype='float32')
-        Z = numpy.asarray([[1, 1], [1, 1]], dtype='float32')
-        theano.tests.unittest_tools.verify_grad(A_Xinv_b(),
-                                                [X, Y, Z])

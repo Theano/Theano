@@ -863,36 +863,6 @@ def spectral_radius_bound(X, log2_exponent):
             2 ** (-log2_exponent))
 
 
-class A_Xinv_b(Op):
-    """Product of form a inv(X) b"""
-    def make_node(self, a, X, b):
-        assert imported_scipy, (
-            "Scipy not available. Scipy is needed for the A_Xinv_b op")
-        a = as_tensor_variable(a)
-        X = as_tensor_variable(X)
-        b = as_tensor_variable(b)
-        assert a.ndim == 2
-        assert X.ndim == 2
-        assert b.ndim == 2
-        o = theano.tensor.matrix(dtype=X.dtype)
-        return Apply(self, [a, X, b], [o])
-
-    def perform(self, ndoe, inputs, outstor):
-        a, X, b = inputs
-        iX = numpy.linalg.inv(X)
-        z = numpy.dot(numpy.dot(a, iX), b)
-        outstor[0][0] = z
-
-    def grad(self, inputs, g_outputs):
-        gz, = g_outputs
-        a, X, b = inputs
-        iX = matrix_inverse(X)
-        ga = matrix_dot(gz, b.T, iX.T)
-        gX = -matrix_dot(iX.T, a, gz, b.T, iX.T)
-        gb = matrix_dot(iX.T, a.T, gz)
-        return [ga, gX, gb]
-
-
 class Eig(Op):
     """Compute the eigenvalues and right eigenvectors of a square array.
 
