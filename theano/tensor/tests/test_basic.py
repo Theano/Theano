@@ -46,7 +46,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp,
-        stacklists, DimShuffle, hessian, swapaxes)
+        swapaxes)
 
 from theano.tests import unittest_tools as utt
 
@@ -6881,7 +6881,9 @@ if __name__ == '__main__':
     t.setUp()
     t.test_infer_shape()
 
+
 class T_swapaxes(unittest.TestCase):
+
     def test_no_dimensional_input(self):
         self.assertRaises(IndexError, swapaxes, 2, 0, 1)
 
@@ -6909,9 +6911,10 @@ class T_swapaxes(unittest.TestCase):
         t_s = fn(a)
         assert numpy.allclose(n_s, t_s)
 
-def test():
-    x = theano.tensor.matrix()
-    x.swapaxes(0,1)
+    def test_interface(self):
+        x = theano.tensor.matrix()
+        x.swapaxes(0,1)
+
 
 """
 
