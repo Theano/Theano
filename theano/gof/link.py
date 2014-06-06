@@ -277,6 +277,8 @@ class Container(object):
             self.type = r.type
         if name is None:
             self.name = r.name
+        else:
+            self.name = name
 
         self.storage = storage
         self.readonly = readonly

@@ -11,6 +11,7 @@ if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
 from theano.sandbox.cuda import float32_shared_constructor as shared
+import theano.sandbox.cuda.fftconv
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')

@@ -10,6 +10,7 @@ Here are some quick guides to NumPy:
   * `Numpy quick guide for Matlab users <http://www.scipy.org/NumPy_for_Matlab_Users>`__
   * `Numpy User Guide <http://docs.scipy.org/doc/numpy/user/index.html>`__
   * `More detailed Numpy tutorial <http://www.scipy.org/Tentative_NumPy_Tutorial>`__
+  * `100 NumPy exercises <https://github.com/rougier/numpy-100>`__
 
     .. [TODO: More doc, e.g. see _test_tensor.py]
 
