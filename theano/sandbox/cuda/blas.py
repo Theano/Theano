@@ -662,7 +662,7 @@ class GpuConv(GpuOp):
 
     def c_compile_args(self):
         nb = 0
-        if self.kshp is not None:
+        if (self.kshp is not None) and (self.kshp[1] is not None):
             nb = self.kshp[1]
         return ['-DTHEANO_KERN_WID=' + str(nb)]  # ,'-g','-G']
 

@@ -40,7 +40,6 @@ from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
-from theano.sandbox.cuda.fftconv import conv2d_fft
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 linalg = None
@@ -1120,12 +1119,32 @@ def local_gpu_conv(node):
             return [out]
 
 
+def _gpu_conv_to_fftconv(node):
+    # shared helper function for local_conv_fft_valid and local_conv_fft_full.
+    # we import conv2d_fft locally to avoid pycuda warnings
+    from theano.sandbox.cuda.fftconv import conv2d_fft
+    kwargs = {'border_mode': node.op.border_mode}
+    if (node.op.imshp is not None and
+        node.op.imshp[-1] is not None and
+        node.op.imshp[-1] % 2 == 1):
+        kwargs['pad_last_dim'] = True
+    # TODO: If the user supplied the full nonsymbolic image_shape and
+    # filter_shape in conv2d(), we could pass it on to conv2d_fft(). However,
+    # information on batch size and channel counts is currently discarded
+    # when a ConvOp is replaced by a GpuConv, so this would need more changes.
+    #if (node.op.imshp is not None) and (None not in node.op.imshp):
+    #    kwargs['image_shape'] = (bsize, inchannels) + node.op.imshp
+    #if (node.op.kshp is not None) and (None not in node.op.kshp):
+    #    kwargs['filter_shape'] = (outchannels, inchannels) + node.op.kshp
+    return conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
+
+
 @local_optimizer([GpuConv])
 def local_conv_fft_valid(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'valid' and
         node.op.subsample == (1, 1)):
-        return [conv2d_fft(node.inputs[0], node.inputs[1])]
+        return [_gpu_conv_to_fftconv(node)]
 
 
 @local_optimizer([GpuConv])
@@ -1133,7 +1152,7 @@ def local_conv_fft_full(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'full' and
         node.op.subsample == (1, 1)):
-        return [conv2d_fft(node.inputs[0], node.inputs[1], border_mode='full')]
+        return [_gpu_conv_to_fftconv(node)]
 
 gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
 gpu_optimizer.register("conv_fft_full", local_conv_fft_full)

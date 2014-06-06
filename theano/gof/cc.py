@@ -29,7 +29,11 @@ elif sys.version_info[:2] >= (2, 5):
     import hashlib
 
     def hash_from_code(msg):
-        return hashlib.md5(msg).hexdigest()
+        try:
+            return hashlib.md5(msg).hexdigest()
+        except TypeError:
+            assert isinstance(msg, numpy.ndarray)
+            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
 else:
     import md5
 
