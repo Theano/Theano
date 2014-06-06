@@ -14,6 +14,24 @@ from theano.tensor.opt import (register_stabilize,
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
+from theano.tensor.nlinalg import ( MatrixInverse,
+                                    matrix_inverse,
+                                    AllocDiag,
+                                    alloc_diag,
+                                    ExtractDiag,
+                                    extract_diag,
+                                    diag,
+                                    trace,
+                                    Det,
+                                    det,
+                                    Eig,
+                                    eig,
+                                    Eigh,
+                                    EighGrad,
+                                    eigh,
+                                    matrix_dot,
+                                    _zero_disconnected
+                                    )
 
 try:
     import scipy.linalg
@@ -317,18 +335,6 @@ def local_log_pow(node):
             return [exponent * tensor.log(base)]
 
 
-def matrix_dot(*args):
-    """ Shorthand for product between several dots
-
-    Given :math:`N` matrices :math:`A_0, A_1, .., A_N`, ``matrix_dot`` will
-    generate the matrix product between all in the given order, namely
-    :math:`A_0 \cdot A_1 \cdot A_2 \cdot .. \cdot A_N`.
-    """
-    rval = args[0]
-    for a in args[1:]:
-        rval = theano.tensor.dot(rval, a)
-    return rval
-
 MATRIX_STRUCTURES = (
         'general',
         'symmetric',
@@ -531,91 +537,6 @@ class MatrixPinv(Op):
 pinv = MatrixPinv()
 
 
-class MatrixInverse(Op):
-    """Computes the inverse of a matrix :math:`A`.
-
-    Given a square matrix :math:`A`, ``matrix_inverse`` returns a square
-    matrix :math:`A_{inv}` such that the dot product :math:`A \cdot A_{inv}`
-    and :math:`A_{inv} \cdot A` equals the identity matrix :math:`I`.
-
-    :note: When possible, the call to this op will be optimized to the call
-           of ``solve``.
-    """
-
-    def __init__(self):
-        pass
-
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``MatrixInverse`` op, there are no properties to be exposed.
-        """
-        return ()
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim == 2
-        return Apply(self, [x], [x.type()])
-
-    def perform(self, node, (x,), (z, )):
-        try:
-            z[0] = numpy.linalg.inv(x).astype(x.dtype)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to invert %s' % str(node.inputs[0]))
-            raise
-
-    def grad(self, inputs, g_outputs):
-        r"""The gradient function should return
-
-            .. math:: V\frac{\partial X^{-1}}{\partial X},
-
-        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``. Using the `matrix cookbook
-        <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
-        once can deduce that the relation corresponds to
-
-            .. math:: (X^{-1} \cdot V^{T} \cdot X^{-1})^T.
-
-        """
-        x, = inputs
-        xi = self(x)
-        gz, = g_outputs
-        #TT.dot(gz.T,xi)
-        return [-matrix_dot(xi, gz.T, xi).T]
-
-    def R_op(self, inputs, eval_points):
-        r"""The gradient function should return
-
-            .. math:: \frac{\partial X^{-1}}{\partial X}V,
-
-        where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``.  Using the `matrix cookbook
-        <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
-        once can deduce that the relation corresponds to
-
-            .. math:: X^{-1} \cdot V \cdot X^{-1}.
-
-        """
-        x, = inputs
-        xi = self(x)
-        ev, = eval_points
-        if ev is None:
-            return [None]
-        return [-matrix_dot(xi, ev, xi)]
-
-    def __str__(self):
-        return "MatrixInverse"
-
-matrix_inverse = MatrixInverse()
-
-
 class Solve(Op):
     """Solve a system of linear equations"""
     def __init__(self,
@@ -678,160 +599,6 @@ solve = Solve()  # general solve
 
 #TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)
-
-
-class ExtractDiag(Op):
-    """ Return the diagonal of a matrix.
-
-    :note: work on the GPU.
-    """
-    def __init__(self, view=False):
-        self.view = view
-        if self.view:
-            self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.view == other.view
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.view)
-
-    def make_node(self, _x):
-        if not isinstance(_x, theano.Variable):
-            x = as_tensor_variable(_x)
-        else:
-            x = _x
-
-        if x.type.ndim != 2:
-            raise TypeError('ExtractDiag only works on matrices', _x)
-        return Apply(self, [x], [x.type.__class__(broadcastable=(False,),
-                                                  dtype=x.type.dtype)()])
-
-    def perform(self, node, ins, outs):
-        """ For some reason numpy.diag(x) is really slow, so we
-        implemented our own. """
-        x, = ins
-        z, = outs
-        # zero-dimensional matrices ...
-        if x.shape[0] == 0 or x.shape[1] == 0:
-            z[0] = node.outputs[0].type.value_zeros((0,))
-            return
-
-        if x.shape[0] < x.shape[1]:
-            rval = x[:, 0]
-        else:
-            rval = x[0]
-
-        rval.strides = (x.strides[0] + x.strides[1],)
-        if self.view:
-            z[0] = rval
-        else:
-            z[0] = rval.copy()
-
-    def __str__(self):
-        return 'ExtractDiag{view=%s}' % self.view
-
-    def grad(self, inputs, g_outputs):
-        x = tensor.zeros_like(inputs[0])
-        xdiag = alloc_diag(g_outputs[0])
-        return [tensor.set_subtensor(
-            x[:xdiag.shape[0], :xdiag.shape[1]],
-            xdiag)]
-
-    def infer_shape(self, node, shapes):
-        x_s, = shapes
-        shp = tensor.min(node.inputs[0].shape)
-        return [(shp,)]
-
-extract_diag = ExtractDiag()
-#TODO: optimization to insert ExtractDiag with view=True
-
-
-class AllocDiag(Op):
-    """
-    Allocates a square matrix with the given vector as its diagonal.
-    """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def make_node(self, _x):
-        x = as_tensor_variable(_x)
-        if x.type.ndim != 1:
-            raise TypeError('AllocDiag only works on vectors', _x)
-        return Apply(self, [x], [tensor.matrix(dtype=x.type.dtype)])
-
-    def grad(self, inputs, g_outputs):
-        return [extract_diag(g_outputs[0])]
-
-    def perform(self, node, (x,), (z,)):
-        if x.ndim != 1:
-            raise TypeError(x)
-        z[0] = numpy.diag(x)
-
-    def infer_shape(self, node, shapes):
-        x_s, = shapes
-        return [(x_s[0], x_s[0])]
-
-alloc_diag = AllocDiag()
-
-
-def diag(x):
-    """
-    Numpy-compatibility method
-    If `x` is a matrix, return its diagonal.
-    If `x` is a vector return a matrix with it as its diagonal.
-
-    * This method does not support the `k` argument that numpy supports.
-    """
-    xx = as_tensor_variable(x)
-    if xx.type.ndim == 1:
-        return alloc_diag(xx)
-    elif xx.type.ndim == 2:
-        return extract_diag(xx)
-    else:
-        raise TypeError('diag requires vector or matrix argument', x)
-
-
-class Det(Op):
-    """Matrix determinant
-    Input should be a square matrix
-    """
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim == 2
-        o = theano.tensor.scalar(dtype=x.dtype)
-        return Apply(self, [x], [o])
-
-    def perform(self, node, (x,), (z, )):
-        try:
-            z[0] = numpy.asarray(numpy.linalg.det(x), dtype=x.dtype)
-        except Exception:
-            print 'Failed to compute determinant', x
-            raise
-
-    def grad(self, inputs, g_outputs):
-        gz, = g_outputs
-        x, = inputs
-        return [gz * self(x) * matrix_inverse(x).T]
-
-    def infer_shape(self, node, shapes):
-        return [()]
-
-    def __str__(self):
-        return "Det"
-det = Det()
-
-
-def trace(X):
-    """
-    Returns the sum of diagonal elements of matrix X.
-
-    :note: work on GPU since 0.6rc4.
-    """
-    return extract_diag(X).sum()
 
 
 def spectral_radius_bound(X, log2_exponent):
