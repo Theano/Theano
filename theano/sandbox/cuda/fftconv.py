@@ -572,7 +572,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
 
     elif border_mode == 'full':
 
-        # In this particular case, the values of (o0, o1) represent
+        # In this particular case, the values of (o0, o1, o2) represent
         # the dimensions of the work buffer more than the actual dimensions
         # of the desired output.
         o0 = i0 + 2 * (f0 - 1)
