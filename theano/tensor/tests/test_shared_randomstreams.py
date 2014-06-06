@@ -5,6 +5,7 @@ import unittest
 import numpy
 
 from theano.tensor import raw_random
+from nose.plugins.attrib import attr
 from theano.tensor.shared_randomstreams import RandomStreams
 from theano import function, shared
 
@@ -314,6 +315,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         self.assertRaises(TypeError, f1, in_mval)
         self.assertRaises(TypeError, f, in_vval)
 
+    @attr('slow')
     def test_default_updates(self):
         # Basic case: default_updates
         random_a = RandomStreams(utt.fetch_seed())

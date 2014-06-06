@@ -5,6 +5,7 @@ import theano
 from theano import tensor, function
 from theano.tests import unittest_tools as utt
 from theano.sandbox.linalg.kron import kron
+from nose.plugins.attrib import attr
 
 floatX = theano.config.floatX
 
@@ -23,6 +24,7 @@ class TestKron(utt.InferShapeTester):
         super(TestKron, self).setUp()
         self.op = kron
 
+    @attr('slow')
     def test_perform(self):
         if not imported_scipy:
             raise SkipTest('kron tests need the scipy package to be installed')

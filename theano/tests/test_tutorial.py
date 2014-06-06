@@ -12,7 +12,7 @@ from theano import config
 from theano.tests import unittest_tools as utt
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tensor.shared_randomstreams import RandomStreams
-
+from nose.plugins.attrib import attr
 
 class T_extending(unittest.TestCase):
     ## All tests here belong to files in
@@ -688,6 +688,7 @@ class T_examples(unittest.TestCase):
         assert numpy.allclose(v3, 0.59044123)
         assert numpy.allclose(v4, 0.59044123)
 
+    @attr('slow')
     def test_examples_real_example(self):
         rng = numpy.random
 
@@ -1144,6 +1145,7 @@ class T_scan(unittest.TestCase):
     ## Theano/doc/tutorial/loop.txt
     ## Any change you do here also add it to the tutorial !
 
+    @attr('slow')
     def test_elemwise(self):
         # defining the tensor variables
         X = T.matrix("X")
@@ -1166,6 +1168,7 @@ class T_scan(unittest.TestCase):
         # comparison with numpy
         print "Numpy results:", numpy.tanh(x.dot(w) + b)
 
+    @attr('slow')
     def test_sequence(self):
         # define tensor variables
         X = T.vector("X")
@@ -1206,6 +1209,7 @@ class T_scan(unittest.TestCase):
 
         print "Numpy results:", x_res
 
+    @attr('slow')
     def test_norm(self):
         # define tensor variable
         X = T.matrix("X")
@@ -1226,6 +1230,7 @@ class T_scan(unittest.TestCase):
         print "Numpy results:", numpy.sqrt((x**2).sum(1)), \
                             numpy.sqrt((x**2).sum(0))
 
+    @attr('slow')
     def test_trace(self):
         # define tensor variable
         X = T.matrix("X")
@@ -1247,6 +1252,7 @@ class T_scan(unittest.TestCase):
         # comparison with numpy
         print "Numpy results:", numpy.diagonal(x).sum()
 
+    @attr('slow')
     def test_taps(self):
         # define tensor variables
         X = T.matrix("X")
@@ -1290,6 +1296,7 @@ class T_scan(unittest.TestCase):
 
         print "Numpy results:", x_res
 
+    @attr('slow')
     def test_jacobian(self):
         # define tensor variables
         v = T.vector()
@@ -1322,6 +1329,7 @@ class T_scan(unittest.TestCase):
         accumulator(5)
         print "After 5 steps:", k.get_value()
 
+    @attr('slow')
     def test_random(self):
         # define tensor variables
         X = T.matrix("X")

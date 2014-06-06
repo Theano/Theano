@@ -16,6 +16,7 @@ from theano import tensor
 import theano.ifelse
 from theano.ifelse import IfElse, ifelse
 from theano.tests  import unittest_tools as utt
+from nose.plugins.attrib import attr
 from theano.gof.python25 import all
 
 
@@ -159,6 +160,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.all(outs_0[2] == 1.)
         assert numpy.all(outs_0[3] == 1.)
 
+    @attr('slow')
     def test_multiple_out_crash(self):
         # This test failed up to commit 2faeb62c38
         p0 = self.shared(numpy.asarray(numpy.random.random([4, 8]),

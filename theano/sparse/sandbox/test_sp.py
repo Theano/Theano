@@ -19,11 +19,13 @@ from theano.compat import next
 from theano.sparse.sandbox import sp
 from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 from theano.sparse import verify_grad_sparse
 from theano.sparse.tests.test_basic import sparse_random_inputs
 
 
 class TestSP(unittest.TestCase):
+    @attr('slow')
     def test_convolution(self):
 #        print '\n\n*************************************************'
 #        print '           TEST CONVOLUTION'
@@ -220,6 +222,7 @@ class TestSP(unittest.TestCase):
         #profmode.print_summary()
 
 
+    @attr('slow')
     def test_multilayer_sparse(self):
         # fixed parameters
         bsize = 10     # batch size
@@ -301,7 +304,7 @@ class TestSP(unittest.TestCase):
                     l2hidval = l2propup(l2kernvals,l1hidval)
 
 
-
+    @attr('slow')
     def test_maxpool(self):
         # generate flatted images
         maxpoolshps = ((2,2),(3,3),(4,4),(5,5),(6,6))
@@ -336,7 +339,7 @@ class TestSP(unittest.TestCase):
                 return output
             utt.verify_grad(mp, [imval.reshape(imval.shape[0],-1)])
 
-
+    @attr('slow')
     def test_CSMGrad(self):
         imshp = (3,3)
         nkern = 1 # per output pixel

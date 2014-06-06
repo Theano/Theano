@@ -6,6 +6,7 @@ import unittest
 import theano
 from theano import gof
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
@@ -190,6 +191,7 @@ class test_grad(unittest.TestCase):
         g = theano.tensor.grad(f, x)
         assert g.name == '(df/dx)'
 
+    @attr('slow')
     def test_grad_duplicate_input(self):
 
         #test that the grad works when a variable
@@ -218,6 +220,7 @@ class test_grad(unittest.TestCase):
 
         theano.tests.unittest_tools.verify_grad(cost, [vx, vA])
 
+    @attr('slow')
     def test_grad_quadratic_vector(self):
 
         #test the gradient on a small graph
@@ -232,6 +235,7 @@ class test_grad(unittest.TestCase):
 
         theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
+    @attr('slow')
     def test_grad_cubic(self):
 
         #test the gradient on a bigger graph
@@ -261,6 +265,7 @@ class test_grad(unittest.TestCase):
 
         theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
+    @attr('slow')
     def test_grad_grad_cubic(self):
 
         #test the gradient on a bigger graph constructed using the gradient
@@ -276,6 +281,7 @@ class test_grad(unittest.TestCase):
 
         theano.tests.unittest_tools.verify_grad(output, [vx, vA])
 
+    @attr('slow')
     def test_grad_int(self):
 
         # tests that the gradient with respect to an integer
@@ -315,6 +321,7 @@ class test_grad(unittest.TestCase):
         assert np.allclose(int_result, float_result), (
                 int_result, float_result)
 
+    @attr('slow')
     def test_grad_disconnected(self):
 
         #tests corner cases of gradient for shape and alloc
@@ -420,7 +427,7 @@ class test_grad(unittest.TestCase):
                     + " but gradient with respect to the same Constant is " + \
                     str(g_one))
 
-
+@attr('slow')
 def test_known_grads():
 
     # Tests that the grad method with no known_grads
@@ -554,7 +561,8 @@ def test_disconnected_cost_grad():
         except theano.gradient.DisconnectedInputError:
             return
         raise AssertionError("A disconnected gradient has been ignored.")
-        
+
+@attr('slow')
 def test_subgraph_grad():
 
     # Tests that the grad method with no known_grads
@@ -616,7 +624,8 @@ class TestConsiderConstant(unittest.TestCase):
         # theano.gradient.consider_constant is a wrapper function!
         assert gradient.consider_constant_ not in \
             [node.op for node in f.maker.fgraph.toposort()]
-        
+
+    @attr('slow')
     def test_grad(self):
         T = theano.tensor
         a = np.asarray(self.rng.randn(5, 5),

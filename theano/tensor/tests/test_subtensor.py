@@ -195,6 +195,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == (2,))
         self.assertTrue((tval == [1.0, 2.0]).all())
 
+    @attr('slow')
     def test1_ok_strided(self):
         n = self.shared(numpy.arange(5, dtype=self.dtype))
         t = n[1::2]
@@ -274,6 +275,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == (2,))
         self.assertTrue(numpy.all(tval == [3, 6]))
 
+    @attr('slow')
     def test2_ok_cols_infinite(self):
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[1, 2:]
@@ -282,6 +284,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == (1,))
         self.assertTrue(numpy.all(tval == 5))
 
+    @attr('slow')
     def test2_ok_strided(self):
         n = self.shared(numpy.arange(20, dtype=self.dtype).reshape((4, 5)))
         t = n[1:4:2, 1:5:2]
@@ -290,6 +293,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == (2, 2))
         self.assertTrue(numpy.all(tval == [[6, 8], [16, 18]]))
 
+    @attr('slow')
     def test3_ok_mat(self):
         n = self.shared(numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4)))
         t = n[0, 0, 0]
@@ -298,6 +302,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(tval.shape == ())
         self.assertTrue(numpy.all(tval == 0))
 
+    @attr('slow')
     def test_long(self):
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
         t = n[1L:4L:2L, 1L]
@@ -354,6 +359,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.all(vn4
                 == numpy.arange(24).reshape((2, 3, 4))[:, :, :, newaxis])
 
+    @attr('slow')
     def test_grad_1d(self):
         subi = 0
         data = numpy.asarray(rand(2, 3), dtype=self.dtype)
@@ -378,6 +384,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         good[subi:, subi] = numpy.exp(data[subi:, subi])
         self.assertTrue(numpy.allclose(gval, good), (gval, good))
 
+    @attr('slow')
     def test_grad_0d(self):
         data = numpy.asarray(rand(2, 3), dtype=self.dtype)
         n = self.shared(data)
@@ -399,6 +406,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         good[1, 0] = numpy.exp(data[1, 0])
         self.assertTrue(numpy.allclose(gval, good), (gval, good))
 
+    @attr('slow')
     def test_ok_list(self):
         for data, idx in [(rand(4), [1, 0]),
                           (rand(4, 5), [2, 3]),
@@ -522,6 +530,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             assert tensor.Subtensor not in [x.op for x in
                                            f.maker.fgraph.toposort()]
 
+    @attr('slow')
     def test_shape_i_scalar(self):
         # Each axis is treated independently by shape_i/shape operators
 
@@ -545,6 +554,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                     assert numpy.all(f(start, stop, step) ==
                                      v_data[start:stop:step].shape)
 
+    @attr('slow')
     def test_slice_canonical_form_0(self):
         start = tensor.iscalar('b')
         stop = tensor.iscalar('e')
@@ -568,6 +578,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                     assert numpy.all(t_out == v_out)
                     assert numpy.all(t_out.shape == v_out.shape)
 
+    @attr('slow')
     def test_slice_canonical_form_1(self):
         stop = tensor.iscalar('e')
         step = tensor.iscalar('s')
@@ -589,6 +600,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 assert numpy.all(t_out == v_out)
                 assert numpy.all(t_out.shape == v_out.shape)
 
+    @attr('slow')
     def test_slice_canonical_form_2(self):
         start = tensor.iscalar('b')
         step = tensor.iscalar('s')
@@ -610,6 +622,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 assert numpy.all(t_out == v_out)
                 assert numpy.all(t_out.shape == v_out.shape)
 
+    @attr('slow')
     def test_slice_canonical_form_3(self):
         start = tensor.iscalar('b')
         stop = tensor.iscalar('e')
@@ -650,6 +663,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             assert numpy.all(t_out == v_out)
             assert numpy.all(t_out.shape == v_out.shape)
 
+    @attr('slow')
     def test_slice_canonical_form_5(self):
         start = tensor.iscalar('b')
         length = tensor.iscalar('l')
@@ -790,6 +804,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             val = f()
             self.assertTrue(numpy.allclose(val, data[idx].shape))
 
+    @attr('slow')
     def test_grad_advanced_inc_subtensor(self):
         def inc_slice(*s):
             def just_numeric_args(a, b):
@@ -1130,6 +1145,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
             self.assertTrue(val.ndim == data.ndim - 1)
             self.assertTrue(numpy.allclose(val, good), (val, good))
 
+    @attr('slow')
     def test_inc_adv_subtensor_w_matrix(self):
         subt = self.v[self.ix2]
         a = inc_subtensor(subt, subt)
@@ -1202,6 +1218,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
 
 class TestInferShape(utt.InferShapeTester):
+    @attr('slow')
     def test_infer_shape(self):
         # IncSubtensor
         admat = dmatrix()

@@ -9,6 +9,7 @@ import theano.tensor as tensor
 #from theano.tensor import matrix,max_and_argmax,MaaxAndArgmax,neg
 from theano.tensor.elemwise import CAReduce, Elemwise
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 
 
 class T_max_and_argmax(unittest.TestCase):
@@ -39,6 +40,7 @@ class T_min_max(unittest.TestCase):
         self.mode = theano.compile.mode.get_default_mode().including(
             'canonicalize', 'fast_run')
 
+    @attr('slow')
     def test_optimization_max(self):
         data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()
@@ -72,6 +74,7 @@ class T_min_max(unittest.TestCase):
             assert isinstance(topo[0].op, CAReduce)  # min
             f(data)
 
+    @attr('slow')
     def test_optimization_min(self):
         data = numpy.asarray(numpy.random.rand(2, 3), dtype=config.floatX)
         n = tensor.matrix()

@@ -9,6 +9,7 @@ from theano import tensor as T
 from theano import tensor
 from theano import gof
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 from theano import printing
 from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_categorical_1hot,
@@ -34,6 +35,7 @@ class T_sigmoid(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_elemwise(self):
         utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
 
@@ -43,6 +45,7 @@ class T_softplus(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    @attr('slow')
     def test_elemwise(self):
         utt.verify_grad(softplus, [numpy.random.rand(3, 4)])
 
@@ -114,6 +117,7 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         utt.verify_grad(f, [numpy.random.rand(3, 4),
             numpy.random.rand(4)])
 
+    @attr('slow')
     def test_broadcast(self):
         #test that we don't raise an error during optimization for no good
         #reason as softmax_with_bias don't support correctly some/all
@@ -1347,7 +1351,7 @@ class Test_softmax_opt:
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing
     # etc.
 
-
+@attr('slow')
 def test_stabilize_log_softmax():
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including('local_log_softmax', 'specialize')

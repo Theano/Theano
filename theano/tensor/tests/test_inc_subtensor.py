@@ -1,8 +1,10 @@
 import numpy
 import unittest
 from theano.tests import unittest_tools as utt
+from nose.plugins.attrib import attr
 import theano
 import theano.tensor as tt
+from nose.plugins.attrib import attr
 
 
 class Test_inc_subtensor(unittest.TestCase):
@@ -64,6 +66,7 @@ class Test_inc_subtensor(unittest.TestCase):
         self.assertRaises(TypeError, tt.set_subtensor, a[index], increment)
         self.assertRaises(TypeError, tt.inc_subtensor, a[index], increment)
 
+    @attr('slow')
     def test_wrong_broadcast(self):
         a = tt.col()
         increment = tt.vector()
@@ -124,6 +127,7 @@ class Test_inc_subtensor(unittest.TestCase):
 
             utt.assert_allclose(result, expected_result)
 
+    @attr('slow')
     def test_grad_inc_set(self):
         def inc_slice(*s):
             def just_numeric_args(a, b):
