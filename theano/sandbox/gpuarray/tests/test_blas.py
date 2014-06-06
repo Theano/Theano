@@ -1,13 +1,30 @@
 from unittest import TestCase
+from nose.plugins.skip import SkipTest
+
+import numpy
 
 import theano
-from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22
+from theano import tensor
+from theano.tests import unittest_tools
+from theano.tensor.blas import (gemv_inplace, gemm_inplace, ger_destructive,
+                                _dot22)
+from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import makeTester, rand
+from theano.sandbox.gpuarray import gpuarray_shared_constructor
+from theano.sandbox.gpuarray.tests.test_basic_ops import (makeTester, rand,
+                                                          mode_with_gpu,
+                                                          mode_without_gpu)
 
-from theano.sandbox.gpuarray.blas import (gpugemv_inplace,
-                                          gpugemm_inplace, gpu_dot22)
+from theano.sandbox.gpuarray.blas import (gpugemv_inplace, gpugemv_no_inplace,
+                                          gpugemm_inplace, gpugemm_no_inplace,
+                                          gpuger_inplace, gpuger_no_inplace,
+                                          GpuGer, gpu_dot22, )
+from theano.tensor.signal.downsample import (DownsampleFactorMax,
+                                             DownsampleFactorMaxGrad)
 
+
+def my_rand(*shape):
+    return theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
 GpuGemvTester = makeTester('GpuGemvTester',
                            op=gemv_inplace, gpu_op=gpugemv_inplace,
@@ -20,6 +37,21 @@ GpuGemvTester = makeTester('GpuGemvTester',
         test_stride=[rand(3)[::-1], 1, rand(3, 2)[::-1], rand(2)[::-1], 0],
         )
 )
+
+class TestGpuSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
+    mode = mode_with_gpu
+    dtype = 'float32'
+
+    gemv = gpugemv_no_inplace
+    gemv_inplace = gpugemv_inplace
+
+    @staticmethod
+    def shared(val):
+        try:
+            return gpuarray_shared_constructor(val)
+        except TypeError:
+            return theano.shared(val)
+
 
 GpuGemmTester = makeTester('GpuGemmTester',
                            op=gemm_inplace, gpu_op=gpugemm_inplace,
@@ -37,8 +69,39 @@ GpuGemmTester = makeTester('GpuGemmTester',
  #       test11=[rand(3, 0), -1.0, rand(3, 5), rand(5, 0), 1.1],
  #       test12=[rand(3, 4), -1.0, rand(3, 0), rand(0, 4), -1.1],
  #       test13=[rand(0, 0), -1.0, rand(0, 0), rand(0, 0), -1.1],
-    )
+        )
 )
+
+class TestGpuSger(TestGer):
+    def setUp(self):
+        self.mode = mode_with_gpu
+        dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
+        self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.ger_destructive = gpuger_inplace
+
+        # data on the gpu make the op always inplace
+        self.ger = gpuger_inplace
+        self.gemm = gpugemm_inplace
+
+    def test_f32_0_0(self):
+        raise SkipTest('0-sized objects not supported')
+    def test_f32_1_0(self):
+        raise SkipTest('0-sized objects not supported')
+    def test_f32_0_1(self):
+        raise SkipTest('0-sized objects not supported')
+
+class TestGpuSgerNoTransfer(TestGpuSger):
+    shared = staticmethod(gpuarray_shared_constructor)
+
+class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
+    def setUp(self):
+        self.ops = [gpuger_no_inplace, gpuger_inplace]
+
+    def clone(self, op):
+        return GpuGer(destructive=op.destructive)
 
 
 GpuDot22Tester = makeTester(
@@ -105,10 +168,10 @@ def test_downsample():
                 #print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
-                a = theano.sandbox.gpuarray.shared_constructor(my_rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a)),
+                a = gpuarray_shared_constructor(my_rand(*shp), 'a')
+                f = theano.function([], ds_op(tensor.as_tensor_variable(a)),
                         mode=mode_with_gpu)
-                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)),
+                f2 = theano.function([], ds_op(tensor.as_tensor_variable(a)),
                         mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        theano.sandbox.gpuarray.blas.GpuDownsampleFactorMax)
@@ -125,12 +188,12 @@ def test_downsample():
                 if shp[0] > 30000 or shp[1] > 30000:
                     continue
 
-                g = pfunc(
+                g = theano.function(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
                             a),
                         mode=mode_with_gpu)
-                g2 = pfunc(
+                g2 = theano.function(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
                             a),
@@ -146,8 +209,6 @@ def test_downsample():
                 # the same value as the gpu version for
                 # GpuDownsampleFactorMaxGrad. So no need to call
                 # verify_grad here.
-
-
 
 
 
