@@ -196,10 +196,14 @@ def test_container_deepcopy():
     v = numpy.asarray(0.).astype(theano.config.floatX)
     for readonly in [True, False]:
         c = Container(t, [v], readonly=readonly)
-        assert isinstance(c.storage[0], numpy.ndarray)
-        assert c.storage[0].dtype == v.dtype
-        assert c.storage[0].dtype == c.type.dtype
+        assert isinstance(c.storage[0], numpy.ndarray), (c.storage[0],
+                                                         type(c.storage[0]))
+        assert c.storage[0].dtype == v.dtype, (c.storage[0].dtype, v.dtype)
+        assert c.storage[0].dtype == c.type.dtype, (c.storage[0].dtype,
+                                                    c.type.dtype)
         d = deepcopy(c)
-        assert isinstance(d.storage[0], numpy.ndarray)
-        assert c.storage[0].dtype == v.dtype
-        assert c.storage[0].dtype == c.type.dtype
+        assert isinstance(d.storage[0], numpy.ndarray), (d.storage[0],
+                                                         type(d.storage[0]))
+        assert d.storage[0].dtype == v.dtype, (d.storage[0].dtype, v.dtype)
+        assert d.storage[0].dtype == c.type.dtype, (d.storage[0].dtype,
+                                                    c.type.dtype)
