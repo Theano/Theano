@@ -109,6 +109,8 @@ class OutputGuard(ViewOp):
     """
     destroy_map = {0: [0]}
 
+    check_input = False
+
 _output_guard = OutputGuard()
 
 
@@ -130,6 +132,8 @@ class DeepCopyOp(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+
+    check_input = False
 
     def __init__(self):
         pass
@@ -169,6 +173,8 @@ class DeepCopyOp(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
         return tuple(version)
 
     def c_code(self, node, name, inames, onames, sub):
@@ -528,6 +534,8 @@ class Rebroadcast(gof.Op):
     # the output variable is %(oname)s.
     c_code_and_version = {}
 
+    check_input = False
+
     def __init__(self, *axis):
         self.axis = dict(axis)
         for axis, broad in self.axis.iteritems():
@@ -629,6 +637,8 @@ class Rebroadcast(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
         return tuple(version)
 
 
