@@ -4100,7 +4100,7 @@ class DenseDot(gof.op.Op):
             # gb = a.T x g_out
             return [structured_dot_grad(x, y, g_out), structured_dot(x.T, g_out)]
 
-def sparse_dot(x, y, grad_preserves_dense=True, _structured_grad=True)
+def sparse_dot(x, y, grad_preserves_dense=True, _structured_grad=True):
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
