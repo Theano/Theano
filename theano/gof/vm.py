@@ -424,6 +424,8 @@ class Stack(VM):
                                 if all(compute_map[v][0]
                                         for v in dependencies[i]):
                                     storage_map[i][0] = None
+                                    self.node_cleared_order.append(storage_map[i])
+
                                     #DO NOT set compute_map to 0
 
                                     #If values become False and the
