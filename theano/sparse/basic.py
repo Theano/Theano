@@ -3980,7 +3980,7 @@ class ConstructSparseFromList(gof.Op):
 
 construct_sparse_from_list = ConstructSparseFromList()
 
-def dense_dot(x, y, grad_preserves_dense=True, _structured_grad=True):
+def dense_dot(x, y, grad_preserves_dense=True, structured_grad=True):
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
@@ -3992,12 +3992,9 @@ def dense_dot(x, y, grad_preserves_dense=True, _structured_grad=True):
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
 
-    if not x_is_sparse_variable and not y_is_sparse_variable:
-        raise DenseDot(grad_preserves_dense, structured_grad)(x, y)
     if x_is_sparse_variable:
         return DenseDot(grad_preserves_dense, structured_grad)(x, y)
     else:
-        assert y_is_sparse_variable
         return transpose(DenseDot(grad_preserves_dense, structured_grad)(y.T, x.T))
 
 
@@ -4026,7 +4023,7 @@ class DenseDot(gof.op.Op):
         if x.ndim == 2 and y.ndim == 1:
             return [(xshp[0],)]
         if x.ndim == 1 and y.ndim == 1:
-            return [()]
+            return [(xshp[0], yshp[1])]
         else:
             raise NotImplementedError()
 
@@ -4054,7 +4051,7 @@ class DenseDot(gof.op.Op):
             assert x.format in ["csr", "csc"]
             if y.ndim not in (1, 2):
                 raise TypeError(
-                    'theano.sparse.Dot: input 1 (1-indexed) must have ndim of '
+                    'theano.sparse.Dot: input 1 (0-indexed) must have ndim of '
                     '1 or 2, %d given.' % y.ndim)
 
         if y.ndim == 1 or x.ndim == 1:
@@ -4073,7 +4070,7 @@ class DenseDot(gof.op.Op):
         if not x_is_sparse and not y_is_sparse:
             raise TypeError(x)
 
-        rval = x * y
+        rval = dot(x, y)
         if not scipy.dense._is_dense_variable(rval):
             rval = getattr(scipy.dense, x.format + '_matrix')(rval)
 
@@ -4081,6 +4078,12 @@ class DenseDot(gof.op.Op):
 
     def grad(self, (x, y), (gz,)):
         if structured_grad:
+            # a is sparse, b is dense, g_out is dense
+            # ga = g_out x b.T
+            # gb = a.T x g_out
+            return [structured_dot(x, y, g_out), structured_dot(x.T, g_out)]
+
+        else:
             assert _is_sparse_variable(x) or _is_sparse_variable(y)
             rval = []
 
@@ -4094,13 +4097,8 @@ class DenseDot(gof.op.Op):
                 rval.append(dot(x.T, gz))
 
             return rval
-        else:
-            # a is sparse, b is dense, g_out is dense
-            # ga = g_out x b.T
-            # gb = a.T x g_out
-            return [structured_dot_grad(x, y, g_out), structured_dot(x.T, g_out)]
 
-def sparse_dot(x, y, grad_preserves_dense=True, _structured_grad=True):
+def sparse_dot(x, y, grad_preserves_dense=True, structured_grad=True):
 
     if hasattr(x, 'getnnz'):
         x = as_sparse_variable(x)
@@ -4112,12 +4110,9 @@ def sparse_dot(x, y, grad_preserves_dense=True, _structured_grad=True):
     x_is_sparse_variable = _is_sparse_variable(x)
     y_is_sparse_variable = _is_sparse_variable(y)
 
-    if not x_is_sparse_variable and not y_is_sparse_variable:
-        return SparseDot(grad_preserves_dense, structured_grad)(x, y)
     if x_is_sparse_variable:
         return SparseDot(grad_preserves_dense, structured_grad)(x, y)
     else:
-        assert y_is_sparse_variable
         return transpose(SparseDot(grad_preserves_dense, structured_grad)(y.T, x.T))
 
 class SparseDot(gof.op.Op):
@@ -4145,9 +4140,10 @@ class SparseDot(gof.op.Op):
         if x.ndim == 2 and y.ndim == 1:
             return [(xshp[0],)]
         if x.ndim == 1 and y.ndim == 1:
-            return [()]
+            return [(xshp[0], yshp[1])]
         else:
             raise NotImplementedError()
+
     def make_node(self, x, y):
             dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
 
@@ -4172,7 +4168,7 @@ class SparseDot(gof.op.Op):
                 assert x.format in ["csr", "csc"]
                 if y.ndim not in (1, 2):
                     raise TypeError(
-                        'theano.sparse.Dot: input 1 (1-indexed) must have ndim of '
+                        'theano.sparse.Dot: input 1 (0-indexed) must have ndim of '
                         '1 or 2, %d given.' % y.ndim)
 
             if y.ndim == 1 or x.ndim == 1:
@@ -4219,6 +4215,11 @@ class SparseDot(gof.op.Op):
 
     def grad(self, (x, y), (gz,)):
         if structured_grad:
+            # a is sparse, b is dense, g_out is dense
+            # ga = g_out x b.T
+            # gb = a.T x g_out
+            return [structured_dot(x, y, g_out), structured_dot(x.T, g_out)]
+        else:
             assert _is_sparse_variable(x) or _is_sparse_variable(y)
             rval = []
 
@@ -4232,8 +4233,3 @@ class SparseDot(gof.op.Op):
                 rval.append(dot(x.T, gz))
 
             return rval
-        else:
-            # a is sparse, b is dense, g_out is dense
-            # ga = g_out x b.T
-            # gb = a.T x g_out
-            return [structured_dot_grad(x, y, g_out), structured_dot(x.T, g_out)]
