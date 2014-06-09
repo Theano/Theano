@@ -491,7 +491,10 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     # Extract TensorSharedVariables
     if not isinstance(givens, dict):
         givens = dict(givens)
-    o = outputs or []
+    if outputs is None:
+        o = []
+    else:
+        o = list(outputs)
     if isinstance(o, (theano.gof.Variable, Out)):
         o = [o]
     for oo in (
