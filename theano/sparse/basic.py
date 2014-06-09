@@ -3979,3 +3979,257 @@ class ConstructSparseFromList(gof.Op):
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
 construct_sparse_from_list = ConstructSparseFromList()
+
+def dense_dot(x, y, grad_preserves_dense=True, structured_grad=True):
+
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
+        assert y.format in ["csr", "csc"]
+
+    x_is_sparse_variable = _is_sparse_variable(x)
+    y_is_sparse_variable = _is_sparse_variable(y)
+
+    if x_is_sparse_variable:
+        return DenseDot(grad_preserves_dense, structured_grad)(x, y)
+    else:
+        return transpose(DenseDot(grad_preserves_dense, structured_grad)(y.T, x.T))
+
+
+class DenseDot(gof.op.Op):
+
+    def __init__(self, grad_preserves_dense=True, structured_grad=True):
+        self.grad_preserves_dense = grad_preserves_dense
+        self.structured_grad = structured_grad
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def infer_shape(self, node, shapes):
+        xshp, yshp = shapes
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [(xshp[0], yshp[1])]
+        else:
+            raise NotImplementedError()
+
+    def make_node(self, x, y):
+        dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
+
+        x_is_sparse_var = _is_sparse_variable(x)
+        y_is_sparse_var = _is_sparse_variable(y)
+
+        if not x_is_sparse_var and not y_is_sparse_var:
+            raise TypeError("Sparse dot product should have at least one "
+                "sparse variable as inputs, but the inputs are "
+                "%s (%s) and %s (%s)." % (x, x.type, y, y.type))
+
+        if not x_is_sparse_var:
+            x = tensor.as_tensor_variable(x)
+            assert y.format in ["csr", "csc"]
+            if x.ndim not in (1, 2):
+                raise TypeError(
+                    'theano.sparse.Dot: input 0 (0-indexed) must have ndim of '
+                    '1 or 2, %d given.' % x.ndim)
+
+        if not y_is_sparse_var:
+            y = tensor.as_tensor_variable(y)
+            assert x.format in ["csr", "csc"]
+            if y.ndim not in (1, 2):
+                raise TypeError(
+                    'theano.sparse.Dot: input 1 (0-indexed) must have ndim of '
+                    '1 or 2, %d given.' % y.ndim)
+
+        if y.ndim == 1 or x.ndim == 1:
+            bz = (False,)
+        else:
+            bz = (False, False)
+            return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
+                                                          broadcastable=bz)])
+
+    def perform(self, node, inputs, out):
+        x, y = inputs
+        out = out[0]
+        x_is_sparse = _is_sparse(x)
+        y_is_sparse = _is_sparse(y)
+
+        if not x_is_sparse and not y_is_sparse:
+            raise TypeError(x)
+
+        rval = dot(x, y)
+        if not scipy.dense._is_dense_variable(rval):
+            rval = getattr(scipy.dense, x.format + '_matrix')(rval)
+
+        out[0] = theano._asarray(rval, dtype=node.outputs[0].dtype)
+
+    def grad(self, (x, y), (gz,)):
+        if structured_grad:
+            # a is sparse, b is dense, g_out is dense
+            # ga = g_out x b.T
+            # gb = a.T x g_out
+            return [structured_dot(x, y, g_out), structured_dot(x.T, g_out)]
+
+        else:
+            assert _is_sparse_variable(x) or _is_sparse_variable(y)
+            rval = []
+
+            if _is_dense_variable(y):
+                rval.append(tensor.dot(gz, y.T))
+            else:
+                rval.append(dot(gz, y.T))
+            if _is_dense_variable(x):
+                rval.append(tensor.dot(x.T, gz))
+            else:
+                rval.append(dot(x.T, gz))
+
+            return rval
+
+def sparse_dot(x, y, grad_preserves_dense=True, structured_grad=True):
+
+    if hasattr(x, 'getnnz'):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
+    if hasattr(y, 'getnnz'):
+        y = as_sparse_variable(y)
+        assert y.format in ["csr", "csc"]
+
+    x_is_sparse_variable = _is_sparse_variable(x)
+    y_is_sparse_variable = _is_sparse_variable(y)
+
+    if x_is_sparse_variable:
+        return SparseDot(grad_preserves_dense, structured_grad)(x, y)
+    else:
+        return transpose(SparseDot(grad_preserves_dense, structured_grad)(y.T, x.T))
+
+class SparseDot(gof.op.Op):
+
+    def __init__(self, grad_preserves_dense=True, structured_grad=True):
+        self.grad_preserves_dense = grad_preserves_dense
+        self.structured_grad = structured_grad
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def infer_shape(self, node, shapes):
+        xshp, yshp = shapes
+        x, y = node.inputs
+        if x.ndim == 2 and y.ndim == 2:
+            return [(xshp[0], yshp[1])]
+        if x.ndim == 1 and y.ndim == 2:
+            return [(yshp[1],)]
+        if x.ndim == 2 and y.ndim == 1:
+            return [(xshp[0],)]
+        if x.ndim == 1 and y.ndim == 1:
+            return [(xshp[0], yshp[1])]
+        else:
+            raise NotImplementedError()
+
+    def make_node(self, x, y):
+            dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
+
+            x_is_sparse_var = _is_sparse_variable(x)
+            y_is_sparse_var = _is_sparse_variable(y)
+
+            if not x_is_sparse_var and not y_is_sparse_var:
+                raise TypeError("Sparse dot product should have at least one "
+                    "sparse variable as inputs, but the inputs are "
+                    "%s (%s) and %s (%s)." % (x, x.type, y, y.type))
+
+            if not x_is_sparse_var:
+                x = tensor.as_tensor_variable(x)
+                assert y.format in ["csr", "csc"]
+                if x.ndim not in (1, 2):
+                    raise TypeError(
+                        'theano.sparse.Dot: input 0 (0-indexed) must have ndim of '
+                        '1 or 2, %d given.' % x.ndim)
+
+            if not y_is_sparse_var:
+                y = tensor.as_tensor_variable(y)
+                assert x.format in ["csr", "csc"]
+                if y.ndim not in (1, 2):
+                    raise TypeError(
+                        'theano.sparse.Dot: input 1 (0-indexed) must have ndim of '
+                        '1 or 2, %d given.' % y.ndim)
+
+            if y.ndim == 1 or x.ndim == 1:
+                bz = (False,)
+            else:
+                bz = (False, False)
+                return gof.Apply(self, [x, y], [tensor.tensor(dtype=dtype_out,
+                                                              broadcastable=bz)])
+
+    def perform(self, node, inp, out_):
+        # TODO
+        # -Verify that output is sufficiently sparse,
+        #  and raise a warning if it is not.
+        # -Also determine that we are storing the
+        #  output in the best storage format?
+
+        x, y = inp
+        out, = out_
+        rval = x.dot(y)
+        if not scipy.sparse.issparse(rval):
+            rval = getattr(scipy.sparse, x.format + '_matrix')(rval)
+        #x.dot call tocsr() that will "upcast" to ['int8', 'uint8', 'short',
+        # 'ushort', 'intc', 'uintc', 'longlong', 'ulonglong', 'single',
+        # 'double', 'longdouble', 'csingle', 'cdouble', 'clongdouble']
+        # But ulonglong is uint64 on x86-64, but with a different typenum!
+        if rval.dtype.num != numpy.dtype(str(rval.dtype)).num:
+            assert str(rval.dtype) == node.outputs[0].dtype
+            # Create a view with the expected typenum.
+            format = node.outputs[0].type.format
+            data = rval.data.view(dtype=node.outputs[0].dtype)
+            indices = rval.indices
+            indptr = rval.indptr
+            shape = rval.shape
+            # No need to copy indices and indptr as in CSM.perform(),
+            # as there is only one user of them.
+            if format == 'csc':
+                rval = scipy.sparse.csc_matrix((data, indices, indptr),
+                                               shape, copy=False)
+            else:
+                assert format == 'csr'
+                rval = scipy.sparse.csr_matrix((data, indices, indptr),
+                                               shape, copy=False)
+        out[0] = rval
+
+    def grad(self, (x, y), (gz,)):
+        if structured_grad:
+            # a is sparse, b is dense, g_out is dense
+            # ga = g_out x b.T
+            # gb = a.T x g_out
+            return [structured_dot(x, y, g_out), structured_dot(x.T, g_out)]
+        else:
+            assert _is_sparse_variable(x) or _is_sparse_variable(y)
+            rval = []
+
+            if _is_dense_variable(y):
+                rval.append(tensor.dot(gz, y.T))
+            else:
+                rval.append(dot(gz, y.T))
+            if _is_dense_variable(x):
+                rval.append(tensor.dot(x.T, gz))
+            else:
+                rval.append(dot(x.T, gz))
+
+            return rval
