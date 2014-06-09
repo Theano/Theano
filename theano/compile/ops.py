@@ -372,8 +372,14 @@ class Shape_i(gof.Op):
 
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
+            sc = """
+            if (%(i)s>PyArray_NDIM(%(iname)s){
+                PyErr_SetString(PyExc_TypeError, "Number of dimensions lower than expected");
+                %(fail)s
+            }
+            """ % locals()
             code, version = self.c_code_and_version[itype]
-            return code % locals()
+            return sc + code % locals()
 
         # Else, no C code
         return super(Shape_i, self).c_code(node, name, inames, onames, sub)
