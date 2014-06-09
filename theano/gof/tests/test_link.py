@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 
+import theano
 from theano.gof import graph
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.type import Type
@@ -192,9 +193,21 @@ def test_container_deepcopy():
     This is a test to a work around a NumPy bug.
     """
     t = theano.tensor.scalar()
-    v = numpy.asarray(0.)
+    # It seam that numpy.asarray(0.).astype(floatX) can return a numpy
+    # scalar with some NumPy Version. So we call numpy.asarray with
+    # the dtype parameter.
+    v = numpy.asarray(0., dtype=theano.config.floatX)
+    assert isinstance(v, numpy.ndarray), type(v)
     for readonly in [True, False]:
         c = Container(t, [v], readonly=readonly)
-        assert isinstance(c.storage[0], numpy.ndarray)
+        assert isinstance(c.storage[0], numpy.ndarray), (c.storage[0],
+                                                         type(c.storage[0]))
+        assert c.storage[0].dtype == v.dtype, (c.storage[0].dtype, v.dtype)
+        assert c.storage[0].dtype == c.type.dtype, (c.storage[0].dtype,
+                                                    c.type.dtype)
         d = deepcopy(c)
-        assert isinstance(d.storage[0], numpy.ndarray)
+        assert isinstance(d.storage[0], numpy.ndarray), (d.storage[0],
+                                                         type(d.storage[0]))
+        assert d.storage[0].dtype == v.dtype, (d.storage[0].dtype, v.dtype)
+        assert d.storage[0].dtype == c.type.dtype, (d.storage[0].dtype,
+                                                    c.type.dtype)

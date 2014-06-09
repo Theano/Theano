@@ -9,7 +9,6 @@ from theano.sandbox.cuda import cuda_available, GpuOp
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
                                      CudaNdarray)
-import theano.misc.pycuda_init
 from theano.misc.pycuda_init import pycuda_available
 if pycuda_available:
     import pycuda.gpuarray
