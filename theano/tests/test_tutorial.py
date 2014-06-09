@@ -245,18 +245,19 @@ class T_extending(unittest.TestCase):
             """ % dict(name = name)
         double.c_init = c_init
 
-
-
         def c_extract(name, sub, check_input=True):
-            return """
-            if (!PyFloat_Check(py_%(name)s)) {
-                PyErr_SetString(PyExc_TypeError, "expected a float");
-                %(fail)s
-            }
+            if(check_input):
+                pre = """
+                if (!PyFloat_Check(py_%(name)s)) {
+                    PyErr_SetString(PyExc_TypeError, "expected a float");
+                    %(fail)s
+                }""" % dict(name = name, fail = sub['fail'])
+            else:
+                pre = ""
+            return pre + """
             %(name)s = PyFloat_AsDouble(py_%(name)s);
             """ % dict(name = name, fail = sub['fail'])
         double.c_extract = c_extract
-
 
         def c_sync( name, sub):
             return """
@@ -309,13 +310,18 @@ class T_extending(unittest.TestCase):
                 """ % dict(name = name)
 
             def c_extract(self, name, sub, check_input=True):
-                return """
-                if (!PyFloat_Check(py_%(name)s)) {
-                    PyErr_SetString(PyExc_TypeError, "expected a float");
-                    %(fail)s
-                }
+                if(check_input):
+                    pre = """
+                    if (!PyFloat_Check(py_%(name)s)) {
+                        PyErr_SetString(PyExc_TypeError, "expected a float");
+                        %(fail)s
+                    }
+                    """ % dict(sub, name=name)
+                else:
+                    pre = ""
+                return pre + """
                 %(name)s = PyFloat_AsDouble(py_%(name)s);
-                """ % dict(sub, name = name)
+                """ % dict(sub, name=name)
 
             def c_sync(self, name, sub):
                 return """

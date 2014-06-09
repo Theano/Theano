@@ -306,11 +306,11 @@ def get_nothing(r, name, sub):
     return ""
 
 
-def get_c_declare(r, name, sub, check_input=True):
+def get_c_declare(r, name, sub):
     """Wrapper around c_declare that declares py_name"""
     if any([c == 'output' or getattr(c.op, 'check_input', True) for (c, _)
-            in r.clients]) or r.owner and getattr(r.owner.op,
-                                                  'check_input', True):
+            in r.clients]) or (r.owner and getattr(r.owner.op,
+                                                  'check_input', True)):
 
         c_declare = r.type.c_declare(name, sub, True)
     else:
@@ -334,8 +334,7 @@ def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
     if any([getattr(c.op, 'check_input', True) for (c, _) in r.clients]):
 
-        c_extract = r.type.c_extract(name, sub,
-                    True)
+        c_extract = r.type.c_extract(name, sub, True)
     else:
         c_extract = r.type.c_extract(name, sub, False)
 

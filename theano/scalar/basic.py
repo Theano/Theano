@@ -255,8 +255,13 @@ class Scalar(Type):
         return str(data)
 
     def c_declare(self, name, sub, check_input=True):
-        return """
-        %(dtype)s %(name)s;
+        if(check_input):
+            pre = """
+                %(dtype)s %(name)s;
+            """ % dict(name=name, dtype=self.dtype_specs()[1])
+        else:
+            pre = ""
+        return pre + """
         typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
         typedef %(dtype)s dtype_%(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
@@ -268,18 +273,23 @@ class Scalar(Type):
 
     def c_extract(self, name, sub, check_input=True):
         specs = self.dtype_specs()
-        return """
-        if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
-        {
-            PyErr_Format(PyExc_ValueError,
-                "Scalar check failed (%(dtype)s)");
-            %(fail)s
-        }
+        if(check_input):
+            pre = """
+            if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
+            {
+                PyErr_Format(PyExc_ValueError,
+                    "Scalar check failed (%(dtype)s)");
+                %(fail)s
+            }
+            """ % dict(sub,
+                       name=name,
+                       dtype=specs[1],
+                       pyarr_type='Py%sArrType_Type' % specs[2])
+        else:
+            pre = ""
+        return pre + """
         PyArray_ScalarAsCtype(py_%(name)s, &%(name)s);
-        """ % dict(sub,
-                   name=name,
-                   dtype=specs[1],
-                   pyarr_type='Py%sArrType_Type' % specs[2])
+        """ % dict(sub, name=name)
 
     def c_sync(self, name, sub):
         specs = self.dtype_specs()

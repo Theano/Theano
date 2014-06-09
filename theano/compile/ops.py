@@ -373,7 +373,7 @@ class Shape_i(gof.Op):
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
             sc = """
-            if (%(i)s>PyArray_NDIM(%(iname)s){
+            if (%(i)s>=PyArray_NDIM(%(iname)s)){
                 PyErr_SetString(PyExc_TypeError, "Number of dimensions lower than expected");
                 %(fail)s
             }
