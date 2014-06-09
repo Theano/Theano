@@ -464,3 +464,47 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class,
                                 warn=False)
+
+class TestFillDiagonalOffset(utt.InferShapeTester):
+
+    rng = numpy.random.RandomState(43)
+
+    def setUp(self):
+        super(TestFillDiagonalOffset, self).setUp()
+        self.op_class = FillDiagonalOffset
+        self.op = fill_diagonal_offset
+
+    def test_perform(self):
+        x = tensor.matrix()
+        y = tensor.scalar()
+        z = tensor.scalar()
+
+        f = function([x, y, z], fill_diagonal(x, y, z))
+        for shp in [(8, 8), (5, 8), (8, 5)]:
+            a = numpy.random.rand(*shp).astype(config.floatX)
+            val = numpy.cast[config.floatX](numpy.random.rand())
+            out = f(a, val, offset)
+            # We can't use numpy.fill_diagonal as it is bugged.
+            assert numpy.allclose(numpy.diag(out, offset), val)
+            assert (out == val).sum() == min(a.shape)
+
+    def test_gradient(self):
+        utt.verify_grad(fill_diagonal_offset, [numpy.random.rand(5, 8),
+                                        numpy.random.rand()],
+                        n_tests=1, rng=TestFillDiagonalOffset.rng)
+        utt.verify_grad(fill_diagonal_offset, [numpy.random.rand(8, 5),
+                                        numpy.random.rand()],
+                        n_tests=1, rng=TestFillDiagonalOffset.rng)
+
+    def test_infer_shape(self):
+        x = tensor.dmatrix()
+        y = tensor.dscalar()
+        z = tensor.dscalar()
+        self._compile_and_check([x, y, z], [self.op(x, y, z)],
+                                [numpy.random.rand(8, 5),
+                                 numpy.random.rand(),
+                                 numpy.random.randint(0,5)],
+                                self.op_class)
+
+if __name__ == '__main__':
+    unittest.main()

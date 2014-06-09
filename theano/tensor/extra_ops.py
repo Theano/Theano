@@ -725,3 +725,100 @@ def fill_diagonal(a, val):
     .. versionadded:: 0.6
     """
     return fill_diagonal_(a, val)
+
+
+
+# Offset version of fill_diagonal
+class FillDiagonalOffset(gof.Op):
+    # See function fill_diagonal for docstring
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def make_node(self, a, val, offset):
+        a = tensor.as_tensor_variable(a)
+        val = tensor.as_tensor_variable(val)
+        offset = tensor.as_tensor_variable(offset)
+        if a.ndim != 2:
+            raise TypeError('%s: first parameter must have exactly'
+                            ' two dimensions' % self.__class__.__name__)
+        elif val.ndim != 0:
+            raise TypeError('%s: second parameter must be a scalar'\
+                            % self.__class__.__name__)
+        val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
+        if val.dtype != a.dtype:
+            raise TypeError('%s: type of second parameter must be compatible'
+                            ' with first\'s' % self.__class__.__name__)
+
+        return gof.Apply(self, [a, val, offset], [a.type()])
+
+    def perform(self, node, inputs, output_storage):
+        a = inputs[0].copy()
+        val = inputs[1]
+        offset = inputs[2]
+
+        # offset should be an integer
+        if offset % 1 != 0:
+            raise TypeError('%s: third parameter must be an integer'\
+                            % self.__class__.__name__)
+
+        # numpy.fill_diagonal up to date(including 1.6.2) have a
+        # bug for tall matrix.
+        # the offset function is only implemented for matrices
+        if offset >= 0:
+            start = offset
+        else:
+            start = - offset * a.shape[0]
+        step = a.shape[1] + 1
+        end = a.shape[1] * a.shape[1]
+        # Write the value out into the diagonal.
+        a.flat[start:end:step] = val
+
+
+        output_storage[0][0] = a
+
+    def grad(self, inp, cost_grad):
+        """
+        Note: The gradient is currently implemented for matrices
+        only.
+        """
+        a, val, offset = inp
+        grad = cost_grad[0]
+        if (a.dtype.startswith('complex')):
+            return [None, None]
+        elif a.ndim > 2:
+            raise NotImplementedError('%s: gradient is currently implemented'
+                            ' for matrices only' % self.__class__.__name__)
+        wr_a = fill_diagonal_offset(grad, 0, offset)  # valid for any number of dimensions
+        # diag is only valid for matrices
+        import theano.sandbox.linalg
+        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
+        return [wr_a, wr_val]
+fill_diagonal_offset_ = FillDiagonalOffset()
+
+
+#I create a function only to have the doc show well.
+def fill_diagonal_offset(a, val, offset):
+    """ Returns a copy of an array with all
+    elements of the main diagonal set to a specified scalar value.
+
+    :param a: Rectangular array of two dimensions.
+    :param val: Scalar value to fill the diagonal whose type must be
+        compatible with that of array 'a' (i.e. 'val' cannot be viewed
+        as an upcast of 'a').
+    :params offset : Scalar value Offset of the diagonal from the main 
+        diagonal. Can be positive or negative.
+    :return: An array identical to 'a' except that its offset diagonal
+        is filled with scalar 'val'.
+
+    Only support rectangular matrix
+    """
+    return fill_diagonal_offset_(a, val, offset)
