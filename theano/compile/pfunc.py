@@ -493,10 +493,10 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         givens = dict(givens)
     if outputs is None:
         o = []
+    elif isinstance(outputs, (theano.gof.Variable, Out)):
+        o = [outputs]
     else:
         o = list(outputs)
-    if isinstance(o, (theano.gof.Variable, Out)):
-        o = [o]
     for oo in (
                #Check in the updates keys or values have inputs
                [x for x, y in iter_over_pairs(updates)] +
