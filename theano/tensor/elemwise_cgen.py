@@ -121,7 +121,9 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
         created, otherwise it will be c order.
 
     """
-
+    type = dtype.upper()
+    if type.startswith('THEANO_COMPLEX'):
+                type = type.replace('THEANO_COMPLEX', 'NPY_COMPLEX')
     nd = len(loop_orders[0])
     init_dims = ""
     # For each dimension, the tensors are either all broadcasted, in
@@ -142,7 +144,6 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
     # way that its contiguous dimensions match one of the input's
     # contiguous dimensions, or the dimension with the smallest
     # stride. Right now, it is allocated to be C_CONTIGUOUS.
-
     return """
     {
         npy_intp dims[%(nd)s];
@@ -150,7 +151,7 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
         %(init_dims)s
         if (!%(olv)s) {
             %(olv)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s, dims,
-                                                    type_num_%(olv)s,
+                                                    %(type)s,
                                                     %(fortran)s);
         }
         else {
@@ -162,7 +163,7 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
                 // If we can't resize the ndarray we have we can allocate a new one.
                 PyErr_Clear();
                 Py_XDECREF(%(olv)s);
-                %(olv)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s, dims, type_num_%(olv)s, 0);
+                %(olv)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s, dims, %(type)s, 0);
             }
         }
         if (!%(olv)s) {

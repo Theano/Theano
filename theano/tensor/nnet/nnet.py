@@ -148,7 +148,7 @@ class SoftmaxWithBias(gof.Op):
         {
             if (NULL != %(sm)s) Py_XDECREF(%(sm)s);
             %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
-                                                       type_num_%(x)s);
+                                                       PyArray_TYPE((PyArrayObject*) py_%(x)s));
             if(!%(sm)s) {
                 PyErr_SetString(PyExc_MemoryError,
                      "failed to alloc sm output");
@@ -342,7 +342,7 @@ class SoftmaxGrad(gof.Op):
             Py_XDECREF(%(dx)s);
             %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
                                                         PyArray_DIMS(%(sm)s),
-                                                        type_num_%(sm)s);
+                                                        PyArray_TYPE((PyArrayObject*) py_%(sm)s));
             if (!%(dx)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -463,7 +463,7 @@ class Softmax(gof.Op):
         {
             Py_XDECREF(%(sm)s);
             %(sm)s = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(%(x)s),
-                                                       type_num_%(x)s);
+                                                       PyArray_TYPE((PyArrayObject*) py_%(x)s));
             if(!%(sm)s) {
                 PyErr_SetString(PyExc_MemoryError,
                      "failed to alloc sm output");
@@ -977,7 +977,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         {
             if (NULL != %(nll)s) Py_XDECREF(%(nll)s);
             %(nll)s = (PyArrayObject*)PyArray_SimpleNew(1,
-                PyArray_DIMS(%(y_idx)s), type_num_%(x)s);
+                PyArray_DIMS(%(y_idx)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
             if(!%(nll)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -990,7 +990,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         {
             Py_XDECREF(%(am)s);
             %(am)s = (PyArrayObject*) PyArray_SimpleNew(1,
-                PyArray_DIMS(%(y_idx)s), type_num_%(y_idx)s);
+                PyArray_DIMS(%(y_idx)s), PyArray_TYPE((PyArrayObject*) py_%(y_idx)s));
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -1144,7 +1144,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
             if (NULL != %(dx)s) Py_XDECREF(%(dx)s);
             %(dx)s = (PyArrayObject*) PyArray_SimpleNew(2,
                                                         PyArray_DIMS(%(sm)s),
-                                                        type_num_%(sm)s);
+                                                        PyArray_TYPE((PyArrayObject*) py_%(sm)s));
             if(!%(dx)s) {
                 PyErr_SetString(PyExc_MemoryError,
                      "failed to alloc dx output");

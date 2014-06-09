@@ -426,7 +426,6 @@ class TensorType(Type):
             check = ""
         declaration = """
         PyArrayObject* %(name)s;
-        int type_num_%(name)s;
         """ % dict(sub, name=name, dtype=self.dtype_specs()[1])
 
         return declaration + check
@@ -435,7 +434,6 @@ class TensorType(Type):
         """Override `CLinkerType.c_init` """
         return """
         %(name)s = NULL;
-        type_num_%(name)s = %(type_num)s;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_extract(self, name, sub, check_input=True):
@@ -455,7 +453,6 @@ class TensorType(Type):
                 %(fail)s
             }
             // We expect %(type_num)s
-            type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
             if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
                 PyArrayObject * tmp = (PyArrayObject*) py_%(name)s;
                 PyErr_Format(PyExc_NotImplementedError,
@@ -465,7 +462,7 @@ class TensorType(Type):
                              "%%ld, %%ld, %%ld"
                              " and 3 last strides %%ld %%ld, %%ld.",
                              (long int) %(type_num)s,
-                             (long int) type_num_%(name)s,
+                             (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
                              (long int) PyArray_NDIM(tmp),
                              (long int) PyArray_NDIM(tmp) >= 3 ?
             PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
@@ -484,17 +481,15 @@ class TensorType(Type):
             }
             // This is a TypeError to be consistent with DEBUG_MODE
             // Note: DEBUG_MODE also tells the name of the container
-            if (type_num_%(name)s != %(type_num)s) {
+            if (PyArray_TYPE((PyArrayObject*) py_%(name)s) != %(type_num)s) {
                 PyErr_Format(PyExc_TypeError,
                              "expected type_num %%d (%(type_num)s) got %%d",
-                             %(type_num)s, type_num_%(name)s);
+                             %(type_num)s, PyArray_TYPE((PyArrayObject*) py_%(name)s));
                 %(fail)s
             }
             """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
         else:
-            check = """
-            type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
-            """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
+            check = ""
         return check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);
@@ -526,13 +521,11 @@ class TensorType(Type):
 
         if (%(name)s && !PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
-                         "c_sync: expected an aligned array of type %%ld "
-                         "(%(type_num)s), got non-aligned array of type %%ld"
+                         "c_sync: expected an aligned array, got non-aligned array of type %%ld"
                          " with %%ld dimensions, with 3 last dims "
                          "%%ld, %%ld, %%ld"
                          " and 3 last strides %%ld %%ld, %%ld.",
-                         (long int) %(type_num)s,
-                         (long int) type_num_%(name)s,
+                         (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
                          (long int) PyArray_NDIM(%(name)s),
                          (long int) PyArray_NDIM(%(name)s) >= 3 ?
         PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,

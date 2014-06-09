@@ -2425,7 +2425,7 @@ class Alloc(gof.Op):
             {
                 Py_XDECREF(%(zz)s);
                 %(zz)s = (PyArrayObject*) PyArray_SimpleNew(%(ndim)s,
-                    shape, type_num_%(vv)s);
+                    shape, PyArray_TYPE((PyArrayObject*) py_%(vv)s));
                 if (!%(zz)s)
                 {
                     PyErr_SetString(PyExc_MemoryError, "alloc failed");

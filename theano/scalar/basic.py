@@ -257,13 +257,13 @@ class Scalar(Type):
     def c_declare(self, name, sub, check_input=True):
         if(check_input):
             pre = """
-                %(dtype)s %(name)s;
+                 typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+                typedef %(dtype)s dtype_%(name)s;
             """ % dict(name=name, dtype=self.dtype_specs()[1])
         else:
             pre = ""
         return pre + """
-        typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
-        typedef %(dtype)s dtype_%(name)s;
+        %(dtype)s %(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
@@ -462,7 +462,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (12, numpy.__version__)
+        return (13, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize

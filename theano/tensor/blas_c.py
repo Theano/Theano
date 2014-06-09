@@ -353,7 +353,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
         {
             if (%(zz)s) Py_XDECREF(%(zz)s);
             %(zz)s = (PyArrayObject*)PyArray_SimpleNew(1,
-                PyArray_DIMS(%(aa)s), type_num_%(aa)s);
+                PyArray_DIMS(%(aa)s), PyArray_TYPE((PyArrayObject*) py_%(aa)s));
             if(!%(zz)s) {
                 PyErr_SetString(PyExc_MemoryError,
                                 "failed to alloc gemv output");
