@@ -14,6 +14,7 @@ from theano.tensor.opt import (register_stabilize,
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
+
 from theano.tensor.nlinalg import ( MatrixInverse,
                                     matrix_inverse,
                                     AllocDiag,
@@ -31,6 +32,18 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     eigh,
                                     matrix_dot,
                                     _zero_disconnected
+                                    )
+
+from theano.tensor.slinalg import ( Cholesky,
+                                    cholesky,
+                                    CholeskyGrad,
+                                    MatrixPinv,
+                                    pinv,
+                                    Solve,
+                                    solve,
+                                    Eigvalsh,
+                                    EigvalshGrad,
+                                    eigvalsh
                                     )
 
 try:
