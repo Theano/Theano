@@ -479,32 +479,46 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
         y = tensor.scalar()
         z = tensor.scalar()
 
-        f = function([x, y, z], fill_diagonal(x, y, z))
+        test_offset = numpy.array(numpy.random.randint(-5,5),
+            dtype = config.floatX)
+
+        f = function([x, y, z], fill_diagonal_offset(x, y, z))
         for shp in [(8, 8), (5, 8), (8, 5)]:
             a = numpy.random.rand(*shp).astype(config.floatX)
             val = numpy.cast[config.floatX](numpy.random.rand())
-            out = f(a, val, offset)
+            out = f(a, val, test_offset)
             # We can't use numpy.fill_diagonal as it is bugged.
-            assert numpy.allclose(numpy.diag(out, offset), val)
-            assert (out == val).sum() == min(a.shape)
+            #pdb.set_trace()
+            assert numpy.allclose(numpy.diag(out, test_offset), val)
+            #pdb.set_trace()
+            if test_offset >= 0:
+                assert (out == val).sum() == min( min(a.shape), 
+                                        a.shape[1]-test_offset )
+            else:
+                assert (out == val).sum() == min( min(a.shape), 
+                                        a.shape[0]+test_offset )
 
     def test_gradient(self):
+        test_offset = numpy.array(numpy.random.randint(-5,5),
+                        dtype = config.floatX)
         utt.verify_grad(fill_diagonal_offset, [numpy.random.rand(5, 8),
-                                        numpy.random.rand()],
+                                        numpy.random.rand(),
+                                        test_offset],
                         n_tests=1, rng=TestFillDiagonalOffset.rng)
         utt.verify_grad(fill_diagonal_offset, [numpy.random.rand(8, 5),
-                                        numpy.random.rand()],
+                                        numpy.random.rand(),
+                                        test_offset],
                         n_tests=1, rng=TestFillDiagonalOffset.rng)
 
     def test_infer_shape(self):
         x = tensor.dmatrix()
         y = tensor.dscalar()
         z = tensor.dscalar()
+        test_offset = numpy.array(numpy.random.randint(-5,5),
+                        dtype = config.floatX)
         self._compile_and_check([x, y, z], [self.op(x, y, z)],
                                 [numpy.random.rand(8, 5),
                                  numpy.random.rand(),
-                                 numpy.random.randint(0,5)],
+                                 test_offset],
                                 self.op_class)
 
-if __name__ == '__main__':
-    unittest.main()

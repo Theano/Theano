@@ -8,6 +8,7 @@ tensor = basic
 from theano.gradient import DisconnectedType
 
 
+
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
     def __init__(self, axis=None):
@@ -730,7 +731,7 @@ def fill_diagonal(a, val):
 
 # Offset version of fill_diagonal
 class FillDiagonalOffset(gof.Op):
-    # See function fill_diagonal for docstring
+    # See function fill_diagonal_offset for docstring
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -778,7 +779,7 @@ class FillDiagonalOffset(gof.Op):
             start = offset
             num_of_step = min( min(width,height), width - offset) 
         else:
-            start = - offset * a.shape[0]
+            start = - offset * a.shape[1]
             num_of_step = min( min(width,height), height + offset)
         step = a.shape[1] + 1
         end = start + step * num_of_step
@@ -797,14 +798,18 @@ class FillDiagonalOffset(gof.Op):
         grad = cost_grad[0]
         if (a.dtype.startswith('complex')):
             return [None, None]
-        elif a.ndim > 2:
-            raise NotImplementedError('%s: gradient is currently implemented'
-                            ' for matrices only' % self.__class__.__name__)
-        wr_a = fill_diagonal_offset(grad, 0, offset)  # valid for any number of dimensions
-        # diag is only valid for matrices
+
+        # only valid for matrices        
+        wr_a = fill_diagonal_offset(grad, 0, offset)  
         import theano.sandbox.linalg
         wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
-        return [wr_a, wr_val]
+        wr_offset = axis_grad = theano.gradient.grad_undefined(
+            self, 2, offset,
+            "offset is not defined for non-integer offset so"
+            " fill_diagonal_offset(a,val,offset+eps) is undefined")
+
+        return [wr_a, wr_val,wr_offset]
+
 fill_diagonal_offset_ = FillDiagonalOffset()
 
 

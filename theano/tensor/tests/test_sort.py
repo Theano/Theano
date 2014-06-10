@@ -143,3 +143,5 @@ def test_argsort():
     gv = f(m_val)
     gt = np.argsort(m_val, None)
     assert np.allclose(gv, gt)
+
+
