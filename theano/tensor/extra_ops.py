@@ -754,10 +754,14 @@ class FillDiagonalOffset(gof.Op):
         elif val.ndim != 0:
             raise TypeError('%s: second parameter must be a scalar'\
                             % self.__class__.__name__)
+        elif offset.ndim != 0:
+            raise TypeError('%s: third parameter must be a scalar'\
+                            % self.__class__.__name__)
         val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
         if val.dtype != a.dtype:
             raise TypeError('%s: type of second parameter must be compatible'
                             ' with first\'s' % self.__class__.__name__)
+
 
         return gof.Apply(self, [a, val, offset], [a.type()])
 
@@ -769,7 +773,7 @@ class FillDiagonalOffset(gof.Op):
 
         # offset should be an integer
         if offset % 1 != 0:
-            raise TypeError('%s: third parameter must be an integer'\
+            raise ValueError('%s: third parameter must be an integer'\
                             % self.__class__.__name__)
 
         # numpy.fill_diagonal up to date(including 1.6.2) have a
