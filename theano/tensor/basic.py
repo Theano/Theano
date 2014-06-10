@@ -3150,8 +3150,9 @@ class Split(Op):
         if numpy.sum(splits) != len_along_axis:
             raise ValueError('The splits sum to %s, expected %s' %
                              (numpy.sum(splits), len_along_axis))
-        if not python_all(splits):
-            raise ValueError('Cannot have a split of zero.')
+        if python_any([nb < 0 for nb in splits]):
+            raise ValueError('Split: you try to make an ndarray with'
+                             'negative number of elements.')
 
         # Checking is done, let's roll the splitting algorithm!
         # Basically we step along the given axis of x, extracting

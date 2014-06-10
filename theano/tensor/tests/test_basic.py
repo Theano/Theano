@@ -3547,6 +3547,22 @@ class T_Join_and_Split(unittest.TestCase):
         m = self.shared(rng.rand(4, 4).astype(self.floatX))
         self.assertRaises(TypeError, self.join_op(), 0, v, m)
 
+    def test_split_0elem(self):
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        m = self.shared(rng.rand(4, 6).astype(self.floatX))
+        o = self.split_op(2)(m, 0, [4, 0])
+        f = function([], o, mode=self.mode)
+        o1, o2 = f()
+        assert numpy.allclose(o1, m.get_value(borrow=True))
+        assert numpy.allclose(o2, m.get_value(borrow=True)[4:])
+
+    def test_split_neg(self):
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        m = self.shared(rng.rand(4, 6).astype(self.floatX))
+        o = self.split_op(2)(m, 0, [5, -1])
+        f = function([], o, mode=self.mode)
+        self.assertRaises(ValueError, f)
+
 
 class test_comparison(unittest.TestCase):
     """Test <, >, <=, >=, == and !=
