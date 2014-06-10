@@ -563,6 +563,27 @@ def local_gpu_conv(node):
     return [out]
 
 
+@register_opt("low_memory")
+@local_optimizer([GpuCAReduceCuda])
+def local_gpu_elemwise_careduce(node):
+    """ Merge some GpuCAReduceCuda and GPUElemwise"""
+    if (isinstance(node.op, GpuCAReduceCuda) and
+        node.op.pre_scalar_op is None and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, GpuElemwise) and
+        # The Op support all scalar with 1 inputs.  We don't
+        # automatically add more case, as some like trigonometic
+        # operation with some reduction pattern will probably result
+        # to slow down.
+        isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)
+        ):
+        op = node.op
+        inp = node.inputs[0].owner.inputs[0]
+        return [GpuCAReduceCuda(scalar_op=op.scalar_op,
+                                reduce_mask=op.reduce_mask,
+                                pre_scalar_op=scalar.basic.sqr)(inp)]
+
+
 def tensor_to_gpu(x):
     if isinstance(x.type, tensor.TensorType):
         y = GpuArrayType(broadcastable=x.type.broadcastable,

@@ -684,6 +684,24 @@ def local_gpu_careduce(node):
     return False
 
 
+@register_opt("low_memory")
+@local_optimizer([GpuCAReduce])
+def local_gpu_elemwise_careduce(node):
+    if (isinstance(node.op, GpuCAReduce) and
+        node.op.pre_scalar_op is None and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op, GpuElemwise) and
+        # The Op support all scalar with 1 inputs.  We don't
+        # automatically add more case, as some like trigonometic
+        # operation with some reduction pattern will probably result
+        # to slow down.
+        isinstance(node.inputs[0].owner.op.scalar_op, scal.basic.Sqr)
+        ):
+        op = node.op
+        inp = node.inputs[0].owner.inputs[0]
+        return [GpuCAReduce(op.reduce_mask, op.scalar_op, scal.basic.sqr)(inp)]
+
+
 @register_opt()
 @local_optimizer([gpu_from_host, tensor.Reshape])
 def local_gpu_reshape(node):

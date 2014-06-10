@@ -133,3 +133,13 @@ def test_print_op():
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
     f(numpy.random.random((5, 5)).astype('float32'))
+
+
+def test_local_gpu_elemwise_careduce():
+    x = theano.tensor.matrix()
+    o = (x*x).sum()
+    f = theano.function([x], o, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
+    f(numpy.random.rand(3, 4).astype(theano.config.floatX))

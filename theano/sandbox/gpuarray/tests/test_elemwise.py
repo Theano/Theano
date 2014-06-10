@@ -40,11 +40,13 @@ class test_GpuCAReduceCPY(test_CAReduce):
     bin_dtypes = ["uint8", "int8"]
     op = GpuCAReduceCPY
     reds = [scalar.add, scalar.mul]
+    pre_scalar_op = None
 
     def test_perform(self):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
-                self.with_linker(gof.PerformLinker(), op, dtype=dtype)
+                self.with_linker(gof.PerformLinker(), op, dtype=dtype,
+                                 pre_scalar_op=self.pre_scalar_op)
 
     def test_perform_nan(self):
         for dtype in self.dtypes:
@@ -52,12 +54,14 @@ class test_GpuCAReduceCPY(test_CAReduce):
                 continue
             for op in self.reds:
                 self.with_linker(gof.PerformLinker(), op, dtype=dtype,
-                                 test_nan=True)
+                                 test_nan=True,
+                                 pre_scalar_op=self.pre_scalar_op)
 
     def test_c(self):
         for dtype in self.dtypes + self.bin_dtypes:
             for op in self.reds:
-                self.with_linker(gof.CLinker(), op, dtype=dtype)
+                self.with_linker(gof.CLinker(), op, dtype=dtype,
+                                 pre_scalar_op=self.pre_scalar_op)
 
     def test_c_nan(self):
         for dtype in self.dtypes:
@@ -65,7 +69,8 @@ class test_GpuCAReduceCPY(test_CAReduce):
                 continue
             for op in self.reds:
                 self.with_linker(gof.CLinker(), op, dtype=dtype,
-                                 test_nan=True)
+                                 test_nan=True,
+                                 pre_scalar_op=self.pre_scalar_op)
 
     def test_infer_shape(self):
         for dtype in self.dtypes:
@@ -148,6 +153,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     op = GpuCAReduceCuda
     reds = [scalar.add, scalar.mul,
             scalar.maximum, scalar.minimum]
+    pre_scalar_op = scalar.sqr
 
     def test_perform(self):
         return

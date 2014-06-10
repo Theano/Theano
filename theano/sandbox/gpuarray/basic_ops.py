@@ -22,6 +22,15 @@ from type import GpuArrayType
 
 
 def as_gpuarray_variable(x):
+    # This is needed to lower the number of useless transfer
+    # introduced during optimization.  This speed up optimization and
+    # "canonicalize" the graph, so it make easier making some
+    # optimization.
+    if (hasattr(x, 'fgraph') and
+        len(x.clients) == 1 and
+        x.owner and
+        isinstance(x.owner.op, HostFromGpu)):
+        return x.owner.inputs[0]
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable()
     # TODO we need to have the cuda -> gpu path taken care of.
