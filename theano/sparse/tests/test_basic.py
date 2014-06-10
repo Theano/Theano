@@ -770,7 +770,7 @@ class test_comparison(unittest.TestCase):
         y = theano.tensor.matrix()
 
         m1 = sp.csc_matrix((2, 2), dtype=theano.config.floatX)
-        m2 = numpy.asarray([[0, 0], [0, 0]])
+        m2 = numpy.asarray([[0, 0], [0, 0]], dtype=theano.config.floatX)
 
         for func in self.testsDic:
 
