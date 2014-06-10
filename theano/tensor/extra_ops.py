@@ -764,6 +764,7 @@ class FillDiagonalOffset(gof.Op):
         a = inputs[0].copy()
         val = inputs[1]
         offset = inputs[2]
+        height, width = a.shape
 
         # offset should be an integer
         if offset % 1 != 0:
@@ -775,10 +776,12 @@ class FillDiagonalOffset(gof.Op):
         # the offset function is only implemented for matrices
         if offset >= 0:
             start = offset
+            num_of_step = min( min(width,height), width - offset) 
         else:
             start = - offset * a.shape[0]
+            num_of_step = min( min(width,height), height + offset)
         step = a.shape[1] + 1
-        end = a.shape[1] * a.shape[1]
+        end = start + step * num_of_step
         # Write the value out into the diagonal.
         a.flat[start:end:step] = val
 

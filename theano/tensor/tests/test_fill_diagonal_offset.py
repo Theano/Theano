@@ -42,7 +42,7 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
             out = f(a, val, test_offset)
             # We can't use numpy.fill_diagonal as it is bugged.
             assert numpy.allclose(numpy.diag(out, test_offset), val)
-            pdb.set_trace()
+            #pdb.set_trace()
             assert (out == val).sum() == min(a.shape)
 
     def test_gradient(self):
