@@ -2343,6 +2343,7 @@ def test_batched_dot():
 
     assert result.shape[0] == first_mat_val.shape[0]
 
+
 def test_batched_tensordot():
     first = theano.tensor.tensor4("first")
     second = theano.tensor.tensor4("second")
@@ -2364,9 +2365,9 @@ def test_batched_tensordot():
     second_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
     result_fn = theano.function([first_mat, second_mat], output)
     result = result_fn(first_mat_val, second_mat_val)
-    print(result.shape)
     assert result.shape[0] == first_mat_val.shape[0]
     assert len(result.shape) == 1
+
 
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself
@@ -3145,14 +3146,11 @@ class T_Join_and_Split(unittest.TestCase):
         b_v = numpy.random.rand(4)
         f = theano.function([a, b], [Ha, Hb])
         Ha_v, Hb_v = f(a_v, b_v)
-        print Ha_v
-        print Hb_v
         # The Hessian is always a matrix full of 0
         assert Ha_v.shape == (4, 4)
         assert Hb_v.shape == (4, 4)
         assert numpy.allclose(Ha_v, 0.)
         assert numpy.allclose(Hb_v, 0.)
-
 
     def test_join_concatenate_one_element(self):
         ''' Fast test of concatenate as this is an alias for join.
