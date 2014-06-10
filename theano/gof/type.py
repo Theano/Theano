@@ -401,10 +401,17 @@ class SingletonType(Type):
     It saves having to implement __eq__ and __hash__
     """
     __instance = None
+
     def __new__(cls):
-        if cls.__instance is None:
+        # If sub-subclass of SingletonType don't redeclare __instance
+        # when we look for it, we will find it in the subclass.  We
+        # don't want that, so we check the class.  When we add one, we
+        # add one only to the current class, so all is working
+        # correctly.
+        if cls.__instance is None or not isinstance(cls.__instance, cls):
             cls.__instance = Type.__new__(cls)
         return cls.__instance
+
     def __str__(self):
         return self.__class__.__name__
 

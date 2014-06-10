@@ -587,10 +587,19 @@ def test_eigvalsh():
     rng = numpy.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
-    for b in [10 * numpy.eye(5, 5) + rng.randn(5, 5), None]:
+    for b in [10 * numpy.eye(5, 5) + rng.randn(5, 5)]:
         w = f(a, b)
         refw = scipy.linalg.eigvalsh(a, b)
         numpy.testing.assert_array_almost_equal(w, refw)
+
+    # We need to test None separatly, as otherwise DebugMode will
+    # complain, as this isn't a valid ndarray.
+    b = None
+    B = theano.tensor.NoneConst
+    f = function([A], eigvalsh(A, B))
+    w = f(a)
+    refw = scipy.linalg.eigvalsh(a, b)
+    numpy.testing.assert_array_almost_equal(w, refw)
 
 
 def test_eigvalsh_grad():

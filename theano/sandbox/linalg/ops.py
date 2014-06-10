@@ -1119,11 +1119,22 @@ class Eigvalsh(Op):
     def make_node(self, a, b):
         assert imported_scipy, (
             "Scipy not available. Scipy is needed for the Eigvalsh op")
-        a, b = map(as_tensor_variable, (a, b))
+        a = as_tensor_variable(a)
         assert a.ndim == 2
-        assert b.ndim == 2
+        if not isinstance(b, (theano.Variable)):
+            if b is None:
+                b = theano.tensor.NoneConst
+                out_dtype = a.dtype
+            else:
+                b = as_tensor_variable(b)
+                out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
+        elif not isinstance(b.type, theano.tensor.NoneTypeT):
+            b = as_tensor_variable(b)
+            out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
+            assert b.ndim == 2
+        else:
+            out_dtype = a.dtype
 
-        out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
         w = theano.tensor.vector(dtype=out_dtype)
         return Apply(self, [a, b], [w])
 
