@@ -75,8 +75,8 @@ class TestConv2dFFT(unittest.TestCase):
 
         # make sure we inserted the fft trickery
         topo = f_fft.maker.fgraph.toposort()
-        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
-                   for n in topo) == 2
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.FFTConv2D)
+                   for n in topo) == 1
 
 
         res_ref = f_ref()
@@ -104,8 +104,8 @@ class TestConv2dFFT(unittest.TestCase):
 
         # make sure we inserted the fft trickery
         topo = f_fft.maker.fgraph.toposort()
-        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
-                   for n in topo) == 2
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.FFTConv2D)
+                   for n in topo) == 1
 
         res_ref = f_ref()
         res_fft = f_fft()

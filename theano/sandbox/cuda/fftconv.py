@@ -375,138 +375,209 @@ def mult_and_reduce(input_fft_v, filters_fft_v, input_shape=None,
     return output
 
 
-def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
-               border_mode='valid', pad_last_dim=False):
-    """
-    Perform a convolution through fft.
+class FFTConv2D(GpuOp):
+    def __init__(self, border_mode='valid', autopad=False):
+        if border_mode not in ('valid', 'full'):
+            raise ValueError('invalid border_mode')
+        self.border_mode = border_mode
+        self.autopad = autopad
 
-    Only support input which will be even on the last dimension
-    (width).  All other dimensions can be anything and the filters can
-    have an even or odd width.
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.autopad == other.autopad and
+                self.border_mode == other.border_mode)
 
-    If you must use input which has an odd width, you can either pad
-    it or use the `pad_last_dim` argument which will do it for you and
-    take care to strip the padding before returning.  Don't use this
-    argument if you are not sure the input is odd since the padding is
-    unconditional and will make even input odd, thus leading to
-    problems.
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.autopad) ^ hash(self.border_mode)
 
-    On valid mode the filters must be smaller than the input.
+    def make_node(self, input, filters):
+        if not scikits_cuda_available:
+            raise RuntimeError("scikits.cuda >= 0.5.0 is not available "
+                               "but is required for this op")
+        if not pycuda_available:
+            raise RuntimeError("PyCUDA is not available "
+                               "but is required for this op")
+        _input = basic_ops.as_cuda_ndarray_variable(input)
+        _filters = basic_ops.as_cuda_ndarray_variable(filters)
 
-    input: (b, ic, i0, i1)
-    filters: (oc, ic, f0, f1)
+        if _input.ndim != 4:
+            raise TypeError('ConvFFT2D requires input to be a 4D tensor, '
+                            'recieved "%s" (%i dims)' %
+                            (input, _input.ndim))
+        if _filters.ndim != 4:
+            raise TypeError('ConvFFT2D requires filters to be a 4D tensor, '
+                            'recieved "%s" (%i dims)' %
+                            (filters, _filters.ndim))
 
-    border_mode: 'valid' of 'full'
+        out_type = CudaNdarrayType(broadcastable=[_input.broadcastable[0],
+                                                  _filters.broadcastable[0],
+                                                  False, False])
 
-    pad_last_dim: Unconditionally pad the last dimension of the input
-                  to to turn it from odd to even.  Will strip the
-                  padding before returning the result.
-    """
+        return theano.Apply(self, [_input, _filters], [out_type()])
 
-    # use symbolic shapes to compute shape info at runtime if not specified
-    if image_shape is None:
-        image_shape = input.shape
+    def _dimshuffle(self, v, newdims):
+        assert v.ndim == len(set(newdims))
+        r = v.view()
+        for i, d in enumerate(newdims):
+            r._set_shape_i(i, v.shape[d])
+            r._set_stride(i, v.strides[d])
+        return r
 
-    if filter_shape is None:
-        filter_shape = filters.shape
+    def _bcd(self, bx, by):
+        input_shape_x = bx.shape
+        input_shape_y = by.shape
+        output_shape = (input_shape_x[0], input_shape_x[1],
+                        input_shape_y[2], 2)
 
-    # batch size, input channels, input dim 0, input dim 1
-    b, ic, i0, i1 = image_shape
-    # output channels, input channels, filter dim 0, filter dim 1
-    oc, ic_, f0, f1 = filter_shape
+        bz = CudaNdarray.zeros(output_shape)
 
-    # pad filters/image to output shape
-    if border_mode == 'valid':
-        o0 = i0
-        if pad_last_dim:
-            o1 = i1 + 1
-            input_padded = T.zeros((b, ic, o0, o1), dtype='float32')
-            input_padded = T.set_subtensor(input_padded[:, :, :i0, :i1],
-                                       input)
+        sc_complex_dot_batched(to_complex_gpuarray(bx, copyif=True),
+                               to_complex_gpuarray(by, copyif=True),
+                               to_complex_gpuarray(bz))
+
+        return bz
+
+
+    def _do_fft(self, input, plans):
+        from theano.misc.pycuda_utils import to_gpuarray
+        input_shape = input.shape
+        output_shape = (input_shape[0], input_shape[1],
+                        input_shape[2] // 2 + 1, 2)
+        output = CudaNdarray.zeros(output_shape)
+
+        if input_shape in plans:
+            plan = plans[input_shape]
         else:
+            plan = fft.Plan(input_shape[1:], np.float32, np.complex64,
+                            batch=input_shape[0])
+            plans[input_shape] = plan
+
+        fft.fft(to_gpuarray(input), to_gpuarray(output), plan)
+        return output
+
+    def _do_ifft(self, input, plans):
+        from theano.misc.pycuda_utils import to_gpuarray
+        input_shape = input.shape
+        output_shape = (input_shape[0], input_shape[1],
+                        (input_shape[2] - 1) * 2)
+        if (input_shape, False) in plans:
+            plan = plans[(input_shape, False)]
+        else:
+            plan = fft.Plan(output_shape[1:], np.complex64, np.float32,
+                            batch=input_shape[0])
+            plans[(input_shape, False)] = plan
+        output = CudaNdarray.zeros(output_shape)
+
+        fft.ifft(to_gpuarray(input), to_gpuarray(output), plan)
+        return output
+
+    def _mult_reduce(self, input_fft_v, filters_fft_v, input_shape,
+                     filter_shape):
+        b, ic, i0, i1, _ = input_shape
+        oc = filter_shape[0]
+
+        input_r = input_fft_v.reshape((b, ic, i0 * i1, 2))
+        del input_fft_v
+        filters_r = filters_fft_v.reshape((oc, ic, i0 * i1, 2))
+        del filters_fft_v
+
+        input_s = self._dimshuffle(input_r, (2, 0, 1, 3))
+        del input_r
+        filters_s = self._dimshuffle(filters_r, (2, 1, 0, 3))
+        del filters_r
+
+        output_s = self._bcd(input_s, filters_s)
+        del input_s
+        del filters_s
+
+        output_r = self._dimshuffle(output_s, (1, 2, 0, 3))
+        del output_s
+
+        output = output_r.reshape((b, oc, i0, i1, 2))
+        del output_r
+
+        return output
+
+    def perform(self, node, inp, out):
+        input, filters = inp
+        # we can't reuse the output
+        out[0][0] = None
+
+        b, ic, i0, i1 = input.shape
+        oc, _, f0, f1 = filters.shape
+        if self.border_mode == 'valid':
+            o0 = i0
             o1 = i1
-            input_padded = input
+            if self.autopad and o1 % 2 == 1:
+                input_padded = CudaNdarray.zeros((b, ic, o0, o1))
+                input_padded[:, :, :i0, :i1] = input
+            else:
+                input_padded = input
+        elif self.border_mode == 'full':
+            o0 = i0 + 2 * (f0 - 1)
+            o1 = i1 + 2 * (f1 - 1)
+            if self.autopad and o1 % 2 == 1:
+                o1 += 1
 
-        filters_padded = T.zeros((oc, ic, o0, o1), dtype='float32')
-        filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1],
-                                         filters)
+            # We line up the filters and the images in a way such that
+            # the images intersect with the filters on one item. The
+            # top-left item of the images is the bottom-right item of
+            # the filters when we do the layout here.
+            input_padded = CudaNdarray.zeros((b, ic, o0, o1))
+            input_padded[:, :, (f0 - 1):(f0 - 1 + i0), (f1 - 1):(f1 - 1 + i1)] = input
 
-    elif border_mode == 'full':
+        if o1 % 2 == 1:
+            raise RuntimeError("final width is not a multiple of 2. Use the "
+                               "autopad argument to add padding as necessary "
+                               "or fix the shapes in your code.")
 
-        # In this particular case, the values of (o0, o1) represent
-        # the dimensions of the work buffer more than the actual dimensions
-        # of the desired output.
-        o0 = i0 + 2 * (f0 - 1)
-        o1 = i1 + 2 * (f1 - 1)
+        filters_padded = CudaNdarray.zeros((oc, ic, o0, o1))
+        filters_padded[:, :, :f0, :f1] = filters
 
-        if pad_last_dim:
-            o1 = o1 + 1
+        assert o1 % 2 == 0
 
-        # We line up the filters and the images in a way
-        # such that the filters are tightly placed against the
-        # top-left of the array, and the images intersect with
-        # them on one pixel. The top-left pixel of the images
-        # is the bottom-right pixel of the filters when we
-        # do the layout here.
+        input_flat = input_padded.reshape((b * ic, o0, o1))
+        del input_padded
+        filters_flat = filters_padded.reshape((oc * ic, o0, o1))
+        del filters_padded
 
-        filters_padded = T.zeros((oc, ic, o0, o1), dtype='float32')
-        filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1],
-                                         filters)
+        if getattr(node, '_fft_plans', None) is None:
+            node._fft_plans = dict()
 
-        input_padded = T.zeros((b, ic, o0, o1), dtype='float32')
-        input_padded = T.set_subtensor(input_padded[:, :, (f0 - 1):(f0 - 1 + i0), (f1 - 1):(f1 - 1 + i1)],
-                                       input)
-    else:
-        raise ValueError('invalid mode')
+        input_fft_flat = self._do_fft(input_flat, node._fft_plans)
+        del input_flat
+        filters_fft_flat = self._do_fft(filters_flat, node._fft_plans)
+        del filters_flat
 
-    input_padded = T.opt.Assert("in conv2d_fft: width is not even")(
-        input_padded, T.eq(o1 % 2, 0))
+        input_fft_v = input_fft_flat.reshape((b, ic, o0, o1 // 2 + 1, 2))
+        del input_fft_flat
+        filters_fft_v = filters_fft_flat.reshape((oc, ic, o0, o1 // 2 + 1, 2))
+        del filters_fft_flat
 
-    # reshape for FFT
-    input_flat = input_padded.reshape((b * ic, o0, o1))
-    filters_flat = filters_padded.reshape((oc * ic, o0, o1))
+        output_fft_s = self._mult_reduce(input_fft_v, filters_fft_v,
+                                         input_fft_v.shape,
+                                         filters_fft_v.shape)
+        del input_fft_v
+        del filters_fft_v
 
-    # perform FFT
-    input_fft_flat = cufft(input_flat)  # (b * ic, o0, o1//2 + 1, 2)
-    filters_fft_flat = cufft(filters_flat)  # (oc * ic, o0, o1//2 + 1, 2)
+        output_fft_flat = output_fft_s.reshape((b * oc, o0, o1 // 2 + 1, 2))
+        del output_fft_s
 
-    # unfold ic dimension
-    input_fft_v_shape = (b, ic, o0, o1 // 2 + 1, 2)
-    filters_fft_v_shape = (oc, ic, o0, o1 // 2 + 1, 2)
-    input_fft_v = input_fft_flat.reshape(input_fft_v_shape)
-    filters_fft_v = filters_fft_flat.reshape(filters_fft_v_shape)
+        output_flat = self._do_ifft(output_fft_flat, node._fft_plans)
+        del output_fft_flat
 
-    # (b, oc, o0, o1//2 + 1, 2)
-    output_fft_s = mult_and_reduce(input_fft_v, filters_fft_v,
-                                   input_shape=input_fft_v_shape,
-                                   filter_shape=filters_fft_v_shape)
+        output_circ = output_flat.reshape((b, oc, o0, o1))
+        del output_flat
 
-    # reshape for IFFT
-    output_fft_flat = output_fft_s.reshape((b * oc, o0, o1 // 2 + 1, 2))
+        if self.border_mode == 'valid':
+            output = output_circ[:, :,
+                (f0 - 1):(f0 - 1 + i0 - f0 + 1),
+                (f1 - 1):(f1 - 1 + i1 - f1 + 1)]
+        elif self.border_mode == 'full':
+            output = output_circ[:, :,
+                (f0 - 1):(f0 - 1 + i0 + f0 - 1),
+                (f1 - 1):(f1 - 1 + i1 + f1 - 1)]
+        del output_circ
 
-    # perform IFFT
-    output_flat = cuifft(output_fft_flat)  # (b * oc, o0, o1)
-
-    # reshape
-    output_circ = output_flat.reshape((b, oc, o0, o1))  # circular!
-
-    # Now we extract the region of interest.
-    # We just cut it out from the output_circ
-    # array that was used for the computation.
-    # We do not need to handle pad_last_dim in a
-    # special way because we specify explicitly here
-    # how much values are expected.
-    if border_mode == 'valid':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0-f0+1), (f1-1):(f1-1 + i1-f1+1)]
-    elif border_mode == 'full':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1)]
-    else:
-        raise ValueError('invalid mode')
-
-    # Rescale manually. This is just a factor that comes in during the
-    # trip through FFT and inverse FFT.
-    output = (1.0 / T.cast(o0 * o1, 'float32')) * output
-
-    # output should now be the result of a batched valid convolution
-    # of the input with the filters.
-    return basic_ops.as_cuda_ndarray_variable(output)
+        output /= np.asarray((o0 * o1), dtype='float32')
+        out[0][0] = output
