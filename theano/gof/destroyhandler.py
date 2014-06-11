@@ -915,6 +915,14 @@ class DestroyHandler(toolbox.Bookkeeper):
         else:
             #James's Conjecture:
             #If there are no destructive ops, then there can be no cycles.
+
+            #FB: This isn't always True. It can happend that
+            #optimization introduce node that depend on itself. This
+            #is very rare and should not happen in general. It will be
+            #caught later. The error will be far from the source. But
+            #doing this conjecture should speed up compilation most of
+            #the time. The user should create such dependency except
+            #if he mess too much with the internal.
             pass
         return True
 
