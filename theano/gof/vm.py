@@ -535,7 +535,7 @@ class Stack(VM):
         if self.allow_gc:
             for v in storage_map:
                 if v.owner and not v in self.outputs:
-                    if storage_map[v][0] == None or compute_map[v][0] == 2:
+                    if compute_map[v][0] == 2:
                         continue
                     else:
                         storage_map[v][0] = None
