@@ -593,8 +593,26 @@ class MergeOptimizer(Optimizer):
             pairs_list = sched.pop()
             success = True
             for pairs in pairs_list:
+                # We must check again the equivalence, as the graph
+                # can have changed. If so, doing the replacement can
+                # introduce node that depend on itself.  Doing the
+                # full check of such cycle everytimes is very time
+                # consumming. I think this double check is faster then
+                # doing the full cycle check. The full cycle check is
+                # skipped by validate() if the graph don't contain
+                # destroyers.
+                node = pairs[0][0]
+                candidate = pairs[0][1]
+                if node.owner and candidate.owner:
+                    node = node.owner
+                    candidate = candidate.owner
+                    inputs_match = all(node_in is cand_in
+                                       for node_in, cand_in in zip(
+                                           node.inputs, candidate.inputs))
+                    if not inputs_match or node.op != candidate.op:
+                        continue
                 try:
-                    fgraph.replace_all_validate(pairs, 'Merge')
+                    fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
                     success = False
                     nb_fail += 1
