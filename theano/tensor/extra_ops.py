@@ -665,8 +665,8 @@ class FillDiagonal(gof.Op):
                             % self.__class__.__name__)
         val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
         if val.dtype != a.dtype:
-            raise TypeError('%s: type of second parameter must be compatible'
-                          ' with first\'s' % self.__class__.__name__)
+            raise TypeError('%s: type of second parameter must be the same as'
+                          ' the first\'s' % self.__class__.__name__)
         return gof.Apply(self, [a, val], [a.type()])
 
     def perform(self, node, inputs, output_storage):
@@ -729,7 +729,6 @@ def fill_diagonal(a, val):
 
 
 
-# Offset version of fill_diagonal
 class FillDiagonalOffset(gof.Op):
     # See function fill_diagonal_offset for docstring
     def __eq__(self, other):
@@ -759,8 +758,8 @@ class FillDiagonalOffset(gof.Op):
                             % self.__class__.__name__)
         val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
         if val.dtype != a.dtype:
-            raise TypeError('%s: type of second parameter must be compatible'
-                            ' with first\'s' % self.__class__.__name__)
+            raise TypeError('%s: type of second parameter must be the same'
+                            ' as the first\'s' % self.__class__.__name__)
 
 
         return gof.Apply(self, [a, val, offset], [a.type()])
@@ -776,9 +775,15 @@ class FillDiagonalOffset(gof.Op):
             raise ValueError('%s: third parameter must be an integer'\
                             % self.__class__.__name__)
 
-        # numpy.fill_diagonal up to date(including 1.6.2) have a
-        # bug for tall matrix.
-        # the offset function is only implemented for matrices
+        """
+        Note: The fill_diagonal only support rectangular matrix. The output
+        of tall matrix is "wrapped", which is an option in numpy 1.9.0
+        but was regarded as a bug in numpy 1.6.2. Here I implement the 
+        fill_diagonal_offset with unwrapped output, so fill_diagonal_offset
+        supports tall matrix.(This make a little difference between the output
+        of fill_diagonal and fill_diagonal_offset only in the case of tall 
+        matrix)
+        """
         if offset >= 0:
             start = offset
             num_of_step = min( min(width,height), width - offset) 
@@ -800,13 +805,34 @@ class FillDiagonalOffset(gof.Op):
         """
         a, val, offset = inp
         grad = cost_grad[0]
+        height, width = grad.shape
+
         if (a.dtype.startswith('complex')):
             return [None, None]
 
         # only valid for matrices        
         wr_a = fill_diagonal_offset(grad, 0, offset)  
-        import theano.sandbox.linalg
-        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
+        
+        import theano.tensor as T 
+        offset_abs = T.abs_( offset ) 
+        pos_offset_flag = T.ge( offset, 0 )
+
+        start = offset * pos_offset_flag + offset_abs * width \
+                 * (1-pos_offset_flag)
+        min_wh = T.minimum(width,height)
+        num_of_step = T.minimum( min_wh, width * pos_offset_flag
+                    + height * ( 1 - pos_offset_flag ) - offset_abs )   
+       
+        step = grad.shape[1] + 1
+        end = start + step * num_of_step
+
+        # input of slide should be integer
+        start = T.cast(start,'int32')
+        step = T.cast(step,'int32')
+        end = T.cast(end,'int32')
+
+        wr_val = grad.flatten()[start:end:step].sum()
+
         wr_offset = axis_grad = theano.gradient.grad_undefined(
             self, 2, offset,
             "offset is not defined for non-integer offset so"
@@ -831,6 +857,5 @@ def fill_diagonal_offset(a, val, offset):
     :return: An array identical to 'a' except that its offset diagonal
         is filled with scalar 'val'.
 
-    Only support rectangular matrix
     """
     return fill_diagonal_offset_(a, val, offset)

@@ -8,7 +8,8 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
                                      squeeze, RepeatOp, repeat, Bartlett, bartlett,
-                                     FillDiagonal, fill_diagonal)
+                                     FillDiagonal, fill_diagonal, FillDiagonalOffset,
+                                     fill_diagonal_offset)
 from theano import tensor as T
 from theano import config, tensor, function
 
@@ -408,63 +409,6 @@ class TestBartlett(utt.InferShapeTester):
         self._compile_and_check([x], [self.op(x)], [1], self.op_class)
 
 
-class TestFillDiagonal(utt.InferShapeTester):
-
-    rng = numpy.random.RandomState(43)
-
-    def setUp(self):
-        super(TestFillDiagonal, self).setUp()
-        self.op_class = FillDiagonal
-        self.op = fill_diagonal
-
-    def test_perform(self):
-        x = tensor.matrix()
-        y = tensor.scalar()
-        f = function([x, y], fill_diagonal(x, y))
-        for shp in [(8, 8), (5, 8), (8, 5)]:
-            a = numpy.random.rand(*shp).astype(config.floatX)
-            val = numpy.cast[config.floatX](numpy.random.rand())
-            out = f(a, val)
-            # We can't use numpy.fill_diagonal as it is bugged.
-            assert numpy.allclose(numpy.diag(out), val)
-            assert (out == val).sum() == min(a.shape)
-
-        # test for 3d tensor
-        a = numpy.random.rand(3, 3, 3).astype(config.floatX)
-        x = tensor.tensor3()
-        y = tensor.scalar()
-        f = function([x, y], fill_diagonal(x, y))
-        val = numpy.cast[config.floatX](numpy.random.rand() + 10)
-        out = f(a, val)
-        # We can't use numpy.fill_diagonal as it is bugged.
-        assert out[0, 0, 0] == val
-        assert out[1, 1, 1] == val
-        assert out[2, 2, 2] == val
-        assert (out == val).sum() == min(a.shape)
-
-    def test_gradient(self):
-        utt.verify_grad(fill_diagonal, [numpy.random.rand(5, 8),
-                                        numpy.random.rand()],
-                        n_tests=1, rng=TestFillDiagonal.rng)
-        utt.verify_grad(fill_diagonal, [numpy.random.rand(8, 5),
-                                        numpy.random.rand()],
-                        n_tests=1, rng=TestFillDiagonal.rng)
-
-    def test_infer_shape(self):
-        z = tensor.dtensor3()
-        x = tensor.dmatrix()
-        y = tensor.dscalar()
-        self._compile_and_check([x, y], [self.op(x, y)],
-                                [numpy.random.rand(8, 5),
-                                 numpy.random.rand()],
-                                self.op_class)
-        self._compile_and_check([z, y], [self.op(z, y)],
-                                #must be square when nd>2
-                                [numpy.random.rand(8, 8, 8),
-                                 numpy.random.rand()],
-                                self.op_class,
-                                warn=False)
-
 class TestFillDiagonalOffset(utt.InferShapeTester):
 
     rng = numpy.random.RandomState(43)
@@ -501,13 +445,15 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
     def test_gradient(self):
         test_offset = numpy.array(numpy.random.randint(-5,5),
                         dtype = config.floatX)
-        utt.verify_grad(fill_diagonal_offset, [numpy.random.rand(5, 8),
-                                        numpy.random.rand(),
-                                        test_offset],
+        # input 'offset' will not be tested
+        def fill_diagonal_with_fix_offset( a, val):
+            return fill_diagonal_offset( a, val, test_offset)
+
+        utt.verify_grad(fill_diagonal_with_fix_offset, 
+                    [numpy.random.rand(5, 8), numpy.random.rand()],
                         n_tests=1, rng=TestFillDiagonalOffset.rng)
-        utt.verify_grad(fill_diagonal_offset, [numpy.random.rand(8, 5),
-                                        numpy.random.rand(),
-                                        test_offset],
+        utt.verify_grad(fill_diagonal_with_fix_offset, 
+                    [numpy.random.rand(8, 5), numpy.random.rand()],
                         n_tests=1, rng=TestFillDiagonalOffset.rng)
 
     def test_infer_shape(self):
@@ -521,4 +467,3 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
                                  numpy.random.rand(),
                                  test_offset],
                                 self.op_class)
-
