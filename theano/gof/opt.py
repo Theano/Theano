@@ -609,7 +609,8 @@ class MergeOptimizer(Optimizer):
                     inputs_match = all(node_in is cand_in
                                        for node_in, cand_in in zip(
                                            node.inputs, candidate.inputs))
-                    if not inputs_match or node.op != candidate.op:
+                    # No need to compare the op again, as it don't change.
+                    if not inputs_match:
                         continue
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')
