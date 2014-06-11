@@ -104,14 +104,14 @@ def rebuild_collect_shared(outputs,
                     # Do not use default_update if a "real" update was
                     # provided
                     if v not in update_d:
-                        v_update = v.type.filter_variable(v.default_update)
-                        if v_update.type != v.type:
+                        update_v = v.type.filter_variable(v.default_update)
+                        if update_v.type != v.type:
                             raise TypeError(
                                 'an update must have the same type as '
                                 'the original shared variable',
-                                (v, v.type, v_update, v_update.type))
-                        update_d[v] = v_update
-                        update_expr.append((v, v_update))
+                                (v, v.type, update_v, update_v.type))
+                        update_d[v] = update_v
+                        update_expr.append((v, update_v))
         if not copy_inputs_over or (isinstance(v, Constant) and
                                     hasattr(v, 'fgraph')):
             ### Cloning shared variables implies copying their underlying
@@ -263,15 +263,15 @@ def rebuild_collect_shared(outputs,
 
     i = 0
     while i < len(update_expr):
-        v, v_update = update_expr[i]
+        v, update_v = update_expr[i]
         cloned_v = clone_v_get_shared_updates(v,
                                               copy_inputs_over)
         import pdb;pdb.set_trace()
         # If we clone v, we fix some bug, but introduces new one.
         cloned_v = v
-        cloned_v_update = clone_v_get_shared_updates(v_update,
+        cloned_update_v = clone_v_get_shared_updates(update_v,
                                                      copy_inputs_over)
-        update_d[cloned_v] = cloned_v_update
+        update_d[cloned_v] = cloned_update_v
         if (isinstance(cloned_v, SharedVariable) and
             cloned_v not in shared_inputs):
             shared_inputs.append(cloned_v)
