@@ -535,8 +535,12 @@ class Stack(VM):
         if self.allow_gc:
             for v in storage_map:
                 if v.owner and not v in self.outputs:
-                    storage_map[v][0] = None
-                    final_index.append(v)
+                    if storage_map[v][0] = None or compute_map[v][0] = 2:
+                        continue
+                    else:
+                        storage_map[v][0] = None
+                        final_index.append(v)
+                        compute_map[v][0] = 2
 
         self.node_cleared_order.append(final_index)
 

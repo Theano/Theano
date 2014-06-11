@@ -26,4 +26,6 @@ def test_profiling():
 	theano.config.profile = old1
 	theano.config.profile_memory = old2
 
-test_profiling()
+
+if __name__ = '__main__':
+	test_profiling()
