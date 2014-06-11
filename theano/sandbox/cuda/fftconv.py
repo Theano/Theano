@@ -23,142 +23,6 @@ except ImportError:
     scikits_cuda_available = False
 
 
-# TODO: investigate the effect of enabling fastmath on FFT performance
-# (how can it be enabled?).
-
-# base class for shared code between scikits.cuda-based ops
-class ScikitsCudaOp(GpuOp):
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def output_type(self, inp):
-        raise NotImplementedError
-
-    def make_node(self, inp):
-        inp = basic_ops.gpu_contiguous(
-            basic_ops.as_cuda_ndarray_variable(inp))
-
-        assert inp.dtype == "float32"
-
-        return theano.Apply(self, [inp], [self.output_type(inp)()])
-
-
-class CuFFTOp(ScikitsCudaOp):
-    def output_type(self, inp):
-        # add one extra dim for real/imag
-        return CudaNdarrayType(
-            broadcastable=[False] * (inp.type.ndim + 1))
-
-    def make_thunk(self, node, storage_map, _, _2):
-        from theano.misc.pycuda_utils import to_gpuarray
-        inputs = [storage_map[v] for v in node.inputs]
-        outputs = [storage_map[v] for v in node.outputs]
-
-        plan_input_shape = [None]
-        plan = [None]
-
-        def thunk():
-            input_shape = inputs[0][0].shape
-
-            # construct output shape
-            output_shape = list(input_shape)
-            # DFT of real input is symmetric, no need to store
-            # redundant coefficients
-            output_shape[-1] = output_shape[-1] // 2 + 1
-            # extra dimension with length 2 for real/imag
-            output_shape += [2]
-            output_shape = tuple(output_shape)
-
-            z = outputs[0]
-
-            # only allocate if there is no previous allocation of the
-            # right size.
-            if z[0] is None or z[0].shape != output_shape:
-                z[0] = CudaNdarray.zeros(output_shape)
-
-            input_pycuda = to_gpuarray(inputs[0][0])
-            # I thought we'd need to change the type on output_pycuda
-            # so it is complex64, but as it turns out scikits.cuda.fft
-            # doesn't really care either way and treats the array as
-            # if it is complex64 anyway.
-            output_pycuda = to_gpuarray(z[0])
-
-            # only initialise plan if necessary
-            if plan[0] is None or plan_input_shape[0] != input_shape:
-                plan_input_shape[0] = input_shape
-                plan[0] = fft.Plan(input_shape[1:], np.float32, np.complex64,
-                                   batch=input_shape[0])
-
-            fft.fft(input_pycuda, output_pycuda, plan[0])
-
-        thunk.inputs = inputs
-        thunk.outputs = outputs
-        thunk.lazy = False
-
-        return thunk
-
-
-class CuIFFTOp(ScikitsCudaOp):
-    def output_type(self, inp):
-        # remove extra real/imag dim
-        return CudaNdarrayType(
-            broadcastable=[False] * (inp.type.ndim - 1))
-
-    def make_thunk(self, node, storage_map, _, _2):
-        from theano.misc.pycuda_utils import to_gpuarray
-        inputs = [storage_map[v] for v in node.inputs]
-        outputs = [storage_map[v] for v in node.outputs]
-
-        plan_input_shape = [None]
-        plan = [None]
-
-        def thunk():
-            input_shape = inputs[0][0].shape
-
-            # construct output shape
-            # chop off the extra length-2 dimension for real/imag
-            output_shape = list(input_shape[:-1])
-            # restore full signal length
-            output_shape[-1] = (output_shape[-1] - 1) * 2
-            output_shape = tuple(output_shape)
-
-            z = outputs[0]
-
-            # only allocate if there is no previous allocation of the
-            # right size.
-            if z[0] is None or z[0].shape != output_shape:
-                z[0] = CudaNdarray.zeros(output_shape)
-
-            input_pycuda = to_gpuarray(inputs[0][0])
-            # input_pycuda is a float32 array with an extra dimension,
-            # but will be interpreted by scikits.cuda as a complex64
-            # array instead.
-            output_pycuda = to_gpuarray(z[0])
-
-            # only initialise plan if necessary
-            if plan[0] is None or plan_input_shape[0] != input_shape:
-                plan_input_shape[0] = input_shape
-                plan[0] = fft.Plan(output_shape[1:], np.complex64, np.float32,
-                                   batch=output_shape[0])
-
-            fft.ifft(input_pycuda, output_pycuda, plan[0])
-            # strangely enough, enabling rescaling here makes it run
-            # very, very slowly.  so do this rescaling manually
-            # afterwards!
-
-        thunk.inputs = inputs
-        thunk.outputs = outputs
-        thunk.lazy = False
-
-        return thunk
-
-
 def to_complex_gpuarray(x, copyif=False):
     """
     adapted version of theano.misc.pycuda_utils.to_gpuarray that takes
@@ -278,103 +142,6 @@ def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
                               beta, bc_arr.gpudata, ldc, N)
 
 
-class BatchedComplexDotOp(ScikitsCudaOp):
-    """
-    This version uses cublasCgemmBatched under the hood, instead of
-    doing multiple cublasCgemm calls.
-    """
-    def make_node(self, inp1, inp2):
-        inp1 = basic_ops.gpu_contiguous(
-            basic_ops.as_cuda_ndarray_variable(inp1))
-        inp2 = basic_ops.gpu_contiguous(
-            basic_ops.as_cuda_ndarray_variable(inp2))
-
-        assert inp1.dtype == "float32"
-        assert inp2.dtype == "float32"
-        assert inp1.ndim == 4  # (batch, a, b, real/imag)
-        assert inp2.ndim == 4
-
-        return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
-
-    def output_type(self, inp):
-        return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
-
-    def make_thunk(self, node, storage_map, _, _2):
-        inputs = [storage_map[v] for v in node.inputs]
-        outputs = [storage_map[v] for v in node.outputs]
-
-        def thunk():
-            bx = inputs[0]
-            by = inputs[1]
-
-            input_shape_x = bx[0].shape  # (batch, a, b, 2)
-            input_shape_y = by[0].shape  # (batch, b, c, 2)
-
-            output_shape = (input_shape_x[0], input_shape_x[1],
-                            input_shape_y[2], 2)  # (batch, a, c, 2)
-
-            bz = outputs[0]
-
-            # only allocate if there is no previous allocation of the
-            # right size.
-            if bz[0] is None or bz[0].shape != output_shape:
-                bz[0] = CudaNdarray.zeros(output_shape)
-
-            input_bx_pycuda = to_complex_gpuarray(bx[0])
-            input_by_pycuda = to_complex_gpuarray(by[0])
-            output_b_pycuda = to_complex_gpuarray(bz[0])
-
-            # fancy native batched version
-            sc_complex_dot_batched(input_bx_pycuda, input_by_pycuda,
-                                   output_b_pycuda)
-
-        thunk.inputs = inputs
-        thunk.outputs = outputs
-        thunk.lazy = False
-
-        return thunk
-
-
-cufft = CuFFTOp()
-cuifft = CuIFFTOp()
-batched_complex_dot = BatchedComplexDotOp()
-
-
-def mult_and_reduce(input_fft_v, filters_fft_v, input_shape=None,
-                    filter_shape=None):
-    """
-    input_fft_v is (b, ic, i0, i1//2 + 1, 2)
-    filters_fft_v is (oc, ic, i0, i1//2 + 1, 2)
-    """
-
-    if input_shape is None:
-        input_shape = input_fft_v.shape  # symbolic
-
-    if filter_shape is None:
-        filter_shape = filters_fft_v.shape  # symbolic
-
-    b, ic, i0, i1_f, _ = input_shape
-    oc = filter_shape[0]
-
-    # reshape to flatten the dimensions that are multiplied elemwise
-    input_r = input_fft_v.reshape((b, ic, i0 * i1_f, 2))
-    filters_r = filters_fft_v.reshape((oc, ic, i0 * i1_f, 2))
-
-    # shuffle for batched dot product
-    input_s = input_r.dimshuffle(2, 0, 1, 3)  # (i0 * i1_f, b, ic, 2)
-    filters_s = filters_r.dimshuffle(2, 1, 0, 3)  # (i0 * i1_f, ic, oc, 2)
-
-    output_s = batched_complex_dot(input_s, filters_s)
-
-    # shuffle again
-    output_r = output_s.dimshuffle(1, 2, 0, 3)
-
-    # reshape to unflatten
-    output = output_r.reshape((b, oc, i0, i1_f, 2))
-
-    return output
-
-
 class FFTConv2D(GpuOp):
     def __init__(self, border_mode='valid', autopad=False):
         if border_mode not in ('valid', 'full'):
@@ -441,15 +208,15 @@ class FFTConv2D(GpuOp):
     def _do_fft(self, input, plans):
         from theano.misc.pycuda_utils import to_gpuarray
         input_shape = input.shape
-        output_shape = (input_shape[0], input_shape[1],
-                        input_shape[2] // 2 + 1, 2)
+        output_shape = (input_shape[0], input_shape[1], input_shape[2],
+                        input_shape[3] // 2 + 1, 2)
         output = CudaNdarray.zeros(output_shape)
 
         if input_shape in plans:
             plan = plans[input_shape]
         else:
-            plan = fft.Plan(input_shape[1:], np.float32, np.complex64,
-                            batch=input_shape[0])
+            plan = fft.Plan(input_shape[2:], np.float32, np.complex64,
+                            batch=input_shape[0] * input_shape[1])
             plans[input_shape] = plan
 
         fft.fft(to_gpuarray(input), to_gpuarray(output), plan)
@@ -458,13 +225,13 @@ class FFTConv2D(GpuOp):
     def _do_ifft(self, input, plans):
         from theano.misc.pycuda_utils import to_gpuarray
         input_shape = input.shape
-        output_shape = (input_shape[0], input_shape[1],
-                        (input_shape[2] - 1) * 2)
+        output_shape = (input_shape[0], input_shape[1], input_shape[2],
+                        (input_shape[3] - 1) * 2)
         if (input_shape, False) in plans:
             plan = plans[(input_shape, False)]
         else:
-            plan = fft.Plan(output_shape[1:], np.complex64, np.float32,
-                            batch=input_shape[0])
+            plan = fft.Plan(output_shape[2:], np.complex64, np.float32,
+                            batch=input_shape[0] * input_shape[1])
             plans[(input_shape, False)] = plan
         output = CudaNdarray.zeros(output_shape)
 
@@ -536,23 +303,13 @@ class FFTConv2D(GpuOp):
 
         assert o1 % 2 == 0
 
-        input_flat = input_padded.reshape((b * ic, o0, o1))
-        del input_padded
-        filters_flat = filters_padded.reshape((oc * ic, o0, o1))
-        del filters_padded
-
         if getattr(node, '_fft_plans', None) is None:
             node._fft_plans = dict()
 
-        input_fft_flat = self._do_fft(input_flat, node._fft_plans)
-        del input_flat
-        filters_fft_flat = self._do_fft(filters_flat, node._fft_plans)
-        del filters_flat
-
-        input_fft_v = input_fft_flat.reshape((b, ic, o0, o1 // 2 + 1, 2))
-        del input_fft_flat
-        filters_fft_v = filters_fft_flat.reshape((oc, ic, o0, o1 // 2 + 1, 2))
-        del filters_fft_flat
+        input_fft_v = self._do_fft(input_padded, node._fft_plans)
+        del input_padded
+        filters_fft_v = self._do_fft(filters_padded, node._fft_plans)
+        del filters_padded
 
         output_fft_s = self._mult_reduce(input_fft_v, filters_fft_v,
                                          input_fft_v.shape,
@@ -560,14 +317,8 @@ class FFTConv2D(GpuOp):
         del input_fft_v
         del filters_fft_v
 
-        output_fft_flat = output_fft_s.reshape((b * oc, o0, o1 // 2 + 1, 2))
+        output_circ = self._do_ifft(output_fft_s, node._fft_plans)
         del output_fft_s
-
-        output_flat = self._do_ifft(output_fft_flat, node._fft_plans)
-        del output_fft_flat
-
-        output_circ = output_flat.reshape((b, oc, o0, o1))
-        del output_flat
 
         if self.border_mode == 'valid':
             output = output_circ[:, :,
