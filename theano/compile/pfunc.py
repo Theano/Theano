@@ -260,9 +260,9 @@ def rebuild_collect_shared(outputs,
         v, update_v = update_expr[i]
         cloned_v = clone_v_get_shared_updates(v,
                                               copy_inputs_over)
-        import pdb;pdb.set_trace()
-        # If we clone v, we fix some bug, but introduces new one.
-        cloned_v = v
+        # TODO: explain! If we clone v, we fix some bug, but introduces new one.
+        if v in shared_inputs:
+            cloned_v = v
         cloned_update_v = clone_v_get_shared_updates(update_v,
                                                      copy_inputs_over)
         update_d[cloned_v] = cloned_update_v
