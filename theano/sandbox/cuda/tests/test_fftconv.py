@@ -9,6 +9,7 @@ from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
+import theano.sandbox.cuda.fftconv
 
 from theano.sandbox.cuda import float32_shared_constructor as shared
 
@@ -19,7 +20,8 @@ else:
 
 
 class TestConv2dFFT(unittest.TestCase):
-    def run_conv(self, inputs_shape, filters_shape, pad=False, **other_args):
+    def run_conv(self, inputs_shape, filters_shape, border_mode,
+                 autopad=False):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
 
@@ -27,10 +29,9 @@ class TestConv2dFFT(unittest.TestCase):
         filters = shared(filters_val)
 
         conv_ref = theano.tensor.nnet.conv.conv2d(inputs, filters,
-                                                  **other_args)
-        conv_fft = theano.sandbox.cuda.fftconv.conv2d_fft(inputs, filters,
-                                                          pad_last_dim=pad,
-                                                          **other_args)
+                                                  border_mode=border_mode)
+        conv_fft = theano.sandbox.cuda.fftconv.FFTConv2D(
+            border_mode=border_mode, autopad=autopad)(inputs, filters)
 
         f_ref = theano.function([], conv_ref)
         f_fft = theano.function([], conv_fft, mode=mode_with_gpu)
@@ -46,7 +47,7 @@ class TestConv2dFFT(unittest.TestCase):
                       border_mode='valid')
         self.run_conv(inputs_shape=(5, 3, 7, 7),
                       filters_shape=(2, 3, 3, 3),
-                      border_mode='valid', pad=True)
+                      border_mode='valid', autopad=True)
 
     def test_full(self):
         self.run_conv(inputs_shape=(5, 3, 7, 6),
@@ -54,7 +55,7 @@ class TestConv2dFFT(unittest.TestCase):
                       border_mode='full')
         self.run_conv(inputs_shape=(5, 3, 7, 7),
                       filters_shape=(2, 3, 3, 3),
-                      border_mode='full', pad=True)
+                      border_mode='full', autopad=True)
 
     def test_opt_valid(self):
         inputs_shape = (5, 3, 7, 6)

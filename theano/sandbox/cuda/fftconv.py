@@ -69,22 +69,18 @@ def bptrs(a):
 
     taken from scikits.cuda tests/test_cublas.py
     """
-    return pycuda.gpuarray.arange(a.ptr, a.ptr + a.shape[0] * a.strides[0],
-                                  a.strides[0], dtype=cublas.ctypes.c_void_p)
+    return pycuda.gpuarray.arange(a.ptr, a.ptr + a.shape[0] * a.shape[1]
+                                  * a.strides[1], a.strides[1],
+                                  dtype=cublas.ctypes.c_void_p)
 
 
-def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
-                           handle=None):
+def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu):
     """
     uses cublasCgemmBatched to compute a bunch of complex dot products
     in parallel
     """
-    if handle is None:
-        handle = scikits.cuda.misc._global_cublas_handle
+    handle = scikits.cuda.misc._global_cublas_handle
 
-    assert len(bx_gpu.shape) == 3
-    assert len(by_gpu.shape) == 3
-    assert len(bc_gpu.shape) == 3
     assert bx_gpu.dtype == np.complex64
     assert by_gpu.dtype == np.complex64
     assert bc_gpu.dtype == np.complex64
@@ -97,39 +93,20 @@ def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
     alpha = np.complex64(1.0)
     beta = np.complex64(0.0)
 
-    transa = string.lower(transa)
-    transb = string.lower(transb)
+    N1, N2, k, m = by_shape
+    M1, M2, n, l = bx_shape
 
-    if transb in ['t', 'c']:
-        N, m, k = by_shape
-    elif transb in ['n']:
-        N, k, m = by_shape
-    else:
-        raise ValueError('invalid value for transb')
-
-    if transa in ['t', 'c']:
-        N2, l, n = bx_shape
-    elif transa in ['n']:
-        N2, n, l = bx_shape
-    else:
-        raise ValueError('invalid value for transa')
+    N = N1 * N2
+    M = M1 * M2
 
     if l != k:
         raise ValueError('objects are not aligned')
 
-    if N != N2:
+    if N != M:
         raise ValueError('batch sizes are not the same')
 
-    if transb == 'n':
-        lda = max(1, m)
-    else:
-        lda = max(1, k)
-
-    if transa == 'n':
-        ldb = max(1, k)
-    else:
-        ldb = max(1, n)
-
+    lda = max(1, m)
+    ldb = max(1, k)
     ldc = max(1, m)
 
     # construct pointer arrays needed for cublasCgemmBatched
@@ -137,7 +114,7 @@ def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
     by_arr = bptrs(by_gpu)
     bc_arr = bptrs(bc_gpu)
 
-    cublas.cublasCgemmBatched(handle, transb, transa, m, n, k, alpha,
+    cublas.cublasCgemmBatched(handle, 'n', 'n', m, n, k, alpha,
                               by_arr.gpudata, lda, bx_arr.gpudata, ldb,
                               beta, bc_arr.gpudata, ldc, N)
 
@@ -193,8 +170,8 @@ class FFTConv2D(GpuOp):
     def _bcd(self, bx, by):
         input_shape_x = bx.shape
         input_shape_y = by.shape
-        output_shape = (input_shape_x[0], input_shape_x[1],
-                        input_shape_y[2], 2)
+        output_shape = (input_shape_x[0], input_shape_x[1], input_shape_x[2],
+                        input_shape_y[3], 2)
 
         bz = CudaNdarray.zeros(output_shape)
 
@@ -235,7 +212,7 @@ class FFTConv2D(GpuOp):
             plans[(input_shape, False)] = plan
         output = CudaNdarray.zeros(output_shape)
 
-        fft.ifft(to_gpuarray(input), to_gpuarray(output), plan)
+        fft.ifft(to_gpuarray(input, copyif=True), to_gpuarray(output), plan)
         return output
 
     def _mult_reduce(self, input_fft_v, filters_fft_v, input_shape,
@@ -243,27 +220,19 @@ class FFTConv2D(GpuOp):
         b, ic, i0, i1, _ = input_shape
         oc = filter_shape[0]
 
-        input_r = input_fft_v.reshape((b, ic, i0 * i1, 2))
+        input_s = self._dimshuffle(input_fft_v, (2, 3, 0, 1, 4))
         del input_fft_v
-        filters_r = filters_fft_v.reshape((oc, ic, i0 * i1, 2))
+        filters_s = self._dimshuffle(filters_fft_v, (2, 3, 1, 0, 4))
         del filters_fft_v
-
-        input_s = self._dimshuffle(input_r, (2, 0, 1, 3))
-        del input_r
-        filters_s = self._dimshuffle(filters_r, (2, 1, 0, 3))
-        del filters_r
 
         output_s = self._bcd(input_s, filters_s)
         del input_s
         del filters_s
 
-        output_r = self._dimshuffle(output_s, (1, 2, 0, 3))
+        output_r = self._dimshuffle(output_s, (2, 3, 0, 1, 4))
         del output_s
 
-        output = output_r.reshape((b, oc, i0, i1, 2))
-        del output_r
-
-        return output
+        return output_r
 
     def perform(self, node, inp, out):
         input, filters = inp
@@ -276,6 +245,7 @@ class FFTConv2D(GpuOp):
             o0 = i0
             o1 = i1
             if self.autopad and o1 % 2 == 1:
+                o1 += 1
                 input_padded = CudaNdarray.zeros((b, ic, o0, o1))
                 input_padded[:, :, :i0, :i1] = input
             else:
