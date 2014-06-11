@@ -543,21 +543,41 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
 
 
 def ancestors(variable_list, blockers=None):
-    """Return the variables that contribute to those in variable_list (inclusive).
+    """Return the variables that contribute to those in variable_list
 
-    :type variable_list: list of `Variable` instances
+    :type variable_list: list of `Variable`, `In` or `Out` instances
     :param variable_list:
-        output `Variable` instances from which to search backward through owners
+        `Variable` instances from which to search backward through owners
+    :type blockers: same as variable_list
+    :param blockers: stop the graph traversal at those Variable.
     :rtype: list of `Variable` instances
     :returns:
-        all input nodes, in the order found by a left-recursive depth-first search
-        started at the nodes in `variable_list`.
+        all nodes, in the order found by a left-recursive depth-first search
+        started at the nodes in `variable_list` (including them).
 
     """
+    if blockers is None:
+        blockers = ()
+    else:
+        bb = []
+        for b in blockers:
+            if isinstance(b, (theano.In, theano.Out)):
+                bb.append(b.variable)
+            else:
+                bb.append(b)
+        blockers = bb
+
+    var_list = []
+    for var in variable_list:
+        if isinstance(var, (theano.In, theano.Out)):
+            var_list.append(var.variable)
+        else:
+            var_list.append(var)
+
     def expand(r):
         if r.owner and (not blockers or r not in blockers):
             return reversed(r.owner.inputs)
-    dfs_variables = stack_search(deque(variable_list), expand, 'dfs')
+    dfs_variables = stack_search(deque(var_list), expand, 'dfs')
     return dfs_variables
 
 
