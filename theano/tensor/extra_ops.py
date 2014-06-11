@@ -760,6 +760,11 @@ class FillDiagonalOffset(gof.Op):
         if val.dtype != a.dtype:
             raise TypeError('%s: type of second parameter must be the same'
                             ' as the first\'s' % self.__class__.__name__)
+        elif offset.dtype[:3] != 'int':
+            raise TypeError('%s: type of third parameter must be as integer'
+                            ' use theano.tensor.cast( input, \'int32/int64\')' \
+                            % self.__class__.__name__)
+
 
 
         return gof.Apply(self, [a, val, offset], [a.type()])
@@ -769,11 +774,6 @@ class FillDiagonalOffset(gof.Op):
         val = inputs[1]
         offset = inputs[2]
         height, width = a.shape
-
-        # offset should be an integer
-        if offset % 1 != 0:
-            raise ValueError('%s: third parameter must be an integer'\
-                            % self.__class__.__name__)
 
         """
         Note: The fill_diagonal only support rectangular matrix. The output

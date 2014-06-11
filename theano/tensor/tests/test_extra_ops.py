@@ -422,11 +422,11 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
         x = tensor.matrix()
         y = tensor.scalar()
         z = tensor.scalar()
+        z_in = tensor.cast( z, "int32")
 
-        test_offset = numpy.array(numpy.random.randint(-5,5),
-            dtype = config.floatX)
+        test_offset = numpy.random.randint(-5,5)
 
-        f = function([x, y, z], fill_diagonal_offset(x, y, z))
+        f = function([x, y, z_in], fill_diagonal_offset(x, y, z_in))
         for shp in [(8, 8), (5, 8), (8, 5)]:
             a = numpy.random.rand(*shp).astype(config.floatX)
             val = numpy.cast[config.floatX](numpy.random.rand())
@@ -443,8 +443,7 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
                                         a.shape[0]+test_offset )
 
     def test_gradient(self):
-        test_offset = numpy.array(numpy.random.randint(-5,5),
-                        dtype = config.floatX)
+        test_offset = numpy.random.randint(-5,5)
         # input 'offset' will not be tested
         def fill_diagonal_with_fix_offset( a, val):
             return fill_diagonal_offset( a, val, test_offset)
@@ -460,10 +459,9 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
         x = tensor.dmatrix()
         y = tensor.dscalar()
         z = tensor.dscalar()
-        test_offset = numpy.array(numpy.random.randint(-5,5),
-                        dtype = config.floatX)
-        self._compile_and_check([x, y, z], [self.op(x, y, z)],
+        z_in = tensor.cast( z, "int32")
+        self._compile_and_check([x, y, z_in], [self.op(x, y, z_in)],
                                 [numpy.random.rand(8, 5),
                                  numpy.random.rand(),
-                                 test_offset],
-                                self.op_class)
+                                 numpy.random.randint(-5,5)],
+                                 self.op_class )
