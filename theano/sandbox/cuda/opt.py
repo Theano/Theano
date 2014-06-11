@@ -115,7 +115,7 @@ class InputToGpuOptimizer(Optimizer):
 
                 if new_input.type == input.type:
                     fgraph.replace_validate(input, new_input,
-                                         "InputToGpuOptimizer")
+                                            "InputToGpuOptimizer")
             except TypeError:
                 #as we currently only support float32, this can fail.
                 #Using try except make that we won't need

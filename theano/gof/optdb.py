@@ -41,19 +41,19 @@ class DB(object):
             raise ValueError('The name of the object cannot be an existing'
                              ' tag or the name of another existing object.',
                              obj, name)
-        # This restriction is there because in many place we suppose that
-        # something in the DB is there only once.
-        if getattr(obj, 'name', "") in self.__db__:
-            raise ValueError('''You can\'t register the same optimization
-multiple time in a DB. Tryed to register "%s" again under the new name "%s".
- Use theano.gof.ProxyDB to work around that''' % (obj.name, name))
 
         if self.name is not None:
             tags = tags + (self.name,)
         obj.name = name
+        # This restriction is there because in many place we suppose that
+        # something in the DB is there only once.
+        if obj.name in self.__db__:
+            raise ValueError('''You can\'t register the same optimization
+multiple time in a DB. Tryed to register "%s" again under the new name "%s".
+ Use theano.gof.ProxyDB to work around that''' % (obj.name, name))
         self.__db__[name] = set([obj])
         self._names.add(name)
-
+        self.__db__[obj.__class__.__name__].add(obj)
         self.add_tags(name, *tags)
 
     def add_tags(self, name, *tags):

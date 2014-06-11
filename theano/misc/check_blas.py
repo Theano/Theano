@@ -204,6 +204,7 @@ if __name__ == "__main__":
         cuda version      6.0    5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
         gpu
         K6000/NOECC              0.06s
+        K40                      0.07s
         K20m/ECC                        0.07s
         K20/NOECC                       0.07s
         M2090                    0.19s
@@ -213,6 +214,7 @@ if __name__ == "__main__":
         M2070-Q                         0.48s         0.27s         0.32s
         M2050(Amazon)                   0.25s
         C1060                                                       0.46s
+        K600                     1.04s
 
         GTX Titan Black   0.05s
         GTX Titan(D15U-50)       0.06s  0.06s  don't work
