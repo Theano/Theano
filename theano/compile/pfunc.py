@@ -64,9 +64,6 @@ def rebuild_collect_shared(outputs,
 
     """
 
-    if isinstance(outputs, tuple):
-        outputs = list(outputs)
-
     ## This function implements similar functionality as graph.clone
     ## and it should be merged with that
     clone_d = {}
@@ -222,7 +219,7 @@ def rebuild_collect_shared(outputs,
         update_expr.append((store_into, update_val))
 
     # Elements of "outputs" are here cloned to "cloned_outputs"
-    if isinstance(outputs, list):
+    if isinstance(outputs, (list, tuple)):
         cloned_outputs = []
         for v in outputs:
             if isinstance(v, Variable):
@@ -236,17 +233,14 @@ def rebuild_collect_shared(outputs,
                 raise TypeError('Outputs must be theano Variable or '
                                 'Out instances. Received ' + str(v)
                                 + ' of type ' + str(type(v)))
-            #computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
             cloned_v = clone_v_get_shared_updates(outputs, copy_inputs_over)
             cloned_outputs = cloned_v
-            #computed_list.append(cloned_v)
         elif isinstance(outputs, Out):
             cloned_v = clone_v_get_shared_updates(outputs.variable,
                                                   copy_inputs_over)
             cloned_outputs = Out(cloned_v, borrow=outputs.borrow)
-            #computed_list.append(cloned_v)
         elif outputs is None:
             cloned_outputs = []  # TODO: get Function.__call__ to return None
         else:
