@@ -408,6 +408,7 @@ class TestBartlett(utt.InferShapeTester):
         self._compile_and_check([x], [self.op(x)], [0], self.op_class)
         self._compile_and_check([x], [self.op(x)], [1], self.op_class)
 
+
 class TestFillDiagonal(utt.InferShapeTester):
 
     rng = numpy.random.RandomState(43)

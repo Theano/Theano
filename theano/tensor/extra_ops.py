@@ -2,7 +2,10 @@ import numpy as np
 import numpy
 
 import theano
+import theano.tensor as T 
+
 from theano.tensor import basic
+
 from theano import gof, scalar
 tensor = basic
 from theano.gradient import DisconnectedType
@@ -813,27 +816,27 @@ class FillDiagonalOffset(gof.Op):
         # only valid for matrices        
         wr_a = fill_diagonal_offset(grad, 0, offset)  
         
-        import theano.tensor as T 
         offset_abs = T.abs_( offset ) 
         pos_offset_flag = T.ge( offset, 0 )
+        neg_offset_flag = T.lt( offset, 0 )
+        min_wh = T.minimum(width,height)
 
         start = offset * pos_offset_flag + offset_abs * width \
-                 * (1-pos_offset_flag)
-        min_wh = T.minimum(width,height)
+                 * neg_offset_flag
         num_of_step = T.minimum( min_wh, width * pos_offset_flag
-                    + height * ( 1 - pos_offset_flag ) - offset_abs )   
+                    + height * neg_offset_flag - offset_abs )   
        
-        step = grad.shape[1] + 1
+        step = a.shape[1] + 1
         end = start + step * num_of_step
 
-        # input of slide should be integer
+        # input of slice should be integer
         start = T.cast(start,'int32')
         step = T.cast(step,'int32')
         end = T.cast(end,'int32')
 
         wr_val = grad.flatten()[start:end:step].sum()
 
-        wr_offset = axis_grad = theano.gradient.grad_undefined(
+        wr_offset = theano.gradient.grad_undefined(
             self, 2, offset,
             "offset is not defined for non-integer offset so"
             " fill_diagonal_offset(a,val,offset+eps) is undefined")
