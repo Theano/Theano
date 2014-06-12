@@ -17,59 +17,60 @@ class GroupDot(theano.gof.Op):
     def __hash__(self):
         return hash(type(self)) ^ hash(self.n_groups)
 
-    def make_node(self, vec, mat, bias, index):
-        vec = theano.tensor.as_tensor_variable(vec)
-        mat = theano.tensor.as_tensor_variable(mat)
-        bias = theano.tensor.as_tensor_variable(bias)
-        index = theano.tensor.as_tensor_variable(index)
-        assert vec.ndim == 2
-        assert mat.ndim == 3
-        assert bias.ndim == 2
-        assert index.ndim == 1
-        assert 'int' in index.dtype
+    def make_node(self, h, W, b, groups):
+        h = theano.tensor.as_tensor_variable(h)
+        W = theano.tensor.as_tensor_variable(W)
+        b = theano.tensor.as_tensor_variable(b)
+        groups = theano.tensor.as_tensor_variable(groups)
+        assert h.ndim == 2
+        assert W.ndim == 3
+        assert b.ndim == 2
+        assert groups.ndim == 1
+        assert 'int' in groups.dtype
         return theano.gof.Apply(self,
-                                [vec, mat, bias, index],
-                                [vec.type()])
+                                [h, W, b, groups],
+                                [h.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         shared = theano.tensor._shared
 
-        self.W = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
-        self.b = shared(numpy.zeros((2,), dtype=node.inputs[2].dtype))
-        self.h = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
-        self.out = shared(numpy.zeros((2, 2), dtype=node.outputs[0].dtype))
+        self.h_g = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
+        self.W_g = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
+        self.b_g = shared(numpy.zeros((2,), dtype=node.inputs[2].dtype))
+        self.out_g = shared(numpy.zeros((2, 2), dtype=node.outputs[0].dtype))
 
-        out = theano.tensor.dot(self.h, self.W) + self.b
-        updates = [(self.out, out)]
+        out = theano.tensor.dot(self.h_g, self.W_g) + self.b_g
+        updates = [(self.out_g, out)]
         self.step = theano.function([], [], name='GroupDotStep',
                                     updates=updates)
 
         return super(GroupDot, self).make_thunk(node, storage_map,
                                                 compute_map, no_recycling)
 
-    def perform(self, node, ins, _outs):
-        state_below, matrix, biases, groups = ins
+    def perform(self, node, ins, outs):
+        h_val, W_val, b_val, groups_val = ins
+        out_val = outs[0]
 
-        if not (_outs[0][0] and _outs[0][0].shape == state_below.shape):
-            nw_shape = (state_below.shape[0], biases.shape[1])
-            _outs[0][0] = numpy.zeros(nw_shape, dtype=state_below.dtype)
+        # This has been a problem in the past
+        assert groups_val.max() < self.n_groups
+
+        nw_shape = (h_val.shape[0], b_val.shape[1])
+        if not (out_val[0] and out_val[0].shape == nw_shape):
+            out_val[0] = numpy.empty(nw_shape, dtype=h_val.dtype)
+
         for pos in xrange(self.n_groups):
-            mask = groups == pos
+            mask = groups_val == pos
             if mask.sum() != 0:
-                self.W.set_value(matrix[pos], borrow=True)
-                self.b.set_value(biases[pos], borrow=True)
-                self.h.set_value(state_below[mask], borrow=True)
+                self.W_g.set_value(W_val[pos], borrow=True)
+                self.b_g.set_value(b_val[pos], borrow=True)
+                self.h_g.set_value(h_val[mask], borrow=True)
                 self.step()
-                values = self.out.get_value(borrow=True,
-                                            return_internal_type=True)
-                _outs[0][0][mask] = values
+                out_val[0][mask] = self.out_g.get_value(borrow=True)
 
     def grad(self, inputs, grads):
-        state_below, matrix, biases, groups = inputs
-        gout, = grads
-        rval = GroupDotGrad(n_groups=self.n_groups)(state_below,
-                                                    matrix, biases,
-                                                    groups, gout)
+        h, W, b, groups = inputs
+        g, = grads
+        rval = GroupDotGrad(n_groups=self.n_groups)(h, W, b, groups, g)
         return rval + [theano.gradient.grad_undefined(self, 3, groups)]
 
 
@@ -89,71 +90,72 @@ class GroupDotGrad(theano.gof.Op):
     def __hash__(self):
         return hash(type(self)) ^ hash(self.n_groups)
 
-    def make_node(self, vec, mat, bias, index, grad_on_out):
-        vec = theano.tensor.as_tensor_variable(vec)
-        mat = theano.tensor.as_tensor_variable(mat)
-        bias = theano.tensor.as_tensor_variable(bias)
-        grad_on_out = theano.tensor.as_tensor_variable(grad_on_out)
+    def make_node(self, h, W, b, groups, g):
+        h = theano.tensor.as_tensor_variable(h)
+        W = theano.tensor.as_tensor_variable(W)
+        b = theano.tensor.as_tensor_variable(b)
+        g = theano.tensor.as_tensor_variable(g)
+        groups = theano.tensor.as_tensor_variable(groups)
 
-        index = theano.tensor.as_tensor_variable(index)
-        assert vec.ndim == 2
-        assert mat.ndim == 3
-        assert bias.ndim == 2
-        assert index.ndim == 1
-        assert 'int' in index.dtype
+        assert h.ndim == 2
+        assert W.ndim == 3
+        assert b.ndim == 2
+        assert groups.ndim == 1
+        assert 'int' in groups.dtype
         return theano.gof.Apply(self,
-                                [vec, mat, bias, index, grad_on_out],
-                                [vec.type(), mat.type(), bias.type()])
+                                [h, W, b, groups, g],
+                                [h.type(), W.type(), b.type()])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         shared = theano.tensor._shared
 
-        self.W = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
-        self.h = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
-        self.grad_on_out = shared(numpy.zeros((2, 2),dtype=node.inputs[4].dtype))
-        self.gW = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
-        self.gh = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
-        self.gb = shared(numpy.zeros((2,), dtype=node.outputs[2].dtype))
+        self.W_g = shared(numpy.zeros((2, 2), dtype=node.inputs[1].dtype))
+        self.h_g = shared(numpy.zeros((2, 2), dtype=node.inputs[0].dtype))
+        self.g_g = shared(numpy.zeros((2, 2),
+                                              dtype=node.inputs[4].dtype))
+        self.gW_g = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
+        self.gh_g = shared(numpy.zeros((2, 2), dtype=node.outputs[1].dtype))
+        self.gb_g = shared(numpy.zeros((2,), dtype=node.outputs[2].dtype))
 
-        gW = theano.tensor.dot(self.h.T, self.grad_on_out)
-        gh = theano.tensor.dot(self.grad_on_out, self.W.T)
-        gb = self.grad_on_out.sum(0)
-        # 
-        updates = [(self.gW, gW),(self.gb, gb), (self.gh, gh)]
+        gW = theano.tensor.dot(self.h_g.T, self.g_g)
+        gh = theano.tensor.dot(self.g_g, self.W_g.T)
+        gb = self.g_g.sum(0)
+        updates = [(self.gW_g, gW), (self.gb_g, gb), (self.gh_g, gh)]
         self.step = theano.function([], [], updates=updates,
                                     name='GroupDotGradStep')
 
         return super(GroupDotGrad, self).make_thunk(node, storage_map,
                                                     compute_map, no_recycling)
 
-    def perform(self, node, ins, _outs):
-        state_below, matrix, biases, groups, grad_on_out = ins
-        if not (_outs[0][0] and _outs[0][0].shape == state_below.shape):
-            _outs[0][0] = numpy.zeros_like(state_below)
+    def perform(self, node, ins, outs):
+        h_val, W_val, b_val, groups_val, g_val = ins
+        gh_val, gW_val, gb_val = outs
 
-        if not (_outs[1][0] and _outs[1][0].shape == matrix.shape):
-            _outs[1][0] = numpy.zeros_like(matrix)
+        if not (gh_val[0] and gh_val[0].shape == h_val.shape):
+            gh_val[0] = numpy.zeros_like(h_val)
 
-        if not (_outs[2][0] and _outs[2][0].shape == biases.shape):
-            _outs[2][0] = numpy.zeros_like(biases)
+        if not (gW_val[0] and gW_val[0].shape == W_val.shape):
+            gW_val[0] = numpy.zeros_like(W_val)
+
+        if not (gb_val[0] and gb_val[0].shape == b_val.shape):
+            gb_val[0] = numpy.zeros_like(b_val)
+
+        # this has been a problem in the past
+        assert groups_val.max() < self.n_groups
 
         for pos in xrange(self.n_groups):
-            mask = groups == pos
+            mask = groups_val == pos
             if mask.sum() != 0:
-                self.W.set_value(matrix[pos], borrow=True)
-                #self.b.set_value(biases[pos], borrow=True)
-
-                self.h.set_value(state_below[mask],
-                                 borrow=True)
-                self.grad_on_out.set_value(grad_on_out[mask],
-                                           borrow=True)
+                self.W_g.set_value(W_val[pos], borrow=True)
+                self.h_g.set_value(h_val[mask], borrow=True)
+                self.g_g.set_value(g_val[mask], borrow=True)
                 self.step()
-                gh = self.gh.get_value(borrow=True,
-                                       return_internal_type=True)
-                gW = self.gW.get_value(borrow=True,
-                                       return_internal_type=True)
-                gb = self.gb.get_value(borrow=True,
-                                       return_internal_type=True)
-                _outs[0][0][mask] = gh
-                _outs[1][0][pos] += gW
-                _outs[2][0][pos] += gb
+                gh = self.gh_g.get_value(borrow=True,
+                                         return_internal_type=True)
+                gW = self.gW_g.get_value(borrow=True,
+                                         return_internal_type=True)
+                gb = self.gb_g.get_value(borrow=True,
+                                         return_internal_type=True)
+                gh_val[0][mask] = gh
+                gW_val[0][pos] = gW
+                gb_val[0][pos] = gb
