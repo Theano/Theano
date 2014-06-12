@@ -640,53 +640,38 @@ class T_NormTests(unittest.TestCase):
     def test_wrong_type_of_ord_for_vector(self):
         self.assertRaises(ValueError, norm, [2, 1], 'fro', 0)
 
-    def test_wrong_type_of_ord_for_vector_in_matrix(self):
-        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 'fro', 0)
-
-    def test_wrong_type_of_ord_for_vector_in_tensor(self):
-        self.assertRaises(ValueError, norm, [[[2, 1], [3, 4]], [[6, 5], [7, 8]]], 'fro', 0)
-
     def test_wrong_type_of_ord_for_matrix(self):
         self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 0, None)
-
-    def test_wrong_type_of_ord_for_matrix_in_tensor(self):
-        self.assertRaises(ValueError, norm, [[[2, 1], [3, 4]], [[6, 5], [7, 8]]], 0, None)
 
     def test_non_tensorial_input(self):
         self.assertRaises(ValueError, norm, 3, None, None)
 
-    def test_no_enough_dimensions(self):
-        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], None, 3)
+    def test_tensor_input(self):
+        self.assertRaises(NotImplementedError, norm, numpy.random.rand(3, 4, 5), None, None)
 
     def test_numpy_compare(self):
         f = []
         t_n = []
         n_n = []
-        try:
-            rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = numpy.random.RandomState(utt.fetch_seed())
 
-            M = tensor.matrix("A", dtype=theano.config.floatX)
-            V = tensor.vector("V", dtype=theano.config.floatX)
-            N = tensor.tensor3("N", dtype=theano.config.floatX)
+        M = tensor.matrix("A", dtype=theano.config.floatX)
+        V = tensor.vector("V", dtype=theano.config.floatX)
 
-            a = rng.rand(4, 4).astype(theano.config.floatX)
-            b = rng.rand(4).astype(theano.config.floatX)
-            c = rng.rand(4, 4, 4).astype(theano.config.floatX)
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+        b = rng.rand(4).astype(theano.config.floatX)
 
-            A = (   [None, 'fro', 'inf', '-inf', 1, -1, None, 'inf', '-inf', 0, 1, -1, 2, -2, None, 'fro', 'inf', '-inf', 1, -1, None, 'inf', '-inf', 0, 1, -1, 2, -2],
-                    [M, M, M, M, M, M, V, V, V, V, V, V, V, V, N, N, N, N, N, N, N, N, N, N, N, N, N, N],
-                    [None, None, None, None, None, None, None, None, None, None, None, None, None, None, [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], 0, 0, 0, 0, 0, 0, 0, 0],
-                    [a, a, a, a, a, a, b, b, b, b, b, b, b, b, c, c, c, c, c, c, c, c, c, c, c, c, c, c],
-                    [None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2, None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2])
+        A = (   [None, 'fro', 'inf', '-inf', 1, -1, None, 'inf', '-inf', 0, 1, -1, 2, -2],
+                [M, M, M, M, M, M, V, V, V, V, V, V, V, V],
+                [None, None, None, None, None, None, None, None, None, None, None, None, None, None],
+                [a, a, a, a, a, a, b, b, b, b, b, b, b, b],
+                [None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2])
 
-            for i in range(0, 28):
-                f.append(function([A[1][i]], [norm(A[1][i], A[0][i], A[2][i])]))
-                t_n.append(f[i](A[3][i]))
-                n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
-                assert _allclose(n_n[i], t_n[i])
-
-        except TypeError:
-            raise SkipTest('Your numpy version is outdated.')
+        for i in range(0, 14):
+            f.append(function([A[1][i]], [norm(A[1][i], A[0][i], A[2][i])]))
+            t_n.append(f[i](A[3][i]))
+            n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
+            assert _allclose(n_n[i], t_n[i])
 
 class T_lstsq(unittest.TestCase):
 

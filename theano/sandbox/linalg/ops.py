@@ -1215,6 +1215,7 @@ def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
 
 
+<<<<<<< HEAD
 def matrix_power(M, n):
     result = 1
     for i in xrange(n):
