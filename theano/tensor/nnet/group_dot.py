@@ -132,8 +132,10 @@ class GroupDotGrad(theano.gof.Op):
         gh_val, gW_val, gb_val = outs
 
         if not (gh_val[0] and gh_val[0].shape == h_val.shape):
-            gh_val[0] = numpy.zeros_like(h_val)
+            gh_val[0] = numpy.empty_like(h_val)
 
+        # These two can't be empty since the gradient computation
+        # might not touch all the parts.
         if not (gW_val[0] and gW_val[0].shape == W_val.shape):
             gW_val[0] = numpy.zeros_like(W_val)
 
@@ -150,12 +152,6 @@ class GroupDotGrad(theano.gof.Op):
                 self.h_g.set_value(h_val[mask], borrow=True)
                 self.g_g.set_value(g_val[mask], borrow=True)
                 self.step()
-                gh = self.gh_g.get_value(borrow=True,
-                                         return_internal_type=True)
-                gW = self.gW_g.get_value(borrow=True,
-                                         return_internal_type=True)
-                gb = self.gb_g.get_value(borrow=True,
-                                         return_internal_type=True)
-                gh_val[0][mask] = gh
-                gW_val[0][pos] = gW
-                gb_val[0][pos] = gb
+                gh_val[0][mask] = self.gh_g.get_value(borrow=True)
+                gW_val[0][pos] = self.gW_g.get_value(borrow=True)
+                gb_val[0][pos] = self.gb_g.get_value(borrow=True)
