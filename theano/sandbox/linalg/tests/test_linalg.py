@@ -639,7 +639,10 @@ class T_NormTests(unittest.TestCase):
         for i in range(0, 14):
             f.append(function([A[1][i]], [norm(A[1][i], A[0][i], A[2][i])]))
             t_n.append(f[i](A[3][i]))
-            n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
+            try:
+                n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
+            except TypeError:
+                raise SkipTest
             assert _allclose(n_n[i], t_n[i])
 
 class T_lstsq(unittest.TestCase):
