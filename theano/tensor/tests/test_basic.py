@@ -6896,9 +6896,16 @@ class T_Power():
     def test_multiple_power(self):
         x = tensor.matrix()
         y = [1, 2, 3]
-        z = power(x,y)
+        z = power(x, y)
         f = function([x], z)
         assert allclose(f([1, 2, 3]), [1, 4, 27])
+
+    def test_wrong_shape(self):
+        x = tensor.matrix()
+        y = [1, 2, 3]
+        z = power(x, y)
+        f = function([x], z)
+        self.assertRaise(ValueError, f, [1, 2, 3, 4])
 
 """
 
