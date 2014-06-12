@@ -2,7 +2,6 @@ import numpy as np
 import numpy
 
 import theano
-import theano.tensor as T 
 
 from theano.tensor import basic
 
@@ -816,23 +815,23 @@ class FillDiagonalOffset(gof.Op):
         # only valid for matrices        
         wr_a = fill_diagonal_offset(grad, 0, offset)  
         
-        offset_abs = T.abs_( offset ) 
-        pos_offset_flag = T.ge( offset, 0 )
-        neg_offset_flag = T.lt( offset, 0 )
-        min_wh = T.minimum(width,height)
+        offset_abs = basic.abs_( offset ) 
+        pos_offset_flag = basic.ge( offset, 0 )
+        neg_offset_flag = basic.lt( offset, 0 )
+        min_wh = basic.minimum(width,height)
 
         start = offset * pos_offset_flag + offset_abs * width \
                  * neg_offset_flag
-        num_of_step = T.minimum( min_wh, width * pos_offset_flag
+        num_of_step = basic.minimum( min_wh, width * pos_offset_flag
                     + height * neg_offset_flag - offset_abs )   
        
         step = a.shape[1] + 1
         end = start + step * num_of_step
 
         # input of slice should be integer
-        start = T.cast(start,'int32')
-        step = T.cast(step,'int32')
-        end = T.cast(end,'int32')
+        start = basic.cast(start,'int32')
+        step = basic.cast(step,'int32')
+        end = basic.cast(end,'int32')
 
         wr_val = grad.flatten()[start:end:step].sum()
 
