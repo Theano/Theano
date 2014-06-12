@@ -290,7 +290,7 @@ class NVCC_compiler(object):
         #nvcc argument
         preargs1 = []
         for pa in preargs:
-            for pattern in ['-O', '-arch=',
+            for pattern in ['-O', '-arch=', '-ccbin='
                             '--fmad', '--ftz', '--maxrregcount',
                             '--prec-div', '--prec-sqrt',  '--use_fast_math',
                             '-fmad', '-ftz', '-maxrregcount',
