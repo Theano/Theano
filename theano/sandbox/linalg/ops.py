@@ -1205,69 +1205,41 @@ def eigvalsh(a, b, lower=True):
 
 
 def norm(x,ord,axis):
-	x = as_tensor_variable(x)
-	ndim = x.ndim
-	if ndim == 0:
-		raise ValueError("'axis' entry is out of bounds.")
-	elif ndim == 1:
-		if ord == None:
-			return tensor.sum(x**2)**0.5
-		elif ord == 'inf':
-			return tensor.max(abs(x))
-		elif ord == '-inf':
-			return tensor.min(abs(x))
-		elif ord == 0:
-			return x[x.nonzero()].shape[0]
-		else:
-			try:
-				z = tensor.sum(abs(x**ord))**(1./ord)
-			except TypeError:
-				raise ValueError("Invalid norm order for vectors.")
-			return z
-	elif ndim >= 2:
-		if axis == None:
-			if ord == None or ord == 'fro':
-				return tensor.sum(abs(x**2))**(0.5)
-			elif ord == 'inf':
-				return tensor.max(tensor.sum(abs(x), 1))
-			elif ord == '-inf':
-				return tensor.min(tensor.sum(abs(x), 1))
-			elif ord == 1:
-				return tensor.max(tensor.sum(abs(x), 0))
-			elif ord == -1:
-				return tensor.min(tensor.sum(abs(x), 0))
-			else:
-				raise ValueError("Invalid norm order for matrices.")
-		else:
-			try:
-				axis + 1
-				if ord == None:
-					return tensor.sum(x**2, axis)**0.5
-				elif ord == 'inf':
-					return tensor.max(abs(x), axis)
-				elif ord == '-inf':
-					return tensor.min(abs(x), axis)
-				elif ord == 0:
-					return tensor.sum(tensor.neq(x, 0), axis)
-				else:
-					try:
-						z = tensor.sum(abs(x**ord), axis)**(1./ord)
-					except TypeError:
-						raise ValueError("Invalid norm order for vectors.")
-					return z
-			except TypeError:
-				if ord == None or ord == 'fro':
-					return tensor.sum(abs(x**2), axis)**0.5
-				elif ord == 'inf':
-					return tensor.max(tensor.sum(abs(x),1), axis)
-				elif ord == '-inf':
-					return tensor.min(tensor.sum(abs(x),1), axis)
-				elif ord == 1:
-					return tensor.max(tensor.sum(abs(x),0), axis)
-				elif ord == -1:
-					return tensor.min(tensor.sum(abs(x),0), axis)
-				else:
-					raise ValueError("Invalid norm order for matrices.")
+    x = as_tensor_variable(x)
+    ndim = x.ndim
+    if ndim == 0:
+        raise ValueError("'axis' entry is out of bounds.")
+    elif ndim == 1:
+        if ord == None:
+            return tensor.sum(x**2)**0.5
+        elif ord == 'inf':
+            return tensor.max(abs(x))
+        elif ord == '-inf':
+            return tensor.min(abs(x))
+        elif ord == 0:
+            return x[x.nonzero()].shape[0]
+        else:
+            try:
+                z = tensor.sum(abs(x**ord))**(1./ord)
+            except TypeError:
+                raise ValueError("Invalid norm order for vectors.")
+            return z
+    elif ndim == 2:
+        if ord == None or ord == 'fro':
+            return tensor.sum(abs(x**2))**(0.5)
+        elif ord == 'inf':
+            return tensor.max(tensor.sum(abs(x), 1))
+        elif ord == '-inf':
+            return tensor.min(tensor.sum(abs(x), 1))
+        elif ord == 1:
+            return tensor.max(tensor.sum(abs(x), 0))
+        elif ord == -1:
+            return tensor.min(tensor.sum(abs(x), 0))
+        else:
+            raise ValueError("Invalid norm order for matrices.")
+    elif ndim > 2:
+        raise NotImplementedError()
+
 
 class lstsq(theano.Op):
     def __eq__(self, other):
