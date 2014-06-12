@@ -853,9 +853,9 @@ def fill_diagonal_offset(a, val, offset):
         compatible with that of array 'a' (i.e. 'val' cannot be viewed
         as an upcast of 'a').
     :params offset : Scalar value Offset of the diagonal from the main 
-        diagonal. Can be positive or negative.
+        diagonal. Can be positive or negative integer.
     :return: An array identical to 'a' except that its offset diagonal
-        is filled with scalar 'val'.
+        is filled with scalar 'val'. The output is unwrapped.
 
     """
     return fill_diagonal_offset_(a, val, offset)
