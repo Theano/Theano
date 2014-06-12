@@ -4,9 +4,9 @@ from numpy.testing import dec
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 from theano.tensor.fourier import Fourier, fft
 
+from nose.plugins.attrib import attr
 
 class TestFourier(utt.InferShapeTester):
 

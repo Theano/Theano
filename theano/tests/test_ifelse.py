@@ -10,13 +10,13 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import unittest
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 import theano
 from theano import tensor
 import theano.ifelse
 from theano.ifelse import IfElse, ifelse
 from theano.tests  import unittest_tools as utt
-from nose.plugins.attrib import attr
 from theano.gof.python25 import all
 
 

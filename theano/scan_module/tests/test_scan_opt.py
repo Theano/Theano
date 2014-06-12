@@ -5,6 +5,7 @@ import theano
 from theano import config
 from theano import tensor as T
 from theano.tests import unittest_tools as utt
+
 from nose.plugins.attrib import attr
 
 mode = theano.compile.mode.get_mode(config.mode)

@@ -5,7 +5,6 @@ import unittest
 import numpy
 
 from theano.tensor import raw_random
-from nose.plugins.attrib import attr
 from theano.tensor.shared_randomstreams import RandomStreams
 from theano import function, shared
 
@@ -13,6 +12,9 @@ from theano import tensor
 from theano import compile, config, gof
 
 from theano.tests import unittest_tools as utt
+
+from nose.plugins.attrib import attr
+
 
 class T_SharedRandomStreams(unittest.TestCase):
     def setUp(self):

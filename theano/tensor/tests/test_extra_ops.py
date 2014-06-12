@@ -4,7 +4,6 @@ import unittest
 
 import theano
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
@@ -13,6 +12,7 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
 from theano import tensor as T
 from theano import config, tensor, function
 
+from nose.plugins.attrib import attr
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])

@@ -12,6 +12,7 @@ from theano import config
 from theano.tests import unittest_tools as utt
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.tensor.shared_randomstreams import RandomStreams
+
 from nose.plugins.attrib import attr
 
 class T_extending(unittest.TestCase):

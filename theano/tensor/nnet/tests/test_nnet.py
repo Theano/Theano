@@ -2,6 +2,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 
 import theano
 from theano import config
@@ -9,7 +10,6 @@ from theano import tensor as T
 from theano import tensor
 from theano import gof
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 from theano import printing
 from theano.tensor.nnet import (categorical_crossentropy,
                                 crossentropy_categorical_1hot,

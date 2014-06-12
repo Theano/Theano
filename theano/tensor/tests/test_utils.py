@@ -3,10 +3,10 @@ import unittest
 import numpy
 
 import theano
-from nose.plugins.attrib import attr
 from theano.tensor.utils import (hash_from_ndarray, hash_from_dict,
                                  shape_of_variables)
 
+from nose.plugins.attrib import attr
 
 def test_hash_from_ndarray():
     hashs = []

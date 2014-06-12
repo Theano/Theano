@@ -1,9 +1,9 @@
 import numpy
 import unittest
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 import theano
 import theano.tensor as tt
+
 from nose.plugins.attrib import attr
 
 

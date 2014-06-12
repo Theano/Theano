@@ -6,9 +6,10 @@ import theano
 from theano.gof.python25 import all
 from theano import tensor
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 from theano.misc.may_share_memory import may_share_memory
 import theano.sparse
+
+from nose.plugins.attrib import attr
 
 utt.seed_rng()
 

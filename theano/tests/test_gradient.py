@@ -6,7 +6,6 @@ import unittest
 import theano
 from theano import gof
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
@@ -15,6 +14,8 @@ import numpy as np
 from theano.gof.null_type import NullType
 
 one = theano.tensor.as_tensor_variable(1.)
+
+from nose.plugins.attrib import attr
 
 
 def grad_sources_inputs(sources, inputs):

@@ -1,12 +1,12 @@
 
 import unittest
 from theano import function
-from nose.plugins.attrib import attr
 from theano.tensor.basic import (_convert_to_int32, _convert_to_int8,
                                  _convert_to_int16, _convert_to_int64,
                                  _convert_to_float32, _convert_to_float64)
 from theano.tensor import *
 
+from nose.plugins.attrib import attr
 
 class test_casting(unittest.TestCase):
     def test_0(self):

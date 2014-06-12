@@ -2,11 +2,11 @@ import unittest
 import numpy
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
                                              DownsampleFactorMaxGrad)
 from theano import function
 
+from nose.plugins.attrib import attr
 
 class TestDownsampleFactorMax(utt.InferShapeTester):
 

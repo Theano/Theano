@@ -1,11 +1,11 @@
 from nose.plugins.skip import SkipTest
+from nose.plugins.attrib import attr
 import numpy
 
 import theano
 from theano import tensor, function
 from theano.tests import unittest_tools as utt
 from theano.sandbox.linalg.kron import kron
-from nose.plugins.attrib import attr
 
 floatX = theano.config.floatX
 
