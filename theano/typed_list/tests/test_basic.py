@@ -9,7 +9,7 @@ from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
 from theano.typed_list.basic import (GetItem, Insert,
                                       Append, Extend, Remove, Reverse,
-                                      Index, Count)
+                                      Index, Count, Length)
 from theano import sparse
 from theano.tests import unittest_tools as utt
 import scipy.sparse as sp
@@ -511,3 +511,29 @@ class test_count(unittest.TestCase):
         y = sp.csr_matrix(random_lil((10, 40), theano.config.floatX, 3))
 
         self.assertTrue(f([x, y, y], y) == 2)
+
+
+class test_length(unittest.TestCase):
+
+    def test_sanity_check(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+
+        z = Length()(mySymbolicMatricesList)
+
+        f = theano.function([mySymbolicMatricesList], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(f([x, x, x, x]) == 4)
+
+    def test_interface(self):
+        mySymbolicMatricesList = TypedListType(T.TensorType(
+                                theano.config.floatX, (False, False)))()
+        z = mySymbolicMatricesList.__len__()
+
+        f = theano.function([mySymbolicMatricesList], z)
+
+        x = rand_ranged_matrix(-1000, 1000, [100, 101])
+
+        self.assertTrue(f([x, x]) == 2)

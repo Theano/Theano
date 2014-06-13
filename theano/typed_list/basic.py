@@ -13,6 +13,9 @@ class _typed_list_py_operators:
     def __getitem__(self, index):
         return getitem(self, index)
 
+    def __len__(self):
+        return length(self)
+
     def append(self, toAppend):
         return append(self, toAppend)
 
@@ -438,3 +441,38 @@ class Count(Op):
         return self.__class__.__name__
 
 count = Count()
+
+
+class Length(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x):
+        assert isinstance(x.type, TypedListType)
+        return Apply(self, [x], [T.scalar(dtype='int64')])
+
+    def perform(self, node, x, (out, )):
+        out[0] = numpy.asarray(len(x[0]), 'int64')
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def c_code(self, node, name, inp, out, sub):
+        x_name = inp[0]
+        output_name = out[0]
+        fail = sub['fail']
+        return """
+        if(!%(output_name)s)
+            %(output_name)s=(PyArrayObject*)PyArray_EMPTY(0, NULL, NPY_INT64, 0);
+        ((npy_int64*)PyArray_DATA(%(output_name)s))[0]=PyList_Size((PyObject*)%(x_name)s);
+        Py_INCREF(%(output_name)s);
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
+length = Length()
