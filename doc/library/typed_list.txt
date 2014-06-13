@@ -1,0 +1,35 @@
+.. _libdoc_typed_list:
+
+===============================
+:mod:`typed_list` -- Typed List
+===============================
+
+This is a type that represent a list in Theano. All element must have
+the same Theano type. Here is an example::
+
+    import theano.typed_list
+
+    tl = theano.typed_list.TypedListType(theano.tensor.fvector)()
+    v = theano.tensor.fvector()
+    o = theano.typed_list.append(tl, v)
+    f = theano.function([tl, v], o)
+    print f([[1, 2, 3], [4, 5]], [2])
+    #[array([ 1.,  2.,  3.], dtype=float32), array([ 4.,  5.], dtype=float32), array([ 2.], dtype=float32)]
+
+A second example with Scan. Scan don't have yet direct support of
+TypedList, so you can only use it as non_sequences(not in sequences or
+as outputs).::
+
+    import theano.typed_list
+
+    a = theano.typed_list.TypedListType(theano.tensor.fvector)()
+    s, _ = theano.scan(fn=lambda i, tl: tl[i].sum(),
+                       non_sequences=[a],
+                       sequences=[theano.tensor.arange(2, dtype='int64')])
+
+    f = theano.function([a], s)
+    f([[1, 2, 3], [4, 5]])
+    #array([ 6.,  9.], dtype=float32)
+
+.. automodule:: theano.typed_list.basic
+    :members:

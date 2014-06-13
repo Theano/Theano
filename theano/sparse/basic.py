@@ -406,6 +406,7 @@ class SparseConstant(gof.Constant, _sparse_py_operators):
 SparseType.Variable = SparseVariable
 SparseType.Constant = SparseConstant
 
+
 # for more dtypes, call SparseType(format, dtype)
 def matrix(format, name=None, dtype=None):
     if dtype is None:

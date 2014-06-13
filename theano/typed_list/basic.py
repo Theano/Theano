@@ -50,9 +50,7 @@ TypedListType.Variable = TypedListVariable
 
 
 class GetItem(Op):
-    """
-    get specified slice of a typed list
-    """
+    # See doc in instance of this Op after the class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -100,13 +98,16 @@ class GetItem(Op):
         return (1,)
 
 getitem = GetItem()
+"""
+Get specified slice of a typed list..
+
+:param x: type type list.
+:param index: the index of the value to return from `x`.
+"""
 
 
 class Append(Op):
-    """
-    #append an element at the end of another list
-    """
-
+    # See doc in instance of this Op after the class definition.
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -159,13 +160,16 @@ class Append(Op):
         return (1,)
 
 append = Append()
+"""
+Append an element at the end of another list.
+
+:param x: the base typed list.
+:param y: the element to append to `x`.
+"""
 
 
 class Extend(Op):
-    """
-    append all element of a list at the end of another list
-    """
-
+    # See doc in instance of this Op after the class definition.
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -222,10 +226,16 @@ class Extend(Op):
         return (1,)
 
 extend = Extend()
+"""
+Append all element of a list at the end of another list.
+
+:param x: The typed list to extend.
+:param toAppend: The typed list that will be added at the end of `x`.
+"""
 
 
 class Insert(Op):
-
+    # See doc in instance of this Op after the class definition.
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -283,10 +293,17 @@ class Insert(Op):
         return (1,)
 
 insert = Insert()
+"""
+Insert an element at an index in a typed list.
+
+:param x: the typed list to modified.
+:param index: the index where to put the new element in `x`.
+:param toInsert: The new element to insert.
+"""
 
 
 class Remove(Op):
-
+    # See doc in instance of this Op after the class definition.
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -324,10 +341,19 @@ class Remove(Op):
         return self.__class__.__name__
 
 remove = Remove()
+"""
+Remove an element from a typed list.
+
+:param x: the typed list to be changed.
+:param toRemove: an element to be removed from the typed list.
+    We remove only the first instance.
+    It work with ndarray.
+
+"""
 
 
 class Reverse(Op):
-
+    # See doc in instance of this Op after the class definition.
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -380,10 +406,15 @@ class Reverse(Op):
         return (1,)
 
 reverse = Reverse()
+"""
+Reverse the order of a typed list.
+
+:param x: the typed list to be reversed.
+"""
 
 
 class Index(Op):
-
+    # See doc in instance of this Op after the class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -413,7 +444,7 @@ index_ = Index()
 
 
 class Count(Op):
-
+    # See doc in instance of this Op after the class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -441,6 +472,15 @@ class Count(Op):
         return self.__class__.__name__
 
 count = Count()
+"""
+Count the number of time an element is in the typed list.
+
+:param x: The typed list to look into.
+:param elem: The element we want to count in list.
+    The element must evaluate to equal.
+    They don't need to be the same instance. Work with ndrray.
+
+"""
 
 
 class Length(Op):
