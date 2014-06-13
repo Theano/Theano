@@ -444,6 +444,7 @@ count = Count()
 
 
 class Length(Op):
+    # See doc in instance of this Op after the class definition.
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -476,3 +477,8 @@ class Length(Op):
         return (1,)
 
 length = Length()
+"""
+Returns the size of a list.
+
+:param x: typed list.
+"""
