@@ -804,16 +804,7 @@ csm_grad = CSMGrad
 
 
 class Cast(gof.op.Op):
-    """Cast sparse variable to the desired dtype.
-
-    :param x: Sparse matrix.
-
-    :return: Same as `x` but having `out_type` as dtype.
-
-    :note: The grad implemented is regular, i.e. not
-           structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __init__(self, out_type):
         self.out_type = out_type
 
@@ -858,6 +849,17 @@ zcast = Cast('complex128')
 
 
 def cast(variable, dtype):
+    """Cast sparse variable to the desired dtype.
+
+    :param variable: Sparse matrix.
+    :param dtype: the dtype wanted.
+
+    :return: Same as `x` but having `dtype` as dtype.
+
+    :note: The grad implemented is regular, i.e. not
+           structured.
+    """
+
     return Cast(dtype)(variable)
 
 #
@@ -866,19 +868,7 @@ def cast(variable, dtype):
 
 
 class DenseFromSparse(gof.op.Op):
-    """Convert a sparse matrix to a dense one.
-
-    :param x: A sparse matrix.
-
-    :return: A dense matrix, the same as `x`.
-
-    :note: The grad implementation can be controlled
-           through the constructor via the `structured`
-           parameter. `True` will provide a structured
-           grad while `False` will provide a regular
-           grad. By default, the grad is structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __init__(self, structured=True):
         self.sparse_grad = structured
 
@@ -934,6 +924,18 @@ class DenseFromSparse(gof.op.Op):
         return [shapes[0]]
 
 dense_from_sparse = DenseFromSparse()
+"""Convert a sparse matrix to a dense one.
+
+:param x: A sparse matrix.
+
+:return: A dense matrix, the same as `x`.
+
+:note: The grad implementation can be controlled
+    through the constructor via the `structured`
+    parameter. `True` will provide a structured
+    grad while `False` will provide a regular
+    grad. By default, the grad is structured.
+"""
 
 
 class SparseFromDense(gof.op.Op):
@@ -1003,33 +1005,7 @@ csc_from_dense = SparseFromDense('csc')
 
 # Indexing
 class GetItem2d(gof.op.Op):
-    """Implement a subtensor of sparse variable and that return a
-    sparse matrix.
-
-    If you want to take only one element of a sparse matrix see
-    `GetItemScalar` that return a tensor scalar.
-
-    .. note::
-
-        Subtensor selection always returns a matrix, so indexing
-        with [a:b, c:d] is forced.  If one index is a scalar. For
-        instance, x[a:b, c] and x[a, b:c], generate an error. Use
-        instead x[a:b, c:c+1] and x[a:a+1, b:c].
-
-    The above indexing methods are not supported because the return value
-    would be a sparse matrix rather than a sparse vector, which is a
-    deviation from numpy indexing rule.  This decision is made largely
-    for keeping the consistency between numpy and theano. Subjected
-    to modification when sparse vector is supported.
-
-    :param x: Sparse matrix.
-    :param index: Tuple of slice object.
-
-    :return: The slice corresponding in `x`.
-
-    :note: The grad is not implemented for this op.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1111,23 +1087,36 @@ class GetItem2d(gof.op.Op):
         return self.__class__.__name__
 
 get_item_2d = GetItem2d()
+"""Implement a subtensor of sparse variable and that return a
+sparse matrix.
+
+If you want to take only one element of a sparse matrix see
+`GetItemScalar` that return a tensor scalar.
+
+.. note::
+
+    Subtensor selection always returns a matrix, so indexing
+    with [a:b, c:d] is forced.  If one index is a scalar. For
+    instance, x[a:b, c] and x[a, b:c], generate an error. Use
+    instead x[a:b, c:c+1] and x[a:a+1, b:c].
+
+The above indexing methods are not supported because the return value
+would be a sparse matrix rather than a sparse vector, which is a
+deviation from numpy indexing rule.  This decision is made largely
+for keeping the consistency between numpy and theano. Subjected
+to modification when sparse vector is supported.
+
+:param x: Sparse matrix.
+:param index: Tuple of slice object.
+
+:return: The slice corresponding in `x`.
+
+:note: The grad is not implemented for this op.
+"""
 
 
 class GetItemScalar(gof.op.Op):
-    """Implement a subtensor of a sparse variable that take
-    two scalar as index and return a scalar.
-
-    If you want to take a slice of a sparse matrix see
-    `GetItem2d` that return a sparse matrix.
-
-    :param x: Sparse matrix.
-    :param index: Tuple of scalar..
-
-    :return: The item corresponding in `x`.
-
-    :note:  The grad is not implemented for this op.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1170,22 +1159,24 @@ class GetItemScalar(gof.op.Op):
         return self.__class__.__name__
 
 get_item_scalar = GetItemScalar()
+"""Implement a subtensor of a sparse variable that take
+two scalar as index and return a scalar.
+
+If you want to take a slice of a sparse matrix see
+`GetItem2d` that return a sparse matrix.
+
+:param x: Sparse matrix.
+:param index: Tuple of scalar..
+
+:return: The item corresponding in `x`.
+
+:note:  The grad is not implemented for this op.
+"""
 
 
 # Linear Algebra
 class Transpose(gof.op.Op):
-    """Return the transpose of the sparse matrix.
-
-    :param x: Sparse matrix.
-
-    :return: `x` transposed.
-
-    :note: The returned matrix will not be in the
-           same format. `csc` matrix will be changed
-           in `csr` matrix and `csr` matrix in `csc`
-           matrix.
-    :note: The grad is regular, i.e. not structured.
-    """
+    # See doc in instance of this Op or function after this class definition.
     view_map = {0: [0]}
 
     format_map = {'csr': 'csc',
@@ -1220,18 +1211,22 @@ class Transpose(gof.op.Op):
     def infer_shape(self, node, shapes):
         return [shapes[0][::-1]]
 transpose = Transpose()
+"""Return the transpose of the sparse matrix.
+
+:param x: Sparse matrix.
+
+:return: `x` transposed.
+
+:note: The returned matrix will not be in the
+    same format. `csc` matrix will be changed
+    in `csr` matrix and `csr` matrix in `csc`
+    matrix.
+:note: The grad is regular, i.e. not structured.
+"""
 
 
 class Neg(gof.op.Op):
-    """Return the negation of the sparse matrix.
-
-    :param x: Sparse matrix.
-
-    :return: -`x`.
-
-    :note: The grad is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1257,6 +1252,14 @@ class Neg(gof.op.Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 neg = Neg()
+"""Return the negation of the sparse matrix.
+
+:param x: Sparse matrix.
+
+:return: -`x`.
+
+:note: The grad is regular, i.e. not structured.
+"""
 
 
 class ColScaleCSC(gof.op.Op):
@@ -1400,26 +1403,7 @@ def row_scale(x, s):
 
 
 class SpSum(gof.op.Op):
-    """Calculate the sum of a sparse matrix along a specify
-    axis.
-
-    It operates a reduction along the axis specified. When
-    `axis` is `None`, it is apply along all axis.
-
-    :param x: Sparse matrix.
-    :param axis: Axis along the sum is apply. Integers or `None`.
-    :param sparse_grad: `True` to have a structured grad. Boolean.
-
-    :return: The sum of `x` in a dense format.
-
-    :note: The grad implementation is controlled with the `sparse_grad`
-           parameter. `True` will provide a structured grad and `False`
-           will provide a regular grad. For both choice, the grad
-           return a sparse matrix having the same format as `x`.
-    :note: This op does not return a sparse matrix, but a dense tensor
-           matrix.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __init__(self, axis=None, sparse_grad=True):
         super(SpSum, self).__init__()
         self.axis = axis
@@ -1505,21 +1489,31 @@ class SpSum(gof.op.Op):
 
 
 def sp_sum(x, axis=None, sparse_grad=False):
+    """Calculate the sum of a sparse matrix along a specify
+    axis.
+
+    It operates a reduction along the axis specified. When
+    `axis` is `None`, it is apply along all axis.
+
+    :param x: Sparse matrix.
+    :param axis: Axis along the sum is apply. Integers or `None`.
+    :param sparse_grad: `True` to have a structured grad. Boolean.
+
+    :return: The sum of `x` in a dense format.
+
+    :note: The grad implementation is controlled with the `sparse_grad`
+           parameter. `True` will provide a structured grad and `False`
+           will provide a regular grad. For both choice, the grad
+           return a sparse matrix having the same format as `x`.
+    :note: This op does not return a sparse matrix, but a dense tensor
+           matrix.
+    """
+
     return SpSum(axis, sparse_grad)(x)
 
 
 class Diag(gof.op.Op):
-    """Extract the diagonal of a square sparse matrix as a dense
-    vector.
-
-    :param x: A square sparse matrix in csc format.
-
-    :return: A dense vector representing the diagonal elements.
-
-    :note: The grad implemented is regular, i.e. not structured, since
-           the output is a dense vector.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1547,19 +1541,20 @@ class Diag(gof.op.Op):
     def __str__(self):
         return self.__class__.__name__
 diag = Diag()
+"""Extract the diagonal of a square sparse matrix as a dense vector.
+
+:param x: A square sparse matrix in csc format.
+
+:return: A dense vector representing the diagonal elements.
+
+:note: The grad implemented is regular, i.e. not structured, since
+the output is a dense vector.
+
+"""
 
 
 class SquareDiagonal(gof.op.Op):
-    """Return a square sparse (csc) matrix whose diagonal
-    is given by the dense vector argument.
-
-    :param x: Dense vector for the diagonal.
-
-    :return: A sparse matrix having `x` as diagonal.
-
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -1594,23 +1589,19 @@ class SquareDiagonal(gof.op.Op):
     def __str__(self):
         return self.__class__.__name__
 square_diagonal = SquareDiagonal()
+"""Return a square sparse (csc) matrix whose diagonal
+is given by the dense vector argument.
+
+:param x: Dense vector for the diagonal.
+
+:return: A sparse matrix having `x` as diagonal.
+
+:note: The grad implemented is regular, i.e. not structured.
+"""
 
 
 class EnsureSortedIndices(gof.op.Op):
-    """Resort indices of a sparse matrix.
-
-    CSR column indices are not necessarily sorted. Likewise
-    for CSC row indices. Use `ensure_sorted_indices` when sorted
-    indices are required (e.g. when passing data to other
-    libraries).
-
-    :param x: A sparse matrix.
-
-    :return: The same as `x` with indices sorted.
-
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __init__(self, inplace):
         self.inplace = inplace
         if self.inplace:
@@ -1645,6 +1636,19 @@ class EnsureSortedIndices(gof.op.Op):
         else:
             return self.__class__.__name__ + "{no_inplace}"
 ensure_sorted_indices = EnsureSortedIndices(inplace=False)
+"""Resort indices of a sparse matrix.
+
+CSR column indices are not necessarily sorted. Likewise
+for CSC row indices. Use `ensure_sorted_indices` when sorted
+indices are required (e.g. when passing data to other
+libraries).
+
+:param x: A sparse matrix.
+
+:return: The same as `x` with indices sorted.
+
+:note: The grad implemented is regular, i.e. not structured.
+"""
 
 
 def clean(x):
