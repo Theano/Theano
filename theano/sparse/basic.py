@@ -939,22 +939,6 @@ dense_from_sparse = DenseFromSparse()
 
 
 class SparseFromDense(gof.op.Op):
-    """Convert a dense matrix to a sparse matrix.
-
-    To convert in CSR format, use `csr_from_dense`
-    and to convert in CSC format, use `csc_from_dense`.
-
-    :param x: A dense matrix.
-
-    :return: The same as `x` in a sparse matrix
-             format.
-
-    :note: The grad implementation is regular, i.e.
-           not structured.
-    :note: The output sparse format can also be controlled
-           via the `format` parameter in the constructor.
-    """
-
     def __init__(self, format):
         self.format = format
 
@@ -1000,7 +984,26 @@ class SparseFromDense(gof.op.Op):
         return [shapes[0]]
 
 csr_from_dense = SparseFromDense('csr')
+"""Convert a dense matrix to a sparse csr matrix.
+
+:param x: A dense matrix.
+
+:return: The same as `x` in a sparse matrix format.
+
+:note: The grad implementation is regular, i.e.
+    not structured.
+"""
+
 csc_from_dense = SparseFromDense('csc')
+"""Convert a dense matrix to a sparse csc matrix.
+
+:param x: A dense matrix.
+
+:return: The same as `x` in a sparse matrix format.
+
+:note: The grad implementation is regular, i.e.
+    not structured.
+"""
 
 
 # Indexing
@@ -1671,16 +1674,8 @@ def clean(x):
 
 
 class AddSS(gof.op.Op):
-    """Add tw sparse matrix.
-
-    :param x: A sparse matrix.
-    :param y: A sparse matrix
-
-    :return: `x`+`y`
-
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    #add(sparse, sparse).
+    #see the doc of add() for more detail.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1720,19 +1715,7 @@ add_s_s = AddSS()
 
 
 class AddSSData(gof.op.Op):
-    """Add two sparse matrices assuming they have the same sparsity
-    pattern.
-
-    :param x: Sparse matrix.
-    :param y: Sparse matrix.
-
-    :return: The sum of the two sparse matrix element wise.
-
-    :note: `x` and `y` are assumed to have the same
-           sparsity pattern.
-    :note: The grad implemented is structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1771,18 +1754,24 @@ class AddSSData(gof.op.Op):
     def __str__(self):
         return self.__class__.__name__
 add_s_s_data = AddSSData()
+"""Add two sparse matrices assuming they have the same sparsity
+pattern.
+
+:param x: Sparse matrix.
+:param y: Sparse matrix.
+
+:return: The sum of the two sparse matrix element wise.
+
+:note: `x` and `y` are assumed to have the same
+    sparsity pattern.
+:note: The grad implemented is structured.
+
+"""
 
 
 class AddSD(gof.op.Op):
-    """Add a sparse and a dense matrix.
-
-    :param x: A sparse matrix.
-    :param y: A dense matrix
-
-    :return: `x`+`y`
-
-    :note: The grad implemented is structured on `x`.
-    """
+    #add(sparse, sparse).
+    #see the doc of add() for more detail.
     def __init__(self, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
 
@@ -1938,17 +1927,8 @@ def sub(x, y):
 
 
 class MulSS(gof.op.Op):
-    """Elementwise multiply a sparse and a sparse.
-
-    :param x: A sparse matrix.
-    :param y: A sparse matrix.
-
-    :return: `x` * `y`
-
-    :note: At least one of `x` and `y` must be a sparse matrix.
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # mul(sparse, sparse)
+    # See the doc of mul() for more detail
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1990,16 +1970,8 @@ mul_s_s = MulSS()
 
 
 class MulSD(gof.op.Op):
-    """Elementwise multiply a sparse and a dense matrix.
-
-    :param x: A sparse matrix.
-    :param y: A dense matrix.
-
-    :return: `x` * `y`
-
-    :note: The grad is regular, i.e. not structured..
-    """
-
+    # mul(sparse, dense)
+    # See the doc of mul() for more detail
     def __eq__(self, other):
         return (type(self) == type(other))
 
