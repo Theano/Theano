@@ -480,41 +480,50 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
         y = tensor.scalar()
         z = tensor.iscalar()
 
-        test_offset = numpy.random.randint(-5,5)
-
         f = function([x, y, z], fill_diagonal_offset(x, y, z))
-        for shp in [(8, 8), (5, 8), (8, 5)]:
-            a = numpy.random.rand(*shp).astype(config.floatX)
-            val = numpy.cast[config.floatX](numpy.random.rand())
-            out = f(a, val, test_offset)
-            # We can't use numpy.fill_diagonal as it is bugged.
-            assert numpy.allclose(numpy.diag(out, test_offset), val)
-            if test_offset >= 0:
-                assert (out == val).sum() == min( min(a.shape), 
-                                        a.shape[1]-test_offset )
-            else:
-                assert (out == val).sum() == min( min(a.shape), 
-                                        a.shape[0]+test_offset )
+        for test_offset in (-5, -4, -1, 0, 1, 4, 5):
+            for shp in [(8, 8), (5, 8), (8, 5), (5, 5)]:
+                a = numpy.random.rand(*shp).astype(config.floatX)
+                val = numpy.cast[config.floatX](numpy.random.rand())
+                out = f(a, val, test_offset)
+                # We can't use numpy.fill_diagonal as it is bugged.
+                assert numpy.allclose(numpy.diag(out, test_offset), val)
+                if test_offset >= 0:
+                   assert (out == val).sum() == min( min(a.shape), 
+                                            a.shape[1]-test_offset )
+                else:
+                    assert (out == val).sum() == min( min(a.shape), 
+                                            a.shape[0]+test_offset )
 
     def test_gradient(self):
-        test_offset = numpy.random.randint(-5,5)
-        # input 'offset' will not be tested
-        def fill_diagonal_with_fix_offset( a, val):
-            return fill_diagonal_offset( a, val, test_offset)
+        for test_offset in (-5, -4, -1, 0, 1, 4, 5):
+            # input 'offset' will not be tested
+            def fill_diagonal_with_fix_offset( a, val):
+                return fill_diagonal_offset( a, val, test_offset)
 
-        utt.verify_grad(fill_diagonal_with_fix_offset, 
-                    [numpy.random.rand(5, 8), numpy.random.rand()],
-                        n_tests=1, rng=TestFillDiagonalOffset.rng)
-        utt.verify_grad(fill_diagonal_with_fix_offset, 
-                    [numpy.random.rand(8, 5), numpy.random.rand()],
-                        n_tests=1, rng=TestFillDiagonalOffset.rng)
+            utt.verify_grad(fill_diagonal_with_fix_offset, 
+                        [numpy.random.rand(5, 8), numpy.random.rand()],
+                            n_tests=1, rng=TestFillDiagonalOffset.rng)
+            utt.verify_grad(fill_diagonal_with_fix_offset, 
+                        [numpy.random.rand(8, 5), numpy.random.rand()],
+                            n_tests=1, rng=TestFillDiagonalOffset.rng)
+            utt.verify_grad(fill_diagonal_with_fix_offset, 
+                        [numpy.random.rand(5, 5), numpy.random.rand()],
+                            n_tests=1, rng=TestFillDiagonalOffset.rng)
 
     def test_infer_shape(self):
         x = tensor.dmatrix()
         y = tensor.dscalar()
         z = tensor.iscalar()
-        self._compile_and_check([x, y, z], [self.op(x, y, z)],
-                                [numpy.random.rand(8, 5),
-                                 numpy.random.rand(),
-                                 numpy.random.randint(-5,5)],
-                                 self.op_class )
+        for test_offset in (-5, -4, -1, 0, 1, 4, 5):
+            self._compile_and_check([x, y, z], [self.op(x, y, z)],
+                                    [numpy.random.rand(8, 5),
+                                     numpy.random.rand(),
+                                     test_offset],
+                                     self.op_class )
+            self._compile_and_check([x, y, z], [self.op(x, y, z)],
+                                    [numpy.random.rand(5, 8),
+                                     numpy.random.rand(),
+                                     test_offset],
+                                     self.op_class )
+
