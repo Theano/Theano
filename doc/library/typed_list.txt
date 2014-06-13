@@ -4,6 +4,10 @@
 :mod:`typed_list` -- Typed List
 ===============================
 
+.. note::
+
+    This is not in the released version 0.6.0, but will be in the next release (0.7 or 0.6.1).
+
 This is a type that represent a list in Theano. All element must have
 the same Theano type. Here is an example::
 
