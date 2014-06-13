@@ -667,13 +667,15 @@ class T_NormTests(unittest.TestCase):
                 [a, a, a, a, a, a, b, b, b, b, b, b, b, b],
                 [None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2])
 
+        try:
+            numpy.linalg.norm([[2, 1], [3, 4]], None, None)
+        except "norm() takes at most 2 arguments (3 given)":
+            raise SkipTest
+
         for i in range(0, 14):
             f.append(function([A[1][i]], [norm(A[1][i], A[0][i], A[2][i])]))
             t_n.append(f[i](A[3][i]))
-            try:
-                n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
-            except TypeError:
-                raise SkipTest
+            n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
             assert _allclose(n_n[i], t_n[i])
 
 class T_lstsq(unittest.TestCase):
