@@ -447,23 +447,7 @@ discrete_dtypes = int_dtypes + uint_dtypes
 
 # CONSTRUCTION
 class CSMProperties(gof.Op):
-    """Extract all of .data, .indices, .indptr and .shape.
-
-    For specific field, `csm_data`, `csm_indices`, `csm_indptr`
-    and `csm_shape` are provided. Also, `kmap` could be
-    set through to constructor to specified the parts
-    of the parameter `data` the op should return.Fancy indexing
-    with numpy.ndarray should be used for this purpose.
-
-    :param csm: Sparse matrix in CSR or CSC format.
-
-    :return: (data, indices, indptr, shape), the properties
-             of `csm`.
-
-    :note: The grad implemented is regular, i.e. not structured.
-           `infer_shape` method is not available for this op.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     # NOTE
     # We won't implement infer_shape for this op now. This will
     # ask that we implement an GetNNZ op, and this op will keep
@@ -538,11 +522,18 @@ class CSMProperties(gof.Op):
 
 # don't make this a function or it breaks some optimizations below
 csm_properties = CSMProperties()
-"""An CSMProperties object instance. It return the fields data,
-indices, indptr and shape of the sparse varible. Together they specify
-completly the the sparse variable when we know its format. Example::
+"""
+Extract all of .data, .indices, .indptr and .shape field.
 
-    the_data, the_indices, the_indptr, the_shape = csm_properties(a_sparse_var)
+For specific field, `csm_data`, `csm_indices`, `csm_indptr`
+and `csm_shape` are provided.
+
+:param csm: Sparse matrix in CSR or CSC format.
+
+:return: (data, indices, indptr, shape), the properties of `csm`.
+
+:note: The grad implemented is regular, i.e. not structured.
+    `infer_shape` method is not available for this op.
 """
 
 
@@ -575,35 +566,7 @@ def csm_shape(csm):
 
 
 class CSM(gof.Op):
-    """Construct a CSC or CSR matrix from the internal
-    representation.
-
-    The format for the sparse array can be specified
-    through the constructor. Also, `kmap` could be
-    set through to constructor to specified the parts
-    of the parameter `data` the op should use to construct
-    the sparse matrix. Fancy indexing with numpy.ndarray
-    should be used for this purpose.
-
-    :param data: One dimensional tensor representing
-                 the data of the sparse to construct.
-    :param indices: One dimensional tensor of integers
-                    representing the indices of the sparse
-                    matrix to construct.
-    :param indptr: One dimensional tensor of integers
-                   representing the indice pointer for
-                   the sparse matrix to construct.
-    :param shape: One dimensional tensor of integers
-                  representing the shape of the sparse
-                  matrix to construct.
-
-    :return: A sparse matrix having the properties
-             specified by the inputs.
-
-    :note: The grad method returns a dense vector, so it provides
-           a regular grad.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     kmap = None
     """Indexing to speficied what part of the data parameter
     should be use to construct the sparse matrix."""
@@ -726,7 +689,50 @@ class CSM(gof.Op):
 
 
 CSC = CSM('csc')
+"""Construct a CSC matrix from the internal
+representation.
+
+:param data: One dimensional tensor representing
+    the data of the sparse to construct.
+:param indices: One dimensional tensor of integers
+    representing the indices of the sparse
+    matrix to construct.
+:param indptr: One dimensional tensor of integers
+    representing the indice pointer for
+    the sparse matrix to construct.
+:param shape: One dimensional tensor of integers
+    representing the shape of the sparse
+    matrix to construct.
+
+:return: A sparse matrix having the properties
+             specified by the inputs.
+
+:note: The grad method returns a dense vector, so it provides
+    a regular grad.
+"""
+
 CSR = CSM('csr')
+"""Construct a CSR matrix from the internal
+representation.
+
+:param data: One dimensional tensor representing
+    the data of the sparse to construct.
+:param indices: One dimensional tensor of integers
+    representing the indices of the sparse
+    matrix to construct.
+:param indptr: One dimensional tensor of integers
+    representing the indice pointer for
+    the sparse matrix to construct.
+:param shape: One dimensional tensor of integers
+    representing the shape of the sparse
+    matrix to construct.
+
+:return: A sparse matrix having the properties
+             specified by the inputs.
+
+:note: The grad method returns a dense vector, so it provides
+    a regular grad.
+"""
 
 
 class CSMGrad(gof.op.Op):
