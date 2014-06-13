@@ -50,7 +50,7 @@ TypedListType.Variable = TypedListVariable
 
 
 class GetItem(Op):
-    # See doc in instance of this Op after the class definition.
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
