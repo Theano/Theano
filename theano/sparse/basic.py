@@ -2491,6 +2491,7 @@ class GreaterEqualSD(__ComparisonOpSD):
 
 greater_equal_s_d = GreaterEqualSD()
 
+eq = __ComparisonSwitch(equal_s_s, equal_s_d, equal_s_d)
 """
 :param x: A matrix variable.
 :param y: A matrix variable.
@@ -2499,9 +2500,9 @@ greater_equal_s_d = GreaterEqualSD()
 
 :note: At least one of `x` and `y` must be a sparse matrix.
 """
-eq = __ComparisonSwitch(equal_s_s, equal_s_d, equal_s_d)
 
 
+neq = __ComparisonSwitch(not_equal_s_s, not_equal_s_d, not_equal_s_d)
 """
 :param x: A matrix variable.
 :param y: A matrix variable.
@@ -2510,9 +2511,9 @@ eq = __ComparisonSwitch(equal_s_s, equal_s_d, equal_s_d)
 
 :note: At least one of `x` and `y` must be a sparse matrix.
 """
-neq = __ComparisonSwitch(not_equal_s_s, not_equal_s_d, not_equal_s_d)
 
 
+lt = __ComparisonSwitch(less_than_s_s, less_than_s_d, greater_than_s_d)
 """
 :param x: A matrix variable.
 :param y: A matrix variable.
@@ -2521,9 +2522,9 @@ neq = __ComparisonSwitch(not_equal_s_s, not_equal_s_d, not_equal_s_d)
 
 :note: At least one of `x` and `y` must be a sparse matrix.
 """
-lt = __ComparisonSwitch(less_than_s_s, less_than_s_d, greater_than_s_d)
 
 
+gt = __ComparisonSwitch(greater_than_s_s, greater_than_s_d, less_than_s_d)
 """
 :param x: A matrix variable.
 :param y: A matrix variable.
@@ -2533,8 +2534,7 @@ lt = __ComparisonSwitch(less_than_s_s, less_than_s_d, greater_than_s_d)
 :note: At least one of `x` and `y` must be a sparse matrix.
 """
 
-gt = __ComparisonSwitch(greater_than_s_s, greater_than_s_d, less_than_s_d)
-
+le = __ComparisonSwitch(less_equal_s_s, less_equal_s_d, greater_equal_s_d)
 """
 :param x: A matrix variable.
 :param y: A matrix variable.
@@ -2543,8 +2543,9 @@ gt = __ComparisonSwitch(greater_than_s_s, greater_than_s_d, less_than_s_d)
 
 :note: At least one of `x` and `y` must be a sparse matrix.
 """
-le = __ComparisonSwitch(less_equal_s_s, less_equal_s_d, greater_equal_s_d)
 
+ge = __ComparisonSwitch(greater_equal_s_s, greater_equal_s_d,
+                        less_equal_s_d)
 """
 :param x: A matrix variable.
 :param y: A matrix variable.
@@ -2553,9 +2554,6 @@ le = __ComparisonSwitch(less_equal_s_s, less_equal_s_d, greater_equal_s_d)
 
 :note: At least one of `x` and `y` must be a sparse matrix.
 """
-
-ge = __ComparisonSwitch(greater_equal_s_s, greater_equal_s_d,
-                             less_equal_s_d)
 
 
 class HStack(gof.op.Op):
