@@ -62,4 +62,5 @@ from theano.gradient import Rop, Lop, grad, numeric_grad, verify_grad, \
 
 from theano.tensor.sort import sort, argsort
 from theano.tensor.extra_ops import (DiffOp, bincount, squeeze,
-                       repeat, bartlett, fill_diagonal, cumsum, cumprod)
+                       repeat, bartlett, fill_diagonal, fill_diagonal_offset,
+                       cumsum, cumprod)
