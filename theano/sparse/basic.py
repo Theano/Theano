@@ -3730,19 +3730,7 @@ def dot(x, y):
 
 
 class Usmm(gof.op.Op):
-    """Performs the expression is `alpha` * `x` `y` + `z`.
-
-    :param x: Matrix variable.
-    :param y: Matrix variable.
-    :param z: Dense matrix.
-    :param alpha: A tensor scalar.
-
-    :return: The dense matrix resulting from `alpha` * `x` `y` + `z`.
-
-    :note: The grad is not implemented for this op.
-    :note: At least one of `x` or `y` must be a sparse matrix.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     # We don't implement the infer_shape as it is
     # inserted by optimization only.
 
@@ -3802,13 +3790,22 @@ class Usmm(gof.op.Op):
 
         out[0] = rval
 usmm = Usmm()
+"""Performs the expression is `alpha` * `x` `y` + `z`.
+
+:param x: Matrix variable.
+:param y: Matrix variable.
+:param z: Dense matrix.
+:param alpha: A tensor scalar.
+
+:return: The dense matrix resulting from `alpha` * `x` `y` + `z`.
+
+:note: The grad is not implemented for this op.
+:note: At least one of `x` or `y` must be a sparse matrix.
+"""
 
 
 class ConstructSparseFromList(gof.Op):
-    """Constructs a sparse matrix out of a list of 2-D matrix rows
-
-    :note: The grad implemented is regular, i.e. not structured.
-    """
+    # See doc in instance of this Op or function after this class definition.
     def __hash__(self):
         return hash((type(self)))
 
@@ -3898,3 +3895,7 @@ class ConstructSparseFromList(gof.Op):
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
 construct_sparse_from_list = ConstructSparseFromList()
+"""Constructs a sparse matrix out of a list of 2-D matrix rows
+
+:note: The grad implemented is regular, i.e. not structured.
+"""
