@@ -5022,3 +5022,7 @@ def ptp(a, axis=None):
     out = max(a, axis) - min(a, axis)
 
     return out
+
+
+def power(x, y):
+    return x**y

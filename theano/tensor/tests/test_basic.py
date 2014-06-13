@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle, hessian, ptp)
+        stacklists, DimShuffle, hessian, ptp, power)
 
 from theano.tests import unittest_tools as utt
 
@@ -6898,6 +6898,32 @@ if __name__ == '__main__':
     t.setUp()
     t.test_infer_shape()
 
+
+class T_Power():
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = power(A, 3)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_p = numpy.power(a, 3)
+        t_p = fn(a)
+        assert numpy.allclose(n_p, t_p)
+
+    def test_multiple_power(self):
+        x = tensor.matrix()
+        y = [1, 2, 3]
+        z = power(x, y)
+        f = function([x], z)
+        assert allclose(f([1, 2, 3]), [1, 4, 27])
+
+    def test_wrong_shape(self):
+        x = tensor.matrix()
+        y = [1, 2, 3]
+        z = power(x, y)
+        f = function([x], z)
+        self.assertRaise(ValueError, f, [1, 2, 3, 4])
 
 """
 
