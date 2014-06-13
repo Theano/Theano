@@ -905,9 +905,7 @@ eig = Eig()
 
 class SVD(Op):
     """
-    Singular Value Decomposition.
-    Factors the matrix a as u * np.diag(s) * v, where u and v are unitary
-        and s is a 1-d array of a's singular values.
+    See doc in the docstring of the function just after this class.
     """
     _numop = staticmethod(numpy.linalg.svd)
 
@@ -1097,7 +1095,6 @@ def qr(a, mode="full"):
     x = [[2, 1], [3, 4]]
     if isinstance(numpy.linalg.qr(x,mode), tuple):
         return QRFull(mode)(a)
-
     else:
         return QRIncomplete(mode)(a)
 
