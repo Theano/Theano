@@ -1828,20 +1828,6 @@ add_s_d = AddSD()
 
 
 class StructuredAddSV(gof.op.Op):
-    """Structured addition of a sparse matrix and a dense vector.
-    The elements of the vector are are only added to the corresponding
-    non-zero elements. Therefore, this operation outputs another sparse
-    matrix.
-
-    :param x: Sparse matrix.
-    :param y: Tensor type vector.
-
-    :return: A sparse matrix containing the addition of the vector to
-             the data of the sparse matrix.
-
-    :note: The grad implemented is structured since the op is structured.
-    """
-
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1878,6 +1864,19 @@ class StructuredAddSV(gof.op.Op):
     def __str__(self):
         return self.__class__.__name__
 structured_add_s_v = StructuredAddSV()
+"""Structured addition of a sparse matrix and a dense vector.
+The elements of the vector are are only added to the corresponding
+non-zero elements. Therefore, this operation outputs another sparse
+matrix.
+
+:param x: Sparse matrix.
+:param y: Tensor type vector.
+
+:return: A sparse matrix containing the addition of the vector to
+    the data of the sparse matrix.
+
+:note: The grad implemented is structured since the op is structured.
+"""
 
 
 def add(x, y):
@@ -2094,17 +2093,6 @@ mul_s_d = MulSD()
 
 
 class MulSV(gof.op.Op):
-    """Multiplication of sparse matrix by a broadcasted dense vector
-    element wise.
-
-    :param x: Sparse matrix to multiply.
-    :param y: Tensor broadcastable vector.
-
-    :Return: The product x * y element wise.
-
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -2152,6 +2140,15 @@ class MulSV(gof.op.Op):
     def __str__(self):
         return self.__class__.__name__
 mul_s_v = MulSV()
+"""Multiplication of sparse matrix by a broadcasted dense vector element wise.
+
+:param x: Sparse matrix to multiply.
+:param y: Tensor broadcastable vector.
+
+:Return: The product x * y element wise.
+
+:note: The grad implemented is regular, i.e. not structured.
+"""
 
 
 def mul(x, y):
@@ -2328,172 +2325,161 @@ def __ComparisonSwitch(SS, SD, DS):
 
 
 class EqualSS(__ComparisonOpSS):
-    """
-    :param x:first compared sparse matrix
-    :param y:second compared sparse matrix
-
-    :return: x==y
-    """
-
     def comparison(self, x, y):
         return x == y
 
 
 equal_s_s = EqualSS()
+"""
+:param x:first compared sparse matrix
+:param y:second compared sparse matrix
+
+:return: x==y
+"""
 
 
 class EqualSD(__ComparisonOpSD):
-    """
-    :param x:sparse matrix
-    :param y:dense matrix
-
-    :return: x==y
-    """
-
     def comparison(self, x, y):
         return x == y
 
 equal_s_d = EqualSD()
+"""
+:param x:sparse matrix
+:param y:dense matrix
+
+:return: x==y
+"""
 
 
 class NotEqualSS(__ComparisonOpSS):
-    """
-    :param x:first compared sparse matrix
-    :param y:second compared sparse matrix
-
-    :return: x!=y
-    """
-
     def comparison(self, x, y):
         return x != y
 
 not_equal_s_s = NotEqualSS()
+"""
+:param x:first compared sparse matrix
+:param y:second compared sparse matrix
+
+:return: x!=y
+"""
 
 
 class NotEqualSD(__ComparisonOpSD):
-    """
-    :param x:sparse matrix
-    :param y:dense matrix
-
-    :return: x!=y
-    """
-
     def comparison(self, x, y):
         return x != y
 
 not_equal_s_d = NotEqualSD()
+"""
+:param x:sparse matrix
+:param y:dense matrix
+
+:return: x!=y
+"""
 
 
 class LessThanSS(__ComparisonOpSS):
-    """
-    :param x:first compared sparse matrix
-    :param y:second compared sparse matrix
-
-    :return: x<y
-    """
-
     def comparison(self, x, y):
         return x < y
 
 less_than_s_s = LessThanSS()
+"""
+:param x:first compared sparse matrix
+:param y:second compared sparse matrix
+
+:return: x<y
+"""
 
 
 class LessThanSD(__ComparisonOpSD):
-    """
-    :param x:sparse matrix
-    :param y:dense matrix
-
-    :return: x<y
-    """
-
     def comparison(self, x, y):
         return x < y
 
 less_than_s_d = LessThanSD()
+"""
+:param x:sparse matrix
+:param y:dense matrix
+
+:return: x<y
+"""
 
 
 class GreaterThanSS(__ComparisonOpSS):
-    """
-    :param x:first compared sparse matrix
-    :param y:second compared sparse matrix
-
-    :return: x>y
-    """
-
     def comparison(self, x, y):
         return x > y
 
 greater_than_s_s = GreaterThanSS()
+"""
+:param x:first compared sparse matrix
+:param y:second compared sparse matrix
+
+:return: x>y
+"""
 
 
 class GreaterThanSD(__ComparisonOpSD):
-    """
-    :param x:sparse matrix
-    :param y:dense matrix
-
-    :return: x>y
-    """
-
     def comparison(self, x, y):
         return x > y
 
 greater_than_s_d = GreaterThanSD()
+"""
+:param x:sparse matrix
+:param y:dense matrix
+
+:return: x>y
+"""
 
 
 class LessEqualSS(__ComparisonOpSS):
-    """
-    :param x:first compared sparse matrix
-    :param y:second compared sparse matrix
-
-    :return: x<=y
-    """
-
     def comparison(self, x, y):
         return x <= y
 
 less_equal_s_s = LessEqualSS()
+"""
+:param x:first compared sparse matrix
+:param y:second compared sparse matrix
+
+:return: x<=y
+"""
 
 
 class LessEqualSD(__ComparisonOpSD):
-    """
-    :param x:sparse matrix
-    :param y:dense matrix
-
-    :return: x<=y
-    """
-
     def comparison(self, x, y):
         return x <= y
 
 less_equal_s_d = LessEqualSD()
+"""
+:param x:sparse matrix
+:param y:dense matrix
+
+:return: x<=y
+"""
 
 
 class GreaterEqualSS(__ComparisonOpSS):
-    """
-    :param x:first compared sparse matrix
-    :param y:second compared sparse matrix
-
-    :return: x>=y
-    """
-
     def comparison(self, x, y):
         return x >= y
 
 greater_equal_s_s = GreaterEqualSS()
+"""
+:param x:first compared sparse matrix
+:param y:second compared sparse matrix
+
+:return: x>=y
+"""
 
 
 class GreaterEqualSD(__ComparisonOpSD):
-    """
-    :param x:sparse matrix
-    :param y:dense matrix
-
-    :return: x>=y
-    """
-
     def comparison(self, x, y):
         return x >= y
 
 greater_equal_s_d = GreaterEqualSD()
+"""
+:param x:sparse matrix
+:param y:dense matrix
+
+:return: x>=y
+"""
+
 
 eq = __ComparisonSwitch(equal_s_s, equal_s_d, equal_s_d)
 """
@@ -2561,19 +2547,7 @@ ge = __ComparisonSwitch(greater_equal_s_s, greater_equal_s_d,
 
 
 class HStack(gof.op.Op):
-    """Stack sparse matrices horizontally (column wise).
-
-    :param blocks: Sequence of sparse array of compatible shape.
-    :param format: String representing the output format. Default
-                   is csc.
-    :param dtype: Output dtype. Must be specified.
-
-    :return: The concatenation of the sparse arrays column wise.
-
-    :note: The number of line of the sparse matrix must agree.
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __init__(self, format=None, dtype=None):
         if format is None:
             self.format = 'csc'
@@ -2670,19 +2644,7 @@ def hstack(blocks, format=None, dtype=None):
 
 
 class VStack(HStack):
-    """Stack sparse matrices vertically (row wise).
-
-    :param blocks: Sequence of sparse array of compatible shape.
-    :param format: String representing the output format. Default
-                   is csc.
-    :param dtype: Output dtype. Must be specified.
-
-    :return: The concatenation of the sparse arrays row wise.
-
-    :note: The number of column of the sparse matrix must agree.
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def perform(self, node, block, (out, )):
         for b in block:
             assert _is_sparse(b)
@@ -2746,15 +2708,7 @@ def vstack(blocks, format=None, dtype=None):
 
 
 class Remove0(gof.Op):
-    """Remove explicit zeros from a sparse matrix.
-
-    :param x: Sparse matrix.
-
-    :return: Exactly `x` but with a data attribute
-             exempt of zeros.
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or a function after the class definition.
     def __init__(self, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
         self.inplace = inplace
@@ -2792,6 +2746,14 @@ class Remove0(gof.Op):
     def infer_shape(self, node, i0_shapes):
         return i0_shapes
 remove0 = Remove0()
+"""Remove explicit zeros from a sparse matrix.
+
+:param x: Sparse matrix.
+
+:return: Exactly `x` but with a data attribute
+    exempt of zeros.
+:note: The grad implemented is regular, i.e. not structured.
+"""
 
 
 # Structured monoid
@@ -3011,28 +2973,6 @@ def sqrt(x):
 
 
 class TrueDot(gof.op.Op):
-    """Calculate the true dot operation between two matrices.
-
-    `TrueDot` is different of `StructuredDot` for sparse matrix
-    since the grad of `TrueDot` is regular, i.e. not structured.
-
-    The parameter `grad_preserves_dense`, controlled by the
-    constructor, is a boolean flags to controls whether gradients
-    with respect to inputs are converted to dense matrices when the
-    corresponding input y is dense (not in a L{SparseVariable} wrapper).
-    This is generally a good idea when L{Dot} is in the middle of a
-    larger graph, because the types of gy will match that of y. This
-    conversion might be inefficient if the gradients are graph outputs
-    though, hence this mask.
-
-    :param x: Sparse matrix for the left operand.
-    :param y: Sparse or dense matrix for the right operand.
-
-    :return: The dot product `x` . `y` in a sparse matrix.
-
-    :note:
-     - The grad implemented is regular, i.e. not structured.
-    """
 
     # TODO
     # Simplify code by splitting into DotSS and DotSD.
@@ -3136,14 +3076,15 @@ def true_dot(x, y, grad_preserves_dense=True):
     one or all operands are sparse. Supported formats are CSC and CSR.
     The output of the operation is sparse.
 
-    :param x: Sparse matrix or 2d tensor variable.
+    :param x: Sparse matrix.
     :param y: Sparse matrix or 2d tensor variable.
     :param grad_preserves_dense: if True (default), makes the grad of
         dense inputs dense.  Otherwise the grad is always sparse.
 
     :return: The dot product `x`.`y` in a sparse format.
 
-    :note: one of ``x`` or ``y`` must be sparse.
+    :note:
+     - The grad implemented is regular, i.e. not structured.
     """
     # TODO
     # Maybe the triple-transposition formulation
@@ -3171,21 +3112,7 @@ def true_dot(x, y, grad_preserves_dense=True):
 
 # Dot
 class StructuredDot(gof.Op):
-    """Structured Dot is like dot, except that only the
-    gradient wrt non-zero elements of the sparse matrix
-    `a` are calculated and propagated.
-
-    The output is presumed to be a dense matrix, and is represented by a
-    TensorType instance.
-
-    :param a: A sparse matrix.
-    :param b: A sparse or dense matrix.
-
-    :return: The dot product of `a` and `b` as a dense matrix.
-
-    :note: The grad implemented is structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -3600,33 +3527,7 @@ def structured_dot_grad(sparse_A, dense_B, ga):
 
 
 class SamplingDot(gof.op.Op):
-    """Operand for calculating the dot product dot(`x`, `y`.T) = `z` when you
-    only want to calculate a subset of `z`.
-
-    It is equivalent to `p` o (`x` . `y`.T) where o is the element-wise
-    product, `x` and `y` operands of the dot product and `p` is a matrix that
-    contains 1 when the corresponding element of `z` should be calculated
-    and 0 when it shouldn't. Note that SamplingDot has a different interface
-    than `dot` because SamplingDot requires `x` to be a `m`x`k` matrix while
-    `y` is a `n`x`k` matrix instead of the usual `k`x`n` matrix.
-
-    .. note::
-
-        It will work if the pattern is not binary value, but if the
-        pattern doesn't have a high sparsity proportion it will be slower
-        then a more optimized dot followed by a normal elemwise
-        multiplication.
-
-    :param x: Tensor matrix.
-    :param y: Tensor matrix.
-    :param p: Sparse matrix in csr format.
-
-    :return: A dense matrix containing the dot product of `x` by `y`.T only
-             where `p` is 1.
-
-    :note: The grad implemented is regular, i.e. not structured.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -3674,25 +3575,36 @@ class SamplingDot(gof.op.Op):
     def __str__(self):
         return self.__class__.__name__
 sampling_dot = SamplingDot()
+"""Operand for calculating the dot product dot(`x`, `y`.T) = `z` when you
+only want to calculate a subset of `z`.
+
+It is equivalent to `p` o (`x` . `y`.T) where o is the element-wise
+product, `x` and `y` operands of the dot product and `p` is a matrix that
+contains 1 when the corresponding element of `z` should be calculated
+and 0 when it shouldn't. Note that SamplingDot has a different interface
+than `dot` because SamplingDot requires `x` to be a `m`x`k` matrix while
+`y` is a `n`x`k` matrix instead of the usual `k`x`n` matrix.
+
+.. note::
+
+    It will work if the pattern is not binary value, but if the
+    pattern doesn't have a high sparsity proportion it will be slower
+    then a more optimized dot followed by a normal elemwise
+    multiplication.
+
+:param x: Tensor matrix.
+:param y: Tensor matrix.
+:param p: Sparse matrix in csr format.
+
+:return: A dense matrix containing the dot product of `x` by `y`.T only
+    where `p` is 1.
+
+:note: The grad implemented is regular, i.e. not structured.
+"""
 
 
 class Dot(gof.op.Op):
-    """Operation for efficiently calculating the dot product when
-    one or all operands is sparse. Supported format are CSC and CSR.
-    The output of the operation is dense.
-
-    :param x: sparse or dense matrix variable.
-    :param y: sparse or dense matrix variable.
-
-    :return: The dot product `x`.`y` in a dense format.
-
-    :note: The grad implemented is regular, i.e. not structured.
-    :note: At least one of `x` or `y` must be a sparse matrix.
-    :note: When the operation has the form dot(csr_matrix, dense)
-           the gradient of this operation can be performed inplace
-           by UsmmCscDense. This leads to significant speed-ups.
-    """
-
+    # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -3790,13 +3702,17 @@ def dot(x, y):
     one or all operands is sparse. Supported format are CSC and CSR.
     The output of the operation is dense.
 
-    :param x: Matrix variable.
-    :param y: Matrix variable.
+    :param x: sparse or dense matrix variable.
+    :param y: sparse or dense matrix variable.
 
     :return: The dot product `x`.`y` in a dense format.
 
     :note: The grad implemented is regular, i.e. not structured.
     :note: At least one of `x` or `y` must be a sparse matrix.
+    :note: At least one of `x` or `y` must be a sparse matrix.
+    :note: When the operation has the form dot(csr_matrix, dense)
+           the gradient of this operation can be performed inplace
+           by UsmmCscDense. This leads to significant speed-ups.
     """
 
     if hasattr(x, 'getnnz'):
