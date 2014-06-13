@@ -1213,3 +1213,10 @@ class EigvalshGrad(Op):
 
 def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
+
+
+def matrix_power(M, n):
+    result = 1
+    for i in xrange(n):
+        result = theano.dot(result, M)
+    return result
