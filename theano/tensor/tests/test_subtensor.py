@@ -378,6 +378,26 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         good[subi:, subi] = numpy.exp(data[subi:, subi])
         self.assertTrue(numpy.allclose(gval, good), (gval, good))
 
+    def test_grad_2d_inc_set_subtensor(self):
+        for n_shape, m_shape in [
+            [(2, 3), (2, 2)],
+            [(3, 2), (2, 2)],
+            [(3, 2), (1, 2)],
+            [(3, 2), (2,)],
+        ]:
+            for op in [inc_subtensor, set_subtensor]:
+                subi = 2
+                data = numpy.asarray(rand(*n_shape), dtype=self.dtype)
+                n = self.shared(data)
+                z = scal.constant(subi)
+                m = matrix('m', dtype=self.dtype)
+                mv = numpy.asarray(rand(*m_shape), dtype=self.dtype)
+
+                t = op(n[:z, :z], m)
+                gn, gm = theano.tensor.grad(theano.tensor.sum(t), [n, m])
+                utt.verify_grad(lambda m: op(n[:z, :z], m), [mv])
+                utt.verify_grad(lambda nn: op(nn[:z, :z], mv), [data])
+
     def test_grad_0d(self):
         data = numpy.asarray(rand(2, 3), dtype=self.dtype)
         n = self.shared(data)

@@ -1440,6 +1440,25 @@ class IncSubtensor(Op):
         else:
             gx = g_output
         gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
+        if gy.broadcastable != y.broadcastable:
+            y_broad = (True,) * (gy.ndim - y.ndim) + y.broadcastable
+            assert sum(gy.broadcastable) < sum(y_broad)
+            axis_to_sum = []
+            for i in range(gy.ndim):
+                if gy.broadcastable[i] is False and y_broad[i] is True:
+                    axis_to_sum.append(i)
+                elif (gy.broadcastable[i] is True and
+                      y_broad[i] is False):
+                    # This mean that THeano where able to infer that
+                    # gy.shape[i] is 1, so y.shape[i] is 1, but we
+                    # didn't know it. It is fine.
+                    pass
+                else:
+                    assert gy.broadcastable[i] == y_broad[i]
+            gy = gy.sum(axis=axis_to_sum, keepdims=True)
+            if gy.ndim != y.ndim:
+                gy = gy.dimshuffle(*range(y.ndim, gy.ndim))
+            assert gy.broadcastable == y.broadcastable
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
