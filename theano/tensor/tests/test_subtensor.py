@@ -88,7 +88,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f = inplace_func([], t, mode=self.mode)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+                                                         self.ignore_topo)]
         assert len(topo_) == 1
         if not list:
             assert isinstance(topo_[0].op, self.sub)
@@ -365,13 +365,13 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f = inplace_func([], gn, mode=self.mode)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+                                                         self.ignore_topo)]
         if not self.fast_compile:
             assert len(topo_) == 6
         assert numpy.sum([isinstance(node.op, self.inc_sub)
-             for node in topo_]) == 1
+                          for node in topo_]) == 1
         assert numpy.sum([isinstance(node.op, self.sub)
-             for node in topo_]) == 1
+                          for node in topo_]) == 1
         gval = f()
 
         good = numpy.zeros_like(data)
