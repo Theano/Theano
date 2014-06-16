@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
-        tensor4permute_row_elements, Flatten, fmatrix, fscalars, grad,
+        tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
@@ -6923,6 +6923,16 @@ class T_swapaxes(unittest.TestCase):
         x = theano.tensor.matrix()
         x.swapaxes(0,1)
 
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = swapaxes(A, 0, 1)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_s = numpy.swapaxes(a, 0, 1)
+        t_s = fn(a)
+        assert numpy.allclose(n_s, t_s)
 
 class T_Power():
     def test_numpy_compare(self):
@@ -6953,12 +6963,12 @@ class T_Power():
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = tensor.matrix("A", dtype=theano.config.floatX)
-        Q = swapaxes(A, 0, 1)
+        Q = power(A, 2)
         fn = function([A], [Q])
         a = rng.rand(4, 4).astype(theano.config.floatX)
 
-        n_s = numpy.swapaxes(a, 0, 1)
-        t_s = fn(a)
+        n_p = numpy.power(a, 2)
+        t_p = fn(a)
         assert numpy.allclose(n_s, t_s)
 
 """

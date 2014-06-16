@@ -32,7 +32,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        spectral_radius_bound,
                                        imported_scipy,
                                        Eig,
-                                       inv_as_solve
+                                       inv_as_solve,
                                        norm
                                        )
 

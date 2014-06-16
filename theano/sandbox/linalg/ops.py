@@ -1215,8 +1215,6 @@ def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 def matrix_power(M, n):
     result = 1
     for i in xrange(n):
@@ -1254,11 +1252,11 @@ def norm(x,ord):
         elif ord == 1:
             return tensor.max(tensor.sum(abs(x), 0))
         elif ord == -1:
-			z = tensor.sum(abs(x),0)
-			return tensor.min(z)
-		else:
-			raise ValueError(0)
-
+            return tensor.min(tensor.sum(abs(x),0))
+        else:
+            raise ValueError(0)
+    elif ndim > 2:
+        raise NotImplementedError
 
 class lstsq(theano.Op):
     def __eq__(self, other):
