@@ -1112,8 +1112,8 @@ If you want to take only one element of a sparse matrix see
 The above indexing methods are not supported because the return value
 would be a sparse matrix rather than a sparse vector, which is a
 deviation from numpy indexing rule.  This decision is made largely
-for keeping the consistency between numpy and theano. Subjected
-to modification when sparse vector is supported.
+to preserve consistency between numpy and theano. This may be revised
+when sparse vectors are supported.
 
 :param x: Sparse matrix.
 :param index: Tuple of slice object.
@@ -1169,13 +1169,13 @@ class GetItemScalar(gof.op.Op):
 
 get_item_scalar = GetItemScalar()
 """Implement a subtensor of a sparse variable that take
-two scalar as index and return a scalar.
+two scalars as index and return a scalar.
 
 If you want to take a slice of a sparse matrix see
-`GetItem2d` that return a sparse matrix.
+`GetItem2d` that returns a sparse matrix.
 
 :param x: Sparse matrix.
-:param index: Tuple of scalar..
+:param index: Tuple of scalars.
 
 :return: The item corresponding in `x`.
 
@@ -1502,18 +1502,18 @@ def sp_sum(x, axis=None, sparse_grad=False):
     axis.
 
     It operates a reduction along the axis specified. When
-    `axis` is `None`, it is apply along all axis.
+    `axis` is `None`, it is apply along all axes.
 
     :param x: Sparse matrix.
-    :param axis: Axis along the sum is apply. Integers or `None`.
+    :param axis: Axis along which the sum is applied. Integers or `None`.
     :param sparse_grad: `True` to have a structured grad. Boolean.
 
     :return: The sum of `x` in a dense format.
 
     :note: The grad implementation is controlled with the `sparse_grad`
            parameter. `True` will provide a structured grad and `False`
-           will provide a regular grad. For both choice, the grad
-           return a sparse matrix having the same format as `x`.
+           will provide a regular grad. For both choices, the grad
+           returns a sparse matrix having the same format as `x`.
     :note: This op does not return a sparse matrix, but a dense tensor
            matrix.
     """

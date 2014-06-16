@@ -8,7 +8,7 @@
 
     This is not in the released version 0.6.0, but will be in the next release (0.7 or 0.6.1).
 
-This is a type that represent a list in Theano. All element must have
+This is a type that represents a list in Theano. All elements must have
 the same Theano type. Here is an example::
 
     import theano.typed_list
@@ -20,8 +20,8 @@ the same Theano type. Here is an example::
     print f([[1, 2, 3], [4, 5]], [2])
     #[array([ 1.,  2.,  3.], dtype=float32), array([ 4.,  5.], dtype=float32), array([ 2.], dtype=float32)]
 
-A second example with Scan. Scan don't have yet direct support of
-TypedList, so you can only use it as non_sequences(not in sequences or
+A second example with Scan. Scan doesn't yet have direct support of
+TypedList, so you can only use it as non_sequences (not in sequences or
 as outputs).::
 
     import theano.typed_list

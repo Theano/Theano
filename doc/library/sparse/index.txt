@@ -149,7 +149,7 @@ List of Implemented Operations
       The grad implemented is regular.
 
 - Transpose
-    - :func:`Transpose <theano.sparse.basic.transpose>`.
+    - :func:`transpose <theano.sparse.basic.transpose>`.
       The grad implemented is regular.
 
 - Basic Arithmetic
