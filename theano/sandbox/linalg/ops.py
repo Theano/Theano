@@ -1216,6 +1216,7 @@ def eigvalsh(a, b, lower=True):
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 def matrix_power(M, n):
     result = 1
     for i in xrange(n):
@@ -1224,38 +1225,34 @@ def matrix_power(M, n):
 
 
 def norm(x,ord):
-	x = as_tensor_variable(x)
-	ndim = x.ndim
-	if ndim == 0:
-		raise ValueError("'axis' entry is out of bounds.")
-	elif ndim == 1:
-		if ord == None:
-			return tensor.sum(x**2)**0.5
-		elif ord == 'inf':
-			return tensor.max(abs(x))
-		elif ord == '-inf':
-			return tensor.min(abs(x))
-		elif ord == 0:
-			return x[x.nonzero()].shape[0]
-		else:
-			try:
-				z = tensor.sum(abs(x**ord))**(1./ord)
-			except TypeError:
-				raise ValueError("Invalid norm order for vectors.")
-			return z
-	elif ndim == 2:
-		if ord == None or ord == 'fro':
-			z = (tensor.sum(abs(x**2)))**(0.5)
-			return z
-		elif ord == 'inf':
-			z = tensor.sum(abs(x),1)
-			return tensor.max(z)
-		elif ord == '-inf':
-			z = tensor.sum(abs(x),1)
-			return tensor.min(z)
-		elif ord == 1:
-			z = tensor.sum(abs(x),0)
-			return tensor.max(z)
+    x = as_tensor_variable(x)
+    ndim = x.ndim
+    if ndim == 0:
+        raise ValueError("'axis' entry is out of bounds.")
+    elif ndim == 1:
+        if ord == None:
+            return tensor.sum(x**2)**0.5
+        elif ord == 'inf':
+            return tensor.max(abs(x))
+        elif ord == '-inf':
+            return tensor.min(abs(x))
+        elif ord == 0:
+            return x[x.nonzero()].shape[0]
+        else:
+            try:
+                z = tensor.sum(abs(x**ord))**(1./ord)
+            except TypeError:
+                raise ValueError("Invalid norm order for vectors.")
+            return z
+    elif ndim == 2:
+        if ord == None or ord == 'fro':
+            return tensor.sum(abs(x**2))**(0.5)
+        elif ord == 'inf':
+            return tensor.max(tensor.sum(abs(x), 1))
+        elif ord == '-inf':
+            return tensor.min(tensor.sum(abs(x), 1))
+        elif ord == 1:
+            return tensor.max(tensor.sum(abs(x), 0))
         elif ord == -1:
 			z = tensor.sum(abs(x),0)
 			return tensor.min(z)
