@@ -1204,7 +1204,7 @@ def eigvalsh(a, b, lower=True):
     return Eigvalsh(lower)(a, b)
 
 
-def norm(x,ord,axis):
+def norm(x,ord):
     x = as_tensor_variable(x)
     ndim = x.ndim
     if ndim == 0:

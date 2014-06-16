@@ -607,21 +607,18 @@ def test_eigvalsh_grad():
 class T_NormTests(unittest.TestCase):
 
     def test_wrong_type_of_ord_for_vector(self):
-        self.assertRaises(ValueError, norm, [2, 1], 'fro', 0)
+        self.assertRaises(ValueError, norm, [2, 1], 'fro')
 
     def test_wrong_type_of_ord_for_matrix(self):
-        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 0, None)
+        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 0)
 
     def test_non_tensorial_input(self):
-        self.assertRaises(ValueError, norm, 3, None, None)
+        self.assertRaises(ValueError, norm, 3, None)
 
     def test_tensor_input(self):
-        self.assertRaises(NotImplementedError, norm, numpy.random.rand(3, 4, 5), None, None)
+        self.assertRaises(NotImplementedError, norm, numpy.random.rand(3, 4, 5), None)
 
     def test_numpy_compare(self):
-        f = []
-        t_n = []
-        n_n = []
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         M = tensor.matrix("A", dtype=theano.config.floatX)
@@ -632,21 +629,14 @@ class T_NormTests(unittest.TestCase):
 
         A = (   [None, 'fro', 'inf', '-inf', 1, -1, None, 'inf', '-inf', 0, 1, -1, 2, -2],
                 [M, M, M, M, M, M, V, V, V, V, V, V, V, V],
-                [None, None, None, None, None, None, None, None, None, None, None, None, None, None],
                 [a, a, a, a, a, a, b, b, b, b, b, b, b, b],
                 [None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2])
 
-        try:
-            numpy.linalg.norm([[2, 1], [3, 4]], None, None)
-        except TypeError, e:
-            assert "norm() takes at most 2 arguments (3 given)" in str(e)
-            raise SkipTest
-
         for i in range(0, 14):
-            f.append(function([A[1][i]], [norm(A[1][i], A[0][i], A[2][i])]))
-            t_n.append(f[i](A[3][i]))
-            n_n.append(numpy.linalg.norm(A[3][i], A[4][i], A[2][i]))
-            assert _allclose(n_n[i], t_n[i])
+            f = function([A[1][i]], norm(A[1][i], A[0][i]))
+            t_n = f(A[2][i])
+            n_n = numpy.linalg.norm(A[2][i], A[3][i])
+            assert _allclose(n_n, t_n)
 
 
 class T_lstsq(unittest.TestCase):
