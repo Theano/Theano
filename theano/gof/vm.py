@@ -305,7 +305,7 @@ class Stack(VM):
         t0 = time.time()
         rval = self.thunks[idx]()
         self.node_executed_order.append(node)
-        
+
         # Some thunks on some computers run faster than the granularity
         # of the time.time clock.
         # Profile output looks buggy if a node has run but takes 0 time.
@@ -313,11 +313,11 @@ class Stack(VM):
         dt = max(time.time() - t0, 1e-10)
         if self.callback is not None:
             self.callback(
-                    node=node,
-                    thunk=self.thunks[idx],
-                    storage_map=self.storage_map,
-                    compute_map=self.compute_map,
-                    )
+                node=node,
+                thunk=self.thunks[idx],
+                storage_map=self.storage_map,
+                compute_map=self.compute_map,
+            )
         return rval, dt
 
     def __call__(self):
@@ -327,7 +327,7 @@ class Stack(VM):
         dependencies = self.dependencies
         self.node_executed_order = []
         self.node_cleared_order = []
-        
+
         for k in self.storage_map:
             compute_map[k][0] = (k.owner is None)
 
