@@ -99,7 +99,7 @@ class GetItem(Op):
 
 getitem = GetItem()
 """
-Get specified slice of a typed list..
+Get specified slice of a typed list.
 
 :param x: type type list.
 :param index: the index of the value to return from `x`.
@@ -341,13 +341,15 @@ class Remove(Op):
         return self.__class__.__name__
 
 remove = Remove()
-"""
-Remove an element from a typed list.
+"""Remove an element from a typed list.
 
 :param x: the typed list to be changed.
 :param toRemove: an element to be removed from the typed list.
-    We remove only the first instance.
-    It work with ndarray.
+    We only remove the first instance.
+
+:note: Python implementation of remove don't work when we want to
+    remove an ndarray from a list. This implementation work in that
+    case.
 
 """
 
@@ -477,8 +479,11 @@ Count the number of time an element is in the typed list.
 
 :param x: The typed list to look into.
 :param elem: The element we want to count in list.
-    The element must evaluate to equal.
-    They don't need to be the same instance. Work with ndrray.
+    The element are compared with equals.
+
+:note: Python implementation of count don't work when we want to
+    count an ndarray from a list. This implementation work in that
+    case.
 
 """
 

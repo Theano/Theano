@@ -1766,7 +1766,7 @@ pattern.
 :param x: Sparse matrix.
 :param y: Sparse matrix.
 
-:return: The sum of the two sparse matrix element wise.
+:return: The sum of the two sparse matrices element wise.
 
 :note: `x` and `y` are assumed to have the same
     sparsity pattern.
