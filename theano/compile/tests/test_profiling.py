@@ -18,7 +18,8 @@ def test_profiling():
     x = T.dvector("x")
     y = T.dvector("y")
     z = x + y
-    f = theano.function([x, y], z, profile=True, name="test_profiling")
+    p = theano.ProfileStats(False)
+    f = theano.function([x, y], z, profile=p, name="test_profiling")
     output = f([1, 2, 3, 4], [1, 1, 1, 1])
 
     buf = StringIO.StringIO()
