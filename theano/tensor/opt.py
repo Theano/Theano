@@ -1409,12 +1409,13 @@ class Assert(T.Op):
         check = "\n".join(check)
         return """
         %(check)s
+        Py_XDECREF(%(out)s);
         %(out)s = %(value)s;
         Py_INCREF(%(value)s);
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1, 0)
+        return (1, 1)
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]

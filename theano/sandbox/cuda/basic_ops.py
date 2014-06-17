@@ -3289,7 +3289,7 @@ class GpuContiguous(GpuOp):
                 Py_INCREF(%(z)s);
 
             } else if ((NULL == %(z)s)""" % locals()
-        for i in xrange(len(node.inputs[0].type.broadcastable)):
+        for i in xrange(node.inputs[0].type.ndim):
             str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])" % locals()
         str += """
                 || !CudaNdarray_is_c_contiguous(%(z)s))
