@@ -132,7 +132,7 @@ contains code that should be inserted wherever an error is identified.
 
 ``c_declare`` and ``c_extract`` also accept a third ``check_input`` 
 optional argument. If you want your type to validate its inputs, it must
-do it only when ``check_input`` is True.
+only do it when ``check_input`` is True.
 
 The example code below should help you understand how everything plays
 out:
