@@ -91,6 +91,8 @@ Op Contract
 
         def flops(self, inputs, outputs):
             pass
+        
+        check_input = True
 
 .. ../extending/op.txt
 
@@ -132,6 +134,10 @@ string representation of your op.
 
 The :func:`R_op` method is needed if you want ``theano.tensor.Rop`` to
 work with your op.
+
+The optionnal boolean :func:'check_input' attribute is used to specify if you want the types used in 
+your op to check their inputs in their c_code. It can be used to speed up compilation and reduce the 
+number of generated c_file.
 
 Op Example
 ==========
