@@ -347,8 +347,8 @@ remove = Remove()
 :param toRemove: an element to be removed from the typed list.
     We only remove the first instance.
 
-:note: Python implementation of remove don't work when we want to
-    remove an ndarray from a list. This implementation work in that
+:note: Python implementation of remove doesn't work when we want to
+    remove an ndarray from a list. This implementation works in that
     case.
 
 """
@@ -481,8 +481,8 @@ Count the number of time an element is in the typed list.
 :param elem: The element we want to count in list.
     The element are compared with equals.
 
-:note: Python implementation of count don't work when we want to
-    count an ndarray from a list. This implementation work in that
+:note: Python implementation of count doesn't work when we want to
+    count an ndarray from a list. This implementation works in that
     case.
 
 """
