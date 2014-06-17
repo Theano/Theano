@@ -400,6 +400,12 @@ AddConfigVar('warn.vm_gc_bug',
         BoolParam(False),
         in_c_key=False)
 
+AddConfigVar('warn.signal_conv2d_interface',
+             ("Warn we use the new signal.conv2d() when its interface"
+              " changed mid June 2014"),
+             BoolParam(warn_default('0.7')),
+             in_c_key=False)
+
 AddConfigVar('compute_test_value',
         ("If 'True', Theano will run each op at graph build time, using "
          "Constants, SharedVariables and the tag 'test_value' as inputs "
