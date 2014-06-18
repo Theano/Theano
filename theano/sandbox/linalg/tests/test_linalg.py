@@ -40,6 +40,7 @@ from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 
+
 def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
     assert ch[0, pd.shape[1] - 1] == 0

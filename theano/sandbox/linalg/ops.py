@@ -1256,7 +1256,7 @@ def norm(x,ord):
         else:
             raise ValueError(0)
     elif ndim > 2:
-        raise NotImplementedError
+        raise NotImplementedError("We don't support norm witn ndim > 2")
 
 class lstsq(theano.Op):
     def __eq__(self, other):
