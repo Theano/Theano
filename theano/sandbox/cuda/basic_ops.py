@@ -5,10 +5,12 @@ import sys
 import numpy
 
 import theano
+
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
 from theano.scalar import Scalar
+
 scal = scalar # somewhere scalar gets reassigned to be a function
 
 from theano.gof.python25 import all, any
@@ -3534,7 +3536,7 @@ __global__ void kEye(float* a, int n, int m) {
                     cudaGetErrorString(sts),
                     dims[0], dims[1]);
             %(fail)s;
-         }
+        }
         """ % locals()
 
         return s

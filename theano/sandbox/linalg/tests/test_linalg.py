@@ -26,6 +26,8 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        AllocDiag,
                                        alloc_diag,
                                        det,
+                                       svd,
+                                       qr,
                                        #PSD_hint,
                                        trace,
                                        matrix_dot,
@@ -39,6 +41,7 @@ from theano.sandbox.linalg.ops import (cholesky,
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
+from nose.tools import assert_raises
 
 
 def check_lower_triangular(pd, ch_f):
@@ -175,6 +178,50 @@ def test_matrix_dot():
         numpy_sol = numpy.dot(numpy_sol, r)
 
     assert _allclose(numpy_sol, theano_sol)
+
+
+def test_qr_modes():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    A = tensor.matrix("A", dtype=theano.config.floatX)
+    a = rng.rand(4, 4).astype(theano.config.floatX)
+
+    f = function([A], qr(A))
+    t_qr = f(a)
+    n_qr = numpy.linalg.qr(a)
+    assert _allclose(n_qr, t_qr)
+
+    for mode in ["reduced", "r", "raw", "full", "economic"]:
+        f = function([A], qr(A, mode))
+        t_qr = f(a)
+        n_qr = numpy.linalg.qr(a, mode)
+        if isinstance(n_qr, (list, tuple)):
+            assert _allclose(n_qr[0], t_qr[0])
+            assert _allclose(n_qr[1], t_qr[1])
+        else:
+            assert _allclose(n_qr, t_qr)
+
+    try:
+        n_qr = numpy.linalg.qr(a, "complete")
+        f = function([A], qr(A, "complete"))
+        t_qr = f(a)
+        assert _allclose(n_qr, t_qr)
+    except TypeError, e:
+        assert "name 'complete' is not defined" in str(e)
+
+
+def test_svd():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = tensor.matrix("A", dtype=theano.config.floatX)
+    U, V, T = svd(A)
+    fn = function([A], [U, V, T])
+    a = rng.rand(4, 4).astype(theano.config.floatX)
+    n_u, n_v, n_t = numpy.linalg.svd(a)
+    t_u, t_v, t_t = fn(a)
+
+    assert _allclose(n_u, t_u)
+    assert _allclose(n_v, t_v)
+    assert _allclose(n_t, t_t)
 
 
 def test_inverse_singular():
