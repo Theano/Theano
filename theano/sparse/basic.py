@@ -693,7 +693,7 @@ CSC = CSM('csc')
 representation.
 
 :param data: One dimensional tensor representing
-    the data of the sparse to construct.
+    the data of the sparse matrix to construct.
 :param indices: One dimensional tensor of integers
     representing the indices of the sparse
     matrix to construct.
@@ -716,7 +716,7 @@ CSR = CSM('csr')
 representation.
 
 :param data: One dimensional tensor representing
-    the data of the sparse to construct.
+    the data of the sparse matrix to construct.
 :param indices: One dimensional tensor of integers
     representing the indices of the sparse
     matrix to construct.
@@ -1096,18 +1096,18 @@ class GetItem2d(gof.op.Op):
         return self.__class__.__name__
 
 get_item_2d = GetItem2d()
-"""Implement a subtensor of sparse variable and that return a
+"""Implement a subtensor of sparse variable, returning a
 sparse matrix.
 
 If you want to take only one element of a sparse matrix see
-`GetItemScalar` that return a tensor scalar.
+`GetItemScalar` that returns a tensor scalar.
 
 .. note::
 
     Subtensor selection always returns a matrix, so indexing
-    with [a:b, c:d] is forced.  If one index is a scalar. For
-    instance, x[a:b, c] and x[a, b:c], generate an error. Use
-    instead x[a:b, c:c+1] and x[a:a+1, b:c].
+    with [a:b, c:d] is forced.  If one index is a scalar, for
+    instance, x[a:b, c] or x[a, b:c], an error will be raised. Use
+    instead x[a:b, c:c+1] or x[a:a+1, b:c].
 
 The above indexing methods are not supported because the return value
 would be a sparse matrix rather than a sparse vector, which is a
@@ -1118,7 +1118,7 @@ when sparse vectors are supported.
 :param x: Sparse matrix.
 :param index: Tuple of slice object.
 
-:return: The slice corresponding in `x`.
+:return: The corresponding slice in `x`.
 
 :note: The grad is not implemented for this op.
 """
@@ -1168,8 +1168,8 @@ class GetItemScalar(gof.op.Op):
         return self.__class__.__name__
 
 get_item_scalar = GetItemScalar()
-"""Implement a subtensor of a sparse variable that take
-two scalars as index and return a scalar.
+"""Implement a subtensor of a sparse variable that takes
+two scalars as index and returns a scalar.
 
 If you want to take a slice of a sparse matrix see
 `GetItem2d` that returns a sparse matrix.
@@ -1177,7 +1177,7 @@ If you want to take a slice of a sparse matrix see
 :param x: Sparse matrix.
 :param index: Tuple of scalars.
 
-:return: The item corresponding in `x`.
+:return: The corresponding item in `x`.
 
 :note:  The grad is not implemented for this op.
 """
@@ -1498,14 +1498,14 @@ class SpSum(gof.op.Op):
 
 
 def sp_sum(x, axis=None, sparse_grad=False):
-    """Calculate the sum of a sparse matrix along a specify
+    """Calculate the sum of a sparse matrix along a specific
     axis.
 
-    It operates a reduction along the axis specified. When
-    `axis` is `None`, it is apply along all axes.
+    It operates a reduction along the specified axis. When
+    `axis` is `None`, it is applied along all axes.
 
     :param x: Sparse matrix.
-    :param axis: Axis along which the sum is applied. Integers or `None`.
+    :param axis: Axis along which the sum is applied. Integer or `None`.
     :param sparse_grad: `True` to have a structured grad. Boolean.
 
     :return: The sum of `x` in a dense format.
@@ -1645,7 +1645,7 @@ class EnsureSortedIndices(gof.op.Op):
         else:
             return self.__class__.__name__ + "{no_inplace}"
 ensure_sorted_indices = EnsureSortedIndices(inplace=False)
-"""Resort indices of a sparse matrix.
+"""Re-sort indices of a sparse matrix.
 
 CSR column indices are not necessarily sorted. Likewise
 for CSC row indices. Use `ensure_sorted_indices` when sorted
@@ -1662,12 +1662,12 @@ libraries).
 
 def clean(x):
     """Remove explicit zeros from a sparse matrix, and
-    resort indices.
+    re-sort indices.
 
     CSR column indices are not necessarily sorted. Likewise
     for CSC row indices. Use `clean` when sorted
     indices are required (e.g. when passing data to other
-    libraries) and to ensure there is no zeros in the data.
+    libraries) and to ensure there are no zeros in the data.
 
     :param x: A sparse matrix.
 
@@ -1860,9 +1860,9 @@ class StructuredAddSV(gof.op.Op):
         return self.__class__.__name__
 structured_add_s_v = StructuredAddSV()
 """Structured addition of a sparse matrix and a dense vector.
-The elements of the vector are are only added to the corresponding
-non-zero elements. Therefore, this operation outputs another sparse
-matrix.
+The elements of the vector are only added to the corresponding
+non-zero elements of the sparse matrix. Therefore, this operation
+outputs another sparse matrix.
 
 :param x: Sparse matrix.
 :param y: Tensor type vector.
@@ -3696,7 +3696,7 @@ class Usmm(gof.op.Op):
 
         out[0] = rval
 usmm = Usmm()
-"""Performs the expression is `alpha` * `x` `y` + `z`.
+"""Performs the expression `alpha` * `x` `y` + `z`.
 
 :param x: Matrix variable.
 :param y: Matrix variable.
