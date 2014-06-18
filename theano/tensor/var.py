@@ -557,6 +557,16 @@ class _tensor_py_operators:
 
         return theano.tensor.ptp(self, axis)
 
+    def swapaxes(self, axis1, axis2):
+        """Return 'tensor.swapaxes(self, axis1, axis2)
+
+        If a matrix is provided with the right axes, its transpose will be returned.
+        """
+        return theano.tensor.basic.swapaxes(self, axis1, axis2)
+
+    def fill(self, value):
+	"""Fill inputted tensor with the assigned value"""
+	return theano.tensor.basic.fill(self, value)
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""

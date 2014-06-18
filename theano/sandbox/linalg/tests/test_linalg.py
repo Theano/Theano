@@ -3,6 +3,8 @@ import unittest
 import numpy
 import numpy.linalg
 from numpy.testing import assert_array_almost_equal
+from numpy.testing import dec, assert_array_equal, assert_allclose
+from numpy import inf
 
 import theano
 from theano import tensor, function
@@ -30,8 +32,10 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        spectral_radius_bound,
                                        imported_scipy,
                                        Eig,
-                                       inv_as_solve
+                                       inv_as_solve,
+                                       norm
                                        )
+
 from theano.sandbox.linalg import eig, eigh, eigvalsh
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -631,3 +635,69 @@ class Matrix_power():
         f = function([A], [Q])
         a = rng.rand(4, 3).astype(theano.config.floatX)
         self.assertRaises(ValueError, f, a)
+
+class T_NormTests(unittest.TestCase):
+
+    def test_wrong_type_of_ord_for_vector(self):
+        self.assertRaises(ValueError, norm, [2, 1], 'fro')
+
+    def test_wrong_type_of_ord_for_matrix(self):
+        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 0)
+
+    def test_non_tensorial_input(self):
+        self.assertRaises(ValueError, norm, 3, None)
+
+    def test_tensor_input(self):
+        self.assertRaises(NotImplementedError, norm, numpy.random.rand(3, 4, 5), None)
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        M = tensor.matrix("A", dtype=theano.config.floatX)
+        V = tensor.vector("V", dtype=theano.config.floatX)
+
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+        b = rng.rand(4).astype(theano.config.floatX)
+
+        A = (   [None, 'fro', 'inf', '-inf', 1, -1, None, 'inf', '-inf', 0, 1, -1, 2, -2],
+                [M, M, M, M, M, M, V, V, V, V, V, V, V, V],
+                [a, a, a, a, a, a, b, b, b, b, b, b, b, b],
+                [None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2])
+
+        for i in range(0, 14):
+            f = function([A[1][i]], norm(A[1][i], A[0][i]))
+            t_n = f(A[2][i])
+            n_n = numpy.linalg.norm(A[2][i], A[3][i])
+            assert _allclose(n_n, t_n)
+
+
+class T_lstsq(unittest.TestCase):
+
+    def test_correct_solution(self):
+        x = tensor.lmatrix()
+        y = tensor.lmatrix()
+        z = tensor.lscalar()
+        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        f = function([x, y, z], b)
+        TestMatrix1 = numpy.asarray([[2, 1], [3, 4]])
+        TestMatrix2 = numpy.asarray([[17, 20], [43, 50]])
+        TestScalar = numpy.asarray(1)
+        f = function([x, y, z], b)
+        m = f(TestMatrix1, TestMatrix2, TestScalar)
+        self.assertTrue(numpy.allclose(TestMatrix2, numpy.dot(TestMatrix1, m[0])))
+
+    def test_wrong_coefficient_matrix(self):
+        x = tensor.vector()
+        y = tensor.vector()
+        z = tensor.scalar()
+        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        f = function([x, y, z], b)
+        self.assertRaises(numpy.linalg.linalg.LinAlgError, f, [2, 1], [2, 1], 1)
+
+    def test_wrong_rcond_dimension(self):
+        x = tensor.vector()
+        y = tensor.vector()
+        z = tensor.vector()
+        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        f = function([x, y, z], b)
+        self.assertRaises(numpy.linalg.LinAlgError, f, [2, 1], [2, 1], [2, 1])

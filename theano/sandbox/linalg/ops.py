@@ -1220,3 +1220,66 @@ def matrix_power(M, n):
     for i in xrange(n):
         result = theano.dot(result, M)
     return result
+
+
+def norm(x,ord):
+    x = as_tensor_variable(x)
+    ndim = x.ndim
+    if ndim == 0:
+        raise ValueError("'axis' entry is out of bounds.")
+    elif ndim == 1:
+        if ord == None:
+            return tensor.sum(x**2)**0.5
+        elif ord == 'inf':
+            return tensor.max(abs(x))
+        elif ord == '-inf':
+            return tensor.min(abs(x))
+        elif ord == 0:
+            return x[x.nonzero()].shape[0]
+        else:
+            try:
+                z = tensor.sum(abs(x**ord))**(1./ord)
+            except TypeError:
+                raise ValueError("Invalid norm order for vectors.")
+            return z
+    elif ndim == 2:
+        if ord == None or ord == 'fro':
+            return tensor.sum(abs(x**2))**(0.5)
+        elif ord == 'inf':
+            return tensor.max(tensor.sum(abs(x), 1))
+        elif ord == '-inf':
+            return tensor.min(tensor.sum(abs(x), 1))
+        elif ord == 1:
+            return tensor.max(tensor.sum(abs(x), 0))
+        elif ord == -1:
+            return tensor.min(tensor.sum(abs(x),0))
+        else:
+            raise ValueError(0)
+    elif ndim > 2:
+        raise NotImplementedError("We don't support norm witn ndim > 2")
+
+class lstsq(theano.Op):
+    def __eq__(self, other):
+        pass
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, x, y, rcond):
+        x = theano.tensor.as_tensor_variable(x)
+        y = theano.tensor.as_tensor_variable(y)
+        rcond = theano.tensor.as_tensor_variable(rcond)
+        return theano.Apply(self, [x, y, rcond], [y.type(), theano.tensor.dvector(), theano.tensor.lscalar(), theano.tensor.dvector()])
+
+    def perform(self, node, inputs, outputs):
+        x = inputs[0]
+        y = inputs[1]
+        rcond = inputs[2]
+        zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])            
+        outputs[0][0] = zz[0]
+        outputs[1][0] = zz[1]
+        outputs[2][0] = zz[2]
+        outputs[3][0] = zz[3]

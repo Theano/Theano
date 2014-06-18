@@ -45,7 +45,9 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle, hessian, ptp, power)
+        stacklists, DimShuffle, hessian, ptp, power,
+        swapaxes
+        )
 
 from theano.tests import unittest_tools as utt
 
@@ -6899,6 +6901,39 @@ if __name__ == '__main__':
     t.test_infer_shape()
 
 
+class T_swapaxes(unittest.TestCase):
+
+    def test_no_dimensional_input(self):
+        self.assertRaises(IndexError, swapaxes, 2, 0, 1)
+
+    def test_unidimensional_input(self):
+        self.assertRaises(IndexError, swapaxes, [2, 1], 0, 1)
+
+    def test_not_enough_dimension(self):
+        self.assertRaises(IndexError, swapaxes, [[2, 1], [3, 4]], 3, 4)
+
+    def test_doubleswap(self):
+        y = matrix()
+        n = swapaxes(y, 0, 1)
+        f = function([y], n)
+        testMatrix = [[2, 1], [3, 4]]
+        self.assertTrue(numpy.array_equal(testMatrix, f(f(testMatrix))))
+
+    def test_interface(self):
+        x = theano.tensor.matrix()
+        x.swapaxes(0,1)
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = swapaxes(A, 0, 1)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_s = numpy.swapaxes(a, 0, 1)
+        t_s = fn(a)
+        assert numpy.allclose(n_s, t_s)
+
 class T_Power():
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -6924,6 +6959,17 @@ class T_Power():
         z = power(x, y)
         f = function([x], z)
         self.assertRaise(ValueError, f, [1, 2, 3, 4])
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = power(A, 2)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_p = numpy.power(a, 2)
+        t_p = fn(a)
+        assert numpy.allclose(n_s, t_s)
 
 """
 

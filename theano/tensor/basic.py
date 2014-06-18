@@ -5026,3 +5026,12 @@ def ptp(a, axis=None):
 
 def power(x, y):
     return x**y
+
+
+def swapaxes(y,axis1,axis2):
+	"swap axes of inputted tensor"
+	y = as_tensor_variable(y)
+	ndim = y.ndim
+	li = range(0, ndim)
+	li[axis1], li[axis2] = li[axis2], li[axis1]
+	return y.dimshuffle(li)
