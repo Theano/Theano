@@ -73,6 +73,7 @@ def may_fail(msg, EClass):
         return wrapper
     return test_decorator
 
+
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                  on_unused_input='raise', name=None):
     if mode is None:
@@ -92,6 +93,7 @@ def fake_shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
                      allow_downcast=allow_downcast, **kwargs)
         except TypeError:
             continue
+
 
 def rand_gpuarray(*shape, **kwargs):
     r = rng.rand(*shape) * 2 - 1
@@ -208,10 +210,10 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
 def test_transfer_cpu_gpu():
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
-    
+
     av = numpy.asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
-    
+
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
     assert GpuArrayType.values_eq(fv, gv)
@@ -231,8 +233,8 @@ def test_transfer_strided():
     av = numpy.asarray(rng.rand(5, 8), dtype='float32')
     gv = gpuarray.array(av)
 
-    av = av[:,::2]
-    gv = gv[:,::2]
+    av = av[:, ::2]
+    gv = gv[:, ::2]
 
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
@@ -247,7 +249,7 @@ def test_transfer_strided():
           "that the tests will be run this way", ValueError)
 def test_transfer_cuda_gpu():
     import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available == False:
+    if cuda_ndarray.cuda_available is False:
         raise SkipTest("Can't test interaction with cuda if cuda not present")
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
     c = cuda_ndarray.CudaNdarrayType((False, False))('c')
@@ -255,8 +257,8 @@ def test_transfer_cuda_gpu():
     av = theano._asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
     cv = cuda_ndarray.CudaNdarray(av)
-    gvs = gv[:,::-2]
-    cvs = cv[:,::-2]
+    gvs = gv[:, ::-2]
+    cvs = cv[:, ::-2]
 
     f = theano.function([c], gpu_from_cuda(c))
     fv = f(cv)
@@ -335,11 +337,11 @@ class G_reshape(T_reshape):
                            mode=mode_with_gpu,
                            # avoid errors with limited devices
 #                             dtype='float32',
-                             ignore_topo=(HostFromGpu, GpuFromHost,
-                                          theano.compile.DeepCopyOp,
-                                          theano.sandbox.gpuarray.elemwise.GpuElemwise,
-                                          theano.tensor.opt.Shape_i,
-                                          theano.tensor.opt.MakeVector))
+                           ignore_topo=(HostFromGpu, GpuFromHost,
+                                        theano.compile.DeepCopyOp,
+                                        theano.sandbox.gpuarray.elemwise.GpuElemwise,
+                                        theano.tensor.opt.Shape_i,
+                                        theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
 
 
@@ -429,7 +431,8 @@ def test_hostfromgpu_shape_i():
     """
 
     m = mode_with_gpu.including('local_dot_to_dot22',
-                                'local_dot22_to_dot22scalar','specialize')
+                                'local_dot22_to_dot22scalar',
+                                'specialize')
     a = T.fmatrix('a')
     ca = theano.sandbox.gpuarray.type.GpuArrayType('float32', (False, False))()
     av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
