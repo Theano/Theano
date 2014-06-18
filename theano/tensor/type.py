@@ -438,7 +438,7 @@ class TensorType(Type):
 
     def c_extract(self, name, sub, check_input=True):
         """Override `CLinkerType.c_extract` """
-        if(check_input):
+        if(check_input and theano.config.check_input):
             check = """
             %(name)s = NULL;
             if (py_%(name)s == Py_None) {

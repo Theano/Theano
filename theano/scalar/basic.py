@@ -273,7 +273,7 @@ class Scalar(Type):
 
     def c_extract(self, name, sub, check_input=True):
         specs = self.dtype_specs()
-        if(check_input):
+        if(check_input and theano.config.check_input):
             pre = """
             if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
             {

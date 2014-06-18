@@ -246,7 +246,7 @@ class T_extending(unittest.TestCase):
         double.c_init = c_init
 
         def c_extract(name, sub, check_input=True):
-            if(check_input):
+            if(check_input and theano.config.check_input):
                 pre = """
                 if (!PyFloat_Check(py_%(name)s)) {
                     PyErr_SetString(PyExc_TypeError, "expected a float");
@@ -310,7 +310,7 @@ class T_extending(unittest.TestCase):
                 """ % dict(name = name)
 
             def c_extract(self, name, sub, check_input=True):
-                if(check_input):
+                if(check_input and theano.config.check_input):
                     pre = """
                     if (!PyFloat_Check(py_%(name)s)) {
                         PyErr_SetString(PyExc_TypeError, "expected a float");

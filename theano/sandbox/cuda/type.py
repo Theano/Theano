@@ -294,7 +294,7 @@ class CudaNdarrayType(Type):
             %(name)s = (CudaNdarray*)py_%(name)s;
             //std::cerr << "c_extract " << %(name)s << '\\n';
         """ % locals()
-        if(check_input):
+        if(check_input and theano.config.check_input):
             print >> sio, """
                 if (%(name)s->nd != %(nd)s)
                 {

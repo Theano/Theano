@@ -489,3 +489,10 @@ AddConfigVar('openmp_elemwise_minsize',
              IntParam(200000),
              in_c_key=False,
          )
+
+AddConfigVar('check_input',
+             "Specify if types should check their input in their C code. "
+             "It can be used to speed up compilation, reduce overhead"
+              "(particularly for scalars) and reduce the number of generated C"
+              "files.",
+             BoolParam(True))
