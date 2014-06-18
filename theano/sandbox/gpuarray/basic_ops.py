@@ -516,9 +516,9 @@ class CudaFromGpu(Op):
         return [gpu_from_cuda(gz)]
 
     def R_op(self, inputs, eval_points):
-        from theano.sandbox.cuda import CudaNdArrayType
+        from theano.sandbox.cuda import CudaNdarrayType
         ev, = eval_points
-        if (isinstance(ev, CudaNdArrayType)):
+        if (isinstance(ev, CudaNdarrayType)):
             return [gpu_from_cuda(ev)]
         else:
             return [ev]
