@@ -837,7 +837,6 @@ class GpuReshape(HideC, tensor.Reshape):
             raise ValueError('shape argument to GpuReshape.perform'
                              ' has incorrect length %i'
                              ', should be %i' % (len(shp), self.ndim), shp)
-        s = shp.prod()
 
         if shp.prod() != x.size:
             # We need to do check here to raise the same error as NumPy.
