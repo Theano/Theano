@@ -204,7 +204,7 @@ def test_qr_modes():
         assert _allclose(n_qr, t_qr)
     except TypeError, e:
         assert "name 'complete' is not defined" in str(e)
-        raise SkipTest
+
 
 def test_svd():
     rng = numpy.random.RandomState(utt.fetch_seed())
