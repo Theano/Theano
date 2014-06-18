@@ -518,7 +518,7 @@ class CudaFromGpu(Op):
     def R_op(self, inputs, eval_points):
         from theano.sandbox.cuda import CudaNdArrayType
         ev, = eval_points
-        if (isinstance(ev, CudaNdarrayType)):
+        if (isinstance(ev, CudaNdArrayType)):
             return [gpu_from_cuda(ev)]
         else:
             return [ev]
@@ -940,7 +940,8 @@ class GpuEye(GpuKernelBase, Op):
         return [out_shape]
 
     def grad(self, inp, grads):
-        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+        return [theano.gradient.grad_undefined(self, i, inp[i])
+                for i in xrange(3)]
 
     def __eq__(self, other):
         return type(self) == type(other) and self.dtype == other.dtype
