@@ -1,5 +1,7 @@
+import theano
 from theano import scalar, gof
 from theano.gof.python25 import all, any
+from theano.tests.unittest_tools import SkipTest
 
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
@@ -161,6 +163,11 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     def test_perform_nan(self):
         return
 
+    def setUp(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
+
 
 class T_gpureduce_dtype(T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
@@ -171,6 +178,11 @@ class T_gpureduce_dtype(T_reduce_dtype):
     dtypes = ['int8', 'int16', 'int32', 'int64',
               'uint8', 'uint16', 'uint32', 'uint64',
               'float32', 'float64']
+
+    def setUp(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
 
 
 def speed_reduce10():
