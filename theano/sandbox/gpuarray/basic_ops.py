@@ -782,7 +782,7 @@ class GpuContiguous(Op):
         return ['<numpy_compat.h>']
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp
@@ -790,7 +790,7 @@ class GpuContiguous(Op):
         fail = sub['fail']
         str = """
         {
-            if (%(input)s->ga.flags & (GA_C_CONTIGUOUS)){
+            if (GpuArray_IS_C_CONTIGUOUS(&(%(input)s->ga))){
                 Py_XDECREF(%(z)s);
                 %(z)s = %(input)s;
                 Py_INCREF(%(z)s);
@@ -799,7 +799,7 @@ class GpuContiguous(Op):
         for i in xrange(len(node.inputs[0].type.broadcastable)):
             str += "\n|| (PyGpuArray_DIMS(%(input)s)[%(i)s] != PyGpuArray_DIMS(%(z)s)[%(i)s])" % locals()
         str += """
-                || !(%(z)s->ga.flags & GA_C_CONTIGUOUS))
+                || !GpuArray_IS_C_CONTIGUOUS(&(%(z)s->ga)))
             {
                 Py_XDECREF(%(z)s);
                 %(z)s = pygpu_copy(%(input)s, GA_C_ORDER);
