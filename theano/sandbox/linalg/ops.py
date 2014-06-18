@@ -904,9 +904,8 @@ eig = Eig()
 
 
 class SVD(Op):
-    """
-    See doc in the docstring of the function just after this class.
-    """
+
+    # See doc in the docstring of the function just after this class.
     _numop = staticmethod(numpy.linalg.svd)
 
     def __init__(self, full_matrices=True, compute_uv=True):

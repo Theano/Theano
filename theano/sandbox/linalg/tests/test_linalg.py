@@ -182,18 +182,12 @@ def test_qr_modes():
     A = tensor.matrix("A", dtype=theano.config.floatX)
     a = rng.rand(4, 4).astype(theano.config.floatX)
 
-    try:
-        numpy.linalg.qr(a, "complete")
-    except TypeError, e:
-        assert "name 'complete' is not defined" in str(e)
-        raise SkipTest
-
     f = function([A], qr(A))
     t_qr = f(a)
     n_qr = numpy.linalg.qr(a)
     assert _allclose(n_qr, t_qr)
 
-    for mode in ["reduced", "complete", "r", "raw", "full", "economic"]:
+    for mode in ["reduced", "r", "raw", "full", "economic"]:
         f = function([A], qr(A, mode))
         t_qr = f(a)
         n_qr = numpy.linalg.qr(a, mode)
@@ -203,6 +197,14 @@ def test_qr_modes():
         else:
             assert _allclose(n_qr, t_qr)
 
+    try:
+        n_qr = numpy.linalg.qr(a, "complete")
+        f = function([A], qr(A, "complete"))
+        t_qr = f(a)
+        assert _allclose(n_qr, t_qr)
+    except TypeError, e:
+        assert "name 'complete' is not defined" in str(e)
+        raise SkipTest
 
 def test_svd():
     rng = numpy.random.RandomState(utt.fetch_seed())
