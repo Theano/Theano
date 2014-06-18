@@ -88,7 +88,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     if input.ndim == 2 and filters.ndim == 2:
         if theano.config.warn.signal_conv2d_interface:
             warnings.warn(
-                "theano.tensor.signal.conv2d() now output 2d tensor when both"
+                "theano.tensor.signal.conv2d() now outputs a 2d tensor when both"
                 " inputs are 2d. To disable this warning, set the Theano flag"
                 " warn.signal_conv2d_interface to False",
                 stacklevel=3)
