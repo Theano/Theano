@@ -750,6 +750,74 @@ class GpuAlloc(HideC, Alloc):
 gpu_alloc = GpuAlloc()
 
 
+class GpuContiguous(Op):
+    """
+    Always return a c contiguous output. Copy the input only if it is
+    not already c contiguous.
+    """
+    view_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def grad(self, inputs, dout):
+
+        x, = inputs
+        dout, = dout
+        dout = as_gpuarray_variable(dout)
+
+        return [dout]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, input):
+        input = as_gpuarray_variable(input)
+        return Apply(self, [input], [input.type()])
+
+    def c_headers(self):
+        return ['<numpy_compat.h>']
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        z, = out
+        fail = sub['fail']
+        str = """
+        {
+            if (%(input)s->ga.flags & (GA_C_CONTIGUOUS)){
+                Py_XDECREF(%(z)s);
+                %(z)s = %(input)s;
+                Py_INCREF(%(z)s);
+
+            } else if ((NULL == %(z)s)""" % locals()
+        for i in xrange(len(node.inputs[0].type.broadcastable)):
+            str += "\n|| (PyGpuArray_DIMS(%(input)s)[%(i)s] != PyGpuArray_DIMS(%(z)s)[%(i)s])" % locals()
+        str += """
+                || !(%(z)s->ga.flags & GA_C_CONTIGUOUS))
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = pygpu_copy(%(input)s, GA_C_ORDER);
+                if (!%(z)s)
+                {
+                    %(fail)s;
+                }
+            }else if(GpuArray_copy(&(%(z)s->ga), &(%(input)s->ga),
+                                   GA_C_ORDER) != GA_NO_ERROR){
+                %(fail)s;
+            }
+        }
+        """ % locals()
+        return str
+
+gpu_contiguous = GpuContiguous()
+
+
 class GpuReshape(HideC, tensor.Reshape):
     """
     Implement Reshape on the gpu.
