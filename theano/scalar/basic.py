@@ -257,7 +257,7 @@ class Scalar(Type):
     def c_declare(self, name, sub, check_input=True):
         if(check_input):
             pre = """
-                 typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+                typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
                 typedef %(dtype)s dtype_%(name)s;
             """ % dict(name=name, dtype=self.dtype_specs()[1])
         else:
