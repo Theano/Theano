@@ -333,7 +333,8 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', True) for (c, _) in r.clients]):
+    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in 
+            r.clients]):
 
         c_extract = r.type.c_extract(name, sub, True)
     else:
@@ -349,7 +350,7 @@ def get_c_extract(r, name, sub):
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
     c_extract = r.type.c_extract_out(name, sub,
-                    getattr(r.owner.op, 'check_input', True))
+                    getattr(r.owner.op, 'check_input', config.check_input))
 
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
