@@ -19,17 +19,18 @@ import theano.gof.cmodule
 logger = logging.getLogger(__name__)
 
 AddConfigVar('profile',
-        "If VM should collect profile information",
-        BoolParam(False),
-        in_c_key=False)
+             "If VM should collect profile information",
+             BoolParam(False),
+             in_c_key=False)
 AddConfigVar('profile_optimizer',
-        "If VM should collect optimizer profile information",
-        BoolParam(False),
-        in_c_key=False)
+             "If VM should collect optimizer profile information",
+             BoolParam(False),
+             in_c_key=False)
 AddConfigVar('profile_memory',
-        "If VM should collect memory profile information and print it",
-        BoolParam(False),
-        in_c_key=False)
+             "If VM should collect memory profile information and print it",
+             BoolParam(False),
+             in_c_key=False)
+
 
 def filter_vm_lazy(val):
     if val == 'False' or val is False:
@@ -40,7 +41,7 @@ def filter_vm_lazy(val):
         return None
     else:
         raise ValueError('Valid values for an vm.lazy parameter '
-                        'should be None, False or True, not `%s`.' % val)
+                         'should be None, False or True, not `%s`.' % val)
 
 AddConfigVar('vm.lazy',
              "Useful only for the vm linkers. When lazy is None,"
