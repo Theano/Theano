@@ -13,7 +13,7 @@ __excepthook = sys.excepthook
 
 
 def log_thunk_trace(value, f=sys.stderr):
-    """Log theano's diagnostic stack trace for an exception
+    """Log Theano's diagnostic stack trace for an exception
     raised by raise_with_op.
     """
     # in future, consider accepting `write` as arg rather than file
@@ -149,7 +149,7 @@ def raise_with_op(node, thunk=None, exc_info=None):
         sio = StringIO.StringIO()
         traceback.print_list(tr, sio)
         tr = sio.getvalue()
-        detailed_err_msg += "\nBacktrace when the node is created:"
+        detailed_err_msg += "\nBacktrace when the node is created:\n"
         detailed_err_msg += str(tr)
     else:
         hints.append(

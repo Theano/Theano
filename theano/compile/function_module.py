@@ -584,13 +584,15 @@ class Function(object):
                 # done by raise_with_op is not implemented in C.
                 if hasattr(self.fn, 'thunks'):
                     # For the CVM
-                    gof.vm.raise_with_op(self.fn.nodes[self.fn.position_of_error],
-                                         self.fn.thunks[self.fn.position_of_error])
+                    gof.vm.raise_with_op(
+                        self.fn.nodes[self.fn.position_of_error],
+                        self.fn.thunks[self.fn.position_of_error])
                 else:
-                    # For the c linker
-                    # We don't have access from python to all the temps values
-                    # So for now, we just don't print the extra shapes/strides info
-                    gof.vm.raise_with_op(self.fn.nodes[self.fn.position_of_error])
+                    # For the c linker We don't have access from
+                    # python to all the temps values So for now, we
+                    # just don't print the extra shapes/strides info
+                    gof.vm.raise_with_op(
+                        self.fn.nodes[self.fn.position_of_error])
             else:
                 # old-style linkers raise their own exceptions
                 raise
