@@ -373,11 +373,11 @@ class _tensor_py_operators:
                 and all(a == slice(None) for a in args[:axis])
                 and all(a == slice(None) for a in args[axis + 1:])
                 and isinstance(args[axis], (
-                        numpy.ndarray,
-                        list,
-                        TensorVariable,
-                        TensorConstant,
-                        theano.tensor.sharedvar.TensorSharedVariable))):
+                    numpy.ndarray,
+                    list,
+                    TensorVariable,
+                    TensorConstant,
+                    theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(arg, axis)
             else:
                 return theano.tensor.subtensor.advanced_subtensor(self, *args)
@@ -405,8 +405,9 @@ class _tensor_py_operators:
                 return rval
             else:
                 return theano.tensor.subtensor.Subtensor(args)(
-                    self, *theano.tensor.subtensor.Subtensor.collapse(args,
-                    lambda entry: isinstance(entry, Variable)))
+                    self, *theano.tensor.subtensor.Subtensor.collapse(
+                        args,
+                        lambda entry: isinstance(entry, Variable)))
 
     def take(self, indices, axis=None, mode='raise'):
         return theano.tensor.subtensor.take(self, indices, axis, mode)
@@ -701,6 +702,7 @@ class TensorConstant(_tensor_py_operators, Constant):
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and
                 self.signature() == other.signature())
+
     def __copy__(self):
         # We need to do this to remove the cached attribute
         return type(self)(self.type, self.data, self.name)

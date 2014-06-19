@@ -1630,7 +1630,7 @@ class _Linker(gof.link.LocalLinker):
                 thunks_py.append(None)
 
             # If the op define its own make_thunk, check it
-            if node.op.make_thunk.im_func not in default_make_thunk:
+            if get_unbound_function(node.op.make_thunk) not in default_make_thunk:
                 compute_map = {}
                 for k in node.inputs:
                     compute_map[k] = [True]
