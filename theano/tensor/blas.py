@@ -139,7 +139,7 @@ except ImportError:
     pass
 
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.gof import (utils, Op, view_roots, DestroyHandler,
+from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,
                         EquilibriumOptimizer, Apply,
@@ -173,12 +173,9 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
   warnings.warn('Specified path %s is invalid.' % d)
 """
             #I'm not able to remove all printed stuff
-            with_context = warnings.catch_warnings(record=True)
-            with_context.__enter__()
-            try:
+            with warnings.catch_warnings(record=True):
+                numpy.distutils.system_info.system_info.verbosity = 0
                 blas_info = numpy.distutils.system_info.get_info("blas_opt")
-            finally:
-                with_context.__exit__(None, None, None)
 
         # If we are in a EPD installation, mkl is available
         if "EPD" in sys.version:
@@ -1193,32 +1190,31 @@ def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
 
     # it also might be the case that there is a dimshuffle between the +
     # and the dot22. local_dot_to_dot22 in particular will put in such things.
-    if M.owner and isinstance(M.owner.op, T.DimShuffle):
+    if (M.owner and isinstance(M.owner.op, T.DimShuffle) and
+        M.owner.inputs[0].owner and
+        isinstance(M.owner.inputs[0].owner.op, Dot22)):
         MM = M.owner.inputs[0]
-        if tuple(M.owner.op.new_order) == (0,):
+        if M.owner.op.new_order == (0,):
             # it is making a column MM into a vector
-            if MM.owner and MM.owner.op == _dot22:
-                MMl, MMr = MM.owner.inputs
-                g = gemm_no_inplace(L.dimshuffle(0, 'x'),
-                        alpha, MMl, MMr, beta)
-                rval = [g.dimshuffle(0)]
-                return rval, MM
-        if tuple(M.owner.op.new_order) == (1,):
+            MMl, MMr = MM.owner.inputs
+            g = gemm_no_inplace(L.dimshuffle(0, 'x'),
+                                alpha, MMl, MMr, beta)
+            rval = [g.dimshuffle(0)]
+            return rval, MM
+        if M.owner.op.new_order == (1,):
             # it is making a row MM into a vector
-            if MM.owner and MM.owner.op == _dot22:
-                MMl, MMr = MM.owner.inputs
-                g = gemm_no_inplace(L.dimshuffle('x', 0),
-                        alpha, MMl, MMr, beta)
-                rval = [g.dimshuffle(1)]
-                return rval, MM
-        if tuple(M.owner.op.new_order) == ():
+            MMl, MMr = MM.owner.inputs
+            g = gemm_no_inplace(L.dimshuffle('x', 0),
+                                alpha, MMl, MMr, beta)
+            rval = [g.dimshuffle(1)]
+            return rval, MM
+        if len(M.owner.op.new_order) == 0:
             # it is making a row MM into a vector
-            if MM.owner and MM.owner.op == _dot22:
-                MMl, MMr = MM.owner.inputs
-                g = gemm_no_inplace(L.dimshuffle('x', 'x'),
-                        alpha, MMl, MMr, beta)
-                rval = [g.dimshuffle()]
-                return rval, MM
+            MMl, MMr = MM.owner.inputs
+            g = gemm_no_inplace(L.dimshuffle('x', 'x'),
+                                alpha, MMl, MMr, beta)
+            rval = [g.dimshuffle()]
+            return rval, MM
 
     # this is False'd out because of inadequate testing.
     # TODO see ticket #237
@@ -1382,28 +1378,30 @@ def _gemm_from_factored_list(lst):
     """Returns None, or a list to replace node.outputs
     """
 
-    # Make every pair in list have matching dtypes
-    # sM can be a tuple of 2 elements or a theano variable.
-    # We should not use __len__ as theano variables don't support
-    # it. I don't want to change this to isinstance(sM, tuple)
-    # as I'm not able to make a test that triggers this case.
-    def is_pair(sM):
-        try:
-            s, M = sM
-            return True
-        except Exception:
-            return False
-
     lst2 = []
     # Remove the tuple that can't be cast correctly.
     # This can happen when we try to cast a complex to a real
     for sM in lst:
-        if is_pair(sM):
+        # Make every pair in list have matching dtypes
+        # sM can be a tuple of 2 elements or a theano variable.
+        if isinstance(sM, tuple):
             sm0, sm1 = sM
             sm0 = T.as_tensor_variable(sm0)
             if theano.scalar.upcast(sm0.dtype, sm1.dtype) == sm1.dtype:
                 lst2.append((T.cast(sm0, sm1.dtype), sM[1]))
+
     lst = lst2
+
+    def item_to_var(t):
+        try:
+            s, M = t
+        except Exception:
+            return t
+        if s == 1:
+            return M
+        if s == -1:
+            return -M
+        return s * M
 
     # Try every pair in the sM_list, trying to turn it into a gemm operation
     for i in xrange(len(lst) - 1):
@@ -1421,16 +1419,6 @@ def _gemm_from_factored_list(lst):
                                                               s_j, M_j)
             #print 'GOT IT', gemm_of_sM_list
             if gemm_of_sM_list:
-                def item_to_var(t):
-                    try:
-                        s, M = t
-                    except Exception:
-                        return t
-                    if s == 1:
-                        return M
-                    if s == -1:
-                        return -M
-                    return s * M
 
                 assert len(gemm_of_sM_list) == 1
                 add_inputs = [item_to_var(input)
@@ -1488,7 +1476,6 @@ class GemmOptimizer(Optimizer):
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
-        fgraph.attach_feature(DestroyHandler())
 
     def apply(self, fgraph):
         did_something = True
@@ -1501,9 +1488,21 @@ class GemmOptimizer(Optimizer):
         time_factor_can = 0
         time_factor_list = 0
         time_toposort = 0
+        if fgraph.profile:
+            validate_before = fgraph.profile.validate_time
+            callbacks_before = fgraph.execute_callbacks_times.copy()
+            callback_before = fgraph.execute_callbacks_time
+
+        class Updater:
+            def on_import(self, fgraph, new_node, reason):
+                if new_node is not node:
+                    nodelist.append(new_node)
+        u = Updater()
+        fgraph.attach_feature(u)
         while did_something:
+            nb_iter += 1
             t0 = time.time()
-            nodelist = list(fgraph.toposort())
+            nodelist = theano.gof.graph.io_toposort(fgraph.inputs, fgraph.outputs)
             time_toposort += time.time() - t0
             did_something = False
             nodelist.reverse()
@@ -1546,16 +1545,30 @@ class GemmOptimizer(Optimizer):
                     except ReplacementDidntRemovedError, e:
                         nb_replacement_didn_t_remove += 1
                         self.warned = True
-            nb_iter += 1
+        fgraph.remove_feature(u)
+        if fgraph.profile:
+            validate_time = fgraph.profile.validate_time - validate_before
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            callbacks_time = {}
+            for k, v in fgraph.execute_callbacks_times.iteritems():
+                if k in callbacks_before:
+                    callbacks_time[k] = v - callbacks_before[k]
+                else:
+                    callbacks_time[k] = v
+        else:
+            validate_time = None
+            callback_time = None
+            callbacks_time = {}
+
         return (self, nb_iter, nb_replacement, nb_replacement_didn_t_remove,
                 nb_inconsistency_make, nb_inconsistency_replace,
                 time_canonicalize, time_factor_can,
-                time_factor_list, time_toposort)
+                time_factor_list, time_toposort,
+                validate_time, callback_time, callbacks_time,)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        #1946.912556s - ('gemm_optimizer', 'GemmOptimizer', 1)
         print >> stream, blanc, "GemmOptimizer"
         print >> stream, blanc, " nb_iter", prof[1]
         print >> stream, blanc, " nb_replacement", prof[2]
@@ -1566,6 +1579,12 @@ class GemmOptimizer(Optimizer):
         print >> stream, blanc, " time_factor_can", prof[7]
         print >> stream, blanc, " time_factor_list", prof[8]
         print >> stream, blanc, " time_toposort", prof[9]
+        print >> stream, blanc, " validate_time", prof[10]
+        print >> stream, blanc, " callback_time", prof[11]
+        print >> stream, blanc, " callbacks_time"
+        for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
+            if i[1] > 0:
+                print i
 
 
 class Dot22(GemmRelated):
@@ -1684,20 +1703,19 @@ def local_dot_to_dot22(node):
     _logger.info('Not optimizing dot with inputs %s %s %s %s',
                  x, y, x.type, y.type)
 
-
-@local_optimizer([gemm_no_inplace])
+@local_optimizer([gemm_no_inplace], inplace=True)
 def local_inplace_gemm(node):
     if node.op == gemm_no_inplace:
         return [gemm_inplace(*node.inputs)]
 
 
-@local_optimizer([gemv_no_inplace])
+@local_optimizer([gemv_no_inplace], inplace=True)
 def local_inplace_gemv(node):
     if node.op == gemv_no_inplace:
         return [gemv_inplace(*node.inputs)]
 
 
-@local_optimizer([ger])
+@local_optimizer([ger], inplace=True)
 def local_inplace_ger(node):
     if node.op == ger:
         return [ger_destructive(*node.inputs)]
@@ -1816,17 +1834,15 @@ blas_optdb.register('local_gemm_to_gemv',
         15, 'fast_run')
 
 
-# After destroyhandler is in but before we try to make elemwise things inplace
-# Try to make gemm inplace
-# Also, need to make the gemm optimisation(step 70) happen before the
-# fusion of elemwise(step 71)
+# After destroyhandler(49.5) but before we try to make elemwise things
+# inplace (75)
 blas_opt_inplace = in2out(local_inplace_gemm,
                           local_inplace_gemv,
                           local_inplace_ger,
                           name="blas_opt_inplace")
 optdb.register('InplaceBlasOpt',
-        blas_opt_inplace,
-        70.0, 'fast_run', 'inplace')
+               blas_opt_inplace,
+               70.0, 'fast_run', 'inplace', 'blas_opt_inplace')
 
 
 class Dot22Scalar(GemmRelated):

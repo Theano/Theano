@@ -47,7 +47,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
 
     def c_support_code_apply(self, node, nodename):
         dtype_x = node.inputs[0].dtype
@@ -111,7 +111,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         """ % locals()
 
     def c_init_code(self):
-        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
 
     def c_code(self, node, nodename, inp, out, sub):
         typecode_x = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
@@ -300,7 +300,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return (6,)
 
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
 
     def c_compiler(self):
         return NVCC_compiler
@@ -440,7 +440,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         """ % locals()
 
     def c_init_code(self):
-        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))compyte_get_extension("cuda_get_ptr");']
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
 
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
@@ -469,8 +469,8 @@ class GpuSoftmax (Op):
         return (12,) + inline_softmax.code_version
         
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
-                '<compyte/ext_cuda.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
+                '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
@@ -663,8 +663,8 @@ class GpuSoftmaxWithBias (Op):
         return (11,) + inline_softmax.code_version
         
     def c_headers(self):
-        return ['cuda.h', '<compyte/extension.h>', '<numpy_compat.h>',
-                '<compyte/ext_cuda.h>']
+        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
+                '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler

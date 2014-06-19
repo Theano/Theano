@@ -4,6 +4,7 @@ from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
 from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
+from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
     import pygpu
@@ -328,17 +329,19 @@ class GpuDownsampleFactorMax(Op):
             raise TypeError()
         return Apply(self, [x], [x.type()])
     
-    def c_code(self, node, name, inp, out, sub):
-        x = inp[0]
-        z = out[0]
-        typecode_z = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        itemsize_x = numpy.dtype(node.inputs[0].dtype).itemsize
-        itemsize_z = numpy.dtype(node.outputs[0].dtype).itemsize
-        name = name
-        fail = sub['fail']
-        ds0, ds1 = self.ds
-        ignore_border = int(self.ignore_border)
-      
+    def c_code(self, node, nodename, inputs, outputs, sub):
+        vars = dict(
+                    ds0 = self.ds[0], 
+                    ds1 = self.ds[1],
+                    x = inputs[0],
+                    z = outputs[0],
+                    typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype),
+                    itemsize_x = numpy.dtype(inputs[0]).itemsize,
+                    itemsize_z = numpy.dtype(outputs[0]).itemsize,
+                    nodename = nodename,
+                    fail = sub['fail'],
+                    ignore_border = int(self.ignore_border)
+        )
         return """
         int dims[4], xdim2, xdim3;
         if (%(x)s->nd != 4)
@@ -365,7 +368,7 @@ class GpuDownsampleFactorMax(Op):
                          dims[3]);
             %(fail)s;
         }
-
+        
         if ((NULL == %(z)s)
             || (PyGpuArray_DIMS(%(z)s)[0] != dims[0])
             || (PyGpuArray_DIMS(%(z)s)[1] != dims[1])
@@ -375,7 +378,7 @@ class GpuDownsampleFactorMax(Op):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(4, 
                               dims,
-                              %(typecode_z)s,
+                              %(typecode)s,
                               GA_C_ORDER,
                               pygpu_default_context(),
                               Py_None);
@@ -431,7 +434,7 @@ class GpuDownsampleFactorMax(Op):
                 %(fail)s;
             }
         }
-        """ % locals()
+        """ % vars
 
         
 
@@ -503,7 +506,7 @@ class GpuDownsampleFactorMax(Op):
         }
         """ % locals()
 
-    def c_compilers(self):
+    def c_compiler(self):
       return NVCC_compiler
 
     def c_headers(self):
@@ -512,8 +515,7 @@ class GpuDownsampleFactorMax(Op):
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
-	#return
-        return (6)
+	return (6)
 
 
 class GpuDownsampleFactorMaxGrad(Op):
@@ -543,7 +545,7 @@ class GpuDownsampleFactorMaxGrad(Op):
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gz = inp
         gx, = out
-        typecode_gx = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
+	typecode = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         itemsize_x = numpy.dtype(node.inputs[0].dtype).itemsize
         itemsize_z = numpy.dtype(node.inputs[1].dtype).itemsize
         itemsize_gz = numpy.dtype(node.inputs[2].dtype).itemsize
@@ -573,7 +575,7 @@ class GpuDownsampleFactorMaxGrad(Op):
             Py_XDECREF(%(gx)s);
             %(gx)s = pygpu_empty(4,
                                dims,
-                               %(typecode_gx)s,
+                               %(typecode)s,
                                GA_C_ORDER,
                                pygpu_default_context(),
                                Py_None);
@@ -746,13 +748,12 @@ class GpuDownsampleFactorMaxGrad(Op):
         }
         """ % locals()
 
-    def c_compilers(self):
+    def c_compiler(self):
       return NVCC_compiler
 
     def c_headers(self):
       return ['cuda.h', 'gpuarray/extension.h', 'numpy_compat.h']
 
     def c_code_cache_version(self):
-        return
         return (9,)
 

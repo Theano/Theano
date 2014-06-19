@@ -485,7 +485,7 @@ def local_gpua_softmax(node):
 def local_gpua_softmaxwithbias(node):
     return GpuSoftmaxWithBias()
 
-"""
+
 @register_opt()
 @op_lifter([tensor.signal.downsample.DownsampleFactorMax])
 def local_gpua_downsample_factor_max(node):
@@ -494,20 +494,6 @@ def local_gpua_downsample_factor_max(node):
 
 @register_opt()
 @op_lifter([theano.tensor.signal.downsample.DownsampleFactorMaxGrad])
-def local_gpua_downsample_factor_max_grad(node):
-    return GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
-"""
-
-import theano.tensor.signal.downsample as downsample
-
-@register_opt()
-@op_lifter([downsample.DownsampleFactorMax])
-def local_gpua_downsample_factor_max(node):
-    return GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
-
-
-@register_opt()
-@op_lifter([downsample.DownsampleFactorMaxGrad])
 def local_gpua_downsample_factor_max_grad(node):
     return GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
 

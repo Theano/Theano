@@ -164,7 +164,8 @@ class TensorType(Type):
                             " Theano C code does not support that.",
                             msg,
                             "object shape", data.shape,
-                            "object strides", data.strides)
+                            "object strides", data.strides,
+                            "object dtype", data.dtype)
 
         i = 0
         for b in self.broadcastable:
@@ -670,3 +671,47 @@ theano.compile.register_deep_copy_op_c_code(
         }
         """,
         version=2)
+
+
+theano.compile.register_rebroadcast_c_code(
+    TensorType,
+    """
+    if(PyArray_DIMS(%(iname)s)[%(axis)s] != 1){
+        PyErr_Format(PyExc_ValueError,
+            "Dimension %(axis)s in Rebroadcast's input was"
+            " supposed to be 1 (got %%d instead)",
+            PyArray_DIMS(%(iname)s)[%(axis)s]);
+        %(fail)s
+    }
+    """,
+        version=1)
+
+
+theano.compile.register_specify_shape_c_code(
+    TensorType,
+    """
+        if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: vector of shape has %%d elements,"
+                         " but the input has %%d dimensions.",
+                         PyArray_NDIM(%(iname)s),
+                         PyArray_DIMS(%(shape)s)[0]);
+            %(fail)s;
+        }
+        for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){
+            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                     i))[0];
+            if (PyArray_DIMS(%(iname)s)[i] != shp) {
+                PyErr_Format(PyExc_AssertionError,
+                             "SpecifyShape: dim %%d of input has shape %%d,"
+                             " expected %%d.",
+                             i, PyArray_DIMS(%(iname)s)[i],
+                             shp);
+                %(fail)s;
+            }
+        }
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+    """,
+    version=1)

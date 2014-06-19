@@ -1928,7 +1928,8 @@ class TestAlloc(unittest.TestCase):
                 #AdvancedIncSubtensor1
                 (some_matrix[arange(60)], 2),
                 #AdvancedIncSubtensor
-                (some_matrix[idx, idx], 1)]):
+                (some_matrix[idx, idx], 1)
+        ]):
             derp = sum(dot(subtensor, variables))
 
             fobj = theano.function([some_vector], derp, mode=self.mode)
@@ -1936,14 +1937,18 @@ class TestAlloc(unittest.TestCase):
             fgrad = theano.function([some_vector], grad_derp,
                                     mode=self.mode)
             topo_obj = fobj.maker.fgraph.toposort()
+            #<= is needed as the GPU currently don't implement
+            #AdvancedIncSubtensor. When this is the case it can be
+            #replaced with ==.
             assert numpy.sum([isinstance(node.op, alloc)
-                              for node in topo_obj]) == 0
+                              for node in topo_obj]) <= 1
             topo_grad = fgrad.maker.fgraph.toposort()
 
             #print subtensor
             #theano.printing.debugprint(fgrad)
             assert numpy.sum([isinstance(node.op, alloc)
-                              for node in topo_grad]) == n_alloc
+                              for node in topo_grad]) == n_alloc, (
+                                  alloc, subtensor, n_alloc, topo_grad)
             fobj(test_params)
             fgrad(test_params)
 
@@ -2323,8 +2328,32 @@ def test_batched_dot():
     result_fn = theano.function([first_mat, second_mat], output)
     result = result_fn(first_mat_val, second_mat_val)
 
-    assert result.shape[0] == first_val.shape[0]
+    assert result.shape[0] == first_mat_val.shape[0]
 
+def test_batched_tensordot():
+    first = theano.tensor.tensor4("first")
+    second = theano.tensor.tensor4("second")
+    axes = [[1,2], [3,1]]
+    output = theano.tensor.basic.batched_tensordot(first, second, axes)
+    first_val = numpy.random.rand(8, 10, 20, 3).astype(config.floatX)
+    second_val = numpy.random.rand(8, 20, 5, 10).astype(config.floatX)
+    result_fn = theano.function([first, second], output)
+    result = result_fn(first_val, second_val)
+    assert result.shape[0] == first_val.shape[0]
+    assert result.shape[1] == first_val.shape[3]
+    assert result.shape[2] == second_val.shape[2]
+
+    first_mat = theano.tensor.dmatrix("first")
+    second_mat = theano.tensor.dmatrix("second")
+    axes = 1
+    output = theano.tensor.basic.batched_tensordot(first_mat, second_mat, axes)
+    first_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
+    second_mat_val = numpy.random.rand(10, 4).astype(config.floatX)
+    result_fn = theano.function([first_mat, second_mat], output)
+    result = result_fn(first_mat_val, second_mat_val)
+    print(result.shape)
+    assert result.shape[0] == first_mat_val.shape[0]
+    assert len(result.shape) == 1
 
 def test_tensor_values_eq_approx():
     #test, inf, -inf and nan equal themself
@@ -3419,11 +3448,11 @@ class T_Join_and_Split(unittest.TestCase):
                         [a_val, b_val, c_val, d_val, e_val], rng=rng)
         # Should raise an error if length of dimension 0 is not 1
         bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(self.floatX)
-        self.assertRaises(TypeError, g, bad_val, b_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, bad_val, c_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, bad_val, d_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, bad_val, e_val)
-        self.assertRaises(TypeError, g, a_val, b_val, c_val, d_val, bad_val)
+        self.assertRaises(TypeError, f, bad_val, b_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, bad_val, c_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, bad_val, d_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, c_val, bad_val, e_val)
+        self.assertRaises(TypeError, f, a_val, b_val, c_val, d_val, bad_val)
         # Should raise an error if any dimension other than 4 has length != 1
         bad_a_val = rng.rand(1, 2, 1, 1, 2, 1).astype(self.floatX)
         bad_b_val = rng.rand(1, 1, 1, 1, 2, 2).astype(self.floatX)
@@ -4087,16 +4116,16 @@ class t_dot(unittest.TestCase):
                 return numpy.asarray([[1.3]], dtype=r.dtype)
             raise ValueError()
 
-        for dtype0 in ('float32', 'float64', 'complex64', 'complex128'):
-            for dtype1 in ('float32', 'float64', 'complex64', 'complex128'):
+        for dtype0 in ('float32', 'float64', 'complex64'):
+            for dtype1 in ('float32', 'complex64', 'complex128'):
                 for bc0 in ((True,), (False,), (True, True),
                             (True, False), (False, True),
                             (False, False)):
+                    x = TensorType(dtype=dtype0, broadcastable=bc0)()
                     for bc1 in ((True,), (False,), (True, True),
                                 (True, False), (False, True),
                                 (False, False)):
 
-                        x = TensorType(dtype=dtype0, broadcastable=bc0)()
                         y = TensorType(dtype=dtype1, broadcastable=bc1)()
                         z = dot(x, y)
                         t = TensorType(dtype=dtype0,
@@ -6149,7 +6178,11 @@ def test_stacklists():
     x = numpy.ones((4, 4), 'float32')
     assert f(x,x,x,x).shape == (2, 2, 4, 4)
 
+
 class TestSpecifyShape(unittest.TestCase):
+    mode = None
+    input_type = TensorType
+
     def shortDescription(self):
         return None
 
@@ -6160,14 +6193,21 @@ class TestSpecifyShape(unittest.TestCase):
 
         x = vector()
         xval = numpy.random.rand(2).astype(floatX)
-        f = theano.function([x], specify_shape(x, [2]))
+        f = theano.function([x], specify_shape(x, [2]), mode=self.mode)
         f(xval)
         xval = numpy.random.rand(3).astype(floatX)
         self.assertRaises(AssertionError, f, xval)
+        theano.printing.debugprint(f)
+        assert isinstance([n for n in f.maker.fgraph.toposort()
+                           if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                          self.input_type)
 
         x = matrix()
         xval = numpy.random.rand(2, 3).astype(floatX)
-        f = theano.function([x], specify_shape(x, [2, 3]))
+        f = theano.function([x], specify_shape(x, [2, 3]), mode=self.mode)
+        assert isinstance([n for n in f.maker.fgraph.toposort()
+                           if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                          self.input_type)
         f(xval)
         for shape in [(1, 3), (2, 2), (5, 5)]:
             xval = numpy.random.rand(*shape).astype(floatX)
@@ -6183,7 +6223,11 @@ class TestSpecifyShape(unittest.TestCase):
         self.assertRaises(AssertionError, specify_shape, x, [])
         self.assertRaises(AssertionError, specify_shape, x, [2, 2])
 
-        f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+        f = theano.function([x, shape_vec], specify_shape(x, shape_vec),
+                            mode=self.mode)
+        assert isinstance([n for n in f.maker.fgraph.toposort()
+                           if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                          self.input_type)
         self.assertRaises(AssertionError, f, xval, [])
         self.assertRaises(AssertionError, f, xval, [2, 2])
 
@@ -6193,7 +6237,11 @@ class TestSpecifyShape(unittest.TestCase):
                       (1,),
                       (2, 3, 4)]:
             self.assertRaises(AssertionError, specify_shape, x, shape)
-            f = theano.function([x, shape_vec], specify_shape(x, shape_vec))
+            f = theano.function([x, shape_vec], specify_shape(x, shape_vec),
+                                mode=self.mode)
+            assert isinstance([n for n in f.maker.fgraph.toposort()
+                               if isinstance(n.op, SpecifyShape)][0].inputs[0].type,
+                              self.input_type)
             self.assertRaises(AssertionError, f, xval, shape)
 
 
@@ -6711,6 +6759,17 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         # Test equivalent advanced indexing
         assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
+
+    def test_cumsum(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.cumsum().eval({X: x}), x.cumsum())
+
+    def test_cumprod(self):
+        X, _ = self.vars
+        x, _ = self.vals
+        assert_array_equal(X.cumprod().eval({X: x}), x.cumprod())
+
 
 def test_norm():
     x = theano.tensor.vector('x')

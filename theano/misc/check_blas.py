@@ -203,8 +203,10 @@ if __name__ == "__main__":
 
         cuda version      5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
         gpu
+        K6000/NOECC       0.06s
         K20m/ECC                 0.07s
         K20/NOECC                0.07s
+        M2090             0.19s
         C2075                           0.25s
         M2075                    0.25s
         M2070                    0.25s         0.27s         0.32s
@@ -213,7 +215,7 @@ if __name__ == "__main__":
         C1060                                                0.46s
 
         GTX Titan(D15U-50)0.06s  0.06s  don't work
-        GTX 680                  0.12s  0.154s               0.218s
+        GTX 680           0.11s  0.12s  0.154s               0.218s
         GTX 580           0.16s  0.16s  0.164s               0.203s
         GTX 480           0.19s  0.19s  0.192s               0.237s 0.27s
         GTX 470           0.23s  0.23s  0.238s               0.297s 0.34s

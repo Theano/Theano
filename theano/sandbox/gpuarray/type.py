@@ -207,15 +207,15 @@ class GpuArrayType(Type):
     def c_headers(self):
         # We need arrayobject for the PyArrayDescr struct def
         # (even if we just use a pointer to it in a function def)
-        return ['<compyte/array.h>', '<compyte/kernel.h>', '<compyte/error.h>',
-                '<compyte/buffer_blas.h>', '<numpy/arrayobject.h>',
+        return ['<gpuarray/array.h>', '<gpuarray/kernel.h>', '<gpuarray/error.h>',
+                '<gpuarray/buffer_blas.h>', '<numpy/arrayobject.h>',
                 '<gpuarray_api.h>']
 
     def c_header_dirs(self):
         return [pygpu.get_include(), numpy.get_include()]
 
     def c_libraries(self):
-        return ['compyte']
+        return ['gpuarray']
 
     def c_code_cache_version(self):
         ver = pygpu.gpuarray.api_version()
@@ -327,3 +327,46 @@ theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     %(oname)s = pygpu_copy(%(iname)s, GA_ANY_ORDER);
     if (!%(oname)s) { %(fail)s }
 """, version=(5,))
+
+theano.compile.register_rebroadcast_c_code(
+    GpuArrayType,
+    """
+    if(PyGpuArray_DIMS(%(iname)s)[%(axis)s] != 1){
+        PyErr_Format(PyExc_ValueError,
+            "Dimension %(axis)s in Rebroadcast's input was"
+            " supposed to be 1 (got %%d instead)",
+            PyGpuArray_DIMS(%(iname)s)[%(axis)s]);
+        %(fail)s
+    }
+    """,
+    version=1)
+
+theano.compile.register_specify_shape_c_code(
+    GpuArrayType,
+    """
+        if (PyGpuArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: vector of shape has %%d elements,"
+                         " but the input has %%d dimensions.",
+                         PyGpuArray_NDIM(%(iname)s),
+                         PyArray_DIMS(%(shape)s)[0]);
+            %(fail)s;
+        }
+        for(int i = 0; i < PyGpuArray_NDIM(%(iname)s); i++){
+            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                     i))[0];
+            if (PyGpuArray_DIMS(%(iname)s)[i] != shp) {
+                PyErr_Format(PyExc_AssertionError,
+                             "SpecifyShape: dim %%d of input has shape %%d,"
+                             " expected %%d.",
+                             i, PyGpuArray_DIMS(%(iname)s)[i],
+                             shp);
+                %(fail)s;
+            }
+        }
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+    """,
+    version=1,
+    c_support_code_apply='#include <numpy_compat.h>')
