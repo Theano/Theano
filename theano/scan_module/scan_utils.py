@@ -448,9 +448,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
                     if dx != dy:
                         if (isinstance(dx, tensor.Constant) and
                             isinstance(dy, tensor.Constant)):
-                            if not (numpy.all(dx.data == dy.data) and
-                                dx.type.dtype == dy.type.dtype and
-                                dx.data.shape == dy.data.shape):
+                            if not dx.equals(dy):
                                 return False
                             else:
                                 pass
