@@ -20,7 +20,6 @@ from theano.sandbox.gpuarray.elemwise import GpuElemwise
 from theano.sandbox.gpuarray.comp import NVCC_compiler
 
 
-
 class GpuSubtensor(HideC, Subtensor):
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
@@ -232,7 +231,8 @@ class GpuIncSubtensor(IncSubtensor):
             # scalar case
             if not self.set_instead_of_inc:
                 #x.__setitem__(cdata, sub_x + y)
-                tmp = pygpu.elemwise.elemwise2(sub_x, '+', y,  sub_x, broadcast=False)
+                tmp = pygpu.elemwise.elemwise2(sub_x, '+', y,  sub_x,
+                                               broadcast=False)
                 x.__setitem__(cdata, tmp)
             else:
                 x.__setitem__(cdata, y)
@@ -592,4 +592,4 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                 return;
         }
 
-        """ %locals()
+        """ % locals()
