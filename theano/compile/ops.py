@@ -109,6 +109,8 @@ class OutputGuard(ViewOp):
     """
     destroy_map = {0: [0]}
 
+    check_input = False
+
 _output_guard = OutputGuard()
 
 
@@ -130,6 +132,8 @@ class DeepCopyOp(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+
+    check_input = False
 
     def __init__(self):
         pass
@@ -169,6 +173,8 @@ class DeepCopyOp(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
         return tuple(version)
 
     def c_code(self, node, name, inames, onames, sub):
@@ -212,6 +218,8 @@ class Shape(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+
+    check_input = False
 
     def __hash__(self):
         return hash(type(self))
@@ -282,12 +290,16 @@ class Shape(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
+
         return tuple(version)
 
 
 shape = Shape()
 _shape = shape  # was used in the past, now use shape directly.
 #pprint.assign(_shape, printing.MemberPrinter('shape'))
+
 
 class Shape_i(gof.Op):
     """
@@ -299,6 +311,8 @@ class Shape_i(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+
+    check_input = False
 
     def __init__(self, i):
         self.i = i
@@ -345,6 +359,9 @@ class Shape_i(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
+
         return tuple(version)
 
     def c_code(self, node, name, inames, onames, sub):
@@ -355,8 +372,14 @@ class Shape_i(gof.Op):
 
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
+            sc = """
+            if (%(i)s>=PyArray_NDIM(%(iname)s)){
+                PyErr_SetString(PyExc_TypeError, "Number of dimensions lower than expected");
+                %(fail)s
+            }
+            """ % locals()
             code, version = self.c_code_and_version[itype]
-            return code % locals()
+            return sc + code % locals()
 
         # Else, no C code
         return super(Shape_i, self).c_code(node, name, inames, onames, sub)
@@ -517,6 +540,8 @@ class Rebroadcast(gof.Op):
     # the output variable is %(oname)s.
     c_code_and_version = {}
 
+    check_input = False
+
     def __init__(self, *axis):
         self.axis = dict(axis)
         for axis, broad in self.axis.iteritems():
@@ -618,6 +643,8 @@ class Rebroadcast(gof.Op):
                 return ()
             version.append((str(t), v))
 
+        if version:
+            version.append(1)
         return tuple(version)
 
 

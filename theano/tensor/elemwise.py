@@ -95,6 +95,8 @@ class DimShuffle(Op):
     Adding, subtracting dimensions can be done with reshape.
     """
 
+    check_input = False
+
     def __init__(self, input_broadcastable, new_order, inplace=False):
         """
         Usage: DimShuffle(input_broadcastable, new_order, inplace = False)
@@ -369,7 +371,7 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
         return full_code % dict(locals(), **sub)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def grad(self, inp, grads):
         x, = inp

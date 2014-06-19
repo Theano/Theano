@@ -55,6 +55,8 @@ class HostFromGpu(GpuOp):
     """
     Implement the transfer from gpu to the cpu.
     """
+    check_input = False
+    
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -104,7 +106,7 @@ class HostFromGpu(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 host_from_gpu = HostFromGpu()
 
 
@@ -112,6 +114,8 @@ class GpuFromHost(GpuOp):
     """
     Implement the transfer from cpu to the gpu.
     """
+    check_input = False
+    
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -168,7 +172,7 @@ class GpuFromHost(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_from_host = GpuFromHost()
 

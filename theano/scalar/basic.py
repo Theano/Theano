@@ -254,11 +254,16 @@ class Scalar(Type):
             raise NotImplementedError("No literal for complex values.")
         return str(data)
 
-    def c_declare(self, name, sub):
-        return """
+    def c_declare(self, name, sub, check_input=True):
+        if(check_input):
+            pre = """
+                typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+                typedef %(dtype)s dtype_%(name)s;
+            """ % dict(name=name, dtype=self.dtype_specs()[1])
+        else:
+            pre = ""
+        return pre + """
         %(dtype)s %(name)s;
-        typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
-        typedef %(dtype)s dtype_%(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
@@ -266,20 +271,25 @@ class Scalar(Type):
         %(name)s = 0;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         specs = self.dtype_specs()
-        return """
-        if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
-        {
-            PyErr_Format(PyExc_ValueError,
-                "Scalar check failed (%(dtype)s)");
-            %(fail)s
-        }
+        if(check_input):
+            pre = """
+            if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
+            {
+                PyErr_Format(PyExc_ValueError,
+                    "Scalar check failed (%(dtype)s)");
+                %(fail)s
+            }
+            """ % dict(sub,
+                       name=name,
+                       dtype=specs[1],
+                       pyarr_type='Py%sArrType_Type' % specs[2])
+        else:
+            pre = ""
+        return pre + """
         PyArray_ScalarAsCtype(py_%(name)s, &%(name)s);
-        """ % dict(sub,
-                   name=name,
-                   dtype=specs[1],
-                   pyarr_type='Py%sArrType_Type' % specs[2])
+        """ % dict(sub, name=name)
 
     def c_sync(self, name, sub):
         specs = self.dtype_specs()
@@ -452,7 +462,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (12, numpy.__version__)
+        return (13, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize

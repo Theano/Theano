@@ -277,7 +277,7 @@ class Subtensor(Op):
     e_subslice = 'nested slicing is not supported'
     e_indextype = "Invalid index type or slice for Subtensor"
     debug = 0
-
+    check_input = False
     view_map = {0: [0]}
 
     @staticmethod
@@ -892,7 +892,7 @@ class Subtensor(Op):
         # have a versioned version of this op's C code.
         if len(hv) == 0:
             return ()
-        return (2, hv)
+        return (3, hv)
 
     def R_op(self, inputs, eval_points):
         # Subtensor is not differentiable wrt to its indices, therefore we
@@ -1073,6 +1073,8 @@ class IncSubtensor(Op):
     :param set_instead_of_inc: if True set the subtensor to the value instead
     of incrementing it by that value.
     """
+
+    check_input = False
 
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
             destroyhandler_tolerate_aliased=None):

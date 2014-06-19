@@ -141,8 +141,7 @@ The ``c_code`` method accepts variable names as arguments (``name``, ``inames``,
 ``onames``) and returns a C code fragment that computes the expression output.
 In case of error, the ``%(fail)s`` statement cleans up and returns properly.
 The variables ``%(x)s`` and ``%(y)s`` are set up by the TensorType to be ``PyArrayObject`` pointers.
-TensorType also set up ``dtype_%(x)s`` to be a typdef to the C type for ``x``,
-``type_num_%(x)s`` is the corresponding NumPy type number.
+TensorType also set up ``dtype_%(x)s`` to be a typdef to the C type for ``x``.
 
 In the first two lines of the C function, we make y point to a new array with
 the correct size for the output. This is essentially simulating the line

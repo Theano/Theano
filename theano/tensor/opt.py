@@ -1363,6 +1363,8 @@ class Assert(T.Op):
     """
     view_map = {0: [0]}
 
+    check_input = False
+
     def __init__(self, msg="Theano Assert failed!"):
         self.msg = msg
 
@@ -1415,7 +1417,7 @@ class Assert(T.Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1, 1)
+        return (3, 0)
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]
