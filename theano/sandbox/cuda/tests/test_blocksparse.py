@@ -24,7 +24,7 @@ def blocksparse_data():
     return weight, input, inputIndice, bias, outputIndice
 
 def blocksparse(W, h, iIdx, b, oIdx):
-    o = b.take(oIdx, axis=0).copy()
+    o = b.take(oIdx, axis=0)
 
     for j in range(o.shape[0]):
         outputIdx = oIdx[j]

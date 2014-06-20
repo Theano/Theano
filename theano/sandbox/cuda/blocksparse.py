@@ -149,8 +149,22 @@ class SparseBlockOuterSS(GpuOp):
 
 sparse_block_outer_ss = SparseBlockOuterSS()
 
+#############################################################
+# All code above this line is unused (except for the imports)
+
 
 def sparse_block_dot_DS(W, h, inputIdx, b, outputIdx):
+    """
+    var: shape, comment
+    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
+    h: (iWin, iSize), input from lower layer (sparse)
+    inputIdx: (iWin,), indexes of the input blocks
+    b: (oBlocks, oSize), bias vector
+    outputIdx: (oWin,), indexes of the output blocks
+
+    returns (oBlocks, oSize), dot(W[i, j], h[i]) + b[j]
+        but b[j] is only added once
+    """
     o = b.take(outputIdx, axis=0)
     def outer_fn(out_id, W, h, b, iIdx):
         def inner_fn(inp_id, h_i, out_id, W):
