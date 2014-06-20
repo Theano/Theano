@@ -165,7 +165,7 @@ def test_downsample():
             if float(shp[3]) / ds[1] > 512:
                 continue
             for ignore_border in (True, False):
-                #print 'test_downsample', shp, ds, ignore_border
+                print '### test_downsample ###', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
                 a = gpuarray_shared_constructor(my_rand(*shp), 'a')

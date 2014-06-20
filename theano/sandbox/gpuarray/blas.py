@@ -312,8 +312,8 @@ class GpuDownsampleFactorMax(Op):
 
     def __eq__(self, another_op):
         return (type(self) == type(another_op) and
-                self.ds == other.ds and
-                self.ignore_border == other.ignore_border)
+                self.ds == another_op.ds and
+                self.ignore_border == another_op.ignore_border)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
@@ -340,11 +340,13 @@ class GpuDownsampleFactorMax(Op):
                     itemsize_z = numpy.dtype(outputs[0]).itemsize,
                     nodename = nodename,
                     fail = sub['fail'],
-                    ignore_border = int(self.ignore_border)
+                    ignore_border = int(self.ignore_border),
+                    sync =  bool(config.gpuarray.sync) 
         )
         return """
         int dims[4], xdim2, xdim3;
-        if (%(x)s->nd != 4)
+        
+        if (PyGpuArray_NDIM(%(x)s) != 4)
         {
             PyErr_SetString(PyExc_ValueError,
                             "GpuDownsampleFactorMax: rank error");
@@ -377,7 +379,7 @@ class GpuDownsampleFactorMax(Op):
         {
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(4, 
-                              dims,
+                              PyGpuArray_DIMS(%(x)s),
                               %(typecode)s,
                               GA_C_ORDER,
                               pygpu_default_context(),
@@ -413,9 +415,9 @@ class GpuDownsampleFactorMax(Op):
                 PyGpuArray_STRIDES(%(z)s)[0] / %(itemsize_z)s,
                 PyGpuArray_STRIDES(%(z)s)[1] / %(itemsize_z)s,
                 PyGpuArray_STRIDES(%(z)s)[2] / %(itemsize_z)s,
-                PyGpuArray_STRIDES(%(z)s)[3]) / %(itemsize_z)s;
+                PyGpuArray_STRIDES(%(z)s)[3] / %(itemsize_z)s);
 
-            if config.gpuarray.sync:
+            if (%(sync)d)
                 GpuArray_sync(&%(z)s->ga);
           
             cudaError_t err = cudaGetLastError();
@@ -505,6 +507,14 @@ class GpuDownsampleFactorMax(Op):
             }
         }
         """ % locals()
+
+    def c_support_code(self):
+        return """
+        CUdeviceptr (*cuda_get_ptr)(gpudata *g);
+        """
+
+    def c_init_code(self):
+        return ['cuda_get_ptr = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
 
     def c_compiler(self):
       return NVCC_compiler
