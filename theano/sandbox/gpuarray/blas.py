@@ -324,11 +324,11 @@ class GpuDownsampleFactorMax(Op):
                               self.ignore_border)
 
     def make_node(self, x):
-	x = as_gpuarray_variable(x)
+        x = as_gpuarray_variable(x)
         if not x.type.ndim == 4:
             raise TypeError()
         return Apply(self, [x], [x.type()])
-    
+
     def c_code(self, node, nodename, inputs, outputs, sub):
         vars = dict(
                     ds0 = self.ds[0], 
@@ -370,7 +370,7 @@ class GpuDownsampleFactorMax(Op):
                          dims[3]);
             %(fail)s;
         }
-        
+
         if ((NULL == %(z)s)
             || (PyGpuArray_DIMS(%(z)s)[0] != dims[0])
             || (PyGpuArray_DIMS(%(z)s)[1] != dims[1])
@@ -378,7 +378,7 @@ class GpuDownsampleFactorMax(Op):
             || (PyGpuArray_DIMS(%(z)s)[3] != dims[3]))
         {
             Py_XDECREF(%(z)s);
-            %(z)s = pygpu_empty(4, 
+            %(z)s = pygpu_empty(4,
                               dims,
                               %(typecode)s,
                               GA_C_ORDER,
@@ -419,7 +419,7 @@ class GpuDownsampleFactorMax(Op):
 
             if (%(sync)d)
                 GpuArray_sync(&%(z)s->ga);
-          
+
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
             {
@@ -437,8 +437,6 @@ class GpuDownsampleFactorMax(Op):
             }
         }
         """ % vars
-
-        
 
     def c_support_code_apply(self, node, nodename):
         ignore_border = int(self.ignore_border)
