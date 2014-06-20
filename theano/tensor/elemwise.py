@@ -450,6 +450,8 @@ class Elemwise(OpenMPOp):
       Elemwise(log)(rand(3, 4, 5))
     """
 
+    check_input = False
+
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
         """
@@ -1173,9 +1175,52 @@ class Elemwise(OpenMPOp):
             """ % locals()
         return decl, checks, alloc, loop
 
-    def c_code(self, node, nodename, inames, onames, sub):
+    def c_code_dtype(self, node, nodename, inames, onames, sub):
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
         return code
+
+    def c_code(self, node, nodename, inames, onames, sub):
+        if all([inp.dtype == node.inputs[0].dtype for inp in node.inputs]):
+            alldtypes = [[type for inp in node.inputs] for type in('float32',
+                'float64', 'uint8', 'int8', 'uint16', 'int16', 'uint32',
+                'int32', 'uint64', 'int64')]
+            code = ""
+            fail = sub['fail']
+            for dtypes in alldtypes:
+                inputs = [TensorType(t, inp.broadcastable)() for (t, inp)
+                         in zip(dtypes, node.inputs)]
+                decl = ""
+                for name in inames:
+                    decl += """
+                            typedef %(dtype)s dtype_%(name)s;
+                            """ % dict(sub, name=name, dtype="npy_"
+                                       + dtypes[0])
+
+                output = self(inputs)
+                decl += """
+                        typedef %(dtype)s dtype_%(name)s;
+                        """ % dict(sub, name=onames[0],
+                                   dtype=output.type.dtype_specs()[1])
+
+                nnode = self.make_node(*inputs)
+
+                type = "NPY_" + dtypes[0].upper()
+                name = inames[0]
+
+                code += "if (PyArray_TYPE((PyArrayObject*) py_%(name)s) =="\
+                    "%(type)s){ " % locals() + decl \
+                    + self.c_code_dtype(nnode, nodename + dtypes[0], inames,
+                    onames, sub) + "}else "
+            code += """
+            {
+            PyErr_SetString(PyExc_NotImplementedError, "Unexpected type");
+            %(fail)s
+            }
+            """ % locals()
+
+            return code
+        else:
+            return self.c_code_dtype(node, nodename, inames, onames, sub)
 
     def c_headers(self):
         return ['<vector>', '<algorithm>']
@@ -1189,7 +1234,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [11]  # the version corresponding to the c code in this Op
+        version = [12]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
