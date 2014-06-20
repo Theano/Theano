@@ -1210,14 +1210,12 @@ class Elemwise(OpenMPOp):
                             """ % dict(sub, name=name, dtype="npy_"
                                        + dtypes[0])
 
-                output = self(inputs)
-                decl += """
-                        typedef %(dtype)s dtype_%(name)s;
-                        """ % dict(sub, name=onames[0],
-                                   dtype=output.type.dtype_specs()[1])
-
                 nnode = self.make_node(*inputs)
-
+                for (name, out) in zip(onames, nnode.outputs):
+                    decl += """
+                            typedef %(dtype)s dtype_%(name)s;
+                            """ % dict(sub, name=name,
+                                       dtype=out.type.dtype_specs()[1])
                 type = "NPY_" + dtypes[0].upper()
                 name = inames[0]
 
@@ -1234,7 +1232,19 @@ class Elemwise(OpenMPOp):
 
             return code
         else:
-            return self.c_code_dtype(node, nodename, inames, onames, sub)
+            decl = ""
+            for (name, out) in zip(onames, node.outputs):
+                    decl += """
+                            typedef %(dtype)s dtype_%(name)s;
+                            """ % dict(sub, name=name,
+                                       dtype=out.type.dtype_specs()[1])
+            for (name, inp) in zip(inames, node.inputs):
+                    decl += """
+                            typedef %(dtype)s dtype_%(name)s;
+                            """ % dict(sub, name=name,
+                                       dtype=inp.type.dtype_specs()[1])
+            return decl + self.c_code_dtype(node, nodename, inames,
+                                            onames, sub)
 
     def c_headers(self):
         return ['<vector>', '<algorithm>']
@@ -1248,7 +1258,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [12]  # the version corresponding to the c code in this Op
+        version = [13]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
