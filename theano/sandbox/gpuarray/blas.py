@@ -379,7 +379,7 @@ class GpuDownsampleFactorMax(Op):
         {
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(4, 
-                              PyGpuArray_DIMS(%(x)s),
+                              dims,
                               %(typecode)s,
                               GA_C_ORDER,
                               pygpu_default_context(),

@@ -2,6 +2,7 @@ import copy
 import theano
 import numpy
 
+import theano.tensor.signal.downsample
 try:
     import pygpu
 except ImportError:
