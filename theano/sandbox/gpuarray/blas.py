@@ -344,8 +344,8 @@ class GpuDownsampleFactorMax(Op):
                     sync =  bool(config.gpuarray.sync) 
         )
         return """
-        int dims[4], xdim2, xdim3;
-        
+        size_t dims[4], xdim2, xdim3;
+
         if (PyGpuArray_NDIM(%(x)s) != 4)
         {
             PyErr_SetString(PyExc_ValueError,
@@ -365,7 +365,7 @@ class GpuDownsampleFactorMax(Op):
         }
         if(dims[3]>512){
             PyErr_Format(PyExc_ValueError,
-                         "GpuDownsampleFactorMax: last dimention size of %%d"
+                         "GpuDownsampleFactorMax: last dimention size of %%ud"
                          " is bigger then 512. This case is not implemented.",
                          dims[3]);
             %(fail)s;
@@ -393,11 +393,10 @@ class GpuDownsampleFactorMax(Op):
                                 "Was not able to allocate output!");
                 %(fail)s;
             }
-                  
 
         }
         {
-            dim3 grid(std::min(dims[0] * dims[1], 65535),
+            dim3 grid(std::min(dims[0] * dims[1], (size_t) 65535),
                       dims[2]);
             //dim3 block(std::min(dims[3], 512));
             //TODO: implement this by supporting more outputs than threads
@@ -443,7 +442,7 @@ class GpuDownsampleFactorMax(Op):
         return """
         template<int pf2, int pf3>
         __global__ void kMaxPool_%(nodename)s(
-           int D0, int D1, int D2, int D3, int xD2, int xD3,
+           size_t D0, size_t D1, size_t D2, size_t D3, size_t xD2, size_t xD3,
            const float * x, int xS0, int xS1, int xS2, int xS3,
            float *z, int zS0, int zS1, int zS2, int zS3)
         {
@@ -522,8 +521,8 @@ class GpuDownsampleFactorMax(Op):
 
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
-    def c_code_cache_version(self):
-	return (6)
+#    def c_code_cache_version(self):
+#	return (6)
 
 
 class GpuDownsampleFactorMaxGrad(Op):
