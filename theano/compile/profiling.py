@@ -1151,6 +1151,80 @@ if 0: # old code still to be ported from ProfileMode
                 n_ops_to_print=n_ops_to_print, print_apply=False)
 
 
+    def min_mem_usage_order(self, file):
+        mem_list = []
+        current_mem = 0
+        order_index = 0
+        min_mem = 0
+
+        compute_map = fgraph.profile.compute_map
+        # compute_map use to check if a node is valid
+
+        node_mem = {}
+        for node in self.apply_callcount.keys():
+            sum_dense = 0
+            for out in node.outputs:
+                sh = self.variable_shape[out]
+                if hasattr(out.type, 'get_size'):
+                    v = out.type.get_size(sh)
+                    sum_dense += v
+
+            node_mem[node] = sum_dense
+        # node_mem use to calculate the node memory usage 
+
+        def check_node_state(node):
+            """
+            check if an Apply node is valid(has inputs but no outputs).
+
+            :param node: apply node
+            """
+            inputs = node.inputs
+            outputs = node.outputs
+            deps = inputs + node.destroy_dependencies
+            computed_ins = all(compute_map[v][0] for v in deps)
+            computed_outs = all(compute_map[v][0] for v in outputs)
+            # check if there could be a compute_map
+            if computed_ins and not computed_outs:
+                return True
+            else:
+                return False
+
+        def min_memory_generator(node_list, b=False):
+            global mem_list, current, order_index, min_mem
+            '''
+            enumerate all valid order( node with inputs in its compute_map)
+            compute the peak of all order and keep the order with the minimum peak.
+            return an order with minimum memory usage
+
+            :param node_list: a list of apply nodes
+            '''
+            
+            for i in range(len(node_list)):
+                v = node_list[i:i+1]
+                if check_state(v[0]): 
+                    if len(node_list) == 1:
+                        yield v
+                        current_mem += node_mem[v[0]]
+                        b = True
+                    else:
+                        b = False
+                        rest = node_list[ :i] + node_list[i+1: ]
+                        for p in count_min_memory_peak(rest):
+                            yield v+p
+                            current_mem += node_mem[v[0]]
+            if b:
+                mem_list.append(current_mem)
+                if not min_mem:
+                    min_mem = current_mem 
+                if current_mem < min_mem:
+                    min_mem = current_mem
+                    order_index = mem_list.index(current_mem)
+                current_mem = 0
+
+
+
+
+
 class ScanProfileStats(ProfileStats):
     callcount = 0.0
     nbsteps = 0.0
