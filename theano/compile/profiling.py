@@ -735,6 +735,11 @@ class ProfileStats(object):
 
             del fgraph, nodes_mem, post_thunk_old_storage, node
 
+        best_order = []
+        minimum_peak = 0
+        node_list = fgraph.nodes
+        best_order, minimum_peak = count_minimum_peak(node_list)
+
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
                              "(the max between all functions in that profile)")
@@ -830,6 +835,10 @@ class ProfileStats(object):
                          " here. If you use DebugMode, warnings will be"
                          " emitted in those cases.")
         print >> file, ''
+
+        print >> file,  (
+            "The minimum peak from all valid apply node order is %dKB") % \ 
+            int(round(minimum_peak / 1024.)))
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_apply_to_print=20):
@@ -1151,11 +1160,12 @@ if 0: # old code still to be ported from ProfileMode
                 n_ops_to_print=n_ops_to_print, print_apply=False)
 
 
-    def min_mem_usage_order(self, file):
+    def count_minimum_peak(node_list):
         mem_list = []
         current_mem = 0
         order_index = 0
         min_mem = 0
+        order = []
 
         compute_map = fgraph.profile.compute_map
         # compute_map use to check if a node is valid
@@ -1221,7 +1231,12 @@ if 0: # old code still to be ported from ProfileMode
                     order_index = mem_list.index(current_mem)
                 current_mem = 0
 
+        gen = min_memory_generator(node_list)
 
+        for i in range(0, (order_index+1)):
+            order = gen.next()
+
+        return order, min_mem
 
 
 
