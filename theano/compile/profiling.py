@@ -836,9 +836,7 @@ class ProfileStats(object):
                          " emitted in those cases.")
         print >> file, ''
 
-        print >> file,  (
-            "The minimum peak from all valid apply node order is %dKB") % \ 
-            int(round(minimum_peak / 1024.)))
+        print >> file,  " The minimum peak from all valid apply node order is %dKB" % int(round(minimum_peak / 1024.))
 
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_apply_to_print=20):
