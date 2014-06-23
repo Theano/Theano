@@ -90,3 +90,21 @@ def test_blocksparse_op_grad():
         return sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
     utt.verify_grad(f, [b_val, W_val, h_val])
+
+
+def test_blocksparse_op_grad2():
+    b = tensor.fmatrix()
+    W = tensor.ftensor4()
+    h = tensor.fmatrix()
+    iIdx = tensor.lvector()
+    oIdx = tensor.lvector()
+
+    o = sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+    go = theano.grad(o.sum(), [b, W, h])
+
+    f = theano.function([W, h, iIdx, b, oIdx], go)
+
+    W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
+
+    # just make sure that it runs correcly and all the shapes are ok.
+    f(W_val, h_val, iIdx_val, b_val, oIdx_val)

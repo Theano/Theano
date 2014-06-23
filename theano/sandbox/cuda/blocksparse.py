@@ -50,15 +50,14 @@ def gemv(alpha, A, x, beta, y):
 
 
 def ger(alpha, x, y, A):
-    print A.shape, x.shape, y.shape
     assert A.shape[1] == x.shape[0]
     assert A.shape[0] == y.shape[0]
 
     handle = scikits.cuda.misc._global_cublas_handle
 
-    cublas.cublasSger(handle, A.shape[0], A.shape[1], alpha,
-                      x.gpudata, x.strides[0],
+    cublas.cublasSger(handle, A.shape[1], A.shape[0], alpha,
                       y.gpudata, y.strides[0],
+                      x.gpudata, x.strides[0],
                       A.gpudata, A.strides[0])
 
 
@@ -88,7 +87,7 @@ class SparseBlockGemvDS(GpuOp):
 
         assert 'int' in inputIdx.type.dtype
         assert 'int' in outputIdx.type.dtype
-        
+
         return Apply(self, [o, W, h, inputIdx, outputIdx],
                      [o.type()])
 
@@ -113,9 +112,10 @@ class SparseBlockGemvDS(GpuOp):
         go = grads[0]
 
         # might revise that interface to not have a huge output
-        Wgrad = sparse_block_outer_ss(W.zeros_like(), go, h,
-                                      outputIdx, inputIdx)
-        hgrad = sparse_block_gemv_ds(h.zeros_like(), W.T, go,
+        Wgrad = sparse_block_outer_ss(W.zeros_like().dimshuffle((1, 0, 3, 2)),
+                                      go, h, outputIdx, inputIdx)
+        hgrad = sparse_block_gemv_ds(h.zeros_like(), W.dimshuffle((1, 0, 3, 2)),
+                                     go,
                                      outputIdx, inputIdx)
         return [go, Wgrad, hgrad,
                 grad_undefined(self, 3, inputIdx,
@@ -144,11 +144,11 @@ class SparseBlockOuterSS(GpuOp):
 
         if not self.inplace:
             o = o.copy()
-        
+
         for i in range(x.shape[0]):
-            out_id = xIdx[i]
+            inp_id = xIdx[i]
             for j in range(y.shape[0]):
-                inp_id = yIdx[j]
+                out_id = yIdx[j]
                 ger(numpy.float32(1.0), x[i],
                     y[j], o[inp_id, out_id])
 
