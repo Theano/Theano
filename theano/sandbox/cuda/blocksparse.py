@@ -50,13 +50,17 @@ def gemv(alpha, A, x, beta, y):
 
 
 def ger(alpha, x, y, A):
-    assert A.shape[0] == x.shape[0]
-    assert A.shape[1] == y.shape[0]
+    print A.shape, x.shape, y.shape
+    assert A.shape[1] == x.shape[0]
+    assert A.shape[0] == y.shape[0]
 
     handle = scikits.cuda.misc._global_cublas_handle
 
-    cublas.cublasSger(handle, A.shape[0], A.shape[1], x.gpudata, x.strides[0],
-                      y.gpudata, y.strides[0], A.gpudata, A.strides[1])
+    cublas.cublasSger(handle, A.shape[0], A.shape[1], alpha,
+                      x.gpudata, x.strides[0],
+                      y.gpudata, y.strides[0],
+                      A.gpudata, A.strides[0])
+
 
 def bptr(a):
     assert (a.ndim == 3 and a.strides[2] == 1)
@@ -109,7 +113,7 @@ class SparseBlockGemvDS(GpuOp):
         go = grads[0]
 
         # might revise that interface to not have a huge output
-        Wgrad = sparse_block_outer_ss(W.zeros_like(), go, h.T,
+        Wgrad = sparse_block_outer_ss(W.zeros_like(), go, h,
                                       outputIdx, inputIdx)
         hgrad = sparse_block_gemv_ds(h.zeros_like(), W.T, go,
                                      outputIdx, inputIdx)
@@ -128,6 +132,9 @@ class SparseBlockOuterSS(GpuOp):
         self.inplace = False
 
     def make_node(self, o, x, y, xIdx, yIdx):
+        o = basic_ops.as_cuda_ndarray_variable(o)
+        x = basic_ops.as_cuda_ndarray_variable(x)
+        y = basic_ops.as_cuda_ndarray_variable(y)
         return Apply(self, [o, x, y, xIdx, yIdx],
                      [o.type()])
 
@@ -142,8 +149,8 @@ class SparseBlockOuterSS(GpuOp):
             out_id = xIdx[i]
             for j in range(y.shape[0]):
                 inp_id = yIdx[j]
-                ger(np.float32(1.0), x[i],
-                    y[j], np.float32(1.0), o[i, j])
+                ger(numpy.float32(1.0), x[i],
+                    y[j], o[inp_id, out_id])
 
         out[0] = o
 

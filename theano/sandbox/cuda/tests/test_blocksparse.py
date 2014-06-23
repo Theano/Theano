@@ -64,7 +64,6 @@ def test_blocksparse_op():
     iIdx = tensor.lvector()
     oIdx = tensor.lvector()
 
-
     o = sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
     f = theano.function([W, h, iIdx, b, oIdx], o)
@@ -75,3 +74,19 @@ def test_blocksparse_op():
     ref_out = blocksparse(W_val, h_val, iIdx_val, b_val, oIdx_val)
 
     utt.assert_allclose(ref_out, th_out)
+
+
+def test_blocksparse_op_grad():
+    h_val = randn(2, 3).astype('float32')
+    iIdx_val = numpy.random.permutation(3)[:2]
+    oIdx_val = numpy.random.permutation(3)[:2]
+    W_val = randn(3, 3, 3, 3).astype('float32')
+    b_val = randn(3, 3).astype('float32')
+
+    iIdx = theano.tensor.constant(iIdx_val)
+    oIdx = theano.tensor.constant(oIdx_val)
+
+    def f(b, W, h):
+        return sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+
+    utt.verify_grad(f, [b_val, W_val, h_val])
