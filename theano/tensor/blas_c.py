@@ -5,6 +5,9 @@ from theano.tensor.blas import ldflags, blas_header_text, blas_header_version
 from theano.tensor.blas import blas_optdb, optdb, local_optimizer, EquilibriumOptimizer
 from theano.tensor.blas import Ger, ger, ger_destructive
 from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
+from theano.tensor import basic as T
+import numpy
+import theano.compile
 
 
 class BaseBLAS(object):
@@ -280,13 +283,13 @@ def make_c_ger_destructive(node):
 ####### ####### #######
 
 
-def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
+def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=False):
     """
     zz <- beta * aa + alpha * dot(xx, yy)
 
     where xx is a matrix, yy and aa are vectors (ergo zz is vector)
     """
-    return """
+    code = """
 
     int elemsize ;
     float fbeta;
@@ -365,7 +368,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
             PyErr_SetString(PyExc_AssertionError, "%(zz)s != %(aa)s");
             %(fail)s
         }
-        if (dbeta != 0)
+        if (dbeta != 0 || %(force_init_beta)d)
         {
             if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
             {
@@ -566,17 +569,26 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail):
         }
     }
 
-    """ % locals()
+    """
+    return code % locals()
 
 
 class CGemv(BaseBLAS, Gemv):
+    def __init__(self, force_init_beta=False, **kwargs):
+        super(BaseBLAS, self).__init__(**kwargs)
+        super(Gemv, self).__init__()
+
+	self.force_init_beta = force_init_beta
+
     def c_code(self, node, name, inp, out, sub):
         aa, alpha, xx, yy, beta = inp
         zz, = out
         code = gemv_c_code(
                 aa, xx, yy, zz, alpha, beta,
                 destructive=int(self.inplace),
-                fail=sub['fail'])
+                fail=sub['fail'],
+                force_init_beta = self.force_init_beta
+                )
         return code
 
     def c_code_cache_version(self):
@@ -592,7 +604,56 @@ def use_c_gemv(node):
     # Only float32 and float64 are supported for now.
     if (node.op == gemv_no_inplace and
             node.outputs[0].dtype in ['float32', 'float64']):
-        return [CGemv(inplace=False)(*node.inputs)]
+
+        """
+        Test issue 1569.
+        Namely when evaulating
+
+            beta*aa + alpha*dot(xx, yy)
+
+        where we set z = b = zeros of the correct dimensions we do not actually
+        set z = zeros and instead let the BLAS perform b*z with uninitialized
+        memory for speed. Occasionally the memory contains values that are
+        equivalent to NaN in which case the product b*z contains NaN's for
+        correctly implemented BLAS libraries. In this situation, since we are
+        introducing the NaN's, we need to test whether the BLAS performs
+        correctly. If it *does*, i.e. it actually performs the multiplication
+        b*z which will result in NaN's in the result, then we need intialize
+        the memory to zeros.
+
+        Note: We perform this check here, as opposed to in the global scope,
+        because the environment is not completely setup at the point in which
+        we would perform this check in global scope.
+        """
+        aa = T.vector('aa')
+        yy = T.vector('yy')
+        xx = T.matrix('xx')
+        f = theano.function(
+            [aa, yy, xx],
+            gemv_no_inplace(aa, 0., xx, yy, 0.),
+            theano.compile.Mode(optimizer='fast_compile')
+        )
+
+        # Here we introduce NaNs into the data, if they are returned by the BLAS
+        # then we want gemv_c_code to initiliaze the memory to 0 so that we
+        # inadvertantly introduce NaNs to the users data.
+        aa_data = numpy.array(
+            float('NaN')*numpy.ones((2,)),
+            dtype=theano.config.floatX
+        )
+        yy_data = numpy.array(
+            numpy.zeros((2,)),
+            dtype=theano.config.floatX
+        )
+        xx_data = numpy.array(
+            float('NaN')*numpy.ones((2, 2)),
+            dtype=theano.config.floatX
+        )
+        zz = f(aa_data, yy_data, xx_data)
+
+        force_init_beta = numpy.isnan(zz).any()
+
+        return [CGemv(inplace=False, force_init_beta=force_init_beta)(*node.inputs)]
     if (node.op == gemv_inplace and
             node.outputs[0].dtype in ['float32', 'float64']):
         return [CGemv(inplace=True)(*node.inputs)]
