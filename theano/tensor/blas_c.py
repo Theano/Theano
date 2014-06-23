@@ -574,9 +574,8 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=
 
 
 class CGemv(BaseBLAS, Gemv):
-    def __init__(self, force_init_beta=False, **kwargs):
-        super(BaseBLAS, self).__init__(**kwargs)
-        super(Gemv, self).__init__()
+    def __init__(self, inplace, force_init_beta=False):
+        super(CGemv, self).__init__(inplace)
 
 	self.force_init_beta = force_init_beta
 

@@ -137,7 +137,10 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
         # Assert that the dot was optimized somehow
         self.assertFunctionContains0(f, tensor.dot)
-        self.assertFunctionContains1(f, CGemv(True))
+        self.assertFunctionContains1(
+            f,
+            CGemv(inplace=True, force_init_beta=True)
+        )
 
         # Assert they produce the same output
         assert numpy.allclose(f(self.xval, self.Aval),
@@ -155,7 +158,10 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
         # Assert that the dot was optimized somehow
         self.assertFunctionContains0(f, tensor.dot)
-        self.assertFunctionContains1(f, CGemv(True))
+        self.assertFunctionContains1(
+            f,
+            CGemv(inplace=True, force_init_beta=True)
+        )
 
         # Assert they produce the same output
         assert numpy.allclose(f(self.Aval, self.yval),
