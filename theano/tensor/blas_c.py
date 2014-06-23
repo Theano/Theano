@@ -1,3 +1,5 @@
+import numpy
+
 from theano import config
 
 from theano.tensor.opt import in2out
@@ -6,7 +8,6 @@ from theano.tensor.blas import blas_optdb, optdb, local_optimizer, EquilibriumOp
 from theano.tensor.blas import Ger, ger, ger_destructive
 from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
 from theano.tensor import basic as T
-import numpy
 import theano.compile
 
 
@@ -586,7 +587,7 @@ class CGemv(BaseBLAS, Gemv):
                 aa, xx, yy, zz, alpha, beta,
                 destructive=int(self.inplace),
                 fail=sub['fail'],
-                force_init_beta = self.force_init_beta
+                force_init_beta=self.force_init_beta
                 )
         return code
 
@@ -595,15 +596,8 @@ class CGemv(BaseBLAS, Gemv):
 cgemv_inplace = CGemv(inplace=True)
 cgemv_no_inplace = CGemv(inplace=False)
 
-
-@local_optimizer([gemv_inplace, gemv_no_inplace])
-def use_c_gemv(node):
-    if not config.blas.ldflags:
-        return
-    # Only float32 and float64 are supported for now.
-    if (node.op == gemv_no_inplace and
-            node.outputs[0].dtype in ['float32', 'float64']):
-
+def check_force_gemv_init():
+    if check_force_gemv_init._force_init_beta is None:
         """
         Test issue 1569.
         Namely when evaulating
@@ -635,7 +629,7 @@ def use_c_gemv(node):
 
         # Here we introduce NaNs into the data, if they are returned by the BLAS
         # then we want gemv_c_code to initiliaze the memory to 0 so that we
-        # inadvertantly introduce NaNs to the users data.
+        # don't inadvertantly introduce NaNs to the users data.
         aa_data = numpy.array(
             float('NaN')*numpy.ones((2,)),
             dtype=theano.config.floatX
@@ -650,7 +644,21 @@ def use_c_gemv(node):
         )
         zz = f(aa_data, yy_data, xx_data)
 
-        force_init_beta = numpy.isnan(zz).any()
+        check_force_gemv_init._force_init_beta = numpy.isnan(zz).any()
+
+    return check_force_gemv_init._force_init_beta
+
+check_force_gemv_init._force_init_beta = None
+
+@local_optimizer([gemv_inplace, gemv_no_inplace])
+def use_c_gemv(node):
+    if not config.blas.ldflags:
+        return
+    # Only float32 and float64 are supported for now.
+    if (node.op == gemv_no_inplace and
+            node.outputs[0].dtype in ['float32', 'float64']):
+
+        force_init_beta = check_force_gemv_init()
 
         return [CGemv(inplace=False, force_init_beta=force_init_beta)(*node.inputs)]
     if (node.op == gemv_inplace and
