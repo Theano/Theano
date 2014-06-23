@@ -592,7 +592,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (10, blas_header_version())
+        return (11, blas_header_version())
 cgemv_inplace = CGemv(inplace=True)
 cgemv_no_inplace = CGemv(inplace=False)
 
