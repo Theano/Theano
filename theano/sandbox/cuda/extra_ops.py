@@ -78,7 +78,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                                                      compute_map, no_recycling)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -107,23 +107,28 @@ class GpuCumsum(CumsumOp, GpuOp):
         __device__
         void k_fetchData_%(nodename)s(float* partialCumSum, float* input, int globalThreadID, dim3 dataStrides, int dataOffset) {
             // blockIdx.y represents the # of the current independent cumsum
-            partialCumSum[threadIdx.x*2]     = input[(globalThreadID*2    ) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y];
-            partialCumSum[threadIdx.x*2 + 1] = input[(globalThreadID*2 + 1) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y];
+            int idx_even = (globalThreadID*2    ) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y;
+            int idx_odd  = (globalThreadID*2 + 1) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y;
+            partialCumSum[threadIdx.x*2]     = input[idx_even];
+            partialCumSum[threadIdx.x*2 + 1] = input[idx_odd];
         }
 
         __device__
         void k_pushData_%(nodename)s(float* partialCumSum, float* output, int globalThreadID, dim3 dataStrides, int dataOffset) {
             __syncthreads();
             // blockIdx.y represents the # of the current independent cumsum
-            output[(globalThreadID*2    ) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y] = partialCumSum[threadIdx.x*2];
-            output[(globalThreadID*2 + 1) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y] = partialCumSum[threadIdx.x*2 + 1];
+            int idx_even = (globalThreadID*2    ) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y;
+            int idx_odd  = (globalThreadID*2 + 1) * dataStrides.x + (blockIdx.y + dataOffset) * dataStrides.y;
+            output[idx_even] = partialCumSum[threadIdx.x*2];
+            output[idx_odd]  = partialCumSum[threadIdx.x*2 + 1];
         }
 
         __global__
         void k_cumadd_%(nodename)s(float* input, float* output, dim3 dataStrides, int dataOffset, int beforeLastElementIdx, int lastElementIdx) {
             int dataOffsetY = (blockIdx.y + dataOffset) * dataStrides.y;
-            output[lastElementIdx*dataStrides.x + dataOffsetY] = input[lastElementIdx*dataStrides.x + dataOffsetY]
-                                                               + output[beforeLastElementIdx*dataStrides.x + dataOffsetY];
+            int idx_last = lastElementIdx*dataStrides.x + dataOffsetY;
+            int idx_beforelast = beforeLastElementIdx*dataStrides.x + dataOffsetY;
+            output[idx_last] = input[idx_last] + output[idx_beforelast];
         }
 
         __global__
@@ -137,9 +142,11 @@ class GpuCumsum(CumsumOp, GpuOp):
 
             const float currentBlockSum = blockSum[blockIdx.x*gridDim.y + blockIdx.y + dataOffset];
 
-            int dataOffsetY = (blockIdx.y + dataOffset) * dataStrides.y;
-            output[(globalThreadID*2    ) * dataStrides.x + dataOffsetY] += currentBlockSum;
-            output[(globalThreadID*2 + 1) * dataStrides.x + dataOffsetY] += currentBlockSum;
+            int dataOffsetY = (blockIdx.y + dataOffset) * (int)dataStrides.y;
+            int idx_even = (globalThreadID*2    ) * dataStrides.x + dataOffsetY;
+            int idx_odd  = (globalThreadID*2 + 1) * dataStrides.x + dataOffsetY;
+            output[idx_even] += currentBlockSum;
+            output[idx_odd] += currentBlockSum;
         }
 
         __global__
@@ -158,7 +165,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
             // Load data in shared memory
             k_fetchData_%(nodename)s(partialCumSum, input, globalThreadID, dataStrides, dataOffset);
-            
+
             k_reductionPhase_%(nodename)s(partialCumSum);
             k_reversePhase_%(nodename)s(partialCumSum);
 
@@ -210,7 +217,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
             //CudaNdarray* deviceBlockSum = (CudaNdarray*) CudaNdarray_NewDims(2, shapeBlockSum);
             CudaNdarray* deviceBlockSum = (CudaNdarray*) CudaNdarray_ZEROS(2, (int*)shapeBlockSum);
-            
+
             for (int dataOffset = 0; dataOffset < dimGridY; dataOffset += maxGridY){
                 int localDimGridY = min(dimGridY - dataOffset, maxGridY);
                 dim3 dimBlock(blockSize, 1, 1);
@@ -341,7 +348,7 @@ def use_gpu_cumsum(node):
             return None
 
         x = gpu_from_host(x)
-        
+
         if axis is None and x.ndim > 1:
             x = GpuFlatten()(x)
 
