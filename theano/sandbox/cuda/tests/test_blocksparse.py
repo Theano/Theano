@@ -5,8 +5,8 @@ import theano.tests.unittest_tools as utt
 import numpy
 from numpy.random import randn
 
-from theano.sandbox.cuda.blocksparse import (sparse_block_dot_DS,
-                                             sparse_block_gemv_ds)
+from theano.sandbox.cuda.blocksparse import (sparse_block_dot_SS,
+                                             sparse_block_gemv_ss)
 
 def blocksparse_data():
     nInputBlock = 128
@@ -45,7 +45,7 @@ def test_blocksparse():
     iIdx = tensor.lvector()
     oIdx = tensor.lvector()
 
-    o = sparse_block_dot_DS(W, h, iIdx, b, oIdx)
+    o = sparse_block_dot_SS(W, h, iIdx, b, oIdx)
 
     f = theano.function([W, h, iIdx, b, oIdx], o)
 
@@ -64,7 +64,7 @@ def test_blocksparse_op():
     iIdx = tensor.lvector()
     oIdx = tensor.lvector()
 
-    o = sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+    o = sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
     f = theano.function([W, h, iIdx, b, oIdx], o)
 
@@ -80,16 +80,16 @@ def test_blocksparse_op_grad():
     h_val = randn(2, 3).astype('float32')
     iIdx_val = numpy.random.permutation(3)[:2]
     oIdx_val = numpy.random.permutation(3)[:2]
-    W_val = randn(3, 3, 3, 3).astype('float32')
-    b_val = randn(3, 3).astype('float32')
+    W_val = randn(3, 3, 4, 3).astype('float32')
+    b_val = randn(3, 4).astype('float32')
 
     iIdx = theano.tensor.constant(iIdx_val)
     oIdx = theano.tensor.constant(oIdx_val)
 
-    def f(b, W, h):
-        return sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+    def f(b, h, W):
+        return sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
-    utt.verify_grad(f, [b_val, W_val, h_val])
+    utt.verify_grad(f, [b_val, h_val, W_val])
 
 
 def test_blocksparse_op_grad2():
@@ -99,7 +99,7 @@ def test_blocksparse_op_grad2():
     iIdx = tensor.lvector()
     oIdx = tensor.lvector()
 
-    o = sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+    o = sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
     go = theano.grad(o.sum(), [b, W, h])
 
     f = theano.function([W, h, iIdx, b, oIdx], go)
@@ -107,4 +107,8 @@ def test_blocksparse_op_grad2():
     W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
 
     # just make sure that it runs correcly and all the shapes are ok.
-    f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+    b_g, W_g, h_g = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+    assert b_g.shape == b_val.shape
+    assert h_g.shape == h_val.shape
+    assert W_g.shape == W_val.shape

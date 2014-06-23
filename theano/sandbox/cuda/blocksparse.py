@@ -69,7 +69,7 @@ def bptr(a):
                                   dtype=cublas.ctypes.c_void_p)
 
 
-class SparseBlockGemvDS(GpuOp):
+class SparseBlockGemvSS(GpuOp):
     def __init__(self, inplace):
         self.inplace = inplace
         if self.inplace:
@@ -112,9 +112,10 @@ class SparseBlockGemvDS(GpuOp):
         go = grads[0]
 
         # might revise that interface to not have a huge output
-        Wgrad = sparse_block_outer_ss(W.zeros_like().dimshuffle((1, 0, 3, 2)),
-                                      go, h, outputIdx, inputIdx)
-        hgrad = sparse_block_gemv_ds(h.zeros_like(), W.dimshuffle((1, 0, 3, 2)),
+        Wgrad = sparse_block_outer_ss(W.zeros_like(),
+                                      h, go, inputIdx, outputIdx)
+        hgrad = sparse_block_gemv_ss(h.zeros_like(),
+                                     W.dimshuffle((1, 0, 3, 2)),
                                      go,
                                      outputIdx, inputIdx)
         return [go, Wgrad, hgrad,
@@ -124,7 +125,7 @@ class SparseBlockGemvDS(GpuOp):
                                "grad of outputIdx makes no sense")]
 
 
-sparse_block_gemv_ds = SparseBlockGemvDS(False)
+sparse_block_gemv_ss = SparseBlockGemvSS(False)
 
 
 class SparseBlockOuterSS(GpuOp):
@@ -145,10 +146,10 @@ class SparseBlockOuterSS(GpuOp):
         if not self.inplace:
             o = o.copy()
 
-        for i in range(x.shape[0]):
-            inp_id = xIdx[i]
-            for j in range(y.shape[0]):
-                out_id = yIdx[j]
+        for j in range(y.shape[0]):
+            out_id = yIdx[j]
+            for i in range(x.shape[0]):
+                inp_id = xIdx[i]
                 ger(numpy.float32(1.0), x[i],
                     y[j], o[inp_id, out_id])
 
@@ -161,7 +162,7 @@ sparse_block_outer_ss = SparseBlockOuterSS()
 # All code above this line is unused (except for the imports)
 
 
-def sparse_block_dot_DS(W, h, inputIdx, b, outputIdx):
+def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
     """
     var: shape, comment
     W: (iBlocks, oBlocks, iSize, oSize), weight matrix
@@ -171,7 +172,7 @@ def sparse_block_dot_DS(W, h, inputIdx, b, outputIdx):
     outputIdx: (oWin,), indexes of the output blocks
 
     returns (oBlocks, oSize), dot(W[i, j], h[i]) + b[j]
-        but b[j] is only added once
+         but b[j] is only added once
     """
     o = b.take(outputIdx, axis=0)
     def outer_fn(out_id, W, h, b, iIdx):
