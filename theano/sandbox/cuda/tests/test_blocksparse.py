@@ -92,7 +92,7 @@ def test_blocksparse_op_grad():
     utt.verify_grad(f, [b_val, h_val, W_val])
 
 
-def test_blocksparse_op_grad2():
+def test_blocksparse_op_grad_shape():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
     h = tensor.fmatrix()

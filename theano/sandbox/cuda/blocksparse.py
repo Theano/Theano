@@ -50,8 +50,8 @@ def gemv(alpha, A, x, beta, y):
 
 
 def ger(alpha, x, y, A):
-    assert A.shape[1] == x.shape[0]
-    assert A.shape[0] == y.shape[0]
+    assert A.shape[0] == x.shape[0]
+    assert A.shape[1] == y.shape[0]
 
     handle = scikits.cuda.misc._global_cublas_handle
 
@@ -150,8 +150,8 @@ class SparseBlockOuterSS(GpuOp):
             out_id = yIdx[j]
             for i in range(x.shape[0]):
                 inp_id = xIdx[i]
-                ger(numpy.float32(1.0), x[i],
-                    y[j], o[inp_id, out_id])
+                ger(numpy.float32(1.0), y[j],
+                    x[i], o[inp_id, out_id])
 
         out[0] = o
 
