@@ -1181,14 +1181,25 @@ class Elemwise(OpenMPOp):
 
     def c_code(self, node, nodename, inames, onames, sub):
         if all([inp.dtype == node.inputs[0].dtype for inp in node.inputs]):
-            alldtypes = [[type for inp in node.inputs] for type in('float32',
-                'float64', 'uint8', 'int8', 'uint16', 'int16', 'uint32',
-                'int32', 'uint64', 'int64')]
+            if node.inputs[0].dtype.startswith('float'):
+                alldtypes = [[type for inp in node.inputs] for type in('float32',
+                'float64')]
+            elif node.inputs[0].dtype.startswith('uint'):
+                alldtypes = [[type for inp in node.inputs] for type in(
+                            'uint8', 'uint16', 'uint32', 'uint64')]
+            elif node.inputs[0].dtype.startswith('int'):
+                alldtypes = [[type for inp in node.inputs] for type in(
+                            'int8', 'int16', 'int32', 'int64')]
             code = ""
             fail = sub['fail']
             for dtypes in alldtypes:
-                inputs = [TensorType(t, inp.broadcastable)() for (t, inp)
-                         in zip(dtypes, node.inputs)]
+                inputs = []
+                ref = {}
+                for (t, inp, name) in zip(dtypes, node.inputs, inames):
+                    if not ref.has_key(name):
+                        x = TensorType(t, inp.broadcastable)()
+                        inputs.append(x)
+                        ref[name] = x
                 decl = ""
                 for name in inames:
                     decl += """
