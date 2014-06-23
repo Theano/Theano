@@ -127,11 +127,20 @@ class SparseBlockGemvSS(GpuOp):
 
 
 sparse_block_gemv_ss = SparseBlockGemvSS(False)
+sparse_block_gemv_ss_outer = SparseBlockGemvSS(True)
 
 
 class SparseBlockOuterSS(GpuOp):
-    def __init__(self):
-        self.inplace = False
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.inplace == other.inplace
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, o, x, y, xIdx, yIdx):
         o = basic_ops.as_cuda_ndarray_variable(o)
@@ -175,15 +184,5 @@ def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
     returns (oBlocks, oSize), dot(W[i, j], h[i]) + b[j]
          but b[j] is only added once
     """
-    o = b.take(outputIdx, axis=0)
-    def outer_fn(out_id, W, h, b, iIdx):
-        def inner_fn(inp_id, h_i, out_id, W):
-            return tensor.dot(W[inp_id, out_id], h_i)
-        return theano.scan(inner_fn, sequences=[iIdx, h],
-                           outputs_info=None,
-                           non_sequences=[out_id, W],
-                           n_steps=iIdx.shape[0])[0].sum(axis=0) + b[out_id]
-    return theano.scan(outer_fn, sequences=[outputIdx],
-                       outputs_info=None,
-                       non_sequences=[W, h, b, inputIdx],
-                       n_steps=outputIdx.shape[0])[0]
+    return sparse_block_gemv_ss(b.take(outputIdx, axis=0), W, h,
+                                inputIdx, outputIdx)
