@@ -635,6 +635,11 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
+        # count the minimum peak
+        best_order = []
+        minimum_peak = 0
+        max_minimum_peak = 0
+
         def count_running_memory(order, thunk_old_storage, nodes_mem):
             """
             Calculate memory with specific node order 
@@ -733,12 +738,15 @@ class ProfileStats(object):
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
 
+
+            node_list = fgraph.nodes
+            best_order, minimum_peak = count_minimum_peak(node_list, fgraph)
+            max_minimum_peak = max(max_minimum_peak, minimum_peak)
+            
+
             del fgraph, nodes_mem, post_thunk_old_storage, node
 
-        best_order = []
-        minimum_peak = 0
-        node_list = fgraph.nodes
-        best_order, minimum_peak = count_minimum_peak(node_list)
+        
 
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
@@ -1158,7 +1166,7 @@ if 0: # old code still to be ported from ProfileMode
                 n_ops_to_print=n_ops_to_print, print_apply=False)
 
 
-    def count_minimum_peak(node_list):
+    def count_minimum_peak(node_list, fgraph):
         mem_list = []
         current_mem = 0
         order_index = 0
