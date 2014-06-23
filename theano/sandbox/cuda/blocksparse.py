@@ -45,7 +45,8 @@ def gemv(alpha, A, x, beta, y):
     handle = scikits.cuda.misc._global_cublas_handle
 
     cublas.cublasSgemv(handle, 't', A.shape[1], A.shape[0], alpha,
-                       A.gpudata, A.strides[0], x.gpudata, x.strides[0],
+                       A.gpudata, max(A.strides[0], A.strides[1]),
+                       x.gpudata, x.strides[0],
                        beta, y.gpudata, y.strides[0])
 
 
