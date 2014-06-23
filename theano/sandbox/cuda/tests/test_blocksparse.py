@@ -5,7 +5,8 @@ import theano.tests.unittest_tools as utt
 import numpy
 from numpy.random import randn
 
-from theano.sandbox.cuda.blocksparse import sparse_block_dot_DS
+from theano.sandbox.cuda.blocksparse import (sparse_block_dot_DS,
+                                             sparse_block_gemv_ds)
 
 def blocksparse_data():
     nInputBlock = 128
@@ -55,3 +56,22 @@ def test_blocksparse():
 
     utt.assert_allclose(ref_out, th_out)
 
+
+def test_blocksparse_op():
+    b = tensor.fmatrix()
+    W = tensor.ftensor4()
+    h = tensor.fmatrix()
+    iIdx = tensor.lvector()
+    oIdx = tensor.lvector()
+
+
+    o = sparse_block_gemv_ds(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+
+    f = theano.function([W, h, iIdx, b, oIdx], o)
+
+    W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
+
+    th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+    ref_out = blocksparse(W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+    utt.assert_allclose(ref_out, th_out)

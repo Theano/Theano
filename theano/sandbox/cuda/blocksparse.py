@@ -39,13 +39,13 @@ def gemm_batched(Al, Bl, Cl, m, n, k, lda, ldb, ldc,
 
 
 def gemv(alpha, A, x, beta, y):
-    assert A.shape[0] == x.shape[0]
-    assert A.shape[1] == y.shape[0]
+    assert A.shape[1] == x.shape[0]
+    assert A.shape[0] == y.shape[0]
 
     handle = scikits.cuda.misc._global_cublas_handle
 
     cublas.cublasSgemv(handle, 't', A.shape[1], A.shape[0], alpha,
-                       A.gpudata, A.strides[1], x.gpudata, x.strides[0],
+                       A.gpudata, A.strides[0], x.gpudata, x.strides[0],
                        beta, y.gpudata, y.strides[0])
 
 
@@ -90,6 +90,7 @@ class SparseBlockGemvDS(GpuOp):
 
     def perform(self, node, inputs, outputs):
         o, W, h, inputIdx, outputIdx = inputs
+        out = outputs[0]
 
         if not self.inplace:
             o = o.copy()
@@ -98,7 +99,7 @@ class SparseBlockGemvDS(GpuOp):
             out_id = outputIdx[j]
             for i in range(h.shape[0]):
                 inp_id = inputIdx[i]
-                gemv(numpy.float32(1.0), W[out_id, inp_id],
+                gemv(numpy.float32(1.0), W[inp_id, out_id],
                      h[i], numpy.float32(1.0), o[j])
 
         out[0] = o
