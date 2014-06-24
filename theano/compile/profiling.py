@@ -696,6 +696,7 @@ class ProfileStats(object):
             order_index = 0
             min_mem = 0
             order = []
+            node_list = list(node_list)
 
             compute_map = fgraph.profile.compute_map
             # compute_map use to check if a node is valid
