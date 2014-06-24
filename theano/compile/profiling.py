@@ -719,7 +719,7 @@ class ProfileStats(object):
                     return False
 
             def min_memory_generator(node_list, b=False):
-                global mem_list, current, order_index, min_mem
+                global mem_list, current_mem, order_index, min_mem
                 '''
                 enumerate all valid order( node with inputs in its compute_map)
                 compute the peak of all order and keep the order with the minimum peak.
@@ -730,7 +730,7 @@ class ProfileStats(object):
                 
                 for i in range(len(node_list)):
                     v = node_list[i:i+1]
-                    if check_state(v[0]): 
+                    if check_node_state(v[0]): 
                         if len(node_list) == 1:
                             yield v
                             current_mem += nodes_mem[v[0]]
@@ -738,7 +738,7 @@ class ProfileStats(object):
                         else:
                             b = False
                             rest = node_list[ :i] + node_list[i+1: ]
-                            for p in count_min_memory_peak(rest):
+                            for p in min_memory_generator(rest):
                                 yield v+p
                                 current_mem += nodes_mem[v[0]]
                 if b:
