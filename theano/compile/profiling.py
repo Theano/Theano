@@ -101,9 +101,6 @@ def _atexit_print_fn():
 
 atexit.register(_atexit_print_fn)
 
-current_mem = 0
-min_mem = 0
-# global variables used to store memory usage in generator
 
 class ProfileStats(object):
     """
@@ -638,10 +635,6 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
-        # count the minimum peak
-        best_order = []
-        minimum_peak = 0
-        max_minimum_peak = 0
 
         def count_running_memory(order, thunk_old_storage, nodes_mem):
             """
@@ -693,12 +686,19 @@ class ProfileStats(object):
 
             return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
 
+        # count the minimum peak
+        best_order = []
+        minimum_peak = 0
+        max_minimum_peak = 0
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
+            global min_mem, current_mem
             mem_list = []
             order_index = 0
             order = []
             node_list = list(node_list)
+            min_mem = 0
+            current_mem = 0
 
             compute_map = fgraph.profile.compute_map
             # compute_map use to check if a node is valid
