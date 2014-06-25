@@ -1200,6 +1200,8 @@ class Elemwise(OpenMPOp):
                         x = TensorType(t, inp.broadcastable)()
                         inputs.append(x)
                         ref[name] = x
+                    else:
+                        inputs.append(ref[name])
                 decl = ""
                 for name in inames:
                     decl += """
