@@ -60,7 +60,8 @@ class SortOp(theano.Op):
         a, axis = inputs
         inp_grad = theano.gradient.grad_not_implemented(
             self, 0, axis,
-            "Currently, we only implement the gradient on sort for vector")
+            "Currently, we only implement the gradient on sort for vector"
+            " and matrix (and axis is None)")
         if a.ndim == 1:
             idx = argsort(*inputs, kind=self.kind, order=self.order)
 #            rev_idx = numpy.where(idx[None, :]==numpy.arange(5)[:,None])[1]
