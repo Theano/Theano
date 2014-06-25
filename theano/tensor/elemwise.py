@@ -1190,6 +1190,12 @@ class Elemwise(OpenMPOp):
             elif node.inputs[0].dtype.startswith('int'):
                 alldtypes = [[type for inp in node.inputs] for type in(
                             'int8', 'int16', 'int32', 'int64')]
+            else:
+                alldtypes = None
+        else:
+            alldtypes = None
+
+        if alldtypes != None:
             code = ""
             fail = sub['fail']
             for dtypes in alldtypes:
