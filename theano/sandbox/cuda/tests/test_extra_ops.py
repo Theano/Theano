@@ -17,12 +17,11 @@ from theano import tensor as T
 import numpy as np
 import theano
 from theano import config
-from theano.tensor.extra_ops import cumsum
+from theano.tensor.extra_ops import cumsum, CumsumOp
 
 
 class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     mode = mode_with_gpu
-    op = GpuCumsum
 
     def setUp(self):
         super(TestGpuCumsum, self).setUp()
@@ -68,8 +67,8 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         assert [n for n in f.maker.fgraph.toposort()
                 if isinstance(n.op, GpuCumsum)]
 
-        # Extensive testing for the first 1k sizes
-        a = np.ones((int(1e3),), dtype="float32")
+        # Extensive testing for the first 1025 sizes
+        a = np.random.random(1025).astype("float32")
         for i in xrange(a.shape[0]):
             assert np.allclose(np.cumsum(a[:i]), f(a[:i]))
 
@@ -86,36 +85,43 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         block_max_size = self.max_threads_dim0 * 2
 
         x = T.fmatrix('x')
-        for axis in xrange(2):
+        for shape_axis, axis in zip([0, 1, 0], [0, 1, None]):
             f = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
             assert [n for n in f.maker.fgraph.toposort()
                     if isinstance(n.op, GpuCumsum)]
 
-            # Extensive testing for the first 1k sizes
+            # Extensive testing for the first 1025 sizes
             a_shape = [5, 5]
-            a_shape[axis] = int(1e3)
-            a = np.ones(a_shape, dtype="float32")
+            a_shape[shape_axis] = 1025
+            a = np.random.random(a_shape).astype("float32")
             slices = [slice(None), slice(None)]
-            for i in xrange(a.shape[axis]):
-                slices[axis] = slice(i)
+            for i in xrange(a.shape[shape_axis]):
+                slices[shape_axis] = slice(i)
                 fa = f(a[slices])
                 npa = np.cumsum(a[slices], axis=axis)
                 assert np.allclose(npa, fa)
 
             # Use multiple GPU threadblocks
             a_shape = [5, 5]
-            a_shape[axis] = block_max_size+2
-            a = np.ones(a_shape, dtype="float32")
+            a_shape[shape_axis] = block_max_size+2
+            a = np.random.random(a_shape).astype("float32")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use multiple GPU gridblocks
             a_shape = [5, 5]
-            a_shape[1-axis] = self.max_grid_size1+1
-            a = np.ones(a_shape, dtype="float32")
+            a_shape[1-shape_axis] = self.max_grid_size1+1
+            a = np.random.random(a_shape).astype("float32")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use recursive cumsum
-            a_shape = [5, 5]
-            a_shape[axis] = block_max_size*(block_max_size+1)+2
+            a_shape = [5, 3]
+            a_shape[shape_axis] = block_max_size*(block_max_size+1)+2
             a = np.ones(a_shape, dtype="float32")
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
+
+    def test_GpuCumsum3D(self):
+        # Should not use the GPU version.
+        x = T.ftensor3('x')
+        f = theano.function([x], cumsum(x, axis=1), mode=self.mode)
+        assert [n for n in f.maker.fgraph.toposort()
+                if isinstance(n.op, CumsumOp)]
