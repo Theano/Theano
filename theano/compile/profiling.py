@@ -742,7 +742,8 @@ class ProfileStats(object):
                                 yield v+p
                                 current_mem += nodes_mem[v[0]]
                 if b:
-                    mem_list.append(current_mem)
+                    if current_mem != 0:
+                        mem_list.append(current_mem)
                     if not min_mem:
                         min_mem = current_mem 
                     if current_mem < min_mem:
