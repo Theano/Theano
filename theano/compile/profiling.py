@@ -713,7 +713,7 @@ class ProfileStats(object):
                 computed_ins = all(compute_map[v][0] for v in deps)
                 computed_outs = all(compute_map[v][0] for v in outputs)
                 # check if there could be a compute_map
-                if computed_ins and not computed_outs:
+                if computed_ins:
                     return True
                 else:
                     return False
