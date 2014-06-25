@@ -70,26 +70,14 @@ class test_sort(unittest.TestCase):
 
     def test_grad_vector(self):
         a = theano.tensor.vector()
-        #cost = np.power(sort(a), 2).sum()
-        #g = theano.tensor.grad(cost, a)
-        #f = theano.function([a], g)
-        data = np.asarray([7., 10., 2.], dtype=theano.config.floatX)
         data = np.random.rand(10).astype(theano.config.floatX)
-        #assert (f(data) == [20., 4., 14.]).all()
         utt.verify_grad(sort, [data])
 
     def test_grad_none_axis(self):
-        #a = theano.tensor.vector()
-        #cost = np.power(sort(a, None), 2).sum()
-        #g = theano.tensor.grad(cost, a)
-        #f = theano.function([a], g)
-        data = np.asarray([7., 10., 2.], dtype=theano.config.floatX)
         data = np.random.rand(10).astype(theano.config.floatX)
-        #assert (f(data) == [20., 4., 14.]).all()
         utt.verify_grad(lambda x: sort(x, None), [data])
         utt.verify_grad(lambda x: sort(x, 0), [data])
 
-        #a = theano.tensor.matrix()
         data = np.random.rand(2, 3).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, None), [data])
         #utt.verify_grad(lambda x: sort(x, 0), [data])
