@@ -1210,6 +1210,14 @@ class Elemwise(OpenMPOp):
             alldtypes = None
 
         if alldtypes != None:
+            for dtypes in alldtypes[:]:
+                shadow = self.scalar_op.make_node(
+                    *[get_scalar_type(dtype=dtype)() for dtype in dtypes])
+                out_dtypes = [o.type.dtype for o in shadow.outputs]
+                if any(dtypes[i] != out_dtypes[o]
+                for o, i in self.inplace_pattern.items()):
+                    alldtypes.remove(dtypes)
+
             code = ""
             fail = sub['fail']
             for dtypes in alldtypes:
@@ -1240,7 +1248,7 @@ class Elemwise(OpenMPOp):
 
                 code += "if (PyArray_TYPE((PyArrayObject*) py_%(name)s) =="\
                     "%(type)s){ " % locals() + decl \
-                    + self.c_code_dtype(nnode, nodename + dtypes[0], inames,
+                    + self.c_code_dtype(nnode, nodename, inames,
                     onames, sub) + "}else "
             code += """
             {
