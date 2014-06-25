@@ -846,10 +846,20 @@ class Subtensor(Op):
 
         x = inputs[0]
         z, = outputs
+        ndim = node.inputs[0].ndim
         view_ndim = node.outputs[0].ndim
         fail = sub['fail']
 
         decl = "PyArrayObject * xview = NULL;"
+
+        checkNDim = """
+        if (PyArray_NDIM(%(x)s) != %(ndim)s){
+            PyErr_SetString(PyExc_ValueError,
+                                     "Expected %(ndim)s dimensions input"
+                                        );
+            %(fail)s
+        }
+        """ % locals()
 
         get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
                                        self.idx_list, view_ndim)
@@ -887,7 +897,7 @@ class Subtensor(Op):
         %(z)s = xview;
         """ % locals()
 
-        return decl + get_xview + build_view + finish_view
+        return decl + checkNDim + "{" + get_xview + build_view + finish_view + "}"
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
@@ -895,7 +905,7 @@ class Subtensor(Op):
         # have a versioned version of this op's C code.
         if len(hv) == 0:
             return ()
-        return (3, hv)
+        return (4, hv)
 
     def R_op(self, inputs, eval_points):
         # Subtensor is not differentiable wrt to its indices, therefore we
