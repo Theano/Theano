@@ -129,8 +129,7 @@ def find_cuda_root():
         return
     for dir in s.split(os.path.pathsep):
         if os.path.exists(os.path.join(dir, "nvcc")):
-            config.cuda.root = os.path.split(dir)[0]
-            return
+            return os.path.split(dir)[0]
 
 rpath_defaults = []
 
