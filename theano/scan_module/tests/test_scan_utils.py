@@ -8,7 +8,6 @@ def test_equal_compuations():
     c = NoneConst
     assert equal_computations([c], [c])
     m = theano.tensor.matrix()
-    idx = theano.tensor.ivector()
     max_argmax1 = theano.tensor.max_and_argmax(m)
     max_argmax2 = theano.tensor.max_and_argmax(m)
     assert equal_computations(max_argmax1, max_argmax2)
