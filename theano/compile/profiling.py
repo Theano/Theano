@@ -752,8 +752,12 @@ class ProfileStats(object):
 
             gen = min_memory_generator(node_list)
 
-            for i in range(0, (order_index+1)):
-                order = gen.next()
+            temp = []
+
+            for i in gen:
+                temp.append(i)
+
+            order = gen(order_index)
 
             return order, min_mem
 
