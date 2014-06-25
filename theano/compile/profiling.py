@@ -690,11 +690,14 @@ class ProfileStats(object):
 
             return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
 
+
+        current_mem = 0
+        min_mem = 0
+        # varaibles used in count_minimum_peak
+
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             mem_list = []
-            current_mem = 0
             order_index = 0
-            min_mem = 0
             order = []
             node_list = list(node_list)
 
@@ -751,11 +754,11 @@ class ProfileStats(object):
                             order_index = mem_list.index(current_mem)
                     current_mem = 0
 
-            gen = min_memory_generator(node_list)
+            
 
             temp = []
 
-            for i in gen:
+            for i in min_memory_generator(node_list):
                 temp.append(i)
 
             order = temp[order_index]
