@@ -757,7 +757,7 @@ class ProfileStats(object):
             for i in gen:
                 temp.append(i)
 
-            order = temp(order_index)
+            order = temp[order_index]
 
             return order, min_mem
 
