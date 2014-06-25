@@ -126,7 +126,7 @@ class GpuFromHost(GpuOp):
         return 'GpuFromHost'
 
     def make_node(self, x):
-        if not isinstance(x.type, tensor.TensorType):
+        if not isinstance(x.type, tensor.TensorType) and not isinstance(x.type, CudaNdarrayType):
             raise TypeError("Expected a Theano variable with type "
                             "TensorType. Got %s with type %s" % (x,
                                                                  x.type))
