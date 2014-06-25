@@ -2526,6 +2526,10 @@ def local_reshape_lift(node):
         len(node.inputs[0].owner.inputs) == 1):
         r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
         e = node.inputs[0].owner.op(r)
+        # In rare case the original broadcast was (False, True), but
+        # the new one is (False, False). So don't crash in that case.
+        if e.type != node.outputs[0].type:
+            e = T.patternbroadcast(e, node.outputs[0].broadcastable)
         return [e]
 
 
@@ -4937,10 +4941,11 @@ class FusionOptimizer(Optimizer):
         print >> stream, blanc, " nb_inconsistency_replace", prof[3]
         print >> stream, blanc, " validate_time", prof[4]
         print >> stream, blanc, " callback_time", prof[5]
-        print >> stream, blanc, " callbacks_time"
-        for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if prof[5] > 1:
+            print >> stream, blanc, " callbacks_time"
+            for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
         print >> stream, blanc, " time_toposort", prof[7]
 
 
