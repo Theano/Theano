@@ -744,11 +744,11 @@ class ProfileStats(object):
                 if b:
                     if current_mem != 0:
                         mem_list.append(current_mem)
-                    if not min_mem:
-                        min_mem = current_mem 
-                    if current_mem < min_mem:
-                        min_mem = current_mem
-                        order_index = mem_list.index(current_mem)
+                        if not min_mem:
+                            min_mem = current_mem 
+                        if current_mem < min_mem:
+                            min_mem = current_mem
+                            order_index = mem_list.index(current_mem)
                     current_mem = 0
 
             gen = min_memory_generator(node_list)
