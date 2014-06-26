@@ -16,9 +16,9 @@ import numpy
 def register_view_op_c_code(type, code, version=()):
     """ Tell ViewOp how to generate C code for a Theano Type
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
+    :param type: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that return a view for the Theano type 'typ'.
+    :param code: C code that returns a view for the Theano type 'type'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
@@ -396,7 +396,7 @@ def register_shape_i_c_code(typ, code, version=()):
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that get the shape of dimensions %(i)s for the Theano type 'typ'.
+    :param code: C code that gets the shape of dimensions %(i)s for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
@@ -508,11 +508,11 @@ def register_rebroadcast_c_code(typ, code, version=()):
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
 
-    :param code: C code that check if the dimensions %(axis) is of
+    :param code: C code that checks if the dimension %(axis)s is of
                  shape 1 for the Theano type 'typ'.  Use %(iname)s and
                  %(oname)s for the input and output C variable names
-                 respectively.  %(axis)s for the axis that we need to
-                 check. This code is put in a loop for all axis
+                 respectively, and %(axis)s for the axis that we need to
+                 check. This code is put in a loop for all axes.
 
     :param version: A number indicating the version of the code, for cache.
     """
@@ -546,14 +546,13 @@ class Rebroadcast(gof.Op):
         self.axis = dict(axis)
         for axis, broad in self.axis.iteritems():
             assert isinstance(axis, (numpy.integer, int)), (
-                "Rebroadcast need integers axis. Got ", axis)
+                "Rebroadcast needs integer axes. Got ", axis)
 
     def __eq__(self, other):
         return type(self) == type(other) and self.axis == other.axis
 
     def __hash__(self):
-        items = self.axis.items()
-        items.sort()  # no ambiguity because each item key is unique
+        items = sorted(self.axis.iteritems())  # no ambiguity because each item key is unique
         return hash(type(self)) ^ hash(tuple(items))
 
     def __str__(self):
@@ -654,7 +653,7 @@ def register_specify_shape_c_code(typ, code, version=(),
 
     :param typ: A Theano type. It must be the Theano class itself and not an
                 instance of the class.
-    :param code: C code that check the shape and return a view for the Theano type 'typ'.
+    :param code: C code that checks the shape and returns a view for the Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
                  %(shape)s is the vector of shape of %(iname)s.

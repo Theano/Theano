@@ -3,8 +3,8 @@
 Easy Installation of an optimized Theano on Ubuntu
 ==================================================
 
-These instruction was done for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04
-and 13.10. You can probably do something similar on older computer.
+These instructions were written for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04
+and 13.10. You can probably do something similar on older versions.
 
 .. note::
 

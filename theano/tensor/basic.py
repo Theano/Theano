@@ -3151,7 +3151,7 @@ class Split(Op):
             raise ValueError('The splits sum to %s, expected %s' %
                              (numpy.sum(splits), len_along_axis))
         if python_any([nb < 0 for nb in splits]):
-            raise ValueError('Split: you try to make an ndarray with'
+            raise ValueError('Split: you tried to make an ndarray with a '
                              'negative number of elements.')
 
         # Checking is done, let's roll the splitting algorithm!

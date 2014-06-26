@@ -101,7 +101,7 @@ getitem = GetItem()
 """
 Get specified slice of a typed list.
 
-:param x: type type list.
+:param x: typed list.
 :param index: the index of the value to return from `x`.
 """
 
@@ -227,7 +227,7 @@ class Extend(Op):
 
 extend = Extend()
 """
-Append all element of a list at the end of another list.
+Append all elements of a list at the end of another list.
 
 :param x: The typed list to extend.
 :param toAppend: The typed list that will be added at the end of `x`.
@@ -296,7 +296,7 @@ insert = Insert()
 """
 Insert an element at an index in a typed list.
 
-:param x: the typed list to modified.
+:param x: the typed list to modify.
 :param index: the index where to put the new element in `x`.
 :param toInsert: The new element to insert.
 """
@@ -475,11 +475,11 @@ class Count(Op):
 
 count = Count()
 """
-Count the number of time an element is in the typed list.
+Count the number of times an element is in the typed list.
 
 :param x: The typed list to look into.
 :param elem: The element we want to count in list.
-    The element are compared with equals.
+    The elements are compared with equals.
 
 :note: Python implementation of count doesn't work when we want to
     count an ndarray from a list. This implementation works in that

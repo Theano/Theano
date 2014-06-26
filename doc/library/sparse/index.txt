@@ -124,7 +124,7 @@ List of Implemented Operations
     - :func:`csr_from_dense <theano.sparse.basic.csr_from_dense>`,
       :func:`csc_from_dense <theano.sparse.basic.csc_from_dense>`.
       The grad implemented is structured.
-    - Theano SparseVariable object have a method ``toarray()`` that is the same as
+    - Theano SparseVariable objects have a method ``toarray()`` that is the same as
       :func:`dense_from_sparse <theano.sparse.basic.dense_from_sparse>`.
 
 - Construction of Sparses and their Properties

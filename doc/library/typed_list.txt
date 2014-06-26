@@ -22,7 +22,7 @@ the same Theano type. Here is an example::
 
 A second example with Scan. Scan doesn't yet have direct support of
 TypedList, so you can only use it as non_sequences (not in sequences or
-as outputs).::
+as outputs)::
 
     import theano.typed_list
 
