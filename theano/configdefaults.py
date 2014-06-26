@@ -120,8 +120,18 @@ enum = EnumStr("g++", "")
 try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
+    enum = EnumStr("")
     rc = 1
-if rc == 0:
+AddConfigVar('cxx',
+             "The C++ compiler to use. Currently only g++ is"
+             " supported, but supporting additional compilers should not be "
+             "too difficult. "
+             "If it is empty, no C++ code is compiled.",
+             enum,
+             in_c_key=False)
+del enum
+
+if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
@@ -140,16 +150,6 @@ else:
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
             'degraded.')
-    enum = EnumStr("")
-
-AddConfigVar('cxx',
-             "The C++ compiler to use. Currently only g++ is"
-             " supported, but supporting additional compilers should not be "
-             "too difficult. "
-             "If it is empty, no C++ code is compiled.",
-             enum,
-             in_c_key=False)
-del enum
 
 
 #Keep the default value the same as the one for the mode FAST_RUN
