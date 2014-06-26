@@ -15,7 +15,7 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.gof.python25 import all, any, product
-
+from theano.tensor.basic import _allclose
 
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
@@ -2019,6 +2019,36 @@ class Remove0Tester(utt.InferShapeTester):
 class Test_getitem(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_GetItemList(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = sparse.csr_matrix()
+        b = sparse.csc_matrix()
+        y = a[[0, 1, 2, 3, 1]]
+        z = b[[0, 1, 2, 3, 1]]
+
+        fa = theano.function([a], y)
+        fb = theano.function([b], z)
+
+        A = rng.rand(4, 4).astype(theano.config.floatX)
+
+        t_geta = fa(numpy.asarray(A, dtype="float64")).todense()
+        t_getb = fb(numpy.asarray(A, dtype="float64")).todense()
+
+        s_geta = numpy.asarray(scipy.sparse.csr_matrix(A)[[0, 1, 2, 3, 1]].todense(), dtype="float64")
+        s_getb = numpy.asarray(scipy.sparse.csc_matrix(A)[[0, 1, 2, 3, 1]].todense(), dtype="float64")
+
+        utt.assert_allclose(t_geta, s_geta)
+        utt.assert_allclose(t_getb, s_getb)
+
+    def test_GetItemList_wrong_index(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x = sparse.csr_matrix()
+        y = x[[0, 4]]
+        f = theano.function([x], y)
+
+        A = rng.rand(2, 2).astype(theano.config.floatX)
+        self.assertRaises(IndexError, f, A)
 
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')

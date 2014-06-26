@@ -347,7 +347,10 @@ class _sparse_py_operators:
             else:
                 ret = get_item_2d(self, args)
         else:
-            ret = get_item_2d(self, args)
+            if isinstance(args[0], list):
+                ret = get_item_list(self, args)
+            else:
+                ret = get_item_2d(self, args)
         return ret
 
 
@@ -992,7 +995,47 @@ class SparseFromDense(gof.op.Op):
 csr_from_dense = SparseFromDense('csr')
 """Convert a dense matrix to a sparse csr matrix.
 
+<<<<<<< HEAD
 :param x: A dense matrix.
+=======
+# Indexing
+class GetItemList(gof.op.Op):
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, index):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
+
+        ind = tensor.as_tensor_variable(index)
+        assert ind.ndim == 2
+        assert 'int' in ind.dtype
+
+        return gof.Apply(self, [x, ind], [x.type()])
+
+    def perform(self, node, inp, (out, )):
+        x = inp[0]
+        y = []
+        indices = inp[1]
+        assert _is_sparse(x)
+
+        for ind in indices:
+            out[0] = x[indices[0][ind]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+get_item_list = GetItemList()
+
+
+class GetItem2d(gof.op.Op):
+    """Implement a subtensor of sparse variable and that return a
+    sparse matrix.
+>>>>>>> Added Fancy Indexing for sparse matrix.
 
 :return: The same as `x` in a sparse matrix format.
 
