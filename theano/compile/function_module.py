@@ -1196,7 +1196,6 @@ class FunctionMaker(object):
             opt_time = optimize_graph(fgraph)
             
             print 'opt took %s'%opt_time
-            import ipdb; ipdb.set_trace()
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
