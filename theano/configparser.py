@@ -78,7 +78,9 @@ theano_cfg = ConfigParser.SafeConfigParser(
      'LSCRATCH': os.getenv("LSCRATCH", ""),
      'TMPDIR': os.getenv("TMPDIR", ""),
      'TEMP': os.getenv("TEMP", ""),
-     'TMP': os.getenv("TMP", "")}
+     'TMP': os.getenv("TMP", ""),
+     'PID': str(os.getpid()),
+ }
 )
 theano_cfg.read(config_files)
 # Having a raw version of the config around as well enables us to pass
