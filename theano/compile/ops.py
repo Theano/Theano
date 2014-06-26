@@ -535,7 +535,7 @@ class Rebroadcast(gof.Op):
             broadcast_pattern = []
         else:
             broadcast_pattern = ['?' for i
-                                 in xrange(1 + max(self.axis))]
+                                 in xrange(1 + numpy.max(self.axis.keys()))]
         for k, v in self.axis.iteritems():
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__,

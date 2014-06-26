@@ -1498,7 +1498,7 @@ class SpSum(gof.op.Op):
 
 
 def sp_sum(x, axis=None, sparse_grad=False):
-    """Calculate the sum of a sparse matrix along a specific
+    """Calculate the sum of a sparse matrix along the specified
     axis.
 
     It operates a reduction along the specified axis. When
