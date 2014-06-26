@@ -1411,9 +1411,10 @@ def norm(x,ord):
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
 
+
 class lstsq(theano.Op):
     def __eq__(self, other):
-        pass
+        return type(self) == type(other)
 
     def __hash__(self):
         return hash(type(self))
