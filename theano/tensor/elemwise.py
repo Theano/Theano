@@ -1196,13 +1196,13 @@ class Elemwise(OpenMPOp):
             super(Elemwise, self).c_code(node, nodename, inames, onames, sub)
         if all([inp.dtype == node.inputs[0].dtype for inp in node.inputs]):
             if node.inputs[0].dtype.startswith('float'):
-                alldtypes = [[type for inp in node.inputs] for type in('float32',
-                'float64')]
+                alldtypes = [[type for inp in node.inputs] for type in (
+                    'float32', 'float64')]
             elif node.inputs[0].dtype.startswith('uint'):
-                alldtypes = [[type for inp in node.inputs] for type in(
+                alldtypes = [[type for inp in node.inputs] for type in (
                             'uint8', 'uint16', 'uint32', 'uint64')]
             elif node.inputs[0].dtype.startswith('int'):
-                alldtypes = [[type for inp in node.inputs] for type in(
+                alldtypes = [[type for inp in node.inputs] for type in (
                             'int8', 'int16', 'int32', 'int64')]
             else:
                 alldtypes = None
@@ -1231,7 +1231,7 @@ class Elemwise(OpenMPOp):
                     else:
                         inputs.append(ref[name])
                 decl = ""
-                for name in inames:
+                for name in set(inames):
                     decl += """
                             typedef %(dtype)s dtype_%(name)s;
                             """ % dict(sub, name=name, dtype="npy_"
@@ -1252,7 +1252,8 @@ class Elemwise(OpenMPOp):
                     onames, sub) + "}else "
             code += """
             {
-            PyErr_SetString(PyExc_NotImplementedError, "Unexpected type");
+            PyErr_SetString(PyExc_NotImplementedError,
+            "Elemwise unexpected type");
             %(fail)s
             }
             """ % locals()
