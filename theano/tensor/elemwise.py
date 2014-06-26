@@ -1180,6 +1180,9 @@ class Elemwise(OpenMPOp):
         return code
 
     def c_code(self, node, nodename, inames, onames, sub):
+
+        fail = sub['fail']
+
         if all([inp.dtype == node.inputs[0].dtype for inp in node.inputs]):
             if node.inputs[0].dtype.startswith('float'):
                 alldtypes = [[type for inp in node.inputs] for type in (
@@ -1205,15 +1208,24 @@ class Elemwise(OpenMPOp):
                     alldtypes.remove(dtypes)
 
             code = ""
-            fail = sub['fail']
             for dtypes in alldtypes:
                 inputs = []
                 ref = {}
+                checkNDim = ""
                 for (t, inp, name) in zip(dtypes, node.inputs, inames):
                     if not ref.has_key(name):
                         x = TensorType(t, inp.broadcastable)()
                         inputs.append(x)
                         ref[name] = x
+                        ndim = inp.ndim
+                        if theano.config.check_input:
+                            checkNDim += """
+                            if (PyArray_NDIM(%(name)s) != %(ndim)s){
+                             PyErr_SetString(PyExc_ValueError,
+                            "Expected %(ndim)s dimensions input");
+                            %(fail)s
+                            }
+                            """ % locals()
                     else:
                         inputs.append(ref[name])
                 decl = ""
@@ -1233,7 +1245,7 @@ class Elemwise(OpenMPOp):
                 name = inames[0]
 
                 code += "if (PyArray_TYPE((PyArrayObject*) py_%(name)s) =="\
-                    "%(type)s){ " % locals() + decl \
+                    "%(type)s){ " % locals() + decl + checkNDim \
                     + self.c_code_dtype(nnode, nodename, inames,
                     onames, sub) + "}else "
             code += """
@@ -1252,13 +1264,33 @@ class Elemwise(OpenMPOp):
                             typedef %(dtype)s dtype_%(name)s;
                             """ % dict(sub, name=name,
                                        dtype=out.type.dtype_specs()[1])
+            checkNDim = ""
+            checkType = ""
             for (name, inp) in zip(inames, node.inputs):
-                    decl += """
-                            typedef %(dtype)s dtype_%(name)s;
-                            """ % dict(sub, name=name,
-                                       dtype=inp.type.dtype_specs()[1])
-            return decl + self.c_code_dtype(node, nodename, inames,
-                                            onames, sub)
+                decl += """
+                    typedef %(dtype)s dtype_%(name)s;
+                    """ % dict(sub, name=name,
+                        dtype=inp.type.dtype_specs()[1])
+                if theano.config.check_input:
+                    name = name
+                    ndim = inp.ndim
+                    type = inp.type.dtype_specs()[2]
+                    checkNDim += """
+                            if (PyArray_NDIM(%(name)s) != %(ndim)s){
+                             PyErr_SetString(PyExc_ValueError,
+                            "Expected %(ndim)s dimensions input");
+                            %(fail)s
+                            }
+                            """ % locals()
+                    checkType += """if (PyArray_TYPE((PyArrayObject*) py_%(name)s) != %(type)s) {
+                            PyErr_Format(PyExc_TypeError,
+                             "Elemwise : expected type_num (%(type)s) got ",
+                             %(type)s, PyArray_TYPE((PyArrayObject*) py_%(name)s));
+                            %(fail)s
+                        }
+            """ % locals()
+            return decl + checkNDim + checkType + self.c_code_dtype(node,
+                            nodename, inames, onames, sub)
 
     def c_headers(self):
         return ['<vector>', '<algorithm>']
@@ -1272,7 +1304,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [13]  # the version corresponding to the c code in this Op
+        version = [14]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
