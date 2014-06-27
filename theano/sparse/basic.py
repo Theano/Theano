@@ -346,11 +346,10 @@ class _sparse_py_operators:
                 ret = get_item_scalar(self, args)
             else:
                 ret = get_item_2d(self, args)
+        elif isinstance(args[0], list):
+            ret = get_item_list(self, args[0])
         else:
-            if isinstance(args[0], list):
-                ret = get_item_list(self, args)
-            else:
-                ret = get_item_2d(self, args)
+            ret = get_item_2d(self, args)
         return ret
 
 
@@ -995,9 +994,8 @@ class SparseFromDense(gof.op.Op):
 csr_from_dense = SparseFromDense('csr')
 """Convert a dense matrix to a sparse csr matrix.
 
-<<<<<<< HEAD
-:param x: A dense matrix.
-=======
+"""
+
 # Indexing
 class GetItemList(gof.op.Op):
 
@@ -1012,19 +1010,16 @@ class GetItemList(gof.op.Op):
         assert x.format in ["csr", "csc"]
 
         ind = tensor.as_tensor_variable(index)
-        assert ind.ndim == 2
+        assert ind.ndim == 1
         assert 'int' in ind.dtype
 
         return gof.Apply(self, [x, ind], [x.type()])
 
     def perform(self, node, inp, (out, )):
         x = inp[0]
-        y = []
         indices = inp[1]
         assert _is_sparse(x)
-
-        for ind in indices:
-            out[0] = x[indices[0][ind]]
+        out[0] = x[indices]
 
     def __str__(self):
         return self.__class__.__name__

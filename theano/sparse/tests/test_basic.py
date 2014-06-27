@@ -2021,34 +2021,30 @@ class Test_getitem(unittest.TestCase):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
 
     def test_GetItemList(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        a = sparse.csr_matrix()
-        b = sparse.csc_matrix()
-        y = a[[0, 1, 2, 3, 1]]
-        z = b[[0, 1, 2, 3, 1]]
 
-        fa = theano.function([a], y)
-        fb = theano.function([b], z)
+        a, A = sparse_random_inputs('csr', (4, 5))
+        b, B = sparse_random_inputs('csc', (4, 5))
+        y = a[0][[0, 1, 2, 3, 1]]
+        z = b[0][[0, 1, 2, 3, 1]]
 
-        A = rng.rand(4, 4).astype(theano.config.floatX)
+        fa = theano.function([a[0]], y)
+        fb = theano.function([b[0]], z)
 
-        t_geta = fa(numpy.asarray(A, dtype="float64")).todense()
-        t_getb = fb(numpy.asarray(A, dtype="float64")).todense()
+        t_geta = fa(A[0]).todense()
+        t_getb = fb(B[0]).todense()
 
-        s_geta = numpy.asarray(scipy.sparse.csr_matrix(A)[[0, 1, 2, 3, 1]].todense(), dtype="float64")
-        s_getb = numpy.asarray(scipy.sparse.csc_matrix(A)[[0, 1, 2, 3, 1]].todense(), dtype="float64")
+        s_geta = scipy.sparse.csr_matrix(A[0])[[0, 1, 2, 3, 1]].todense()
+        s_getb = scipy.sparse.csc_matrix(B[0])[[0, 1, 2, 3, 1]].todense()
 
         utt.assert_allclose(t_geta, s_geta)
         utt.assert_allclose(t_getb, s_getb)
 
     def test_GetItemList_wrong_index(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        x = sparse.csr_matrix()
-        y = x[[0, 4]]
-        f = theano.function([x], y)
+        a, A = sparse_random_inputs('csr', (4, 5))
+        y = a[0][[0, 4]]
+        f = theano.function([a[0]], y)
 
-        A = rng.rand(2, 2).astype(theano.config.floatX)
-        self.assertRaises(IndexError, f, A)
+        self.assertRaises(IndexError, f, A[0])
 
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')
