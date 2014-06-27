@@ -262,7 +262,6 @@ class GpuCumsum(CumsumOp, GpuOp):
 
                 // If shape[axis] is odd, the last element is compute manually
                 if (shape[axis] != numElements){
-                    CNDA_THREAD_SYNC;
                     dim3 dimGrid(1, localDimGridY, 1);
                     dim3 dimBlock(1, 1, 1);
                     k_cumadd_%(nodename)s<<<dimGrid, dimBlock>>>
