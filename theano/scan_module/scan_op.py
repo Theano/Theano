@@ -426,13 +426,15 @@ class Scan(PureOp):
         # The vector_seqs and vector_outs are just a workaround
         # strange NumPy behavior: vector_ndarray[int] return a NumPy
         # scalar and not a NumPy ndarray of 0 dimensions.
-        self.vector_seqs = [isinstance(seq, tensor.TensorVariable) and
+        self.vector_seqs = [isinstance(seq, (tensor.TensorVariable,
+                                             tensor.TensorConstant)) and
                             seq.ndim == 1 for seq in
                             new_inputs[1:1 + self.n_seqs]]
-        self.vector_outs = [isinstance(arg, tensor.TensorVariable) and
+        self.vector_outs = [isinstance(arg, (tensor.TensorVariable,
+                                             tensor.TensorConstant)) and
                             arg.ndim == 1 for arg in
-                             new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
-                                                    self.n_outs)]]
+                            new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
+                                                         self.n_outs)]]
         self.vector_outs += [False] * self.n_nit_sot
 
         apply_node = Apply(self,
