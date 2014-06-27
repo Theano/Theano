@@ -692,7 +692,7 @@ class ProfileStats(object):
         max_minimum_peak = 0
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
-            global min_mem, current_mem
+            global min_mem, current_mem, compute_map
             mem_list = []
             order_index = 0
             order = []
@@ -702,6 +702,9 @@ class ProfileStats(object):
 
             compute_map = fgraph.profile.compute_map
             # compute_map use to check if a node is valid
+            for node in node_list:
+                for v in node.outputs:
+                    compute_map[v][0] = 0 
 
             def check_node_state(node):
                 """
@@ -715,12 +718,12 @@ class ProfileStats(object):
                 computed_ins = all(compute_map[v][0] for v in deps)
                 computed_outs = all(compute_map[v][0] for v in outputs)
                 # check if there could be a compute_map
-                if computed_ins:
+                if computed_ins and not computed_outs:
                     return True
                 else:
                     return False
 
-            def min_memory_generator(node_list, b=False):
+            def min_memory_generator(node_list):
                 global current_mem, min_mem
                 '''
                 enumerate all valid order( node with inputs in its compute_map)
@@ -735,23 +738,29 @@ class ProfileStats(object):
                     if check_node_state(v[0]): 
                         if len(node_list) == 1:
                             yield v
-                            current_mem += sum(nodes_mem[v[0]])
-                            b = True
+                            for i in v[0].outputs:
+                                compute_map[i][0] = 1
+                            # current_mem += sum(nodes_mem[v[0]])
                         else:
-                            b = False
                             rest = node_list[ :i] + node_list[i+1: ]
                             for p in min_memory_generator(rest):
                                 yield v+p
-                                current_mem += sum(nodes_mem[v[0]])
-                if b:
-                    if current_mem != 0:
-                        mem_list.append(current_mem)
-                        if not min_mem:
-                            min_mem = current_mem 
-                        if current_mem < min_mem:
-                            min_mem = current_mem
-                            order_index = mem_list.index(current_mem)
-                    current_mem = 0
+                                for i in v[0].outputs:
+                                    compute_map[i][0] = 1                              
+                                # current_mem += sum(nodes_mem[v[0]])
+                # we would use the count_running_memory to calculate the memory usage
+
+                # if len(node_list) == 1:
+                #     if current_mem != 0:
+                #         mem_list.append(current_mem)
+                #         if not min_mem:
+                #             min_mem = current_mem
+                #         # intial the min_mem with current_mem, 
+                #         # for this step, order_index = 0 
+                #         if current_mem < min_mem:
+                #             min_mem = current_mem
+                #             order_index = mem_list.index(current_mem)
+                #     current_mem = 0
 
             
 
@@ -760,6 +769,22 @@ class ProfileStats(object):
             for i in min_memory_generator(node_list):
                 temp.append(i)
 
+            for order in temp:
+                post_thunk_old_storage = []
+                computed, last_user = theano.gof.link.gc_helper(order)
+                for node in order:
+                    post_thunk_old_storage.append([
+                        input_idx
+                        for input_idx, input in enumerate(node.inputs)
+                        if (input in computed) and
+                        (input not in fgraph.outputs) and
+                        node == last_user[input]])
+                current_mem = count_running_memory(order, post_thunk_old_storage, nodes_mem)[2]
+
+                if current_mem < min_mem:
+                    min_mem = current_mem
+                    order_index = temp.index(order)
+                    
             order = temp[order_index]
 
             return order, min_mem
