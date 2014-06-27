@@ -504,11 +504,11 @@ class GpuDownsampleFactorMax(Op):
       return NVCC_compiler
 
     def c_headers(self):
-      #return ['cuda.h', 'blas_api.h', 'gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/extension.h', 'numpy_compat.h']
       return ['blas_api.h', 'cuda.h', 'numpy_compat.h']
 
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
+
     def c_code_cache_version(self):
 	return (6)
 
@@ -747,8 +747,8 @@ class GpuDownsampleFactorMaxGrad(Op):
       return NVCC_compiler
 
     def c_headers(self):
-      #return ['cuda.h', 'gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/extension.h', 'numpy_compat.h']
       return ['cuda.h', 'numpy_compat.h']
+    
     def c_code_cache_version(self):
         return (9,)
 
