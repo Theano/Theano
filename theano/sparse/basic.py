@@ -992,8 +992,10 @@ class SparseFromDense(gof.op.Op):
         return [shapes[0]]
 
 csr_from_dense = SparseFromDense('csr')
-"""Convert a dense matrix to a sparse csr matrix.
-
+csc_from_dense = SparseFromDense('csc')
+"""Convert a dense matrix to a sparse matrix.
+:param x: A dense matrix.
+:return: The same as `x` in a sparse matrix format.
 """
 
 # Indexing
@@ -1025,29 +1027,6 @@ class GetItemList(gof.op.Op):
         return self.__class__.__name__
 
 get_item_list = GetItemList()
-
-
-class GetItem2d(gof.op.Op):
-    """Implement a subtensor of sparse variable and that return a
-    sparse matrix.
->>>>>>> Added Fancy Indexing for sparse matrix.
-
-:return: The same as `x` in a sparse matrix format.
-
-:note: The grad implementation is regular, i.e.
-    not structured.
-"""
-
-csc_from_dense = SparseFromDense('csc')
-"""Convert a dense matrix to a sparse csc matrix.
-
-:param x: A dense matrix.
-
-:return: The same as `x` in a sparse matrix format.
-
-:note: The grad implementation is regular, i.e.
-    not structured.
-"""
 
 
 # Indexing
