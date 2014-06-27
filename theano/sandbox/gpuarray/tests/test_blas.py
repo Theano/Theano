@@ -150,7 +150,9 @@ def test_downsample():
             (1, 1, 1023, 10),
             (65536, 1, 10, 10),
             (1, 65536, 10, 10),
-             ]
+             ] # (28, 2)
+
+    
 
     numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
 
@@ -165,7 +167,7 @@ def test_downsample():
             if float(shp[3]) / ds[1] > 512:
                 continue
             for ignore_border in (True, False):
-                print '### test_downsample ###', shp, ds, ignore_border
+                #print '### test_downsample ###', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
                 a = gpuarray_shared_constructor(my_rand(*shp), 'a')

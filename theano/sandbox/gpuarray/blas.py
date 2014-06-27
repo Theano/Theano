@@ -8,7 +8,7 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 try:
     import pygpu
-    from pygpu import blas
+    from pygpu import blas #, gpuarray, elemwise
 except ImportError, e:
     # To make sure theano is importable
     pass
@@ -330,14 +330,15 @@ class GpuDownsampleFactorMax(Op):
         return Apply(self, [x], [x.type()])
 
     def c_code(self, node, nodename, inputs, outputs, sub):
+	
         vars = dict(
                     ds0 = self.ds[0], 
                     ds1 = self.ds[1],
                     x = inputs[0],
                     z = outputs[0],
                     typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype),
-                    itemsize_x = numpy.dtype(inputs[0]).itemsize,
-                    itemsize_z = numpy.dtype(outputs[0]).itemsize,
+                    itemsize_x = numpy.dtype(node.inputs[0].dtype).itemsize,
+                    itemsize_z = numpy.dtype(node.outputs[0].dtype).itemsize,
                     nodename = nodename,
                     fail = sub['fail'],
                     ignore_border = int(self.ignore_border),
@@ -345,7 +346,6 @@ class GpuDownsampleFactorMax(Op):
         )
         return """
         size_t dims[4], xdim2, xdim3;
-
         if (PyGpuArray_NDIM(%(x)s) != 4)
         {
             PyErr_SetString(PyExc_ValueError,
@@ -415,7 +415,8 @@ class GpuDownsampleFactorMax(Op):
                 PyGpuArray_STRIDES(%(z)s)[1] / %(itemsize_z)s,
                 PyGpuArray_STRIDES(%(z)s)[2] / %(itemsize_z)s,
                 PyGpuArray_STRIDES(%(z)s)[3] / %(itemsize_z)s);
-
+            
+	    
             if (%(sync)d)
                 GpuArray_sync(&%(z)s->ga);
 
@@ -517,12 +518,13 @@ class GpuDownsampleFactorMax(Op):
       return NVCC_compiler
 
     def c_headers(self):
-      return ['cuda.h', 'gpuarray/extension.h', 'numpy_compat.h']
+      #return ['cuda.h', 'blas_api.h', 'gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/extension.h', 'numpy_compat.h']
+      return ['blas_api.h', 'cuda.h', 'numpy_compat.h']
 
     #def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
-#    def c_code_cache_version(self):
-#	return (6)
+    def c_code_cache_version(self):
+	return (6)
 
 
 class GpuDownsampleFactorMaxGrad(Op):
@@ -581,7 +583,7 @@ class GpuDownsampleFactorMaxGrad(Op):
         {
             Py_XDECREF(%(gx)s);
             %(gx)s = pygpu_empty(4,
-                               dims,
+                               PyGpuArray_DIMS(%(gx)s),
                                %(typecode)s,
                                GA_C_ORDER,
                                pygpu_default_context(),
@@ -627,10 +629,10 @@ class GpuDownsampleFactorMaxGrad(Op):
                 (float *)(((char *)cuda_get_ptr(%(gx)s -> ga.data)) + %(gx)s -> ga.offset),
                 PyGpuArray_STRIDES(%(gx)s)[0] / %(itemsize_gx)s,
                 PyGpuArray_STRIDES(%(gx)s)[1] / %(itemsize_gx)s,
-                PyGpuArray_STRIDES(%(gx)s)[2] / %(itermsize_gx)s,
+                PyGpuArray_STRIDES(%(gx)s)[2] / %(itemsize_gx)s,
                 PyGpuArray_STRIDES(%(gx)s)[3]) / %(itemsize_gx)s;
 
-            if config.gpuarray.sync:
+            if (config.gpuarray.sync):
                 GpuArray_sync(&%(gx)s->ga);
             
             cudaError_t err = cudaGetLastError();
@@ -759,8 +761,8 @@ class GpuDownsampleFactorMaxGrad(Op):
       return NVCC_compiler
 
     def c_headers(self):
-      return ['cuda.h', 'gpuarray/extension.h', 'numpy_compat.h']
-
+      #return ['cuda.h', 'gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/extension.h', 'numpy_compat.h']
+      return ['cuda.h', 'numpy_compat.h']
     def c_code_cache_version(self):
         return (9,)
 
