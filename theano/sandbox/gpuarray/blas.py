@@ -4,11 +4,11 @@ from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
 from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from theano.sandbox.gpuarray.comp import NVCC_compiler
 
 try:
     import pygpu
-    from pygpu import blas #, gpuarray, elemwise
+    from pygpu import blas 
 except ImportError, e:
     # To make sure theano is importable
     pass
@@ -378,23 +378,9 @@ class GpuDownsampleFactorMax(Op):
             || (PyGpuArray_DIMS(%(z)s)[3] != dims[3]))
         {
             Py_XDECREF(%(z)s);
-            %(z)s = pygpu_empty(4,
-                              dims,
-                              %(typecode)s,
-                              GA_C_ORDER,
-                              pygpu_default_context(),
-                              Py_None);
-            if (NULL == %(z)s)
-            {
-                Py_XDECREF(%(z)s);
-                %(z)s = NULL;
-                PyErr_SetString(PyExc_ValueError,
-                                "GpuDownsampleFactorMax:"
-                                "Was not able to allocate output!");
-                %(fail)s;
-            }
-
+            %(fail)s;
         }
+
         {
             dim3 grid(std::min(dims[0] * dims[1], (size_t) 65535),
                       dims[2]);
