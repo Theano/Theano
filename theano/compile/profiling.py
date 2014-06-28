@@ -738,17 +738,18 @@ class ProfileStats(object):
                 
                 for i in range(len(node_list)):
                     v = node_list[i:i+1]
-                    if check_node_state(v[0]): 
+                    if check_node_state(v[0]):
+                        for i in v[0].outputs:
+                            compute_map[i][0] = 1 
                         if len(node_list) == 1:
                             yield v
-                            for i in v[0].outputs:
-                                compute_map[i][0] = 1
                         else:
                             rest = node_list[ :i] + node_list[i+1: ]
-                            for p in min_memory_generator(rest):
+                            for p in min_memory_generator(rest, compute_map):
                                 yield v+p
-                                for i in v[0].outputs:
-                                    compute_map[i][0] = 1                              
+                        for i in v[0].outputs:
+                            compute_map[i][0] = 0
+
 
             temp = []
 
