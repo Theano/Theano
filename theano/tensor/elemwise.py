@@ -1296,13 +1296,7 @@ class Elemwise(OpenMPOp):
                             %(fail)s
                             }
                             """ % locals()
-                    checkType += """if (PyArray_TYPE((PyArrayObject*) py_%(name)s) != %(type)s) {
-                            PyErr_Format(PyExc_TypeError,
-                             "Elemwise : expected type_num (%(type)s) got ",
-                             %(type)s, PyArray_TYPE((PyArrayObject*) py_%(name)s));
-                            %(fail)s
-                        }
-            """ % locals()
+                    checkType += inp.type.c_check(name, sub)
             return decl + checkNDim + checkType + self.c_code_dtype(node,
                             nodename, inames, onames, sub)
 
@@ -1318,7 +1312,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [14]  # the version corresponding to the c code in this Op
+        version = [15]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
