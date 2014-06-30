@@ -52,12 +52,61 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         a = np.random.randint(10, size=(42,)).astype("float32")
         assert np.allclose(np.cumsum(a[::2]), f(a))
 
+        # Alternative stepped strides
+        f = theano.function([x], cumsum(x), mode=self.mode)
+        assert [n for n in f.maker.fgraph.toposort()
+                if isinstance(n.op, GpuCumsum)]
+        a = np.random.randint(10, size=(42,)).astype("float32")
+        assert np.allclose(np.cumsum(a[::2]), f(a[::2]))
+
         # Negative strides
         f = theano.function([x], cumsum(x[::-1]), mode=self.mode)
         assert [n for n in f.maker.fgraph.toposort()
                 if isinstance(n.op, GpuCumsum)]
         a = np.random.randint(10, size=(42,)).astype("float32")
         assert np.allclose(np.cumsum(a[::-1]), f(a))
+
+    def test_Strides2D(self):
+        x = T.fmatrix('x')
+
+        for shape_axis, axis in zip([0, 1, 0], [0, 1, None]):
+            a = np.random.random((42, 30)).astype("float32")
+
+            # Stepped strides along axis=0
+            f = theano.function([x], cumsum(x[::2], axis=axis), mode=self.mode)
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
+            assert np.allclose(np.cumsum(a[::2], axis=axis), f(a))
+
+            # Stepped strides along axis=1
+            f = theano.function([x], cumsum(x[:, ::2], axis=axis), mode=self.mode)
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
+            assert np.allclose(np.cumsum(a[:, ::2], axis=axis), f(a))
+
+            # Alternative stepped strides along axis=0
+            f = theano.function([x], cumsum(x), mode=self.mode)
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
+            assert np.allclose(np.cumsum(a[::2]), f(a[::2]))
+
+            # Alternative stepped strides along axis=1
+            f = theano.function([x], cumsum(x), mode=self.mode)
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
+            assert np.allclose(np.cumsum(a[:, ::2]), f(a[:, ::2]))
+
+            # Negative strides along axis=0
+            f = theano.function([x], cumsum(x[::-1], axis=axis), mode=self.mode)
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
+            assert np.allclose(np.cumsum(a[::-1], axis=axis), f(a))
+
+            # Negative strides along axis=1
+            f = theano.function([x], cumsum(x[:, ::-1], axis=axis), mode=self.mode)
+            assert [n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, GpuCumsum)]
+            assert np.allclose(np.cumsum(a[:, ::-1], axis=axis), f(a))
 
     def test_GpuCumsum1D(self):
         block_max_size = self.max_threads_dim0 * 2
