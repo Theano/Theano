@@ -436,12 +436,9 @@ class TensorType(Type):
         %(name)s = NULL;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
-    def c_extract(self, name, sub, check_input=True):
-        """Override `CLinkerType.c_extract` """
-        if(check_input):
-            check = """
-            %(name)s = NULL;
-            if (py_%(name)s == Py_None) {
+    def c_check(self, name, sub):
+        return """
+        if (py_%(name)s == Py_None) {
                 // We can either fail here or set %(name)s to NULL and rely on Ops
                 // using tensors to handle the NULL case, but if they fail to do so
                 // they'll end up with nasty segfaults, so this is public service.
@@ -488,9 +485,15 @@ class TensorType(Type):
                 %(fail)s
             }
             """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
+
+    def c_extract(self, name, sub, check_input=True):
+        """Override `CLinkerType.c_extract` """
+        pre = "%(name)s = NULL;" % dict(name=name)
+        if(check_input):
+            check = self.c_check(name, sub)
         else:
             check = ""
-        return check + """
+        return pre + check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
