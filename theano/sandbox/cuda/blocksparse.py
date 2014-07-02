@@ -39,26 +39,26 @@ def gemm_batched(Al, Bl, Cl, m, n, k, lda, ldb, ldc,
 
 
 def gemv(alpha, A, x, beta, y):
-    assert A.shape[1] == x.shape[0]
-    assert A.shape[0] == y.shape[0]
-
-    handle = scikits.cuda.misc._global_cublas_handle
-
-    cublas.cublasSgemv(handle, 't', A.shape[1], A.shape[0], alpha,
-                       A.gpudata, max(A.strides[0], A.strides[1]),
-                       x.gpudata, x.strides[0],
-                       beta, y.gpudata, y.strides[0])
-
-
-def ger(alpha, x, y, A):
     assert A.shape[0] == x.shape[0]
     assert A.shape[1] == y.shape[0]
 
     handle = scikits.cuda.misc._global_cublas_handle
 
+    cublas.cublasSgemv(handle, 'n', A.shape[1], A.shape[0], alpha,
+                       A.gpudata, A.strides[0],
+                       x.gpudata, x.strides[0],
+                       beta, y.gpudata, y.strides[0])
+
+
+def ger(alpha, x, y, A):
+    assert A.shape[1] == x.shape[0]
+    assert A.shape[0] == y.shape[0]
+
+    handle = scikits.cuda.misc._global_cublas_handle
+
     cublas.cublasSger(handle, A.shape[1], A.shape[0], alpha,
-                      y.gpudata, y.strides[0],
                       x.gpudata, x.strides[0],
+                      y.gpudata, y.strides[0],
                       A.gpudata, A.strides[0])
 
 

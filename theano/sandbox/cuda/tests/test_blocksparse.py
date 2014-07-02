@@ -36,7 +36,7 @@ def blocksparse_data():
     input = randn(inputWindowSize, inputSize).astype('float32')
     inputIndice = numpy.random.permutation(nInputBlock)[:inputWindowSize]
     outputIndice = numpy.random.permutation(nOutputBlock)[:outputWindowSize]
-    weight = randn(nInputBlock, nOutputBlock, outputSize, inputSize).astype('float32')
+    weight = randn(nInputBlock, nOutputBlock, inputSize, outputSize).astype('float32')
     bias = randn(nOutputBlock, outputSize).astype('float32')
 
     return weight, input, inputIndice, bias, outputIndice
@@ -51,7 +51,7 @@ def blocksparse(W, h, iIdx, b, oIdx):
             inputIdx = iIdx[i]
             w = W[inputIdx, outputIdx]
             # this below is a gemv I think
-            o[j, :] += numpy.dot(w, h[i])
+            o[j, :] += numpy.dot(h[i], w)
 
     return o
 
@@ -78,7 +78,7 @@ def test_blocksparse_grad():
     h_val = randn(2, 3).astype('float32')
     iIdx_val = numpy.random.permutation(3)[:2]
     oIdx_val = numpy.random.permutation(3)[:2]
-    W_val = randn(3, 3, 4, 3).astype('float32')
+    W_val = randn(3, 3, 3, 4).astype('float32')
     b_val = randn(3, 4).astype('float32')
 
     iIdx = theano.tensor.constant(iIdx_val)
