@@ -348,10 +348,7 @@ compile.optdb['canonicalize'].register(
 # Dot optimizations #
 #####################
 
-@register_canonicalize
-@register_stabilize
-@gof.local_optimizer([T.Dot])
-def local_0_dot_x(node):
+def local_0_dot_xh(node):
     if not isinstance(node.op, T.Dot):
         return False
 
@@ -396,13 +393,14 @@ def local_0_dot_x(node):
                             "(%s, %s)",
                             x.type, y.type)
 
+local_0_dot_x = register_canonicalize(register_stabilize(gof.local_optimizer([T.Dot])(local_0_dot_xh)))
+
 ######################
 # DimShuffle lifters #
 ######################
 
 
-@gof.local_optimizer([DimShuffle])
-def local_dimshuffle_lift(node):
+def local_dimshuffle_lifth(node):
     """
     "Lifts" DimShuffle through Elemwise operations and merges
     consecutive DimShuffles. Basically, applies the following
@@ -440,10 +438,11 @@ def local_dimshuffle_lift(node):
                                inplace)(iinput, **dict(return_list=True))
             return ret
 
+local_dimshuffle_lift = gof.local_optimizer([DimShuffle])(
+                            local_dimshuffle_lifth)
 
-@register_canonicalize
-@gof.local_optimizer([T.DimShuffle])
-def local_lift_transpose_through_dot(node):
+
+def local_lift_transpose_through_doth(node):
     """
     dot(x,y).T -> dot(y.T, x.T)
 
@@ -466,14 +465,18 @@ def local_lift_transpose_through_dot(node):
     if x.ndim == y.ndim == 2:
         return [T.dot(y.T, x.T)]
 
+local_lift_transpose_through_dot = register_canonicalize(
+    gof.local_optimizer([T.DimShuffle])(local_lift_transpose_through_doth))
 
-@gof.local_optimizer([DimShuffle])
-def dimshuffle_as_view(node):
+
+def dimshuffle_as_viewh(node):
     op = node.op
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
     new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
     return [new_op(*node.inputs)]
+
+dimshuffle_as_view = gof.local_optimizer([DimShuffle])(dimshuffle_as_viewh)
 
 #Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
@@ -486,22 +489,20 @@ register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
 
 
-@register_canonicalize
-@gof.local_optimizer([T.DimShuffle])
-def local_dimshuffle_no_inplace_at_canonicalize(node):
+def local_dimshuffle_no_inplace_at_canonicalizeh(node):
     if isinstance(node.op, T.DimShuffle) and node.op.inplace:
         return [T.DimShuffle(node.op.input_broadcastable,
                              node.op.new_order, inplace=False)(node.inputs[0])]
 
+local_dimshuffle_no_inplace_at_canonicalize = register_canonicalize(
+                    gof.local_optimizer([T.DimShuffle])(
+                    local_dimshuffle_no_inplace_at_canonicalizeh))
 
 ######################
 # Casting operations #
 ######################
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.TensorFromScalar])
-def local_tensor_scalar_tensor(node):
+def local_tensor_scalar_tensorh(node):
     '''tensor_from_scalar(scalar_from_tensor(x)) -> x'''
     if isinstance(node.op, T.TensorFromScalar):
         s = node.inputs[0]
@@ -509,17 +510,22 @@ def local_tensor_scalar_tensor(node):
             t = s.owner.inputs[0]
             return [t]
 
+local_tensor_scalar_tensor = register_canonicalize(
+        register_specialize(gof.local_optimizer([T.TensorFromScalar])(
+                        local_tensor_scalar_tensorh)))
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.ScalarFromTensor])
-def local_scalar_tensor_scalar(node):
+
+def local_scalar_tensor_scalarh(node):
     '''scalar_from_tensor(tensor_from_scalar(x)) -> x'''
     if isinstance(node.op, T.ScalarFromTensor):
         t = node.inputs[0]
         if t.owner and isinstance(t.owner.op, T.TensorFromScalar):
             s = t.owner.inputs[0]
             return [s]
+
+local_scalar_tensor_scalar = register_canonicalize(register_specialize(
+                        gof.local_optimizer([T.ScalarFromTensor])(
+                             local_scalar_tensor_scalarh)))
 
 #####################################
 # ShapeFeature, Shape optimizations
@@ -1144,11 +1150,7 @@ theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(),
                                    -1, 'fast_run', 'fast_compile')
 
 
-@register_specialize
-@register_stabilize
-@register_canonicalize
-@gof.local_optimizer([T.fill])
-def local_fill_to_alloc(node):
+def local_fill_to_alloch(node):
     """fill(s,v) -> alloc(v, shape(s))
 
     This is an important optimization because with the shape_to_shape_i
@@ -1185,9 +1187,12 @@ def local_fill_to_alloc(node):
                 )  # theano.printing.debugprint(node.outputs[0], file='str'))
         return rval
 
+local_fill_to_alloc = register_specialize(
+            register_stabilize(register_canonicalize(
+            gof.local_optimizer([T.fill])(local_fill_to_alloch))))
 
-@gof.local_optimizer([T.fill])
-def local_useless_fill(node):
+
+def local_useless_fillh(node):
     """fill(s,v) -> v
 
     This optimization is only needed in FAST_COMPILE to make the code
@@ -1200,16 +1205,14 @@ def local_useless_fill(node):
         if v.type == node.outputs[0].type:
             # this is a useless fill, erase it.
             return [v]
+
+local_useless_fill = gof.local_optimizer([T.fill])(local_useless_fillh)
 compile.optdb['canonicalize'].register('local_useless_fill',
                                        in2out(local_useless_fill),
                                        1.1, 'fast_compile')
 
 
-@register_specialize
-@register_stabilize
-@register_canonicalize
-@gof.local_optimizer([T.alloc])
-def local_useless_alloc(node):
+def local_useless_alloch(node):
     """
     If the input type is the same as the output type (dtype and broadcast)
     there is no change in the shape of the input. So this is just a simple copy
@@ -1219,11 +1222,12 @@ def local_useless_alloc(node):
         if node.inputs[0].type == node.outputs[0].type:
             return [node.inputs[0]]
 
+local_useless_alloc = register_specialize(register_stabilize(
+        register_canonicalize(
+        gof.local_optimizer([T.alloc])(local_useless_alloch))))
 
-@register_specialize
-@register_canonicalize
-@gof.local_optimizer([T.shape])
-def local_shape_to_shape_i(node):
+
+def local_shape_to_shape_ih(node):
     if node.op == T.shape:
         # This optimization needs ShapeOpt and fgraph.shape_feature
         if not hasattr(node.fgraph, 'shape_feature'):
@@ -1231,12 +1235,14 @@ def local_shape_to_shape_i(node):
         shape_feature = node.fgraph.shape_feature
         return [shape_feature.make_vector_shape(node.inputs[0])]
 
+local_shape_to_shape_i = register_specialize(
+                        register_canonicalize(
+                        gof.local_optimizer([T.shape])(
+                            local_shape_to_shape_ih)))
+
 
 # TODO: Not sure what type of node we are expecting here
-@register_specialize
-@register_canonicalize
-@gof.local_optimizer(None)
-def local_track_shape_i(node):
+def local_track_shape_ih(node):
     try:
         shape_feature = node.fgraph.shape_feature
     except AttributeError:
@@ -1249,11 +1255,11 @@ def local_track_shape_i(node):
         replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
 
+local_track_shape_i = register_specialize(register_canonicalize(
+gof.local_optimizer(None)(local_track_shape_ih)))
 
-@register_specialize
-@register_canonicalize
-@gof.local_optimizer([Subtensor])
-def local_subtensor_make_vector(node):
+
+def local_subtensor_make_vectorh(node):
     # replace all subtensor(make_vector) like:
     # [a,b,c][0] -> a
     # [a,b,c][0:2] -> [a,b]
@@ -1299,13 +1305,15 @@ def local_subtensor_make_vector(node):
                     _logger.error('failed to index with "%s"' % str(idx))
                     raise
 
+local_subtensor_make_vector = register_specialize(
+                        register_canonicalize(
+                        gof.local_optimizer([Subtensor])(
+                            local_subtensor_make_vectorh)))
+
 #TODO: the other optimization for and, or, xor, le and ge see ticket #496.
 
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.Elemwise])
-def local_useless_elemwise(node):
+def local_useless_elemwiseh(node):
     """
 
     eq(x,x) -> 1
@@ -1336,10 +1344,11 @@ def local_useless_elemwise(node):
             and len(node.inputs) == 1):
             return [node.inputs[0]]
 
+local_useless_elemwise = register_specialize(register_canonicalize(
+gof.local_optimizer([T.Elemwise])(local_useless_elemwiseh)))
 
-@register_specialize
-@gof.local_optimizer([T.Elemwise])
-def local_alloc_unary(node):
+
+def local_alloc_unaryh(node):
     """unary(alloc(x, shp)) -> alloc(unary(x), shp)
     """
     if isinstance(node.op, T.Elemwise) and len(node.inputs) == 1:
@@ -1349,6 +1358,9 @@ def local_alloc_unary(node):
             shp = a.owner.inputs[1:]
             v = node.op(x)
             return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
+
+local_alloc_unary = register_specialize(
+gof.local_optimizer([T.Elemwise])(local_alloc_unaryh))
 
 
 class Assert(T.Op):
@@ -1429,9 +1441,7 @@ assert_ = Assert()
 assert_op = assert_
 
 
-@register_specialize
-@gof.local_optimizer([Assert])
-def local_remove_useless_assert(node):
+def local_remove_useless_asserth(node):
     if isinstance(node.op, Assert):
         cond = []
         for c in node.inputs[1:]:
@@ -1450,9 +1460,12 @@ def local_remove_useless_assert(node):
         if len(cond) != len(node.inputs) - 1:
             return [assert_(node.inputs[0], *cond)]
 
+local_remove_useless_asserth = register_specialize(
+                                gof.local_optimizer([Assert])(
+                                local_remove_useless_asserth))
 
-@gof.local_optimizer([T.Elemwise])
-def local_alloc_elemwise(node):
+
+def local_alloc_elemwiseh(node):
     """
     elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
       -> elemwise(x, y.TensorType(no broadcast flag))
@@ -1544,6 +1557,8 @@ def local_alloc_elemwise(node):
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, when all inputs can be optimized do all except one
 
+local_alloc_elemwise = gof.local_optimizer([T.Elemwise])(local_alloc_elemwiseh)
+
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
         "If True enable the experimental optimization local_alloc_elemwise",
         theano.configparser.BoolParam(False),
@@ -1569,9 +1584,7 @@ else:
 ############################
 
 
-@register_canonicalize
-@gof.local_optimizer([T.Elemwise])
-def local_upcast_elemwise_constant_inputs(node):
+def local_upcast_elemwise_constant_inputsh(node):
     """This explicitly upcasts constant inputs to elemwise Ops, when
     those Ops do implicit upcasting anyway.
 
@@ -1635,15 +1648,16 @@ def local_upcast_elemwise_constant_inputs(node):
                 assert rval[0].type == node.outputs[0].type, (node, rval[0])
                 return rval
 
+local_upcast_elemwise_constant_inputs = register_canonicalize(
+                                gof.local_optimizer([T.Elemwise])(
+                                local_upcast_elemwise_constant_inputsh))
+
 ##################
 # Subtensor opts #
 ##################
 
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([Subtensor])
-def local_useless_subtensor(node):
+def local_useless_subtensorh(node):
     """
     Remove Subtensor if it takes the full input
     """
@@ -1713,10 +1727,13 @@ def local_useless_subtensor(node):
 
         return [node.inputs[0]]
 
+local_useless_subtensor = register_canonicalize(
+                        register_specialize(
+                            gof.local_optimizer([Subtensor])(
+                            local_useless_subtensorh)))
 
-@register_canonicalize
-@gof.local_optimizer([Subtensor])
-def local_subtensor_lift(node):
+
+def local_subtensor_lifth(node):
     """
     unary(x)[idx] -> unary(x[idx])#any broadcast pattern.
 
@@ -1787,6 +1804,9 @@ def local_subtensor_lift(node):
             rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
 
             return [rbcast_subt_x]
+
+local_subtensor_lift = register_canonicalize(
+gof.local_optimizer([Subtensor])(local_subtensor_lifth))
 
 
 def merge_two_slices(slice1, len1, slice2, len2):
@@ -1922,10 +1942,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
         return slice(start, stop, step)
 
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([Subtensor])
-def local_subtensor_merge(node):
+def local_subtensor_mergeh(node):
     """
     Refactored optimization to deal with all cases of tensor merging.
     Given a subgraph of the form Subtensor(Subtensor(u)), the optimization
@@ -1984,11 +2001,13 @@ def local_subtensor_merge(node):
 
             return [out]
 
+local_subtensor_merge = register_specialize(
+                        register_canonicalize(
+                         gof.local_optimizer([Subtensor])(
+                            local_subtensor_mergeh)))
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([Subtensor])
-def local_subtensor_of_alloc(node):
+
+def local_subtensor_of_alloch(node):
     """alloc[x:y] -> alloc"""
     if not isinstance(node.op, Subtensor):
         return False
@@ -2053,10 +2072,13 @@ def local_subtensor_of_alloc(node):
              if b1 and not b2])
     return rval
 
+local_subtensor_of_alloc = register_specialize(
+                            register_canonicalize(
+                            gof.local_optimizer([Subtensor])(
+                                local_subtensor_of_alloch)))
 
-@register_canonicalize
-@gof.local_optimizer([T.add])
-def local_IncSubtensor_serialize(node):
+
+def local_IncSubtensor_serializeh(node):
     """
     When using Subtensor, gradient graphs can be ugly.
 
@@ -2113,6 +2135,10 @@ def local_IncSubtensor_serialize(node):
                 tip = mi.owner.op(tip, *mi.owner.inputs[1:])
             return [tip]
 
+local_IncSubtensor_serialize = register_canonicalize(
+                            gof.local_optimizer([T.add])(
+                            local_IncSubtensor_serializeh))
+
         #print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
 
 # We register it in a TopoOptimizer inside the canonizer EQ optimizer.
@@ -2127,8 +2153,7 @@ compile.optdb.register('pre_local_IncSubtensor_serialize',
 #after priority 50 Destructive inplace operations
 #gemm is the first one now, at priority 70
 
-@gof.local_optimizer([IncSubtensor], inplace=True)
-def local_inplace_setsubtensor(node):
+def local_inplace_setsubtensorh(node):
     """
     Also work for GpuIncSubtensor
     """
@@ -2140,14 +2165,16 @@ def local_inplace_setsubtensor(node):
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
+
+local_inplace_setsubtensor = gof.local_optimizer([IncSubtensor],
+                inplace=True)(local_inplace_setsubtensorh)
 compile.optdb.register('local_inplace_setsubtensor',
                        TopoOptimizer(local_inplace_setsubtensor,
     failure_callback=TopoOptimizer.warn_inplace), 60,
                        'fast_run', 'inplace')  # DEBUG
 
 
-@gof.local_optimizer([AdvancedIncSubtensor1], inplace=True)
-def local_inplace_incsubtensor1(node):
+def local_inplace_incsubtensor1h(node):
     """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
         new_op = node.op.__class__(
@@ -2155,6 +2182,8 @@ def local_inplace_incsubtensor1(node):
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
+local_inplace_incsubtensor1 = gof.local_optimizer([AdvancedIncSubtensor1],
+                            inplace=True)(local_inplace_incsubtensor1h)
 compile.optdb.register('local_inplace_incsubtensor1',
                        TopoOptimizer(
         local_inplace_incsubtensor1,
@@ -2162,10 +2191,7 @@ compile.optdb.register('local_inplace_incsubtensor1',
                        60, 'fast_run', 'inplace')  # DEBUG
 
 
-@register_canonicalize
-@register_stabilize
-@gof.local_optimizer([IncSubtensor])
-def local_incsubtensor_of_allocs(node):
+def local_incsubtensor_of_allocsh(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
@@ -2184,11 +2210,13 @@ def local_incsubtensor_of_allocs(node):
         else:
             return False
 
+local_incsubtensor_of_allocs = register_stabilize(
+                                register_canonicalize(
+                                gof.local_optimizer([IncSubtensor]
+                                )(local_incsubtensor_of_allocsh)))
 
-@register_canonicalize
-@register_stabilize
-@gof.local_optimizer([IncSubtensor])
-def local_setsubtensor_of_allocs(node):
+
+def local_setsubtensor_of_allocsh(node):
     """
     SetSubtensor(x, x[idx], idx) -> x
 
@@ -2217,15 +2245,17 @@ def local_setsubtensor_of_allocs(node):
         else:
             return False
 
+local_setsubtensor_of_allocs = register_stabilize(
+register_canonicalize(
+gof.local_optimizer([IncSubtensor])(
+                                local_setsubtensor_of_allocsh)))
 
 ####################
 # Rebroadcast opts #
 ####################
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.Rebroadcast])
-def local_useless_rebroadcast(node):
+
+def local_useless_rebroadcasth(node):
     """
     Remove Rebroadcast if id does not actually change the broadcasting pattern
     """
@@ -2246,11 +2276,11 @@ def local_useless_rebroadcast(node):
             else:
                 return [T.Rebroadcast(*new_axis.items())(x)]
 
+local_useless_rebroadcast = register_specialize(register_canonicalize(
+        gof.local_optimizer([T.Rebroadcast])(local_useless_rebroadcasth)))
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.Rebroadcast])
-def local_rebroadcast_lift(node):
+
+def local_rebroadcast_lifth(node):
     """
     Lifts Rebroadcast through unary Elemwise operations,
     and merges consecutive Rebroadcasts.
@@ -2281,6 +2311,11 @@ def local_rebroadcast_lift(node):
         iinput = inode.inputs[0]
         rval = [T.Rebroadcast(*axis.items())(iinput)]
         return rval
+
+local_rebroadcast_lift = register_canonicalize(
+                        register_specialize(
+                        gof.local_optimizer([T.Rebroadcast])(
+                                local_rebroadcast_lifth)))
 
 
 def apply_rebroadcast_opt(rval):
@@ -2314,10 +2349,8 @@ def apply_rebroadcast_opt(rval):
 #############
 # Join opts #
 #############
-@register_specialize
-@register_canonicalize
-@gof.local_optimizer([T.Join])
-def local_join_1(node):
+
+def local_join_1h(node):
     """Join(i, x) => x
 
     Remove Join() when only one element is joined.
@@ -2328,14 +2361,15 @@ def local_join_1(node):
     if len(tensors) == 1:
         return [tensors[0]]
 
+local_join_1 = register_canonicalize(register_specialize(
+                gof.local_optimizer([T.Join])(local_join_1h)))
 
 ###############
 # Switch opts #
 ###############
 
-@register_canonicalize
-@gof.local_optimizer([T.Elemwise])
-def local_remove_switch_const_cond(node):
+
+def local_remove_switch_const_condh(node):
     """
     This optimization makes the following changes in the graph:
         T.switch(cond,left,right) -->
@@ -2365,10 +2399,12 @@ def local_remove_switch_const_cond(node):
         return False
     return False
 
+local_remove_switch_const_cond = register_canonicalize(
+                                gof.local_optimizer([T.Elemwise])(
+                                local_remove_switch_const_condh))
 
-@register_canonicalize
-@gof.local_optimizer([T.mul])
-def local_mul_switch_sink(node):
+
+def local_mul_switch_sinkh(node):
     """
     This optimization makes the folowing changes in the graph:
     T.mul(A,T.switch(cond,0,iff),B) -->  T.switch(cond,0,T.mul(A,B,iff))
@@ -2417,10 +2453,11 @@ def local_mul_switch_sink(node):
                 pass
     return False
 
+local_mul_switch_sink = register_canonicalize(
+        gof.local_optimizer([T.mul])(local_mul_switch_sinkh))
 
-@register_canonicalize
-@gof.local_optimizer([T.true_div, T.int_div, T.floor_div])
-def local_div_switch_sink(node):
+
+def local_div_switch_sinkh(node):
     """
     This optimization makes the folowing changes in the graph:
     T.div(T.switch(cond,0,iff),A) -->  T.switch(cond,0,T.div(iff,A))
@@ -2461,10 +2498,13 @@ def local_div_switch_sink(node):
 ################
 # Flatten Opts #
 ################
-@register_canonicalize
-@register_stabilize
-@gof.local_optimizer([T.Flatten])
-def local_flatten_lift(node):
+
+local_div_switch_sink = register_canonicalize(
+                    gof.local_optimizer([T.true_div, T.int_div,
+                    T.floor_div])(local_div_switch_sinkh))
+
+
+def local_flatten_lifth(node):
     """
     Flatten(UnaryElemwise(x)) -> UnaryElemwise(Flatten(x))
 
@@ -2479,13 +2519,15 @@ def local_flatten_lift(node):
         e = node.inputs[0].owner.op(f)
         return [e]
 
+local_flatten_lift = register_canonicalize(register_stabilize(
+            gof.local_optimizer([T.Flatten])(local_flatten_lifth)))
+
 ##################
 # Reshape opts   #
 ##################
 
 
-@gof.local_optimizer([T.Reshape])
-def local_reshape_chain(node):
+def local_reshape_chainh(node):
     """
     Reshape(Reshape(shape1),shape2) -> Reshape(shape2)
     """
@@ -2507,13 +2549,13 @@ def local_reshape_chain(node):
         return [rval]
     else:
         return False
+
+local_reshape_chain = gof.local_optimizer([T.Reshape])(local_reshape_chainh)
+
 register_canonicalize(local_reshape_chain)
 
 
-@register_canonicalize
-@register_stabilize
-@gof.local_optimizer([T.Reshape])
-def local_reshape_lift(node):
+def local_reshape_lifth(node):
     """
     Reshape(UnaryElemwise(x)) -> UnaryElemwise(Reshape(x))
 
@@ -2532,6 +2574,10 @@ def local_reshape_lift(node):
             e = T.patternbroadcast(e, node.outputs[0].broadcastable)
         return [e]
 
+local_reshape_lift = gof.local_optimizer([T.Reshape])(local_reshape_lifth)
+
+register_canonicalize(local_reshape_lift)
+register_stabilize(local_reshape_lift)
 
 if 0:
     # TODO: Test that this optimziation works.
@@ -2574,8 +2620,7 @@ if 0:
 ##################
 
 
-@gof.local_optimizer([T.Elemwise])
-def local_fill_cut(node):
+def local_fill_cuth(node):
     """
     f(fill(a,b), c) -> f(b, c)
     If c.type == a.type.
@@ -2624,14 +2669,15 @@ def local_fill_cut(node):
     else:
         return rval[0].owner.outputs
 
+local_fill_cut = gof.local_optimizer([T.Elemwise])(local_fill_cuth)
+
 register_canonicalize(local_fill_cut)
 
 
 register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
 
-@gof.local_optimizer([T.Elemwise])
-def local_fill_sink(node):
+def local_fill_sinkh(node):
     """
     f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
 
@@ -2653,6 +2699,8 @@ def local_fill_sink(node):
     for model in models:
         c = T.fill(model, c)
     return [c]
+
+local_fill_sink = gof.local_optimizer([T.Elemwise])(local_fill_sinkh)
 
 register_canonicalize(local_fill_sink)
 
@@ -3096,17 +3144,17 @@ local_mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, mul_calculate, False)
 register_canonicalize(local_mul_canonizer, name='local_mul_canonizer')
 
 
-@gof.local_optimizer([T.neg])
-def local_neg_to_mul(node):
+def local_neg_to_mulh(node):
     if node.op == T.neg:
         return [T.mul(numpy.array(-1, dtype=node.inputs[0].dtype),
             node.inputs[0])]
+
+
+local_neg_to_mul = gof.local_optimizer([T.neg])(local_neg_to_mulh)
 register_canonicalize(local_neg_to_mul)
 
 
-@register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_mul_by_scalar(node):
+def local_sum_mul_by_scalarh(node):
     """sum(scalar * smth) -> scalar * sum(smth)
        sum(-smth) -> -sum(smth)
     """
@@ -3141,9 +3189,13 @@ def local_sum_mul_by_scalar(node):
             return [T.neg(node.op(thing_summed.owner.inputs[0]))]
 
 
-@register_specialize
-@gof.local_optimizer([T.Elemwise])
-def local_elemwise_sub_zeros(node):
+local_sum_mul_by_scalar = gof.local_optimizer([T.Sum])(
+                                        local_sum_mul_by_scalarh)
+
+register_specialize(local_sum_mul_by_scalar)
+
+
+def local_elemwise_sub_zerosh(node):
     """
     Elemwise{sub}(X,X) -> zeros_like(X)
     """
@@ -3153,11 +3205,13 @@ def local_elemwise_sub_zeros(node):
         and node.inputs[0] == node.inputs[1]):
         return [T.zeros_like(node.inputs[0])]
 
+local_elemwise_sub_zeros = gof.local_optimizer([T.Elemwise])(
+                        local_elemwise_sub_zerosh)
 
-@register_canonicalize
-@register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_div_dimshuffle(node):
+register_specialize(local_elemwise_sub_zeros)
+
+
+def local_sum_div_dimshuffleh(node):
     '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
     if dimension l of the DimShuffle is 'x'.'''
     # TODO: extend it to product, and quotient of products
@@ -3243,10 +3297,14 @@ def local_sum_div_dimshuffle(node):
                 #else:
                 #    print 'incompatible dims:', axis, new_order
 
+local_sum_div_dimshuffle = gof.local_optimizer([T.Sum])(
+                        local_sum_div_dimshuffleh)
 
-@register_canonicalize
-@gof.local_optimizer([T.Sum])
-def local_sum_all_to_none(node):
+register_canonicalize(local_sum_div_dimshuffle)
+register_specialize(local_sum_div_dimshuffle)
+
+
+def local_sum_all_to_noneh(node):
     """Sum{0,1,...N} -> Sum{}"""
     if isinstance(node.op, T.Sum):
         # if all the axes are named, then use None as a shorthand
@@ -3256,10 +3314,12 @@ def local_sum_all_to_none(node):
         if set(node.op.axis) == set(range(node.inputs[0].type.ndim)):
             return [T.Sum(axis=None, dtype=node.op.dtype)(node.inputs[0])]
 
+local_sum_all_to_none = gof.local_optimizer([T.Sum])(local_sum_all_to_noneh)
 
-@register_canonicalize
-@gof.local_optimizer([T.Sum])
-def local_sum_sum(node):
+register_canonicalize(local_sum_all_to_none)
+
+
+def local_sum_sumh(node):
     """
     Sum(Sum()) -> Sum
     """
@@ -3324,14 +3384,16 @@ def local_sum_sum(node):
                 combined_sum = T.Sum(newaxis, dtype=out_dtype)
                 return [combined_sum(summed.owner.inputs[0])]
 
+local_sum_sum = gof.local_optimizer([T.Sum])(local_sum_sumh)
+
+register_canonicalize(local_sum_sum)
+
 ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.Sum, T.elemwise.Prod,
               T.elemwise.ProdWithoutZeros]
 
-@register_canonicalize
-@register_uncanonicalize  # Needed for MaxAndArgmax -> CAReduce
-@gof.local_optimizer(ALL_REDUCE)
-def local_reduce_join(node):
+
+def local_reduce_joinh(node):
     """Max(Join(a,b), axis=0) -> Maximum(a,b)  """
     if (isinstance(node.op, T.CAReduce) and
         node.inputs[0].owner and
@@ -3362,10 +3424,14 @@ def local_reduce_join(node):
             return [ret]
         #else the reduction do something about the dtype.
 
+local_reduce_join = gof.local_optimizer(ALL_REDUCE)(
+                            local_reduce_joinh)
 
-@register_canonicalize
-@gof.local_optimizer(ALL_REDUCE)
-def local_cut_useless_reduce(node):
+register_canonicalize(local_reduce_join)
+register_uncanonicalize(local_reduce_join)  # Needed for MaxAndArgmax -> CAReduce
+
+
+def local_cut_useless_reduceh(node):
     """Sum(a, axis=[]) -> a  """
     if isinstance(node.op, T.CAReduce):
         summed, = node.inputs
@@ -3373,16 +3439,18 @@ def local_cut_useless_reduce(node):
         if summed.type == node.outputs[0].type:
             return [summed]
 
+local_cut_useless_reduce = gof.local_optimizer(ALL_REDUCE)(
+                        local_cut_useless_reduceh)
+
+register_canonicalize(local_cut_useless_reduce)
+
 
 #Enabling this optimization at canonicalization step break this test:
 #theano/tensor/tests/test_opt.py:T_local_reduce.test_local_reduce_broadcast_some_0
 # see gh-790 issue.
 #
 #@register_canonicalize
-@register_uncanonicalize
-@register_specialize
-@gof.local_optimizer(ALL_REDUCE)
-def local_reduce_broadcastable(node):
+def local_reduce_broadcastableh(node):
     """Remove reduction over broadcastable dimensions"""
     if isinstance(node.op, T.CAReduce):
         reduced, = node.inputs
@@ -3418,10 +3486,13 @@ def local_reduce_broadcastable(node):
                     # -- in this case we can remove the reduction completely
                     return [new_reduced.astype(odtype)]
 
+local_reduce_broadcastable = gof.local_optimizer(ALL_REDUCE)(local_reduce_broadcastableh)
 
-@register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_alloc(node):
+register_uncanonicalize(local_reduce_broadcastable)
+register_specialize(local_reduce_broadcastable)
+
+
+def local_sum_alloch(node):
     """ sum(alloc(constant,shapes...)) => constant*prod(shapes)"""
     if isinstance(node.op, T.Sum):
         summed, = node.inputs
@@ -3452,20 +3523,24 @@ def local_sum_alloc(node):
                 except NotScalarConstantError:
                     pass
 
+local_sum_alloc = gof.local_optimizer([T.Sum])(local_sum_alloch)
 
-@register_specialize
-@gof.local_optimizer([T.neg])
-def local_neg_neg(node):
+register_specialize(local_sum_alloc)
+
+
+def local_neg_negh(node):
     # other specializations shouldn't put this in,
     # but sometimes they do
     if node.op == T.neg:
         if node.inputs[0].owner and node.inputs[0].owner.op == T.neg:
             return [node.inputs[0].owner.inputs[0]]
 
+local_neg_neg = gof.local_optimizer([T.neg])(local_neg_negh)
 
-@register_specialize
-@gof.local_optimizer([T.neg])
-def local_neg_div_neg(node):
+register_specialize(local_neg_neg)
+
+
+def local_neg_div_negh(node):
     """- (-a / b) -> a / b
 
     Also performs - (c / b) -> ((-c) / b) when c is a scalar constant.
@@ -3484,9 +3559,12 @@ def local_neg_div_neg(node):
                     new_num = -num.data
                     return [T.true_div(new_num, denom)]
 
+local_neg_div_neg = gof.local_optimizer([T.neg])(local_neg_div_negh)
 
-@gof.local_optimizer([T.mul])
-def local_mul_zero(node):
+register_specialize(local_neg_div_neg)
+
+
+def local_mul_zeroh(node):
     """As part of canonicalization, we replace multiplication by zero
     with zero.
     """
@@ -3503,11 +3581,12 @@ def local_mul_zero(node):
                 #print '... returning zeros'
                 return _fill_chain(theano._asarray(0, dtype=otype.dtype),
                                    node.inputs)
+
+local_mul_zero = gof.local_optimizer([T.mul])(local_mul_zeroh)
 register_canonicalize(local_mul_zero)
 
 
-@gof.local_optimizer([T.true_div])
-def local_div_to_inv(node):
+def local_div_to_invh(node):
     if node.op == T.true_div and N.all(
         local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
         out = node.outputs[0]
@@ -3522,33 +3601,35 @@ def local_div_to_inv(node):
         return [new_out]
     else:
         return False
+
+local_div_to_inv = gof.local_optimizer([T.true_div])(local_div_to_invh)
 register_specialize(local_div_to_inv)
 
 
-@gof.local_optimizer([T.inv])
-def local_inv_canon(node):
+def local_inv_canonh(node):
     if node.op == T.inv:
         return [T.pow(node.inputs[0], -1.0)]
     else:
         return False
+
+local_inv_canon = gof.local_optimizer([T.inv])(local_inv_canonh)
 register_canonicalize(local_inv_canon)
 
 
-@gof.local_optimizer([T.pow])
-def local_pow_canonicalize(node):
+def local_pow_canonicalizeh(node):
     if node.op == T.pow:
         if local_mul_canonizer.get_constant(node.inputs[1]) == 0:
             return [broadcast_like(1, node.outputs[0], node.fgraph)]
         if local_mul_canonizer.get_constant(node.inputs[1]) == 1:
-            return [broadcast_like(node.inputs[0], node.outputs[0], node.fgraph)]
+            return [broadcast_like(node.inputs[0], node.outputs[0],
+                                                node.fgraph)]
     else:
         return False
+local_pow_canonicalize = gof.local_optimizer([T.pow])(local_pow_canonicalizeh)
 register_canonicalize(local_pow_canonicalize)
 
 
-@register_specialize
-@gof.local_optimizer([T.mul])
-def local_mul_to_sqr(node):
+def local_mul_to_sqrh(node):
     """x*x -> sqr(x)
 
     This is faster on the GPU when memory fetching is a big part of
@@ -3559,9 +3640,12 @@ def local_mul_to_sqr(node):
             if node.inputs[0] is node.inputs[1]:
                 return [T.sqr(node.inputs[0])]
 
+local_mul_to_sqr = gof.local_optimizer([T.mul])(local_mul_to_sqrh)
 
-@gof.local_optimizer([T.pow])
-def local_pow_specialize(node):
+register_specialize(local_mul_to_sqr)
+
+
+def local_pow_specializeh(node):
     #here, we are past the point of canonicalization, so we don't want
     #to put in un-necessary fills.
     if node.op == T.pow:
@@ -3596,12 +3680,12 @@ def local_pow_specialize(node):
                 return rval
     else:
         return False
+
+local_pow_specialize = gof.local_optimizer([T.pow])(local_pow_specializeh)
 register_specialize(local_pow_specialize)
 
 
-@register_specialize_device
-@gof.local_optimizer([T.pow])
-def local_pow_specialize_device(node):
+def local_pow_specialize_deviceh(node):
     """
     This optimization is not the same on all device. We do it only on cpu here.
     """
@@ -3665,9 +3749,13 @@ def local_pow_specialize_device(node):
                     rval, node.outputs)
                 return rval
 
+local_pow_specialize_device = gof.local_optimizer([T.pow])(
+                            local_pow_specialize_deviceh)
 
-@gof.local_optimizer([T.mul])
-def local_mul_specialize(node):
+register_specialize_device(local_pow_specialize_device)
+
+
+def local_mul_specializeh(node):
     """Remove special-case constants from mul arguments and useless neg in inputs.
 
     mul(-1, x) -> neg(x)
@@ -3737,11 +3825,11 @@ def local_mul_specialize(node):
                 else:
                     return [broadcast_like(1, node.outputs[0], node.fgraph)]
 
+local_mul_specialize = gof.local_optimizer([T.mul])(local_mul_specializeh)
 register_specialize(local_mul_specialize)
 
 
-@gof.local_optimizer([T.add])
-def local_add_specialize(node):
+def local_add_specializeh(node):
     def fill_chain(v):
         out = _fill_chain(v, node.inputs)
         return out
@@ -3781,6 +3869,8 @@ def local_add_specialize(node):
             return ret
     else:
         return False
+
+local_add_specialize = gof.local_optimizer([T.add])(local_add_specializeh)
 register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
@@ -3811,9 +3901,7 @@ def check_for_x_over_absX(numerators, denominators):
 local_mul_canonizer.add_simplifier(check_for_x_over_absX, 'X_over_absX')
 
 
-@register_canonicalize
-@gof.local_optimizer([T.abs_])
-def local_abs_lift(node):
+def local_abs_lifth(node):
     """
     move the abs toward the input. This is needed for
     check_for_x_over_absX to apply in more case.
@@ -3827,10 +3915,12 @@ def local_abs_lift(node):
             i = node.inputs[0].owner.inputs
             return [T.true_div(T.abs_(i[0]), T.abs_(i[1]))]
 
+local_abs_lift = gof.local_optimizer([T.abs_])(local_abs_lifth)
 
-@register_specialize
-@gof.local_optimizer([T.mul, T.true_div])
-def local_abs_merge(node):
+register_canonicalize(local_abs_lift)
+
+
+def local_abs_mergeh(node):
     """
     merge abs generated by local_abs_lift when the canonizer don't
     need it anymore
@@ -3858,11 +3948,12 @@ def local_abs_merge(node):
         return [T.abs_(T.true_div(node.inputs[0].owner.inputs[0],
                                   node.inputs[1].owner.inputs[0]))]
 
+local_abs_merge = gof.local_optimizer([T.mul, T.true_div])(local_abs_mergeh)
 
-@register_stabilize
-@register_specialize
-@gof.local_optimizer([T.log])
-def local_log1p(node):
+register_specialize(local_abs_merge)
+
+
+def local_log1ph(node):
     # log(1+x) -> log1p(x)
 
     if node.op == T.log:
@@ -3880,12 +3971,13 @@ def local_log1p(node):
                     return _fill_chain(T.log1p(T.add(*nonconsts)),
                                        scalar_inputs)
 
+local_log1p = gof.local_optimizer([T.log])(local_log1ph)
+register_stabilize(local_log1p)
+register_specialize(local_log1p)
+
 
 #TODO: in canonicalize, change log10 and log2 -> log
-@register_stabilize
-@register_specialize
-@gof.local_optimizer([T.log])
-def local_log_add(node):
+def local_log_addh(node):
     # log(exp(x)+exp(y))
     #
     # Suppose x >= y
@@ -3908,6 +4000,10 @@ def local_log_add(node):
                                                       for p in pre_exp])))
                 ret.values_eq_approx = ret.type.values_eq_approx_remove_inf
                 return [ret]
+
+local_log_add = gof.local_optimizer([T.log])(local_log_addh)
+register_stabilize(local_log_add)
+register_specialize(local_log_add)
 
 
 def add_calculate(num, denum, aslist=False, out_type=None):
@@ -4007,8 +4103,7 @@ def attempt_distribution(factor, num, denum, out_type):
                                    neg_pairs))), num, denum
 
 
-@gof.local_optimizer([T.mul, T.true_div, T.inv])
-def local_greedy_distributor(node):
+def local_greedy_distributorh(node):
     """
     This optimization tries to apply distributivity of multiplication
     to addition in order to reduce the number of multiplications
@@ -4071,6 +4166,8 @@ def local_greedy_distributor(node):
 
     return [rval]
 
+local_greedy_distributor = gof.local_optimizer([T.mul, T.true_div, T.inv])(
+                                        local_greedy_distributorh)
 register_canonicalize(local_greedy_distributor)
 register_stabilize(local_greedy_distributor)
 
@@ -4297,10 +4394,7 @@ register_specialize(local_erf_neg_minus_one2)
 #for float32: threshold=10.0541949, [(i,numpy.log(scipy.special.erfc(
 #        numpy.asarray([i],dtype='float32')))) for i in numpy.arange(
 #        10.0541948,10.0541951,.0000001)]
-@register_stabilize
-@register_specialize
-@gof.local_optimizer([T.log])
-def local_log_erfc(node):
+def local_log_erfch(node):
     if node.op != T.log:
         return False
     if not node.inputs[0].owner or node.inputs[0].owner.op != T.erfc:
@@ -4325,6 +4419,10 @@ def local_log_erfc(node):
     ret.values_eq_approx = ret.type.values_eq_approx_remove_inf
     return [ret]
 
+local_log_erfc = gof.local_optimizer([T.log])(local_log_erfch)
+register_stabilize(local_log_erfc)
+register_specialize(local_log_erfc)
+
 
 #Stability optimization of the grad of log(erfc(x))
 #([y*]exp(-(x**2)))/erfc(x) # The y* is optional
@@ -4337,10 +4435,7 @@ def local_log_erfc(node):
 #TODO: at the test point 10 in float32, there is instability in the original
 #      value. The original gives -30.0, the stab -20.1 and in float64 -18.1.
 #      Make it so that the test does not generate an error in that case!
-@register_stabilize
-@register_specialize
-@gof.local_optimizer([T.true_div])
-def local_grad_log_erfc_neg(node):
+def local_grad_log_erfc_negh(node):
     if node.op != T.true_div:
         return False
     if not node.inputs[1].owner or node.inputs[1].owner.op != T.erfc:
@@ -4646,6 +4741,12 @@ for i in xrange(1,len(p64)): print i, 64[i]-p64[i-1]
 # ###############
 # # Loop fusion #
 # ###############
+
+local_grad_log_erfc_neg = gof.local_optimizer([T.true_div])(local_grad_log_erfc_negh)
+register_stabilize(local_grad_log_erfc_neg)
+register_specialize(local_grad_log_erfc_neg)
+
+
 def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024):
     """
     We parametrize it to make it work for Elemwise and GpuElemwise op.
