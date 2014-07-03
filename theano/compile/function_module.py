@@ -1063,7 +1063,7 @@ class FunctionMaker(object):
                 graph_db and need_optimize
                 '''
                 try:
-                    f = open(graph_db_file, 'r+')
+                    f = open(graph_db_file, 'r+b')
                     print 'graph_db exists'
                 except IOError:
                     # create graph_db
