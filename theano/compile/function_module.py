@@ -1079,9 +1079,9 @@ class FunctionMaker(object):
                 opt_time: timing
                 ''' 
                 from theano.gof.compilelock import get_lock, release_lock
-                import cPickle
+                import pickle
                 import os.path
-                graph_db_file = theano.config.compiledir + '/optimized_graphs.pkl'
+                graph_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
                 # the inputs, outputs, and size of the graph to be optimized
                 inputs_new = fgraph.inputs
                 outputs_new = fgraph.outputs
@@ -1101,10 +1101,11 @@ class FunctionMaker(object):
                                     
                 # load the graph_db dictionary
                 try:
-                    graph_db = cPickle.load(f)
+                    graph_db = pickle.load(f)
                     print 'graph_db is not empty'
-                except EOFError:
+                except EOFError, e:
                     # the file has nothing in it
+                    print e
                     print 'graph_db is empty'
                     graph_db = {}
                     
@@ -1180,7 +1181,7 @@ class FunctionMaker(object):
                     cPickle.load(test_file)
                     '''
                     graph_db.update({before_opt:fgraph})
-                    cPickle.dump(graph_db, f, -1)
+                    pickle.dump(graph_db, f, -1)
                     print 'saved into graph_db'
                 else:
                     print 'no opt, get graph from graph_db'
