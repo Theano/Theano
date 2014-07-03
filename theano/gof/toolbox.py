@@ -104,6 +104,30 @@ class Bookkeeper(Feature):
             self.on_prune(fgraph, node, 'Bookkeeper.detach')
 
 
+class getCheckpoint:
+
+    def __init__(self, history, fgraph):
+        self.h = history
+        self.fgraph = fgraph
+
+    def __call__(self):
+        return len(self.h.history[self.fgraph])
+
+
+class lambdextract:
+
+    def __init__(self, fgraph, node, i, r, reason=None):
+        self.fgraph = fgraph
+        self.node = node
+        self.i = i
+        self.r = r
+        self.reason = reason
+
+    def __call__(self):
+        return self.fgraph.change_input(self.node, self.i, self.r,
+                                    reason=("Revert", self.reason))
+
+
 class History(Feature):
     pickle_rm_attr = ["checkpoint", "revert"]
 
@@ -118,11 +142,11 @@ class History(Feature):
         # Don't call unpickle here, as ReplaceValidate.on_attach()
         # call to History.on_attach() will call the
         # ReplaceValidate.unpickle and not History.unpickle
-        fgraph.checkpoint = lambda: len(self.history[fgraph])
+        fgraph.checkpoint = getCheckpoint(self, fgraph)
         fgraph.revert = partial(self.revert, fgraph)
 
     def unpickle(self, fgraph):
-        fgraph.checkpoint = lambda: len(self.history[fgraph])
+        fgraph.checkpoint = getCheckpoint(self, fgraph)
         fgraph.revert = partial(self.revert, fgraph)
 
     def on_detach(self, fgraph):
@@ -134,8 +158,7 @@ class History(Feature):
         if self.history[fgraph] is None:
             return
         h = self.history[fgraph]
-        h.append(lambda: fgraph.change_input(node, i, r,
-                                          reason=("Revert", reason)))
+        h.append(lambdextract(fgraph, node, i, r, reason))
 
     def revert(self, fgraph, checkpoint):
         """
