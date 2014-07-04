@@ -753,8 +753,8 @@ class ProfileStats(object):
 
             temp = []
 
-            for i in min_memory_generator(node_list, compute_map):
-                temp.append(i)
+            for order in min_memory_generator(node_list, compute_map):
+                temp.append(order)
 
             for order in temp:
                 post_thunk_old_storage = []
