@@ -1146,14 +1146,16 @@ class FunctionMaker(object):
                         flags = []
                         for output_new, output_old in zip(outputs_new, outputs_old):
                             print 'loop through outputs node for both graphs'
-                            '''
+                        
                             t1 = copy.deepcopy(output_new)
                             t2 = copy.deepcopy(output_old)
                             # is_same_graph complains if fgraph is not None
-                            t1.fgraph = None
-                            t2.fgraph = None
-                            '''
-                            flag = is_same_graph(output_new, output_old,givens=givens)
+                            del t1.owner.fgraph
+                            del t2.owner.fgraph
+                            del t1.fgraph
+                            del t2.fgraph
+                            
+                            flag = is_same_graph(t1, t2 ,givens=givens)
                             flags.append(flag)
                             
                         is_same = all(flags)
