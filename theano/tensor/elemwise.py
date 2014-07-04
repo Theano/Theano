@@ -1179,7 +1179,7 @@ class Elemwise(OpenMPOp):
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
         return code
 
-    def c_code(self, node, nodename, inames, onames, sub):
+    def c_codealltype(self, node, nodename, inames, onames, sub):
 
         fail = sub['fail']
 
@@ -1213,7 +1213,7 @@ class Elemwise(OpenMPOp):
                 ref = {}
                 checkNDim = ""
                 for (t, inp, name) in zip(dtypes, node.inputs, inames):
-                    if not ref.has_key(name):
+                    if not name in ref:
                         x = TensorType(t, inp.broadcastable)()
                         inputs.append(x)
                         ref[name] = x
@@ -1286,6 +1286,47 @@ class Elemwise(OpenMPOp):
             return decl + checkNDim + checkType + self.c_code_dtype(node,
                             nodename, inames, onames, sub)
 
+    def c_code(self, node, nodename, inames, onames, sub):
+        bnb = 2 #number of dimensions per batch
+        fail = sub['fail']
+        if all([inp.ndim == node.inputs[0].ndim for inp in node.inputs]):
+            bdim = (inp.ndim // bnb) * bnb
+            code = ""
+            for i in range(bnb):
+                inputs = []
+                ref = {}
+                for (inp, name) in zip(node.inputs, inames):
+                    if not name in ref:
+                        newbroadcastable = inp.ndim
+                        if i + bdim < inp.ndim:
+                            newbroadcastable = inp.ndim[inp.ndim - (i + bdim):]
+                        elif i + bdim == inp.ndim:
+                            pass
+                        else:
+                            for i in range(i + bdim - inp.ndim):
+                                newbroadcastable = tuple([False, ].extend(
+                                                    newbroadcastable))
+                        x = TensorType(inp.dtype, newbroadcastable)()
+                        inputs.append(x)
+                        ref[name] = x
+                    else:
+                        inputs.append(ref[name])
+                nnode = self.make_node(*inputs)
+                ndim = bdim + i
+                code += "if (PyArray_NDIM(%(name)s) != %(ndim)s){" \
+                        % locals() + self.c_codealltype(
+                        nnode, nodename, inames, onames, sub) + "}else "
+            code += """
+                    {
+                    PyErr_SetString(PyExc_NotImplementedError,
+                    "Elemwise unexpected ndim");
+                    %(fail)s
+                    }
+                    """ % locals()
+            return code
+        else:
+            return self.c_codealltype(node, nodename, inames, onames, sub)
+
     def c_headers(self):
         return ['<vector>', '<algorithm>']
 
@@ -1298,7 +1339,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [15]  # the version corresponding to the c code in this Op
+        version = [16]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
