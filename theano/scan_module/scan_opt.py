@@ -49,8 +49,7 @@ def info(*msg):
     _logger.info('INFO theano.scan: ' + ' '.join(msg))
 
 
-@gof.local_optimizer([scan_op.Scan])
-def remove_constants_and_unused_inputs_scan(node):
+def remove_constants_and_unused_inputs_scanh(node):
     '''
     Move constants into the inner graph, and remove unused inputs.
 
@@ -152,6 +151,8 @@ def remove_constants_and_unused_inputs_scan(node):
         return nw_outs
     else:
         return False
+remove_constants_and_unused_inputs_scan = gof.local_optimizer([scan_op.Scan])(
+                                remove_constants_and_unused_inputs_scanh)
 
 
 # This is a global opt for historical reason
