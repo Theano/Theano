@@ -692,7 +692,6 @@ class ProfileStats(object):
         max_minimum_peak = 0
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
-            global min_mem, current_mem
             mem_list = []
             order_index = 0
             order = []
@@ -725,12 +724,11 @@ class ProfileStats(object):
                     return False
 
             def min_memory_generator(node_list, compute_map):
-                global current_mem, min_mem
                 '''
-                enumerate all valid order( node with inputs in its compute_map)
+                enumerate all valid orders for the list of nodes in node_list
                 compute the peak of all order and keep the order with the minimum peak.
-                return an order with minimum memory usage
-
+                return minimum memory usage
+                
                 :param node_list: a list of apply nodes
 
                 :param compute_map: simulate the node execution steps to update compute_map
@@ -752,6 +750,7 @@ class ProfileStats(object):
 
 
             temp = []
+            min_order = []
 
             for order in min_memory_generator(node_list, compute_map):
                 temp.append(order)
@@ -767,14 +766,13 @@ class ProfileStats(object):
                         (input not in fgraph.outputs) and
                         node == last_user[input]])
                 current_mem = count_running_memory(order, post_thunk_old_storage, nodes_mem)[2]
+                current_order = order
 
                 if current_mem < min_mem:
                     min_mem = current_mem
-                    order_index = temp.index(order)
+                    min_order = current_order
 
-            order = temp[order_index]
-
-            return order, min_mem
+            return min_order, min_mem
 
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
