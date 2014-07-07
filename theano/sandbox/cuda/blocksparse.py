@@ -42,10 +42,17 @@ def gemv(alpha, A, x, beta, y):
     assert A.shape[0] == x.shape[0]
     assert A.shape[1] == y.shape[0]
 
+    if A.strides[0] == 1:
+        n, m = 0, 1
+        trans = 't'
+    else:
+        n, m = 1, 0
+        trans = 'n'
+
     handle = scikits.cuda.misc._global_cublas_handle
 
-    cublas.cublasSgemv(handle, 'n', A.shape[1], A.shape[0], alpha,
-                       A.gpudata, A.strides[0],
+    cublas.cublasSgemv(handle, trans, A.shape[n], A.shape[m], alpha,
+                       A.gpudata, A.strides[m],
                        x.gpudata, x.strides[0],
                        beta, y.gpudata, y.strides[0])
 

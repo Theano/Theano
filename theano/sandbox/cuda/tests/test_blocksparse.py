@@ -13,6 +13,8 @@ import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
+from theano.sandbox.cuda.basic_ops import (GpuDimShuffle,
+                                           as_cuda_ndarray_variable)
 from theano.sandbox.cuda.blocksparse import (sparse_block_dot_SS,
                                              sparse_block_gemv_ss,
                                              sparse_block_gemv_ss_inplace,
@@ -55,6 +57,7 @@ def blocksparse(W, h, iIdx, b, oIdx):
 
     return o
 
+
 def test_blocksparse():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
@@ -69,6 +72,29 @@ def test_blocksparse():
     W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
 
     th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+    ref_out = blocksparse(W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+    utt.assert_allclose(ref_out, th_out)
+
+
+# test the fortan order for W (which can happen in the grad for some graphs).
+def test_blocksparseF():
+    b = tensor.fmatrix()
+    W = tensor.ftensor4()
+    h = tensor.fmatrix()
+    iIdx = tensor.lvector()
+    oIdx = tensor.lvector()
+
+    o = sparse_block_dot_SS(GpuDimShuffle((False, False, False, False),
+                                          (0, 1, 3, 2))(
+            as_cuda_ndarray_variable(W)),
+                            h, iIdx, b, oIdx)
+
+    f = theano.function([W, h, iIdx, b, oIdx], o)
+
+    W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
+
+    th_out = f(numpy.swapaxes(W_val, 2, 3), h_val, iIdx_val, b_val, oIdx_val)
     ref_out = blocksparse(W_val, h_val, iIdx_val, b_val, oIdx_val)
 
     utt.assert_allclose(ref_out, th_out)
