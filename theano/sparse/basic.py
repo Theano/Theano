@@ -18,7 +18,7 @@ from theano.gof.python25 import all
 from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
 import theano.tests.unittest_tools as utt
-from theano.gradient import grad_not_implemented
+from theano.gradient import grad_not_implemented, grad_undefined
 from theano.sparse.type import SparseType, _is_sparse
 from numpy.lib.stride_tricks import as_strided
 
@@ -1007,13 +1007,15 @@ class GetItemList(gof.op.Op):
     def __hash__(self):
         return hash(type(self))
 
+    def infer_shape(self, node, shapes):
+        return [(shapes[1][0], shapes[0][1])]
+
     def make_node(self, x, index):
         x = as_sparse_variable(x)
         assert x.format in ["csr", "csc"]
 
         ind = tensor.as_tensor_variable(index)
         assert ind.ndim == 1
-        assert 'int' in ind.dtype
 
         return gof.Apply(self, [x, ind], [x.type()])
 
@@ -1023,13 +1025,63 @@ class GetItemList(gof.op.Op):
         assert _is_sparse(x)
         out[0] = x[indices]
 
+    def grad(self, inputs, g_outputs):
+        x, indices = inputs
+        gout, = g_outputs
+        return [GetItemListGrad(self)(x, indices, gout),
+                grad_undefined(self, 1, indices, "No gradient for this input")]
+
     def __str__(self):
         return self.__class__.__name__
 
 get_item_list = GetItemList()
 
 
-# Indexing
+class GetItemListGrad(gof.op.Op):
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def infer_shape(self, node, shapes):
+        return [(shapes[0][0], shapes[0][1])]
+
+    def make_node(self, x, index, gz):
+        x = as_sparse_variable(x)
+        gz = as_sparse_variable(gz)
+
+        assert x.format in ["csr", "csc"]
+        assert gz.format in ["csr", "csc"]
+
+        ind = tensor.as_tensor_variable(index)
+        assert ind.ndim == 1
+
+        return gof.Apply(self, [x, ind, gz], [x.type()])
+
+    def perform(self, node, inp, (out, )):
+        x = inp[0]
+        indices = inp[1]
+        gz = inp[2]
+
+        if x.format in ["csr"]:
+            y = scipy.sparse.csr_matrix((x.shape[0], x.shape[1]))
+        else:
+            y = scipy.sparse.csc_matrix((x.shape[0], x.shape[1]))
+        z = 0
+        for i in indices:
+            y[i] = gz[z]
+            z = z+1
+
+        out[0] = y
+
+    def __str__(self):
+        return self.__class__.__name__
+
+get_item_list_grad = GetItemListGrad()
+
+
 class GetItem2d(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
     def __eq__(self, other):

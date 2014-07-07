@@ -6,6 +6,7 @@ import numpy
 try:
     import scipy.sparse as sp
     import scipy.sparse
+    from scipy.sparse import csr_matrix
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
@@ -31,7 +32,7 @@ from theano.sparse import (
     AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0,
     add, mul, structured_dot, transpose,
     csc_from_dense, csr_from_dense, dense_from_sparse,
-    Dot, Usmm, sp_ones_like, GetItemScalar,
+    Dot, Usmm, sp_ones_like, GetItemScalar, GetItemList,
     SparseFromDense,
     Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
     structured_minimum, structured_maximum, structured_add,
@@ -2045,6 +2046,15 @@ class Test_getitem(unittest.TestCase):
         f = theano.function([a[0]], y)
 
         self.assertRaises(IndexError, f, A[0])
+
+    def test_get_item_list_grad(self):
+        op = theano.sparse.basic.GetItemList()
+        def op_with_fixed_index(x):
+            return op(x, index=numpy.asarray([0, 1]))
+
+        x, x_val = sparse_random_inputs("csr", (4,5), out_dtype="float64")
+
+        verify_grad_sparse(op_with_fixed_index, x_val)
 
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')

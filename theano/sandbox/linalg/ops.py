@@ -1407,7 +1407,7 @@ def norm(x,ord):
         elif ord == -1:
             return tensor.min(tensor.sum(abs(x),0))
         else:
-            raise ValueError(0)
+            raise ValueError()
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
 
