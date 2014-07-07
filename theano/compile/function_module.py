@@ -1062,24 +1062,26 @@ class FunctionMaker(object):
                 '''
                 graph_db and need_optimize
                 '''
-                try:
-                    f = open(graph_db_file, 'r+b')
+                if os.path.isfile(graph_db_file):
                     print 'graph_db exists'
-                except IOError:
+                else:
                     # create graph_db
                     f = open(graph_db_file, 'w+b')
-                    print 'created new graph_db %s'%graph_db_file
-                                    
+                    print 'created new graph_db %s' % graph_db_file
+                    f.close
+
                 # load the graph_db dictionary
                 try:
+                    f = open(graph_db_file, 'r+b')
                     graph_db = pickle.load(f)
+                    f.close()
                     print 'graph_db is not empty'
                 except EOFError, e:
                     # the file has nothing in it
                     print e
                     print 'graph_db is empty'
                     graph_db = {}
-                    
+
                 print 'loaded graph_db from %s, size=%d'%(graph_db_file,len(graph_db))
                 need_optimize = True
                 # the sole purpose of this loop is to set 'need_optimize'
@@ -1117,18 +1119,31 @@ class FunctionMaker(object):
                         flags = []
                         for output_new, output_old in zip(outputs_new, outputs_old):
                             print 'loop through outputs node for both graphs'
-                        
+
                             t1 = copy.deepcopy(output_new)
                             t2 = copy.deepcopy(output_old)
                             # is_same_graph complains if fgraph is not None
-                            del t1.owner.fgraph
-                            del t2.owner.fgraph
-                            del t1.fgraph
-                            del t2.fgraph
-                            
-                            flag = is_same_graph(t1, t2 ,givens=givens)
+
+                            def removeAllFgraph(remove):
+                                if hasattr(remove, 'fgraph'):
+                                    remove.fgraph = None
+                                if hasattr(remove, 'owner'):
+                                    if remove.owner == None:
+                                        remove.fgraph = None
+                                    else:
+                                        if hasattr(remove.owner, 'fgraph'):
+                                            remove.owner.fgraph = None
+                                        if hasattr(remove.owner, 'inputs'):
+                                            remove.owner.inputs = [removeAllFgraph(
+                                                i) for i in remove.owner.inputs]
+                                return remove
+
+                            t1 = removeAllFgraph(t1)
+                            t2 = removeAllFgraph(t2)
+
+                            flag = is_same_graph(t1, t2, givens=givens)
                             flags.append(flag)
-                            
+
                         is_same = all(flags)
                         if is_same:
                             # found the match
@@ -1154,16 +1169,16 @@ class FunctionMaker(object):
                     cPickle.load(test_file)
                     '''
                     graph_db.update({before_opt:fgraph})
+                    f = open(graph_db_file, 'w+b')
                     pickle.dump(graph_db, f, -1)
+                    f.close()
                     print 'saved into graph_db'
                 else:
                     print 'no opt, get graph from graph_db'
                     # just read the optmized graph from graph_db
                     opt_time = 0
                     fgraph = graph_db[fgraph]
-                    
                 # release stuff
-                f.close()
                 release_lock()    
                 return opt_time
                 
