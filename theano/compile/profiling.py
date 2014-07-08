@@ -19,6 +19,7 @@ import copy
 import os
 import sys
 import time
+from collections import defaultdict
 
 import numpy
 
@@ -699,12 +700,11 @@ class ProfileStats(object):
             min_mem = 0
             current_mem = 0
 
-            compute_map = fgraph.profile.compute_map
+            compute_map = defaultdict(lambda: [0])
 
             # compute_map use to check if a node is valid
-            for node in node_list:
-                for v in node.outputs:
-                    compute_map[v][0] = 0 
+            for node in fgraph.inputs:
+                compute_map[node][0] = 1
 
             def check_node_state(node):
                 """
@@ -748,14 +748,9 @@ class ProfileStats(object):
                         for i in v[0].outputs:
                             compute_map[i][0] = 0
 
-
-            temp = []
             min_order = []
 
             for order in min_memory_generator(node_list, compute_map):
-                temp.append(order)
-
-            for order in temp:
                 post_thunk_old_storage = []
                 computed, last_user = theano.gof.link.gc_helper(order)
                 for node in order:
@@ -766,11 +761,10 @@ class ProfileStats(object):
                         (input not in fgraph.outputs) and
                         node == last_user[input]])
                 current_mem = count_running_memory(order, post_thunk_old_storage, nodes_mem)[2]
-                current_order = order
 
                 if current_mem < min_mem:
                     min_mem = current_mem
-                    min_order = current_order
+                    min_order = order
 
             return min_order, min_mem
 

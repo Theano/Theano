@@ -147,9 +147,6 @@ class VM(object):
         if hasattr(self, 'node_cleared_order'):
             profile.node_cleared_order = self.node_cleared_order[:]
 
-        if hasattr(self, 'compute_map'):
-            profile.compute_map = self.compute_map.copy()
-
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
             self.call_times[i] = 0.0
