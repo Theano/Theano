@@ -344,6 +344,8 @@ class _sparse_py_operators:
                             getattr(args[1], 'type', None) == tensor.iscalar)
             if scalar_arg_1 and scalar_arg_2:
                 ret = get_item_scalar(self, args)
+            elif isinstance(args[0], list):
+                ret = get_item_2lists(self, args[0], args[1])
             else:
                 ret = get_item_2d(self, args)
         elif isinstance(args[0], list):
@@ -1071,7 +1073,7 @@ class GetItemListGrad(gof.op.Op):
             y = scipy.sparse.csc_matrix((x.shape[0], x.shape[1]))
         z = 0
         for i in indices:
-            y[i] = gz[z]
+            y[i:i+1] = gz[z:z+1]
             z = z+1
 
         out[0] = y
@@ -1080,6 +1082,37 @@ class GetItemListGrad(gof.op.Op):
         return self.__class__.__name__
 
 get_item_list_grad = GetItemListGrad()
+
+
+class GetItem2Lists(gof.op.Op):
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, ind1, ind2):
+        x = as_sparse_variable(x)
+        assert x.format in ["csr", "csc"]
+        ind1 = tensor.as_tensor_variable(ind1)
+        ind2 = tensor.as_tensor_variable(ind2)
+
+        return gof.Apply(self, [x, ind1, ind2], [theano.tensor.vector()])
+
+    def perform(self, node, inp, (out, )):
+        x = inp[0]
+        ind1 = inp[1]
+        ind2 = inp[2]
+        p = []
+        for i in ind1:
+            p.append(x[(ind1[i],ind2[i])])
+        out[0] = numpy.asarray(p)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+get_item_2lists = GetItem2Lists()
 
 
 class GetItem2d(gof.op.Op):
