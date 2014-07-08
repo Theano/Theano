@@ -1071,10 +1071,11 @@ class GetItemListGrad(gof.op.Op):
             y = scipy.sparse.csr_matrix((x.shape[0], x.shape[1]))
         else:
             y = scipy.sparse.csc_matrix((x.shape[0], x.shape[1]))
-        z = 0
-        for i in indices:
-            y[i:i+1] = gz[z:z+1]
-            z = z+1
+        c = 0
+        for a in range(0, gz.shape[0]):
+            for b in range(0, gz.shape[1]):
+                y[(indices[c], b)] = gz[(a, b)]
+            c = c + 1
 
         out[0] = y
 
@@ -1109,10 +1110,65 @@ class GetItem2Lists(gof.op.Op):
             p.append(x[(ind1[i],ind2[i])])
         out[0] = numpy.asarray(p)
 
+    def grad(self, inputs, g_outputs):
+        x, ind1, ind2 = inputs
+        gout, = g_outputs
+        return [GetItem2ListsGrad(self)(x, ind1, ind2, gout),
+                grad_undefined(self, 1, ind1, "No gradient for this input"),
+                grad_undefined(self, 1, ind2, "No gradient for this input")]
+
     def __str__(self):
         return self.__class__.__name__
 
 get_item_2lists = GetItem2Lists()
+
+
+class GetItem2ListsGrad(gof.op.Op):
+
+    def __eq__(self, other):
+        return (type(self) == type(other))
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def infer_shape(self, node, shapes):
+        return [(shapes[0][0], shapes[0][1])]
+
+    def make_node(self, x, ind1, ind2, gz):
+        x = as_sparse_variable(x)
+        gz = as_sparse_variable(gz)
+
+        assert x.format in ["csr", "csc"]
+        assert gz.format in ["csr", "csc"]
+
+        ind1 = tensor.as_tensor_variable(index)
+        ind2 = tensor.as_tensor_variable(index)
+        assert ind1.ndim == 1
+        assert ind2.ndim == 1
+
+        return gof.Apply(self, [x, ind1, ind2, gz], [x.type()])
+
+    def perform(self, node, inp, (out, )):
+        x = inp[0]
+        ind1 = inp[1]
+        ind2 = inp[2]
+        gz = inp[3]
+
+        if x.format in ["csr"]:
+            y = scipy.sparse.csr_matrix((x.shape[0], x.shape[1]))
+        else:
+            y = scipy.sparse.csc_matrix((x.shape[0], x.shape[1]))
+        z = 0
+        for i in range(0, len(ind1)):
+            y[(ind1[z], ind2[z])] = gz[z]
+            z = z + 1
+
+        out[0] = y
+
+    def __str__(self):
+        return self.__class__.__name__
+
+get_item_2lists_grad = GetItem2ListsGrad()
 
 
 class GetItem2d(gof.op.Op):
