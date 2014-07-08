@@ -1303,9 +1303,10 @@ class Elemwise(OpenMPOp):
                         elif i + bdim == inp.ndim:
                             pass
                         else:
-                            for i in range(i + bdim - inp.ndim):
-                                newbroadcastable = tuple([False, ].extend(
-                                                    newbroadcastable))
+                            for k in range(i + bdim - inp.ndim):
+                                temp = [False]
+                                temp.extend(newbroadcastable)
+                                newbroadcastable = tuple(temp)
                         x = TensorType(inp.dtype, newbroadcastable)()
                         inputs.append(x)
                         ref[name] = x
