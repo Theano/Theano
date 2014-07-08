@@ -297,6 +297,12 @@ class ReplaceValidate(History, Validator):
                     print >> out, reason, replacements
                 raise ReplacementDidntRemovedError()
 
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        if "history" in d:
+            del d["history"]
+        return d
+
 
 class NodeFinder(Bookkeeper):
 

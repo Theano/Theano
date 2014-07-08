@@ -753,7 +753,12 @@ class FunctionGraph(utils.object2):
             for attr in getattr(feature, "pickle_rm_attr", []):
                 del d[attr]
         # The class Updater take fct as parameter and they are lambda function, so unpicklable.
-#        del d["execute_callbacks_times"]
+
+        # execute_callbacks_times have reference to optimizer, and they can't 
+        # be pickled as the decorators with parameters aren't pickable.
+        if "execute_callbacks_times" in d:
+            del d["execute_callbacks_times"]
+
         return d
 
     def __setstate__(self, dct):

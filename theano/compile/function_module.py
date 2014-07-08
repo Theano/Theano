@@ -1085,7 +1085,7 @@ class FunctionMaker(object):
                 # the inputs, outputs, and size of the graph to be optimized
                 inputs_new = fgraph.inputs
                 outputs_new = fgraph.outputs
-                size_new = len(fgraph.nodes)
+                size_new = len(fgraph.apply_nodes)
                 need_optimize = False
                 get_lock()
                 '''
@@ -1117,7 +1117,7 @@ class FunctionMaker(object):
                 for i, graph_old in enumerate(graph_db.keys()):
                     inputs_old = graph_old.inputs
                     outputs_old = graph_old.outputs
-                    size_old = len(graph_old.nodes)
+                    size_old = len(graph_old.apply_nodes)
                     print 'looping through graph_db %d/%d'%(i+1,len(graph_db))
                     # Some heuristics to check is the same graphs have
                     # already been optimized before.
@@ -1155,13 +1155,13 @@ class FunctionMaker(object):
 
                             def removeAllFgraph(remove):
                                 if hasattr(remove, 'fgraph'):
-                                    remove.fgraph = None
+                                    del remove.fgraph
                                 if hasattr(remove, 'owner'):
                                     if remove.owner == None:
-                                        remove.fgraph = None
+                                        pass
                                     else:
                                         if hasattr(remove.owner, 'fgraph'):
-                                            remove.owner.fgraph = None
+                                            del remove.owner.fgraph
                                         if hasattr(remove.owner, 'inputs'):
                                             remove.owner.inputs = [removeAllFgraph(
                                                 i) for i in remove.owner.inputs]
