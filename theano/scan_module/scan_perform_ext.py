@@ -1,4 +1,8 @@
-import os, logging, sys
+import logging
+import os
+import sys
+
+import numpy
 
 import theano
 from theano import config
@@ -60,6 +64,28 @@ except ImportError:
                 os.mkdir(loc)
             preargs = ['-fwrapv', '-O2', '-fno-strict-aliasing']
             preargs += cmodule.GCC_compiler.compile_args()
+            # Cython 19.1 always use the old NumPy interface.  So we
+            # need to manually modify the .c file to get it compiled
+            # by Theano. As by default, we tell NumPy to don't import
+            # the old interface.
+            if False:
+                #During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
+                preargs.remove('-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
+            else:
+                numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+                # Add add some macro to lower the number of edit
+                # needed to the c file.
+                if bool(numpy_ver >= [1, 7]):
+                    # Needed when we disable the old API, as cython
+                    # use the old interface
+                    preargs.append("-D NPY_ENSUREARRAY=NPY_ARRAY_ENSUREARRAY")
+                    preargs.append("-D NPY_ENSURECOPY=NPY_ARRAY_ENSURECOPY")
+                    preargs.append("-D NPY_ALIGNED=NPY_ARRAY_ALIGNED")
+                    preargs.append("-D NPY_WRITEABLE=NPY_ARRAY_WRITEABLE")
+                    preargs.append("-D NPY_UPDATE_ALL=NPY_ARRAY_UPDATE_ALL")
+                    preargs.append("-D NPY_C_CONTIGUOUS=NPY_ARRAY_C_CONTIGUOUS")
+                    preargs.append("-D NPY_F_CONTIGUOUS=NPY_ARRAY_F_CONTIGUOUS")
+
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
                                              preargs=preargs)
             # Save version into the __init__.py file.

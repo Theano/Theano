@@ -21,6 +21,8 @@ Montreal).
 News
 ====
 
+* Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
+
 * Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
 
 * Theano 0.6 was released. Everybody is encouraged to update.
