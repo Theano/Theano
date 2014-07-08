@@ -1297,7 +1297,7 @@ class Elemwise(OpenMPOp):
                 ref = {}
                 for (inp, name) in zip(node.inputs, inames):
                     if not name in ref:
-                        newbroadcastable = inp.ndim
+                        newbroadcastable = inp.broadcastable
                         if i + bdim < inp.ndim:
                             newbroadcastable = inp.ndim[inp.ndim - (i + bdim):]
                         elif i + bdim == inp.ndim:
