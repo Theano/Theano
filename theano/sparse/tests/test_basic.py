@@ -32,7 +32,7 @@ from theano.sparse import (
     AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0,
     add, mul, structured_dot, transpose,
     csc_from_dense, csr_from_dense, dense_from_sparse,
-    Dot, Usmm, sp_ones_like, GetItemScalar, GetItemList,
+    Dot, Usmm, sp_ones_like, GetItemScalar, GetItemList, GetItem2Lists,
     SparseFromDense,
     Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
     structured_minimum, structured_maximum, structured_add,
@@ -2051,6 +2051,41 @@ class Test_getitem(unittest.TestCase):
         op = theano.sparse.basic.GetItemList()
         def op_with_fixed_index(x):
             return op(x, index=numpy.asarray([0, 1]))
+
+        x, x_val = sparse_random_inputs("csr", (4,5), out_dtype="float64")
+
+        verify_grad_sparse(op_with_fixed_index, x_val)
+
+    def test_GetItem2Lists(self):
+
+        a, A = sparse_random_inputs('csr', (4, 5))
+        b, B = sparse_random_inputs('csc', (4, 5))
+        y = a[0][[0, 0, 1, 3], [0, 1, 2, 4]]
+        z = b[0][[0, 0, 1, 3], [0, 1, 2, 4]]
+
+        fa = theano.function([a[0]], y)
+        fb = theano.function([b[0]], z)
+
+        t_geta = fa(A[0])
+        t_getb = fb(B[0])
+
+        s_geta = numpy.asarray(scipy.sparse.csr_matrix(A[0])[[0, 0, 1, 3], [0, 1, 2, 4]])
+        s_getb = numpy.asarray(scipy.sparse.csc_matrix(B[0])[[0, 0, 1, 3], [0, 1, 2, 4]])
+
+        utt.assert_allclose(t_geta, s_geta)
+        utt.assert_allclose(t_getb, s_getb)
+
+    def test_GetItem2Lists_wrong_index(self):
+        a, A = sparse_random_inputs('csr', (4, 5))
+        y = a[0][[0, 4], [0, 4]]
+        f = theano.function([a[0]], y)
+
+        self.assertRaises(IndexError, f, A[0])
+
+    def test_get_item_2lists_grad(self):
+        op = theano.sparse.basic.GetItem2Lists()
+        def op_with_fixed_index(x):
+            return op(x, ind1=numpy.asarray([0, 1]), ind2=numpy.asarray([1, 1]))
 
         x, x_val = sparse_random_inputs("csr", (4,5), out_dtype="float64")
 

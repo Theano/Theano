@@ -1099,16 +1099,14 @@ class GetItem2Lists(gof.op.Op):
         ind1 = tensor.as_tensor_variable(ind1)
         ind2 = tensor.as_tensor_variable(ind2)
 
-        return gof.Apply(self, [x, ind1, ind2], [theano.tensor.vector()])
+        return gof.Apply(self, [x, ind1, ind2],
+                         [theano.tensor.vector()])
 
     def perform(self, node, inp, (out, )):
         x = inp[0]
         ind1 = inp[1]
         ind2 = inp[2]
-        p = []
-        for i in ind1:
-            p.append(x[(ind1[i],ind2[i])])
-        out[0] = numpy.asarray(p)
+        out[0] = numpy.asarray(x[ind1, ind2]).flatten()
 
     def grad(self, inputs, g_outputs):
         x, ind1, ind2 = inputs
@@ -1136,13 +1134,11 @@ class GetItem2ListsGrad(gof.op.Op):
 
     def make_node(self, x, ind1, ind2, gz):
         x = as_sparse_variable(x)
-        gz = as_sparse_variable(gz)
 
         assert x.format in ["csr", "csc"]
-        assert gz.format in ["csr", "csc"]
 
-        ind1 = tensor.as_tensor_variable(index)
-        ind2 = tensor.as_tensor_variable(index)
+        ind1 = tensor.as_tensor_variable(ind1)
+        ind2 = tensor.as_tensor_variable(ind2)
         assert ind1.ndim == 1
         assert ind2.ndim == 1
 
