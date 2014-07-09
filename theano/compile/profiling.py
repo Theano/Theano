@@ -342,10 +342,10 @@ class ProfileStats(object):
         es += ['   %2s ']
 
         hs += ['<#call>']
-        es += ['  %5d  ']
+        es += ['%6d  ']
 
         hs += ['<#apply>']
-        es += ['  %4d  ']
+        es += [' %4d  ']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
         maxlen = self.line_width - upto_length
