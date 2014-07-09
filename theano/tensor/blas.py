@@ -1494,7 +1494,7 @@ class GemmOptimizer(Optimizer):
             callbacks_before = fgraph.execute_callbacks_times.copy()
             callback_before = fgraph.execute_callbacks_time
 
-        def on_import(self, new_node):
+        def on_import(new_node):
             if new_node is not node:
                 nodelist.append(new_node)
 
