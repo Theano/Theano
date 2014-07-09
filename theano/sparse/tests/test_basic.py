@@ -2054,7 +2054,10 @@ class Test_getitem(unittest.TestCase):
 
         x, x_val = sparse_random_inputs("csr", (4,5), out_dtype="float64")
 
-        verify_grad_sparse(op_with_fixed_index, x_val)
+        try:
+            verify_grad_sparse(op_with_fixed_index, x_val)
+        except NotImplementedError, e:
+            assert "Scipy version is to old" in str(e)
 
     def test_GetItem2Lists(self):
 
