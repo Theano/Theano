@@ -21,10 +21,8 @@ def test_profiling():
         val4 = T.dvector("val4")
         val5 = T.dvector("val5")
         val6 = T.dvector("val6")
-        val7 = T.dvector("val7")
-        val8 = T.dvector("val8")
-        val9 = T.dvector("val9")
-        x = [val1, val2, val3, val4, val5, val6, val7, val8, val9]
+
+        x = [val1, val2, val3, val4, val5, val6]
 
         z = [x[i] + x[i+1] for i in range(len(x)-1)] + [T.outer(x[i], x[i+1]).sum() for i in range(len(x)-1)]
 
@@ -35,10 +33,10 @@ def test_profiling():
         else:
             m = None
 
-        f = theano.function([val1, val2, val3, val4, val5, val6, val7, val8, val9], z, profile=p, name="test_profiling",
+        f = theano.function([val1, val2, val3, val4, val5, val6], z, profile=p, name="test_profiling",
                             mode=m)
 
-        output = f([0, 1, 2, 3, 4], [1, 2, 3, 4, 5], [2, 3, 4, 5, 6], [3, 4, 5, 6, 7], [4, 5, 6, 7, 8], [5, 6, 7, 8, 9], [6, 7, 8, 9, 10], [7, 8, 9, 10, 11], [8, 9, 10, 11, 12])
+        output = f([0, 1, 2, 3, 4], [1, 2, 3, 4, 5], [2, 3, 4, 5, 6], [3, 4, 5, 6, 7], [4, 5, 6, 7, 8], [5, 6, 7, 8, 9])
 
         buf = StringIO.StringIO()
         f.profile.summary(buf)
