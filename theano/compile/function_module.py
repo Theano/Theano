@@ -1153,6 +1153,9 @@ class FunctionMaker(object):
                             t2 = copy.deepcopy(output_old)
                             # is_same_graph complains if fgraph is not None
 
+                            givens = dict(zip(t1.fgraph.inputs,
+                                            t2.fgraph.inputs))
+
                             def removeAllFgraph(remove):
                                 if hasattr(remove, 'fgraph'):
                                     del remove.fgraph
