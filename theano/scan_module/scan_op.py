@@ -77,6 +77,8 @@ class Scan(PureOp):
         # adding properties into self
         self.inputs = inputs
         self.outputs = outputs
+        if not 'destroy_map' in info:
+            info['destroy_map'] = OrderedDict()
         self.__dict__.update(info)
         # I keep a version of info in self, to use in __eq__ and __hash__,
         # since info contains all tunable parameters of the op, so for two
@@ -484,8 +486,6 @@ class Scan(PureOp):
         else:
             name = 'for'
         aux_txt = '%s'
-        if getattr(self, 'destroy_map', None) is None:
-            self.destroy_map = OrderedDict()
         if len(self.destroy_map.keys()) > 0:
             # Check if all outputs are inplace
             if (sorted(self.destroy_map.keys()) == \
@@ -610,11 +610,8 @@ class Scan(PureOp):
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
 
-            if hasattr(self, 'destroy_map'):
-                cython_destroy_map = [x in self.destroy_map
+            cython_destroy_map = [x in self.destroy_map
                                   for x in xrange(len(node.outputs))]
-            else:
-                cython_destroy_map = [0 for x in xrange(len(node.outputs))]
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
             import scan_perform_ext
@@ -830,27 +827,21 @@ class Scan(PureOp):
         # negative flip sequences around, and make n_steps positive
         t0_call = time.time()
         t_fn = 0
-        n_steps = args[0]
+        n_steps = int(args[0])
         seqs = []
         if n_steps < 0:
             n_steps = abs(n_steps)
-            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
-                if seq.shape[0] < n_steps:
-                    raise ValueError(('Sequence is shorter then the required '
-                                     'number of steps : (n_steps, seq, '
-                                      'seq.shape):'), n_steps,
-                                      node.inputs[1 + idx],
-                                      seq.shape)
-                seqs.append(seq[::-1])
+            seqs = [seq[::-1] for seq in args[1:self.seqs_arg_offset]]
         else:
-            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
-                if seq.shape[0] < n_steps:
-                    raise ValueError(('Sequence is shorter then the required '
-                                     'number of steps : (n_steps, seq, '
-                                      'seq.shape):'), n_steps,
-                                      node.inputs[1 + idx],
-                                      seq.shape)
-                seqs.append(seq)
+            seqs = args[1:self.seqs_arg_offset]
+
+        for idx, seq in enumerate(seqs):
+            if seq.shape[0] < n_steps:
+                raise ValueError(('Sequence is shorter then the required '
+                                  'number of steps : (n_steps, seq, '
+                                  'seq.shape):'), n_steps,
+                                 node.inputs[1 + idx],
+                                 seq.shape)
 
         # 2. Allocate memory for the outputs. Construct the list:
         #       store_steps  -- map containting the length of each output
@@ -858,17 +849,13 @@ class Scan(PureOp):
         #                       output
 
         store_steps = [arg.shape[0] for arg
-                               in args[self.seqs_arg_offset:
-                                       self.shared_arg_offset]]
-        store_steps += [arg for arg in
-                            args[self.nit_sot_arg_offset:
-                                   self.nit_sot_arg_offset + self.n_nit_sot]
-                       ]
+                       in args[self.seqs_arg_offset:
+                                   self.shared_arg_offset]]
+        store_steps += args[self.nit_sot_arg_offset:
+                                self.nit_sot_arg_offset + self.n_nit_sot]
 
         pos = [(-self.mintaps[idx]) % store_steps[idx] for idx
-                         in xrange(self.n_outs + self.n_nit_sot)]
-        if not getattr(self, 'destroy_map', None):
-            self.destroy_map = OrderedDict()
+               in xrange(self.n_outs + self.n_nit_sot)]
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
             if idx in self.destroy_map:
