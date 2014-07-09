@@ -316,6 +316,7 @@ def local_gpuajoin_1(node):
         len(node.inputs) == 2):
         return [node.inputs[1]]
 
+
 @register_opt()
 @op_lifter([tensor.Split])
 def local_gpua_split(node):
@@ -334,7 +335,7 @@ def local_gpua_incsubtensor(node):
     return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
                            node.op.set_instead_of_inc,
                            node.op.destroyhandler_tolerate_aliased)
-                           
+
 
 @register_opt()
 @op_lifter([tensor.AdvancedIncSubtensor1])
@@ -371,8 +372,8 @@ def local_gpua_careduce(node):
             dtype=getattr(node.op, 'dtype', None),
             acc_dtype=getattr(node.op, 'acc_dtype', None))
         gvar = greduce(x)
-        #We need to have the make node called, otherwise the mask can
-        #be None
+        # We need to have the make node called, otherwise the mask can
+        # be None
         if gvar.owner.op.supports_c_code([gpu_from_host(x)]):
             return greduce
         else:
@@ -415,8 +416,8 @@ def local_gpua_careduce(node):
             reshaped_x = x.reshape(tensor.stack(*new_in_shp))
             gpu_reshaped_x = gpu_from_host(reshaped_x)
             gvar = greduce(gpu_reshaped_x)
-            #We need to have the make node called, otherwise the mask can
-            #be None
+            # We need to have the make node called, otherwise the mask can
+            # be None
             reshaped_gpu_inputs = [gpu_reshaped_x]
             if new_greduce.supports_c_code(reshaped_gpu_inputs):
                 reduce_reshaped_x = host_from_gpu(
@@ -497,8 +498,8 @@ def local_gpu_conv(node):
 
         if op.kshp_logical is not None and op.kshp_logical != op.kshp:
             return None
-        #print op.kshp, op.imshp[1:3]
-        #print op.kshp_logical, logical_img_hw
+        # print op.kshp, op.imshp[1:3]
+        # print op.kshp_logical, logical_img_hw
         ret = GpuConv(border_mode=op.out_mode,
                       subsample=(op.dx, op.dy),
                       logical_img_hw=logical_img_hw,
@@ -508,12 +509,12 @@ def local_gpu_conv(node):
                       version=op.version,
                       verbose=op.verbose,
                       imshp=op.imshp,
-                  )
+        )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
                 # this case is not implemented
-                #return None
+                # return None
                 rstride = int(numpy.ceil(op.imshp_logical[1] /
                                          float(op.imshp[1])))
                 cstride = int(numpy.ceil(op.imshp_logical[2] /
@@ -542,7 +543,7 @@ def local_gpu_conv(node):
         assert a.ndim == 4
         atol = None
         if a.shape[-1] * a.shape[-2] > 100:
-            #For float32 the default atol is 1e-5
+            # For float32 the default atol is 1e-5
             atol = 3e-5
         return GpuArrayType.values_eq_approx(a, b, atol=atol)
 
@@ -557,7 +558,7 @@ def local_gpu_conv(node):
     out = tensor.patternbroadcast(
         host_from_gpu(out),
         node.outputs[0].broadcastable)
-    #op_lifter want the output on the GPU.
+    # op_lifter want the output on the GPU.
     out = gpu_from_host(out)
     out.values_eq_approx = values_eq_approx
     return [out]
