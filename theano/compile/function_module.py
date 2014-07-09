@@ -1103,6 +1103,10 @@ class FunctionMaker(object):
                         # two graphs are for sure different
                         print 'need to optimize, because output size is different'
                         continue
+                    elif not all(input_new.type == input_old.type for
+                                 input_new, input_old in zip(inputs_new, inputs_old)):
+                        print 'need to optimize, because inputs are of different types'
+                        continue
                     else:
                         # when the both inputs are of the same size
                         givens = dict(zip(inputs_new, inputs_old))
