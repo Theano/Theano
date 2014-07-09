@@ -1088,6 +1088,7 @@ class FunctionMaker(object):
                 size_new = len(fgraph.apply_nodes)
                 need_optimize = False
                 get_lock()
+                key = None
                 '''
                 graph_db and need_optimize
                 '''
@@ -1181,6 +1182,7 @@ class FunctionMaker(object):
                             # found the match
                             print 'found #TODO: he match, no need to optimize'
                             need_optimize = False
+                            key = graph_old
                             break
 
                 # now optimize or not
@@ -1209,13 +1211,13 @@ class FunctionMaker(object):
                     print 'no opt, get graph from graph_db'
                     # just read the optmized graph from graph_db
                     opt_time = 0
-                    fgraph = graph_db[fgraph]
+                    fgraph = graph_db[key]
                 # release stuff
-                release_lock()    
+                release_lock()
                 return opt_time
-                
+
             opt_time = optimize_graph(fgraph)
-            
+
             print 'opt took %s'%opt_time
             if profile:
                 profile.optimizer_time += opt_time
