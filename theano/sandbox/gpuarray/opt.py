@@ -20,7 +20,7 @@ from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
-    host_from_gpu, gpu_from_host, HostFromGpu,
+    host_from_gpu, gpu_from_host, HostFromGpu, GpuSplit,
     gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
 )
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
