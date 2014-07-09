@@ -571,7 +571,10 @@ the elements of the shape).
 .. code-block:: python
 
    theano.compile.ops.register_shape_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
-   theano.compile.ops.register_shape_i_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
+   theano.compile.ops.register_shape_i_c_code(YOUR_TYPE_CLASS, THE_C_CODE, CHECK_INPUT, version=())
 
 The C code works as the ViewOp. Shape_i has the additional ``i`` parameter
 that you can use with ``%(i)s``.
+
+In your CHECK_INPUT, you must check that the input have enough ndim to
+be able to get the ith shapes.
