@@ -353,9 +353,9 @@ class Shape_i(gof.Op):
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape_i, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_shape_i_c_code." % t,
-                        stacklevel=2)
+                              "no version. You should add a 'version' keyword "
+                              "arg when calling register_shape_i_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 
