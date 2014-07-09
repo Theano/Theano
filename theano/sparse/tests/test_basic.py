@@ -2052,7 +2052,7 @@ class Test_getitem(unittest.TestCase):
         def op_with_fixed_index(x):
             return op(x, index=numpy.asarray([0, 1]))
 
-        x, x_val = sparse_random_inputs("csr", (4,5), out_dtype="float64")
+        x, x_val = sparse_random_inputs("csr", (4,5))
 
         try:
             verify_grad_sparse(op_with_fixed_index, x_val)
@@ -2080,17 +2080,21 @@ class Test_getitem(unittest.TestCase):
 
     def test_GetItem2Lists_wrong_index(self):
         a, A = sparse_random_inputs('csr', (4, 5))
-        y = a[0][[0, 4], [0, 4]]
-        f = theano.function([a[0]], y)
+        y1 = a[0][[0, 5], [0, 3]]
+        y2 = a[0][[0, 3], [0, 5]]
 
-        self.assertRaises(IndexError, f, A[0])
+        f1 = theano.function([a[0]], y1)
+        f2 = theano.function([a[0]], y2)
+
+        self.assertRaises(IndexError, f1, A[0])
+        self.assertRaises(IndexError, f2, A[0])
 
     def test_get_item_2lists_grad(self):
         op = theano.sparse.basic.GetItem2Lists()
         def op_with_fixed_index(x):
-            return op(x, ind1=numpy.asarray([0, 1]), ind2=numpy.asarray([1, 1]))
+            return op(x, ind1=numpy.asarray([0, 1]), ind2=numpy.asarray([2, 3]))
 
-        x, x_val = sparse_random_inputs("csr", (4,5), out_dtype="float64")
+        x, x_val = sparse_random_inputs("csr", (4,5))
 
         verify_grad_sparse(op_with_fixed_index, x_val)
 

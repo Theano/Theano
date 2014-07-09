@@ -1019,6 +1019,7 @@ class GetItemList(gof.op.Op):
 
         ind = tensor.as_tensor_variable(index)
         assert ind.ndim == 1
+        assert "int" in ind.dtype
 
         return gof.Apply(self, [x, ind], [x.type()])
 
@@ -1068,11 +1069,12 @@ class GetItemListGrad(gof.op.Op):
 
         ind = tensor.as_tensor_variable(index)
         assert ind.ndim == 1
+        assert "int" in ind.dtype
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
         if not scipy_ver >= [0, 13]:
-            raise NotImplemented("Scipy version is to old")
+            raise NotImplementedError("Scipy version is to old")
 
         return gof.Apply(self, [x, ind, gz], [x.type()])
 
@@ -1109,6 +1111,8 @@ class GetItem2Lists(gof.op.Op):
         assert x.format in ["csr", "csc"]
         ind1 = tensor.as_tensor_variable(ind1)
         ind2 = tensor.as_tensor_variable(ind2)
+        assert "int" in ind1.dtype
+        assert "int" in ind2.dtype
 
         return gof.Apply(self, [x, ind1, ind2],
                          [theano.tensor.vector()])
