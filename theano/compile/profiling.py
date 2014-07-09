@@ -587,6 +587,7 @@ class ProfileStats(object):
                 print >> file, '  Time in thunks: %es (%.3f%%)' % (
                         local_time, 100*local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
+        print >> file, '    Number of Apply nodes: %s' % len(self.apply_time)
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
         print >> file, '       Theano validate time: %es' % self.validate_time
         print >> file, ('    Theano Linker time (includes C,'
