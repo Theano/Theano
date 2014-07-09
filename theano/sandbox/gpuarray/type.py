@@ -341,11 +341,11 @@ theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
 theano.compile.register_rebroadcast_c_code(
     GpuArrayType,
     """
-    if(PyGpuArray_DIMS(%(iname)s)[%(axis)s] != 1){
+    if(%(iname)s->ga.dimensions[%(axis)s] != 1){
         PyErr_Format(PyExc_ValueError,
             "Dimension %(axis)s in Rebroadcast's input was"
             " supposed to be 1 (got %%d instead)",
-            PyGpuArray_DIMS(%(iname)s)[%(axis)s]);
+            %(iname)s->ga.dimensions[%(axis)s]);
         %(fail)s
     }
     """,

@@ -3246,7 +3246,7 @@ class T_Join_and_Split(unittest.TestCase):
 
 #        assert tensor.grad(join(1,a,b), a
         utt.verify_grad(lambda a, b: join(1, a, b), [av, bv],
-                        eps=1.0e-4, rel_tol=1.0e-3)
+                        eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
 
     def test_join_matrix1_using_vertical_stack(self):
         a = self.shared(numpy.array([[1, 2, 3], [4, 5, 6]], dtype=self.floatX))
@@ -3272,7 +3272,7 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertTrue((out == want).all())
 
         utt.verify_grad(lambda a, b: join(1, a, b), [av, bv],
-                        eps=1.0e-4, rel_tol=1.0e-3)
+                        eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
 
     def test_join_matrixV(self):
         """variable join axis"""
@@ -3294,8 +3294,8 @@ class T_Join_and_Split(unittest.TestCase):
         got = f(1)
         self.assertTrue((got == want).all(), (got, want))
 
-        utt.verify_grad(lambda a, b: join(0, a, b), [v, 2 * v])
-        utt.verify_grad(lambda a, b: join(1, a, b), [v, 2 * v])
+        utt.verify_grad(lambda a, b: join(0, a, b), [v, 2 * v], mode=self.mode)
+        utt.verify_grad(lambda a, b: join(1, a, b), [v, 2 * v], mode=self.mode)
 
     def test_vector_len(self):
         x = lscalar('x')
@@ -3344,7 +3344,8 @@ class T_Join_and_Split(unittest.TestCase):
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         f()
-        utt.verify_grad((lambda a, b: join(1, a, b)), [a_val, b_val], rng=rng)
+        utt.verify_grad((lambda a, b: join(1, a, b)), [a_val, b_val], rng=rng,
+                        mode=self.mode)
 
         # Should raise an error if dimension 0 does not match
         a.set_value(rng.rand(2, 4, 1).astype(self.floatX))
@@ -3370,7 +3371,8 @@ class T_Join_and_Split(unittest.TestCase):
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         f()
-        utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng)
+        utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng,
+                        mode=self.mode)
         # Should raise an error if b_val.shape[0] is not 1
         # We can't set the value|
         self.assertRaises(TypeError, b.set_value,
@@ -3402,7 +3404,8 @@ class T_Join_and_Split(unittest.TestCase):
         assert [True for node in topo if isinstance(node.op, self.join_op)]
 
         f()
-        utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng)
+        utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng,
+                        mode=self.mode)
 
     def test_broadcastable_single_input_broadcastable_dimension(self):
         # Test that all broadcastable flags are preserved by a
@@ -3422,7 +3425,8 @@ class T_Join_and_Split(unittest.TestCase):
                 node.op, self.join_op)]
 
         f()
-        utt.verify_grad((lambda a: join(0, a)), [a_val], rng=rng)
+        utt.verify_grad((lambda a: join(0, a)), [a_val], rng=rng,
+                        mode=self.mode)
         # Should raise an error if length of dimension 0 is not 1
         self.assertRaises(TypeError, a.set_value,
                           rng.rand(2, 4, 1).astype(self.floatX))
@@ -3458,7 +3462,8 @@ class T_Join_and_Split(unittest.TestCase):
         e_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
         f(a_val, b_val, c_val, d_val, e_val)
         utt.verify_grad((lambda a, b, c, d, e: join(0, a, b, c, d, e)),
-                        [a_val, b_val, c_val, d_val, e_val], rng=rng)
+                        [a_val, b_val, c_val, d_val, e_val], rng=rng,
+                        mode=self.mode)
         # Should raise an error if length of dimension 0 is not 1
         bad_val = rng.rand(2, 1, 1, 1, 2, 1).astype(self.floatX)
         self.assertRaises(TypeError, f, bad_val, b_val, c_val, d_val, e_val)

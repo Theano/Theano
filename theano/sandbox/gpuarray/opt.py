@@ -407,7 +407,7 @@ def local_gpua_careduce(node):
             for idx, m in enumerate(new_mask):
                 if m == 1:
                     new_axis.append(idx)
-            new_greduce = GpuCAReduceCuda(
+            greduce = GpuCAReduceCuda(
                 node.op.scalar_op,
                 axis=new_axis, reduce_mask=new_mask,
                 dtype=getattr(node.op, 'dtype', None),
@@ -419,9 +419,9 @@ def local_gpua_careduce(node):
             # We need to have the make node called, otherwise the mask can
             # be None
             reshaped_gpu_inputs = [gpu_reshaped_x]
-            if new_greduce.supports_c_code(reshaped_gpu_inputs):
+            if greduce.supports_c_code(reshaped_gpu_inputs):
                 reduce_reshaped_x = host_from_gpu(
-                    new_greduce(gpu_reshaped_x))
+                    greduce(gpu_reshaped_x))
 
                 if reduce_reshaped_x.ndim != node.outputs[0].ndim:
                     unreshaped_reduce = reduce_reshaped_x.reshape(
