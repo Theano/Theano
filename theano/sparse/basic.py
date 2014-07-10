@@ -994,10 +994,15 @@ class SparseFromDense(gof.op.Op):
         return [shapes[0]]
 
 csr_from_dense = SparseFromDense('csr')
-csc_from_dense = SparseFromDense('csc')
-"""Convert a dense matrix to a sparse matrix.
+"""Convert a dense matrix to a sparse csr matrix.
 :param x: A dense matrix.
-:return: The same as `x` in a sparse matrix format.
+:return: The same as `x` in a sparse csr matrix format.
+"""
+
+csc_from_dense = SparseFromDense('csc')
+"""Convert a dense matrix to a sparse csc matrix.
+:param x: A dense matrix.
+:return: The same as `x` in a sparse csc matrix format.
 """
 
 
