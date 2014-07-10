@@ -310,16 +310,29 @@ class Eigvalsh(Op):
     def make_node(self, a, b):
         assert imported_scipy, (
             "Scipy not available. Scipy is needed for the Eigvalsh op")
-        a, b = map(as_tensor_variable, (a, b))
-        assert a.ndim == 2
-        assert b.ndim == 2
 
-        out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
-        w = theano.tensor.vector(dtype=out_dtype)
-        return Apply(self, [a, b], [w])
+        if b == theano.tensor.NoneConst:
+            a = as_tensor_variable(a)  
+            assert a.ndim == 2
 
-    def perform(self, node, (a, b), (w,)):
-        w[0] = scipy.linalg.eigvalsh(a=a, b=b, lower=self.lower)
+            out_dtype = theano.scalar.upcast(a.dtype)
+            w = theano.tensor.vector(dtype=out_dtype)
+            return Apply(self, [a], [w])
+        else:
+            a = as_tensor_variable(a)
+            b = as_tensor_variable(b)
+            assert a.ndim == 2
+            assert b.ndim == 2
+
+            out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
+            w = theano.tensor.vector(dtype=out_dtype)
+            return Apply(self, [a, b], [w])
+
+    def perform(self, node, inputs, (w,)):
+        if len(inputs) == 2:
+            w[0] = scipy.linalg.eigvalsh(a=inputs[0], b=inputs[1], lower=self.lower)
+        else:
+            w[0] = scipy.linalg.eigvalsh(a=inputs[0], b=None, lower=self.lower)
 
     def grad(self, inputs, g_outputs):
         a, b = inputs
@@ -366,7 +379,9 @@ class EigvalshGrad(Op):
     def make_node(self, a, b, gw):
         assert imported_scipy, (
             "Scipy not available. Scipy is needed for the GEigvalsh op")
-        a, b, gw = map(as_tensor_variable, (a, b, gw))
+        a = as_tensor_variable(a)
+        b = as_tensor_variable(b)
+        gw = as_tensor_variable(gw)  
         assert a.ndim == 2
         assert b.ndim == 2
         assert gw.ndim == 1
