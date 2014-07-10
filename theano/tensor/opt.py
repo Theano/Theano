@@ -754,6 +754,9 @@ class ShapeFeature(object):
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""
+        if not hasattr(r, 'ndim'):
+            # This happen for NoneConst.
+            return None
         return tuple([self.shape_ir(i, r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
@@ -782,7 +785,9 @@ class ShapeFeature(object):
             # don't make the optimizer merge a zillion ones together
             # by always returning the same object to represent 1
             return self.lscalar_one
-        if type(s_i) in (int, long) or isinstance(s_i, numpy.integer):
+        if (type(s_i) in (int, long) or
+            isinstance(s_i, numpy.integer) or
+            (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')

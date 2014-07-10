@@ -315,12 +315,22 @@ theano.compile.register_shape_c_code(
     """,
     version=1)
 
-theano.compile.register_shape_i_c_code(GpuArrayType, """
+theano.compile.register_shape_i_c_code(
+    GpuArrayType,
+    """
     if(!%(oname)s)
         %(oname)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
     ((npy_int64*)PyArray_DATA(%(oname)s))[0] =
                               %(iname)s->ga.dimensions[%(i)s];
-""", version=(0,))
+    """,
+    """
+    if (%(i)s>=%(iname)s->ga.nd){
+        PyErr_SetString(PyExc_TypeError,
+            "Number of dimensions lower than expected");
+        %(fail)s
+    }
+    """,
+    version=(1,))
 
 theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
     Py_XDECREF(%(oname)s);
@@ -331,11 +341,11 @@ theano.compile.register_deep_copy_op_c_code(GpuArrayType, """
 theano.compile.register_rebroadcast_c_code(
     GpuArrayType,
     """
-    if(PyGpuArray_DIMS(%(iname)s)[%(axis)s] != 1){
+    if(%(iname)s->ga.dimensions[%(axis)s] != 1){
         PyErr_Format(PyExc_ValueError,
             "Dimension %(axis)s in Rebroadcast's input was"
             " supposed to be 1 (got %%d instead)",
-            PyGpuArray_DIMS(%(iname)s)[%(axis)s]);
+            %(iname)s->ga.dimensions[%(axis)s]);
         %(fail)s
     }
     """,

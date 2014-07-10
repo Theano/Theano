@@ -646,7 +646,14 @@ theano.compile.register_shape_i_c_code(
             %(oname)s=(PyArrayObject*)PyArray_EMPTY(0, NULL, NPY_INT64, 0);
         ((npy_int64*)PyArray_DATA(%(oname)s))[0]=PyArray_DIMS(%(iname)s)[%(i)s];
         """,
-        version=2)
+        """
+        if (%(i)s>=PyArray_NDIM(%(iname)s)){
+            PyErr_SetString(PyExc_TypeError,
+                "Number of dimensions lower than expected");
+            %(fail)s
+        }
+        """,
+        version=3)
 
 # Register TensorType C code for DeepCopyOp
 theano.compile.register_deep_copy_op_c_code(

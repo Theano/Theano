@@ -349,13 +349,13 @@ class Shape_i(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
-                                key=lambda pair: str(pair[0])):
+        for t, (c, ci, v) in sorted(self.c_code_and_version.items(),
+                                    key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape_i, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_shape_i_c_code." % t,
-                        stacklevel=2)
+                              "no version. You should add a 'version' keyword "
+                              "arg when calling register_shape_i_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 
@@ -372,14 +372,8 @@ class Shape_i(gof.Op):
 
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
-            sc = """
-            if (%(i)s>=PyArray_NDIM(%(iname)s)){
-                PyErr_SetString(PyExc_TypeError, "Number of dimensions lower than expected");
-                %(fail)s
-            }
-            """ % locals()
-            code, version = self.c_code_and_version[itype]
-            return sc + code % locals()
+            code, check_input, version = self.c_code_and_version[itype]
+            return (check_input + code) % locals()
 
         # Else, no C code
         return super(Shape_i, self).c_code(node, name, inames, onames, sub)
@@ -391,7 +385,7 @@ class Shape_i(gof.Op):
         return [None]
 
 
-def register_shape_i_c_code(typ, code, version=()):
+def register_shape_i_c_code(typ, code, check_input, version=()):
     """ Tell Shape_i how to generate C code for a Theano Type
 
     :param typ: A Theano type. It must be the Theano class itself and not an
@@ -401,12 +395,13 @@ def register_shape_i_c_code(typ, code, version=()):
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
     """
-    Shape_i.c_code_and_version[typ] = (code, version)
+    Shape_i.c_code_and_version[typ] = (code, check_input, version)
 
 
 # List of Theano Types that one can add an extra dimension and for which
 # Scan can deal with.
 expandable_types = ()
+
 
 class FromFunctionOp(gof.Op):
     """

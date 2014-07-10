@@ -356,6 +356,17 @@ class G_Join_and_Split(T_Join_and_Split):
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
         self.shared = gpuarray_shared_constructor
 
+    def test_gpusplit_opt(self):
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        m = self.shared(rng.rand(4, 6).astype(self.floatX))
+        o = T.Split(2)(m, 0, [2, 2])
+        f = theano.function([], o, mode=self.mode)
+        assert any([isinstance(node.op, self.split_op)
+                    for node in f.maker.fgraph.toposort()])
+        o1, o2 = f()
+        assert numpy.allclose(o1, m.get_value(borrow=True)[:2])
+        assert numpy.allclose(o2, m.get_value(borrow=True)[2:])
+
 
 def test_gpujoin_gpualloc():
     a = T.fmatrix('a')
