@@ -1173,6 +1173,9 @@ class FunctionMaker(object):
                                         if hasattr(remove.owner, 'inputs'):
                                             remove.owner.inputs = [removeAllFgraph(
                                                 i) for i in remove.owner.inputs]
+                                            for o in remove.owner.outputs:
+                                                if hasattr(o, 'fgraph'):
+                                                    del o.fgraph
                                 return remove
 
                             t1 = removeAllFgraph(t1)
