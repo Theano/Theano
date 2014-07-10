@@ -1154,12 +1154,12 @@ class FunctionMaker(object):
                         for output_new, output_old in zip(outputs_new, outputs_old):
                             print 'loop through outputs node for both graphs'
 
-                            t1 = copy.deepcopy(output_new)
-                            t2 = copy.deepcopy(output_old)
+                            f1 = output_new.owner.fgraph.clone()
+                            f2 = output_old.owner.fgraph.clone()
                             # is_same_graph complains if fgraph is not None
 
-                            givens = dict(zip(t1.fgraph.inputs,
-                                            t2.fgraph.inputs))
+                            t1 = f1.outputs[0]
+                            t2 = f2.outputs[0]
 
                             def removeAllFgraph(remove):
                                 if hasattr(remove, 'fgraph'):
@@ -1180,7 +1180,8 @@ class FunctionMaker(object):
 
                             t1 = removeAllFgraph(t1)
                             t2 = removeAllFgraph(t2)
-
+                            givens = dict(zip(gof.graph.ancestors([t1]),
+                                            gof.graph.ancestors([t2])))
                             flag = is_same_graph(t1, t2, givens=givens)
                             flags.append(flag)
 
@@ -1196,7 +1197,7 @@ class FunctionMaker(object):
                 if need_optimize:
                     # this is a brand new graph, optimize it, save it to graph_db
                     print 'optimizing the graph'
-                    before_opt = copy.deepcopy(fgraph)
+                    before_opt = fgraph.clone()
                     start_optimizer = time.time()
                     optimizer_profile = optimizer(fgraph)
                     end_optimizer = time.time()
