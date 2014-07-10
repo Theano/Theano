@@ -1172,14 +1172,6 @@ class FunctionMaker(object):
                     optimizer_profile = optimizer(fgraph)
                     end_optimizer = time.time()
                     opt_time = end_optimizer - start_optimizer
-                    '''
-                    import ipdb; ipdb.set_trace()
-                    test_file = open(theano.config.compiledir + '/test.pkl', 'w+')
-                    cPickle.dump(fgraph, test_file, -1)
-                    test_file.close()
-                    test_file = open(theano.config.compiledir + '/test.pkl', 'r')
-                    cPickle.load(test_file)
-                    '''
                     graph_db.update({before_opt:fgraph})
                     f = open(graph_db_file, 'w+b')
                     pickle.dump(graph_db, f, -1)
