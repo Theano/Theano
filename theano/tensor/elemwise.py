@@ -1305,7 +1305,7 @@ class Elemwise(OpenMPOp):
                         elif i + bdim == inp.ndim:
                             pass
                         else:
-                            newbroadcastable = [False] * (i + bdim - inp.ndim) + newbroadcastable
+                            newbroadcastable = [False] * (i + bdim - inp.ndim) + list(newbroadcastable)
                         x = TensorType(inp.dtype, newbroadcastable)()
                         inputs.append(x)
                         ref[name] = x
@@ -1319,7 +1319,7 @@ class Elemwise(OpenMPOp):
             name = inames[0]
             code += """
                     {
-                    PyErr_SetString(PyExc_NotImplementedError,
+                    PyErr_Format(PyExc_NotImplementedError,
                     "Elemwise unexpected ndim. Received %%d",
                     PyArray_NDIM(%(name)s));
                     %(fail)s
