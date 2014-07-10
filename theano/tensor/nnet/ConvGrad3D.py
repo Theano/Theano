@@ -9,7 +9,7 @@ from theano.gradient import DisconnectedType
 #TODO: speed up by reordering loops. Should pass through the videos once, incrementing all weight gradients, rather
 # than visiting each weight gradient element once and passing through whole video
 
-class ConvGrad3D(theano.Op):
+class ConvGrad3D(theano.OpenMPOp):
     """ Gradient of Conv3D with respect to W """
     def __eq__(self, other):
         return type(self) == type(other)
@@ -18,7 +18,7 @@ class ConvGrad3D(theano.Op):
         return hash(type(self))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def make_node(self, V, d, WShape, dCdH):
         V_ = T.as_tensor_variable(V)
@@ -236,6 +236,7 @@ class ConvGrad3D(theano.Op):
             // Compute dCdW
             //TODO-- see if this can be made faster by using ELEM_AT instead of ELEM5
             // dCdW[j,k,l,m,z] = sum_i sum_p sum_q sum_r dCdH[i,p,q,r,j]  *  V[i,dr*p+k,dc*q+l,dt*r+m,z]
+            #pragma omp parallel for collapse(2) schedule(static)
             for (int j = 0; j < outputChannels; j++) {
                 for (int z = 0; z < inputChannels; z++) {
                     for (int k = 0; k < filterHeight; k++) {

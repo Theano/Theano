@@ -39,7 +39,7 @@ from theano.gradient import grad_undefined
 #derivatives wrt V unimplemented for now. derivatives wrt dr, dc, dt are undefined since
 #the output function is only defined when dr, dc, dt are natural numbers.
 
-class Conv3D(theano.Op):
+class Conv3D(theano.OpenMPOp):
     """ 3D "convolution" of multiple filters on a minibatch (does not flip the kernel, moves kernel with a user specified stride) """
     def __eq__(self,other):
         return type(self) == type(other)
@@ -51,7 +51,7 @@ class Conv3D(theano.Op):
         return "Conv3D"
 
     def c_code_cache_version(self):
-        return (3, blas_header_version())
+        return (4, blas_header_version())
 
     def make_node(self, V, W, b, d):
         """
@@ -348,6 +348,8 @@ class Conv3D(theano.Op):
                 //simultaneously
               long long Hpos = 0;
               long long Vpos = 0;
+              // NOTE: parallel for is bad if BLAS is multithreaded
+              #pragma omp parallel for schedule(static)
               for (int i = 0; i < batchSize; i++) {
                     long long Hposi = Hpos;
                     long long Vposi = Vpos;
@@ -436,6 +438,7 @@ class Conv3D(theano.Op):
               //std::cout << "general case code" << std::endl;
               long long Hpos = 0;
               long long Vpos = 0;
+              #pragma omp parallel for schedule(static)
               for (int i = 0; i < batchSize; i++) {
                     long long Hposi = Hpos;
                     long long Vposi = Vpos;
