@@ -1218,14 +1218,15 @@ class Elemwise(OpenMPOp):
                     *[get_scalar_type(dtype=dtype)() for dtype in dtypes])
                 out_dtypes = [o.type.dtype for o in shadow.outputs]
                 if any(dtypes[i] != out_dtypes[o]
-                for o, i in self.inplace_pattern.items()):
-                    alldtypes.remove(dtypes)
+                        for o, i in self.inplace_pattern.items()):
+                        alldtypes.remove(dtypes)
 
             code = ""
             for dtypes in alldtypes:
                 inputs = []
                 ref = {}
                 checkNDim = ""
+                checkType = ""
                 for (t, inp, name) in zip(dtypes, node.inputs, inames):
                     if not name in ref:
                         x = TensorType(t, inp.broadcastable)()
@@ -1240,6 +1241,7 @@ class Elemwise(OpenMPOp):
                             %(fail)s
                             }
                             """ % locals()
+                            checkType += inp.type.c_check(name, sub)
                     else:
                         inputs.append(ref[name])
                 decl = ""
@@ -1259,7 +1261,7 @@ class Elemwise(OpenMPOp):
                 name = inames[0]
 
                 code += "if (PyArray_TYPE((PyArrayObject*) py_%(name)s) =="\
-                    "%(type)s){ " % locals() + decl + checkNDim \
+                    "%(type)s){ " % locals() + decl + checkNDim + checkType \
                     + self.c_code_dtype(nnode, nodename, inames,
                     onames, sub) + "}else "
             code += """
@@ -1313,14 +1315,11 @@ class Elemwise(OpenMPOp):
                     if not name in ref:
                         newbroadcastable = inp.broadcastable
                         if i + bdim < inp.ndim:
-                            newbroadcastable = inp.ndim[inp.ndim - (i + bdim):]
+                            newbroadcastable = inp.broadcastable[inp.ndim - (i + bdim):]
                         elif i + bdim == inp.ndim:
                             pass
                         else:
-                            for k in range(i + bdim - inp.ndim):
-                                temp = [False]
-                                temp.extend(newbroadcastable)
-                                newbroadcastable = tuple(temp)
+                            newbroadcastable = [False] * (i + bdim - inp.ndim) + list(newbroadcastable)
                         x = TensorType(inp.dtype, newbroadcastable)()
                         inputs.append(x)
                         ref[name] = x
@@ -1328,13 +1327,15 @@ class Elemwise(OpenMPOp):
                         inputs.append(ref[name])
                 nnode = self.make_node(*inputs)
                 ndim = bdim + i
-                code += "if (PyArray_NDIM(%(name)s) != %(ndim)s){" \
+                code += "if (PyArray_NDIM(%(name)s) == %(ndim)s){" \
                         % locals() + self.c_codealltype(
                         nnode, nodename, inames, onames, sub) + "}else "
+            name = inames[0]
             code += """
                     {
-                    PyErr_SetString(PyExc_NotImplementedError,
-                    "Elemwise unexpected ndim");
+                    PyErr_Format(PyExc_NotImplementedError,
+                    "Elemwise unexpected ndim. Received %%d",
+                    PyArray_NDIM(%(name)s));
                     %(fail)s
                     }
                     """ % locals()
