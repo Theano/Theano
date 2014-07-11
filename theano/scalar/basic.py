@@ -145,6 +145,13 @@ class Scalar(Type):
         self.dtype = dtype
         self.dtype_specs()  # error checking
 
+    @staticmethod
+    def may_share_memory(a, b):
+        # This class represent basic c type, represented in python
+        # with numpy.scalar. They are read only. So from python, they
+        # can never share memory.
+        return False
+
     def filter(self, data, strict=False, allow_downcast=None):
         py_type = self.dtype_specs()[0]
         if strict and not isinstance(data, py_type):
