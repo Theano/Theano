@@ -1179,7 +1179,7 @@ class Elemwise(OpenMPOp):
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
         return code
 
-    def c_codealltype(self, node, nodename, inames, onames, sub):
+    def c_code_all_dtype(self, node, nodename, inames, onames, sub):
 
         fail = sub['fail']
 
@@ -1298,7 +1298,7 @@ class Elemwise(OpenMPOp):
                 nnode = self.make_node(*inputs)
                 ndim = bdim + i
                 code += "if (PyArray_NDIM(%(name)s) == %(ndim)s){" \
-                        % locals() + self.c_codealltype(
+                        % locals() + self.c_code_all_dtype(
                         nnode, nodename, inames, onames, sub) + "}else "
             name = inames[0]
             code += """
@@ -1314,7 +1314,7 @@ class Elemwise(OpenMPOp):
             if theano.config.check_input:
                 for (inp, name) in zip(node.inputs, inames):
                     check += inp.type.c_checkNDim(name, sub, "")
-            return check + self.c_codealltype(node, nodename, inames, onames, sub)
+            return check + self.c_code_all_dtype(node, nodename, inames, onames, sub)
 
     def c_headers(self):
         return ['<vector>', '<algorithm>']
