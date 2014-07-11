@@ -460,7 +460,7 @@ class TensorType(Type):
         ct = ""
         cnd = ""
         mc = """
-        if (%(pre)s%(name)s == Py_None) {
+        if ((PyObject*)%(pre)s%(name)s == Py_None) {
                 // We can either fail here or set %(name)s to NULL and rely on Ops
                 // using tensors to handle the NULL case, but if they fail to do so
                 // they'll end up with nasty segfaults, so this is public service.

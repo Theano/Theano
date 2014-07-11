@@ -1256,19 +1256,25 @@ class Elemwise(OpenMPOp):
                             typedef %(dtype)s dtype_%(name)s;
                             """ % dict(sub, name=name,
                                        dtype=out.type.dtype_specs()[1])
-            checkNDim = ""
             checkType = ""
             for (name, inp) in zip(inames, node.inputs):
                 decl += """
                     typedef %(dtype)s dtype_%(name)s;
                     """ % dict(sub, name=name,
                         dtype=inp.type.dtype_specs()[1])
-            return decl + checkNDim + checkType + self.c_code_dtype(node,
+            if theano.config.check_input:
+                for (inp, name) in zip(node.inputs, inames):
+                    checkType += inp.type.c_checkType(name, sub, "")
+            return decl + checkType + self.c_code_dtype(node,
                             nodename, inames, onames, sub)
 
     def c_code(self, node, nodename, inames, onames, sub):
         bnb = 2 #number of dimensions per batch
         fail = sub['fail']
+        check = ""
+        if theano.config.check_input:
+            for (inp, name) in zip(node.inputs, inames):
+                check += inp.type.c_check(name, sub, False, False, "")
         if all([inp.ndim == node.inputs[0].ndim for inp in node.inputs]):
             bdim = (inp.ndim // bnb) * bnb
             code = ""
@@ -1303,9 +1309,12 @@ class Elemwise(OpenMPOp):
                     %(fail)s
                     }
                     """ % locals()
-            return code
+            return check + code
         else:
-            return self.c_codealltype(node, nodename, inames, onames, sub)
+            if theano.config.check_input:
+                for (inp, name) in zip(node.inputs, inames):
+                    check += inp.type.c_checkNDim(name, sub, "")
+            return check + self.c_codealltype(node, nodename, inames, onames, sub)
 
     def c_headers(self):
         return ['<vector>', '<algorithm>']
@@ -1319,7 +1328,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [16]  # the version corresponding to the c code in this Op
+        version = [17]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
