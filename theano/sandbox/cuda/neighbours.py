@@ -1,5 +1,5 @@
 # This is work in progress
-from theano import Op, Apply
+from theano import Op, Apply, tensor
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 
@@ -7,7 +7,8 @@ from theano.sandbox.neighbours import Images2Neibs
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
-    from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
+    from theano.sandbox.cuda.basic_ops import (
+        as_cuda_ndarray_variable, host_from_gpu, gpu_from_host)
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
 
@@ -21,13 +22,16 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
-        assert ten4.dtype == 'float32'
-        if not isinstance(ten4.type, CudaNdarrayType):
-            raise TypeError('ten4 must be cudandarray', ten4)
+        ten4 = as_cuda_ndarray_variable(ten4)
+        neib_shape = tensor.as_tensor_variable(neib_shape)
+        neib_step = tensor.as_tensor_variable(neib_step)
 
         assert ten4.ndim == 4
+        assert ten4.dtype == 'float32'
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
+        assert "int" in neib_shape.dtype
+        assert "int" in neib_step.dtype
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [CudaNdarrayType(broadcastable=(False, False),
