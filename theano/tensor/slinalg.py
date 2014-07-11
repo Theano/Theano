@@ -173,59 +173,6 @@ class CholeskyGrad(Op):
         return [shapes[0]]
 
 
-class MatrixPinv(Op):
-    """Computes the pseudo-inverse of a matrix :math:`A`.
-
-    The pseudo-inverse of a matrix A, denoted :math:`A^+`, is
-    defined as: "the matrix that 'solves' [the least-squares problem]
-    :math:`Ax = b`," i.e., if :math:`\\bar{x}` is said solution, then
-    :math:`A^+` is that matrix such that :math:`\\bar{x} = A^+b`.
-
-    Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
-    This method is not faster then `matrix_inverse`. Its strength comes from
-    that it works for non-square matrices.
-    If you have a square matrix though, `matrix_inverse` can be both more
-    exact and faster to compute. Also this op does not get optimized into a
-    solve op.
-    """
-    def __init__(self):
-        pass
-
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``MatrixPinv`` op, there are no properties to be exposed.
-        """
-        return ()
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim == 2
-        return Apply(self, [x], [x.type()])
-
-    def perform(self, node, (x,), (z, )):
-        try:
-            if imported_scipy:
-                z[0] = scipy.linalg.pinv(x).astype(x.dtype)
-            else:
-                z[0] = numpy.linalg.pinv(x).astype(x.dtype)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to invert %s' % str(node.inputs[0]))
-            raise
-
-    def __str__(self):
-        return "MatrixPseudoInverse"
-
-pinv = MatrixPinv()
-
-
 class Solve(Op):
     """Solve a system of linear equations"""
     def __init__(self,
