@@ -685,9 +685,10 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
     actually_inplace_outputs = []
     dmap = getattr(node.op, 'destroy_map', {})
     for oo, ii in dmap.iteritems():
-        out_var = storage_map[node.outputs[oo]][0]
+        var = node.outputs[oo]
+        out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
-        if _may_share_memory(out_var, in_var):
+        if var.may_share_memory(out_var, in_var):
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused and destroyed_res_list:
@@ -702,9 +703,11 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
 
     vmap = getattr(node.op, 'view_map', {})
     for oo, ii in vmap.iteritems():
-        out_var = storage_map[node.outputs[oo]][0]
+        var = node.outputs[oo]
+        out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
-        if _may_share_memory(out_var, in_var):
+        may_share = var.may_share_memory(out_var, in_var)
+        if may_share:
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused:
@@ -717,7 +720,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             if isinstance(node.op, OutputGuard):
                 # This class is not in the final graph.
                 continue
-            if not _may_share_memory(out_var, in_var):
+            if not may_share:
                 _logger.warning("Optimization Warning: input idx %d marked "
                         "as viewed but new memory allocated by node '%s'",
                         ii[0], str(node))
@@ -766,7 +769,7 @@ def _check_viewmap(node, storage_map):
 
         for ii, inode in enumerate(node.inputs):
 
-            if _may_share_memory(outstorage, storage_map[inode][0]):
+            if ii.may_share_memory(outstorage, storage_map[inode][0]):
 
                 nodeid = id(inode)
                 bad_alias[nodeid] = ii
@@ -794,15 +797,10 @@ def _check_viewmap(node, storage_map):
                 other_storage = storage_map[other_onode][0]
                 # check to see if we share memory with this other output
                 # this is not a problem if the node is not actually used
-                if _is_used_in_graph(other_onode) and \
-                        _may_share_memory(outstorage, other_storage):
+                if (_is_used_in_graph(other_onode) and
+                    other_onode.may_share_memory(outstorage, other_storage)):
                     raise BadViewMap(node, oi, outstorage,
                                      out_alias_idx=other_oi)
-
-
-def _may_share_memory(a, b):
-    from theano.misc.may_share_memory import may_share_memory
-    return may_share_memory(a, b, False)
 
 
 def _is_function_output(node):
