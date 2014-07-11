@@ -1218,16 +1218,6 @@ class Elemwise(OpenMPOp):
                         x = TensorType(t, inp.broadcastable)()
                         inputs.append(x)
                         ref[name] = x
-                        ndim = inp.ndim
-                        if theano.config.check_input:
-                            checkNDim += """
-                            if (PyArray_NDIM(%(name)s) != %(ndim)s){
-                             PyErr_SetString(PyExc_ValueError,
-                            "Expected %(ndim)s dimensions input");
-                            %(fail)s
-                            }
-                            """ % locals()
-                            checkType += inp.type.c_check(name, sub)
                     else:
                         inputs.append(ref[name])
                 decl = ""
@@ -1273,18 +1263,6 @@ class Elemwise(OpenMPOp):
                     typedef %(dtype)s dtype_%(name)s;
                     """ % dict(sub, name=name,
                         dtype=inp.type.dtype_specs()[1])
-                if theano.config.check_input:
-                    name = name
-                    ndim = inp.ndim
-                    type = inp.type.dtype_specs()[2]
-                    checkNDim += """
-                            if (PyArray_NDIM(%(name)s) != %(ndim)s){
-                             PyErr_SetString(PyExc_ValueError,
-                            "Expected %(ndim)s dimensions input");
-                            %(fail)s
-                            }
-                            """ % locals()
-                    checkType += inp.type.c_check(name, sub)
             return decl + checkNDim + checkType + self.c_code_dtype(node,
                             nodename, inames, onames, sub)
 
