@@ -803,15 +803,11 @@ def _check_viewmap(node, storage_map):
                                      out_alias_idx=other_oi)
 
 
-def _is_function_output(node):
+def _is_used_in_graph(var):
     """
-    Returns True if the node in question is the a final output of the graph
+    Returns True if `var` is used by another node in the graph
     """
-    return node.clients == [('output', 1)]
-
-
-def _is_used_in_graph(node):
-    return not(_is_function_output(node) or node.clients == [])
+    return not(var.clients == [('output', 1)] or var.clients == [])
 
 
 def _check_strides_match(a, b, warn_err, op):
