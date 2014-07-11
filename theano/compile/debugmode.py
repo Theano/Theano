@@ -1109,18 +1109,21 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # is less relevant.
     # Dimensions should be align by the innermost index, so we iterate
     # from the end of shapes.
-    max_ndim = 0
-    rev_out_broadcastable = []
-    for r in considered_outputs:
-        if isinstance(r.type, (TensorType, CudaNdarrayType)):
-            if max_ndim < r.ndim:
-                rev_out_broadcastable += [True] * (r.ndim - max_ndim)
-                max_ndim = r.ndim
-            assert len(rev_out_broadcastable) == max_ndim
+    if ('strided' in prealloc_modes or
+        'wrong_size' in prealloc_modes or
+        'ALL' in prealloc_modes):
+        max_ndim = 0
+        rev_out_broadcastable = []
+        for r in considered_outputs:
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                if max_ndim < r.ndim:
+                    rev_out_broadcastable += [True] * (r.ndim - max_ndim)
+                    max_ndim = r.ndim
+                assert len(rev_out_broadcastable) == max_ndim
 
-            for i, b in enumerate(r.broadcastable[::-1]):
-                rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
-    out_broadcastable = rev_out_broadcastable[::-1]
+                for i, b in enumerate(r.broadcastable[::-1]):
+                    rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
+        out_broadcastable = rev_out_broadcastable[::-1]
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
         check_ndim = config.DebugMode.check_preallocated_output_ndim
