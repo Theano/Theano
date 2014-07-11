@@ -677,6 +677,11 @@ class CLinker(link.Linker):
                 raise NotImplementedError("%s cannot produce C code" % op)
             assert isinstance(behavior, basestring), (
                 str(node.op) + " didn't return a string for c_code")
+            # To help understand what is following. It help read the c code.
+            # This prevent different op that generate the same c code
+            # to be merged, I suppose this won't happen...
+            behavior = ("// Op class " + node.op.__class__.__name__ + "\n" +
+                        behavior)
 
             try:
                 cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
