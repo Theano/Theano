@@ -471,7 +471,6 @@ class TensorType(Type):
                 PyErr_SetString(PyExc_ValueError, "expected an ndarray");
                 %(fail)s
             }
-            // We expect %(type_num)s
             if (!PyArray_ISALIGNED((PyArrayObject*) %(pre)s%(name)s)) {
                 PyArrayObject * tmp = (PyArrayObject*) %(pre)s%(name)s;
                 PyErr_Format(PyExc_NotImplementedError,
