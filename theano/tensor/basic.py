@@ -5026,3 +5026,127 @@ def ptp(a, axis=None):
 
 def power(x, y):
     return x**y
+
+
+
+def pad(array, pad_width, mode=None, **kwargs):
+    if len(kwargs) != 0:
+        return PadWithKwargs(mode)(array, pad_width, kwargs)
+    else:
+        return Pad(mode)(array, pad_width)
+
+class Pad(Op):
+
+    _numop = staticmethod(numpy.pad)
+
+    def __init__(self, mode):
+        self.mode = mode
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def props(self):
+        return self.mode
+
+    def make_node(self, array, pad_width):
+        array = as_tensor_variable(array)
+        pad_width1 = (pad_width[0])
+        assert array.ndim in [1, 2]
+
+        if len(pad_width) == 2:
+            pad_width2 = pad_width[1]
+            pad_w = as_tensor_variable([pad_width1, pad_width2])
+        else:
+            pad_w = as_tensor_variable([pad_width1])
+
+        return Apply(self, [array, pad_w], [array.type()])
+
+    def perform(self, node, inputs, (z,)):
+        array = inputs[0]
+        pad_width = tuple(inputs[1])
+        z[0] = self._numop(array, pad_width, self.mode)
+
+    def __str__(self):
+        return self._numop.__class__.__name__
+
+class PadWithKwargs(Op):
+
+    _numop = staticmethod(numpy.pad)
+
+    def __init__(self, mode):
+        self.mode = mode
+
+    def __hash__(self):
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def props(self):
+        return self.mode
+
+    def make_node(self, array, pad_width, kwargs):
+        array = as_tensor_variable(array)
+        pad_width1 = (pad_width[0])
+        assert array.ndim in [1, 2]
+
+        if ("constant_values" in kwargs) or ("end_values" in kwargs):
+            try:
+                val = as_tensor_variable([kwargs["constant_values"][0], kwargs["constant_values"][1]])
+                if len(pad_width) == 2:
+                    pad_width2 = pad_width[1]
+                    pad_w = as_tensor_variable([pad_width1, pad_width2])
+                else:
+                    pad_w = as_tensor_variable([pad_width1])
+            except KeyError:
+                val = as_tensor_variable([kwargs["end_values"][0], kwargs["end_values"][1]])
+                if len(pad_width) == 2:
+                    pad_width2 = pad_width[1]
+                    pad_w = as_tensor_variable([pad_width1, pad_width2])
+                else:
+                    pad_w = as_tensor_variable([pad_width1])
+        else:
+            val = as_tensor_variable([2])
+            if len(pad_width) == 2:
+                pad_width2 = pad_width[1]
+                pad_w = as_tensor_variable([pad_width1, pad_width2])
+            else:
+                pad_w = as_tensor_variable([pad_width1])
+
+        return Apply(self, [array, pad_w, val], [array.type()])
+
+    def perform(self, node, inputs, (z,)):
+        array = inputs[0]
+        pad_width = tuple(inputs[1])
+        val = tuple(inputs[2])
+        if self.mode == 'constant':
+            z[0] = self._numop(array, pad_width, self.mode, constant_values=val)
+        elif self.mode == 'linear_ramp':
+            z[0] = self._numop(array, pad_width, self.mode, end_values=val)      
+        else:
+            z[0] = self._numop(array, pad_width, self.mode, reflect_type='odd')
+
+    def __str__(self):
+        return self._numop.__class__.__name__
+
+"""
+import theano
+from theano import tensor as T
+from theano import function
+from theano.tensor import basic
+x = T.matrix()
+y = basic.pad(x, (1,1), 'constant', constant_values=(4,6))
+f = function([x], y)
+
+
+"""
+
+
+
+
+
+
+
