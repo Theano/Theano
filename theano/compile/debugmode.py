@@ -769,7 +769,7 @@ def _check_viewmap(node, storage_map):
 
         for ii, inode in enumerate(node.inputs):
 
-            if ii.may_share_memory(outstorage, storage_map[inode][0]):
+            if inode.may_share_memory(outstorage, storage_map[inode][0]):
 
                 nodeid = id(inode)
                 bad_alias[nodeid] = ii
