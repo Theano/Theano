@@ -274,6 +274,8 @@ class ConvGrad3D(theano.OpenMPOp):
 
         return strutil.render_string(codeSource, locals())
 
+    def c_compile_args(self):
+        return theano.OpenMPOp.c_compile_args(self)
 
 convGrad3D = ConvGrad3D()
 
