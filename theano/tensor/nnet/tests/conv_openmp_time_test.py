@@ -1,3 +1,8 @@
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--n_repeats",type=int,default=5)
+args = parser.parse_args()
+
 import sys
 import time
 
@@ -6,6 +11,7 @@ import numpy as np
 import theano
 floatX = theano.config.floatX = 'float32'
 import theano.tensor as T
+
 
 
 _orig_img = T.tensor4("in_img")
@@ -19,7 +25,7 @@ _gradloss = T.grad(_loss,_filt)
 fconv = theano.function([_filt,_orig_img],_loss)
 fgradconv = theano.function([_filt,_orig_img],_gradloss)
 
-n_repeats = 5
+n_repeats = args.n_repeats
 
 titlestr = "%10s %10s %10s %10s %10s %10s %10s"%("batchsize","imgsize","kersize","inchan","outchan","meantime","stderrtime")
 fmtstr   = "%10i %10i %10i %10i %10i %10.4f %10.4f"
@@ -37,7 +43,7 @@ for (fnname, fn) in [("conv",fconv),("gradconv",fgradconv)]:
             t_elapsed = time.time() - t_start
             times.append(t_elapsed)
 
-        print fmtstr % (batchsize,imgsize,kersize,inchan,outchan,np.mean(times),np.std(times)/np.sqrt(n_repeats))
+        print fmtstr % (batchsize,imgsize,kersize,inchan,outchan,np.mean(times),np.std(times)/np.sqrt(n_repeats-1))
 
 
 
