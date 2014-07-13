@@ -369,7 +369,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=
             PyErr_SetString(PyExc_AssertionError, "%(zz)s != %(aa)s");
             %(fail)s
         }
-        if (dbeta != 0 || %(force_init_beta)d)
+        if (dbeta != 0)
         {
             if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
             {
@@ -382,7 +382,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=
                     zoutdata[Zi*i] = fbeta * zdata[Ai*i];
                 }
             }
-            else if (PyArray_DESCR(%(xx)s)->type_num == NPY_DOUBLE)
+            else if (PyArray_DESCR(%(zz)s)->type_num == NPY_DOUBLE)
             {
                 double * zoutdata = (double*) PyArray_DATA(%(zz)s);
                 const double * zdata = (double*)PyArray_DATA(%(aa)s);
@@ -400,6 +400,53 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=
                 %(fail)s
             }
             fbeta = dbeta = 1.0;
+        }
+        else if (%(force_init_beta)d)
+        {
+            if (PyArray_IS_C_CONTIGUOUS(%(zz)s))
+            {
+                if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
+                {
+                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_SIZE(%(zz)s)*sizeof(float));
+                }
+                else if (PyArray_DESCR(%(zz)s)->type_num == NPY_DOUBLE)
+                {
+                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_SIZE(%(zz)s)*sizeof(double));
+                }
+                else
+                {
+                    PyErr_SetString(PyExc_AssertionError,
+                                    "neither float nor double dtype");
+                    %(fail)s
+                }
+            }
+            else
+            {
+                if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
+                {
+                    float *zoutdata = (float *)PyArray_DATA(%(zz)s);
+                    int Zi = PyArray_STRIDES(%(zz)s)[0]/sizeof(float);
+                    for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
+                    {
+                        zoutdata[Zi*i] = 0.0f;
+                    }
+                }
+                else if (PyArray_DESCR(%(zz)s)->type_num == NPY_DOUBLE)
+                {
+                    double *zoutdata = (double *)PyArray_DATA(%(zz)s);
+                    int Zi = PyArray_STRIDES(%(zz)s)[0]/sizeof(double);
+                    for (int i = 0; i < PyArray_DIMS(%(aa)s)[0]; ++i)
+                    {
+                        zoutdata[Zi*i] = 0.0;
+                    }
+                }
+                else
+                {
+                    PyErr_SetString(PyExc_AssertionError,
+                                    "neither float nor double dtype");
+                    %(fail)s
+                }
+            }
         }
     }
     else
@@ -604,26 +651,22 @@ def check_force_gemv_init():
 
             beta*aa + alpha*dot(xx, yy)
 
-        where we set z = b = zeros of the correct dimensions we do not actually
-        set z = zeros and instead let the BLAS perform b*z with uninitialized
-        memory for speed. Occasionally the memory contains values that are
-        equivalent to NaN in which case the product b*z contains NaN's for
-        correctly implemented BLAS libraries. In this situation, since we are
-        introducing the NaN's, we need to test whether the BLAS performs
+        where we set aa = betas = zeros of the correct dimensions we do not
+        actually set aa = zeros and instead let the BLAS perform beta*aa with
+        uninitialized memory for speed. Occasionally the memory contains values
+        that are equivalent to NaN in which case the product beta*aa contains
+        NaN's for correctly implemented BLAS libraries. In this situation, since
+        we are introducing the NaN's, we need to test whether the BLAS performs
         correctly. If it *does*, i.e. it actually performs the multiplication
-        b*z which will result in NaN's in the result, then we need intialize
+        beta*aa which will result in NaN's in the result, then we need intialize
         the memory to zeros.
-
-        Note: We perform this check here, as opposed to in the global scope,
-        because the environment is not completely setup at the point in which
-        we would perform this check in global scope.
         """
         aa = T.vector('aa')
         yy = T.vector('yy')
         xx = T.matrix('xx')
         f = theano.function(
             [aa, yy, xx],
-            gemv_no_inplace(aa, 0., xx, yy, 0.),
+            gemv_no_inplace(aa, 1., xx, yy, 0.),
             theano.compile.Mode(optimizer='fast_compile')
         )
 
@@ -635,11 +678,11 @@ def check_force_gemv_init():
             dtype=theano.config.floatX
         )
         yy_data = numpy.array(
-            numpy.zeros((2,)),
+            numpy.ones((2,))*2,
             dtype=theano.config.floatX
         )
         xx_data = numpy.array(
-            float('NaN')*numpy.ones((2, 2)),
+            numpy.ones((2, 2)),
             dtype=theano.config.floatX
         )
         zz = f(aa_data, yy_data, xx_data)
