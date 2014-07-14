@@ -846,6 +846,7 @@ class ProfileStats(object):
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
             new_max_running_max_memory_size / 1024.)), int(round(
             max_running_max_memory_size / 1024.)))
+        print >> file,  "    Minimum peak from all valid apply node order is %dKB" % int(round(minimum_peak / 1024.))
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
             round(max_node_memory_saved_by_view / 1024.)))
