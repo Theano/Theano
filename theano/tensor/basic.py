@@ -5034,6 +5034,12 @@ def power(x, y):
 
 
 def pad(array, pad_width, mode=None, **kwargs):
+
+    numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+    if not scipy_ver >= [1, 7]:
+        raise NotImplementedError("Numpy version is to old")
+
     if len(kwargs) != 0:
         return PadWithKwargs(mode)(array, pad_width, kwargs)
     else:
@@ -5059,11 +5065,6 @@ class Pad(Op):
         array = as_tensor_variable(array)
         pad_width1 = (pad_width[0])
         assert array.ndim in [1, 2]
-
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        if not scipy_ver >= [1, 7]:
-            raise NotImplementedError("Numpy version is to old")
 
         if len(pad_width) == 2:
             pad_width2 = pad_width[1]
@@ -5101,11 +5102,6 @@ class PadWithKwargs(Op):
         array = as_tensor_variable(array)
         pad_width1 = (pad_width[0])
         assert array.ndim in [1, 2]
-
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        if not scipy_ver >= [1, 7]:
-            raise NotImplementedError("Numpy version is to old")
 
         if ("constant_values" in kwargs) or ("end_values" in kwargs):
             try:
