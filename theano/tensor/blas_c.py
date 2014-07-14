@@ -403,15 +403,15 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=
         }
         else if (%(force_init_beta)d)
         {
-            if (PyArray_IS_C_CONTIGUOUS(%(zz)s))
+            if (PyArray_CHKFLAGS(%(zz)s, NPY_ARRAY_C_CONTIGUOUS))
             {
                 if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
                 {
-                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_SIZE(%(zz)s)*sizeof(float));
+                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_ITEMSIZE(%(zz)s));
                 }
                 else if (PyArray_DESCR(%(zz)s)->type_num == NPY_DOUBLE)
                 {
-                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_SIZE(%(zz)s)*sizeof(double));
+                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_ITEMSIZE(%(zz)s));
                 }
                 else
                 {
