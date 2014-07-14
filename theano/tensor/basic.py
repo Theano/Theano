@@ -3999,6 +3999,9 @@ class Tile(Op):
     def __hash__(self):
         return hash(Tile) ^ hash(self.ndim)
 
+    def __str__(self):
+        return self.__class__.__name__ + "{ndim=%d}" % self.ndim
+
     def make_node(self, x, reps):
         x = as_tensor_variable(x)
         reps = as_tensor_variable(reps)
@@ -4054,7 +4057,7 @@ def tile(x, reps, ndim=None):
         assert python_all([int(i) == i for i in iter(reps)])
     except (TypeError, AssertionError):
         raise ValueError("reps argument to tile must be a constant (e.g. "
-        "tuple, list of integers)")
+                         "tuple, list of integers)")
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:
