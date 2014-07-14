@@ -1184,7 +1184,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                         CudaNdarray_DEV_DATA(out),
                         CudaNdarray_HOST_STRIDES(out)[0], //strides
                         CudaNdarray_HOST_STRIDES(out)[1],
-                        1, 
+                        1,
                         CudaNdarray_DEV_DATA(self),
                         CudaNdarray_HOST_DIMS(self)[0], //For indices check
                         CudaNdarray_HOST_STRIDES(self)[0], //strides
@@ -1225,7 +1225,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         PyErr_SetString(PyExc_NotImplementedError,
                         "CudaNdarray_TakeFrom: only input with 1, 2 or 3"
                         " dimensions are currently supported");
-        
+
     }
     free(dims);
     CNDA_THREAD_SYNC;
@@ -1258,7 +1258,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         Py_DECREF(out);
         return NULL;
     }
-    
+
     if (cpu_err_var != 0) {
         PyErr_Format(
             PyExc_IndexError,
@@ -1276,11 +1276,11 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         Py_DECREF(indices);
         Py_DECREF(out);
         return NULL;
-  
+
     }
-    
+
     Py_DECREF(indices);
-        
+
     if (verbose) printf("TAKE SUCCEDED\n");
     return (PyObject *)out;
 }
