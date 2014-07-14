@@ -2463,6 +2463,44 @@ def local_div_switch_sink(node):
     return False
 
 
+#############
+# Tile Opts #
+#############
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([T.Tile])
+def local_useless_tile(node):
+    """Tile(x, (1,)*N) -> x
+
+    This is useless tile. (1,)*N, just mean a vector with all element
+    being 1.
+
+    """
+    if isinstance(node.op, T.Tile):
+        try:
+            a = T.get_scalar_constant_value(node.inputs[1])
+            if a == 1:
+                try:
+                    l = T.get_vector_length(node.inputs[1])
+                    if l == node.inputs[0].ndim:
+                        return [node.inputs[0]]
+                    elif l < node.inputs[0].ndim:
+                        # The Op don't support that case, so we can't
+                        # implement the opt and test it.
+                        return
+                        return [node.inputs[0]]
+                    else:
+                        # The Op don't support that case, so we can't
+                        # implement the opt and test it.
+                        return
+                        x_nd = node.inputs[0].ndim
+                        broad = ['x'] * (l - x_nd) + range(x_nd)
+                        return [node.inputs[0].dimshuffle(broad)]
+                except ValueError:
+                    return
+        except NotScalarConstantError:
+            return
+
 ################
 # Flatten Opts #
 ################
