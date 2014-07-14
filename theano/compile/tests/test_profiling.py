@@ -2,9 +2,12 @@
 Test of memory profiling
 
 """
+import StringIO
+
+import numpy
+
 import theano
 import theano.tensor as T
-import StringIO
 
 
 def test_profiling():
@@ -15,15 +18,10 @@ def test_profiling():
         theano.config.profile = True
         theano.config.profile_memory = True
 
-        val1 = T.dvector("val1")
-        val2 = T.dvector("val2")
-        val3 = T.dvector("val3")
-        val4 = T.dvector("val4")
-        val5 = T.dvector("val5")
+        x = [T.dvector("val%i" % i) for i in range(3)]
 
-        x = [val1, val2, val3, val4, val5]
-
-        z = [x[i] + x[i+1] for i in range(len(x)-1)] + [T.outer(x[i], x[i+1]).sum() for i in range(len(x)-1)]
+        z = [x[i] + x[i+1] for i in range(len(x)-1)]
+        z += [T.outer(x[i], x[i+1]).sum() for i in range(len(x)-1)]
 
         p = theano.ProfileStats(False)
 
@@ -32,13 +30,19 @@ def test_profiling():
         else:
             m = None
 
-        f = theano.function([val1, val2, val3, val4, val5], z, profile=p, name="test_profiling",
+        f = theano.function(x, z, profile=p, name="test_profiling",
                             mode=m)
 
-        output = f([0, 1, 2, 3, 4], [1, 2, 3, 4, 5], [2, 3, 4, 5, 6], [3, 4, 5, 6, 7], [4, 5, 6, 7, 8])
+        inp = [numpy.arange(1024) + 1 for i in range(len(x))]
+        output = f(*inp)
 
         buf = StringIO.StringIO()
         f.profile.summary(buf)
+        for line in buf.getvalue().split("\n"):
+            if "Max if linker=cvm" in line:
+                print line
+            elif "The minimum peak from all valid apply node" in line:
+                print line
 
     finally:
         theano.config.profile = old1
