@@ -20,7 +20,8 @@ def test_compile():
                 ' so the shared variable should be on the GPU.'
         with open('shared_var.pickle', 'w') as file:
             cPickle.dump(shared_var, file)
-        unuse()
+        if order[0] == 'gpu':
+            unuse()
 
         use(order[1])
         with open('shared_var.pickle', 'r') as file:
@@ -33,4 +34,5 @@ def test_compile():
             assert(shared_var._isCudaType()),\
                 'The input device is set to GPU,' \
                 ' so the shared variable should be on the GPU.'
-        unuse()
+        if order[1] == 'gpu':
+            unuse()

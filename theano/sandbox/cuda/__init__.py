@@ -398,7 +398,8 @@ def use(device,
                             " No fallback to the cpu or other gpu device."),)
                 raise
 
-    elif use.device_number != device and device != 'gpu':
+    elif use.device_number != device and device not in ['gpu', -1]:
+        # device -1 mean the cpu
         _logger.warning(("Ignoring call to use(%s), GPU number %i "
             "is already in use."),
             str(device), use.device_number)
