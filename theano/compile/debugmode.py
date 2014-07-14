@@ -685,9 +685,10 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
     actually_inplace_outputs = []
     dmap = getattr(node.op, 'destroy_map', {})
     for oo, ii in dmap.iteritems():
-        out_var = storage_map[node.outputs[oo]][0]
+        var = node.outputs[oo]
+        out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
-        if _may_share_memory(out_var, in_var):
+        if var.type.may_share_memory(out_var, in_var):
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused and destroyed_res_list:
@@ -702,9 +703,11 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
 
     vmap = getattr(node.op, 'view_map', {})
     for oo, ii in vmap.iteritems():
-        out_var = storage_map[node.outputs[oo]][0]
+        var = node.outputs[oo]
+        out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
-        if _may_share_memory(out_var, in_var):
+        may_share = var.type.may_share_memory(out_var, in_var)
+        if may_share:
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused:
@@ -717,7 +720,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
             if isinstance(node.op, OutputGuard):
                 # This class is not in the final graph.
                 continue
-            if not _may_share_memory(out_var, in_var):
+            if not may_share:
                 _logger.warning("Optimization Warning: input idx %d marked "
                         "as viewed but new memory allocated by node '%s'",
                         ii[0], str(node))
@@ -766,7 +769,7 @@ def _check_viewmap(node, storage_map):
 
         for ii, inode in enumerate(node.inputs):
 
-            if _may_share_memory(outstorage, storage_map[inode][0]):
+            if inode.type.may_share_memory(outstorage, storage_map[inode][0]):
 
                 nodeid = id(inode)
                 bad_alias[nodeid] = ii
@@ -794,26 +797,18 @@ def _check_viewmap(node, storage_map):
                 other_storage = storage_map[other_onode][0]
                 # check to see if we share memory with this other output
                 # this is not a problem if the node is not actually used
-                if _is_used_in_graph(other_onode) and \
-                        _may_share_memory(outstorage, other_storage):
+                if (_is_used_in_graph(other_onode) and
+                    other_onode.type.may_share_memory(outstorage,
+                                                      other_storage)):
                     raise BadViewMap(node, oi, outstorage,
                                      out_alias_idx=other_oi)
 
 
-def _may_share_memory(a, b):
-    from theano.misc.may_share_memory import may_share_memory
-    return may_share_memory(a, b, False)
-
-
-def _is_function_output(node):
+def _is_used_in_graph(var):
     """
-    Returns True if the node in question is the a final output of the graph
+    Returns True if `var` is used by another node in the graph
     """
-    return node.clients == [('output', 1)]
-
-
-def _is_used_in_graph(node):
-    return not(_is_function_output(node) or node.clients == [])
+    return not(var.clients == [('output', 1)] or var.clients == [])
 
 
 def _check_strides_match(a, b, warn_err, op):
@@ -1111,18 +1106,21 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     # is less relevant.
     # Dimensions should be align by the innermost index, so we iterate
     # from the end of shapes.
-    max_ndim = 0
-    rev_out_broadcastable = []
-    for r in considered_outputs:
-        if isinstance(r.type, (TensorType, CudaNdarrayType)):
-            if max_ndim < r.ndim:
-                rev_out_broadcastable += [True] * (r.ndim - max_ndim)
-                max_ndim = r.ndim
-            assert len(rev_out_broadcastable) == max_ndim
+    if ('strided' in prealloc_modes or
+        'wrong_size' in prealloc_modes or
+        'ALL' in prealloc_modes):
+        max_ndim = 0
+        rev_out_broadcastable = []
+        for r in considered_outputs:
+            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                if max_ndim < r.ndim:
+                    rev_out_broadcastable += [True] * (r.ndim - max_ndim)
+                    max_ndim = r.ndim
+                assert len(rev_out_broadcastable) == max_ndim
 
-            for i, b in enumerate(r.broadcastable[::-1]):
-                rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
-    out_broadcastable = rev_out_broadcastable[::-1]
+                for i, b in enumerate(r.broadcastable[::-1]):
+                    rev_out_broadcastable[i] = rev_out_broadcastable[i] and b
+        out_broadcastable = rev_out_broadcastable[::-1]
 
     if 'strided' in prealloc_modes or 'ALL' in prealloc_modes:
         check_ndim = config.DebugMode.check_preallocated_output_ndim
@@ -1630,7 +1628,7 @@ class _Linker(gof.link.LocalLinker):
                 thunks_py.append(None)
 
             # If the op define its own make_thunk, check it
-            if node.op.make_thunk.im_func not in default_make_thunk:
+            if get_unbound_function(node.op.make_thunk) not in default_make_thunk:
                 compute_map = {}
                 for k in node.inputs:
                     compute_map[k] = [True]

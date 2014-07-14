@@ -236,7 +236,7 @@ class GpuOp(theano.gof.Op):
                                              compute_map, no_recycling)
 
 theano.compile.debugmode.default_make_thunk.append(
-                                        get_unbound_function(GpuOp.make_thunk))
+    get_unbound_function(GpuOp.make_thunk))
 
 # We must do those import to be able to create the full doc when
 # nvcc is not available

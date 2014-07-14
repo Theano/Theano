@@ -29,16 +29,15 @@ class GpuImages2Neibs(Images2Neibs, Op):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
+        ten4 = as_gpuarray_variable(ten4)
+        neib_shape = T.as_tensor_variable(neib_shape)
+        neib_step = T.as_tensor_variable(neib_step)
 
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
         assert "int" in neib_shape.dtype
         assert "int" in neib_step.dtype
-
-        ten4 = as_gpuarray_variable(ten4)
-        neib_shape = T.as_tensor_variable(neib_shape)
-        neib_step = T.as_tensor_variable(neib_step)
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),

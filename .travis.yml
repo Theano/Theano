@@ -38,6 +38,7 @@ script:
   - ulimit -a
   - echo $PART
   - theano-nose --with-timelimit -v $PART
+  - theano-cache list
 
 
 #after_script:

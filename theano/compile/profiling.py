@@ -342,10 +342,10 @@ class ProfileStats(object):
         es += ['   %2s ']
 
         hs += ['<#call>']
-        es += ['  %5d  ']
+        es += ['%6d  ']
 
         hs += ['<#apply>']
-        es += ['  %4d  ']
+        es += [' %4d  ']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
         maxlen = self.line_width - upto_length
@@ -587,6 +587,7 @@ class ProfileStats(object):
                 print >> file, '  Time in thunks: %es (%.3f%%)' % (
                         local_time, 100*local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
+        print >> file, '    Number of Apply nodes: %s' % len(self.apply_time)
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
         print >> file, '       Theano validate time: %es' % self.validate_time
         print >> file, ('    Theano Linker time (includes C,'

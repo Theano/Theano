@@ -12,24 +12,26 @@ import warnings
 
 from theano.gof.python25 import all
 
-from theano.configparser import config, AddConfigVar, BoolParam, ConfigParam
+from theano.configparser import (config, AddConfigVar,
+                                 BoolParam, ConfigParam, _config_var_list)
 
 import theano.gof.cmodule
 
 logger = logging.getLogger(__name__)
 
 AddConfigVar('profile',
-        "If VM should collect profile information",
-        BoolParam(False),
-        in_c_key=False)
+             "If VM should collect profile information",
+             BoolParam(False),
+             in_c_key=False)
 AddConfigVar('profile_optimizer',
-        "If VM should collect optimizer profile information",
-        BoolParam(False),
-        in_c_key=False)
+             "If VM should collect optimizer profile information",
+             BoolParam(False),
+             in_c_key=False)
 AddConfigVar('profile_memory',
-        "If VM should collect memory profile information and print it",
-        BoolParam(False),
-        in_c_key=False)
+             "If VM should collect memory profile information and print it",
+             BoolParam(False),
+             in_c_key=False)
+
 
 def filter_vm_lazy(val):
     if val == 'False' or val is False:
@@ -40,7 +42,7 @@ def filter_vm_lazy(val):
         return None
     else:
         raise ValueError('Valid values for an vm.lazy parameter '
-                        'should be None, False or True, not `%s`.' % val)
+                         'should be None, False or True, not `%s`.' % val)
 
 AddConfigVar('vm.lazy',
              "Useful only for the vm linkers. When lazy is None,"
@@ -305,7 +307,7 @@ class Stack(VM):
         t0 = time.time()
         rval = self.thunks[idx]()
         self.node_executed_order.append(node)
-        
+
         # Some thunks on some computers run faster than the granularity
         # of the time.time clock.
         # Profile output looks buggy if a node has run but takes 0 time.
@@ -313,11 +315,11 @@ class Stack(VM):
         dt = max(time.time() - t0, 1e-10)
         if self.callback is not None:
             self.callback(
-                    node=node,
-                    thunk=self.thunks[idx],
-                    storage_map=self.storage_map,
-                    compute_map=self.compute_map,
-                    )
+                node=node,
+                thunk=self.thunks[idx],
+                storage_map=self.storage_map,
+                compute_map=self.compute_map,
+            )
         return rval, dt
 
     def __call__(self):
@@ -327,7 +329,7 @@ class Stack(VM):
         dependencies = self.dependencies
         self.node_executed_order = []
         self.node_cleared_order = []
-        
+
         for k in self.storage_map:
             compute_map[k][0] = (k.owner is None)
 
@@ -559,7 +561,7 @@ except (OSError, theano.gof.cmodule.MissingGXX), e:
     # already changed the default linker to something else then CVM.
     # Currently this is the py linker.
     # Here we assert that the default linker is not cvm.
-    assert not [x for x in theano.configparser._config_var_list
+    assert not [x for x in _config_var_list
                 if x.fullname == 'linker'][0].default.startswith('cvm'), e
     pass
 

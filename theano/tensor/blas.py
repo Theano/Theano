@@ -1026,7 +1026,7 @@ class Gemm(GemmRelated):
             dims[0] = PyArray_DIMS(%(_z)s)[0];
             dims[1] = PyArray_DIMS(%(_z)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
-                                                          type_num_%(_z)s);
+                                                          PyArray_TYPE((PyArrayObject*) py_%(_z)s));
             //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError,
@@ -1581,10 +1581,11 @@ class GemmOptimizer(Optimizer):
         print >> stream, blanc, " time_toposort", prof[9]
         print >> stream, blanc, " validate_time", prof[10]
         print >> stream, blanc, " callback_time", prof[11]
-        print >> stream, blanc, " callbacks_time"
-        for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if prof[11] > 1:
+            print >> stream, blanc, " callbacks_time"
+            for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
 
 
 class Dot22(GemmRelated):
@@ -1627,7 +1628,7 @@ class Dot22(GemmRelated):
             dims[0] = PyArray_DIMS(%(_x)s)[0];
             dims[1] = PyArray_DIMS(%(_y)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
-                            type_num_%(_x)s);
+                            PyArray_TYPE((PyArrayObject*) py_%(_x)s));
             //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError,

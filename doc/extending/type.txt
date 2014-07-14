@@ -138,6 +138,13 @@ default values.
         :return: the number of bytes taken by the object described by
             ``shape_info``.
 
+    .. method:: may_share_memory(a, b)
+
+        Optional. Only needed for DebugMode. Return True if the python
+        objects `a` and `b` could share memory. Return False
+        otherwise. It is used to debug when Ops didn't declare memory
+        aliaing between variables. Must be a static method.
+
 For each method, the *default* is what ``Type`` defines
 for you. So, if you create an instance of ``Type`` or an
 instance of a subclass of ``Type``, you

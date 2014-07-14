@@ -76,7 +76,7 @@ class TypedListType(gof.Type):
 
         return True
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """
         PyListObject* %(name)s;
         """ % dict(name=name)
@@ -86,12 +86,16 @@ class TypedListType(gof.Type):
         %(name)s = NULL;
         """ % dict(name=name)
 
-    def c_extract(self, name, sub):
-        return """
-        if (!PyList_Check(py_%(name)s)) {
-            PyErr_SetString(PyExc_TypeError, "expected a list");
-            %(fail)s
-        }
+    def c_extract(self, name, sub, check_input=True):
+        if check_input:
+            pre = """
+            if (!PyList_Check(py_%(name)s)) {
+                PyErr_SetString(PyExc_TypeError, "expected a list");
+                %(fail)s
+            }""" % dict(name=name, fail=sub['fail'])
+        else:
+            pre = ""
+        return pre + """
         %(name)s = (PyListObject*) (py_%(name)s);
         """ % dict(name=name, fail=sub['fail'])
 
@@ -107,4 +111,4 @@ class TypedListType(gof.Type):
         return ""
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)

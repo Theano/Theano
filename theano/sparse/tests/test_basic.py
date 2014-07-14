@@ -6,6 +6,7 @@ import numpy
 try:
     import scipy.sparse as sp
     import scipy.sparse
+    from scipy.sparse import csr_matrix
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
@@ -15,7 +16,7 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.gof.python25 import all, any, product
-
+from theano.tensor.basic import _allclose
 
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
@@ -31,7 +32,7 @@ from theano.sparse import (
     AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0,
     add, mul, structured_dot, transpose,
     csc_from_dense, csr_from_dense, dense_from_sparse,
-    Dot, Usmm, sp_ones_like, GetItemScalar,
+    Dot, Usmm, sp_ones_like, GetItemScalar, GetItemList, GetItem2Lists,
     SparseFromDense,
     Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
     structured_minimum, structured_maximum, structured_add,
@@ -2019,6 +2020,83 @@ class Remove0Tester(utt.InferShapeTester):
 class Test_getitem(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_GetItemList(self):
+
+        a, A = sparse_random_inputs('csr', (4, 5))
+        b, B = sparse_random_inputs('csc', (4, 5))
+        y = a[0][[0, 1, 2, 3, 1]]
+        z = b[0][[0, 1, 2, 3, 1]]
+
+        fa = theano.function([a[0]], y)
+        fb = theano.function([b[0]], z)
+
+        t_geta = fa(A[0]).todense()
+        t_getb = fb(B[0]).todense()
+
+        s_geta = scipy.sparse.csr_matrix(A[0])[[0, 1, 2, 3, 1]].todense()
+        s_getb = scipy.sparse.csc_matrix(B[0])[[0, 1, 2, 3, 1]].todense()
+
+        utt.assert_allclose(t_geta, s_geta)
+        utt.assert_allclose(t_getb, s_getb)
+
+    def test_GetItemList_wrong_index(self):
+        a, A = sparse_random_inputs('csr', (4, 5))
+        y = a[0][[0, 4]]
+        f = theano.function([a[0]], y)
+
+        self.assertRaises(IndexError, f, A[0])
+
+    def test_get_item_list_grad(self):
+        op = theano.sparse.basic.GetItemList()
+        def op_with_fixed_index(x):
+            return op(x, index=numpy.asarray([0, 1]))
+
+        x, x_val = sparse_random_inputs("csr", (4,5))
+
+        try:
+            verify_grad_sparse(op_with_fixed_index, x_val)
+        except NotImplementedError, e:
+            assert "Scipy version is to old" in str(e)
+
+    def test_GetItem2Lists(self):
+
+        a, A = sparse_random_inputs('csr', (4, 5))
+        b, B = sparse_random_inputs('csc', (4, 5))
+        y = a[0][[0, 0, 1, 3], [0, 1, 2, 4]]
+        z = b[0][[0, 0, 1, 3], [0, 1, 2, 4]]
+
+        fa = theano.function([a[0]], y)
+        fb = theano.function([b[0]], z)
+
+        t_geta = fa(A[0])
+        t_getb = fb(B[0])
+
+        s_geta = numpy.asarray(scipy.sparse.csr_matrix(A[0])[[0, 0, 1, 3], [0, 1, 2, 4]])
+        s_getb = numpy.asarray(scipy.sparse.csc_matrix(B[0])[[0, 0, 1, 3], [0, 1, 2, 4]])
+
+        utt.assert_allclose(t_geta, s_geta)
+        utt.assert_allclose(t_getb, s_getb)
+
+    def test_GetItem2Lists_wrong_index(self):
+        a, A = sparse_random_inputs('csr', (4, 5))
+        y1 = a[0][[0, 5], [0, 3]]
+        y2 = a[0][[0, 3], [0, 5]]
+
+        f1 = theano.function([a[0]], y1)
+        f2 = theano.function([a[0]], y2)
+
+        self.assertRaises(IndexError, f1, A[0])
+        self.assertRaises(IndexError, f2, A[0])
+
+    def test_get_item_2lists_grad(self):
+        op = theano.sparse.basic.GetItem2Lists()
+        def op_with_fixed_index(x):
+            return op(x, ind1=numpy.asarray([0, 1]), ind2=numpy.asarray([2, 3]))
+
+        x, x_val = sparse_random_inputs("csr", (4,5))
+
+        verify_grad_sparse(op_with_fixed_index, x_val)
 
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')

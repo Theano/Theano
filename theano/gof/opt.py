@@ -658,10 +658,11 @@ class MergeOptimizer(Optimizer):
         print >> stream, blanc, "  replace_time", replace_time
         print >> stream, blanc, "  validate_time", validate_time
         print >> stream, blanc, "  callback_time", callback_time
-        print >> stream, blanc, "  callbacks_time"
-        for i in sorted(callbacks_time.iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if callback_time > 1:
+            print >> stream, blanc, "  callbacks_time"
+            for i in sorted(callbacks_time.iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
         print >> stream, blanc, "  nb_merged", nb_merged
         print >> stream, blanc, "  nb_constant", nb_constant
 

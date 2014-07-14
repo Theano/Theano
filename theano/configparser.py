@@ -74,8 +74,14 @@ def config_files_from_theanorc():
 
 config_files = config_files_from_theanorc()
 theano_cfg = ConfigParser.SafeConfigParser(
-        {'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])}
-        )
+    {'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1]),
+     'LSCRATCH': os.getenv("LSCRATCH", ""),
+     'TMPDIR': os.getenv("TMPDIR", ""),
+     'TEMP': os.getenv("TEMP", ""),
+     'TMP': os.getenv("TMP", ""),
+     'PID': str(os.getpid()),
+ }
+)
 theano_cfg.read(config_files)
 # Having a raw version of the config around as well enables us to pass
 # through config values that contain format strings.

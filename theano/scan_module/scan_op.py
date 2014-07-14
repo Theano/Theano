@@ -422,11 +422,19 @@ class Scan(PureOp):
                 raise ValueError('For output %s you need to provide a '
                                  'scalar int !', str(outer_nitsot))
         assert len(new_inputs) == len(inputs)
-        self.vector_seqs = [seq.ndim == 1 for seq in
-                             new_inputs[1:1 + self.n_seqs]]
-        self.vector_outs = [arg.ndim == 1 for arg in
-                             new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
-                                                    self.n_outs)]]
+
+        # The vector_seqs and vector_outs are just a workaround
+        # strange NumPy behavior: vector_ndarray[int] return a NumPy
+        # scalar and not a NumPy ndarray of 0 dimensions.
+        self.vector_seqs = [isinstance(seq, (tensor.TensorVariable,
+                                             tensor.TensorConstant)) and
+                            seq.ndim == 1 for seq in
+                            new_inputs[1:1 + self.n_seqs]]
+        self.vector_outs = [isinstance(arg, (tensor.TensorVariable,
+                                             tensor.TensorConstant)) and
+                            arg.ndim == 1 for arg in
+                            new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
+                                                         self.n_outs)]]
         self.vector_outs += [False] * self.n_nit_sot
 
         apply_node = Apply(self,
@@ -598,12 +606,6 @@ class Scan(PureOp):
                 for _d1 in range(cython_mit_mot_out_nslices[_d0]):
                     cython_mit_mot_out_slices[_d0, _d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
-            vector_seqs = [seq.ndim == 1 for seq in
-                                 node.inputs[1:1 + self.n_seqs]]
-            vector_outs = [arg.ndim == 1 for arg in
-                                 node.inputs[1 + self.n_seqs:
-                                             (1 + self.n_seqs + self.n_outs)]]
-            vector_outs += [False] * self.n_nit_sot
 
             cython_vector_seqs = numpy.asarray(self.vector_seqs,
                                                     dtype='int32')

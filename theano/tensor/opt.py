@@ -754,6 +754,9 @@ class ShapeFeature(object):
 
     def shape_tuple(self, r):
         """Return a tuple of symbolic shape vars for tensor variable r"""
+        if not hasattr(r, 'ndim'):
+            # This happen for NoneConst.
+            return None
         return tuple([self.shape_ir(i, r) for i in xrange(r.ndim)])
 
     def default_infer_shape(self, node, i_shapes):
@@ -782,7 +785,9 @@ class ShapeFeature(object):
             # don't make the optimizer merge a zillion ones together
             # by always returning the same object to represent 1
             return self.lscalar_one
-        if type(s_i) in (int, long) or isinstance(s_i, numpy.integer):
+        if (type(s_i) in (int, long) or
+            isinstance(s_i, numpy.integer) or
+            (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')
@@ -1363,6 +1368,8 @@ class Assert(T.Op):
     """
     view_map = {0: [0]}
 
+    check_input = False
+
     def __init__(self, msg="Theano Assert failed!"):
         self.msg = msg
 
@@ -1409,12 +1416,13 @@ class Assert(T.Op):
         check = "\n".join(check)
         return """
         %(check)s
+        Py_XDECREF(%(out)s);
         %(out)s = %(value)s;
         Py_INCREF(%(value)s);
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1, 0)
+        return (3, 0)
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]
@@ -2523,6 +2531,10 @@ def local_reshape_lift(node):
         len(node.inputs[0].owner.inputs) == 1):
         r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
         e = node.inputs[0].owner.op(r)
+        # In rare case the original broadcast was (False, True), but
+        # the new one is (False, False). So don't crash in that case.
+        if e.type != node.outputs[0].type:
+            e = T.patternbroadcast(e, node.outputs[0].broadcastable)
         return [e]
 
 
@@ -4934,10 +4946,11 @@ class FusionOptimizer(Optimizer):
         print >> stream, blanc, " nb_inconsistency_replace", prof[3]
         print >> stream, blanc, " validate_time", prof[4]
         print >> stream, blanc, " callback_time", prof[5]
-        print >> stream, blanc, " callbacks_time"
-        for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if prof[5] > 1:
+            print >> stream, blanc, " callbacks_time"
+            for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
         print >> stream, blanc, " time_toposort", prof[7]
 
 

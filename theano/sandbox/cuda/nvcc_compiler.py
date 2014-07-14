@@ -129,8 +129,7 @@ def find_cuda_root():
         return
     for dir in s.split(os.path.pathsep):
         if os.path.exists(os.path.join(dir, "nvcc")):
-            config.cuda.root = os.path.split(dir)[0]
-            return
+            return os.path.split(dir)[0]
 
 rpath_defaults = []
 
@@ -290,7 +289,7 @@ class NVCC_compiler(object):
         #nvcc argument
         preargs1 = []
         for pa in preargs:
-            for pattern in ['-O', '-arch=', '-ccbin='
+            for pattern in ['-O', '-arch=', '-ccbin=',
                             '--fmad', '--ftz', '--maxrregcount',
                             '--prec-div', '--prec-sqrt',  '--use_fast_math',
                             '-fmad', '-ftz', '-maxrregcount',

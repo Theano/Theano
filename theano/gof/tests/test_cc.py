@@ -22,7 +22,7 @@ class TDouble(Type):
     def filter(self, data):
         return float(data)
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return "double %(name)s; void* %(name)s_bad_thing;" % locals()
 
     def c_init(self, name, sub):
@@ -35,7 +35,7 @@ class TDouble(Type):
     def c_literal(self, data):
         return str(data)
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         return """
         if (!PyFloat_Check(py_%(name)s)) {
             PyErr_SetString(PyExc_TypeError, "not a double!");

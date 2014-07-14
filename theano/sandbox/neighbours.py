@@ -335,7 +335,7 @@ class Images2Neibs(Op):
 
             %(z)s = (PyArrayObject*) PyArray_EMPTY(2,
                 dims,
-                type_num_%(ten4)s,
+                PyArray_TYPE((PyArrayObject*) py_%(ten4)s),
                 0);
 
             if (!%(z)s)

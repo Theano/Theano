@@ -11,7 +11,6 @@ from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
 
 
-
 class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a
     TensorVariable.
@@ -374,11 +373,11 @@ class _tensor_py_operators:
                 and all(a == slice(None) for a in args[:axis])
                 and all(a == slice(None) for a in args[axis + 1:])
                 and isinstance(args[axis], (
-                        numpy.ndarray,
-                        list,
-                        TensorVariable,
-                        TensorConstant,
-                        theano.tensor.sharedvar.TensorSharedVariable))):
+                    numpy.ndarray,
+                    list,
+                    TensorVariable,
+                    TensorConstant,
+                    theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(arg, axis)
             else:
                 return theano.tensor.subtensor.advanced_subtensor(self, *args)
@@ -406,8 +405,9 @@ class _tensor_py_operators:
                 return rval
             else:
                 return theano.tensor.subtensor.Subtensor(args)(
-                    self, *theano.tensor.subtensor.Subtensor.collapse(args,
-                    lambda entry: isinstance(entry, Variable)))
+                    self, *theano.tensor.subtensor.Subtensor.collapse(
+                        args,
+                        lambda entry: isinstance(entry, Variable)))
 
     def take(self, indices, axis=None, mode='raise'):
         return theano.tensor.subtensor.take(self, indices, axis, mode)
@@ -557,6 +557,19 @@ class _tensor_py_operators:
 
         return theano.tensor.ptp(self, axis)
 
+    def swapaxes(self, axis1, axis2):
+        """Return 'tensor.swapaxes(self, axis1, axis2)
+
+        If a matrix is provided with the right axes, its transpose
+        will be returned.
+
+        """
+        return theano.tensor.basic.swapaxes(self, axis1, axis2)
+
+    def fill(self, value):
+        """Fill inputted tensor with the assigned value"""
+        return theano.tensor.basic.fill(self, value)
+
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
@@ -689,6 +702,7 @@ class TensorConstant(_tensor_py_operators, Constant):
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and
                 self.signature() == other.signature())
+
     def __copy__(self):
         # We need to do this to remove the cached attribute
         return type(self)(self.type, self.data, self.name)

@@ -120,8 +120,18 @@ enum = EnumStr("g++", "")
 try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
+    enum = EnumStr("")
     rc = 1
-if rc == 0:
+AddConfigVar('cxx',
+             "The C++ compiler to use. Currently only g++ is"
+             " supported, but supporting additional compilers should not be "
+             "too difficult. "
+             "If it is empty, no C++ code is compiled.",
+             enum,
+             in_c_key=False)
+del enum
+
+if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
@@ -140,16 +150,6 @@ else:
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
             'degraded.')
-    enum = EnumStr("")
-
-AddConfigVar('cxx',
-             "The C++ compiler to use. Currently only g++ is"
-             " supported, but supporting additional compilers should not be "
-             "too difficult. "
-             "If it is empty, no C++ code is compiled.",
-             enum,
-             in_c_key=False)
-del enum
 
 
 #Keep the default value the same as the one for the mode FAST_RUN
@@ -400,6 +400,12 @@ AddConfigVar('warn.vm_gc_bug',
         BoolParam(False),
         in_c_key=False)
 
+AddConfigVar('warn.signal_conv2d_interface',
+             ("Warn we use the new signal.conv2d() when its interface"
+              " changed mid June 2014"),
+             BoolParam(warn_default('0.7')),
+             in_c_key=False)
+
 AddConfigVar('compute_test_value',
         ("If 'True', Theano will run each op at graph build time, using "
          "Constants, SharedVariables and the tag 'test_value' as inputs "
@@ -489,3 +495,10 @@ AddConfigVar('openmp_elemwise_minsize',
              IntParam(200000),
              in_c_key=False,
          )
+
+AddConfigVar('check_input',
+             "Specify if types should check their input in their C code. "
+             "It can be used to speed up compilation, reduce overhead"
+              "(particularly for scalars) and reduce the number of generated C"
+              "files.",
+             BoolParam(True))

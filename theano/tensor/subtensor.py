@@ -64,6 +64,7 @@ def make_constant(args):
                 return a
     return tuple(map(conv, args))
 
+
 def get_idx_list(inputs, idx_list):
     '''
     Given a list of inputs to the subtensor and its idx_list reorders
@@ -81,8 +82,8 @@ def get_idx_list(inputs, idx_list):
             return indices.pop()
         elif isinstance(entry, slice):
             return slice(convert(entry.start),
-                     convert(entry.stop),
-                     convert(entry.step))
+                         convert(entry.stop),
+                         convert(entry.step))
         else:
             return entry
     cdata = tuple(map(convert, idx_list))
@@ -125,13 +126,13 @@ def get_canonical_form_slice(theslice, length):
         # in the generic case below.
         if step == 1:
             is_start_0 = (
-                    start in [None, 0] or
-                    (is_start_constant and is_length_constant and
-                     start < 0 and start + length <= 0))
+                start in [None, 0] or
+                (is_start_constant and is_length_constant and
+                 start < 0 and start + length <= 0))
             is_stop_length = (
-                    stop in [None, length, maxsize] or
-                    (is_stop_constant and is_length_constant and
-                     stop >= length))
+                stop in [None, length, maxsize] or
+                (is_stop_constant and is_length_constant and
+                 stop >= length))
             if is_start_0:
                 # 0:stop:1
                 if is_stop_length:
@@ -277,7 +278,7 @@ class Subtensor(Op):
     e_subslice = 'nested slicing is not supported'
     e_indextype = "Invalid index type or slice for Subtensor"
     debug = 0
-
+    check_input = False
     view_map = {0: [0]}
 
     @staticmethod
@@ -395,6 +396,7 @@ class Subtensor(Op):
             NotScalarConstantError: v
         """
         real_idx = get_idx_list(inputs, self.idx_list)
+
         def conv(val):
             if val is None:
                 return None
@@ -441,11 +443,12 @@ class Subtensor(Op):
             raise exception
 
         input_types = Subtensor.collapse(idx_list,
-                lambda entry: isinstance(entry, gof.Type))
+                                         lambda entry: isinstance(entry,
+                                                                  gof.Type))
         if len(inputs) != len(input_types):
             raise IndexError(
-                    "Not enough inputs to fill in the Subtensor template.",
-                    inputs, idx_list)
+                "Not enough inputs to fill in the Subtensor template.",
+                inputs, idx_list)
         for input, expected_type in izip(inputs, input_types):
             if input.type != expected_type:
                 raise TypeError(
@@ -473,7 +476,7 @@ class Subtensor(Op):
         return gof.Apply(self,
                          (x, ) + inputs,
                          [theano.tensor.tensor(dtype=x.type.dtype,
-                                 broadcastable=broadcastable)])
+                                               broadcastable=broadcastable)])
 
     def perform(self, node, inputs, out_):
         out, = out_
@@ -592,7 +595,7 @@ class Subtensor(Op):
     def helper_c_code(node, name, inputs, outputs, sub, idx_list, view_ndim,
                       c_prefix=None,
                       strides_mul=None,
-                  ):
+    ):
         """
         The parameters c_prefix are there to allow reusing this
         function on PyArray and CudaNdarray object.
@@ -637,23 +640,23 @@ class Subtensor(Op):
         def init_entry(entry, depth=0):
             if isinstance(entry, (numpy.integer, int)):
                 init_cmds.append(
-                        "subtensor_spec[%i] = %i;" % (spec_pos(),
-                            entry))
+                    "subtensor_spec[%i] = %i;" % (spec_pos(),
+                                                  entry))
                 inc_spec_pos(1)
                 if depth == 0:
                     is_slice.append(0)
             elif isinstance(entry, Type):
                 init_cmds.append(
-                        "subtensor_spec[%i] = %s;" % (spec_pos(),
-                            inputs[input_pos()]))
+                    "subtensor_spec[%i] = %s;" % (spec_pos(),
+                                                  inputs[input_pos()]))
                 inc_spec_pos(1)
                 inc_input_pos(1)
                 if depth == 0:
                     is_slice.append(0)
             elif entry is None:
                 init_cmds.append(
-                        "subtensor_spec[%i] = %i;" % (spec_pos(),
-                            NONE_CODE))
+                    "subtensor_spec[%i] = %i;" % (spec_pos(),
+                                                  NONE_CODE))
                 inc_spec_pos(1)
                 if depth == 0:
                     is_slice.append(0)
@@ -686,26 +689,26 @@ class Subtensor(Op):
 
         x, = inputs[:1]
         z, = outputs
-        
+
         if view_ndim:
-            rval = """        
+            rval = """
         // Argument of the view
         npy_intp xview_dims[%(view_ndim)s];
         npy_intp xview_strides[%(view_ndim)s];
-        
-        """% locals()
+
+        """ % locals()
         else:
-             rval = """        
+            rval = """
         // Argument of the view
         npy_intp* xview_dims = NULL;
         npy_intp* xview_strides = NULL;
-        
+
         """
 
         rval += """
         // One more argument of the view
         npy_intp xview_offset = 0;
-        
+
         // The subtensor is created by iterating over the dimensions
         // and updating stride, shape, and data pointers
 
@@ -716,7 +719,7 @@ class Subtensor(Op):
         int inner_ii = 0; // the current dimension of zview
         int outer_ii = 0; // current dimension of z
 
-        
+
         for (; outer_ii < %(len_is_slice)s; ++outer_ii)
         {
             if (is_slice[outer_ii])
@@ -843,10 +846,20 @@ class Subtensor(Op):
 
         x = inputs[0]
         z, = outputs
+        ndim = node.inputs[0].ndim
         view_ndim = node.outputs[0].ndim
         fail = sub['fail']
 
         decl = "PyArrayObject * xview = NULL;"
+
+        checkNDim = """
+        if (PyArray_NDIM(%(x)s) != %(ndim)s){
+            PyErr_SetString(PyExc_ValueError,
+                                     "Expected %(ndim)s dimensions input"
+                                        );
+            %(fail)s
+        }
+        """ % locals()
 
         get_xview = self.helper_c_code(node, name, inputs, outputs, sub,
                                        self.idx_list, view_ndim)
@@ -884,7 +897,7 @@ class Subtensor(Op):
         %(z)s = xview;
         """ % locals()
 
-        return decl + get_xview + build_view + finish_view
+        return decl + checkNDim + "{" + get_xview + build_view + finish_view + "}"
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
@@ -892,7 +905,7 @@ class Subtensor(Op):
         # have a versioned version of this op's C code.
         if len(hv) == 0:
             return ()
-        return (2, hv)
+        return (4, hv)
 
     def R_op(self, inputs, eval_points):
         # Subtensor is not differentiable wrt to its indices, therefore we
@@ -944,11 +957,11 @@ class SubtensorPrinter:
             raise TypeError("Can only print Subtensor.")
 
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor),
-        SubtensorPrinter())
+              SubtensorPrinter())
 
 
 def set_subtensor(x, y, inplace=False,
-        tolerate_inplace_aliasing=False):
+                  tolerate_inplace_aliasing=False):
     """Return x with the given subtensor overwritten by y.
 
     Example: To replicate the numpy expression "r[10:] = 5", type
@@ -960,11 +973,11 @@ def set_subtensor(x, y, inplace=False,
     :param tolerate_inplace_aliasing: see inc_subtensor for documentation.
     """
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True,
-            tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+                         tolerate_inplace_aliasing=tolerate_inplace_aliasing)
 
 
 def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
-        tolerate_inplace_aliasing=False):
+                  tolerate_inplace_aliasing=False):
     """Return x with the given subtensor incremented by y.
 
     :param x: the symbolic result of a Subtensor operation.
@@ -987,7 +1000,8 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
     if y.ndim > x.ndim:
         raise TypeError(("Trying to increment a %d-dimensional "
-            "subtensor with a %d-dimensional value.") % (x.ndim, y.ndim))
+                         "subtensor with a %d-dimensional value.") % (x.ndim,
+                                                                      y.ndim))
 
     for dim in range(y.ndim):
         dim_offset = x.ndim - y.ndim
@@ -1042,20 +1056,22 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         # return something that has the same shape as x, not as x.T (inner_x).
         # So re-apply the outer dimshuffle on the new inc_subtensor,
         # and return advanced_inc_subtensor1(x.T, i, y).T.
-        inner_incsubtensor = inc_subtensor(inner_x, y,
-                inplace=inplace,
-                set_instead_of_inc=set_instead_of_inc,
-                tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+        inner_incsubtensor = inc_subtensor(
+            inner_x, y,
+            inplace=inplace,
+            set_instead_of_inc=set_instead_of_inc,
+            tolerate_inplace_aliasing=tolerate_inplace_aliasing)
         return x.owner.op(inner_incsubtensor, *x.owner.inputs[1:])
     elif isinstance(x.owner.op, theano.tensor.Reshape):
         inner_x = x.owner.inputs[0]
         # Try to apply inc_subtensor on inner_x.
         # If it works, there is no need to reshape, as the inc_subtensor
         # will have the same shape as inner_x, which is what we want.
-        inner_incsubtensor = inc_subtensor(inner_x, y.flatten(),
-                inplace=inplace,
-                set_instead_of_inc=set_instead_of_inc,
-                tolerate_inplace_aliasing=tolerate_inplace_aliasing)
+        inner_incsubtensor = inc_subtensor(
+            inner_x, y.flatten(),
+            inplace=inplace,
+            set_instead_of_inc=set_instead_of_inc,
+            tolerate_inplace_aliasing=tolerate_inplace_aliasing)
         return inner_incsubtensor
     else:
         raise TypeError('x must be the result of a subtensor operation')
@@ -1074,8 +1090,10 @@ class IncSubtensor(Op):
     of incrementing it by that value.
     """
 
+    check_input = False
+
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
-            destroyhandler_tolerate_aliased=None):
+                 destroyhandler_tolerate_aliased=None):
         if destroyhandler_tolerate_aliased is None:
             destroyhandler_tolerate_aliased = []
         self.idx_list = map(Subtensor.convert, idx_list)
@@ -1083,7 +1101,7 @@ class IncSubtensor(Op):
         if inplace:
             self.destroy_map = {0: [0]}
         self.destroyhandler_tolerate_aliased = list(
-                destroyhandler_tolerate_aliased)
+            destroyhandler_tolerate_aliased)
         self.set_instead_of_inc = set_instead_of_inc
 
     def __eq__(self, other):
@@ -1107,7 +1125,7 @@ class IncSubtensor(Op):
         #                 else entry
         #                 for entry in self.idx_list)
         return hashtype(self) ^ hash(idx_list) ^ hash(self.inplace) \
-                        ^ hash(self.set_instead_of_inc)
+               ^ hash(self.set_instead_of_inc)
 
     def __str__(self):
         indices = []
@@ -1124,10 +1142,10 @@ class IncSubtensor(Op):
             msg += 'Inc'
         else:
             msg += 'Set'
-        return  "%s{%s;%s}" % (
-                self.__class__.__name__,
-                msg,
-                ", ".join(indices))
+        return "%s{%s;%s}" % (
+            self.__class__.__name__,
+            msg,
+            ", ".join(indices))
 
     def make_node(self, x, y, *inputs):
         """
@@ -1138,25 +1156,26 @@ class IncSubtensor(Op):
         x, y = map(theano.tensor.as_tensor_variable, [x, y])
         if y.ndim > x.ndim:
             raise ValueError(("Trying to increment a %d-dimensional "
-                "subtensor with a %d-dimensional value.") % (x.ndim,
-                    y.ndim))
+                              "subtensor with a %d-dimensional value.") % (
+                                  x.ndim, y.ndim))
         inputs = tuple(map(Subtensor.my_as_scalar, inputs))
 
         idx_list = list(self.idx_list)
         if len(idx_list) > x.type.ndim:
             exception = ValueError(
-                    Subtensor.e_invalid % (
-                        len(idx_list),
-                        x.type.ndim))
+                Subtensor.e_invalid % (
+                    len(idx_list),
+                    x.type.ndim))
             exception.subtensor_invalid = True
             raise exception
 
-        input_types = Subtensor.collapse(idx_list,
-                lambda entry: isinstance(entry, gof.Type))
+        input_types = Subtensor.collapse(
+            idx_list,
+            lambda entry: isinstance(entry, gof.Type))
         if len(inputs) != len(input_types):
             raise IndexError(
-                    "Not enough inputs to fill in the Subtensor template.",
-                    inputs, idx_list)
+                "Not enough inputs to fill in the Subtensor template.",
+                inputs, idx_list)
         for input, expected_type in izip(inputs, input_types):
             if input.type != expected_type:
                 raise TypeError(
@@ -1440,6 +1459,25 @@ class IncSubtensor(Op):
         else:
             gx = g_output
         gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
+        if gy.broadcastable != y.broadcastable:
+            y_broad = (True,) * (gy.ndim - y.ndim) + y.broadcastable
+            assert sum(gy.broadcastable) < sum(y_broad)
+            axis_to_sum = []
+            for i in range(gy.ndim):
+                if gy.broadcastable[i] is False and y_broad[i] is True:
+                    axis_to_sum.append(i)
+                elif (gy.broadcastable[i] is True and
+                      y_broad[i] is False):
+                    # This mean that THeano where able to infer that
+                    # gy.shape[i] is 1, so y.shape[i] is 1, but we
+                    # didn't know it. It is fine.
+                    pass
+                else:
+                    assert gy.broadcastable[i] == y_broad[i]
+            gy = gy.sum(axis=axis_to_sum, keepdims=True)
+            if gy.ndim != y.ndim:
+                gy = gy.dimshuffle(*range(y.ndim, gy.ndim))
+            assert gy.broadcastable == y.broadcastable
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 

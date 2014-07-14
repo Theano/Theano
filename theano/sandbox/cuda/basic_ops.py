@@ -5,10 +5,12 @@ import sys
 import numpy
 
 import theano
+
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
 from theano.scalar import Scalar
+
 scal = scalar # somewhere scalar gets reassigned to be a function
 
 from theano.gof.python25 import all, any
@@ -53,6 +55,8 @@ class HostFromGpu(GpuOp):
     """
     Implement the transfer from gpu to the cpu.
     """
+    check_input = False
+    
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -102,7 +106,7 @@ class HostFromGpu(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 host_from_gpu = HostFromGpu()
 
 
@@ -110,6 +114,8 @@ class GpuFromHost(GpuOp):
     """
     Implement the transfer from cpu to the gpu.
     """
+    check_input = False
+    
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -166,7 +172,7 @@ class GpuFromHost(GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 gpu_from_host = GpuFromHost()
 
@@ -3289,7 +3295,7 @@ class GpuContiguous(GpuOp):
                 Py_INCREF(%(z)s);
 
             } else if ((NULL == %(z)s)""" % locals()
-        for i in xrange(len(node.inputs[0].type.broadcastable)):
+        for i in xrange(node.inputs[0].type.ndim):
             str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])" % locals()
         str += """
                 || !CudaNdarray_is_c_contiguous(%(z)s))
@@ -3534,7 +3540,7 @@ __global__ void kEye(float* a, int n, int m) {
                     cudaGetErrorString(sts),
                     dims[0], dims[1]);
             %(fail)s;
-         }
+        }
         """ % locals()
 
         return s

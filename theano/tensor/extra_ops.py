@@ -68,13 +68,13 @@ class CumsumOp(theano.Op):
                 if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumSum(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                    PyArray_CumSum(%(x)s, NPY_MAXDIMS, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
@@ -83,13 +83,13 @@ class CumsumOp(theano.Op):
                 if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumSum(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                    PyArray_CumSum(%(x)s, %(axis)s, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
@@ -177,13 +177,13 @@ class CumprodOp(theano.Op):
                 if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumProd(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
+                    PyArray_CumProd(%(x)s, NPY_MAXDIMS, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
@@ -192,13 +192,13 @@ class CumprodOp(theano.Op):
                 if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumProd(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
+                    PyArray_CumProd(%(x)s, %(axis)s, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
