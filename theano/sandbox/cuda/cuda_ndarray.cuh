@@ -40,7 +40,7 @@
 #endif
 
 
-#include <cublas.h>
+#include <cublas_v2.h>
 
 #ifdef _WIN32
 #ifdef _CUDA_NDARRAY_C
@@ -80,6 +80,9 @@ typedef float real;
 
 #define VERBOSE_DEVICE_MALLOC 1
 #define NO_VERBOSE_DEVICE_MALLOC 0
+
+/* Use this handle to make cublas calls */
+extern cublasHandle_t handle;
 
 /**
  * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.
