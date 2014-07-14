@@ -405,20 +405,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail, force_init_beta=
         {
             if (PyArray_CHKFLAGS(%(zz)s, NPY_ARRAY_C_CONTIGUOUS))
             {
-                if (PyArray_DESCR(%(zz)s)->type_num == NPY_FLOAT)
-                {
-                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_ITEMSIZE(%(zz)s));
-                }
-                else if (PyArray_DESCR(%(zz)s)->type_num == NPY_DOUBLE)
-                {
-                    memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_ITEMSIZE(%(zz)s));
-                }
-                else
-                {
-                    PyErr_SetString(PyExc_AssertionError,
-                                    "neither float nor double dtype");
-                    %(fail)s
-                }
+                memset((void *)PyArray_DATA(%(zz)s), 0, PyArray_SIZE(%(zz)s)*PyArray_ITEMSIZE(%(zz)s));
             }
             else
             {

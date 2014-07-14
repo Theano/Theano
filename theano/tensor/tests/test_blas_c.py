@@ -15,6 +15,8 @@ from theano.tensor.blas_c import CGemv
 from theano.tensor.blas_scipy import ScipyGer
 from theano.tensor.blas import Gemv
 
+from theano.tensor.blas_c import check_force_gemv_init
+
 from theano.tests import unittest_tools
 from theano.tests.unittest_tools import TestOptimizationMixin
 
@@ -169,6 +171,14 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         # Test with negative strides on 2 dims
         assert numpy.allclose(f(self.Aval[::-1, ::-1], self.yval),
                 numpy.dot(self.Aval[::-1, ::-1], self.yval))
+
+    def test_force_gemv_init(self):
+        if check_force_gemv_init():
+            sys.stderr.write(
+                "WARNING: The current BLAS requires Theano to initialize"
+                + " memory for some GEMV calls which will result in a minor"
+                + " degradation in performance for such calls."
+            )
 
     def t_gemv1(self, m_shp):
         ''' test vector2 + dot(matrix, vector1) '''
