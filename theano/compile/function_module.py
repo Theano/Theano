@@ -1107,6 +1107,13 @@ class FunctionMaker(object):
                                  input_new, input_old in zip(inputs_new, inputs_old)):
                         print 'need to optimize, because inputs are of different types'
                         continue
+                    elif not all(ouput_new.type == output_old.type for
+                                 output_new, output_old in zip(outputs_new, outputs_old)):
+                        print 'need to optimize, because outputs are of different types'
+                        continue
+                    elif not len(fgraph.apply_node) == len(output_new.fgraph.apply_node):
+                        print 'need to optimize, because numbers of nodes in graph are different'
+                        continue
                     else:
                         # when the both inputs are of the same size
                         givens = dict(zip(inputs_new, inputs_old))
@@ -1122,15 +1129,15 @@ class FunctionMaker(object):
                         '''
                         # each element indicates if one of the outputs has the same graph
                         flags = []
-                        for output_new, output_old in zip(outputs_new, outputs_old):
+                        for output_new, output_old, i in zip(outputs_new, outputs_old, range(len(outputs_new))):
                             print 'loop through outputs node for both graphs'
 
                             f1 = output_new.owner.fgraph.clone()
                             f2 = output_old.owner.fgraph.clone()
                             # is_same_graph complains if fgraph is not None
 
-                            t1 = f1.outputs[0]
-                            t2 = f2.outputs[0]
+                            t1 = f1.outputs[i]
+                            t2 = f2.outputs[i]
 
                             def removeAllFgraph(remove):
                                 if hasattr(remove, 'fgraph'):
