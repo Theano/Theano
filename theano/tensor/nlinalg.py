@@ -54,11 +54,7 @@ class MatrixPinv(Op):
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z, )):
-        try:
-            z[0] = numpy.linalg.pinv(x).astype(x.dtype)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to invert %s' % str(node.inputs[0]))
-            raise
+        z[0] = numpy.linalg.pinv(x).astype(x.dtype)
 
     def __str__(self):
         return "MatrixPseudoInverse"
@@ -100,11 +96,7 @@ class MatrixInverse(Op):
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z, )):
-        try:
-            z[0] = numpy.linalg.inv(x).astype(x.dtype)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to invert %s' % str(node.inputs[0]))
-            raise
+        z[0] = numpy.linalg.inv(x).astype(x.dtype)
 
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return
@@ -346,12 +338,7 @@ class Eig(Op):
         return Apply(self, [x], [w, v])
 
     def perform(self, node, (x,), (w, v)):
-        try:
-            w[0], v[0] = [z.astype(x.dtype) for z in self._numop(x)]
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0]))
-            raise
+        w[0], v[0] = [z.astype(x.dtype) for z in self._numop(x)]
 
     def infer_shape(self, node, shapes):
         n = shapes[0][0]
@@ -394,12 +381,7 @@ class Eigh(Eig):
         return Apply(self, [x], [w, v])
 
     def perform(self, node, (x,), (w, v)):
-        try:
-            w[0], v[0] = self._numop(x, self.UPLO)
-        except numpy.linalg.LinAlgError:
-            logger.debug('Failed to find %s of %s' % (self._numop.__name__,
-                                                      node.inputs[0]))
-            raise
+        w[0], v[0] = self._numop(x, self.UPLO)
 
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return

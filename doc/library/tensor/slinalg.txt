@@ -1,4 +1,4 @@
-..  ../../../../theano/sandbox/linalg/ops.py
+..  ../../../../theano/sandbox/slinalg.py
 
 .. _libdoc_linalg:
 
@@ -14,7 +14,5 @@
 API
 ===
 
-.. automodule:: theano.tensor.slinalg.ops
-    :members:
-.. automodule:: theano.tensor.slinalg.kron
+.. automodule:: theano.tensor.slinalg
     :members:
