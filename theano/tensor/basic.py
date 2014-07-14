@@ -5060,6 +5060,11 @@ class Pad(Op):
         pad_width1 = (pad_width[0])
         assert array.ndim in [1, 2]
 
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        if not scipy_ver >= [1, 7]:
+            raise NotImplementedError("Numpy version is to old")
+
         if len(pad_width) == 2:
             pad_width2 = pad_width[1]
             pad_w = as_tensor_variable([pad_width1, pad_width2])
@@ -5096,6 +5101,11 @@ class PadWithKwargs(Op):
         array = as_tensor_variable(array)
         pad_width1 = (pad_width[0])
         assert array.ndim in [1, 2]
+
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        if not scipy_ver >= [1, 7]:
+            raise NotImplementedError("Numpy version is to old")
 
         if ("constant_values" in kwargs) or ("end_values" in kwargs):
             try:
