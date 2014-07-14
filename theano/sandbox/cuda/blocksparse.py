@@ -206,12 +206,15 @@ class SparseBlockGemvSS(GpuOp):
             }
           }
         }
+        Py_DECREF(W_part);
+        Py_DECREF(h_part);
+        Py_DECREF(out_part);
         }
         """ % dict(out=out, h=h, o=o, inputIdx=inputIdx, outputIdx=outputIdx,
                    W=W, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
