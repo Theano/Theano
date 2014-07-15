@@ -4190,7 +4190,8 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
     if (sa_1 == 0)
         sa_1 = 1;
 
-    cublasStatus_t err;
+    // This is important because we can end up not calling Sgemv at all
+    cublasStatus_t err = CUBLAS_STATUS_SUCCESS;
     if (CudaNdarray_SIZE(C)) {
         if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)
             || ((CudaNdarray_HOST_STRIDES(A)[0] == 1)
@@ -4306,7 +4307,8 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
     int sa_1 = (CudaNdarray_HOST_DIMS(A)[1] > 1) ? CudaNdarray_HOST_STRIDES(A)[1]
                                                  : CudaNdarray_HOST_DIMS(A)[0];
 
-    cublasStatus_t err;
+    // This is important because we can end up not calling Sger at all
+    cublasStatus_t err = CUBLAS_STATUS_SUCCESS;
     if(CudaNdarray_SIZE(A)){
         // If A is in col-major
         if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)

@@ -596,16 +596,20 @@ DllExport inline const char* ALWAYS_INLINE cublasGetErrorString(cublasStatus_t e
         return "the resource allocation failed";
     case CUBLAS_STATUS_INVALID_VALUE:
         return "the parameters n<0 or incx,incy=0";
+#ifdef CUBLAS_STATUS_ARCH_MISMATCH
     case CUBLAS_STATUS_ARCH_MISMATCH:
         return "required device feature not present";
+#endif
     case CUBLAS_STATUS_MAPPING_ERROR:
         return "an access to GPU memory space failed";
     case CUBLAS_STATUS_EXECUTION_FAILED:
         return "the function failed to launch on the GPU";
     case CUBLAS_STATUS_INTERNAL_ERROR:
         return "an internal operation failed";
+#ifdef CUBLAS_STATUS_NOT_SUPPORTED
     case CUBLAS_STATUS_NOT_SUPPORTED:
         return "unsupported function";
+#endif
     default:
         return "unknow code";
     }
