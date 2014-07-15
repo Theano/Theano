@@ -1038,163 +1038,136 @@ class FunctionMaker(object):
             theano.config.compute_test_value = theano.config.compute_test_value_opt
             gof.Op.add_stack_trace_on_call = False
 
-            def optimize_graph(fgraph):
-                '''
-                params
-                ------
-                fgraph: the new graph to be optimized, optimized in-place.
-                        {before_opt: after_opt, ....}
+            from theano.gof.compilelock import get_lock, release_lock
+            import os.path
+            graph_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
+            # the inputs, outputs, and size of the graph to be optimized
+            inputs_new = [inp.variable for inp in inputs]
+            outputs_new = [out.variable for out in outputs]
+            size_new = len(fgraph.apply_nodes)
+            need_optimize = False
+            get_lock()
+            key = None
+            '''
+            graph_db and need_optimize
+            '''
+            if os.path.isfile(graph_db_file):
+                print 'graph_db exists'
+            else:
+                # create graph_db
+                f = open(graph_db_file, 'w+b')
+                print 'created new graph_db %s' % graph_db_file
+                f.close
 
-                return
-                ------
-                opt_time: timing
-                ''' 
-                from theano.gof.compilelock import get_lock, release_lock
-                import cPickle
-                import os.path
-                graph_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
-                # the inputs, outputs, and size of the graph to be optimized
-                inputs_new = fgraph.inputs
-                outputs_new = fgraph.outputs
-                size_new = len(fgraph.apply_nodes)
-                need_optimize = False
-                get_lock()
-                key = None
-                '''
-                graph_db and need_optimize
-                '''
-                if os.path.isfile(graph_db_file):
-                    print 'graph_db exists'
+            # load the graph_db dictionary
+            try:
+                f = open(graph_db_file, 'r+b')
+                graph_db = cPickle.load(f)
+                f.close()
+                print 'graph_db is not empty'
+            except EOFError, e:
+                # the file has nothing in it
+                print e
+                print 'graph_db is empty'
+                graph_db = {}
+
+            print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
+            need_optimize = True
+            # the sole purpose of this loop is to set 'need_optimize'
+            for i, graph_old in enumerate(graph_db.keys()):
+                inputs_old = graph_old.inputs
+                outputs_old = graph_old.outputs
+                size_old = len(graph_old.apply_nodes)
+                print 'looping through graph_db %d/%d' % (i + 1, len(graph_db))
+                # Some heuristics to check is the same graphs have
+                # already been optimized before.
+                if len(inputs_new) != len(inputs_old):
+                    # If the inputs are of different size,
+                    # two graphs are for sure different
+                    print 'need to optimize, because input size is different'
+                    continue
+                elif len(outputs_new) != len(outputs_old):
+                    # If the inputs are of different size,
+                    # two graphs are for sure different
+                    print 'need to optimize, because output size is different'
+                    continue
+                elif not all(input_new.type == input_old.type for
+                             input_new, input_old in zip(inputs_new, inputs_old)):
+                    print 'need to optimize, because inputs are of different types'
+                    continue
+                elif not all(output_new.type == output_old.type for
+                             output_new, output_old in zip(outputs_new, outputs_old)):
+                    print 'need to optimize, because outputs are of different types'
+                    continue
+                elif not size_old == size_new:
+                    print 'need to optimize, because numbers of nodes in graph are different'
+                    continue
                 else:
-                    # create graph_db
-                    f = open(graph_db_file, 'w+b')
-                    print 'created new graph_db %s' % graph_db_file
-                    f.close
+                    flags = []
+                    for output_new, output_old, i in zip(outputs_new, outputs_old, range(len(outputs_new))):
+                        print 'loop through outputs node for both graphs'
 
-                # load the graph_db dictionary
-                try:
-                    f = open(graph_db_file, 'r+b')
-                    graph_db = cPickle.load(f)
-                    f.close()
-                    print 'graph_db is not empty'
-                except EOFError, e:
-                    # the file has nothing in it
-                    print e
-                    print 'graph_db is empty'
-                    graph_db = {}
+                        f2 = output_old.owner.fgraph.clone()
+                        t1 = output_new
+                        t2 = f2.outputs[i]
 
-                print 'loaded graph_db from %s, size=%d'%(graph_db_file,len(graph_db))
-                need_optimize = True
-                # the sole purpose of this loop is to set 'need_optimize'
-                for i, graph_old in enumerate(graph_db.keys()):
-                    inputs_old = graph_old.inputs
-                    outputs_old = graph_old.outputs
-                    size_old = len(graph_old.apply_nodes)
-                    print 'looping through graph_db %d/%d'%(i+1,len(graph_db))
-                    # Some heuristics to check is the same graphs have
-                    # already been optimized before.
-                    if len(inputs_new) != len(inputs_old):
-                        # If the inputs are of different size,
-                        # two graphs are for sure different
-                        print 'need to optimize, because input size is different'
-                        continue
-                    elif len(outputs_new) != len(outputs_old):
-                        # If the inputs are of different size,
-                        # two graphs are for sure different
-                        print 'need to optimize, because output size is different'
-                        continue
-                    elif not all(input_new.type == input_old.type for
-                                 input_new, input_old in zip(inputs_new, inputs_old)):
-                        print 'need to optimize, because inputs are of different types'
-                        continue
-                    elif not all(output_new.type == output_old.type for
-                                 output_new, output_old in zip(outputs_new, outputs_old)):
-                        print 'need to optimize, because outputs are of different types'
-                        continue
-                    elif not len(fgraph.apply_nodes) == len(graph_old.apply_nodes):
-                        print 'need to optimize, because numbers of nodes in graph are different'
-                        continue
-                    else:
-                        # when the both inputs are of the same size
-                        givens = dict(zip(inputs_new, inputs_old))
-                        '''
-                        # strip .fgraph off the givens
-                        i_new = [copy.deepcopy(input_new) for input_new in inputs_new]
-                        i_old = [copy.deepcopy(input_old) for input_old in inputs_old]
-                        for node in i_new:
-                            node.fgraph = None
-                        for node in i_old:
-                            node.fgraph = None
-                        givens = dict(zip(i_new, i_old))
-                        '''
-                        # each element indicates if one of the outputs has the same graph
-                        flags = []
-                        for output_new, output_old, i in zip(outputs_new, outputs_old, range(len(outputs_new))):
-                            print 'loop through outputs node for both graphs'
+                        def removeAllFgraph(remove):
+                            if hasattr(remove, 'fgraph'):
+                                del remove.fgraph
+                            if hasattr(remove, 'owner'):
+                                if remove.owner == None:
+                                    pass
+                                else:
+                                    if hasattr(remove.owner, 'fgraph'):
+                                        del remove.owner.fgraph
+                                    if hasattr(remove.owner, 'inputs'):
+                                        remove.owner.inputs = [removeAllFgraph(
+                                            i) for i in remove.owner.inputs]
+                                        for o in remove.owner.outputs:
+                                            if hasattr(o, 'fgraph'):
+                                                del o.fgraph
+                            return remove
 
-                            f1 = output_new.owner.fgraph.clone()
-                            f2 = output_old.owner.fgraph.clone()
-                            # is_same_graph complains if fgraph is not None
+                        t2 = removeAllFgraph(t2)
+                        givens = dict(zip(gof.graph.inputs([t1]),
+                                        gof.graph.inputs([t2])))
+                        temp = dict(zip(gof.graph.inputs([t1]),
+                                        gof.graph.inputs([t2])))
+                        for key, value in temp.iteritems():
+                            if key.type != value.type:
+                                del givens[key]
+                        flag = is_same_graph(t1, t2, givens=givens)
+                        flags.append(flag)
 
-                            t1 = f1.outputs[i]
-                            t2 = f2.outputs[i]
+                    is_same = all(flags)
+                    if is_same:
+                        # found the match
+                        print 'found #TODO: he match, no need to optimize'
+                        need_optimize = False
+                        key = graph_old
+                        break
 
-                            def removeAllFgraph(remove):
-                                if hasattr(remove, 'fgraph'):
-                                    del remove.fgraph
-                                if hasattr(remove, 'owner'):
-                                    if remove.owner == None:
-                                        pass
-                                    else:
-                                        if hasattr(remove.owner, 'fgraph'):
-                                            del remove.owner.fgraph
-                                        if hasattr(remove.owner, 'inputs'):
-                                            remove.owner.inputs = [removeAllFgraph(
-                                                i) for i in remove.owner.inputs]
-                                            for o in remove.owner.outputs:
-                                                if hasattr(o, 'fgraph'):
-                                                    del o.fgraph
-                                return remove
-
-                            t1 = removeAllFgraph(t1)
-                            t2 = removeAllFgraph(t2)
-                            givens = dict(zip(gof.graph.ancestors([t1]),
-                                            gof.graph.ancestors([t2])))
-                            flag = is_same_graph(t1, t2, givens=givens)
-                            flags.append(flag)
-
-                        is_same = all(flags)
-                        if is_same:
-                            # found the match
-                            print 'found #TODO: he match, no need to optimize'
-                            need_optimize = False
-                            key = graph_old
-                            break
-
-                # now optimize or not
-                if need_optimize:
-                    # this is a brand new graph, optimize it, save it to graph_db
-                    print 'optimizing the graph'
-                    before_opt = fgraph.clone()
-                    start_optimizer = time.time()
-                    optimizer_profile = optimizer(fgraph)
-                    end_optimizer = time.time()
-                    opt_time = end_optimizer - start_optimizer
-                    graph_db.update({before_opt:fgraph})
-                    f = open(graph_db_file, 'w+b')
-                    cPickle.dump(graph_db, f, -1)
-                    f.close()
-                    print 'saved into graph_db'
-                else:
-                    print 'no opt, get graph from graph_db'
-                    # just read the optmized graph from graph_db
-                    opt_time = 0
-                    fgraph = graph_db[key]
-                # release stuff
-                release_lock()
-                return opt_time
-
-            opt_time = optimize_graph(fgraph)
+            # now optimize or not
+            if need_optimize:
+                # this is a brand new graph, optimize it, save it to graph_db
+                print 'optimizing the graph'
+                before_opt = fgraph.clone()
+                start_optimizer = time.time()
+                optimizer_profile = optimizer(fgraph)
+                end_optimizer = time.time()
+                opt_time = end_optimizer - start_optimizer
+                graph_db.update({before_opt:fgraph})
+                f = open(graph_db_file, 'w+b')
+                cPickle.dump(graph_db, f, -1)
+                f.close()
+                print 'saved into graph_db'
+            else:
+                print 'no opt, get graph from graph_db'
+                # just read the optmized graph from graph_db
+                opt_time = 0
+                fgraph = graph_db[key]
+            # release stuff
+            release_lock()
 
             print 'opt took %s'%opt_time
             if profile:
