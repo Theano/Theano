@@ -254,13 +254,6 @@ class NVCC_compiler(object):
             libs.append('cudart')
 
         lib_dirs = std_lib_dirs() + lib_dirs
-        if cuda_root:
-            lib_dirs.append(os.path.join(cuda_root, 'lib'))
-
-            # from Benjamin Schrauwen April 14 2010
-            if sys.platform != 'darwin':
-                # OS X uses universal libraries
-                lib_dirs.append(os.path.join(cuda_root, 'lib64'))
 
         if sys.platform != 'darwin':
             # sometimes, the linker cannot find -lpython so we need to tell it

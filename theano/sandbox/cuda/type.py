@@ -408,9 +408,6 @@ class CudaNdarrayType(Type):
 
     def c_lib_dirs(self):
         ret = [os.path.dirname(cuda_ndarray.__file__)]
-        cuda_root = config.cuda.root
-        if cuda_root:
-            ret.append(os.path.join(cuda_root, 'lib'))
         return ret
 
     def c_libraries(self):
