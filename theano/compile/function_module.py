@@ -1050,7 +1050,7 @@ class FunctionMaker(object):
                 opt_time: timing
                 ''' 
                 from theano.gof.compilelock import get_lock, release_lock
-                import pickle
+                import cPickle
                 import os.path
                 graph_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
                 # the inputs, outputs, and size of the graph to be optimized
@@ -1074,7 +1074,7 @@ class FunctionMaker(object):
                 # load the graph_db dictionary
                 try:
                     f = open(graph_db_file, 'r+b')
-                    graph_db = pickle.load(f)
+                    graph_db = cPickle.load(f)
                     f.close()
                     print 'graph_db is not empty'
                 except EOFError, e:
@@ -1111,7 +1111,7 @@ class FunctionMaker(object):
                                  output_new, output_old in zip(outputs_new, outputs_old)):
                         print 'need to optimize, because outputs are of different types'
                         continue
-                    elif not len(fgraph.apply_node) == len(graph_old.apply_node):
+                    elif not len(fgraph.apply_nodes) == len(graph_old.apply_nodes):
                         print 'need to optimize, because numbers of nodes in graph are different'
                         continue
                     else:
@@ -1182,7 +1182,7 @@ class FunctionMaker(object):
                     opt_time = end_optimizer - start_optimizer
                     graph_db.update({before_opt:fgraph})
                     f = open(graph_db_file, 'w+b')
-                    pickle.dump(graph_db, f, -1)
+                    cPickle.dump(graph_db, f, -1)
                     f.close()
                     print 'saved into graph_db'
                 else:
