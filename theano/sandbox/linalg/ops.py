@@ -746,6 +746,17 @@ class ExtractDiag(Op):
 extract_diag = ExtractDiag()
 #TODO: optimization to insert ExtractDiag with view=True
 
+@register_canonicalize
+@local_optimizer([])
+def diag_dot_to_elemwise(node):
+    if node.op == extract_diag:
+        z, = node.inputs
+        if z.owner and z.owner.op == tensor.dot:
+            x, y = z.owner.inputs
+            # XXX: careful to coordinate with extract_diag re non-square z
+            return [(x * y.dimshuffle(1, 0)).sum(axis=1)]
+
+
 
 class AllocDiag(Op):
     """
@@ -823,7 +834,6 @@ class Det(Op):
     def __str__(self):
         return "Det"
 det = Det()
-
 
 def trace(X):
     """
