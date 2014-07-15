@@ -1165,11 +1165,12 @@ class FunctionMaker(object):
                 print 'no opt, get graph from graph_db'
                 # just read the optmized graph from graph_db
                 opt_time = 0
-                fgraph = graph_db[key]
+                self.fgraph = graph_db[key]
+                fgraph = self.fgraph
             # release stuff
             release_lock()
 
-            print 'opt took %s'%opt_time
+            print 'opt took %s' % opt_time
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
