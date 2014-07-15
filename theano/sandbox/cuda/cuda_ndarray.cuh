@@ -40,7 +40,7 @@
 #endif
 
 
-#include <cublas.h>
+#include <cublas_v2.h>
 
 #ifdef _WIN32
 #ifdef _CUDA_NDARRAY_C
@@ -80,6 +80,9 @@ typedef float real;
 
 #define VERBOSE_DEVICE_MALLOC 1
 #define NO_VERBOSE_DEVICE_MALLOC 0
+
+/* Use this handle to make cublas calls */
+extern cublasHandle_t handle;
 
 /**
  * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.
@@ -365,8 +368,8 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
             //Detect overflow on unsigned integer
             if (dim[i] != 0 && size > (SIZE_MAX / dim[i])) {
                 PyErr_Format(PyExc_AssertionError,
-                             "Can't store in size_t for the bytes requested",
-                             size);
+                             "Can't store in size_t for the bytes requested %llu",
+                             (unsigned long long)size);
                 return -1;
             }
             size = size * dim[i];
@@ -382,8 +385,8 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
             //Detect overflow on unsigned integer
             if (dim[i] != 0 && size > (SIZE_MAX / dim[i])) {
                 PyErr_Format(PyExc_AssertionError,
-                             "Can't store in size_t for the bytes requested",
-                             size);
+                             "Can't store in size_t for the bytes requested %llu",
+                             (unsigned long long)size);
                 return -1;
             }
             size = size * dim[i];
@@ -583,23 +586,33 @@ DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_othe
 DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
                                       const int * dims, int fortran = 0);
 
-DllExport inline const char* ALWAYS_INLINE cublasGetErrorString(cublasStatus err){
-    if(CUBLAS_STATUS_SUCCESS == err)
+DllExport inline const char* ALWAYS_INLINE cublasGetErrorString(cublasStatus_t err){
+    switch(err) {
+    case CUBLAS_STATUS_SUCCESS:
         return "success";
-    else if(CUBLAS_STATUS_NOT_INITIALIZED == err)
+    case CUBLAS_STATUS_NOT_INITIALIZED:
         return "the library was not initialized";
-    else if(CUBLAS_STATUS_ALLOC_FAILED == err)
+    case CUBLAS_STATUS_ALLOC_FAILED:
         return "the resource allocation failed";
-    else if(CUBLAS_STATUS_INVALID_VALUE == err)
+    case CUBLAS_STATUS_INVALID_VALUE:
         return "the parameters n<0 or incx,incy=0";
-    else if(CUBLAS_STATUS_MAPPING_ERROR == err)
+#ifdef CUBLAS_STATUS_ARCH_MISMATCH
+    case CUBLAS_STATUS_ARCH_MISMATCH:
+        return "required device feature not present";
+#endif
+    case CUBLAS_STATUS_MAPPING_ERROR:
         return "an access to GPU memory space failed";
-    else if(CUBLAS_STATUS_EXECUTION_FAILED == err)
+    case CUBLAS_STATUS_EXECUTION_FAILED:
         return "the function failed to launch on the GPU";
-    else if(CUBLAS_STATUS_INTERNAL_ERROR == err)
+    case CUBLAS_STATUS_INTERNAL_ERROR:
         return "an internal operation failed";
-    else
+#ifdef CUBLAS_STATUS_NOT_SUPPORTED
+    case CUBLAS_STATUS_NOT_SUPPORTED:
+        return "unsupported function";
+#endif
+    default:
         return "unknow code";
+    }
 }
 
 #endif
