@@ -5035,11 +5035,6 @@ def power(x, y):
 
 def pad(array, pad_width, mode=None, **kwargs):
 
-    numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-    if not scipy_ver >= [1, 7]:
-        raise NotImplementedError("Numpy version is to old")
-
     if len(kwargs) != 0:
         return PadWithKwargs(mode)(array, pad_width, kwargs)
     else:
@@ -5150,3 +5145,7 @@ def swapaxes(y, axis1, axis2):
     li = range(0, ndim)
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
+
+def addition(x, y):
+    return x + y
+

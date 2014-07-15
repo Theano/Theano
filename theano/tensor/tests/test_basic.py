@@ -6967,8 +6967,10 @@ class T_Power():
 
 
 class T_Pad():
-    def test_numpy_compare(self):
-        try:
+    numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+    if scipy_ver >= [1, 7]:
+        def test_numpy_compare(self):
             rng = numpy.random.RandomState(utt.fetch_seed())
             a = tensor.vector()
             b = tensor.matrix()
@@ -7006,8 +7008,6 @@ class T_Pad():
                 assert numpy.allclose(t_pd, n_pd)
                 assert numpy.allclose(t_pe, n_pe)
                 assert numpy.allclose(t_pf, n_pf)
-        except NotImplementedError, e:
-            assert "Numpy version is to old" in str(e)  
 
 """
 
