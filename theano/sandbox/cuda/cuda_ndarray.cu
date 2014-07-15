@@ -539,14 +539,15 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
 
     npy_intp rval_size = PyArray_SIZE(rval);
     void *rval_data = PyArray_DATA(rval);
+    cublasStatus_t err;
     CNDA_BEGIN_ALLOW_THREADS
-    cublasGetVector(rval_size, sizeof(real),
-                    contiguous_self->devdata, 1,
-                    rval_data, 1);
+    err = cublasGetVector(rval_size, sizeof(real),
+                          contiguous_self->devdata, 1,
+                          rval_data, 1);
     //CNDA_THREAD_SYNC;  // unneeded because cublasGetVector is blocking anyway
     CNDA_END_ALLOW_THREADS
 
-    if (CUBLAS_STATUS_SUCCESS != cublasGetError())
+    if (CUBLAS_STATUS_SUCCESS != err)
     {
         PyErr_SetString(PyExc_RuntimeError, "error copying data to host");
         Py_DECREF(rval);
@@ -3009,7 +3010,7 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
                             "CudaNdarray_ptr_int_size: Can't allocate memory on the gpu.");
     }
     get_gpu_ptr_size<<<1,1>>>(gpu_data);
-    if (cudaSuccess != cublasGetError()){
+    if (cudaSuccess != cudaGetLastError()){
 
         device_free(gpu_data);
         return PyErr_Format(PyExc_RuntimeError,
@@ -3018,16 +3019,19 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 
     // Transfer the result to cpu
     int gpu_sizes[] = {-1,-1};
-    cublasGetVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
+    cublasStatus_t err;
+    err = cublasGetVector(2, sizeof(int), gpu_data, 1, gpu_sizes, 1);
     device_free(gpu_data);
 
-    if (CUBLAS_STATUS_SUCCESS != cublasGetError()){
+    if (CUBLAS_STATUS_SUCCESS != err){
         PyErr_SetString(PyExc_RuntimeError, "error copying data to from memory");
         return NULL;
     }
     return Py_BuildValue("iiii", gpu_sizes[0], sizeof(float*), sizeof(int), gpu_sizes[1]);
 }
 
+static int cublas_init();
+static int cublas_shutdown();
 // Initialize the gpu.
 // Takes one optional parameter, the device number.
 // If provided, it sets that device to be the active device.
@@ -3093,6 +3097,11 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                                 cudaGetErrorString(cudaGetLastError()));
         }
     }
+
+    // Initialize cublas
+    if (handle != NULL)
+        cublas_shutdown();
+    cublas_init();
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3537,7 +3546,7 @@ CudaNdarray_New(int nd)
 //
 //////////////////////////////
 
-int
+static int
 cublas_init()
 {
     if (CUBLAS_STATUS_SUCCESS != cublasCreate(&handle))
@@ -3555,7 +3564,7 @@ cublas_init()
     return 0;
 }
 
-int
+static int
 cublas_shutdown()
 {
     if (CUBLAS_STATUS_SUCCESS != cublasDestroy(handle))
@@ -3587,15 +3596,15 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     }
     npy_intp py_src_size = PyArray_SIZE(py_src);
     void *py_src_data = PyArray_DATA(py_src);
-    cublasStatus_t err;
+    cublasStatus_t cerr;
     CNDA_BEGIN_ALLOW_THREADS
-    err= cublasSetVector(py_src_size,
-            sizeof(real),
-            py_src_data, 1,
-            self->devdata, 1);
+    cerr = cublasSetVector(py_src_size,
+                           sizeof(real),
+                           py_src_data, 1,
+                           self->devdata, 1);
     //CNDA_THREAD_SYNC;  // unneeded because cublasSetVector is blocking anyway
     CNDA_END_ALLOW_THREADS
-    if (CUBLAS_STATUS_SUCCESS != err)
+    if (CUBLAS_STATUS_SUCCESS != cerr)
     {
         PyErr_SetString(PyExc_RuntimeError, "error copying data to device memory");
         Py_DECREF(py_src);
@@ -4058,7 +4067,7 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     if (sy == 0){sy = 1;}\
     if (sz == 0){sz = 1;}\
     if ((sx > 0) && (sy > 0) && (sz > 0)) { \
-        err = cublasSgemm(handle, T0, T1, D0, D1, D2, a, x, sx, y, sy, b, z, sz); \
+        err = cublasSgemm(handle, T0, T1, D0, D1, D2, &a, x, sx, y, sy, &b, z, sz); \
     } else { \
         PyErr_SetString(PyExc_AssertionError, "negative stride to sGemm");\
         Py_XDECREF(A_new);\
@@ -4088,7 +4097,7 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     {
         PyErr_Format(PyExc_RuntimeError,
                      "cublasSgemm failed (%i) %s\n"
-                     " unit=%h N=%d, c.dims=[%d %d], a.dim=[%d %d], alpha=%f, beta=%f, a=%f, b=%f, c=%f"
+                     " unit=%h N=%d, c.dims=[%d %d], a.dim=[%d %d], alpha=%f, beta=%f, a=%p, b=%p, c=%p"
                      " sa_0=%d, sa_1=%d, sb_0=%d, sb_1=%d, sc_0=%d, sc_1=%d",
                      err,  cublasGetErrorString(err),
                      unit, N, CudaNdarray_HOST_DIMS(C)[0], CudaNdarray_HOST_DIMS(C)[1],
@@ -4189,10 +4198,10 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
         {
             err = cublasSgemv(handle, CUBLAS_OP_N,
                     CudaNdarray_HOST_DIMS(A)[0], CudaNdarray_HOST_DIMS(A)[1],
-                    alpha,
+                    &alpha,
                     CudaNdarray_DEV_DATA(A), sa_1,
                     CudaNdarray_DEV_DATA(B), sb_0,
-                    beta,
+                    &beta,
                     CudaNdarray_DEV_DATA(C), sc_0);
         }
         else if ((CudaNdarray_HOST_DIMS(A)[1] <= 1)
@@ -4201,10 +4210,10 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
         {
             err = cublasSgemv(handle, CUBLAS_OP_T,
                     CudaNdarray_HOST_DIMS(A)[1], CudaNdarray_HOST_DIMS(A)[0],
-                    alpha,
+                    &alpha,
                     CudaNdarray_DEV_DATA(A), sa_0,
                     CudaNdarray_DEV_DATA(B), sb_0,
-                    beta,
+                    &beta,
                     CudaNdarray_DEV_DATA(C), sc_0);
         }
         else
@@ -4297,14 +4306,14 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
     int sa_1 = (CudaNdarray_HOST_DIMS(A)[1] > 1) ? CudaNdarray_HOST_STRIDES(A)[1]
                                                  : CudaNdarray_HOST_DIMS(A)[0];
 
-    cublasStatus err;
+    cublasStatus_t err;
     if(CudaNdarray_SIZE(A)){
         // If A is in col-major
         if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)
             || ((CudaNdarray_HOST_STRIDES(A)[0] == 1)
                 && (CudaNdarray_HOST_STRIDES(A)[1] > 0)))
         {
-            err = cublasSger(handle, CudaNdarray_HOST_DIMS(x)[0], CudaNdarray_HOST_DIMS(y)[0], alpha,
+            err = cublasSger(handle, CudaNdarray_HOST_DIMS(x)[0], CudaNdarray_HOST_DIMS(y)[0], &alpha,
                        CudaNdarray_DEV_DATA(x), x_strides,
                        CudaNdarray_DEV_DATA(y), y_strides,
                        CudaNdarray_DEV_DATA(A), sa_1);
@@ -4314,7 +4323,7 @@ int CudaNdarray_sger(float alpha, const CudaNdarray * x, const CudaNdarray * y, 
                 || ((CudaNdarray_HOST_STRIDES(A)[1] == 1)
                     && (CudaNdarray_HOST_STRIDES(A)[0] > 0)))
         {
-            err = cublasSger(handle, CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], alpha,
+            err = cublasSger(handle, CudaNdarray_HOST_DIMS(y)[0], CudaNdarray_HOST_DIMS(x)[0], &alpha,
                        CudaNdarray_DEV_DATA(y), y_strides,
                        CudaNdarray_DEV_DATA(x), x_strides,
                        CudaNdarray_DEV_DATA(A), sa_0);
