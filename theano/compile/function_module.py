@@ -1107,11 +1107,11 @@ class FunctionMaker(object):
                                  input_new, input_old in zip(inputs_new, inputs_old)):
                         print 'need to optimize, because inputs are of different types'
                         continue
-                    elif not all(ouput_new.type == output_old.type for
+                    elif not all(output_new.type == output_old.type for
                                  output_new, output_old in zip(outputs_new, outputs_old)):
                         print 'need to optimize, because outputs are of different types'
                         continue
-                    elif not len(fgraph.apply_node) == len(output_new.fgraph.apply_node):
+                    elif not len(fgraph.apply_node) == len(graph_old.apply_node):
                         print 'need to optimize, because numbers of nodes in graph are different'
                         continue
                     else:
