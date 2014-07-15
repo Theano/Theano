@@ -41,7 +41,9 @@ def test_profiling():
         for line in buf.getvalue().split("\n"):
             if "Max if linker=cvm" in line:
                 print line
-            elif "The minimum peak from all valid apply node" in line:
+            elif "Minimum peak from all valid apply node" in line:
+                print line
+            elif "order" in line:
                 print line
 
     finally:
