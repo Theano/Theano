@@ -5042,8 +5042,6 @@ def pad(array, pad_width, mode=None, **kwargs):
 
 class Pad(Op):
 
-    _numop = staticmethod(numpy.pad)
-
     def __init__(self, mode):
         self.mode = mode
 
@@ -5061,7 +5059,12 @@ class Pad(Op):
         pad_width1 = (pad_width[0])
         assert array.ndim in [1, 2]
 
-        if len(pad_width) == 2:
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        if not numpy_ver >= [1, 7]:
+            raise NotImplementedError("Numpy version is to old")
+
+        elif len(pad_width) == 2:
             pad_width2 = pad_width[1]
             pad_w = as_tensor_variable([pad_width1, pad_width2])
         else:
@@ -5072,14 +5075,12 @@ class Pad(Op):
     def perform(self, node, inputs, (z,)):
         array = inputs[0]
         pad_width = tuple(inputs[1])
-        z[0] = self._numop(array, pad_width, self.mode)
+        z[0] = numpy.pad(array, pad_width, self.mode)
 
     def __str__(self):
-        return self._numop.__class__.__name__
+        return self.__class__.__name__
 
 class PadWithKwargs(Op):
-
-    _numop = staticmethod(numpy.pad)
 
     def __init__(self, mode):
         self.mode = mode
@@ -5097,6 +5098,11 @@ class PadWithKwargs(Op):
         array = as_tensor_variable(array)
         pad_width1 = (pad_width[0])
         assert array.ndim in [1, 2]
+
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        if not numpy_ver >= [1, 7]:
+            raise NotImplementedError("Numpy version is to old")
 
         if ("constant_values" in kwargs) or ("end_values" in kwargs):
             try:
@@ -5128,14 +5134,14 @@ class PadWithKwargs(Op):
         pad_width = tuple(inputs[1])
         val = tuple(inputs[2])
         if self.mode == 'constant':
-            z[0] = self._numop(array, pad_width, self.mode, constant_values=val)
+            z[0] = numpy.pad(array, pad_width, self.mode, constant_values=val)
         elif self.mode == 'linear_ramp':
-            z[0] = self._numop(array, pad_width, self.mode, end_values=val)      
+            z[0] = numpy.pad(array, pad_width, self.mode, end_values=val)      
         else:
-            z[0] = self._numop(array, pad_width, self.mode, reflect_type='odd')
+            z[0] = numpy.pad(array, pad_width, self.mode, reflect_type='odd')
 
     def __str__(self):
-        return self._numop.__class__.__name__
+        return self.__class__.__name__
 
 
 def swapaxes(y, axis1, axis2):
@@ -5145,7 +5151,3 @@ def swapaxes(y, axis1, axis2):
     li = range(0, ndim)
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
-
-def addition(x, y):
-    return x + y
-
