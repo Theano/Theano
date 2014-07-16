@@ -92,7 +92,7 @@ class TypedListType(gof.Type):
             if (!PyList_Check(py_%(name)s)) {
                 PyErr_SetString(PyExc_TypeError, "expected a list");
                 %(fail)s
-            }"""
+            }""" % dict(name=name, fail=sub['fail'])
         else:
             pre = ""
         return pre + """
