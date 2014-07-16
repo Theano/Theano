@@ -6967,47 +6967,49 @@ class T_Power():
 
 
 class T_Pad():
-    try:
-        def test_numpy_compare(self):
-            rng = numpy.random.RandomState(utt.fetch_seed())
-            a = tensor.vector()
-            b = tensor.matrix()
+    def test_numpy_compare(self):
+        a = tensor.vector()
+        b = tensor.matrix()
 
-            A = numpy.random.rand(5)
-            B = numpy.random.rand(5,6)
+        A = numpy.random.rand(5)
+        B = numpy.random.rand(5, 6)
 
-            modes = ['constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
-            var = [a, b]
-            v = [A, B]
-            for i in range(0, 10):
-                fa = function([a], pad(a, (3,4), modes[i]))
-                fb = function([b], pad(b, (3,4), modes[i]))
-                t_pa = fa(A)
-                t_pb = fb(B)
-                n_pa = numpy.pad(A, (3,4), modes[i])
-                n_pb = numpy.pad(B, (3,4), modes[i])
+        modes = ['constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
+        vas = [a, b]
+        vs = [A, B]
+
+        for m in modes:
+            fa = function([a], pad(a, (3, 4), m))
+            fb = function([b], pad(b, (3, 4), m))
+            t_pa = fa(A)
+            t_pb = fb(B)
+            try:
+                n_pa = numpy.pad(A, (3, 4), m)
+                n_pb = numpy.pad(B, (3, 4), m)
                 assert numpy.allclose(t_pa, n_pa)
                 assert numpy.allclose(t_pb, n_pb)
+            except NotImplementedError, e:
+                assert "Numpy version is to old" in str(e)
 
-            for j in range(0, 2):
-                fc = function([var[j]], pad(var[j], (3,4), 'constant', constant_values=(3,4)))
-                fd = function([var[j]], pad(var[j], (3,4), 'linear_ramp', end_values=(4,6)))
-                fe = function([var[j]], pad(var[j], (3,4), 'reflect', reflect_type='odd'))
-                ff = function([var[j]], pad(var[j], (3,4), 'symmetric', reflect_type='odd'))
-                t_pc = fc(v[j])
-                t_pd = fd(v[j])
-                t_pe = fe(v[j])
-                t_pf = ff(v[j]) 
-                n_pc = numpy.pad(v[j], (3,4), 'constant', constant_values=(3,4))
-                n_pd = numpy.pad(v[j], (3,4), 'linear_ramp', end_values=(4,6))
-                n_pe = numpy.pad(v[j], (3,4), 'reflect', reflect_type='odd')
-                n_pf = numpy.pad(v[j], (3,4), 'symmetric', reflect_type='odd')
-                assert numpy.allclose(t_pc, n_pc)
-                assert numpy.allclose(t_pd, n_pd)
-                assert numpy.allclose(t_pe, n_pe)
-                assert numpy.allclose(t_pf, n_pf)
-    except NotImplementedError, e:
-        assert "Numpy version is to old" in str(e)
+        for var, v in zip(vas, vs):
+            for mode, k, t in [('constant', 'constant_values', (3, 4)), ('linear_ramp', 'end_values', (3, 4)), ('reflect', 'reflect_type', 'odd'), ('symmetric', 'reflect_type', 'even')]:
+                fc = function([var], pad(var, (3, 4), mode, **{k: t}))
+                t_pc = fc(v)
+                try:
+                    n_pc = numpy.pad(v, (3, 4), mode, **{k: t})
+                    assert numpy.allclose(t_pc, n_pc)
+                except NotImplementedError, e:
+                    assert "Numpy version is to old" in str(e)
+                if var.ndim == 2:
+                    fd = function([var], pad(var, [(3, 4), (5, 6)], mode, **{k: t}))
+                    t_pd = fd(v)
+                    try:
+                        n_pd = numpy.pad(v, [(3, 4), (5, 6)], mode, **{k: t})
+                        assert numpy.allclose(t_pc, n_pc)
+                    except NotImplementedError, e:
+                        assert "Numpy version is to old" in str(e)
+
+
 
 """
 

@@ -5036,7 +5036,9 @@ def power(x, y):
 def pad(array, pad_width, mode=None, **kwargs):
 
     if len(kwargs) != 0:
-        return PadWithKwargs(mode)(array, pad_width, kwargs)
+        assert len(kwargs) == 1
+        return PadWithKwargs(mode, kwargs.keys()[0])(array,
+        pad_width, kwargs.values()[0])
     else:
         return Pad(mode)(array, pad_width)
 
@@ -5056,25 +5058,20 @@ class Pad(Op):
 
     def make_node(self, array, pad_width):
         array = as_tensor_variable(array)
-        pad_width1 = (pad_width[0])
-        assert array.ndim in [1, 2]
+
+        assert isinstance(pad_width, (list, tuple, int))
+        pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
 
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
         if not numpy_ver >= [1, 7]:
             raise NotImplementedError("Numpy version is to old")
 
-        elif len(pad_width) == 2:
-            pad_width2 = pad_width[1]
-            pad_w = as_tensor_variable([pad_width1, pad_width2])
-        else:
-            pad_w = as_tensor_variable([pad_width1])
-
-        return Apply(self, [array, pad_w], [array.type()])
+        return Apply(self, [array, pad_width], [array.type()])
 
     def perform(self, node, inputs, (z,)):
         array = inputs[0]
-        pad_width = tuple(inputs[1])
+        pad_width = inputs[1]
         z[0] = numpy.pad(array, pad_width, self.mode)
 
     def __str__(self):
@@ -5082,8 +5079,9 @@ class Pad(Op):
 
 class PadWithKwargs(Op):
 
-    def __init__(self, mode):
+    def __init__(self, mode, kwargs):
         self.mode = mode
+        self.kwargs = kwargs
 
     def __hash__(self):
         return hash((type(self), self.props()))
@@ -5093,56 +5091,41 @@ class PadWithKwargs(Op):
 
     def props(self):
         return self.mode
+        return self.kwargs
 
-    def make_node(self, array, pad_width, kwargs):
+    def make_node(self, array, pad_width, values):
         array = as_tensor_variable(array)
-        pad_width1 = (pad_width[0])
-        assert array.ndim in [1, 2]
+
+        assert isinstance(pad_width, (list, tuple, int))
+        pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
 
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
         if not numpy_ver >= [1, 7]:
             raise NotImplementedError("Numpy version is to old")
 
-        if ("constant_values" in kwargs) or ("end_values" in kwargs):
-            try:
-                val = as_tensor_variable([kwargs["constant_values"][0], kwargs["constant_values"][1]])
-                if len(pad_width) == 2:
-                    pad_width2 = pad_width[1]
-                    pad_w = as_tensor_variable([pad_width1, pad_width2])
-                else:
-                    pad_w = as_tensor_variable([pad_width1])
-            except KeyError:
-                val = as_tensor_variable([kwargs["end_values"][0], kwargs["end_values"][1]])
-                if len(pad_width) == 2:
-                    pad_width2 = pad_width[1]
-                    pad_w = as_tensor_variable([pad_width1, pad_width2])
-                else:
-                    pad_w = as_tensor_variable([pad_width1])
-        else:
-            val = as_tensor_variable([2])
-            if len(pad_width) == 2:
-                pad_width2 = pad_width[1]
-                pad_w = as_tensor_variable([pad_width1, pad_width2])
-            else:
-                pad_w = as_tensor_variable([pad_width1])
+        value = theano.gof.Constant(theano.gof.generic, values)
 
-        return Apply(self, [array, pad_w, val], [array.type()])
+        return Apply(self, [array, pad_width, value], [array.type()])
 
     def perform(self, node, inputs, (z,)):
         array = inputs[0]
-        pad_width = tuple(inputs[1])
-        val = tuple(inputs[2])
-        if self.mode == 'constant':
-            z[0] = numpy.pad(array, pad_width, self.mode, constant_values=val)
-        elif self.mode == 'linear_ramp':
-            z[0] = numpy.pad(array, pad_width, self.mode, end_values=val)      
-        else:
-            z[0] = numpy.pad(array, pad_width, self.mode, reflect_type='odd')
+        pad_width = inputs[1]
+        val = inputs[2]
+
+        z[0] = numpy.pad(array, pad_width, self.mode, **{self.kwargs:val})
 
     def __str__(self):
         return self.__class__.__name__
-
+"""
+import theano
+from theano.tensor import basic
+from theano import function
+from theano import tensor as T
+x = T.vector()
+y = basic.pad(x,(1,1), 'constant', constant_values=(1,6))
+f = function([x], y)
+"""
 
 def swapaxes(y, axis1, axis2):
     "swap axes of inputted tensor"
