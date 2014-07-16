@@ -38,13 +38,6 @@ def test_profiling():
 
         buf = StringIO.StringIO()
         f.profile.summary(buf)
-        for line in buf.getvalue().split("\n"):
-            if "Max if linker=cvm" in line:
-                print line
-            elif "Minimum peak from all valid apply node" in line:
-                print line
-            elif "order" in line:
-                print line
 
     finally:
         theano.config.profile = old1

@@ -703,12 +703,8 @@ class ProfileStats(object):
 
             compute_map = defaultdict(lambda: [0])
             # compute_map use to check if a node is valid
-            # for node in node_list:
-            #     for val in node.inputs:
-            #         compute_map[val][0] = 1
             for node in fgraph.inputs:
                 compute_map[node][0] = 1
-            print fgraph.outputs
 
             def check_node_state(node):
                 """
@@ -743,9 +739,6 @@ class ProfileStats(object):
                 for i in range(len(node_list)):
                     v = node_list[i:i+1]
                     if check_node_state(v[0]):
-                        # print v[0].inputs
-                        # print v[0].outputs
-                        # print compute_map
                         for node in v[0].outputs:
                             compute_map[node][0] = 1 
                         if len(node_list) == 1:
