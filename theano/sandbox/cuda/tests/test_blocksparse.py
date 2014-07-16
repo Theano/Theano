@@ -17,7 +17,6 @@ from theano.sandbox.cuda.basic_ops import (GpuDimShuffle,
                                            as_cuda_ndarray_variable)
 from theano.sandbox.cuda.blocksparse import (sparse_block_dot_SS,
                                              sparse_block_gemv_ss,
-                                             sparse_block_gemv_ss_inplace,
                                              sparse_block_outer_ss,
                                              sparse_block_outer_ss_inplace)
 
@@ -136,26 +135,3 @@ def test_blocksparse_grad_shape():
     assert b_g.shape == b_val.shape
     assert h_g.shape == h_val.shape
     assert W_g.shape == W_val.shape
-
-
-class TestBlockSparseDot(TestCase, utt.TestOptimizationMixin):
-    def test_opt_inplace(self):
-        b = tensor.fmatrix()
-        W = tensor.ftensor4()
-        h = tensor.fmatrix()
-        iIdx = tensor.lvector()
-        oIdx = tensor.lvector()
-
-        o = sparse_block_dot_SS(W, h, iIdx, b, oIdx)
-
-        f = theano.function([W, h, iIdx, b, oIdx], o, mode=mode_with_gpu)
-
-        self.assertFunctionContains0(f, sparse_block_gemv_ss)
-        self.assertFunctionContains1(f, sparse_block_gemv_ss_inplace)
-
-        gW = theano.grad(o.sum(), [W])
-
-        f = theano.function([W, h, iIdx, b, oIdx], gW, mode=mode_with_gpu)
-
-        self.assertFunctionContains0(f, sparse_block_outer_ss)
-        self.assertFunctionContains1(f, sparse_block_outer_ss_inplace)
