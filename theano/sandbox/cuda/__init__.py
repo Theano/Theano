@@ -242,7 +242,6 @@ theano.compile.debugmode.default_make_thunk.append(
 # nvcc is not available
 from theano.sandbox.cuda.var import (CudaNdarrayVariable,
                                      CudaNdarrayConstant,
-                                     CudaNdarraySharedVariable,
                                      float32_shared_constructor)
 from theano.sandbox.cuda.type import CudaNdarrayType
 
@@ -404,8 +403,8 @@ def use(device,
             "is already in use."),
             str(device), use.device_number)
 
-    if move_shared_float32_to_gpu:
-        handle_shared_float32(True)
+#    if move_shared_float32_to_gpu:
+#        handle_shared_float32(True)
 
     if enable_cuda:
         cuda_enabled = True
@@ -444,7 +443,7 @@ def unuse():
     """
     global cuda_enabled
     cuda_enabled = False
-    handle_shared_float32(False)
+#    handle_shared_float32(False)
     optdb.remove_tags('gpu_opt',
                    'fast_run',
                    'inplace')
