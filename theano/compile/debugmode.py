@@ -768,8 +768,8 @@ def _check_viewmap(node, storage_map):
         # case...
 
         for ii, inode in enumerate(node.inputs):
-
-            if inode.type.may_share_memory(outstorage, storage_map[inode][0]):
+            if hasattr(inode.type, 'may_share_memory') and\
+               inode.type.may_share_memory(outstorage, storage_map[inode][0]):
 
                 nodeid = id(inode)
                 bad_alias[nodeid] = ii
