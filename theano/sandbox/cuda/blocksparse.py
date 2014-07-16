@@ -387,12 +387,6 @@ sparse_block_outer_ss_inplace = SparseBlockOuterSS(True)
 
 if cuda_available:
     @opt.register_opt()
-    @opt.local_optimizer([sparse_block_gemv_ss], inplace=True)
-    def local_inplace_blocksparse_gemv(node):
-        if node.op == sparse_block_gemv_ss:
-            return [sparse_block_gemv_ss_inplace(*node.inputs)]
-
-    @opt.register_opt()
     @opt.local_optimizer([sparse_block_outer_ss], inplace=True)
     def local_inplace_blocksparse_outer(node):
         if node.op == sparse_block_outer_ss:
