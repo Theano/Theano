@@ -4011,9 +4011,18 @@ class Tile(Op):
     def perform(self, node, inp, out_):
         x, reps = inp
         out, = out_
-        out[0] = numpy.tile(x, reps)
-        if len(out[0].shape) != self.ndim:
-            raise ValueError('Tile.perform produced incorrect shape')
+        res = numpy.tile(x, reps)
+        if res.ndim != self.ndim:
+            raise ValueError(
+                'Tile.perform produced incorrect number of dimensions')
+
+        if (numpy.asarray(reps) == 1).all():
+            # In that case, some NumPy version return a view!  As this
+            # op isn't declared as inplace, we need to check that and
+            # copy the data.
+            if numpy.may_share_memory(res, x):
+                res = res.copy()
+        out[0] = res
 
     def infer_shape(self, node, in_shapes):
         # Note: in contrast with numpy, it is assumed that x.shape and reps

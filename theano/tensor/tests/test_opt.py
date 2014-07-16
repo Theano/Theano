@@ -2894,6 +2894,7 @@ class T_Tile(unittest.TestCase):
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
+                f(data)
 
         # If the repeat parameter is longer then v.ndim, we must
         # replace it with a DimShuffle to add the extra parameter.
