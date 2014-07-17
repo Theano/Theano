@@ -57,6 +57,7 @@ def gemv(alpha, A, x, beta, y):
                        x.gpudata, x.strides[0],
                        beta, y.gpudata, y.strides[0])
 
+
 def ger(alpha, x, y, A):
     assert A.shape[1] == x.shape[0]
     assert A.shape[0] == y.shape[0]
@@ -168,10 +169,12 @@ const npy_intp *oIdx
           if (%(n)s_iIdx_len < b*i) {
             cudaFree(%(n)s_iIdx);
             if (cudaMalloc(&%(n)s_iIdx, b*i*sizeof(npy_intp)) != cudaSuccess) return -1;
+            %(n)s_iIdx_len = b*i;
           }
           if (%(n)s_oIdx_len < b*j) {
             cudaFree(%(n)s_oIdx);
             if (cudaMalloc(&%(n)s_oIdx, b*j*sizeof(npy_intp)) != cudaSuccess) return -1;
+            %(n)s_oIdx_len = b*j;
           }
           return 0;
         }
@@ -319,7 +322,7 @@ CudaNdarray_HOST_DIMS(%(o)s)[1],
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
