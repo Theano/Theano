@@ -74,7 +74,12 @@ class CumsumOp(theano.Op):
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumSum(%(x)s, NPY_MAXDIMS, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    PyObject * t = PyArray_CumSum(
+                        %(x)s, NPY_MAXDIMS,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
                     Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
@@ -103,7 +108,7 @@ class CumsumOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -189,7 +194,12 @@ class CumprodOp(theano.Op):
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumProd(%(x)s, NPY_MAXDIMS, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    PyObject * t = PyArray_CumProd(
+                        %(x)s, NPY_MAXDIMS,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
                     Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
@@ -204,15 +214,20 @@ class CumprodOp(theano.Op):
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumProd(%(x)s, %(axis)s, PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    PyObject * t = PyArray_CumProd(
+                        %(x)s, %(axis)s,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
+            Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
