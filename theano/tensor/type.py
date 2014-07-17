@@ -475,11 +475,10 @@ class TensorType(Type):
                 PyArrayObject * tmp = (PyArrayObject*) %(pre)s%(name)s;
                 PyErr_Format(PyExc_NotImplementedError,
                              "expected an aligned array of type %%ld "
-                             "(%(type_num)s), got non-aligned array of type %%ld"
+                             "got non-aligned array of type %%ld"
                              " with %%ld dimensions, with 3 last dims "
                              "%%ld, %%ld, %%ld"
                              " and 3 last strides %%ld %%ld, %%ld.",
-                             (long int) %(type_num)s,
                              (long int) PyArray_TYPE((PyArrayObject*) %(pre)s%(name)s),
                              (long int) PyArray_NDIM(tmp),
                              (long int) PyArray_NDIM(tmp) >= 3 ?
