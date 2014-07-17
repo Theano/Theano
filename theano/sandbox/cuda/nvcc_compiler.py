@@ -254,6 +254,11 @@ class NVCC_compiler(object):
             libs.append('cudart')
 
         lib_dirs = std_lib_dirs() + lib_dirs
+        if any(ld == os.path.join(cuda_root, 'lib') or
+               ld == os.path.join(cuda_root, 'lib64') for ld in lib_dirs):
+            warnings.warn("You have the cuda library directory in your "
+                          "lib_dirs. This has been known to cause problems "
+                          "and should not be done.")
 
         if sys.platform != 'darwin':
             # sometimes, the linker cannot find -lpython so we need to tell it
