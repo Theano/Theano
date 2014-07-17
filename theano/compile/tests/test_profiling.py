@@ -20,8 +20,9 @@ def test_profiling():
 
         x = [T.dvector("val%i" % i) for i in range(3)]
 
-        z = [x[i] + x[i+1] for i in range(len(x)-1)]
-        z += [T.outer(x[i], x[i+1]).sum() for i in range(len(x)-1)]
+        z = []
+        z += [T.outer(x[i], x[i+1]).sum(axis=1) for i in range(len(x)-1)]
+        z += [x[i] + x[i+1] for i in range(len(x)-1)]
 
         p = theano.ProfileStats(False)
 
