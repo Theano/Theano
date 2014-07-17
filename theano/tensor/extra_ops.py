@@ -79,7 +79,7 @@ class CumsumOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    // Because PyArray_CumSum returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -101,7 +101,7 @@ class CumsumOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    // Because PyArray_CumSum returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -201,7 +201,7 @@ class CumprodOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    // Because PyArray_CumSum returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -222,7 +222,7 @@ class CumprodOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    // Because PyArray_CumSum returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
