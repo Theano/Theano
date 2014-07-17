@@ -1,6 +1,6 @@
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_repeats",type=int,default=5)
+parser.add_argument("--n_repeats",type=int,default=1)
 args = parser.parse_args()
 
 import sys
