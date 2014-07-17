@@ -736,9 +736,14 @@ def pre_constant_merge(vars):
         seen_var.add(var)
         if isinstance(var, graph.Constant):
             sig = var.signature()
-            if sig in const_sig_inv:
-                return const_sig_inv[sig]
-            const_sig_inv[sig] = var
+            try:
+                if sig in const_sig_inv:
+                    return const_sig_inv[sig]
+                const_sig_inv[sig] = var
+            except TypeError:  # unhashable type
+                # Some python object like slice aren't hashable. So
+                # don't merge them here.
+                pass
             return var
         if var.owner:
             for idx, inp in enumerate(var.owner.inputs):
