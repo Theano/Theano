@@ -80,7 +80,8 @@ class CumsumOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    Py_XDECREF(%(t)s);
                 }
             """ % locals()
         else:
@@ -101,14 +102,15 @@ class CumsumOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    Py_XDECREF(%(t)s);
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -200,7 +202,8 @@ class CumprodOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    Py_XDECREF(%(t)s);
                 }
             """ % locals()
         else:
@@ -220,14 +223,15 @@ class CumprodOp(theano.Op):
                     if (!t){
                        %(fail)s;
                     }
-            Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    // Because PyArray_CumSum returns a newly created reference on %(t)s.
+                    Py_XDECREF(%(t)s);
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
