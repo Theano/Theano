@@ -5090,8 +5090,7 @@ class PadWithKwargs(Op):
         return (type(self) == type(other) and self.props() == other.props())
 
     def props(self):
-        return self.mode
-        return self.kwargs
+        return self.mode, self.kwargs
 
     def make_node(self, array, pad_width, values):
         array = as_tensor_variable(array)
@@ -5104,6 +5103,7 @@ class PadWithKwargs(Op):
         if not numpy_ver >= [1, 7]:
             raise NotImplementedError("Numpy version is to old")
 
+        assert isinstance(values, (list, tuple, int))
         value = theano.gof.Constant(theano.gof.generic, values)
 
         return Apply(self, [array, pad_width, value], [array.type()])
@@ -5117,15 +5117,7 @@ class PadWithKwargs(Op):
 
     def __str__(self):
         return self.__class__.__name__
-"""
-import theano
-from theano.tensor import basic
-from theano import function
-from theano import tensor as T
-x = T.vector()
-y = basic.pad(x,(1,1), 'constant', constant_values=(1,6))
-f = function([x], y)
-"""
+
 
 def swapaxes(y, axis1, axis2):
     "swap axes of inputted tensor"

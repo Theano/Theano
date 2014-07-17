@@ -6974,7 +6974,8 @@ class T_Pad():
         A = numpy.random.rand(5)
         B = numpy.random.rand(5, 6)
 
-        modes = ['constant', 'edge', 'linear_ramp', 'maximum', 'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
+        modes = ['constant', 'edge', 'linear_ramp', 'maximum',
+            'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
         vas = [a, b]
         vs = [A, B]
 
