@@ -1269,7 +1269,7 @@ class Elemwise(OpenMPOp):
                             nodename, inames, onames, sub)
 
     def c_code(self, node, nodename, inames, onames, sub):
-        bnb = 2 #number of dimensions per batch
+        bnb = 3 #number of dimensions per batch
         fail = sub['fail']
         check = ""
         if theano.config.check_input:
