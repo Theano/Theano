@@ -40,6 +40,11 @@ def test_profiling():
         buf = StringIO.StringIO()
         f.profile.summary(buf)
 
+        # regression testing for future algo speed up
+        the_string = buf.getvalue()
+        assert "Max if linker=cvm(default): 8224KB (16408KB)" in the_string
+        assert "Minimum peak from all valid apply node order is 8208KB" in the_string
+
     finally:
         theano.config.profile = old1
         theano.config.profile_memory = old2
