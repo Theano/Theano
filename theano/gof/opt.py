@@ -380,23 +380,29 @@ class _metadict:
             self.l.append((item, value))
 
     def __delitem__(self, item):
-        if item in self.d:
-            del self.d[item]
-        else:
-            for i, (key, val) in enumerate(self.l):
-                if key == item:
-                    del self.l[i]
-                    return
+        try:
+            if item in self.d:
+                del self.d[item]
+                return
+        except TypeError, e:
+            assert "unhashable type" in str(e)
+        for i, (key, val) in enumerate(self.l):
+            if key == item:
+                del self.l[i]
+                return
             raise KeyError(item)
 
     def discard(self, item):
-        if item in self.d:
-            del self.d[item]
-        else:
-            for i, (key, val) in enumerate(self.l):
-                if key == item:
-                    del self.l[i]
-                    return
+        try:
+            if item in self.d:
+                del self.d[item]
+                return
+        except TypeError, e:
+            assert "unhashable type" in str(e)
+        for i, (key, val) in enumerate(self.l):
+            if key == item:
+                del self.l[i]
+                return
 
     def get(self, item, default):
         try:
