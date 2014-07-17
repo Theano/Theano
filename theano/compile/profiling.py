@@ -31,6 +31,7 @@ config = theano.config
 
 _atexit_print_list = []
 _atexit_print_file = sys.stderr
+_atexit_registered = False
 
 AddConfigVar('profiling.time_thunks',
              """Time individual thunks when profiling""",
@@ -99,7 +100,7 @@ def _atexit_print_fn():
                     n_apply_to_print=config.profiling.n_apply)
 
 
-atexit.register(_atexit_print_fn)
+
 
 
 class ProfileStats(object):
@@ -208,6 +209,10 @@ class ProfileStats(object):
         if atexit_print:
             global _atexit_print_list
             _atexit_print_list.append(self)
+            global _atexit_registered
+            if not _atexit_registered:
+                atexit.register(_atexit_print_fn)
+                _atexit_registered = True
 
     def class_time(self):
         """dict op -> total time on thunks"""
