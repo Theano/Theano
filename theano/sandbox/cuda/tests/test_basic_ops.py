@@ -1269,6 +1269,15 @@ def speed_adv_sub1():
         print "ProfileMode with batch size", batch_size
         mode_with_gpu.print_summary()
 
+
+def speed_reduce10():
+    data = numpy.random.rand(1000, 1000).astype("float32")
+    m = theano.tensor.fmatrix()
+    f = theano.function([m], [m.sum(axis=0), m.T.sum(axis=0)],
+                        mode=mode_with_gpu)
+    f(data)
+
+
 if __name__ == '__main__':
     test_many_arg_elemwise()
     test_gpujoin_assert_cndas()
