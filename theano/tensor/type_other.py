@@ -9,6 +9,8 @@ from theano.gradient import DisconnectedType
 def as_int_none_variable(x):
     if x is None:
         return NoneConst
+    elif NoneConst.equals(x):
+        return x
     x = theano.tensor.as_tensor_variable(x, ndim=0)
     if x.type.dtype[:3] not in ('int', 'uin'):
         raise TypeError('index must be integers')
@@ -16,10 +18,18 @@ def as_int_none_variable(x):
 
 
 class MakeSlice(Op):
-    def make_node(self, slc):
+    def make_node(self, slc, stop=None, step=None):
+        # We need to accept and handle in make_node inputs the node
+        # inputs to allow redoing a new op elsewhere in the graph by
+        # optimization.
+        if isinstance(slc, slice):
+            assert stop is None
+            assert step is None
+            inp = [slc.start, slc.stop, slc.step]
+        else:
+            inp = [slc, stop, step]
         return Apply(self,
-                     map(as_int_none_variable,
-                         [slc.start, slc.stop, slc.step]),
+                     map(as_int_none_variable, inp),
                      [slicetype()])
 
     def perform(self, node, inp, out_):
