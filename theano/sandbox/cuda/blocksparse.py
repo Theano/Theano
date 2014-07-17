@@ -380,6 +380,71 @@ class SparseBlockOuterSS(GpuOp):
 
         out[0] = o
 
+    def c_code(self, node, name, inputs, outputs, sub):
+        o, x, y, xIdx, yIdx = inputs
+        out = outputs[0]
+        if self.inplace:
+            res = """
+Py_XDECREF(%(out)s);
+%(out)s = %(o)s;
+Py_INCREF(%(out)s);
+""" % dict(out=out, o=o)
+        else:
+            res = """
+if (CudaNdarray_prep_output(&%(out)s, 4, CudaNdarray_HOST_DIMS(%(o)s)))
+{
+  PyErr_SetString(PyExc_RuntimeError, "Cannot allocate output");
+  %(fail)s
+}
+if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
+  PyErr_SetString(PyExc_RuntimeError, "Cannot copy data to output");
+  %(fail)s
+}
+""" % dict(out=out, o=o, fail=sub['fail'])
+
+        return res + """{
+CudaNdarray *x_part = (CudaNdarray *)CudaNdarray_new_nd(1);
+CudaNdarray *y_part = (CudaNdarray *)CudaNdarray_new_nd(1);
+CudaNdarray *out_part = (CudaNdarray *)CudaNdarray_new_nd(2);
+if (x_part == NULL || y_part == NULL || out_part == NULL) {
+  Py_XDECREF(x_part);
+  Py_XDECREF(y_part);
+  Py_XDECREF(out_part);
+}
+CudaNdarray_set_dim(x_part, 0, CudaNdarray_HOST_DIMS(%(x)s)[1]);
+CudaNdarray_set_stride(x_part, 0, CudaNdarray_HOST_STRIDES(%(x)s)[1]);
+CudaNdarray_set_dim(y_part, 0, CudaNdarray_HOST_DIMS(%(y)s)[1]);
+CudaNdarray_set_stride(y_part, 0, CudaNdarray_HOST_STRIDES(%(y)s)[1]);
+CudaNdarray_set_dim(out_part, 0, CudaNdarray_HOST_DIMS(%(out)s)[2]);
+CudaNdarray_set_stride(out_part, 0, CudaNdarray_HOST_STRIDES(%(out)s)[2]);
+CudaNdarray_set_dim(out_part, 1, CudaNdarray_HOST_DIMS(%(out)s)[3]);
+CudaNdarray_set_stride(out_part, 1, CudaNdarray_HOST_STRIDES(%(out)s)[3]);
+
+for (int j = 0; j < CudaNdarray_HOST_DIMS(%(y)s)[0]; j++) {
+  npy_intp y_id = *(dtype_%(xIdx)s *)PyArray_GETPTR1(%(yIdx)s, j);
+  CudaNdarray_set_device_data(y_part, CudaNdarray_DEV_DATA(%(y)s) +
+      CudaNdarray_HOST_STRIDES(%(y)s)[0] * j, %(y)s);
+  for (int i = 0; i < CudaNdarray_HOST_DIMS(%(x)s)[0]; i++) {
+    npy_intp x_id = *(dtype_%(xIdx)s *)PyArray_GETPTR1(%(xIdx)s, i);
+    CudaNdarray_set_device_data(x_part, CudaNdarray_DEV_DATA(%(x)s) +
+        CudaNdarray_HOST_STRIDES(%(x)s)[0] * i, %(x)s);
+    CudaNdarray_set_device_data(out_part, CudaNdarray_DEV_DATA(%(out)s) +
+        (CudaNdarray_HOST_STRIDES(%(out)s)[0] * x_id) +
+        (CudaNdarray_HOST_STRIDES(%(out)s)[1] * y_id), %(out)s);
+
+    if (CudaNdarray_sger(1.0f, x_part, y_part, out_part)) {
+      %(fail)s
+    }
+  }
+}
+Py_DECREF(x_part);
+Py_DECREF(y_part);
+Py_DECREF(out_part);
+}""" % dict(x=x, y=y, out=out, xIdx=xIdx, yIdx=yIdx, fail=sub['fail'])
+
+    def c_code_cache_version(self):
+        return (0,)
+
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
 sparse_block_outer_ss_inplace = SparseBlockOuterSS(True)
