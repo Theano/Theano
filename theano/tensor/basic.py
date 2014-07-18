@@ -5053,14 +5053,22 @@ def swapaxes(y, axis1, axis2):
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
 
+def choose(x, y, mode='raise'):
+    return Choose(mode)(x, y)
 
-class choose(Op):
+class Choose(Op):
 
-    def __eq__(self, other):
-        return type(self) == type(other)
+    def __init__(self, mode):
+        self.mode = mode
 
     def __hash__(self):
-        return hash(type(self))
+        return hash((type(self), self.props()))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and self.props() == other.props())
+
+    def props(self):
+        return self.mode
 
     def make_node(self, x, y):
         x = as_tensor_variable(x)
@@ -5069,7 +5077,7 @@ class choose(Op):
         return Apply(self, [x, y], [x.type()])
 
     def perform(self, node, inputs, (z,)):
-        z[0] = numpy.choose(inputs[0], inputs[1])
+        z[0] = numpy.choose(inputs[0], inputs[1], self.mode)
 
     def infer_shape(self, nodes, shapes):
         return [shapes[0]]
