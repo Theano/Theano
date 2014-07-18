@@ -46,7 +46,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes
+        swapaxes, choose
         )
 
 from theano.tests import unittest_tools as utt
@@ -6984,6 +6984,7 @@ class T_swapaxes(unittest.TestCase):
         t_s = fn(a)
         assert numpy.allclose(n_s, t_s)
 
+
 class T_Power():
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -7010,16 +7011,22 @@ class T_Power():
         f = function([x], z)
         self.assertRaise(ValueError, f, [1, 2, 3, 4])
 
-    def test_numpy_compare(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        A = tensor.matrix("A", dtype=theano.config.floatX)
-        Q = power(A, 2)
-        fn = function([A], [Q])
-        a = rng.rand(4, 4).astype(theano.config.floatX)
 
-        n_p = numpy.power(a, 2)
-        t_p = fn(a)
-        assert numpy.allclose(n_s, t_s)
+class T_Choose():
+    def test_numpy_compare(self):
+        a = tensor.vector(dtype='int64')
+        b = tensor.matrix(dtype='int64')
+
+        A = numpy.random.rand(5)
+        B = numpy.random.rand(5, 6)
+
+        modes = ['raise', 'wrap', 'clip']
+
+        for m in modes:
+            f = function([a, b], choose(a, b, m))
+            t_c = f(A, B)
+            n_c = numpy.choose(A, B, m)
+            assert numpy.allclose(t_p, n_p)
 
 """
 
