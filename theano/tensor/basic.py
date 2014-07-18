@@ -5052,3 +5052,43 @@ def swapaxes(y, axis1, axis2):
     li = range(0, ndim)
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
+
+
+class choose(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, y):
+        x = as_tensor_variable(x)
+        y = as_tensor_variable(y)
+
+        return Apply(self, [x, y], [x.type()])
+
+    def perform(self, node, inputs, (z,)):
+        z[0] = numpy.choose(inputs[0], inputs[1])
+
+    def infer_shape(self, nodes, shapes):
+        return [shapes[0]]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
