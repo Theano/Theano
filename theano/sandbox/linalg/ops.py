@@ -223,6 +223,18 @@ def is_positive(v):
     return False
 
 
+@register_canonicalize
+@local_optimizer([DimShuffle])
+def transinv_to_invtrans(node):
+    if isinstance(node.op, DimShuffle):
+        if node.op.new_order == (1, 0):
+            A, = node.inputs
+            if A.owner:
+                if isinstance(A.owner.op, MatrixInverse):
+                   X, = A.owner.inputs
+                   return [A.owner.op(node.op(X))]
+
+
 @register_stabilize
 @local_optimizer([Dot, Dot22])
 def inv_as_solve(node):
@@ -237,6 +249,32 @@ def inv_as_solve(node):
                 return [solve(r.owner.inputs[0], l.T).T]
             else:
                 return [solve(r.owner.inputs[0].T, l.T).T]
+
+
+@register_stabilize
+@register_canonicalize
+@local_optimizer(None) # XXX: solve is defined later and can't be used here
+def tag_solve_triangular(node):
+    """
+    If a general solve() is applied to the output of a cholesky op, then
+    replace it with a triangular solve.
+    """
+    if node.op == solve:
+        if node.op.A_structure == 'general':
+            A, b = node.inputs  # result is solution Ax=b
+            if isinstance(A.owner.op, type(cholesky)):
+                if A.owner.op.lower:
+                    return [Solve('lower_triangular')(A, b)]
+                else:
+                    return [Solve('upper_triangular')(A, b)]
+            if (isinstance(A.owner.op, DimShuffle)
+                and A.owner.op.new_order == (1, 0)):
+                A_T, = A.owner.inputs
+                if isinstance(A_T.owner.op, type(cholesky)):
+                    if A_T.owner.op.lower:
+                        return [Solve('upper_triangular')(A, b)]
+                    else:
+                        return [Solve('lower_triangular')(A, b)]
 
 
 @register_canonicalize
@@ -613,6 +651,9 @@ class MatrixInverse(Op):
     def __str__(self):
         return "MatrixInverse"
 
+    def infer_shape(self, node, shapes):
+        return shapes
+
 matrix_inverse = MatrixInverse()
 
 
@@ -659,8 +700,16 @@ class Solve(Op):
 
     def perform(self, node, inputs, output_storage):
         A, b = inputs
-        #TODO: use the A_structure to go faster
-        output_storage[0][0] = scipy.linalg.solve(A, b)
+        if self.A_structure == 'lower_triangular':
+            rval = scipy.linalg.solve_triangular(
+                A, b, lower=True)
+        elif self.A_structure == 'upper_triangular':
+            rval = scipy.linalg.solve_triangular(
+                A, b, lower=False)
+        else:
+            #TODO: use the A_structure to go faster
+            rval = scipy.linalg.solve(A, b)
+        output_storage[0][0] = rval
 
     # computes shape of x where x = inv(A) * b
     def infer_shape(self, node, shapes):

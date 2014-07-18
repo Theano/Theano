@@ -3941,6 +3941,11 @@ def local_log_add(node):
         z = node.inputs[0]
         if z.owner and z.owner.op == T.add:
             zi = z.owner.inputs
+            if len(zi) != 2:
+                # -- upgrading Maximum to handle multiple inputs wasn't trivial
+                #    TODO
+                #raise NotImplementedError()
+                return
             pre_exp = [x.owner.inputs[0] for x in zi
                        if x.owner and x.owner.op == T.exp]
             if len(pre_exp) == len(zi):
