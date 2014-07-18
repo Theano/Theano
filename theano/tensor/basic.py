@@ -5062,11 +5062,6 @@ class Pad(Op):
         assert isinstance(pad_width, (list, tuple, int))
         pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
 
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        if not numpy_ver >= [1, 7]:
-            raise NotImplementedError("Numpy version is to old")
-
         return Apply(self, [array, pad_width], [array.type()])
 
     def perform(self, node, inputs, (z,)):
@@ -5097,11 +5092,6 @@ class PadWithKwargs(Op):
 
         assert isinstance(pad_width, (list, tuple, int))
         pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
-
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        if not numpy_ver >= [1, 7]:
-            raise NotImplementedError("Numpy version is to old")
 
         assert isinstance(values, (list, tuple, int))
         value = theano.gof.Constant(theano.gof.generic, values)

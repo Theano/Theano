@@ -6984,31 +6984,26 @@ class T_Pad():
             fb = function([b], pad(b, (3, 4), m))
             t_pa = fa(A)
             t_pb = fb(B)
-            try:
-                n_pa = numpy.pad(A, (3, 4), m)
-                n_pb = numpy.pad(B, (3, 4), m)
-                assert numpy.allclose(t_pa, n_pa)
-                assert numpy.allclose(t_pb, n_pb)
-            except NotImplementedError, e:
-                assert "Numpy version is to old" in str(e)
+            n_pa = numpy.pad(A, (3, 4), m)
+            n_pb = numpy.pad(B, (3, 4), m)
+            assert numpy.allclose(t_pa, n_pa)
+            assert numpy.allclose(t_pb, n_pb)
 
         for var, v in zip(vas, vs):
             for mode, k, t in [('constant', 'constant_values', (3, 4)), ('linear_ramp', 'end_values', (3, 4)), ('reflect', 'reflect_type', 'odd'), ('symmetric', 'reflect_type', 'even')]:
                 fc = function([var], pad(var, (3, 4), mode, **{k: t}))
                 t_pc = fc(v)
-                try:
-                    n_pc = numpy.pad(v, (3, 4), mode, **{k: t})
-                    assert numpy.allclose(t_pc, n_pc)
-                except NotImplementedError, e:
-                    assert "Numpy version is to old" in str(e)
+                n_pc = numpy.pad(v, (3, 4), mode, **{k: t})
+
+                assert numpy.allclose(t_pc, n_pc)
+
                 if var.ndim == 2:
                     fd = function([var], pad(var, [(3, 4), (5, 6)], mode, **{k: t}))
                     t_pd = fd(v)
-                    try:
-                        n_pd = numpy.pad(v, [(3, 4), (5, 6)], mode, **{k: t})
-                        assert numpy.allclose(t_pc, n_pc)
-                    except NotImplementedError, e:
-                        assert "Numpy version is to old" in str(e)
+                    n_pd = numpy.pad(v, [(3, 4), (5, 6)], mode, **{k: t})
+
+                    assert numpy.allclose(t_pc, n_pc)
+
 
 
 
