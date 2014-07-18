@@ -1091,7 +1091,10 @@ class FunctionMaker(object):
             # load the graph_db dictionary
             try:
                 f = open(graph_db_file, 'r+b')
+                tmp = theano.config.unpickle_function
+                theano.config.unpickle_function = False
                 graph_db = cPickle.load(f)
+                theano.config.unpickle_function = tmp
                 f.close()
                 print 'graph_db is not empty'
             except EOFError, e:
