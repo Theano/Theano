@@ -9,7 +9,7 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
-
+from theano.sandbox import linalg
 
 class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a

@@ -1,5 +1,6 @@
 from theano import tensor
 from theano.tensor.slinalg import kron
+from theano.compile.modules import deprecation_warning
 import warnings
 
 warnings.warn(
