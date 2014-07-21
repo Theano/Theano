@@ -728,3 +728,48 @@ class lstsq(theano.Op):
         outputs[1][0] = zz[1]
         outputs[2][0] = zz[2]
         outputs[3][0] = zz[3]
+
+
+def matrix_power(M, n):
+    result = 1
+    for i in xrange(n):
+        result = theano.dot(result, M)
+    return result
+
+
+def norm(x,ord):
+    x = as_tensor_variable(x)
+    ndim = x.ndim
+    if ndim == 0:
+        raise ValueError("'axis' entry is out of bounds.")
+    elif ndim == 1:
+        if ord == None:
+            return tensor.sum(x**2)**0.5
+        elif ord == 'inf':
+            return tensor.max(abs(x))
+        elif ord == '-inf':
+            return tensor.min(abs(x))
+        elif ord == 0:
+            return x[x.nonzero()].shape[0]
+        else:
+            try:
+                z = tensor.sum(abs(x**ord))**(1./ord)
+            except TypeError:
+                raise ValueError("Invalid norm order for vectors.")
+            return z
+    elif ndim == 2:
+        if ord == None or ord == 'fro':
+            return tensor.sum(abs(x**2))**(0.5)
+        elif ord == 'inf':
+            return tensor.max(tensor.sum(abs(x), 1))
+        elif ord == '-inf':
+            return tensor.min(tensor.sum(abs(x), 1))
+        elif ord == 1:
+            return tensor.max(tensor.sum(abs(x), 0))
+        elif ord == -1:
+            return tensor.min(tensor.sum(abs(x),0))
+        else:
+            raise ValueError(0)
+    elif ndim > 2:
+        raise NotImplementedError("We don't support norm witn ndim > 2")
+

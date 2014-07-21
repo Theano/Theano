@@ -32,7 +32,9 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     eigh,
                                     matrix_dot,
                                     _zero_disconnected,
-                                    qr
+                                    qr,
+                                    matrix_power,
+                                    norm
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -432,3 +434,59 @@ class T_lstsq(unittest.TestCase):
         f = function([x, y, z], b)
         self.assertRaises(numpy.linalg.LinAlgError, f, [2, 1], [2, 1], [2, 1])
 
+
+class Matrix_power():
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = matrix_power(A, 3)
+        fn = function([A], [Q])
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+
+        n_p = numpy.linalg.matrix_power(a, 3)
+        t_p = fn(a)
+        assert numpy.allclose(n_p, t_p)
+
+    def test_non_square_matrix(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = tensor.matrix("A", dtype=theano.config.floatX)
+        Q = matrix_power(A, 3)
+        f = function([A], [Q])
+        a = rng.rand(4, 3).astype(theano.config.floatX)
+        self.assertRaises(ValueError, f, a)
+
+
+class T_NormTests(unittest.TestCase):
+
+    def test_wrong_type_of_ord_for_vector(self):
+        self.assertRaises(ValueError, norm, [2, 1], 'fro')
+
+    def test_wrong_type_of_ord_for_matrix(self):
+        self.assertRaises(ValueError, norm, [[2, 1], [3, 4]], 0)
+
+    def test_non_tensorial_input(self):
+        self.assertRaises(ValueError, norm, 3, None)
+
+    def test_tensor_input(self):
+        self.assertRaises(NotImplementedError, norm, numpy.random.rand(3, 4, 5), None)
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        M = tensor.matrix("A", dtype=theano.config.floatX)
+        V = tensor.vector("V", dtype=theano.config.floatX)
+
+        a = rng.rand(4, 4).astype(theano.config.floatX)
+        b = rng.rand(4).astype(theano.config.floatX)
+
+        A = (   [None, 'fro', 'inf', '-inf', 1, -1, None, 'inf', '-inf', 0, 1, -1, 2, -2],
+                [M, M, M, M, M, M, V, V, V, V, V, V, V, V],
+                [a, a, a, a, a, a, b, b, b, b, b, b, b, b],
+                [None, 'fro', inf, -inf, 1, -1, None, inf, -inf, 0, 1, -1, 2, -2])
+
+        for i in range(0, 14):
+            f = function([A[1][i]], norm(A[1][i], A[0][i]))
+            t_n = f(A[2][i])
+            n_n = numpy.linalg.norm(A[2][i], A[3][i])
+            assert _allclose(n_n, t_n)
