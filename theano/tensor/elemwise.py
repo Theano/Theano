@@ -1183,7 +1183,7 @@ class Elemwise(OpenMPOp):
             """ % locals()
         return decl, checks, alloc, loop
 
-    def c_code_dtype(self, node, nodename, inames, onames, sub):
+    def c_code(self, node, nodename, inames, onames, sub):
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
         return code
 
@@ -1252,7 +1252,7 @@ class Elemwise(OpenMPOp):
 
                 code += "if (PyArray_TYPE((PyArrayObject*) py_%(name)s) =="\
                     "%(type)s){ " % locals() + decl + checkNDim + checkType \
-                    + self.c_code_dtype(nnode, nodename, inames,
+                    + self.c_code(nnode, nodename, inames,
                     onames, sub) + "}else "
             code += """
             {
@@ -1279,10 +1279,10 @@ class Elemwise(OpenMPOp):
             if theano.config.check_input:
                 for (inp, name) in zip(node.inputs, inames):
                     checkType += inp.type.c_checkType(name, sub, "")
-            return decl + checkType + self.c_code_dtype(node,
+            return decl + checkType + self.c_code(node,
                             nodename, inames, onames, sub)
 
-    def c_code(self, node, nodename, inames, onames, sub):
+    def c_code_multiple(self, node, nodename, inames, onames, sub):
         bnb = 3 #number of dimensions per batch
         fail = sub['fail']
         check = ""
