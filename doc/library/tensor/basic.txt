@@ -586,6 +586,14 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     broadcastable. When performing the function, if the length of `x`
     along that dimension is not 1, a ``ValueError`` will be raised.
 
+.. function:: patternbroadcast(x, broadcastable)
+
+    Change `x` broadcastable pattern to
+    `broadcastable`. `broadcastable` must be iterable. For example,
+    `patternbroadcast(x, (True, False))` will make the first dimension
+    of `x` broadcastable and the second dimension not broadcastable,
+    so x will now be a `row`.
+
 .. function:: flatten(x, outdim=1)
 
     Similar to :func:`reshape`, but the shape is inferred from the shape of `x`.
