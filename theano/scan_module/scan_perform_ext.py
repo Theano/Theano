@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 import sys
@@ -61,7 +62,12 @@ except ImportError:
             code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
-                os.mkdir(loc)
+                try:
+                    os.mkdir(loc)
+                except OSError, e:
+                    assert e.errno == errno.EEXIST
+                    assert os.path.exists(loc)
+
             preargs = ['-fwrapv', '-O2', '-fno-strict-aliasing']
             preargs += cmodule.GCC_compiler.compile_args()
             # Cython 19.1 always use the old NumPy interface.  So we
