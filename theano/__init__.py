@@ -57,7 +57,7 @@ from theano.compile import \
     SymbolicOutput, Out, \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
-    FunctionMaker, function, OpFromGraph, \
+    FunctionMaker, function, function_dump, OpFromGraph, \
     Component, External, Member, Method, \
     Composite, ComponentList, ComponentDict, Module, \
     ProfileMode, ProfileStats, \

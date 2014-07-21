@@ -28,4 +28,4 @@ from theano.compile.pfunc import pfunc, Param, rebuild_collect_shared
 
 from theano.compile.builders import *
 
-from theano.compile.function import function
+from theano.compile.function import function, function_dump
