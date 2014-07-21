@@ -161,7 +161,10 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     """
     if name == None:
-        call_info = tb.extract_stack()[0]
+        for elem in tb.extract_stack():
+            if elem[2] != '<module>':
+                call_info = elem
+                break
         name = call_info[0] + ':' + str(call_info[1])
 
     if updates is None:
