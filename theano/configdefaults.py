@@ -538,3 +538,10 @@ AddConfigVar('check_input',
               "(particularly for scalars) and reduce the number of generated C "
               "files.",
              BoolParam(True))
+
+AddConfigVar('cache_optimizations',
+             "Specify if the optimization cache should be used. This cache will"
+             "any optimized graph and its optimization. Actually slow downs a lot"
+             "the first optimization, and could possibly still contains some bugs."
+             "Use at your own risks.",
+             BoolParam(False))
