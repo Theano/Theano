@@ -220,6 +220,9 @@ const npy_intp *oIdx
         outputBatchedG = to_cudandarray(outputBatched)
         out[0] = o + outputBatchedG.reduce_sum([1, 0, 0])
 
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
+
     def c_code(self, node, nodename, inputs, outputs, sub):
         o, W, h, inputIdx, outputIdx = inputs
         out = outputs[0]
@@ -399,6 +402,9 @@ class SparseBlockOuterSS(GpuOp):
                      beta=numpy.asarray(1.0, dtype='float32'))
 
         out[0] = o
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
     def c_support_code(self):
         return """
