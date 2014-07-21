@@ -42,7 +42,7 @@ from theano.sandbox.cuda.elemwise import erfinv_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
-linalg = None
+from theano.tensor import nlinalg
 
 #optdb.print_summary()  # shows what is currently registered
 
@@ -1643,31 +1643,26 @@ def tensor_to_cuda(x):
 
 
 @register_opt()
-@local_optimizer(None) # XXX: linalg is in sandbox, so don't import it globally
+@local_optimizer([nlinalg.ExtractDiag])
 def local_gpu_extract_diagonal(node):
     """
     extract_diagonal(host_from_gpu()) -> host_from_gpu(extract_diagonal)
     gpu_from_host(extract_diagonal) -> extract_diagonal(gpu_from_host)
     """
-    global linalg
-    if linalg is None:
-        from theano.sandbox import linalg
-        linalg = theano.sandbox.linalg
-
-    if (isinstance(node.op, linalg.ops.ExtractDiag) and
+    if (isinstance(node.op, nlinalg.ExtractDiag) and
         isinstance(node.inputs[0].type,
                    theano.tensor.TensorType)):
         inp = node.inputs[0]
         if inp.owner and isinstance(inp.owner.op, HostFromGpu):
-            return [host_from_gpu(linalg.extract_diag(gpu_from_host(inp)))]
+            return [host_from_gpu(nlinalg.extract_diag(gpu_from_host(inp)))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if (host_input.owner and
-            isinstance(host_input.owner.op, linalg.ops.ExtractDiag) and
+            isinstance(host_input.owner.op, nlinalg.ExtractDiag) and
             isinstance(host_input.owner.inputs[0].type,
                        theano.tensor.TensorType)):
             diag_node = host_input.owner
-            return [linalg.extract_diag(
+            return [nlinalg.extract_diag(
                 gpu_from_host(diag_node.inputs[0]))]
     return False
 

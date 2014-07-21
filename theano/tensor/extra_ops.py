@@ -727,8 +727,7 @@ class FillDiagonal(gof.Op):
                                       self.__class__.__name__)
         wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
         # diag is only valid for matrices
-        import theano.sandbox.linalg
-        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
+        wr_val = theano.tensor.nlinalg.diag(grad).sum()
         return [wr_a, wr_val]
 fill_diagonal_ = FillDiagonal()
 
