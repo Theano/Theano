@@ -1184,8 +1184,19 @@ class Elemwise(OpenMPOp):
         return decl, checks, alloc, loop
 
     def c_code(self, node, nodename, inames, onames, sub):
+        decl = ""
+        for (name, out) in zip(onames, node.outputs):
+                decl += """
+                        typedef %(dtype)s dtype_%(name)s;
+                        """ % dict(sub, name=name,
+                                   dtype=out.type.dtype_specs()[1])
+        for (name, inp) in zip(inames, node.inputs):
+            decl += """
+                typedef %(dtype)s dtype_%(name)s;
+                """ % dict(sub, name=name,
+                    dtype=inp.type.dtype_specs()[1])
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
-        return code
+        return decl + code
 
     def c_code_all_dtype(self, node, nodename, inames, onames, sub):
         if (any(i.dtype == 'float16' for i in node.inputs) or
@@ -1264,22 +1275,11 @@ class Elemwise(OpenMPOp):
 
             return code
         else:
-            decl = ""
-            for (name, out) in zip(onames, node.outputs):
-                    decl += """
-                            typedef %(dtype)s dtype_%(name)s;
-                            """ % dict(sub, name=name,
-                                       dtype=out.type.dtype_specs()[1])
             checkType = ""
-            for (name, inp) in zip(inames, node.inputs):
-                decl += """
-                    typedef %(dtype)s dtype_%(name)s;
-                    """ % dict(sub, name=name,
-                        dtype=inp.type.dtype_specs()[1])
             if theano.config.check_input:
                 for (inp, name) in zip(node.inputs, inames):
                     checkType += inp.type.c_checkType(name, sub, "")
-            return decl + checkType + self.c_code(node,
+            return checkType + self.c_code(node,
                             nodename, inames, onames, sub)
 
     def c_code_multiple(self, node, nodename, inames, onames, sub):
