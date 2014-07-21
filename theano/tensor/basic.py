@@ -5087,9 +5087,6 @@ class Choose(Op):
     def __str__(self):
         return self.__class__.__name__
 
-
-
-
 """
 import theano
 from theano import tensor as T
