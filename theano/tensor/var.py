@@ -9,7 +9,6 @@ from theano.gof import Constant, Variable
 from theano.gof.utils import hashtype
 from theano.tensor.utils import hash_from_ndarray
 from theano.tensor.type import TensorType
-from theano.tensor import nlinalg
 
 
 class AsTensorError(TypeError):
@@ -536,7 +535,7 @@ class _tensor_py_operators:
         return theano.tensor.basic.round(self, mode)
 
     def trace(self):
-        return theano.sandbox.linalg.ops.trace(self)
+        return theano.tensor.nlinalg.ops.trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000

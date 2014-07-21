@@ -5,10 +5,9 @@ import numpy
 
 from theano.gof import Op, Apply
 
+import theano.tensor
 from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
 from theano.tensor.blas import Dot22
-from theano import tensor
-import theano.tensor
 from theano.tensor.opt import (register_stabilize,
         register_specialize, register_canonicalize)
 from theano.gof import local_optimizer
@@ -170,7 +169,7 @@ class AllocDiag(Op):
         x = as_tensor_variable(_x)
         if x.type.ndim != 1:
             raise TypeError('AllocDiag only works on vectors', _x)
-        return Apply(self, [x], [tensor.matrix(dtype=x.type.dtype)])
+        return Apply(self, [x], [theano.tensor.matrix(dtype=x.type.dtype)])
 
     def grad(self, inputs, g_outputs):
         return [extract_diag(g_outputs[0])]
@@ -239,15 +238,15 @@ class ExtractDiag(Op):
         return 'ExtractDiag{view=%s}' % self.view
 
     def grad(self, inputs, g_outputs):
-        x = tensor.zeros_like(inputs[0])
+        x = theano.tensor.zeros_like(inputs[0])
         xdiag = alloc_diag(g_outputs[0])
-        return [tensor.set_subtensor(
+        return [theano.tensor.set_subtensor(
             x[:xdiag.shape[0], :xdiag.shape[1]],
             xdiag)]
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
-        shp = tensor.min(node.inputs[0].shape)
+        shp = theano.tensor.min(node.inputs[0].shape)
         return [(shp,)]
 
 extract_diag = ExtractDiag()
