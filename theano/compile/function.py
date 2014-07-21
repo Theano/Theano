@@ -160,12 +160,14 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
-    if name == None:
+    if name is None:
+        call_info = None
         for elem in tb.extract_stack():
             if elem[2] != '<module>':
                 call_info = elem
                 break
-        name = call_info[0] + ':' + str(call_info[1])
+        if call_info is not None:
+            name = call_info[0] + ':' + str(call_info[1])
 
     if updates is None:
         updates = []
