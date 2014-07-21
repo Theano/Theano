@@ -7018,8 +7018,8 @@ class T_Choose():
         a = tensor.vector(dtype='int64')
         b = tensor.matrix(dtype='int64')
 
-        A = numpy.random.random_integers(-5, 5, (4))
-        B = numpy.random.random_integers(-5, 5, (4, 4))
+        A = numpy.asarray(numpy.random.rand(4), dtype='int64')
+        B = numpy.asarray(numpy.random.rand(4, 4), dtype='int64')
 
         modes = ['raise', 'wrap', 'clip']
 
@@ -7028,6 +7028,18 @@ class T_Choose():
             t_c = f(A, B)
             n_c = numpy.choose(A, B, mode=m)
             assert numpy.allclose(t_c, n_c)
+
+
+    def wrong_choice_array(self):
+
+        a = tensor.matrix(dtype='int64')
+        b = tensor.vector(dtype='int64')
+
+        A = numpy.asarray(numpy.random.rand(4), dtype='int64')
+        B = numpy.asarray(numpy.random.rand(4, 4), dtype='int64')
+
+        f = function([a, b], choose(a, b))
+        self.assertRaise(ValueError, f, A, B)
 
 """
 
