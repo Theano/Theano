@@ -7014,19 +7014,20 @@ class T_Power():
 
 class T_Choose():
     def test_numpy_compare(self):
+
         a = tensor.vector(dtype='int64')
         b = tensor.matrix(dtype='int64')
 
-        A = numpy.random.rand(5)
-        B = numpy.random.rand(5, 6)
+        A = numpy.random.random_integers(-5, 5, (4))
+        B = numpy.random.random_integers(-5, 5, (4, 4))
 
         modes = ['raise', 'wrap', 'clip']
 
         for m in modes:
-            f = function([a, b], choose(a, b, m))
+            f = function([a, b], choose(a, b, mode=m))
             t_c = f(A, B)
-            n_c = numpy.choose(A, B, m)
-            assert numpy.allclose(t_p, n_p)
+            n_c = numpy.choose(A, B, mode=m)
+            assert numpy.allclose(t_c, n_c)
 
 """
 

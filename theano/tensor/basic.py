@@ -5093,8 +5093,9 @@ def swapaxes(y, axis1, axis2):
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
 
-def choose(x, y, mode='raise'):
-    return Choose(mode)(x, y)
+
+def choose(a, choices, out=None, mode='raise'):
+    return Choose(mode)(a, choices, out)
 
 class Choose(Op):
 
@@ -5110,17 +5111,32 @@ class Choose(Op):
     def props(self):
         return self.mode
 
-    def make_node(self, x, y):
-        x = as_tensor_variable(x)
-        y = as_tensor_variable(y)
+    def make_node(self, a, choices, out):
+        a = as_tensor_variable(a)
+        choices = as_tensor_variable(choices)
+        out = theano.gof.Constant(theano.gof.generic, out)
 
-        return Apply(self, [x, y], [x.type()])
+        return Apply(self, [a, choices, out], [a.type()])
 
-    def perform(self, node, inputs, (z,)):
-        z[0] = numpy.choose(inputs[0], inputs[1], self.mode)
-
-    def infer_shape(self, nodes, shapes):
-        return [shapes[0]]
+    def perform(self, node, inputs, (z, )):
+        a = inputs[0]
+        choices = inputs[1]
+        out = inputs[2]
+        z[0] = numpy.choose(a, choices, out, self.mode)
 
     def __str__(self):
         return self.__class__.__name__
+
+
+
+
+"""
+import theano
+from theano import tensor as T
+from theano import function
+from theano.tensor import basic
+x = T.vector(dtype='int64')
+y = T.matrix(dtype='int64')
+z = basic.choose(x,y)
+f = function([x, y], z)
+"""
