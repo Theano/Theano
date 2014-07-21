@@ -1975,10 +1975,10 @@ def make_out_pattern(X):
 
 
 local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
-                                    out_pattern=(make_out_pattern, 'x'),
+                                   out_pattern=(make_out_pattern, 'x'),
                                    allow_multiple_clients=True)
 
 #don't do register_stabilize, this is to make local_log_softmax run
 #only after another more specific optimization that stabilizes cross entropy
 #opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
-opt.register_specialize(local_log_softmax, name='local_log_softmax', 'gpu')
+opt.register_specialize(local_log_softmax, 'gpu', name='local_log_softmax')
