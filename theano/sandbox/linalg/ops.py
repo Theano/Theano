@@ -33,7 +33,10 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     EighGrad,
                                     eigh,
                                     matrix_dot,
-                                    _zero_disconnected
+                                    _zero_disconnected,
+                                    qr,
+                                    svd,
+                                    lstsq
                                     )
 
 from theano.tensor.slinalg import ( Cholesky,
@@ -377,199 +380,10 @@ def spectral_radius_bound(X, log2_exponent):
             2 ** (-log2_exponent))
 
 
-class SVD(Op):
-
-    # See doc in the docstring of the function just after this class.
-    _numop = staticmethod(numpy.linalg.svd)
-
-    def __init__(self, full_matrices=True, compute_uv=True):
-        """
-        inputs :
-        --------
-        full_matrices : bool, optional
-            If True (default), u and v have the shapes (M, M) and (N, N),
-            respectively.
-            Otherwise, the shapes are (M, K) and (K, N), respectively,
-            where K = min(M, N).
-        compute_uv : bool, optional
-            Whether or not to compute u and v in addition to s.
-            True by default.
-        """
-        self.full_matrices = full_matrices
-        self.compute_uv = compute_uv
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def props(self):
-        return self.full_matrices, self.compute_uv,
-
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim == 2, "The input of svd function should be a matrix."
-        w = theano.tensor.matrix(dtype=x.dtype)
-        u = theano.tensor.matrix(dtype=x.dtype)
-        v = theano.tensor.matrix(dtype=x.dtype)
-        return Apply(self, [x], [w, u, v])
-
-    def perform(self, node, (x,), (w, u, v)):
-        assert x.ndim == 2, "The input of svd function should be a matrix."
-        w[0], u[0], v[0] = self._numop(x,
-                                       self.full_matrices,
-                                       self.compute_uv)
-
-    def __str__(self):
-        return self._numop.__name__.capitalize()
 
 
-def svd(a, full_matrices=1, compute_uv=1):
-    """
-    This function performs the SVD on CPU.
-
-    Parameters :
-    ------------
-
-    full_matrices : bool, optional
-        If True (default), u and v have the shapes (M, M) and (N, N),
-        respectively.
-        Otherwise, the shapes are (M, K) and (K, N), respectively,
-        where K = min(M, N).
-    compute_uv : bool, optional
-        Whether or not to compute u and v in addition to s.
-        True by default.
-
-    Returns :
-    -------
-    U, V and D matrices.
-    """
-    return SVD(full_matrices, compute_uv)(a)
 
 
-class QRFull(Op):
-    """
-    Full QR Decomposition.
-    Computes the QR decomposition of a matrix.
-    Factor the matrix a as qr, where q is orthonormal
-    and r is upper-triangular.
-    """
-    _numop = staticmethod(numpy.linalg.qr)
-
-    def __init__(self, mode):
-        self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim == 2, "The input of qr function should be a matrix."
-        q = theano.tensor.matrix(dtype=x.dtype)
-        r = theano.tensor.matrix(dtype=x.dtype)
-        return Apply(self, [x], [q, r])
-
-    def props(self):
-        return self.mode
-
-    def perform(self, node, (x,), (q, r)):
-        assert x.ndim == 2, "The input of qr function should be a matrix."
-
-        q[0], r[0] = self._numop(x,
-                                 self.mode)
-
-    def __str__(self):
-        return self._numop.__class__.__name__
-
-
-class QRIncomplete(Op):
-    """
-    Incomplete QR Decomposition.
-    Computes the QR decomposition of a matrix.
-    Factor the matrix a as qr and return a single matrix.
-    """
-    _numop = staticmethod(numpy.linalg.qr)
-
-    def __init__(self, mode):
-        self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def props(self):
-        return self.mode
-
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim == 2, "The input of qr function should be a matrix."
-        q = theano.tensor.matrix(dtype=x.dtype)
-        return Apply(self, [x], [q])
-
-    def perform(self, node, (x,), (q,)):
-        assert x.ndim == 2, "The input of qr function should be a matrix."
-        q[0] = self._numop(x,
-                           self.mode)
-
-    def __str__(self):
-        return self._numop.__class__.__name__
-
-
-def qr(a, mode="full"):
-    """
-    Computes the QR decomposition of a matrix.
-    Factor the matrix a as qr, where q
-    is orthonormal and r is upper-triangular.
-
-    Parameters :
-    ------------
-
-    a : array_like, shape (M, N)
-        Matrix to be factored.
-
-    mode : {'reduced', 'complete', 'r', 'raw', 'full', 'economic'}, optional
-        If K = min(M, N), then
-        'reduced' : returns q, r with dimensions (M, K), (K, N) (default)
-        'complete' : returns q, r with dimensions (M, M), (M, N)
-        'r' : returns r only with dimensions (K, N)
-        'raw' : returns h, tau with dimensions (N, M), (K,)
-        'full' : alias of 'reduced', deprecated
-        'economic' : returns h from 'raw', deprecated. The options 'reduced',
-        'complete', and 'raw' are new in numpy 1.8, see the notes for more
-        information. The default is 'reduced' and to maintain backward
-        compatibility with earlier versions of numpy both it and the old
-        default 'full' can be omitted. Note that array h returned in 'raw'
-        mode is transposed for calling Fortran. The 'economic' mode is
-        deprecated. The modes 'full' and 'economic' may be passed using only
-        the first letter for backwards compatibility, but all others
-        must be spelled out.
-        Default mode is 'full' which is also default for numpy 1.6.1.
-
-        Note:   Default mode was left to full as full and reduced are both doing
-                the same thing in the new numpy version but only full works on the old
-                previous numpy version.
-    Returns :
-    ---------
-    q : matrix of float or complex, optional
-    A matrix with orthonormal columns. When mode = 'complete'
-    the result is an orthogonal/unitary matrix depending on whether
-    or not a is real/complex. The determinant may be either +/- 1 in that case.
-
-    r : matrix of float or complex, optional
-    The upper-triangular matrix.
-
-    """
-    x = [[2, 1], [3, 4]]
-    if isinstance(numpy.linalg.qr(x,mode), tuple):
-        return QRFull(mode)(a)
-    else:
-        return QRIncomplete(mode)(a)
 
 
 def matrix_power(M, n):
@@ -615,29 +429,3 @@ def norm(x,ord):
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
 
-
-class lstsq(theano.Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def make_node(self, x, y, rcond):
-        x = theano.tensor.as_tensor_variable(x)
-        y = theano.tensor.as_tensor_variable(y)
-        rcond = theano.tensor.as_tensor_variable(rcond)
-        return theano.Apply(self, [x, y, rcond], [y.type(), theano.tensor.dvector(), theano.tensor.lscalar(), theano.tensor.dvector()])
-
-    def perform(self, node, inputs, outputs):
-        x = inputs[0]
-        y = inputs[1]
-        rcond = inputs[2]
-        zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])            
-        outputs[0][0] = zz[0]
-        outputs[1][0] = zz[1]
-        outputs[2][0] = zz[2]
-        outputs[3][0] = zz[3]
