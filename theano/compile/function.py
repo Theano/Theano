@@ -11,6 +11,7 @@ from theano.compile.pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
 from theano import gof
+import traceback as tb
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -159,6 +160,10 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
+    if name == None:
+        call_info = tb.extract_stack()[0]
+        name = call_info[0] + ':' + str(call_info[1])
+
     if updates is None:
         updates = []
 
