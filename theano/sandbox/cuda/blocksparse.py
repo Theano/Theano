@@ -1,14 +1,17 @@
 import numpy
 import theano
-from theano import Apply, tensor
+from theano import Apply, tensor, scalar, Constant
+from theano.tensor import DimShuffle
 
 from theano.gradient import grad_undefined, grad_not_implemented
 
-from theano.sandbox.cuda import cuda_available, GpuOp
+from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
 
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
-                                     CudaNdarray, opt)
+                                     CudaNdarray, opt, GpuFromHost,
+                                     HostFromGpu, host_from_gpu,
+                                     GpuDimShuffle)
 
 import theano.misc.pycuda_init
 from theano.misc.pycuda_init import pycuda_available
@@ -363,15 +366,20 @@ class SparseBlockOuterSS(GpuOp):
     def __str__(self):
         return "SparseBlockOuterSS%s" % ("{inplace}" if self.inplace else "")
 
-    def make_node(self, o, x, y, xIdx, yIdx):
+    def make_node(self, o, x, y, xIdx, yIdx, alpha=None, beta=None):
+        one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
         o = basic_ops.as_cuda_ndarray_variable(o)
         x = basic_ops.as_cuda_ndarray_variable(x)
         y = basic_ops.as_cuda_ndarray_variable(y)
-        return Apply(self, [o, x, y, xIdx, yIdx],
+        if alpha is None:
+            alpha = one
+        if beta is None:
+            beta = one
+        return Apply(self, [o, x, y, xIdx, yIdx, alpha, beta],
                      [o.type()])
 
     def perform(self, node, inputs, outputs):
-        o, x, y, xIdx, yIdx = inputs
+        o, x, y, xIdx, yIdx, alpha, beta = inputs
         out = outputs[0]
 
         if not self.inplace:
@@ -399,7 +407,7 @@ class SparseBlockOuterSS(GpuOp):
         gemm_batched('n', 't', y.shape[1], x.shape[1], 1,
                      yB, y.strides[0], xB, x.strides[0],
                      outB, o.strides[2],
-                     beta=numpy.asarray(1.0, dtype='float32'))
+                     alpha=alpha, beta=beta)
 
         out[0] = o
 
@@ -485,7 +493,7 @@ static int %(n)s_prep(int b, int i, int j) {
 """ % dict(n=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        o, x, y, xIdx, yIdx = inputs
+        o, x, y, xIdx, yIdx, alpha, beta = inputs
         out = outputs[0]
         if self.inplace:
             res = """
@@ -534,12 +542,11 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 }
 {
   cublasStatus_t err;
-  float alpha = 1.0f;
-  float beta = 1.0f;
   err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_T,
     CudaNdarray_HOST_DIMS(%(y)s)[1], CudaNdarray_HOST_DIMS(%(x)s)[1], 1,
-    &alpha, %(name)s_y_list, CudaNdarray_HOST_STRIDES(%(y)s)[0],
-    %(name)s_x_list, CudaNdarray_HOST_STRIDES(%(x)s)[0], &beta,
+    (float *)PyArray_GETPTR1(%(alpha)s, 0), %(name)s_y_list,
+    CudaNdarray_HOST_STRIDES(%(y)s)[0], %(name)s_x_list,
+    CudaNdarray_HOST_STRIDES(%(x)s)[0], (float *)PyArray_GETPTR1(%(beta)s, 0),
     %(name)s_out_list, CudaNdarray_HOST_STRIDES(%(out)s)[2],
     CudaNdarray_HOST_DIMS(%(x)s)[0] * CudaNdarray_HOST_DIMS(%(y)s)[0]);
   if (err != CUBLAS_STATUS_SUCCESS) {
@@ -547,7 +554,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
     %(fail)s
   }
 }""" % dict(x=x, y=y, out=out, xIdx=xIdx, yIdx=yIdx, name=name,
-            fail=sub['fail'])
+            alpha=alpha, beta=beta, fail=sub['fail'])
 
     def c_code_cache_version(self):
         return (1,)
@@ -563,6 +570,75 @@ if cuda_available:
     def local_inplace_blocksparse_outer(node):
         if node.op == sparse_block_outer_ss:
             return [sparse_block_outer_ss_inplace(*node.inputs)]
+
+    def grab_ger(v):
+        # We need to do some digging because apparently the
+        # cut_transfers op does not run before us.
+        if v.owner is not None:
+            if isinstance(v.owner.op, SparseBlockOuterSS):
+                return v.owner
+            elif (isinstance(v.owner.op, GpuFromHost) and
+                  v.owner.inputs[0].owner is not None and
+                  isinstance(v.owner.inputs[0].owner.op, HostFromGpu)):
+                return grab_ger(v.owner.inputs[0].owner.inputs[0])
+            else:
+                return None
+
+    # Should be run before elemwise fusion
+    @opt.register_opt()
+    @opt.local_optimizer([GpuElemwise])
+    def local_merge_blocksparse_alpha(node):
+        """
+GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
+        """
+        def grab_lr(v):
+            if v.owner is not None:
+                n = v.owner
+                if (isinstance(n.op, GpuDimShuffle) and
+                      n.op.new_order == ('x', 'x', 'x', 'x')):
+                    return host_from_gpu(n.inputs[0])
+                elif (isinstance(n.op, DimShuffle) and
+                      n.op.new_order == ('x', 'x', 'x', 'x')):
+                    return n.inputs[0]
+                elif isinstance(n.op, GpuFromHost):
+                      return grab_lr(n.inputs[0])
+                else:
+                    return None
+            else:
+                if (isinstance(v, Constant) and
+                    v.broadcastable == (True, True, True, True)):
+                    return v.dimshuffle(())
+
+        if (isinstance(node.op, GpuElemwise) and
+            node.op.scalar_op == scalar.mul and
+            node.nin == 2):
+            ger = grab_ger(node.inputs[0])
+            if ger is None:
+                ger = grab_ger(node.inputs[1])
+                lr = grab_lr(node.inputs[0])
+            else:
+                lr = grab_lr(node.inputs[1])
+            if lr is None or ger is None:
+                return None
+            alpha = lr * ger.inputs[5]
+            return [sparse_block_outer_ss(*(ger.inputs[:5] +
+                                           [alpha, ger.inputs[6]]))]
+
+    @opt.register_opt()
+    @opt.local_optimizer([GpuElemwise])
+    def local_merge_blocksparse_beta(node):
+        if (isinstance(node.op, GpuElemwise) and
+            node.op.scalar_op == scalar.sub and
+            node.nin == 2):
+            ger = grab_ger(node.inputs[0])
+            W = node.inputs[1]
+            if ger is None:
+                ger = grab_ger(node.inputs[1])
+                W = node.inputs[0]
+            if ger is None:
+                return None
+            return [sparse_block_outer_ss(*([W] + ger.inputs[1:6] +
+                                            [-ger.inputs[6]]))]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
