@@ -19,6 +19,8 @@ from theano.sandbox.cuda.blocksparse import (sparse_block_dot_SS,
                                              sparse_block_gemv_ss,
                                              sparse_block_outer_ss,
                                              sparse_block_outer_ss_inplace)
+from theano.sandbox.cuda.var import float32_shared_constructor
+
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -125,7 +127,7 @@ def test_blocksparse_grad_shape():
     o = sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
     go = theano.grad(o.sum(), [b, W, h])
 
-    f = theano.function([W, h, iIdx, b, oIdx], go)
+    f = theano.function([W, h, iIdx, b, oIdx], go, mode=mode_with_gpu)
 
     W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
 
@@ -135,3 +137,35 @@ def test_blocksparse_grad_shape():
     assert b_g.shape == b_val.shape
     assert h_g.shape == h_val.shape
     assert W_g.shape == W_val.shape
+
+
+def test_blocksparse_grad_merge():
+    b = tensor.fmatrix()
+    h = tensor.fmatrix()
+    iIdx = tensor.lvector()
+    oIdx = tensor.lvector()
+
+    W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
+    W = float32_shared_constructor(W_val)
+
+    o = sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+    gW = theano.grad(o.sum(), W)
+
+    lr = numpy.asarray(0.05, dtype='float32')
+
+    upd = W - lr * gW
+
+    f1 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)],
+                         mode=mode_with_gpu)
+    # not running with mode=gpu ensures that the elemwise is not merged in
+    f2 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)])
+
+    f2(h_val, iIdx_val, b_val, oIdx_val)
+    W_ref = W.get_value()
+
+    # reset the var
+    W.set_value(W_val)
+    f1(h_val, iIdx_val, b_val, oIdx_val)
+    W_opt = W.get_value()
+
+    utt.assert_allclose(W_ref, W_opt)

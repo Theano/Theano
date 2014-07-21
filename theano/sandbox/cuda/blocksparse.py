@@ -637,8 +637,8 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
                 W = node.inputs[0]
             if ger is None:
                 return None
-            return [sparse_block_outer_ss(*([W] + ger.inputs[1:6] +
-                                            [-ger.inputs[6]]))]
+            return [sparse_block_outer_ss(*([W] + ger.inputs[1:5] +
+                                            [-ger.inputs[5], ger.inputs[6]]))]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
