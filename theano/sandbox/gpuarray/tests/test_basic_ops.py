@@ -43,6 +43,7 @@ from theano.sandbox.gpuarray.basic_ops import (
     cuda_from_gpu, HostFromGpu,
     GpuFromHost, GpuReshape,
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
+from theano.sandbox.gpuarray.subtensor import GpuSubtensor
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -331,10 +332,12 @@ def test_gpu_contiguous():
     i = T.iscalar('i')
     a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
     f = theano.function([a, i], gpu_contiguous(a[::i]),
-                        mode=mode_without_gpu)
-    f(a_val, 1)
-    f(a_val, 2)
-    theano.printing.debugprint(f)
+                        mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert f(a_val, 1).flags.c_contiguous
+    assert f(a_val, 2).flags.c_contiguous
+    assert f(a_val, 2).flags.c_contiguous
 
 
 class G_reshape(T_reshape):
