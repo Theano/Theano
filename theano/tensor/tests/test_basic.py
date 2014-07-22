@@ -7002,7 +7002,7 @@ class T_Pad():
                     t_pd = fd(v)
                     n_pd = numpy.pad(v, [(3, 4), (5, 6)], mode, **{k: t})
 
-                    assert numpy.allclose(t_pc, n_pc)
+                    assert numpy.allclose(t_pd, n_pd)
 
 
 

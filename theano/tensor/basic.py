@@ -5037,42 +5037,12 @@ def pad(array, pad_width, mode=None, **kwargs):
 
     if len(kwargs) != 0:
         assert len(kwargs) == 1
-        return PadWithKwargs(mode, kwargs.keys()[0])(array,
-        pad_width, kwargs.values()[0])
+        return Pad(mode, kwargs.keys()[0])(array,
+            pad_width, kwargs.values()[0])
     else:
-        return Pad(mode)(array, pad_width)
+        return Pad(mode, None)(array, pad_width)
 
 class Pad(Op):
-
-    def __init__(self, mode):
-        self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def props(self):
-        return self.mode
-
-    def make_node(self, array, pad_width):
-        array = as_tensor_variable(array)
-
-        assert isinstance(pad_width, (list, tuple, int))
-        pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
-
-        return Apply(self, [array, pad_width], [array.type()])
-
-    def perform(self, node, inputs, (z,)):
-        array = inputs[0]
-        pad_width = inputs[1]
-        z[0] = numpy.pad(array, pad_width, self.mode)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-class PadWithKwargs(Op):
 
     def __init__(self, mode, kwargs):
         self.mode = mode
@@ -5087,14 +5057,16 @@ class PadWithKwargs(Op):
     def props(self):
         return self.mode, self.kwargs
 
-    def make_node(self, array, pad_width, values):
+    def make_node(self, array, pad_width, values=None):
         array = as_tensor_variable(array)
 
         assert isinstance(pad_width, (list, tuple, int))
         pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
 
-        assert isinstance(values, (list, tuple, int))
-        value = theano.gof.Constant(theano.gof.generic, values)
+        if isinstance(values, (list, tuple, int, str)):
+            value = theano.gof.Constant(theano.gof.generic, values)
+        else:
+            value = theano.tensor.type_other.NoneConst
 
         return Apply(self, [array, pad_width, value], [array.type()])
 
@@ -5102,8 +5074,10 @@ class PadWithKwargs(Op):
         array = inputs[0]
         pad_width = inputs[1]
         val = inputs[2]
-
-        z[0] = numpy.pad(array, pad_width, self.mode, **{self.kwargs:val})
+        if val == None:
+            z[0] = numpy.pad(array, pad_width, self.mode)
+        else:
+            z[0] = numpy.pad(array, pad_width, self.mode, **{self.kwargs:val})
 
     def __str__(self):
         return self.__class__.__name__
