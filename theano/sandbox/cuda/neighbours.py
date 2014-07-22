@@ -206,12 +206,12 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
         int grid_d = -1;
 
         {
-            if (%(ten4)s->nd != 4)
+            if (CudaNdarray_NDIM(%(ten4)s) != 4)
             {
                 PyErr_Format(PyExc_TypeError, "pvals wrong rank");
                 %(fail)s;
             }
-            if (%(neib_shape)s->nd != 1)
+            if (PyArray_NDIM(%(neib_shape)s) != 1)
             {
                 PyErr_Format(PyExc_TypeError, "unis wrong rank");
                 %(fail)s;
