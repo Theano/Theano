@@ -5,13 +5,15 @@ __docformat__ = "restructuredtext en"
 import logging
 _logger = logging.getLogger('theano.compile.function')
 
+import traceback as tb
+import re
+
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
 from theano import gof
-import traceback as tb
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -161,12 +163,21 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     """
     if name is None:
-        call_info = None
-        for elem in tb.extract_stack():
-            if elem[2] != '<module>':
-                call_info = elem
+        # Determine possible file names
+        source_file = re.sub('\.pyc?', '.py', __file__)
+        compiled_file = source_file + 'c'
+
+        # Find call to function and step back up the stack one step
+        stack = tb.extract_stack()
+        idx = None
+        for i, elem in enumerate(stack):
+            if elem[0] == source_file or elem[0] == compiled_file:
+                idx = i - 1
                 break
-        if call_info is not None:
+
+        # Set the name
+        if idx is not None:
+            call_info = stack[idx]
             name = call_info[0] + ':' + str(call_info[1])
 
     if updates is None:
