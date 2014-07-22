@@ -4075,7 +4075,8 @@ register_canonicalize(local_greedy_distributor)
 register_stabilize(local_greedy_distributor)
 
 
-def constant_foldingh(node):
+@gof.local_optimizer(None)
+def constant_folding(node):
     for input in node.inputs:
         if not isinstance(input, Constant):
             return False
@@ -4106,8 +4107,6 @@ def constant_foldingh(node):
             constant = Constant
         rval.append(constant(output.type, storage_map[output][0]))
     return rval
-
-constant_folding = gof.local_optimizer(None)(constant_foldingh)
 
 register_canonicalize(constant_folding, 'fast_compile')
 register_stabilize(constant_folding, 'fast_compile')
