@@ -498,7 +498,7 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
         if (!rval){
             return NULL;
         }
-        assert (PyArray_ITEMSIZE(rval) == sizeof(real));
+        assert (PyArray_ITEMSIZE((PyArrayObject *)rval) == sizeof(real));
         return rval;
     }
     if ((self->nd < 0) || (self->devdata == 0))
@@ -527,7 +527,9 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
     assert (npydims);
     for (int i = 0; i < self->nd; ++i)
         npydims[i] = (npy_intp)(CudaNdarray_HOST_DIMS(self)[i]);
-    PyObject * rval = PyArray_SimpleNew(self->nd, npydims, REAL_TYPENUM);
+    PyArrayObject * rval = (PyArrayObject *) PyArray_SimpleNew(self->nd,
+                                                               npydims,
+                                                               REAL_TYPENUM);
     free(npydims);
     if (!rval)
     {
@@ -555,7 +557,7 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
     }
 
     Py_DECREF(contiguous_self);
-    return rval;
+    return (PyObject *)rval;
 }
 
 // TODO-- we have two functions here, ZEROS and Zeros.
@@ -978,7 +980,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         return NULL;
 
         if (verbose) printf("ndarray indices\n");
-        if (PyArray_TYPE(indices_obj) != NPY_INT32) {
+        if (PyArray_TYPE((PyArrayObject *)indices_obj) != NPY_INT32) {
             PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a ndarray for indices with dtype int32");
             return NULL;
         }
@@ -3357,7 +3359,7 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
         }
         for (int i = 0; i < PyArray_NDIM(data); ++i)
         {
-            if ((data->dimensions[i] > 1) && PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
+            if ((PyArray_DIMS(data)[i] > 1) && PyInt_AsLong(PyTuple_GetItem(broadcastable, Py_ssize_t(i))))
             {
                 PyErr_Format(PyExc_TypeError, "Non-unit size in broadcastable dimension %i", i);
                 Py_DECREF(data);
@@ -3578,7 +3580,8 @@ cublas_shutdown()
 int
 CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
 {
-    int err = CudaNdarray_alloc_contiguous(self, PyArray_NDIM(obj), obj->dimensions);
+    int err = CudaNdarray_alloc_contiguous(self, PyArray_NDIM(obj),
+                                           PyArray_DIMS(obj));
     if (err) {
         return err;
     }
@@ -3590,7 +3593,8 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
         return -1;
     }
     assert( 4 ==  PyArray_ITEMSIZE(obj));
-    PyObject * py_src = PyArray_ContiguousFromAny((PyObject*)obj, typenum, self->nd, self->nd);
+    PyArrayObject * py_src = (PyArrayObject *)PyArray_ContiguousFromAny(
+        (PyObject*)obj, typenum, self->nd, self->nd);
     if (!py_src) {
         return -1;
     }
