@@ -144,6 +144,10 @@ def test_eigvalsh():
 
 
 def test_eigvalsh_grad():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the geigvalsh op.")
+    import scipy.linalg
+
     rng = numpy.random.RandomState(utt.fetch_seed())
     a = rng.randn(5, 5)
     a = a + a.T
