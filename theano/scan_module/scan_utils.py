@@ -436,7 +436,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     while idx < n_nodes:
         nd_x = nds_x[idx]
         nd_y = nds_y[idx]
-        if nd_x.op != nd_y.op:
+        if not nd_x.op == nd_y.op:
             return False
         elif len(nd_x.inputs) != len(nd_y.inputs):
             return False
