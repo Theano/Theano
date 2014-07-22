@@ -1109,7 +1109,7 @@ class FunctionMaker(object):
                         for output_new, output_old, i in zip(outputs_new, outputs_old, range(len(outputs_new))):
                             print 'loop through outputs node for both graphs'
 
-                            f2 = output_old.owner.fgraph.clone()
+                            f2 = graph_old.clone()
                             t1 = output_new
                             t2 = f2.outputs[i]
 
