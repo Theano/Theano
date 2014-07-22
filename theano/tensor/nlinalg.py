@@ -5,7 +5,7 @@ import numpy
 
 from theano.gof import Op, Apply
 
-import theano.tensor
+from theano import tensor
 from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
 from theano.tensor.blas import Dot22
 from theano.tensor.opt import (register_stabilize,
@@ -772,4 +772,18 @@ def norm(x,ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+"""
+import theano
+from theano import tensor as T
+from theano import function
+from theano.tensor import nlinalg
+x = T.matrix()
+y = nlinalg.norm(x,1)
+"""
+
+
+
+
+
 

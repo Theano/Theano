@@ -34,7 +34,8 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     _zero_disconnected,
                                     qr,
                                     matrix_power,
-                                    norm
+                                    norm,
+                                    svd
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -409,7 +410,7 @@ class T_lstsq(unittest.TestCase):
         x = tensor.lmatrix()
         y = tensor.lmatrix()
         z = tensor.lscalar()
-        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        b = theano.sandbox.linalg.lstsq()(x, y, z)
         f = function([x, y, z], b)
         TestMatrix1 = numpy.asarray([[2, 1], [3, 4]])
         TestMatrix2 = numpy.asarray([[17, 20], [43, 50]])
@@ -422,7 +423,7 @@ class T_lstsq(unittest.TestCase):
         x = tensor.vector()
         y = tensor.vector()
         z = tensor.scalar()
-        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        b = theano.sandbox.linalg.lstsq()(x, y, z)
         f = function([x, y, z], b)
         self.assertRaises(numpy.linalg.linalg.LinAlgError, f, [2, 1], [2, 1], 1)
 
@@ -430,7 +431,7 @@ class T_lstsq(unittest.TestCase):
         x = tensor.vector()
         y = tensor.vector()
         z = tensor.vector()
-        b = theano.sandbox.linalg.ops.lstsq()(x, y, z)
+        b = theano.sandbox.linalg.lstsq()(x, y, z)
         f = function([x, y, z], b)
         self.assertRaises(numpy.linalg.LinAlgError, f, [2, 1], [2, 1], [2, 1])
 

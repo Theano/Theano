@@ -256,7 +256,7 @@ class Eigvalsh(Op):
 
     def make_node(self, a, b):
         assert imported_scipy, (
-            "Scipy not available. Scipy is needed for the Eigvalsh op")
+            "Scipy not  available. Scipy is needed for the Eigvalsh op")
 
         if b == theano.tensor.NoneConst:
             a = as_tensor_variable(a)  

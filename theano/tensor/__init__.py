@@ -37,7 +37,6 @@ from theano.tensor import sharedvar  # adds shared-variable constructors
 from theano.tensor.sharedvar import tensor_constructor as _shared
 
 from theano.tensor.io import *
-from theano.tensor import nlinalg
 
 
 def shared(*args, **kw):

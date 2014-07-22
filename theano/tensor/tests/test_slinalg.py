@@ -27,6 +27,12 @@ from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 
+try:
+    import scipy.linalg
+    imported_scipy = True
+except ImportError:
+    # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
+    imported_scipy = False
 
 def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
@@ -179,7 +185,3 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX)],
                                 self.op_class,
                                 warn=False)
-
-
-
-
