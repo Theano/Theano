@@ -1295,8 +1295,7 @@ class GpuCAReduce(GpuOp):
                 dim3 n_blocks(A,D);
                 if (n_blocks.x > NUM_VECTOR_OP_BLOCKS) n_blocks.x = NUM_VECTOR_OP_BLOCKS;
                 if (n_blocks.x*n_blocks.y > NUM_VECTOR_OP_BLOCKS) n_blocks.y = NUM_VECTOR_OP_BLOCKS/n_blocks.x;
-                int n_shared = 0;
-                kernel_reduce_010_AD_%(name)s<<<n_blocks, n_threads, n_shared>>>(
+                kernel_reduce_010_AD_%(name)s<<<n_blocks, n_threads>>>(
                 A,B,C,D,
                         CudaNdarray_DEV_DATA(%(x)s),
                         1,
@@ -1698,7 +1697,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [10]  # the version corresponding to the c code in this Op
+        version = [11]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
