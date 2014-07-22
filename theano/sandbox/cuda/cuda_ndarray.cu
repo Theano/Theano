@@ -4101,10 +4101,12 @@ int CudaNdarray_gemm(float alpha, const CudaNdarray * A, const CudaNdarray * B, 
     {
         PyErr_Format(PyExc_RuntimeError,
                      "cublasSgemm failed (%i) %s\n"
-                     " unit=%h N=%d, c.dims=[%d %d], a.dim=[%d %d], alpha=%f, beta=%f, a=%p, b=%p, c=%p"
+                     " unit=%x N=%d, c.dims=[%d %d], a.dim=[%d %d], alpha=%f, beta=%f, a=%p, b=%p, c=%p"
                      " sa_0=%d, sa_1=%d, sb_0=%d, sb_1=%d, sc_0=%d, sc_1=%d",
                      err,  cublasGetErrorString(err),
-                     unit, N, CudaNdarray_HOST_DIMS(C)[0], CudaNdarray_HOST_DIMS(C)[1],
+                     unit, N,
+                     CudaNdarray_HOST_DIMS(C)[0],
+                     CudaNdarray_HOST_DIMS(C)[1],
                      CudaNdarray_HOST_DIMS(A)[0], CudaNdarray_HOST_DIMS(A)[1],
                      alpha, beta, a, b, c, sa_0, sa_1, sb_0, sb_1, sc_0, sc_1);
 
