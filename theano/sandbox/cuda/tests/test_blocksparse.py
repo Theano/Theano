@@ -28,6 +28,9 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
+def setup():
+    utt.seed_rng()
+
 def blocksparse_data():
     nInputBlock = 128
     nOutputBlock = 64
@@ -35,10 +38,11 @@ def blocksparse_data():
     outputSize = 30
     inputWindowSize = 7
     outputWindowSize = 9
+    batchSize = 4
 
-    input = randn(inputWindowSize, inputSize).astype('float32')
-    inputIndice = numpy.random.permutation(nInputBlock)[:inputWindowSize]
-    outputIndice = numpy.random.permutation(nOutputBlock)[:outputWindowSize]
+    input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
+    inputIndice = numpy.vstack(numpy.random.permutation(nInputBlock)[:inputWindowSize] for _ in range(batchSize))
+    outputIndice = numpy.vstack(numpy.random.permutation(nOutputBlock)[:outputWindowSize] for _ in range(batchSize))
     weight = randn(nInputBlock, nOutputBlock, inputSize, outputSize).astype('float32')
     bias = randn(nOutputBlock, outputSize).astype('float32')
 
@@ -47,24 +51,24 @@ def blocksparse_data():
 def blocksparse(W, h, iIdx, b, oIdx):
     o = b.take(oIdx, axis=0)
 
-    for j in range(o.shape[0]):
-        outputIdx = oIdx[j]
+    for b in range(o.shape[0]):
+        for j in range(o.shape[1]):
+            outputIdx = oIdx[b, j]
 
-        for i in range(h.shape[0]):
-            inputIdx = iIdx[i]
-            w = W[inputIdx, outputIdx]
-            # this below is a gemv I think
-            o[j, :] += numpy.dot(h[i], w)
-
+            for i in range(h.shape[1]):
+                inputIdx = iIdx[b, i]
+                w = W[inputIdx, outputIdx]
+                # this below is a gemv I think
+                o[b, j, :] += numpy.dot(h[b, i], w)
     return o
 
 
 def test_blocksparse():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
-    h = tensor.fmatrix()
-    iIdx = tensor.lvector()
-    oIdx = tensor.lvector()
+    h = tensor.ftensor3()
+    iIdx = tensor.lmatrix()
+    oIdx = tensor.lmatrix()
 
     o = sparse_block_dot_SS(W, h, iIdx, b, oIdx)
 
@@ -77,14 +81,16 @@ def test_blocksparse():
 
     utt.assert_allclose(ref_out, th_out)
 
+test_blocksparse.setup = setup
+
 
 # test the fortan order for W (which can happen in the grad for some graphs).
 def test_blocksparseF():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
-    h = tensor.fmatrix()
-    iIdx = tensor.lvector()
-    oIdx = tensor.lvector()
+    h = tensor.ftensor3()
+    iIdx = tensor.lmatrix()
+    oIdx = tensor.lmatrix()
 
     o = sparse_block_dot_SS(GpuDimShuffle((False, False, False, False),
                                           (0, 1, 3, 2))(
@@ -102,9 +108,9 @@ def test_blocksparseF():
 
 
 def test_blocksparse_grad():
-    h_val = randn(2, 3).astype('float32')
-    iIdx_val = numpy.random.permutation(3)[:2]
-    oIdx_val = numpy.random.permutation(3)[:2]
+    h_val = randn(1, 2, 3).astype('float32')
+    iIdx_val = numpy.random.permutation(3)[:2][None, :]
+    oIdx_val = numpy.random.permutation(3)[:2][None, :]
     W_val = randn(3, 3, 3, 4).astype('float32')
     b_val = randn(3, 4).astype('float32')
 
@@ -120,9 +126,9 @@ def test_blocksparse_grad():
 def test_blocksparse_grad_shape():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
-    h = tensor.fmatrix()
-    iIdx = tensor.lvector()
-    oIdx = tensor.lvector()
+    h = tensor.ftensor3()
+    iIdx = tensor.lmatrix()
+    oIdx = tensor.lmatrix()
 
     o = sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
     go = theano.grad(o.sum(), [b, W, h])
@@ -141,9 +147,9 @@ def test_blocksparse_grad_shape():
 
 def test_blocksparse_grad_merge():
     b = tensor.fmatrix()
-    h = tensor.fmatrix()
-    iIdx = tensor.lvector()
-    oIdx = tensor.lvector()
+    h = tensor.ftensor3()
+    iIdx = tensor.lmatrix()
+    oIdx = tensor.lmatrix()
 
     W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
     W = float32_shared_constructor(W_val)
