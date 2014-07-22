@@ -80,7 +80,12 @@ except ImportError:
             code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
-                os.mkdir(loc)
+                try:
+                    os.mkdir(loc)
+                except OSError, e:
+                    assert e.errno == errno.EEXIST
+                    assert os.path.exists(loc)
+
             args = cmodule.GCC_compiler.compile_args()
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
                                              preargs=args)

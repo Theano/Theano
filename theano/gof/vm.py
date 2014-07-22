@@ -410,6 +410,9 @@ class Stack(VM):
                                 if (getattr(o[0], 'flags', False) and
                                     o[0].flags.c_contiguous):
                                     st = 'c'
+                                elif (hasattr(data[0], 'is_c_contiguous') and
+                                      data[0].is_c_contiguous()):
+                                    st = "c"
                                 self.variable_strides[var] = st
                     except Exception:
                         raise_with_op(current_apply,
@@ -507,6 +510,9 @@ class Stack(VM):
                             if (getattr(o[0], 'flags', False) and
                                 o[0].flags.c_contiguous):
                                 st = 'c'
+                            elif (hasattr(data[0], 'is_c_contiguous') and
+                                  data[0].is_c_contiguous()):
+                                st = "c"
                             self.variable_strides[var] = st
 
                     input_index = []

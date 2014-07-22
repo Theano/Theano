@@ -2,6 +2,7 @@
 """
 __docformat__ = "restructuredtext en"
 
+import cPickle
 import logging
 _logger = logging.getLogger('theano.compile.function')
 
@@ -11,6 +12,27 @@ from theano.compile.pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
 from theano import gof
+
+
+def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
+                  givens=None,
+                  no_default_updates=False, accept_inplace=False, name=None,
+                  rebuild_strict=True, allow_input_downcast=None, profile=None,
+                  on_unused_input=None):
+    """This is helpful to make a reproducable case for problem during
+    Theano compilation.
+
+    """
+    assert isinstance(filename, basestring)
+    d = dict(inputs=inputs, outputs=outputs, mode=mode, updates=updates,
+             givens=givens, no_default_updates=no_default_updates,
+             accept_inplace=accept_inplace, name=name,
+             rebuild_strict=rebuild_strict,
+             allow_input_downcast=allow_input_downcast, profile=profile,
+             on_unused_input=on_unused_input)
+    with open(filename, 'wb') as f:
+        cPickle.dump(d, f, -1)
+
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,

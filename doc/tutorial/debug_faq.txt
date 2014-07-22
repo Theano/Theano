@@ -410,3 +410,29 @@ the function itself (a "thunk" is a concept related to closures). Here, to
 get the current node's first input's shape, you'd therefore do "p
 thunk.inputs[0][0].shape", which prints out "(3, 4)".
 
+.. _faq_dump_fct:
+
+Dumping a Function to help debug
+--------------------------------
+
+If you are reading this, there is high chance that you emailed our
+mailing list and we asked you to read this section. This section
+explain how to dump all the parameter passed to
+``theano.function()``. This is useful to help us reproduce a problem
+during compilation and it don't request you to make a self contained
+example.
+
+For this to work, we need to be able to import the code for all Op in
+the graph. So if you create your own Op, we will need this
+code. Otherwise, we won't be able to unpickle it. We already have all
+the Ops from Theano and Pylearn2.
+
+.. code-block:: python
+
+    # Replace this line:
+    theano.function(...)
+    # with
+    theano.function_dump(filename, ...)
+    # Where filename is a string to a file that we will write to.
+
+Then send us filename.
