@@ -21,13 +21,16 @@ class test_gpu_Broadcast(test_Broadcast):
     type = GpuArrayType
     cop = GpuElemwise
     ctype = GpuArrayType
+    # The order is important
+    linkers = [gof.PerformLinker, gof.CLinker]
+
+    def setUp(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            self.linkers = [gof.PerformLinker]
 
     def rand_val(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
-
-    # no c_code() yet
-    #cop = GpuElemwise
-    #ctype = GpuArrayType
 
     def rand_cval(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))

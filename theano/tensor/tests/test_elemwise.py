@@ -158,6 +158,9 @@ class test_Broadcast(unittest.TestCase):
     openmp_minsize = 2*config.openmp_elemwise_minsize
     openmp_minsize_sqrt = math.ceil(math.sqrt(openmp_minsize))
 
+    # The order is important if you change them.
+    linkers = [gof.PerformLinker, gof.CLinker]
+
     def rand_val(self, shp):
         return numpy.asarray(numpy.random.rand(*shp))
 
@@ -262,12 +265,13 @@ class test_Broadcast(unittest.TestCase):
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = self.ctype('float64', [0, 0])('x')
         y = self.ctype('float64', [1, 1])('y')
-        e = self.cop(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
-        f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
-        xv = self.rand_cval((5, 5))
-        yv = self.rand_cval((1, 1))
-        f(xv, yv)
-        assert (xv == yv).all()
+        for linker, op in zip(self.linkers, [self.op, self.cop]):
+            e = op(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
+            f = linker().accept(FunctionGraph([x, y], [e])).make_function()
+            xv = self.rand_cval((5, 5))
+            yv = self.rand_cval((1, 1))
+            f(xv, yv)
+            assert (xv == yv).all()
 
     def test_fill_var(self):
         x = tensor.matrix()
@@ -286,22 +290,24 @@ class test_Broadcast(unittest.TestCase):
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = self.ctype('float64', [0, 0, 0, 0, 0])('x')
         y = self.ctype('float64', [0, 0, 0, 0, 0])('y')
-        e = self.cop(scalar.add)(x, y)
-        f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
-        xv = self.rand_cval((2, 2, 2, 2, 2))
-        yv = self.rand_cval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
-        zv = xv + yv
-        assert (f(xv, yv) == zv).all()
+        for linker, op in zip(self.linkers, [self.op, self.cop]):
+            e = op(scalar.add)(x, y)
+            f = linker().accept(FunctionGraph([x, y], [e])).make_function()
+            xv = self.rand_cval((2, 2, 2, 2, 2))
+            yv = self.rand_cval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
+            zv = xv + yv
+            assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = self.ctype('float64', [0, 0])('x')
-        e = self.cop(scalar.add)(x, x)
-        f = gof.CLinker().accept(FunctionGraph([x], [e])).make_function()
-        xv = self.rand_cval((2, 2))
-        zv = xv + xv
-        assert (f(xv) == zv).all()
+        for linker, op in zip(self.linkers, [self.op, self.cop]):
+            e = op(scalar.add)(x, x)
+            f = linker().accept(FunctionGraph([x], [e])).make_function()
+            xv = self.rand_cval((2, 2))
+            zv = xv + xv
+            assert (f(xv) == zv).all()
 
 
 class test_CAReduce(unittest_tools.InferShapeTester):
