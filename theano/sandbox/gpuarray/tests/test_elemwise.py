@@ -32,6 +32,18 @@ class test_gpu_Broadcast(test_Broadcast):
     def rand_cval(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
 
+    def test_c(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
+        super(test_gpu_Broadcast, self).test_c()
+
+    def test_c_inplace(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
+        super(test_gpu_Broadcast, self).test_c_inplace()
+
 
 class test_GpuDimShuffle(test_DimShuffle):
     op = GpuDimShuffle
