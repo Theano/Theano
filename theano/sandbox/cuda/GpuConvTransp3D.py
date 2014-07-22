@@ -61,34 +61,34 @@ class GpuConvTransp3D(GpuOp):
             //printf("\t\t\t\tGpuConvTransp c code\\n");
 
             //Check dimensionality of inputs
-            if (%(H)s->nd != 5)
+            if (CudaNdarray_NDIM(%(H)s) != 5)
             {
-                PyErr_Format(PyExc_ValueError, "GpuConvTransp3D: H must be a 5-D tensor but it is %%i-D",%(H)s->nd);
+                PyErr_Format(PyExc_ValueError, "GpuConvTransp3D: H must be a 5-D tensor but it is %%i-D", CudaNdarray_NDIM(%(H)s));
                 %(fail)s
             }
 
-            if (%(W)s->nd != 5)
+            if (CudaNdarray_NDIM(%(W)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvTransp3D: W must be a 5-D tensor");
                 %(fail)s
             }
 
-            if (%(b)s->nd != 1)
+            if (CudaNdarray_NDIM(%(b)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvTransp3D: b must be a vector");
                 %(fail)s
             }
 
-            if (%(d)s->nd != 1)
+            if (PyArray_NDIM(%(d)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvTransp3D: d must be a vector");
                 %(fail)s
             }
 
             //Read and check stride arguments
-            if (%(d)s->dimensions[0] != 3)
+            if (PyArray_DIMS(%(d)s)[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError,"GpuConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", %(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError,"GpuConvTransp3D: 3 stride length arguments expected (for row, col, and time) but %%li were given", PyArray_DIMS(%(d)s)[0]);
                 %(fail)s
             }
 { // for fail
@@ -138,13 +138,13 @@ class GpuConvTransp3D(GpuOp):
 
             if (%(RShape)s)
             {
-                if (%(RShape)s->nd != 1)
+                if (PyArray_NDIM(%(RShape)s) != 1)
                 {
                     PyErr_Format(PyExc_ValueError, "RShape must be a vector");
                     %(fail)s
                 }
 
-                if (%(RShape)s->dimensions[0] != 3)
+                if (PyArray_DIMS(%(RShape)s)[0] != 3)
                 {
                     PyErr_Format(PyExc_ValueError, "RShape must specify a 3D shape ( [height,width,duration] )");
                     %(fail)s
@@ -189,7 +189,7 @@ class GpuConvTransp3D(GpuOp):
                     %(fail)s;
                 }
                         }
-            cudaMemset(%(R)s->devdata, 0, 4 * batchSize * inputChannels * videoHeight * videoWidth * videoDur);
+            cudaMemset(CudaNdarray_DEV_DATA(%(R)s), 0, 4 * batchSize * inputChannels * videoHeight * videoWidth * videoDur);
 
 { // for fail
 

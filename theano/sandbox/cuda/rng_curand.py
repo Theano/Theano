@@ -148,20 +148,20 @@ class CURAND_Base(GpuOp):
         int n_elements = 1;
         int must_alloc_sample = ((NULL == %(o_sample)s)
                 || !CudaNdarray_Check(py_%(o_sample)s)
-                || (%(o_sample)s->nd != %(ndim)s));
+                || (CudaNdarray_NDIM(%(o_sample)s) != %(ndim)s));
 
-        if (%(size)s->nd != 1)
+        if (PyArray_NDIM(%(size)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "size must be vector");
             %(fail)s
         }
-        if (%(size)s->dimensions[0] != %(ndim)s)
+        if (PyArray_DIMS(%(size)s)[0] != %(ndim)s)
         {
             PyErr_Format(PyExc_ValueError, "size must have length %%i (not %%i)",
-                %(ndim)s, %(size)s->dimensions[0]);
+                %(ndim)s, PyArray_DIMS(%(size)s)[0]);
             %(fail)s
         }
-        if (PyArray_DESCR(%(size)s)->type_num != NPY_INT32)
+        if (PyArray_TYPE(%(size)s) != NPY_INT32)
         {
             PyErr_SetString(PyExc_ValueError, "size must be int32");
             %(fail)s
