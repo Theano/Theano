@@ -1048,35 +1048,33 @@ class FunctionMaker(object):
             need_optimize = False
             get_lock()
             key = None
-            '''
-            graph_db and need_optimize
-            '''
-            if os.path.isfile(graph_db_file):
-                print 'graph_db exists'
-            else:
-                # create graph_db
-                f = open(graph_db_file, 'w+b')
-                print 'created new graph_db %s' % graph_db_file
-                f.close
-
-            # load the graph_db dictionary
-            try:
-                f = open(graph_db_file, 'r+b')
-                tmp = theano.config.unpickle_function
-                theano.config.unpickle_function = False
-                graph_db = cPickle.load(f)
-                theano.config.unpickle_function = tmp
-                f.close()
-                print 'graph_db is not empty'
-            except EOFError, e:
-                # the file has nothing in it
-                print e
-                print 'graph_db is empty'
-                graph_db = {}
-
-            print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
             if theano.config.cache_optimizations:
+                '''
+                graph_db and need_optimize
+                '''
+                if os.path.isfile(graph_db_file):
+                    print 'graph_db exists'
+                else:
+                    # create graph_db
+                    f = open(graph_db_file, 'w+b')
+                    print 'created new graph_db %s' % graph_db_file
+                    f.close
+                # load the graph_db dictionary
+                try:
+                    f = open(graph_db_file, 'r+b')
+                    tmp = theano.config.unpickle_function
+                    theano.config.unpickle_function = False
+                    graph_db = cPickle.load(f)
+                    theano.config.unpickle_function = tmp
+                    f.close()
+                    print 'graph_db is not empty'
+                except EOFError, e:
+                    # the file has nothing in it
+                    print e
+                    print 'graph_db is empty'
+                    graph_db = {}
                 need_optimize = True
+                print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
                 # the sole purpose of this loop is to set 'need_optimize'
                 for i, graph_old in enumerate(graph_db.keys()):
                     inputs_old = graph_old.inputs
@@ -1150,7 +1148,7 @@ class FunctionMaker(object):
                             need_optimize = False
                             key = graph_old
                             break
-    
+
                 # now optimize or not
                 if need_optimize:
                     # this is a brand new graph, optimize it, save it to graph_db
