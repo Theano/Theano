@@ -782,7 +782,7 @@ class GpuContiguous(Op):
         return ['<numpy_compat.h>']
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp
@@ -807,8 +807,7 @@ class GpuContiguous(Op):
                 {
                     %(fail)s;
                 }
-            }else if(GpuArray_copy(&(%(z)s->ga), &(%(input)s->ga),
-                                   GA_C_ORDER) != GA_NO_ERROR){
+            }else if(pygpu_move(%(z)s, %(input)s) == -1) {
                 %(fail)s;
             }
         }
