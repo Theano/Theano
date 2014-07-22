@@ -690,13 +690,19 @@ def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
     """
     var: shape, comment
     W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-    h: (iWin, iSize), input from lower layer (sparse)
-    inputIdx: (iWin,), indexes of the input blocks
+    h: (batch, iWin, iSize), input from lower layer (sparse)
+    inputIdx: (batch, iWin), indexes of the input blocks
     b: (oBlocks, oSize), bias vector
-    outputIdx: (oWin,), indexes of the output blocks
+    outputIdx: (batch, oWin), indexes of the output blocks
 
     returns (oBlocks, oSize), dot(W[i, j], h[i]) + b[j]
          but b[j] is only added once
     """
+    assert inputIdx.ndim == h.ndim - 1
+    assert outputIdx.ndim == inputIdx.ndim
+    if h.ndim == 2:
+        h = h.dimshuffle('x', 0, 1)
+        inputIdx = inputIdx.dimshuffle('x', 0)
+        outputIdx = outputIdx.dimshuffle('x', 0)
     return sparse_block_gemv_ss(b.take(outputIdx, axis=0), W, h,
                                 inputIdx, outputIdx)
