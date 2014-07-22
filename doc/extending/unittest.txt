@@ -350,9 +350,9 @@ The behaviour of seed_rng is as follows:
 
 * If an explicit seed is given, it will be used for seeding numpy's rng.
 
-* If not, it will use ``config.unittest.rseed`` (its default value is 666).
+* If not, it will use ``config.unittests.rseed`` (its default value is 666).
 
-* If config.unittest.rseed is set to "random", it will seed the rng with
+* If config.unittests.rseed is set to "random", it will seed the rng with
   None, which is equivalent to seeding with a random seed.
 
 
@@ -364,7 +364,7 @@ a higher confidence that the variables are correct), while still
 making sure unittests are deterministic.
 
 Users who prefer their unittests to be random (when run on their local
-machine) can simply set ``config.unittest.rseed`` to 'random' (see
+machine) can simply set ``config.unittests.rseed`` to 'random' (see
 :mod:`config`).
 
 Similarly, to provide a seed to numpy.random.RandomState, simply use:
