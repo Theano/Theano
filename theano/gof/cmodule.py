@@ -1702,6 +1702,14 @@ class GCC_compiler(object):
                             # - 4.7 before 4.7.3
                             # - 4.8 before 4.8.1
                             # Earlier versions did not have arch "corei7-avx"
+                            # Similar for gcc 4.8.3 and core-avx2.
+                            version = gcc_version_str.split('.')
+                            if len(version) == 3:
+                                # Unexpected, but should not be a problem
+                                mj, mn, patch = [int(vp) for vp in version]
+                            else:
+                                mj, mn, patch = (99, 99, 99)
+
                             for i, p in enumerate(new_flags):
                                 if 'march' not in p:
                                     continue
@@ -1710,19 +1718,16 @@ class GCC_compiler(object):
                                     # Inexpected, but do not crash
                                     continue
                                 opt_val = opt[1]
-                                if not opt_val.endswith('-avx'):
-                                    # OK
-                                    continue
-                                # Check the version of GCC
-                                version = gcc_version_str.split('.')
-                                if len(version) != 3:
-                                    # Unexpected, but should not be a problem
-                                    continue
-                                mj, mn, patch = [int(vp) for vp in version]
-                                if (((mj, mn) == (4, 6) and patch < 4) or
+                                if opt_val.endswith('-avx2'):
+                                    # This bug happened with GCC 4.8.3
+                                    # See gh-1980
+                                    if ((mj, mn) == (4, 8) and patch <= 3):
+                                        new_flags[i] = opt[0]+'=corei7'
+                                elif opt_val.endswith('-avx'):
+                                    if (((mj, mn) == (4, 6) and patch < 4) or
                                         ((mj, mn) == (4, 7) and patch <= 3) or
                                         ((mj, mn) == (4, 8) and patch < 1)):
-                                    new_flags[i] = p.rstrip('-avx')
+                                        new_flags[i] = p.rstrip('-avx')
 
                             # Go back to split arguments, like
                             # ["-option", "value"],
