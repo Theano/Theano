@@ -167,19 +167,14 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         source_file = re.sub('\.pyc?', '.py', __file__)
         compiled_file = source_file + 'c'
 
-        # Find call to function and step back up the stack one step
         stack = tb.extract_stack()
-        idx = None
-        for i, elem in enumerate(stack):
-            if elem[0] == source_file or elem[0] == compiled_file:
-                idx = i - 1
-                break
+        idx = len(stack) - 1
 
-        # Set the name
-        if idx is not None:
-            call_info = stack[idx]
-            name = call_info[0] + ':' + str(call_info[1])
-
+        last_frame = stack[idx]
+        if (last_frame[0] == source_file or last_frame[0] == compiled_file):
+            func_frame = stack[idx - 1]
+            name = func_frame[0] + ':' + str(func_frame[1])
+        
     if updates is None:
         updates = []
 
