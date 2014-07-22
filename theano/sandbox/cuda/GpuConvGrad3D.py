@@ -125,7 +125,7 @@ class GpuConvGrad3D(GpuOp):
 
             }
 { //for fail
-            dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) %(WShape)s->data;
+            dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) PyArray_DATA(%(WShape)s);
             const int outputChannels =  WShape[0];
             const int inputChannels = CudaNdarray_HOST_DIMS(%(V)s)[4];
             if (WShape[4] != inputChannels)
