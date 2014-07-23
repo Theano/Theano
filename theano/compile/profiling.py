@@ -729,6 +729,9 @@ class ProfileStats(object):
                     return False
 
             maybe_executed = set()
+            for var in fgraph.inputs:
+                for c, _ in var.clients:
+                    maybe_executed.add(c)
 
             def min_memory_generator(node_list):
                 '''
@@ -742,20 +745,18 @@ class ProfileStats(object):
                 '''
                 global maybe_executed
 
+
                 for i in range(len(node_list)):
                     v = node_list[i:i+1]
-                    if len(node_list) == check_len or v[0] in maybe_executed:
+                    if v[0] in maybe_executed:
                         if check_node_state(v[0]):
                             for node in v[0].outputs:
                                 compute_map[node][0] = 1
                                 for c, _ in node.clients:
-                                    if c == "output":
-                                        pass
-                                    else:
-                                        maybe_executed.add(node) 
+                                    if c != "output":
+                                        maybe_executed.add(c) 
                             if len(node_list) == 1:
                                 yield v
-                                maybe_executed = set()
                             else:
                                 rest = node_list[ :i] + node_list[i+1: ]
                                 for p in min_memory_generator(rest):
@@ -764,6 +765,8 @@ class ProfileStats(object):
                                 compute_map[node][0] = 0
 
             min_order = []
+
+            print node_list
 
             for order in min_memory_generator(node_list):
                 post_thunk_old_storage = []
