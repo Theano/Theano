@@ -1296,7 +1296,7 @@ class IncSubtensor(Op):
             ** helper_args
         )
 
-        #Make a view on the output, as we will write into it.
+        # Make a view on the output, as we will write into it.
         alloc_zview = self.make_view_array(z, view_ndim)
 
         build_view = """
@@ -1545,8 +1545,9 @@ class AdvancedSubtensor1(Op):
             if not numpy.can_cast(i.dtype, numpy.intp):
                 # Check if there was actually an incorrect conversion
                 if numpy.any(i != i_):
-                    raise IndexError('index contains values that are bigger '
-                            'than the maximum array size on this system.', i)
+                    raise IndexError(
+                        'index contains values that are bigger '
+                        'than the maximum array size on this system.', i)
             i = i_
 
         out[0] = x.take(i, axis=0, out=o)
@@ -1737,9 +1738,10 @@ class AdvancedIncSubtensor1(Op):
                 opname = 'set'
             else:
                 opname = 'increment'
-            raise TypeError('cannot %s x subtensor with ndim=%s'
-            ' by y with ndim=%s to x subtensor with ndim=%s ' % (
-                opname, x_.type.ndim, y_.type.ndim))
+            raise TypeError(
+                'cannot %s x subtensor with ndim=%s'
+                ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                    opname, x_.type.ndim, y_.type.ndim))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
@@ -1842,7 +1844,7 @@ def adv_index_broadcastable_pattern(a, idx):
 
     newidx = tuple(map(replace_slice, idx))
 
-    #2 - True = 1; 2 - False = 2
+    # 2 - True = 1; 2 - False = 2
     fakeshape = [2 - bc for bc in a.broadcastable]
     retshape = numpy.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
@@ -1872,7 +1874,7 @@ class AdvancedSubtensor(Op):
         return gof.Apply(self,
                          (x,) + index,
                          [theano.tensor.tensor(dtype=x.type.dtype,
-                                 broadcastable=bcast)])
+                                               broadcastable=bcast)])
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -1902,13 +1904,11 @@ class AdvancedSubtensor(Op):
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
-                    'Numpy versions 1.6.1 and below have a bug preventing '
-                    'advanced indexing from correctly filling arrays that '
-                    'are too big (>= 2^32 elements). It is possible that '
-                    'out[0] (%s), with shape %s, is not correctly filled.'
-                    % (out[0], out[0].shape))
-        # return
-        #raise NotImplementedError()
+                'Numpy versions 1.6.1 and below have a bug preventing '
+                'advanced indexing from correctly filling arrays that '
+                'are too big (>= 2^32 elements). It is possible that '
+                'out[0] (%s), with shape %s, is not correctly filled.'
+                % (out[0], out[0].shape))
 
     def connection_pattern(self, node):
 
@@ -1960,8 +1960,9 @@ class AdvancedIncSubtensor(Op):
 
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__,
-                "inplace=" + str(self.inplace),
-                " set_instead_of_inc=" + str(self. set_instead_of_inc))
+                               "inplace=" + str(self.inplace),
+                               " set_instead_of_inc=" +
+                               str(self. set_instead_of_inc))
 
     def make_node(self, x, y, *inputs):
         x = theano.tensor.as_tensor_variable(x)
@@ -1995,17 +1996,18 @@ class AdvancedIncSubtensor(Op):
                 op.allow_legacy_perform = True
             else:
                 raise NotImplementedError(
-                        'Could not import inplace_increment, so some advanced '
-                        'indexing features are disabled. They will be '
-                        'available if you update NumPy to version 1.8 or '
-                        'later, or to the latest development version. '
-                        'You may need to clear the cache (theano-cache clear) '
-                        'afterwards.')
+                    'Could not import inplace_increment, so some advanced '
+                    'indexing features are disabled. They will be '
+                    'available if you update NumPy to version 1.8 or '
+                    'later, or to the latest development version. '
+                    'You may need to clear the cache (theano-cache clear) '
+                    'afterwards.')
 
         return gof.Apply(op,
-                        (x, y) + inputs,
-                        [theano.tensor.tensor(dtype=x.type.dtype,
-                            broadcastable=x.type.broadcastable)])
+                         (x, y) + inputs,
+                         [theano.tensor.tensor(
+                             dtype=x.type.dtype,
+                             broadcastable=x.type.broadcastable)])
 
     def perform(self, node, inputs, out_):
         # TODO: 1. opt to make this in place 2. generalize as described in
@@ -2025,21 +2027,21 @@ class AdvancedIncSubtensor(Op):
             out[0][inputs[2:]] += inputs[1]
         else:
             raise NotImplementedError(
-                    'Could not import inplace_increment, so some advanced '
-                    'indexing features are disabled. They will be '
-                    'available if you update NumPy to version 1.8 or '
-                    'later, or to the latest development version. '
-                    'You may need to clear the cache (theano-cache clear) '
-                    'afterwards.')
+                'Could not import inplace_increment, so some advanced '
+                'indexing features are disabled. They will be '
+                'available if you update NumPy to version 1.8 or '
+                'later, or to the latest development version. '
+                'You may need to clear the cache (theano-cache clear) '
+                'afterwards.')
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
-                    'Numpy versions 1.6.1 and below have a bug preventing '
-                    'advanced indexing from correctly filling arrays that '
-                    'are too big (>= 2^32 elements). It is possible that '
-                    'out[0] (%s), with shape %s, is not correctly filled.'
-                    % (out[0], out[0].shape))
+                'Numpy versions 1.6.1 and below have a bug preventing '
+                'advanced indexing from correctly filling arrays that '
+                'are too big (>= 2^32 elements). It is possible that '
+                'out[0] (%s), with shape %s, is not correctly filled.'
+                % (out[0], out[0].shape))
 
     def infer_shape(self, node, ishapes):
         return [ishapes[0]]
@@ -2097,6 +2099,6 @@ def take(a, indices, axis=None, mode='raise'):
         ndim = indices.ndim
     else:
         shape = theano.tensor.concatenate(
-                        [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
+            [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
         ndim = a.ndim + indices.ndim - 1
     return take(a, indices.flatten(), axis, mode).reshape(shape, ndim)
