@@ -100,27 +100,39 @@ class Test_inc_subtensor(unittest.TestCase):
         sl2 = slice(sl2_end)
         sl3 = 2
 
-        for do_set in [True, False]:
-            print "Set", do_set
+        val_a = numpy.ones((5, 3, 4))
+        val_inc = 2.3
+        val_sl2_end = 2
 
-            if do_set:
-                resut = tt.set_subtensor(a[sl1, sl3, sl2], increment)
-            else:
-                resut = tt.inc_subtensor(a[sl1, sl3, sl2], increment)
+        for method in [tt.set_subtensor, tt.inc_subtensor]:
+            print "MethodSet", method
+
+            resut = method(a[sl1, sl3, sl2], increment)
 
             f = theano.function([a, increment, sl2_end], resut)
-
-            val_a = numpy.ones((5, 3, 4))
-            val_inc = 2.3
-            val_sl2_end = 2
 
             expected_result = numpy.copy(val_a)
             result = f(val_a, val_inc, val_sl2_end)
 
-            if do_set:
+            if method is tt.set_subtensor:
                 expected_result[:, sl3, :val_sl2_end] = val_inc
             else:
                 expected_result[:, sl3, :val_sl2_end] += val_inc
+
+            utt.assert_allclose(result, expected_result)
+
+            # Test when we broadcast the result
+            resut = method(a[sl1, sl2], increment)
+
+            f = theano.function([a, increment, sl2_end], resut)
+
+            expected_result = numpy.copy(val_a)
+            result = f(val_a, val_inc, val_sl2_end)
+
+            if method is tt.set_subtensor:
+                expected_result[:, :val_sl2_end] = val_inc
+            else:
+                expected_result[:, :val_sl2_end] += val_inc
 
             utt.assert_allclose(result, expected_result)
 
