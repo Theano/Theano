@@ -6,6 +6,9 @@ import cPickle
 import logging
 _logger = logging.getLogger('theano.compile.function')
 
+import traceback as tb
+import re
+
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
@@ -181,6 +184,19 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
+    if name is None:
+        # Determine possible file names
+        source_file = re.sub('\.pyc?', '.py', __file__)
+        compiled_file = source_file + 'c'
+
+        stack = tb.extract_stack()
+        idx = len(stack) - 1
+
+        last_frame = stack[idx]
+        if (last_frame[0] == source_file or last_frame[0] == compiled_file):
+            func_frame = stack[idx - 1]
+            name = func_frame[0] + ':' + str(func_frame[1])
+        
     if updates is None:
         updates = []
 
