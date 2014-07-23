@@ -858,11 +858,12 @@ class T_loading_and_saving(unittest.TestCase):
                 if tmpdir is not None:
                     shutil.rmtree(tmpdir)
 
+
 class T_modes(unittest.TestCase):
-    ## All tests here belog to
-    ## http://deeplearning.net/software/theano/tutorial/modes.html
-    ## Theano/doc/tutorial/modes.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belog to
+    # http://deeplearning.net/software/theano/tutorial/modes.html
+    # Theano/doc/tutorial/modes.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_modes_1(self):
 
@@ -871,15 +872,15 @@ class T_modes(unittest.TestCase):
         f = theano.function([x], 10*x, mode='DEBUG_MODE')
 
         assert numpy.all(f([5]) == [50.])
-        assert numpy.all(f([0]) == [0.] )
+        assert numpy.all(f([0]) == [0.])
         assert numpy.all(f([7]) == [70.])
 
-class T_using_gpu(unittest.TestCase):
-    ## All tests here belog to
-    ## http://deeplearning.net/software/theano/tutorial/using_gpu.html
-    ## Theano/doc/tutorial/using_gpu.txt
-    ## Any change you do here also add it to the tutorial !
 
+class T_using_gpu(unittest.TestCase):
+    # All tests here belog to
+    # http://deeplearning.net/software/theano/tutorial/using_gpu.html
+    # Theano/doc/tutorial/using_gpu.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_using_gpu_1(self):
         # I'm checking if this compiles and runs
@@ -910,9 +911,7 @@ class T_using_gpu(unittest.TestCase):
         else:
             assert numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
-
     def test_using_gpu_2(self):
-
         if theano.config.device.find('gpu') > -1:
 
             from theano import function, config, shared, sandbox
