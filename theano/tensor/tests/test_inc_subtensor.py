@@ -83,11 +83,11 @@ class Test_inc_subtensor(unittest.TestCase):
                 f(rng_randX(3, 1), rng_randX(1))
                 # These ones should not
                 self.assertRaises(ValueError,
-                        f, rng_randX(3, 1), rng_randX(2))
+                                  f, rng_randX(3, 1), rng_randX(2))
                 self.assertRaises(ValueError,
-                        f, rng_randX(3, 1), rng_randX(3))
+                                  f, rng_randX(3, 1), rng_randX(3))
                 self.assertRaises(ValueError,
-                        f, rng_randX(3, 1), rng_randX(0))
+                                  f, rng_randX(3, 1), rng_randX(0))
 
     def test_simple_3d(self):
         """Increments or sets part of a tensor by a scalar using full slice and
@@ -150,21 +150,21 @@ class Test_inc_subtensor(unittest.TestCase):
         for f_slice in [inc_slice, set_slice]:
             # vector
             utt.verify_grad(
-                    f_slice(slice(2, 4, None)),
-                    (numpy.asarray([0, 1, 2, 3, 4, 5.]),
-                        numpy.asarray([9, 9.]), ))
+                f_slice(slice(2, 4, None)),
+                (numpy.asarray([0, 1, 2, 3, 4, 5.]),
+                 numpy.asarray([9, 9.]), ))
 
             # matrix
             utt.verify_grad(
-                    f_slice(slice(1, 2, None), slice(None, None, None)),
-                    (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
-                        numpy.asarray([[9, 9.]]), ))
+                f_slice(slice(1, 2, None), slice(None, None, None)),
+                (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
+                 numpy.asarray([[9, 9.]]), ))
 
-            #single element
+            # single element
             utt.verify_grad(
-                    f_slice(2, 1),
-                    (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
-                        numpy.asarray(9.),))
+                f_slice(2, 1),
+                (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
+                 numpy.asarray(9.),))
 
             # broadcast
             utt.verify_grad(
