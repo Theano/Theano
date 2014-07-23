@@ -549,7 +549,7 @@ class GpuSoftmaxWithBias(GpuOp):
 
     def c_code_cache_version(self):
         #return ()
-        return (8,) + inline_softmax.code_version
+        return (9,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
@@ -649,9 +649,11 @@ class GpuSoftmaxWithBias(GpuOp):
                 if( cudaSuccess != err)
                 {
                     PyErr_Format(PyExc_RuntimeError,
-                                 "Cuda error: %%s: %%s.\\n",
+                                 "Cuda error: %%s: %%s. n_blocks=%%d,"
+                                 " n_threads=%%d, n_shared_bytes=%%d\\n",
                                  "kSoftmaxWithBias_%(nodename)s",
-                                 cudaGetErrorString(err));
+                                 cudaGetErrorString(err),
+                                 n_blocks, n_threads, n_shared_bytes);
                     %(fail)s;
                 }
             }
