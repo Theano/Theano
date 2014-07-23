@@ -647,6 +647,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
         if (x.type.ndim != len(self.reduce_mask)):
             raise TypeError("x must have rank %i" % len(self.reduce_mask))
+        if ("complex" in x.dtype or
+            "complex" in ret.outputs[0].dtype or
+            "complex" in self._acc_dtype(x.dtype)):
+            raise NotImplementedError("We don't support complex in gpu reduction")
         return Apply(self, [x], [GpuArrayType(ret.outputs[0].dtype,
                                               ret.outputs[0].type.broadcastable)()])
 
@@ -717,8 +721,12 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
         nd_in = node.inputs[0].type.ndim
         nd_out = node.outputs[0].type.ndim
-        in_dtype = "npy_" + node.inputs[0].dtype
-        out_dtype = "npy_" + node.outputs[0].dtype
+        # For complex, we need to use theano_complex* in the c code to
+        # have it run. But libgpuarray don't understand it.
+        in_dtype = node.inputs[0].type.dtype_specs()[1]
+        out_dtype = node.outputs[0].type.dtype_specs()[1]
+        gin_dtype = "npy_" + node.inputs[0].dtype
+        gout_dtype = "npy_" + node.outputs[0].dtype
         assert nd_in - nd_out == sum(self.reduce_mask)
 
         sio = StringIO()
@@ -782,7 +790,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             if not self.reduce_mask[i]:
                 print >> sio, 'new_dims[%(j)s] = PyGpuArray_DIMS(%(x)s)[%(i)s];' % locals()
                 j += 1
-        out_typecode = dtype_to_typecode(out_dtype[4:])
+        out_typecode = dtype_to_typecode(gout_dtype[4:])
         print >> sio, """
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(%(nd_out)s, new_dims,
@@ -1001,7 +1009,9 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         return sio.getvalue()
 
     def _k_init(self, node, nodename):
-        acc_dtype = "npy_" + self._acc_dtype(node.inputs[0].dtype)
+        acc_dtype = self._acc_dtype(node.inputs[0].dtype)
+        # We need to use theano_complex* and not npy_complex*
+        acc_dtype = theano.scalar.basic.Scalar(acc_dtype).dtype_specs()[1]
 
         return """
                 const int threadCount = blockDim.x * blockDim.y * blockDim.z;

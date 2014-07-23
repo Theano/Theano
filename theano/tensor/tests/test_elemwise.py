@@ -738,6 +738,7 @@ class T_reduce_dtype(unittest.TestCase):
     op = CAReduce
     axes = [None, 0, 1, [], [0], [1], [0, 1]]
     methods = ['sum', 'prod']
+    dtypes = imap(str, theano.scalar.all_types)
 
     def test_reduce_default_dtype(self):
         """
@@ -745,7 +746,7 @@ class T_reduce_dtype(unittest.TestCase):
         """
         # We try multiple axis combinations even though axis should not matter.
         for method in self.methods:
-            for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+            for idx, dtype in enumerate(self.dtypes):
                 axis = self.axes[idx % len(self.axes)]
                 x = tensor.matrix(dtype=dtype)
                 s = getattr(x, method)(axis=axis)
@@ -768,7 +769,7 @@ class T_reduce_dtype(unittest.TestCase):
         ##Test the default acc_dtype of a reduce().
         # We try multiple axis combinations even though axis should not matter.
         for method in self.methods:
-            for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
+            for idx, dtype in enumerate(self.dtypes):
                 axis = self.axes[idx % len(self.axes)]
                 x = tensor.matrix(dtype=dtype)
                 s = getattr(x, method)(axis=axis)
@@ -797,9 +798,9 @@ class T_reduce_dtype(unittest.TestCase):
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
         for method in self.methods:
-            for input_dtype in imap(str, theano.scalar.all_types):
+            for input_dtype in self.dtypes:
                 x = tensor.matrix(dtype=input_dtype)
-                for output_dtype in imap(str, theano.scalar.all_types):
+                for output_dtype in self.dtypes:
                 # If the output is a complex, the gradient of the reduce will
                 # cast the complex to the input dtype. We can't call the normal
                 # cast on a complex to a not complex as this is ambiguous.
@@ -831,9 +832,9 @@ class T_reduce_dtype(unittest.TestCase):
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
         for method in self.methods:
-            for input_dtype in imap(str, theano.scalar.all_types):
+            for input_dtype in self.dtypes:
                 x = tensor.matrix(dtype=input_dtype)
-                for acc_dtype in imap(str, theano.scalar.all_types):
+                for acc_dtype in self.dtypes:
                 # If the accumulator is a complex, the gradient of the reduce will
                 # cast the complex to the input dtype. We can't call the normal
                 # cast on a complex to a not complex as this is ambiguous.
