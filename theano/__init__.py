@@ -69,8 +69,6 @@ FancyModule = Module
 
 from theano.printing import pprint, pp
 
-from theano import tensor
-
 from theano.scan_module import scan, map, reduce, foldl, foldr, clone
 
 from theano.updates import Updates, OrderedUpdates

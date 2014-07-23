@@ -1,11 +1,11 @@
 import logging
+import theano
 
 logger = logging.getLogger(__name__)
 import numpy
 
 from theano.gof import Op, Apply
 
-from theano import tensor
 from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
 from theano.tensor.blas import Dot22
 from theano.tensor.opt import (register_stabilize,
@@ -13,6 +13,8 @@ from theano.tensor.opt import (register_stabilize,
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
+from theano.tensor import basic
+tensor = basic
 
 
 class MatrixPinv(Op):
