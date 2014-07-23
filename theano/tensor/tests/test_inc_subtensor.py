@@ -154,3 +154,8 @@ class Test_inc_subtensor(unittest.TestCase):
                     (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
                         numpy.asarray(9.),))
 
+            # broadcast
+            utt.verify_grad(
+                f_slice(2),
+                (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
+                 numpy.asarray(9.),))

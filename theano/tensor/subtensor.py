@@ -1460,7 +1460,8 @@ class IncSubtensor(Op):
             gx = g_output
         gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
         if gy.broadcastable != y.broadcastable:
-            y_broad = (True,) * (gy.ndim - y.ndim) + y.broadcastable
+            y_dim_added = gy.ndim - y.ndim
+            y_broad = (True,) * y_dim_added + y.broadcastable
             assert sum(gy.broadcastable) < sum(y_broad)
             axis_to_sum = []
             for i in range(gy.ndim):
@@ -1476,7 +1477,10 @@ class IncSubtensor(Op):
                     assert gy.broadcastable[i] == y_broad[i]
             gy = gy.sum(axis=axis_to_sum, keepdims=True)
             if gy.ndim != y.ndim:
-                gy = gy.dimshuffle(*range(y.ndim, gy.ndim))
+                assert gy.ndim > y.ndim
+                for i in range(y_dim_added):
+                    assert gy.broadcastable[i]
+                gy = gy.dimshuffle(*range(y_dim_added, gy.ndim))
             assert gy.broadcastable == y.broadcastable
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
