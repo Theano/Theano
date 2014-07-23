@@ -745,7 +745,6 @@ class ProfileStats(object):
                 '''
                 global maybe_executed
 
-
                 for i in range(len(node_list)):
                     v = node_list[i:i+1]
                     if v[0] in maybe_executed:
@@ -765,8 +764,6 @@ class ProfileStats(object):
                                 compute_map[node][0] = 0
 
             min_order = []
-
-            print node_list
 
             for order in min_memory_generator(node_list):
                 post_thunk_old_storage = []
