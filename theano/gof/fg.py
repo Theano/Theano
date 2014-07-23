@@ -729,17 +729,19 @@ class FunctionGraph(utils.object2):
         return self.__str__()
 
     ### clone ###
-    def clone(self):
+    def clone(self, check_integrity=True):
         """WRITEME"""
-        return self.clone_get_equiv()[0]
+        return self.clone_get_equiv(check_integrity)[0]
 
-    def clone_get_equiv(self):
+    def clone_get_equiv(self, check_integrity=True):
         """WRITEME"""
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
-        self.check_integrity()
+        if check_integrity:
+            self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],
                           [equiv[o] for o in self.outputs])
-        e.check_integrity()
+        if check_integrity:
+            e.check_integrity()
         for feature in self._features:
             e.attach_feature(feature)
         return e, equiv

@@ -1056,12 +1056,12 @@ class FunctionMaker(object):
                     print 'graph_db exists'
                 else:
                     # create graph_db
-                    f = open(graph_db_file, 'w+b')
+                    f = open(graph_db_file, 'wb')
                     print 'created new graph_db %s' % graph_db_file
                     f.close
                 # load the graph_db dictionary
                 try:
-                    f = open(graph_db_file, 'r+b')
+                    f = open(graph_db_file, 'rb')
                     tmp = theano.config.unpickle_function
                     theano.config.unpickle_function = False
                     graph_db = cPickle.load(f)
@@ -1108,8 +1108,8 @@ class FunctionMaker(object):
                         flags = []
                         for output_new, output_old, i in zip(outputs_new, outputs_old, range(len(outputs_new))):
                             print 'loop through outputs node for both graphs'
-
-                            f2 = graph_old.clone()
+                            graph_old.variables = set(gof.graph.variables(graph_old.inputs, graph_old.outputs))
+                            f2 = graph_old.clone(check_integrity=False)
                             t1 = output_new
                             t2 = f2.outputs[i]
 
@@ -1153,13 +1153,14 @@ class FunctionMaker(object):
                 if need_optimize:
                     # this is a brand new graph, optimize it, save it to graph_db
                     print 'optimizing the graph'
-                    before_opt = fgraph.clone()
+                    fgraph.variables = set(gof.graph.variables(fgraph.inputs, fgraph.outputs))
+                    before_opt = fgraph.clone(check_integrity=False)
                     start_optimizer = time.time()
                     optimizer_profile = optimizer(fgraph)
                     end_optimizer = time.time()
                     opt_time = end_optimizer - start_optimizer
                     graph_db.update({before_opt:fgraph})
-                    f = open(graph_db_file, 'w+b')
+                    f = open(graph_db_file, 'wb')
                     cPickle.dump(graph_db, f, -1)
                     f.close()
                     print 'saved into graph_db'
