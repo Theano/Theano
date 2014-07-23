@@ -703,7 +703,7 @@ def test_matrix_inverse_solve():
     assert isinstance(out.owner.op, Solve)
 
 
-class lstsq(theano.Op):
+class lstsq(Op):
     def __eq__(self, other):
         return type(self) == type(other)
 
