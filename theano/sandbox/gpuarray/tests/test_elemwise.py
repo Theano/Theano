@@ -167,3 +167,13 @@ class T_gpureduce_dtype(T_reduce_dtype):
     op = GpuCAReduceCuda
     #Currently we don't support reduction on 0 axis
     axes = [None, 0, 1, 1, [0], [1], [0, 1]]
+
+
+def speed_reduce10():
+    import numpy
+    import theano
+    data = numpy.random.rand(1000, 1000).astype("float32")
+    m = theano.tensor.fmatrix()
+    f = theano.function([m], [m.sum(axis=0), m.T.sum(axis=0)],
+                        mode=mode_with_gpu)
+    f(data)
