@@ -674,8 +674,9 @@ class CLinker(link.Linker):
             try:
                 if hasattr(node, 'fgraph'):
                     if len(node.fgraph.apply_nodes) == 1 and\
-                    isinstance(op, theano.tensor.Elemwise):
-                        behavior = op.c_code_multiple(node, name, isyms, osyms, sub)
+                    hasattr(op, 'c_code_multiple'):
+                        behavior = op.c_code_multiple(node, name, isyms, osyms,
+                                                       sub)
                     else:
                         behavior = op.c_code(node, name, isyms, osyms, sub)
                 else:
