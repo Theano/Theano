@@ -2,7 +2,6 @@ import unittest
 import theano
 from theano.tensor import *
 from theano.tests import unittest_tools as utt
-from nose.plugins.attrib import attr
 
 from numpy.testing import dec
 
@@ -33,7 +32,6 @@ class TestRealImag(unittest.TestCase):
         x = zvector()
         self.assertRaises(TypeError, cast, x, 'int32')
 
-    @attr('slow')
     def test_complex(self):
         rng = numpy.random.RandomState(2333)
         m = fmatrix()

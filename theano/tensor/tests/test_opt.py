@@ -150,7 +150,6 @@ class test_dimshuffle_lift(unittest.TestCase):
         self.assertTrue(str(g) in (opt_str_g_inplace, opt_str_g_noinplace),
                         str(g))
 
-@attr('slow')
 def test_add_canonizer_problem0():
     n_segments = 10
     label = lscalar('label')
@@ -184,7 +183,6 @@ class test_greedy_distribute(unittest.TestCase):
         #print pprint(g.outputs[0])
         assert str(pprint(g.outputs[0])) == "(a + (b * x))"
 
-    @attr('slow')
     def test_kording_bug(self):
         x, y = vectors('xy')
         eps = scalar('eps')
@@ -785,7 +783,6 @@ class test_canonize(unittest.TestCase):
         # at all.
         assert not sio.getvalue()
 
-@attr('slow')
 def test_local_merge_abs():
     x, y, z = T.matrices('xyz')
     x_val = numpy.random.rand(5, 5).astype(config.floatX)
@@ -809,7 +806,6 @@ def test_local_merge_abs():
     assert isinstance(f.maker.fgraph.toposort()[1].op.scalar_op, scal.Abs)
     assert len(f.maker.fgraph.toposort()) == 2
 
-@attr('slow')
 def test_merge_abs_bugfix():
     # Test crash in optimization reported by Jeremiah Lowin at
     # https://groups.google.com/d/topic/theano-users/TaXfqXP2Mj0/discussion
@@ -829,7 +825,6 @@ def test_mixeddiv():
     d = dscalar()
     assert 0 == function([i, d], d * (i // (i + 1)))(3, 1.0)
 
-@attr('slow')
 def test_const_type_in_mul_canonizer():
     input = dmatrix()
     w = dmatrix()
@@ -1141,7 +1136,6 @@ class test_fusion(unittest.TestCase):
 
         return times
 
-    @attr('slow')
     def test_elemwise_fusion(self):
         shp = (5, 5)
         mode = copy.copy(compile.mode.get_default_mode())
@@ -1201,7 +1195,6 @@ class test_fusion(unittest.TestCase):
             shp = (5, 5, 5)
         self.do(mode, cuda.float32_shared_constructor, shp, gpu=True)
 
-    @attr('slow')
     def test_fusion_35inputs(self):
         # Make sure a fused graph with more than 35 inputs does not segfault
         # or error.
@@ -1282,7 +1275,6 @@ class test_fusion(unittest.TestCase):
         print "min", d.min(), "argmin", d.argmin(), "max", d.max(), \
             "mean", d.mean(), "std", d.std()
 
-    @attr('slow')
     def test_fusion_inplace(self):
         mode = copy.copy(compile.mode.get_default_mode())
         #we need the optimisation enabled and the canonicalize.
@@ -1465,7 +1457,6 @@ class TestCompositeCodegen(unittest.TestCase):
 
         self.x = fvector()
 
-    @attr('slow')
     def test_nested_composite(self):
         y = self.times_2(self.x)
         z = self.times_3(y)
@@ -1495,7 +1486,6 @@ class TestCompositeCodegen(unittest.TestCase):
         fval = numpy.asarray(f([1, 2, 3]))
         assert numpy.all(fval == [6, 12, 18]), fval
 
-@attr('slow')
 def test_log1p():
     m = theano.config.mode
     if m == 'FAST_COMPILE':
@@ -1591,7 +1581,6 @@ def test_log_add():
 
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
-@attr('slow')
 def test_local_useless_subtensor():
     x = tensor.matrix('x')
 
@@ -1709,7 +1698,6 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog) == 3
         f([[0, 1], [2, 3]])  # let debugmode test something
 
-    @attr('slow')
     def test1(self):
         # basic test that the optimization work with scalar broadcasted
         x = tensor.matrix('x')
@@ -1727,7 +1715,6 @@ class test_local_subtensor_lift(unittest.TestCase):
         f([[0, 1], [2, 3]], 4, [[4, 5], [6, 7]])
               # let debugmode test something
 
-    @attr('slow')
     def test2(self):
         # as 1, but take a slice
         x = tensor.matrix('x')
@@ -1745,7 +1732,6 @@ class test_local_subtensor_lift(unittest.TestCase):
         f([[0, 1], [2, 3]], 4, [[4, 5], [6, 7]])
               # let debugmode test something
 
-    @attr('slow')
     def test3(self):
         # basic test that the optimization does work with broadcasting
         # for unary elemwise.
@@ -1759,7 +1745,6 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog) == 3
         f([4, 5])  # let debugmode test something
 
-    @attr('slow')
     def test4(self):
         # basic test that the optimization doesn't work with broadcasting
         # ... It *could* be extended to,
@@ -1776,7 +1761,6 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog) == 4
         f([[0, 1], [2, 3]], [4, 5])  # let debugmode test something
 
-    @attr('slow')
     def test5(self):
         # test that we don't lift when we reuse the output of the
         # elemwise for other computation.
@@ -1794,7 +1778,6 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog) == 4
         f([[0, 1], [2, 3]], [4, 5])  # let debugmode test something
 
-    @attr('slow')
     def test6(self):
         # basic test that the optimization works with a scalar as input,
         # and a scalar as output (no broadcasting of the scalar needed).
@@ -1811,7 +1794,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert len(prog) == 2
         f([1, 2, 3], 4)  # let debugmode test something
 
-    @attr('slow')
+
     def test7(self):
         # test that Subtensor(Rebroadcast(x)) gets optimized into
         # Rebroadcast(Subtensor(x)).
@@ -1871,7 +1854,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                          (0, 2), (2, 0), (1, 0), (0, 0)]
         self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
-    @attr('slow')
     def test_const(self):
         # var[const::][-1] -> var[-1]
         x = tensor.matrix('x')
@@ -1897,7 +1879,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                     self.assertRaises(IndexError, f, x_val)
                     self.assertRaises(IndexError, g, x_val)
 
-    @attr('slow')
     def test_scalar(self):
         # var[int::][-1] -> var[-1]
         x = tensor.matrix('x')
@@ -1953,7 +1934,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                     self.assertRaises(IndexError, f, x_val)
                     self.assertRaises(IndexError, g, x_val)
 
-    @attr('slow')
     def test_scalar2(self):
         # var[::-1][int] -> var[-1]
         x = tensor.matrix('x')
@@ -1979,7 +1959,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                 self.assertRaises(IndexError, f, x_val, idx)
                 self.assertRaises(IndexError, g, x_val, idx)
 
-    @attr('slow')
     def test_const3(self):
         # var[::-1][:const] -> var[-1]
         x = tensor.matrix('x')
@@ -2017,7 +1996,6 @@ class test_local_subtensor_merge(unittest.TestCase):
             for idx in range(-7, 7):
                 f(x_val, idx)  # let debugmode test something
 
-    @attr('slow')
     def test_const4(self):
         # var[const1::][:const2]
         x = tensor.matrix('x')
@@ -2037,7 +2015,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                     x_val = self.rng.uniform(size=x_s).astype(config.floatX)
                     f(x_val)  # let debugmode test something
 
-    @attr('slow')
     def test_scalar4(self):
         # var[int1:][:int2]
         x = tensor.matrix('x')
@@ -2059,7 +2036,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                 for idx2 in range(-11, 11):
                     f(x_val, idx1, idx2)  # let debugmode test something
 
-    @attr('slow')
     def test_const_general(self):
         # Some cases of merge: shape, (start, stop, step) of first,
         # (start, stop, step) of second subtensor
@@ -2077,7 +2053,6 @@ class test_local_subtensor_merge(unittest.TestCase):
             x_val = self.rng.uniform(size=shape).astype(config.floatX)
             f(x_val)
 
-    @attr('slow')
     def test_scalar5(self):
         # General case with two real slices
         # var[b1:e1:s1][b2:e2:s2]
@@ -2165,7 +2140,6 @@ class test_local_subtensor_merge(unittest.TestCase):
         assert len([n for n in fun.maker.fgraph.toposort()
                     if isinstance(n.op, Subtensor)]) == nops
 
-    @attr('slow')
     def test_scalar6(self):
         # General case with one slice and one index
         # var[b:e:s][i]
@@ -2277,7 +2251,6 @@ class test_local_subtensor_merge(unittest.TestCase):
                 for i_val in zip(*values):
                     f(x_val, *i_val)
 
-    @attr('slow')
     def test_none_index(self):
         # Test the general case of indexing into a subvector,
         # like x[b:e:s][i], where any of b, e, and s can be None
@@ -2432,7 +2405,6 @@ class Test_alloc_zero(unittest.TestCase):
         assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.fgraph.toposort()])
 
-    @attr('slow')
     def test_dot_allocs_0(self):
         v1 = tensor.vector('v1')
         v2 = tensor.vector('v2')
@@ -2466,7 +2438,6 @@ class Test_alloc_zero(unittest.TestCase):
                     self.assertRaises((ValueError, AssertionError), f,
                                       _e1[2], _e2[1])
 
-@attr('slow')
 def test_local_subtensor_of_alloc():
 
     # DebugMode should detect if something goes wrong.
@@ -2517,7 +2488,6 @@ def test_local_subtensor_of_alloc():
                 val = f(xval)
                 assert xval.__getitem__(slices).shape == val.shape
 
-@attr('slow')
 def test_local_fill_useless():
     #Test opt local_fill_cut
     x = dvector()
@@ -2670,7 +2640,6 @@ class test_shapeoptimizer(unittest.TestCase):
                     mx = T.maximum(mx, cur)
         return mx
 
-    @attr('slow')
     def test_broadcasted_dims(self):
         #This test a case that caused a crash during optimization
         shp = (1, 1, 1, 1)
@@ -2770,7 +2739,6 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_noshape not in h_ops
         assert identity_shape not in h_ops
 
-    @attr('slow')
     def test_no_shapeopt(self):
         # Test that a basic example works even when ShapeOpt is excluded
         X = T.matrix()
@@ -2868,7 +2836,6 @@ class test_assert(utt.InferShapeTester):
         assert len(topo[0].inputs) == 3
         assert topo[1].op == deep_copy_op
 
-    @attr('slow')
     def test_infer_shape(self):
 
         adscal = dscalar()
@@ -2886,7 +2853,6 @@ class test_assert(utt.InferShapeTester):
         self._compile_and_check([admat, adscal, bdscal], [out],
                                 [admat_val, adscal_val, bdscal_val], Assert)
 
-@attr('slow')
 def test_local_mul_specialize():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
@@ -2967,7 +2933,6 @@ def speed_local_pow_specialize_range():
         if not t2 - t1 < t3 - t2:
             print "WARNING WE ARE SLOWER"
 
-@attr('slow')
 def test_local_pow_specialize():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
@@ -3020,7 +2985,6 @@ def test_local_pow_specialize():
 #    assert nodes == [T.sqrt,T.inv]#Why this don't work?
     assert numpy.allclose(f(val_no0), val_no0 ** (-.5))
 
-@attr('slow')
 def test_local_pow_specialize_device_more_aggressive_on_cpu():
     mode = theano.config.mode
     if mode == 'FAST_COMPILE':
@@ -3090,7 +3054,6 @@ class T_useless_elemwise(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
 
-    @attr('slow')
     def test_eq(self):
         x = T.dmatrix()
         y = T.dmatrix()
@@ -3110,7 +3073,6 @@ class T_useless_elemwise(unittest.TestCase):
         assert len(topo2) == 3
         assert isinstance(topo2[-1].op, T.Alloc)
 
-    @attr('slow')
     def test_neq(self):
         x = T.dmatrix()
         y = T.dmatrix()
@@ -3236,7 +3198,6 @@ class T_local_switch_sink(unittest.TestCase):
         self.mode = copy.copy(self.mode)
         self.mode.check_isfinite = False
 
-    @attr('slow')
     def test_local_mul_switch_sink(self):
         c = T.dscalar()
         idx = 0
@@ -3313,7 +3274,6 @@ class T_local_erf(unittest.TestCase):
         assert isinstance(topo[1].op.scalar_op, scal.Add)
         f(val)
 
-    @attr('slow')
     def test_local_one_minus_erf(self):
         val = numpy.asarray([-30, -3, -2, -1, 0, 1, 2, 3, 30],
                             dtype=config.floatX)
@@ -3347,7 +3307,6 @@ class T_local_erf(unittest.TestCase):
             or isinstance(topo[1].op.scalar_op, scal.Sub), f.maker.fgraph.toposort()
         print f(val)
 
-    @attr('slow')
     def test_local_erf_minus_one(self):
         val = numpy.asarray([-30, -3, -2, -1, 0, 1, 2, 3, 30],
              dtype=config.floatX)
@@ -3389,7 +3348,6 @@ class T_local_erfc(unittest.TestCase):
             not theano.scalar.basic_scipy.imported_scipy_special):
             raise SkipTest("erfc need a c++ compiler or scipy")
 
-    @attr('slow')
     def test_local_one_minus_erfc(self):
         """ test opt: 1-erfc(x) => erf(x) and -erfc(x)+1 => erf(x)
         """
@@ -3443,7 +3401,6 @@ class T_local_erfc(unittest.TestCase):
             , f.maker.fgraph.toposort()
         print f(val)
 
-    @attr('slow')
     def test_local_log_erfc(self):
         val = [-30, -27, -26, -11, -10, -3, -2, -1, 0, 1, 2, 3, 10,
              11, 26, 27, 28, 30]
@@ -3482,7 +3439,6 @@ class T_local_erfc(unittest.TestCase):
                 "the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error.")
         assert all(numpy.isfinite(f(val)))
 
-    @attr('slow')
     def test_local_grad_log_erfc_neg(self):
         val = [-100, -30, -27, -26.4, -26.2, -26, -11, -10, -9, -3, -2, -1, 0,
             1, 2, 3, 9, 10, 11, 27, 26.4, 26.2, 26, 28, 30, 100]
@@ -3614,7 +3570,6 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
                 vy = numpy.array([[7, 8, 9], [10, 11, 12]], dtype=dtype2)
                 assert numpy.all(f(vx, vy) == vx)
 
-    @attr('slow')
     def test_broadcast1(self):
         #test switch(cst, matrix, row)
         x = theano.tensor.matrix('x', dtype='int32')
@@ -3639,7 +3594,6 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         vy = numpy.array([10, 11, 12], dtype='int64')
         assert numpy.all(f(vx, vy) == vy)
 
-    @attr('slow')
     def test_broadcast2(self):
         #test switch(cst, vector, matrix)
 
@@ -3689,7 +3643,6 @@ class T_local_sum(unittest.TestCase):
         finally:
             config.warn.sum_sum_bug = backup
 
-    @attr('slow')
     def test_local_sum_sum(self):
         a = T.tensor3()
         input = numpy.arange(3 * 4 * 5, dtype=config.floatX).reshape(3, 4, 5)
@@ -3732,7 +3685,6 @@ class T_local_sum(unittest.TestCase):
         finally:
             config.warn.sum_sum_bug = backup
 
-    @attr('slow')
     def test_local_sum_alloc(self):
         a = T.dtensor3()
         input = numpy.asarray(numpy.arange(2 * 3 * 4).reshape(2, 3, 4),
@@ -3819,7 +3771,6 @@ class T_local_reduce(unittest.TestCase):
             'specialize',
             'uncanonicalize', 'local_max_and_argmax')
 
-    @attr('slow')
     def test_local_reduce_broadcast_all_0(self):
         for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
                     tensor.max, tensor.min]:
@@ -3829,7 +3780,6 @@ class T_local_reduce(unittest.TestCase):
                 isinstance(node.op, T.CAReduce)
                 for node in f.maker.fgraph.toposort()])
 
-    @attr('slow')
     def test_local_reduce_broadcast_all_1(self):
         for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
                     tensor.max, tensor.min]:
@@ -3839,7 +3789,6 @@ class T_local_reduce(unittest.TestCase):
                 isinstance(node.op, T.CAReduce)
                 for node in f.maker.fgraph.toposort()])
 
-    @attr('slow')
     def test_local_reduce_broadcast_some_0(self):
         for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
                     tensor.max, tensor.min]:
@@ -3861,7 +3810,6 @@ class T_local_reduce(unittest.TestCase):
             assert node.inputs[0].ndim == 2, node
             assert op.axis == (0,), op.axis
 
-    @attr('slow')
     def test_local_reduce_broadcast_some_1(self):
         for fct in [tensor.sum, tensor.all, tensor.any, tensor.prod,
                     tensor.max, tensor.min]:
@@ -3898,7 +3846,6 @@ class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
 
-    @attr('slow')
     def test_local_sum_div_dimshuffle(self):
         a = T.matrix('a')
         b = T.vector('b')
@@ -3975,7 +3922,6 @@ class TestMakeVector(utt.InferShapeTester):
     def setUp(self):
         super(TestMakeVector, self).setUp()
 
-    @attr('slow')
     def test_make_vector(self):
         b = T.bscalar()
         i = T.iscalar()
@@ -4062,7 +4008,6 @@ class TestMakeVector(utt.InferShapeTester):
             except AssertionError:
                 pass
 
-    @attr('slow')
     def test_infer_shape(self):
         adscal = dscalar()
         bdscal = dscalar()
@@ -4149,7 +4094,6 @@ def test_local_add_specialize():
     assert transformed
     assert transformed[0].type == s.type
 
-@attr('slow')
 def test_local_tensor_scalar_tensor():
     dtypes = ['int8', 'int16', 'int32', 'int64',
             'uint8', 'uint16', 'uint32', 'uint64',
@@ -4171,7 +4115,6 @@ def test_local_tensor_scalar_tensor():
         assert len(cast_nodes) == 0
         f(0)
 
-@attr('slow')
 def test_local_scalar_tensor_scalar():
     dtypes = ['int8', 'int16', 'int32', 'int64',
             'uint8', 'uint16', 'uint32', 'uint64',
@@ -4193,7 +4136,6 @@ def test_local_scalar_tensor_scalar():
         assert len(cast_nodes) == 0
         f(0)
 
-@attr('slow')
 def test_local_div_to_inv():
     num_len_s = tensor.lscalar('num_len')
     denom_s = tensor.scalar('denom')
@@ -4211,7 +4153,6 @@ def test_local_div_to_inv():
     assert out_val.shape == (1, 3)
     assert numpy.allclose(out_val, 0.5)
 
-@attr('slow')
 def test_local_flatten_lift():
     for i in range(1, 4):
         op = tensor.Flatten(i)
@@ -4274,7 +4215,6 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         sg = '[dot(DimShuffle{x,0}(a), DimShuffle{1,0}(b))]'
         assert str(g) == sg
 
-@attr('slow')
 def test_local_upcast_elemwise_constant_inputs():
     s = dvector("s")
     x = tensor.sum(tensor.log(10 ** s))
@@ -4302,7 +4242,6 @@ class TestShape_i(utt.InferShapeTester):
             out = f(admat_val)
             assert numpy.allclose(out, admat_val.shape[i])
 
-    @attr('slow')
     def test_infer_shape(self):
         admat = matrix()
         admat_val = numpy.random.rand(3, 4).astype(config.floatX)

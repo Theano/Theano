@@ -3,7 +3,6 @@ import numpy
 from unittest import TestCase
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 
 import theano
 import theano.tensor as tensor

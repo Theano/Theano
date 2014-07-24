@@ -12,7 +12,6 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
 from theano import tensor as T
 from theano import config, tensor, function
 
-from nose.plugins.attrib import attr
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
@@ -52,7 +51,6 @@ class TestCumsumOp(utt.InferShapeTester):
                                     [a],
                                     self.op_class)
 
-    @attr('slow')
     def test_grad(self):
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
@@ -69,7 +67,6 @@ class TestCumprodOp(utt.InferShapeTester):
         self.op_class = CumprodOp
         self.op = CumprodOp()
 
-    @attr('slow')
     def test_CumprodOp(self):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
@@ -97,7 +94,6 @@ class TestCumprodOp(utt.InferShapeTester):
                                     [a],
                                     self.op_class)
 
-    @attr('slow')
     def test_grad(self):
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
@@ -147,7 +143,6 @@ class TestBinCountOp(utt.InferShapeTester):
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
 
-    @attr('slow')
     def test_infer_shape(self):
         for dtype in tensor.discrete_dtypes:
             # uint64 always fails
@@ -204,7 +199,6 @@ class TestDiffOp(utt.InferShapeTester):
         self.op_class = DiffOp
         self.op = DiffOp()
 
-    @attr('slow')
     def test_diffOp(self):
         x = T.matrix('x')
         a = np.random.random((30, 50)).astype(config.floatX)
@@ -217,7 +211,6 @@ class TestDiffOp(utt.InferShapeTester):
                 g = theano.function([x], diff(x, n=k, axis=axis))
                 assert np.allclose(np.diff(a, n=k, axis=axis), g(a))
 
-    @attr('slow')
     def test_infer_shape(self):
         x = T.matrix('x')
         a = np.random.random((30, 50)).astype(config.floatX)
@@ -234,7 +227,6 @@ class TestDiffOp(utt.InferShapeTester):
                                         [a],
                                         self.op_class)
 
-    @attr('slow')
     def test_grad(self):
         x = T.vector('x')
         a = np.random.random(50).astype(config.floatX)
@@ -306,7 +298,6 @@ class TestRepeatOp(utt.InferShapeTester):
         if ptr_bitwidth == 32:
             self.numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
 
-    @attr('slow')
     def test_repeatOp(self):
         for ndim in range(3):
             x = T.TensorType(config.floatX, [False] * ndim)()
@@ -338,7 +329,6 @@ class TestRepeatOp(utt.InferShapeTester):
                         assert np.allclose(np.repeat(a, r, axis=axis),
                                            f(a, r))
 
-    @attr('slow')
     def test_infer_shape(self):
         for ndim in range(4):
             x = T.TensorType(config.floatX, [False] * ndim)()
@@ -375,7 +365,6 @@ class TestRepeatOp(utt.InferShapeTester):
                                 [a, r],
                                 self.op_class)
 
-    @attr('slow')
     def test_grad(self):
         for ndim in range(3):
             a = np.random.random((10, ) * ndim).astype(config.floatX)

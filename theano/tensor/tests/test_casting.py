@@ -6,7 +6,6 @@ from theano.tensor.basic import (_convert_to_int32, _convert_to_int8,
                                  _convert_to_float32, _convert_to_float64)
 from theano.tensor import *
 
-from nose.plugins.attrib import attr
 
 class test_casting(unittest.TestCase):
     def test_0(self):
@@ -31,7 +30,6 @@ class test_casting(unittest.TestCase):
             return
         assert 0
 
-    @attr('slow')
     def test_basic(self):
         for type1 in ['uint8', 'uint16', 'uint32', 'uint64',
                       'int8', 'int16', 'int32', 'int64', 'float32', 'float64']:
@@ -49,7 +47,6 @@ class test_casting(unittest.TestCase):
                 b = f(a)
                 self.assertTrue(numpy.all(b == numpy.arange(10, dtype=type2)))
 
-    @attr('slow')
     def test_convert_to_complex(self):
         val64 = numpy.ones(3, dtype='complex64') + 0.5j
         val128 = numpy.ones(3, dtype='complex128') + 0.5j

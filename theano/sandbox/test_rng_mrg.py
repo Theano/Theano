@@ -463,7 +463,7 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
     #print prefix, 'samples/sec', steps * sample_size[0] * sample_size[1] / dt
     #print prefix, 'min', min_, 'max', max_
 
-@attr('slow')
+
 def test_uniform():
 #TODO: test param low, high
 #TODO: test size=None
@@ -864,7 +864,7 @@ def test_random_state_transfer():
 
     numpy.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
 
-@attr('slow')
+
 def test_gradient_scan():
     # Test for a crash when using MRG inside scan and taking the gradient
     # See https://groups.google.com/d/msg/theano-dev/UbcYyU5m-M8/UO9UgXqnQP0J

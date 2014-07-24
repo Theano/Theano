@@ -109,7 +109,6 @@ class t_gemm(TestCase):
                 return
         self.fail()
 
-    @attr('slow')
     def test0(self):
         try:
             self.cmp(1., 0., 1.0, 1.0, 1.0)
@@ -160,7 +159,6 @@ class t_gemm(TestCase):
         self.cmp(self.rand(3, 4), -1.0,
                  self.rand(3, 5), self.rand(5, 4), -1.0)
 
-    @attr('slow')
     def test_shape_0(self):
         self.cmp(self.rand(0, 4), -1.0, self.rand(0, 5), self.rand(5, 4), -1.0)
         self.cmp(self.rand(3, 0), -1.0, self.rand(3, 5), self.rand(5, 0), -1.0)
@@ -168,7 +166,6 @@ class t_gemm(TestCase):
         self.cmp(self.rand(0, 0), -1.0, self.rand(0, 5), self.rand(5, 0), -1.0)
         self.cmp(self.rand(0, 0), -1.0, self.rand(0, 0), self.rand(0, 0), -1.0)
 
-    @attr('slow')
     def test_factorised_scalar(self):
         a = T.matrix()
         b = T.matrix()
@@ -262,7 +259,6 @@ class t_gemm(TestCase):
         f = inplace_func([], gemm_inplace(Z, one, A, A.T, one))
         f()
 
-    @attr('slow')
     def test_transposes(self):
         # three square matrices which are not contiguous
         A = self.rand(4, 5)[:, :4]
@@ -322,7 +318,6 @@ class t_gemm(TestCase):
                 return
         self.fail()
 
-    @attr('slow')
     def test_non_contiguous(self):
         # Like test_transposes but with matrices without any
         # continuous dimension
@@ -642,7 +637,6 @@ def test_gemm_factor():
     assert [(1.0, X), (1.0, Y)] == _factor_canonicalized([(1.0, X), (1.0, Y)])
     assert [(2.0, X)] == _factor_canonicalized([(1.0, X), (1.0, X)])
 
-@attr('slow')
 def test_upcasting_scalar_nogemm():
     # Test that the optimization does not crash when the scale has an incorrect
     # dtype, and forces upcasting of the result
@@ -675,7 +669,6 @@ def test_upcasting_scalar_nogemm():
     assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
     #theano.printing.debugprint(f, print_type=True)
 
-@attr('slow')
 def test_gemm_nested():
     X, Y, Z, a, b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar(
         'a'), T.scalar('b')
@@ -700,7 +693,6 @@ def test_gemm_nested():
                 2, 4), (), (), (), ()],
             max_graphlen=3)
 
-@attr('slow')
 def test_gemm_opt_wishlist():
     X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
 
@@ -742,7 +734,6 @@ def test_gemm_with_vector():
     my_just_gemm([Z * b - T.dot(X, Y) + v])
     my_just_gemm([Z - a * b * a * T.dot(X, Y) + v])
 
-@attr('slow')
 def test_gemm_opt_vector_stuff():
     X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
     u, v = T.vector(), T.vector()
@@ -801,7 +792,6 @@ def test_gemm_unrolled():
 
         unrolled_theano()
 
-@attr('slow')
 def test_inplace0():
     #should fail to insert gemm_inplace because gemm_inplace would
     #create cycles
@@ -834,7 +824,6 @@ def test_inplace1():
     # it doesn't work inplace because we didn't mark Z as mutable input
     assert [n.op for n in f.maker.fgraph.apply_nodes] == [gemm_no_inplace]
 
-@attr('slow')
 def test_dot22():
     for dtype1 in ['float32', 'float64', 'complex64', 'complex128']:
         a = T.matrix(dtype=dtype1)
@@ -1063,7 +1052,6 @@ def test_local_dot22_to_dot22scalar():
                             mode=mode, on_unused_input='ignore')
         f(.1, .2, .3, [[1, 2], [3, 4]], [[5, 6]], [[7, 8], [9, 10]])
 
-@attr('slow')
 def test_dot_w_self():
     # This can trigger problems in the optimization because what would
     # normally be a gemm must not be because the output is aliased to
@@ -1186,6 +1174,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
+    @attr('slow')
     def test_gemv1(self):
         self.t_gemv1((3, 2))
         self.t_gemv1((0, 2))
@@ -1464,7 +1453,6 @@ class BaseGemv(object):
         oy_v = oy_func()
         assert_array_almost_equal(desired_oy, oy_v)
 
-    @attr('slow')
     def test_upcasting_scalar_nogemv(self):
         # Test that the optimization does not crash when the scale has
         # an incorrect dtype, and forces upcasting of the result
@@ -1681,7 +1669,6 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
           numpy.random.rand(5).astype(self.dtype),
           numpy.random.rand(4).astype(self.dtype))
 
-    @attr('slow')
     def test_scaled_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                           numpy.asarray(0.2, self.dtype) * self.A +
@@ -2007,7 +1994,6 @@ class TestBlasStrides(TestCase):
                 f_ttt()
                 assert numpy.allclose(a_t.get_value(), at_n)
 
-    @attr('slow')
     def test_gemm(self):
         self.cmp_gemm((3, 5), (3, 4), (4, 5))
         self.cmp_gemm((1, 5), (1, 4), (4, 5))
@@ -2068,7 +2054,6 @@ class TestBlasStrides(TestCase):
                 f_t()
                 assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
 
-    @attr('slow')
     def test_gemv(self):
         self.cmp_gemv(3, (3, 5), 5)
         self.cmp_gemv(1, (1, 5), 5)
@@ -2125,7 +2110,6 @@ class TestBlasStrides(TestCase):
                 assert numpy.allclose(a_t.get_value(), n_t),\
                         (a_t.get_value(), n_t)
 
-    @attr('slow')
     def test_ger_strides(self):
         self.cmp_ger((3, 5), 3, 5)
         self.cmp_ger((1, 5), 1, 5)

@@ -1,5 +1,4 @@
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
 
 import theano
@@ -24,7 +23,6 @@ class TestKron(utt.InferShapeTester):
         super(TestKron, self).setUp()
         self.op = kron
 
-    @attr('slow')
     def test_perform(self):
         if not imported_scipy:
             raise SkipTest('kron tests need the scipy package to be installed')

@@ -9,8 +9,6 @@ from theano import tensor
 
 from theano import compile, config, gof
 
-from nose.plugins.attrib import attr
-
 
 class T_random_function(utt.InferShapeTester):
     def setUp(self):
@@ -1004,7 +1002,6 @@ class T_random_function(utt.InferShapeTester):
     def setUp(self):
         super(T_random_function, self).setUp()
 
-    @attr('slow')
     def test_infer_shape(self):
         rng_R = random_state_type()
         rng_R_val = numpy.random.RandomState(utt.fetch_seed())

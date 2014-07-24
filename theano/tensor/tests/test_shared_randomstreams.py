@@ -13,8 +13,6 @@ from theano import compile, config, gof
 
 from theano.tests import unittest_tools as utt
 
-from nose.plugins.attrib import attr
-
 
 class T_SharedRandomStreams(unittest.TestCase):
     def setUp(self):
@@ -317,7 +315,6 @@ class T_SharedRandomStreams(unittest.TestCase):
         self.assertRaises(TypeError, f1, in_mval)
         self.assertRaises(TypeError, f, in_vval)
 
-    @attr('slow')
     def test_default_updates(self):
         # Basic case: default_updates
         random_a = RandomStreams(utt.fetch_seed())

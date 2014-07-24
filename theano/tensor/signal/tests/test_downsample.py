@@ -6,7 +6,6 @@ from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
                                              DownsampleFactorMaxGrad)
 from theano import function
 
-from nose.plugins.attrib import attr
 
 class TestDownsampleFactorMax(utt.InferShapeTester):
 
@@ -191,7 +190,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 #                    return max_pool_2d(input, maxpoolshp, ignore_border)
 #                utt.verify_grad(mp, [imval], rng=rng)
 
-    @attr('slow')
     def test_infer_shape(self):
         image = tensor.dtensor4()
         maxout = tensor.dtensor4()

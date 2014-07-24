@@ -193,7 +193,7 @@ def test_inverse_grad():
     r = rng.randn(4, 4)
     tensor.verify_grad(matrix_inverse, [r], rng=numpy.random)
 
-@attr('slow')
+
 def test_rop_lop():
     mx = tensor.matrix('mx')
     mv = tensor.matrix('mv')
@@ -550,7 +550,6 @@ class test_Eigh(test_Eig):
         assert_array_almost_equal(vu * numpy.sign(vu[0, :]),
                                   vl * numpy.sign(vl[0, :]))
 
-    @attr('slow')
     def test_grad(self):
         S = self.S
         utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)

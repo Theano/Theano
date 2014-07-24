@@ -21,7 +21,6 @@ from theano.scalar.basic import (floats, float32, float64,
                                  Composite, add, div_proxy,
                                  and_, eq, neq, invert, mul)
 
-from nose.plugins.attrib import attr
 
 def inputs():
     return floats('xyz')

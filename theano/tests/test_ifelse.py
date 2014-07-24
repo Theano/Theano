@@ -10,7 +10,6 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import unittest
 import numpy
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 
 import theano
 from theano import tensor
@@ -160,7 +159,6 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.all(outs_0[2] == 1.)
         assert numpy.all(outs_0[3] == 1.)
 
-    @attr('slow')
     def test_multiple_out_crash(self):
         # This test failed up to commit 2faeb62c38
         p0 = self.shared(numpy.asarray(numpy.random.random([4, 8]),

@@ -4,9 +4,7 @@ import numpy
 import theano
 from theano import tensor as T
 import time
-from nose.plugins.attrib import attr
 
-@attr('slow')
 def test_no_reuse():
     x = T.lvector()
     y = T.lvector()
@@ -21,7 +19,6 @@ def test_no_reuse():
         return
     assert not 'should not get here'
 
-@attr('slow')
 def test_gc_never_pickles_temporaries():
     x = T.dvector()
 

@@ -182,7 +182,6 @@ def Env(inputs, outputs):
 # Test CLinker #
 ################
 
-@attr('slow')
 def test_clinker_straightforward():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -252,7 +251,6 @@ def test_clinker_dups_inner():
 ######################
 
 # slow on linux, but near sole test and very central
-@attr('slow')
 def test_opwiseclinker_straightforward():
     x, y, z = inputs()
     e = add(mul(add(x, y), div(x, y)), bad_sub(bad_sub(x, y), z))

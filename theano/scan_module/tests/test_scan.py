@@ -265,7 +265,6 @@ class T_Scan(unittest.TestCase):
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
 
-    @attr('slow')
     def test_generator_one_output_scalar(self):
         def f_pow2(x_tm1):
             return 2 * x_tm1
@@ -293,7 +292,6 @@ class T_Scan(unittest.TestCase):
         theano_values = my_f(state, steps)
         utt.assert_allclose(numpy_values, theano_values)
 
-    @attr('slow')
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
         # the bug happens when you have multiple subtensors on the output of
@@ -331,7 +329,6 @@ class T_Scan(unittest.TestCase):
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars
 
-    @attr('slow')
     def test_one_sequence_one_output_weights(self):
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W
@@ -609,7 +606,6 @@ class T_Scan(unittest.TestCase):
     # some rnn with multiple outputs and multiple inputs; other
     # dimension instead of scalars/vectors
 
-    @attr('slow')
     def test_multiple_inputs_multiple_outputs(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -662,7 +658,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_x, v_x)
         utt.assert_allclose(theano_y, v_y)
 
-    @attr('slow')
     def test_multiple_outs_taps(self):
         l = 5
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -766,7 +761,7 @@ class T_Scan(unittest.TestCase):
     # simple rnn, one input, one state, weights for each; input/state are
     # vectors, weights are scalars; using shared variables and past
     # taps (sequences and outputs)
-    @attr('slow')
+
     def test_using_taps_input_output(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW = asarrayX(rng.uniform())
@@ -813,7 +808,6 @@ class T_Scan(unittest.TestCase):
     # vectors, weights are scalars; using shared variables and past
     # taps (sequences and outputs) and future taps for sequences
 
-    @attr('slow')
     def test_past_future_taps_shared(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW = asarrayX(rng.uniform())
@@ -851,7 +845,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(numpy_out, theano_out)
 
     # simple rnn ; compute inplace version 1
-    @attr('slow')    
+ 
     def test_inplace1(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW = asarrayX(numpy.random.uniform())
@@ -924,7 +918,7 @@ class T_Scan(unittest.TestCase):
         ## utt.assert_allclose( theano_x1 , vu1)
 
     # simple rnn ; compute inplace version 2
-    @attr('slow')
+
     def test_inplace2(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW = asarrayX(numpy.random.uniform())
@@ -1006,7 +1000,6 @@ class T_Scan(unittest.TestCase):
         #assert not numpy.allclose( theano_x0 , vu2[1:4])
         #utt.assert_allclose( theano_x1 , vu1[0:3])
 
-    @attr('slow')
     def test_inplace3(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
@@ -1036,7 +1029,7 @@ class T_Scan(unittest.TestCase):
         assert 1 in scan_node[0].op.destroy_map.keys()
 
     # Shared variable with updates
-    @attr('slow')
+
     def test_shared_arguments_with_updates(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
@@ -1139,7 +1132,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(W1.get_value(), numpy_W1)
         utt.assert_allclose(W2.get_value(), numpy_W2)
 
-    @attr('slow')
     def test_grad_dtype_change(self):
         x = tensor.fscalar('x')
         y = tensor.fscalar('y')
@@ -1163,7 +1155,6 @@ class T_Scan(unittest.TestCase):
         # Check for runtime errors
         f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
 
-    @attr('slow')
     def test_simple_shared_mrg_random(self):
         theano_rng = theano.sandbox.rng_mrg.MRG_RandomStreams(utt.fetch_seed())
 
@@ -1245,7 +1236,6 @@ class T_Scan(unittest.TestCase):
         # doest the graph compile kind of test
         t_result = my_f()
 
-    @attr('slow')
     def test_gibbs_chain(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_W = numpy.array(rng.rand(20, 30) - .5, dtype='float32')
@@ -1312,7 +1302,6 @@ class T_Scan(unittest.TestCase):
         n_result = numpy_implementation(v_vsample)
         utt.assert_allclose(t_result, n_result)
 
-    @attr('slow')
     def test_only_shared_no_input_no_output(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         v_state = asarrayX(rng.uniform())
@@ -1382,7 +1371,6 @@ class T_Scan(unittest.TestCase):
         theano_vals = f(vals)
         utt.assert_allclose(abs_vals, theano_vals)
 
-    @attr('slow')
     def test_backwards(self):
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W
@@ -1420,7 +1408,6 @@ class T_Scan(unittest.TestCase):
         theano_values = f2(v_u, v_x0, W_in, W)
         utt.assert_allclose(theano_values, v_out)
 
-    @attr('slow')
     def test_reduce(self):
         v = theano.tensor.vector('v')
         s = theano.tensor.scalar('s')
@@ -1434,7 +1421,6 @@ class T_Scan(unittest.TestCase):
         v_v = rng.uniform(size=(5,), low=-5., high=5.)
         assert abs(numpy.sum(v_v) - f(v_v, 0.)) < 1e-3
 
-    @attr('slow')
     def test_grad_one_output(self):
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W
@@ -1485,7 +1471,6 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
     def test_grad_multiple_outs(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-.1, high=.1))
@@ -1712,7 +1697,6 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
     def test_grad_multiple_outs_some_uncomputable(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in = asarrayX(rng.uniform(size=(2, 2), low=-3., high=3.))
@@ -1780,7 +1764,6 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
     def test_grad_multiple_outs_some_truncate(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in = asarrayX(rng.uniform(size=(2, 2), low=-.1, high=.1))
@@ -1860,7 +1843,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose([ny2, ny2], nz2)
         assert not numpy.allclose(ny1, ny2)
 
-    @attr('slow')
     def test_grad_of_shared(self):
         x1 = theano.shared(3.)
         x1.name = 'x1'
@@ -1873,7 +1855,6 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x2], m, allow_input_downcast=True)
         utt.assert_allclose(f([2, 3]), 5)
 
-    @attr('slow')
     def test_computing_gradient(self):
         x1 = theano.tensor.scalar('x1')
         x2 = theano.shared(numpy.array([1, 2, 3, 4, 5]), name='x2')
@@ -1900,7 +1881,6 @@ class T_Scan(unittest.TestCase):
         f()
         assert X.get_value() == 11
 
-    @attr('slow')
     def test_memory_aliasing_updates(self):
         x = theano.shared(numpy.array(1))
         y = theano.shared(numpy.array(1))
@@ -1958,7 +1938,6 @@ class T_Scan(unittest.TestCase):
         assert out.type.ndim == a.type.ndim + 1
         assert updates[b].type.ndim == b.type.ndim
 
-    @attr('slow')
     def test_scan_extra_inputs_hessian(self):
         x = theano.tensor.vector('x')
         A = theano.tensor.matrix('A')
@@ -2099,7 +2078,6 @@ class T_Scan(unittest.TestCase):
     # some rnn with multiple outputs and multiple inputs; other
     # dimension instead of scalars/vectors
 
-    @attr('slow')
     def test_reordering(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -2190,7 +2168,6 @@ class T_Scan(unittest.TestCase):
                                  outputs=t_grad,
                                  allow_input_downcast=True)
 
-    @attr('slow')
     def test_save_mem(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -2286,7 +2263,6 @@ class T_Scan(unittest.TestCase):
         arg2 = numpy.ones((10, 5), dtype=theano.config.floatX)
         utt.assert_allclose(f(arg1, arg2), rval)
 
-    @attr('slow')
     def test_save_mem_reduced_number_of_steps(self):
         def f_rnn(u_t):
             return (u_t + 1.,
@@ -2336,7 +2312,6 @@ class T_Scan(unittest.TestCase):
         # Maybe ugly, way to check if the optimization had
         # been applied
 
-    @attr('slow')
     def test_save_mem_store_steps(self):
 
         def f_rnn(u_t, x1_tm1, x1_tm3, x2_tm1, x3tm2, x3_tm1, x4_tm1):
@@ -2390,7 +2365,6 @@ class T_Scan(unittest.TestCase):
     # The following test will fail in DebugMode if there are
     # some problems in Scan.infer_shape
 
-    @attr('slow')
     def test_remove_stuff(self):
         x = theano.tensor.vector('x')
 
@@ -2422,7 +2396,6 @@ class T_Scan(unittest.TestCase):
         if theano.config.mode != 'FAST_COMPILE':
             self.assertTrue(nb_shape_i == 1)
 
-    @attr('slow')
     def test_merge(self):
         x = theano.tensor.vector()
         y = theano.tensor.vector()
@@ -2490,7 +2463,6 @@ class T_Scan(unittest.TestCase):
             n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
-    @attr('slow')
     def test_merge_3scans(self):
         # This test checks a case where we have 3 scans, two of them
         # cannot be merged together, but the third one can be merged with
@@ -2541,7 +2513,6 @@ class T_Scan(unittest.TestCase):
         assert scan1.owner.op == scan2.owner.op
         assert hash(scan1.owner.op) == hash(scan2.owner.op)
 
-    @attr('slow')
     def test_same(self):
         # This test is checking a bug discovered by Arnaud and it is based
         # on his code
@@ -2595,7 +2566,6 @@ class T_Scan(unittest.TestCase):
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
 
-    @attr('slow')
     def test_foldl_memory_consumption(self):
         x = theano.shared(numpy.asarray(
             numpy.random.uniform(size=(10,)), dtype=theano.config.floatX))
@@ -2619,7 +2589,6 @@ class T_Scan(unittest.TestCase):
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
 
-    @attr('slow')
     def test_foldr_memory_consumption(self):
 
         x = theano.shared(numpy.asarray(
@@ -2721,7 +2690,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(vnh0, tnh0, atol=1e-6)
         utt.assert_allclose(vnW, tnW, atol=1e-6)
 
-    @attr('slow')
     def test_rop(self):
         seed = utt.fetch_seed()
         rng = numpy.random.RandomState(seed)
@@ -2795,7 +2763,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(vnh0, tnh0, atol=1e-6)
         utt.assert_allclose(vnW, tnW, atol=1e-6)
 
-    @attr('slow')
     def test_pushout_all(self):
         W1 = tensor.matrix('W1')
         W2 = tensor.matrix('W2')
@@ -2940,7 +2907,6 @@ class T_Scan(unittest.TestCase):
 
         assert len(scan_node.op.inputs) == 1
 
-    @attr('slow')
     def test_while0(self):
         x = tensor.vector('x')
 
@@ -3029,7 +2995,6 @@ class T_Scan(unittest.TestCase):
         assert out[4] == 19
         # 19.0
 
-    @attr('slow')
     def test_bugFunctioProvidesIntermediateNodesAsInputs(self):
         # This is a bug recently reported by Ilya
         # made it CPU friendly
@@ -3076,7 +3041,6 @@ class T_Scan(unittest.TestCase):
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 1
 
-    @attr('slow')
     def test_while_infershape(self):
         x = tensor.vector('x')
 
@@ -3130,7 +3094,6 @@ class T_Scan(unittest.TestCase):
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 0
 
-    @attr('slow')
     def test_grad_multiple_seqs_different_nsteps(self):
         # Example provided Michael Forbes
         # This test assures that we clip the sequences to n_steps before
@@ -3150,7 +3113,6 @@ class T_Scan(unittest.TestCase):
         tf = theano.function([c, x], dP)
         assert tf([1.0, 2.0, -3.0, 4.0], 2.0) == 38
 
-    @attr('slow')
     def test_grad_of_grad_of_state(self):
         # Example provided Michael Forbes
         # This tests ensures that we can compute gradients through cost
@@ -3170,7 +3132,6 @@ class T_Scan(unittest.TestCase):
         tf = theano.function([c, x], ddP)
         assert tf([1.0, 2.0, -3.0, 4.0], 2.0) == 42
 
-    @attr('slow')
     def test_return_steps(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -3268,7 +3229,6 @@ class T_Scan(unittest.TestCase):
                                         n_steps=5)
         rval = theano.function([], y2.sum())()
 
-    @attr('slow')
     def test_grad_multiple_taps_state(self):
         # The test is based on the code provided by Timothy Lillicrap
 
@@ -3316,7 +3276,6 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-    @attr('slow')
     def test_grad_numeric_shared(self):
         shared_var = theano.shared(numpy.float32(1.))
 
@@ -3404,7 +3363,6 @@ class T_Scan(unittest.TestCase):
         f = theano.function([seq], results[1])
         assert numpy.all(exp_out == f(inp))
 
-    @attr('slow')
     def test_borrow_bug_jeremiah(self):
         # This test fails if scan uses wrongly the borrow flag
         inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
@@ -3473,7 +3431,6 @@ class T_Scan(unittest.TestCase):
         # scan could not detect the connection between `m2` and `x`
         tensor.grad(m2.sum(), m)
 
-    @attr('slow')
     def test_dot_optimization(self):
         A = tensor.matrix('A')
         B = tensor.matrix('B')
@@ -3487,7 +3444,6 @@ class T_Scan(unittest.TestCase):
         vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         utt.assert_allclose(f(vA, vB), numpy.dot(vA.T, vB))
 
-    @attr('slow')
     def test_pregreedy_optimizer(self):
         W = tensor.zeros((5, 4))
         bv = tensor.zeros((5,))
@@ -3502,7 +3458,6 @@ class T_Scan(unittest.TestCase):
         theano.function([v], chain)(numpy.zeros((3, 5),
                                                 dtype=theano.config.floatX))
 
-    @attr('slow')
     def test_savemem_does_not_duplicate_number_of_scan_nodes(self):
         var = tensor.ones(())
         values, _ = theano.scan(lambda x: ([x], (),
@@ -3580,7 +3535,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(outs[2], v_w + 3)
         utt.assert_allclose(sh.get_value(), v_w + 4)
 
-    @attr('slow')
     def test_grad_bug_disconnected_input(self):
         W = theano.shared(numpy.zeros((3, 3)), name='W')
         v = theano.tensor.ivector(name='v')
@@ -3639,7 +3593,6 @@ class T_Scan(unittest.TestCase):
         assert not opt_obj.belongs_to_set(scan_node1, [scan_node2])
         assert not opt_obj.belongs_to_set(scan_node2, [scan_node1])
 
-    @attr('slow')
     def test_remove_constants_and_unused_inputs_scan_non_seqs(self):
         #Test the opt remove_constants_and_unused_inputs_scan for
         #non sequences.
@@ -3677,7 +3630,6 @@ class T_Scan(unittest.TestCase):
             assert len(inp) == 1
             assert (len(inp) == len(set(inp)))
 
-    @attr('slow')
     def test_remove_constants_and_unused_inputs_scan_seqs(self):
         #Test the opt remove_constants_and_unused_inputs_scan for sequences.
         W = theano.tensor.matrix(name='W')
@@ -3757,7 +3709,6 @@ class T_Scan(unittest.TestCase):
         f = theano.function([W_flat], H)
         f(numpy.ones((8,), dtype='float32'))
 
-@attr('slow')
 def test_speed():
     #
     # This function prints out the speed of very simple recurrent
@@ -3842,7 +3793,6 @@ def test_speed():
         print 'theano (updates, cvm)', t3 - t2
         #print shared_r.get_value()
 
-@attr('slow')
 def test_speed_rnn():
 
     #
@@ -3918,7 +3868,6 @@ def test_speed_rnn():
         print 'theano (updates, cvm)', t3 - t2
         #print shared_r.get_value()
 
-@attr('slow')
 def test_speed_batchrnn():
 
     #
@@ -4134,7 +4083,6 @@ def test_compute_test_value():
     finally:
         theano.config.compute_test_value = backup
 
-@attr('slow')
 def test_compute_test_value_nonseq():
     # Verify that test values can be used for non_sequences with scan.
     backup = theano.config.compute_test_value
@@ -4159,7 +4107,6 @@ def test_compute_test_value_nonseq():
     finally:
         theano.config.compute_test_value = backup
 
-@attr('slow')
 def test_compute_test_value_grad():
     # Test case originally reported by Bitton Tenessi
     # https://groups.google.com/d/msg/theano-users/fAP3i2CbskQ/3OgBf4yjqiQJ
@@ -4210,7 +4157,6 @@ def test_compute_test_value_grad():
         theano.config.compute_test_value = old_compute_test_val
         theano.config.exception_verbosity = old_exception_verbosity
 
-@attr('slow')
 def test_constant_folding_n_steps():
     # The following code used to crash at revision 2060b8f, in the constant
     # folding optimization step.

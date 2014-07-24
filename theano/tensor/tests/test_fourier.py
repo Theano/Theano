@@ -6,8 +6,6 @@ from theano import tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.fourier import Fourier, fft
 
-from nose.plugins.attrib import attr
-
 class TestFourier(utt.InferShapeTester):
 
     rng = numpy.random.RandomState(43)
@@ -23,7 +21,6 @@ class TestFourier(utt.InferShapeTester):
         a = numpy.random.rand(8, 6)
         assert numpy.allclose(f(a), numpy.fft.fft(a, 10, 0))
 
-    @attr('slow')
     def test_infer_shape(self):
         a = tensor.dvector()
         self._compile_and_check([a], [self.op(a, 16, 0)],

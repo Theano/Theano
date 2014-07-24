@@ -9,8 +9,6 @@ from theano.tests import unittest_tools as utt
 from theano.misc.may_share_memory import may_share_memory
 import theano.sparse
 
-from nose.plugins.attrib import attr
-
 utt.seed_rng()
 
 def makeSharedTester(shared_constructor_,
@@ -384,7 +382,6 @@ def makeSharedTester(shared_constructor_,
             assert numpy.allclose(self.ref_fct(x_shared.get_value(borrow=True)), self.ref_fct(self.cast_value(nd)))
             assert may_share_memory(old_data, x_shared.container.storage[0]) == self.set_cast_value_inplace
 
-        @attr('slow')
         def test_specify_shape(self):
             dtype = self.dtype
             if dtype is None:
@@ -511,7 +508,6 @@ def makeSharedTester(shared_constructor_,
             else:
                 self.assertRaises(AssertionError, shape_constant_fct)
 
-        @attr('slow')
         def test_specify_shape_inplace(self):
             #test that specify_shape don't break inserting inplace op
 

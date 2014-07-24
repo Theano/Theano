@@ -6,7 +6,6 @@ import theano
 from theano.tensor.utils import (hash_from_ndarray, hash_from_dict,
                                  shape_of_variables)
 
-from nose.plugins.attrib import attr
 
 def test_hash_from_ndarray():
     hashs = []
@@ -75,7 +74,6 @@ class Tshape_of_variables(unittest.TestCase):
         shapes = shape_of_variables(fgraph, {x: (10, 10)})
         assert shapes[subx] == (9, 10)
 
-    @attr('slow')
     def test_err(self):
         x = theano.tensor.matrix('x')
         subx = x[1:]
