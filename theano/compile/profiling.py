@@ -749,6 +749,7 @@ class ProfileStats(object):
                     v = node_list[i:i+1]
                     if v[0] in maybe_executed:
                         if check_node_state(v[0]):
+                            maybe_executed.remove(v[0])
                             for node in v[0].outputs:
                                 compute_map[node][0] = 1
                                 for c, _ in node.clients:
@@ -762,6 +763,7 @@ class ProfileStats(object):
                                     yield v+p
                             for node in v[0].outputs:
                                 compute_map[node][0] = 0
+                            maybe_executed.add(v[0])
 
             min_order = []
 
