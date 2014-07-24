@@ -38,6 +38,7 @@ from theano.tensor.sharedvar import tensor_constructor as _shared
 
 from theano.tensor.io import *
 
+
 def shared(*args, **kw):
     """
     Backward-compatibility wrapper around `tensor._shared`.

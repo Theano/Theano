@@ -197,7 +197,6 @@ else:
 # This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
 # depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
 # here and inject an instance in tensor.
-from theano import tensor
 from theano.tensor.randomstreams import RandomStreams
 # Imitate the numpy.random symbol with a tensor.random one
 tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)

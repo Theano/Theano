@@ -1,0 +1,18 @@
+..  ../../../../theano/sandbox/slinalg.py
+
+.. _libdoc_linalg:
+
+===================================================================
+:mod:`tensor.slinalg` --  Linear Algebra Ops Using Scipy
+===================================================================
+
+.. module:: tensor.slinalg
+   :platform: Unix, Windows
+   :synopsis: Linear Algebra Ops Using Scipy
+.. moduleauthor:: LISA
+
+API
+===
+
+.. automodule:: theano.tensor.slinalg
+    :members:

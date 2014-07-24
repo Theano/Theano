@@ -4,11 +4,11 @@ import numpy
 import theano
 
 from theano.tensor import basic
+from theano.tensor import nlinalg
 
 from theano import gof, scalar
-tensor = basic
 from theano.gradient import DisconnectedType
-
+tensor = basic
 
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
@@ -727,8 +727,7 @@ class FillDiagonal(gof.Op):
                                       self.__class__.__name__)
         wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
         # diag is only valid for matrices
-        import theano.sandbox.linalg
-        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
+        wr_val = theano.tensor.nlinalg.diag(grad).sum()
         return [wr_a, wr_val]
 fill_diagonal_ = FillDiagonal()
 

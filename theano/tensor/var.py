@@ -535,7 +535,7 @@ class _tensor_py_operators:
         return theano.tensor.basic.round(self, mode)
 
     def trace(self):
-        return theano.sandbox.linalg.trace(self)
+        return theano.tensor.nlinalg.trace(self)
 
     # TO TRUMP NUMPY OPERATORS
     __array_priority__ = 1000
