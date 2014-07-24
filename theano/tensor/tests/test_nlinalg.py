@@ -35,7 +35,8 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     qr,
                                     matrix_power,
                                     norm,
-                                    svd
+                                    svd,
+                                    tensorsolve
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -491,3 +492,43 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+
+class T_TensorSolve():
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        a = tensor.tensor3()
+        b = tensor.matrix()
+
+        fa = function([a, b], tensorsolve(a, b, (1, 2)))
+        fb = function([a, b], tensorsolve(a, b, (0, 2)))
+        f = function([a, b], tensorsolve(a, b))
+
+        A = rng.rand(1, 2, 2).astype(theano.config.floatX)
+        B = rng.rand(1, 2).astype(theano.config.floatX)
+
+        t_ta = fa(A, B)
+        t_tb = fb(A, B)
+        t_t = f(A, B)
+
+        n_ta = numpy.linalg.tensorsolve(A, B, (1,2))
+        n_tb = numpy.linalg.tensorsolve(A, B, (0,2))
+        n_t = numpy.linalg.tensorsolve(A, B)
+
+        assert numpy.allclose(n_ta, t_ta)
+        assert numpy.allclose(n_tb, t_tb)
+        assert numpy.allclose(n_t, t_t)
+
+    def test_wrong_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = tensor.tensor3()
+        b = tensor.tensor3()
+
+        f = function([a, b], tensorsolve(a, b, (1, 2)))
+
+        A = rng.rand(24, 8, 3).astype(theano.config.floatX)
+        B = rng.rand(24, 8, 3).astype(theano.config.floatX)
+
+        assert_raises(numpy.linalg.linalg.LinAlgError, f, A, B)

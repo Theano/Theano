@@ -773,3 +773,61 @@ def norm(x,ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class TensorSolve(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, a, b, axes=None):
+        a = as_tensor_variable(a)
+        b = as_tensor_variable(b)
+
+        xshape = a.shape[-(a.ndim - b.ndim):]
+        x = a.reshape(xshape, ndim = a.ndim - b.ndim)
+
+        if axes is None:
+            axes = theano.tensor.type_other.NoneConst
+        else:
+            axes = as_tensor_variable(axes)
+
+        return Apply(self, [a, b, axes], [x.type()])
+
+    def perform(self, node, inp, (out,)):
+        a = inp[0]
+        b = inp[1]
+        axes = inp[2]
+
+        out[0] = numpy.linalg.tensorsolve(a, b, axes)
+
+tensorsolve = TensorSolve()
+
+"""
+Solve the tensor equation ``a x = b`` for x.
+
+It is assumed that all indices of `x` are summed over in the product,
+together with the rightmost indices of `a`, as is done in, for example,
+``tensordot(a, x, axes=len(b.shape))``.
+
+Parameters
+----------
+a : array_like
+Coefficient tensor, of shape ``b.shape + Q``. `Q`, a tuple, equals
+the shape of that sub-tensor of `a` consisting of the appropriate
+number of its rightmost indices, and must be such that
+``prod(Q) == prod(b.shape)`` (in which sense `a` is said to be
+'square').
+b : array_like
+Right-hand tensor, which can be of any shape.
+axes : tuple of ints, optional
+Axes in `a` to reorder to the right, before inversion.
+If None (default), no reordering is done.
+
+Returns
+-------
+x : ndarray, shape Q
+"""
