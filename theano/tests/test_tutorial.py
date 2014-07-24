@@ -1,7 +1,9 @@
 """ test code snippet in the Theano tutorials.
 """
 
-import os, shutil, unittest
+import os
+import shutil
+import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -18,13 +20,13 @@ from theano.tensor.shared_randomstreams import RandomStreams
 
 
 class T_extending(unittest.TestCase):
-    ## All tests here belong to files in
-    ## http://deeplearning.net/software/theano/extending
-    ## Theano/doc/extending/*.txt
-    ## Any change you do here also add it to the tutorial!
-    ## This belongs to an entire folder since code-snippets are connected
-    ## from one file to another .. and they do not make sense on their
-    ## own.
+    # All tests here belong to files in
+    # http://deeplearning.net/software/theano/extending
+    # Theano/doc/extending/*.txt
+    # Any change you do here also add it to the tutorial!
+    # This belongs to an entire folder since code-snippets are connected
+    # from one file to another .. and they do not make sense on their
+    # own.
 
     def test_extending_1(self):
 
@@ -106,8 +108,8 @@ class T_extending(unittest.TestCase):
         x, y = double('x'), double('y')
         z = mul(x, y)
         f = theano.function([x, y], z)
-        assert f(5, 6)     == 30.0
-        assert f(5.6, 6.7) ==  37.519999999999996
+        assert f(5, 6) == 30.0
+        assert f(5.6, 6.7) == 37.519999999999996
 
         x = double('x')
         self.assertRaises(AttributeError, mul, x, 2)
@@ -159,18 +161,17 @@ class T_extending(unittest.TestCase):
             def __str__(self):
                 return self.name
 
-        add = BinaryDoubleOp(name = 'add',
-                            fn = lambda x, y: x + y)
+        add = BinaryDoubleOp(name='add',
+                             fn=lambda x, y: x + y)
 
-        sub = BinaryDoubleOp(name = 'sub',
-                            fn = lambda x, y: x - y)
+        sub = BinaryDoubleOp(name='sub',
+                             fn=lambda x, y: x - y)
 
-        mul = BinaryDoubleOp(name = 'mul',
-                            fn = lambda x, y: x * y)
+        mul = BinaryDoubleOp(name='mul',
+                             fn=lambda x, y: x * y)
 
-        div = BinaryDoubleOp(name = 'div',
-                            fn = lambda x, y: x / y)
-
+        div = BinaryDoubleOp(name='div',
+                             fn=lambda x, y: x / y)
 
     def test_extending_2(self):
         '''
@@ -223,22 +224,22 @@ class T_extending(unittest.TestCase):
             def __str__(self):
                 return self.name
 
-        add = BinaryDoubleOp(name = 'add',
-                            fn = lambda x, y: x + y)
+        add = BinaryDoubleOp(name='add',
+                             fn=lambda x, y: x + y)
 
-        sub = BinaryDoubleOp(name = 'sub',
-                            fn = lambda x, y: x - y)
+        sub = BinaryDoubleOp(name='sub',
+                             fn=lambda x, y: x - y)
 
-        mul = BinaryDoubleOp(name = 'mul',
-                            fn = lambda x, y: x * y)
+        mul = BinaryDoubleOp(name='mul',
+                             fn=lambda x, y: x * y)
 
-        div = BinaryDoubleOp(name = 'div',
-                            fn = lambda x, y: x / y)
+        div = BinaryDoubleOp(name='div',
+                             fn=lambda x, y: x / y)
 
         def c_declare(name, sub, check_input=True):
             return """
             double %(name)s;
-            """ % dict(name = name)
+            """ % dict(name=name)
         double.c_declare = c_declare
 
 
@@ -383,21 +384,21 @@ class T_extending(unittest.TestCase):
                 return self.ccode % locals()
 
 
-        add = BinaryDoubleOp(name = 'add',
-                            fn = lambda x, y: x + y,
-                            ccode = "%(z)s = %(x)s + %(y)s;")
+        add = BinaryDoubleOp(name='add',
+                            fn=lambda x, y: x + y,
+                            ccode="%(z)s = %(x)s + %(y)s;")
 
-        sub = BinaryDoubleOp(name = 'sub',
-                            fn = lambda x, y: x - y,
-                            ccode = "%(z)s = %(x)s - %(y)s;")
+        sub = BinaryDoubleOp(name='sub',
+                            fn=lambda x, y: x - y,
+                            ccode="%(z)s = %(x)s - %(y)s;")
 
-        mul = BinaryDoubleOp(name = 'mul',
-                            fn = lambda x, y: x * y,
-                            ccode = "%(z)s = %(x)s * %(y)s;")
+        mul = BinaryDoubleOp(name='mul',
+                            fn=lambda x, y: x * y,
+                            ccode="%(z)s = %(x)s * %(y)s;")
 
-        div = BinaryDoubleOp(name = 'div',
-                            fn = lambda x, y: x / y,
-                            ccode = "%(z)s = %(x)s / %(y)s;")
+        div = BinaryDoubleOp(name='div',
+                            fn=lambda x, y: x / y,
+                            ccode="%(z)s = %(x)s / %(y)s;")
 
 
         from theano.gof import toolbox
@@ -455,10 +456,10 @@ class T_extending(unittest.TestCase):
 
 
 class T_introduction(unittest.TestCase):
-    ## All tests here belong to
-    ## http://deeplearning.net/software/theano/tutorial/introduction.html
-    ## Theano/doc/tutorial/introduction.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belong to
+    # http://deeplearning.net/software/theano/tutorial/introduction.html
+    # Theano/doc/tutorial/introduction.txt
+    # Any change you do here also add it to the tutorial !
     def test_introduction_1(self):
 
         import theano
@@ -480,10 +481,10 @@ class T_introduction(unittest.TestCase):
 
 
 class T_adding(unittest.TestCase):
-    ## All tests here belong to
-    ## http://deeplearning.net/software/theano/tutorial/adding.html
-    ## Theano/doc/tutorial/adding.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belong to
+    # http://deeplearning.net/software/theano/tutorial/adding.html
+    # Theano/doc/tutorial/adding.txt
+    # Any change you do here also add it to the tutorial !
 
 
     def test_adding_1(self):
@@ -511,10 +512,10 @@ class T_adding(unittest.TestCase):
 
 
 class T_examples(unittest.TestCase):
-    ## All tests here belog to
-    ## http://deeplearning.net/software/theano/tutorial/examples.html
-    ## Theano/doc/tutorial/examples.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belog to
+    # http://deeplearning.net/software/theano/tutorial/examples.html
+    # Theano/doc/tutorial/examples.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_examples_1(self):
         x = T.dmatrix('x')
@@ -750,10 +751,10 @@ class T_examples(unittest.TestCase):
 
 
 class T_aliasing(unittest.TestCase):
-    ## All tests here belog to
-    ## http://deeplearning.net/software/theano/tutorial/aliasing.html
-    ## Theano/doc/tutorial/aliasing.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belog to
+    # http://deeplearning.net/software/theano/tutorial/aliasing.html
+    # Theano/doc/tutorial/aliasing.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_aliasing_1(self):
 
@@ -785,7 +786,7 @@ class T_aliasing(unittest.TestCase):
 
 
         s.set_value(
-            ## some_inplace_fn
+            # some_inplace_fn
             s.get_value(borrow=True).__imul__(2),
             borrow=True)
 
@@ -800,12 +801,11 @@ class T_aliasing(unittest.TestCase):
         f = theano.function([theano.In(x, borrow=True)], theano.Out(y, borrow=True))
 
 
-
 class T_loading_and_saving(unittest.TestCase):
-    ## All tests here belong to
-    ## http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
-    ## Theano/doc/tutorial/loading_and_saving.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belong to
+    # http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
+    # Theano/doc/tutorial/loading_and_saving.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_loading_and_saving_1(self):
 
@@ -1081,10 +1081,10 @@ class Fibby(theano.Op):
 
 
 class T_fibby(unittest.TestCase):
-    ## All tests here belong to
-    ## http://deeplearning.net/software/theano/extending/fibby.html
-    ## Theano/doc/extending/fibby.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belong to
+    # http://deeplearning.net/software/theano/extending/fibby.html
+    # Theano/doc/extending/fibby.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_fibby_1(self):
 
@@ -1137,10 +1137,10 @@ class T_fibby(unittest.TestCase):
 
 
 class T_graphstructures(unittest.TestCase):
-    ## All tests here belong to
-    ## http://deeplearning.net/software/theano/extending/graphstructures.html
-    ## Theano/doc/extending/graphstructures.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belong to
+    # http://deeplearning.net/software/theano/extending/graphstructures.html
+    # Theano/doc/extending/graphstructures.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_graphstructures_1(self):
 
@@ -1202,10 +1202,10 @@ class T_graphstructures(unittest.TestCase):
 
 
 class T_scan(unittest.TestCase):
-    ## All tests here belong to
-    ## http://deeplearning.net/software/theano/tutorial/loop.html
-    ## Theano/doc/tutorial/loop.txt
-    ## Any change you do here also add it to the tutorial !
+    # All tests here belong to
+    # http://deeplearning.net/software/theano/tutorial/loop.html
+    # Theano/doc/tutorial/loop.txt
+    # Any change you do here also add it to the tutorial !
 
     def test_elemwise(self):
         # defining the tensor variables

@@ -211,18 +211,18 @@ version that it produces in the code I gave above.
            return self.ccode % locals()
 
 
-   add = BinaryDoubleOp(name = 'add',
-                        fn = lambda x, y: x + y,
-                        ccode = "%(z)s = %(x)s + %(y)s;")
+   add = BinaryDoubleOp(name='add',
+                        fn=lambda x, y: x + y,
+                        ccode="%(z)s = %(x)s + %(y)s;")
 
-   sub = BinaryDoubleOp(name = 'sub',
-                        fn = lambda x, y: x - y,
-                        ccode = "%(z)s = %(x)s - %(y)s;")
+   sub = BinaryDoubleOp(name='sub',
+                        fn=lambda x, y: x - y,
+                        ccode="%(z)s = %(x)s - %(y)s;")
 
-   mul = BinaryDoubleOp(name = 'mul',
-                        fn = lambda x, y: x * y,
-                        ccode = "%(z)s = %(x)s * %(y)s;")
+   mul = BinaryDoubleOp(name='mul',
+                        fn=lambda x, y: x * y,
+                        ccode="%(z)s = %(x)s * %(y)s;")
 
-   div = BinaryDoubleOp(name = 'div',
-                        fn = lambda x, y: x / y,
-                        ccode = "%(z)s = %(x)s / %(y)s;")
+   div = BinaryDoubleOp(name='div',
+                        fn=lambda x, y: x / y,
+                        ccode="%(z)s = %(x)s / %(y)s;")
