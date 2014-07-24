@@ -31,6 +31,7 @@ script:
   - "if [ `expr \"$PART\" : '.*sparse'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
   - "if [ `expr \"$PART\" : '.*nnet'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
   - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
+  - export TRAVIS=1
   - python --version
   - uname -a
   - free -m
