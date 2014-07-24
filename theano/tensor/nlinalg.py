@@ -14,7 +14,8 @@ from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
 from theano.tensor import basic as tensor
-
+from theano.tensor.basic import NotScalarConstantError
+from theano.tensor.type import TensorType
 
 class MatrixPinv(Op):
     """Computes the pseudo-inverse of a matrix :math:`A`.
@@ -773,3 +774,61 @@ def norm(x,ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class TensorInv(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, x, ind=2):
+        x = as_tensor_variable(x)
+        ind = as_tensor_variable(ind)
+
+        assert "int" in ind.dtype
+        assert ind.ndim == 0
+
+        try:
+            ind2 = theano.tensor.get_scalar_constant_value(ind)
+            out_var = TensorType(dtype=x.dtype, broadcastable=x.broadcastable[ind2:]+x.broadcastable[:ind2])()
+        except NotScalarConstantError:
+            out_var = TensorType(dtype=x.dtype, broadcastable=(False,)*len(x.ndim))()   
+
+        return Apply(self, [x, ind], [out_var])
+
+    def perform(self, node, inp, (out,)):
+        x = inp[0]
+        ind = inp[1]
+
+        out[0] = numpy.linalg.tensorinv(x, ind)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+tensorinv = TensorInv()
+
+"""
+    Compute the 'inverse' of an N-dimensional array.
+
+    The result is an inverse for `a` relative to the tensordot operation
+    ``tensordot(a, b, ind)``, i. e., up to floating-point accuracy,
+    ``tensordot(tensorinv(a), a, ind)`` is the "identity" tensor for the
+    tensordot operation.
+
+    Parameters
+    ----------
+    a : array_like
+        Tensor to 'invert'. Its shape must be 'square', i. e.,
+        ``prod(a.shape[:ind]) == prod(a.shape[ind:])``.
+    ind : int, optional
+        Number of first indices that are involved in the inverse sum.
+        Must be a positive integer, default is 2.
+
+    Returns
+    -------
+    b : ndarray
+        `a`'s tensordot inverse, shape ``a.shape[:ind] + a.shape[ind:]``.
+"""

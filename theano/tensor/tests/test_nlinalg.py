@@ -35,7 +35,8 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     qr,
                                     matrix_power,
                                     norm,
-                                    svd
+                                    svd,
+                                    tensorinv
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -491,3 +492,34 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+
+class T_TensorInv():
+
+    def test_numpy_compare(self):
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = tensor.tensor3()
+        b = tensor.tensor4()
+
+        fa = function([a], tensorinv(a, 1))
+        fb = function([b], tensorinv(b, 2))
+
+        A = rng.rand(24, 8, 3).astype(theano.config.floatX)
+        B = rng.rand(4, 6, 8 ,3).astype(theano.config.floatX)
+
+        t_ta = fa(A)
+        t_tb = fb(B)
+        n_ta = numpy.linalg.tensorinv(A, 1)
+        n_tb = numpy.linalg.tensorinv(B, 2)
+
+        assert numpy.allclose(n_ta, t_ta)
+        assert numpy.allclose(n_tb, t_tb)
+
+    def test_non_square(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = tensor.tensor3()
+
+        fa = function([a], tensorinv(a, 1))
+        A = rng.rand(2, 2, 2).astype(theano.config.floatX)
+        assert_raises(numpy.linalg.linalg.LinAlgError, fa, A)
