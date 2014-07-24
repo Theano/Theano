@@ -5063,10 +5063,10 @@ class Pad(Op):
         assert isinstance(pad_width, (list, tuple, int))
         pad_width = theano.gof.Constant(theano.gof.generic, pad_width)
 
-        if isinstance(values, (list, tuple, int, str)):
-            value = theano.gof.Constant(theano.gof.generic, values)
-        else:
+        if values is None:
             value = theano.tensor.type_other.NoneConst
+        else:
+            value = theano.gof.Constant(theano.gof.generic, values)
 
         return Apply(self, [array, pad_width, value], [array.type()])
 
