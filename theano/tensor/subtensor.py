@@ -594,8 +594,7 @@ class Subtensor(Op):
     @staticmethod
     def helper_c_code(node, name, inputs, outputs, sub, idx_list, view_ndim,
                       c_prefix=None,
-                      strides_mul=None,
-    ):
+                      strides_mul=None):
         """
         The parameters c_prefix are there to allow reusing this
         function on PyArray and CudaNdarray object.
@@ -682,7 +681,8 @@ class Subtensor(Op):
             subensor_spec = "npy_intp * subtensor_spec = NULL;"
 
         if is_slice:
-            is_slice_init = "int is_slice[] = {" + ",".join([str(s) for s in is_slice]) + "};"
+            is_slice_init = "int is_slice[] = {" + ",".join([str(s) for s in
+                                                             is_slice]) + "};"
         else:
             is_slice_init = "int* is_slice = NULL;"
         subtensor_init = "\n".join(init_cmds)
@@ -897,7 +897,8 @@ class Subtensor(Op):
         %(z)s = xview;
         """ % locals()
 
-        return decl + checkNDim + "{" + get_xview + build_view + finish_view + "}"
+        return (decl + checkNDim +
+                "{" + get_xview + build_view + finish_view + "}")
 
     def c_code_cache_version(self):
         hv = self.helper_c_code_cache_version()
@@ -1022,9 +1023,9 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             destroyhandler_tolerate_aliased = [[0, 1]]
         else:
             destroyhandler_tolerate_aliased = []
-        the_op = IncSubtensor(x.owner.op.idx_list, inplace, set_instead_of_inc,
-                destroyhandler_tolerate_aliased=destroyhandler_tolerate_aliased
-                )
+        the_op = IncSubtensor(
+            x.owner.op.idx_list, inplace, set_instead_of_inc,
+            destroyhandler_tolerate_aliased=destroyhandler_tolerate_aliased)
         real_x = x.owner.inputs[0]
         real_idxargs = x.owner.inputs[1:]
         return the_op(real_x, y, *real_idxargs)
@@ -1105,10 +1106,10 @@ class IncSubtensor(Op):
         self.set_instead_of_inc = set_instead_of_inc
 
     def __eq__(self, other):
-        return type(self) == type(other) \
-                and self.idx_list == other.idx_list \
-                and self.inplace == other.inplace \
-                and self.set_instead_of_inc == other.set_instead_of_inc
+        return (type(self) == type(other) and
+                self.idx_list == other.idx_list and
+                self.inplace == other.inplace and
+                self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __hash__(self):
         msg = []
@@ -1120,12 +1121,12 @@ class IncSubtensor(Op):
 
         idx_list = tuple(msg)
         # backport
-        #idx_list = tuple((entry.start, entry.stop, entry.step)
+        # idx_list = tuple((entry.start, entry.stop, entry.step)
         #                 if isinstance(entry, slice)
         #                 else entry
         #                 for entry in self.idx_list)
-        return hashtype(self) ^ hash(idx_list) ^ hash(self.inplace) \
-               ^ hash(self.set_instead_of_inc)
+        return (hashtype(self) ^ hash(idx_list) ^ hash(self.inplace) ^
+                hash(self.set_instead_of_inc))
 
     def __str__(self):
         indices = []
@@ -1225,7 +1226,7 @@ class IncSubtensor(Op):
             if not self.set_instead_of_inc:
                 sub_x += y
             else:
-                #sub_x += -sub_x + y
+                # sub_x += -sub_x + y
                 x.__setitem__(cdata, y)
         else:
             # scalar case
@@ -1295,7 +1296,7 @@ class IncSubtensor(Op):
             ** helper_args
         )
 
-        #Make a view on the output, as we will write into it.
+        # Make a view on the output, as we will write into it.
         alloc_zview = self.make_view_array(z, view_ndim)
 
         build_view = """
@@ -1460,7 +1461,8 @@ class IncSubtensor(Op):
             gx = g_output
         gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
         if gy.broadcastable != y.broadcastable:
-            y_broad = (True,) * (gy.ndim - y.ndim) + y.broadcastable
+            y_dim_added = gy.ndim - y.ndim
+            y_broad = (True,) * y_dim_added + y.broadcastable
             assert sum(gy.broadcastable) < sum(y_broad)
             axis_to_sum = []
             for i in range(gy.ndim):
@@ -1468,7 +1470,7 @@ class IncSubtensor(Op):
                     axis_to_sum.append(i)
                 elif (gy.broadcastable[i] is True and
                       y_broad[i] is False):
-                    # This mean that THeano where able to infer that
+                    # This mean that Theano where able to infer that
                     # gy.shape[i] is 1, so y.shape[i] is 1, but we
                     # didn't know it. It is fine.
                     pass
@@ -1476,7 +1478,10 @@ class IncSubtensor(Op):
                     assert gy.broadcastable[i] == y_broad[i]
             gy = gy.sum(axis=axis_to_sum, keepdims=True)
             if gy.ndim != y.ndim:
-                gy = gy.dimshuffle(*range(y.ndim, gy.ndim))
+                assert gy.ndim > y.ndim
+                for i in range(y_dim_added):
+                    assert gy.broadcastable[i]
+                gy = gy.dimshuffle(*range(y_dim_added, gy.ndim))
             assert gy.broadcastable == y.broadcastable
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
@@ -1540,8 +1545,9 @@ class AdvancedSubtensor1(Op):
             if not numpy.can_cast(i.dtype, numpy.intp):
                 # Check if there was actually an incorrect conversion
                 if numpy.any(i != i_):
-                    raise IndexError('index contains values that are bigger '
-                            'than the maximum array size on this system.', i)
+                    raise IndexError(
+                        'index contains values that are bigger '
+                        'than the maximum array size on this system.', i)
             i = i_
 
         out[0] = x.take(i, axis=0, out=o)
@@ -1732,9 +1738,10 @@ class AdvancedIncSubtensor1(Op):
                 opname = 'set'
             else:
                 opname = 'increment'
-            raise TypeError('cannot %s x subtensor with ndim=%s'
-            ' by y with ndim=%s to x subtensor with ndim=%s ' % (
-                opname, x_.type.ndim, y_.type.ndim))
+            raise TypeError(
+                'cannot %s x subtensor with ndim=%s'
+                ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                    opname, x_.type.ndim, y_.type.ndim))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
@@ -1837,7 +1844,7 @@ def adv_index_broadcastable_pattern(a, idx):
 
     newidx = tuple(map(replace_slice, idx))
 
-    #2 - True = 1; 2 - False = 2
+    # 2 - True = 1; 2 - False = 2
     fakeshape = [2 - bc for bc in a.broadcastable]
     retshape = numpy.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
@@ -1867,7 +1874,7 @@ class AdvancedSubtensor(Op):
         return gof.Apply(self,
                          (x,) + index,
                          [theano.tensor.tensor(dtype=x.type.dtype,
-                                 broadcastable=bcast)])
+                                               broadcastable=bcast)])
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
@@ -1897,13 +1904,11 @@ class AdvancedSubtensor(Op):
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
-                    'Numpy versions 1.6.1 and below have a bug preventing '
-                    'advanced indexing from correctly filling arrays that '
-                    'are too big (>= 2^32 elements). It is possible that '
-                    'out[0] (%s), with shape %s, is not correctly filled.'
-                    % (out[0], out[0].shape))
-        # return
-        #raise NotImplementedError()
+                'Numpy versions 1.6.1 and below have a bug preventing '
+                'advanced indexing from correctly filling arrays that '
+                'are too big (>= 2^32 elements). It is possible that '
+                'out[0] (%s), with shape %s, is not correctly filled.'
+                % (out[0], out[0].shape))
 
     def connection_pattern(self, node):
 
@@ -1955,8 +1960,9 @@ class AdvancedIncSubtensor(Op):
 
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__,
-                "inplace=" + str(self.inplace),
-                " set_instead_of_inc=" + str(self. set_instead_of_inc))
+                               "inplace=" + str(self.inplace),
+                               " set_instead_of_inc=" +
+                               str(self. set_instead_of_inc))
 
     def make_node(self, x, y, *inputs):
         x = theano.tensor.as_tensor_variable(x)
@@ -1990,17 +1996,18 @@ class AdvancedIncSubtensor(Op):
                 op.allow_legacy_perform = True
             else:
                 raise NotImplementedError(
-                        'Could not import inplace_increment, so some advanced '
-                        'indexing features are disabled. They will be '
-                        'available if you update NumPy to version 1.8 or '
-                        'later, or to the latest development version. '
-                        'You may need to clear the cache (theano-cache clear) '
-                        'afterwards.')
+                    'Could not import inplace_increment, so some advanced '
+                    'indexing features are disabled. They will be '
+                    'available if you update NumPy to version 1.8 or '
+                    'later, or to the latest development version. '
+                    'You may need to clear the cache (theano-cache clear) '
+                    'afterwards.')
 
         return gof.Apply(op,
-                        (x, y) + inputs,
-                        [theano.tensor.tensor(dtype=x.type.dtype,
-                            broadcastable=x.type.broadcastable)])
+                         (x, y) + inputs,
+                         [theano.tensor.tensor(
+                             dtype=x.type.dtype,
+                             broadcastable=x.type.broadcastable)])
 
     def perform(self, node, inputs, out_):
         # TODO: 1. opt to make this in place 2. generalize as described in
@@ -2020,21 +2027,21 @@ class AdvancedIncSubtensor(Op):
             out[0][inputs[2:]] += inputs[1]
         else:
             raise NotImplementedError(
-                    'Could not import inplace_increment, so some advanced '
-                    'indexing features are disabled. They will be '
-                    'available if you update NumPy to version 1.8 or '
-                    'later, or to the latest development version. '
-                    'You may need to clear the cache (theano-cache clear) '
-                    'afterwards.')
+                'Could not import inplace_increment, so some advanced '
+                'indexing features are disabled. They will be '
+                'available if you update NumPy to version 1.8 or '
+                'later, or to the latest development version. '
+                'You may need to clear the cache (theano-cache clear) '
+                'afterwards.')
 
         if (numpy.__version__ <= '1.6.1' and
                 out[0].size != numpy.uint32(out[0].size)):
             warnings.warn(
-                    'Numpy versions 1.6.1 and below have a bug preventing '
-                    'advanced indexing from correctly filling arrays that '
-                    'are too big (>= 2^32 elements). It is possible that '
-                    'out[0] (%s), with shape %s, is not correctly filled.'
-                    % (out[0], out[0].shape))
+                'Numpy versions 1.6.1 and below have a bug preventing '
+                'advanced indexing from correctly filling arrays that '
+                'are too big (>= 2^32 elements). It is possible that '
+                'out[0] (%s), with shape %s, is not correctly filled.'
+                % (out[0], out[0].shape))
 
     def infer_shape(self, node, ishapes):
         return [ishapes[0]]
@@ -2092,6 +2099,6 @@ def take(a, indices, axis=None, mode='raise'):
         ndim = indices.ndim
     else:
         shape = theano.tensor.concatenate(
-                        [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
+            [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
         ndim = a.ndim + indices.ndim - 1
     return take(a, indices.flatten(), axis, mode).reshape(shape, ndim)
