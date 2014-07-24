@@ -3,12 +3,12 @@ import numpy
 
 import theano
 
-from theano.tensor import basic as tensor
+from theano.tensor import basic
 from theano.tensor import nlinalg
 
 from theano import gof, scalar
 from theano.gradient import DisconnectedType
-
+tensor = basic
 
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
