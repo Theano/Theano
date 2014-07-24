@@ -3,11 +3,10 @@ import numpy
 
 import theano
 
-from theano.tensor import basic
+from theano.tensor import basic as tensor
 from theano.tensor import nlinalg
 
 from theano import gof, scalar
-tensor = basic
 from theano.gradient import DisconnectedType
 
 

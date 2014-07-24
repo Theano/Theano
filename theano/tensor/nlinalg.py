@@ -13,8 +13,7 @@ from theano.tensor.opt import (register_stabilize,
 from theano.gof import local_optimizer
 from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
-from theano.tensor import basic
-tensor = basic
+from theano.tensor import basic as tensor
 
 
 class MatrixPinv(Op):
@@ -774,18 +773,3 @@ def norm(x,ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
-
-"""
-import theano
-from theano import tensor as T
-from theano import function
-from theano.tensor import nlinalg
-x = T.matrix()
-y = nlinalg.norm(x,1)
-"""
-
-
-
-
-
-
