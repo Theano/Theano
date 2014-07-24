@@ -788,8 +788,13 @@ class TensorSolve(Op):
         b = as_tensor_variable(b)
 
         xshape = a.shape[-(a.ndim - b.ndim):]
-        x = a.reshape(xshape, ndim = a.ndim - b.ndim)
+        x = a.reshape(xshape, ndim=a.ndim - b.ndim)
+        """ The type of the output depends on both inputs.
+            In order to find the correct type, we need to find xshape 
+            (shape Q in the doc under this function), then, with reshape, it is possible to
+            create an array that match the output type and use it as a referrence.
 
+        """
         if axes is None:
             axes = theano.tensor.type_other.NoneConst
         else:
@@ -803,6 +808,9 @@ class TensorSolve(Op):
         axes = inp[2]
 
         out[0] = numpy.linalg.tensorsolve(a, b, axes)
+
+    def __str__(self):
+        return self.__class__.__name__
 
 tensorsolve = TensorSolve()
 
