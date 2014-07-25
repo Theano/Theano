@@ -107,8 +107,8 @@ There are less methods to define for an Op than for a Type:
        Optional. 
        Accept the same parameters as c_code. Should return 
        a string containing the op c_code for different dtypes and dimensions.
-       This function will be called instead of c_code if the graph
-       contains only one node. 
+       This function will be called instead of c_code if the compilation
+       unit contains only one node. 
        The compiled file will be longer but the number of generated 
        files should be reduced.
        Refer to Elemwise code for an example.
