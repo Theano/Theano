@@ -3582,6 +3582,7 @@ cublas_init()
 static int
 cublas_shutdown()
 {
+    cublasStatus_t err;
     err = cublasDestroy(handle);
     if (CUBLAS_STATUS_SUCCESS != err)
     {
