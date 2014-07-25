@@ -984,10 +984,13 @@ Reductions
 
     :Parameter: *array* Input array.
 
-    :Parameter: *pad_width* Number of values padded to the edges of each axis. ((before_1, after_1), ... (before_N, after_N)) unique pad widths for each axis. ((before, after),) yields same before and after pad for each axis. (pad,) or int is a shortcut for before = after = pad width for all axes.
+    :Parameter: *pad_width* Number of values padded to the edges of each axis. ((before_1, after_1), ... (before_N, after_N)) unique pad widths for each axis.((before, after),) yields same before and after pad for each axis. (pad,) or int is a shortcut for before = after = pad width for all axes.
 
-    :Parameter: *mode* One of the following string values or a user supplied function.‘constant’ Pads with a constant value. ‘edge’ Pads with the edge values of array. ‘linear_ramp’ Pads with the linear ramp between end_value and the array edge value.
+    :Parameter: *mode* One of the following string values or a user supplied function.
 
+        ‘constant’ Pads with a constant value. 
+        ‘edge’ Pads with the edge values of array. 
+        ‘linear_ramp’ Pads with the linear ramp between end_value and the array edge value.
         ‘maximum’ Pads with the maximum value of all or part of the
         vector along each axis.
         ‘mean’ Pads with the mean value of all or part of the
