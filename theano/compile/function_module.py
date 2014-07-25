@@ -69,7 +69,7 @@ def infer_reuse_pattern(fgraph, outputs_to_disown):
     rval = set()
     for o in outputs_to_disown:
         view_tree_set(alias_root(o), rval)
-    # remove from rval all of the inputs, constants, values.
+    # remove from rval all of the inputs and constants.
     rval = set(r for r in rval if r.owner is not None)
 
     return rval
