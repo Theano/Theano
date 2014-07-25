@@ -3092,7 +3092,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 
     // Initialize cublas
     if (handle != NULL)
-        cublas_shutdown();
+        if (cublas_shutdown() == -1)
+            return NULL;
 
     if(card_number_provided) {
         err = cudaSetDevice(card_nb);
@@ -3104,7 +3105,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         }
     }
 
-    cublas_init();
+    if (cublas_init() == -1)
+        return NULL;
 
     Py_INCREF(Py_None);
     return Py_None;
