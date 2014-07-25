@@ -637,7 +637,6 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
-
         def count_running_memory(order, thunk_old_storage, nodes_mem):
             """
             Calculate memory with specific node order 
@@ -696,18 +695,12 @@ class ProfileStats(object):
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global maybe_executed
-            mem_list = []
-            order_index = 0
             order = []
+            min_order = []
             node_list = list(node_list)
             min_mem = sys.maxint
             current_mem = 0
             check_len = len(node_list)
-
-            compute_map = defaultdict(lambda: [0])
-            # compute_map use to check if a node is valid
-            for node in fgraph.inputs:
-                compute_map[node][0] = 1
 
             def check_node_state(node):
                 """
@@ -730,58 +723,16 @@ class ProfileStats(object):
                 else:
                     return False
 
-            # maybe_executed = set()
-            # for var in fgraph.inputs:
-            #     for c, _ in var.clients:
-            #         maybe_executed.add(c)
-
-            # current = 0
-
-            # def min_memory_generator(node_list):
-            #     '''
-            #     enumerate all valid orders for the list of nodes in node_list
-            #     compute the peak of all order and keep the order with the minimum peak.
-            #     return minimum memory usage
-                
-            #     :param node_list: a list of apply nodes
-
-            #     :param compute_map: simulate the node execution steps to update compute_map
-            #     '''
-            #     global maybe_executed, current
-
-            #     for i in range(len(node_list)):
-            #         v = node_list[i:i+1]
-            #         if v[0] in maybe_executed:
-            #             if check_node_state(v[0]):
-            #                 maybe_executed.remove(v[0])
-            #                 for node in v[0].outputs:
-            #                     compute_map[node][0] = 1
-            #                     for c, _ in node.clients:
-            #                         if c != "output":
-            #                             maybe_executed.add(c) 
-            #                 if len(node_list) == 1:
-            #                     yield v
-            #                 else:
-            #                     rest = node_list[ :i] + node_list[i+1: ]
-            #                     for p in min_memory_generator(rest):
-            #                         yield v+p
-            #                 for node in v[0].outputs:
-            #                     compute_map[node][0] = 0
-            #                 maybe_executed.add(v[0])
-
-
+            compute_map = defaultdict(lambda: [0])
+            # compute_map use to check if a node is valid
             executables_nodes = set()
 
-            # compute_map use to check if a node is valid
             for var in fgraph.inputs:
                 compute_map[var][0] = 1
             for var in fgraph.inputs:
                 for c, _ in var.clients:
                     if c != "output" and check_node_state(c):
                         executables_nodes.add(c)
-
-
-
 
             def min_memory_generator(executables_nodes):
                 for node in executables_nodes:
@@ -801,12 +752,6 @@ class ProfileStats(object):
                     for var in node.outputs:
                         compute_map[var][0] = 0
 
-            min_order = []
-
-            # for count memory
-            # I tested 2 way
-            # 1. create a new simple method
-            # 2. using sum(nodes_mem[v[0]])
             def count_min_memory(order, thunk_old_storage, nodes_mem):
                 running_memory_size = 0
                 running_max_memory_size = 0
@@ -832,12 +777,7 @@ class ProfileStats(object):
 
                 return running_max_memory_size
 
-
-            i = 0
-
             for order in min_memory_generator(executables_nodes):
-                # print i
-                i += 1
                 post_thunk_old_storage = []
                 computed, last_user = theano.gof.link.gc_helper(order)
                 for node in order:
