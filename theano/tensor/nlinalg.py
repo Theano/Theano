@@ -783,7 +783,7 @@ class TensorSolve(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def infer_shape(self, node, shapes):
+    def _infer_shape(self, node, shapes):
         return [(shapes[0][-(a.ndim - b.ndim):])]
 
     def make_node(self, a, b, axes=None):
@@ -795,6 +795,7 @@ class TensorSolve(Op):
             xshape = a.shape[-(a.ndim - b.ndim):]
             x = a.reshape(xshape, ndim=a.ndim - b.ndim)
             out_type = x.type()
+            self.infer_shape = self._infer_shape
             """ The type of the output depends on both inputs.
                 First, xshape is obtained (see shape Q in the doc),
                 with this shape, x can be created as a referrence for the type
