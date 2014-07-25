@@ -783,24 +783,30 @@ class TensorSolve(Op):
     def __hash__(self):
         return hash(type(self))
 
+    def infer_shape(self, node, shapes):
+        return [(shapes[0][-(a.ndim - b.ndim):])]
+
     def make_node(self, a, b, axes=None):
         a = as_tensor_variable(a)
         b = as_tensor_variable(b)
 
-        xshape = a.shape[-(a.ndim - b.ndim):]
-        x = a.reshape(xshape, ndim=a.ndim - b.ndim)
-        """ The type of the output depends on both inputs.
-            In order to find the correct type, we need to find xshape 
-            (shape Q in the doc under this function), then, with reshape, it is possible to
-            create an array that match the output type and use it as a referrence.
-
-        """
         if axes is None:
             axes = theano.tensor.type_other.NoneConst
+            xshape = a.shape[-(a.ndim - b.ndim):]
+            x = a.reshape(xshape, ndim=a.ndim - b.ndim)
+            out_type = x.type()
+            """ The type of the output depends on both inputs.
+                First, xshape is obtained (see shape Q in the doc),
+                with this shape, x can be created as a referrence for the type
+                using reshape on a.
+
+            """
         else:
             axes = as_tensor_variable(axes)
+            xbroad = a.type.broadcastable[a.ndim-b.ndim:]
+            out_type = TensorType('float64', xbroad)
 
-        return Apply(self, [a, b, axes], [x.type()])
+        return Apply(self, [a, b, axes], [out_type])
 
     def perform(self, node, inp, (out,)):
         a = inp[0]
