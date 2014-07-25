@@ -41,7 +41,7 @@
 #define CNDA_END_ALLOW_THREADS
 #endif
 
-cublasHandle_t handle;
+cublasHandle_t handle = NULL;
 
 /////////////////////////
 // Alloc and Free
