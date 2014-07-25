@@ -583,6 +583,9 @@ class _tensor_py_operators:
         """Fill inputted tensor with the assigned value"""
         return theano.tensor.basic.fill(self, value)
 
+    def choose(self, a, choices, out=None, mode='raise'):
+        """Construct an array from an index array and a set of arrays to choose from."""
+        return theano.tensor.basic.choose(self, a, choices, out=None, mode='raise')
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
