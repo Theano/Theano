@@ -1216,7 +1216,7 @@ class Elemwise(OpenMPOp):
         #This code won't be inplace if the input dtype differ from the
         #output dtype
         if alldtypes != None:
-            for dtypes in alldtypes:
+            for dtypes in alldtypes[:]:
                 shadow = self.scalar_op.make_node(
                     *[get_scalar_type(dtype=dtype)() for dtype in dtypes])
                 out_dtypes = [o.type.dtype for o in shadow.outputs]
