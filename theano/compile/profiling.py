@@ -783,20 +783,20 @@ class ProfileStats(object):
 
 
             def min_memory_generator(executables_nodes):
-                # print executables_nodes
+                print executables_nodes
                 for node in list(executables_nodes):
                     executables_nodes.remove(node)
                     for var in node.outputs:
                         compute_map[var][0] = 1
                     for var in node.outputs:
                         for c, _ in var.clients:
-                            if c != "output" and check_node_state(c) and c not in executables_nodes:
-                                executables_nodes.append(c)
+                            if c != "output" and check_node_state(c):
+                                executables_nodes.add(c)
                     if not executables_nodes:
                         # executables_nodes.add(node)
                         yield [node]
                     else:
-                        for p in min_memory_generator(executables):
+                        for p in min_memory_generator(executables_nodes):
                             yield [node]+p
                     for var in node.outputs:
                         compute_map[var][0] = 0
@@ -835,7 +835,7 @@ class ProfileStats(object):
 
             i = 0
 
-            for order in min_memory_generator(node_list):
+            for order in min_memory_generator(executables_nodes):
                 # print i
                 i += 1
                 post_thunk_old_storage = []
