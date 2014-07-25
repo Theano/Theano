@@ -451,7 +451,7 @@ class TensorType(Type):
                 }
                 """ % dict(sub, name=name, type_num=self.dtype_specs()[2], pre=pre, ndim = self.ndim)
 
-    def c_checkType(self, name, sub, pre='py'):
+    def c_checkType(self, name, sub, pre='py_'):
         return """
                 // This is a TypeError to be consistent with DEBUG_MODE
                 // Note: DEBUG_MODE also tells the name of the container
