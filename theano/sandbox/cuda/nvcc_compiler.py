@@ -156,6 +156,12 @@ class NVCC_compiler(object):
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
 
+        # NumPy 1.7 Deprecate the old API. I updated most of the places
+        # to use the new API, but not everywhere. When finished, enable
+        # the following macro to assert that we don't bring new code
+        # that use the old API.
+        flags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+
         # numpy 1.7 deprecated the following macro but the didn't
         # existed in the past
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]

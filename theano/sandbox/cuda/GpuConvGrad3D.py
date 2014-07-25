@@ -79,33 +79,33 @@ class GpuConvGrad3D(GpuOp):
             //printf("\t\t\t\tGpuConvGrad3DW c code\\n");
 
             //Check dimensionality of inputs
-            if (%(dCdH)s->nd != 5)
+            if (CudaNdarray_NDIM(%(dCdH)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: dCdH must be a 5-d CudaNdArray");
                 %(fail)s
             }
 
-            if (%(V)s->nd != 5)
+            if (CudaNdarray_NDIM(%(V)s) != 5)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: V must be a 5-d CudaNdArray");
                 %(fail)s
             }
 
-            if (%(WShape)s->nd != 1)
+            if (CudaNdarray_NDIM(%(WShape)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: WShape must be a 1-d CudaNdArray");
                 %(fail)s
             }
 
-            if (%(d)s->nd != 1)
+            if (PyArray_NDIM(%(d)s) != 1)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: d must be a 1-d CudaNdArray");
                 %(fail)s
             }
 
-            if (%(d)s->dimensions[0] != 3)
+            if (PyArray_DIMS(%(d)s)[0] != 3)
             {
-                PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: 3 stride lengths arguments expected(for row, col, and time) but %%li were given", %(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: 3 stride lengths arguments expected(for row, col, and time) but %%li were given", PyArray_DIMS(%(d)s)[0]);
                 %(fail)s
             }
 
@@ -113,7 +113,7 @@ class GpuConvGrad3D(GpuOp):
 
             //Read and check sizes of inputs
             const int batchSize = CudaNdarray_HOST_DIMS(%(V)s)[0];
-            if (%(WShape)s->dimensions[0] != 5)
+            if (PyArray_DIMS(%(WShape)s)[0] != 5)
             {
                 PyErr_Format(PyExc_ValueError, "GpuConvGrad3D: WShape must specify a 5-d shape");
                 %(fail)s
@@ -125,7 +125,7 @@ class GpuConvGrad3D(GpuOp):
 
             }
 { //for fail
-            dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) %(WShape)s->data;
+            dtype_%(WShape)s * WShape = (dtype_%(WShape)s *) PyArray_DATA(%(WShape)s);
             const int outputChannels =  WShape[0];
             const int inputChannels = CudaNdarray_HOST_DIMS(%(V)s)[4];
             if (WShape[4] != inputChannels)

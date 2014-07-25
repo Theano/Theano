@@ -95,17 +95,17 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
         fail = sub['fail']
         sio = StringIO()
         print >> sio, """
-        if (%(y_idx)s->nd != 1)
+        if (CudaNdarray_NDIM(%(y_idx)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
         }
-        if (%(x)s->nd != 2)
+        if (CudaNdarray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "x not 2d tensor");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (CudaNdarray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
@@ -247,9 +247,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
         dx, = out
         fail = sub['fail']
         return """
-        if ((%(dnll)s->nd != 1)
-            || (%(sm)s->nd != 2)
-            || (%(y_idx)s->nd != 1))
+        if ((CudaNdarray_NDIM(%(dnll)s) != 1)
+            || (CudaNdarray_NDIM(%(sm)s) != 2)
+            || (CudaNdarray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
@@ -391,7 +391,7 @@ class GpuSoftmax(GpuOp):
         z, = out
         fail = sub['fail']
         return """
-        if (%(x)s->nd != 2)
+        if (CudaNdarray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
@@ -556,12 +556,12 @@ class GpuSoftmaxWithBias(GpuOp):
         z, = out
         fail = sub['fail']
         return """
-        if (%(x)s->nd != 2)
+        if (CudaNdarray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rank error input");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (CudaNdarray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "rank error for the bias");
             %(fail)s;

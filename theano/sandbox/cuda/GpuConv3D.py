@@ -50,33 +50,33 @@ class GpuConv3D(GpuOp):
                         //printf("\t\t\t\tConv3DGPU c code\\n");
 
                         //Check dimensionality of inputs
-                        if (%(W)s->nd != 5)
+                        if (CudaNdarray_NDIM(%(W)s) != 5)
                         {
                 PyErr_Format(PyExc_ValueError, "GpuConv3D: W must be a 5 dimensional CudaNdarray");
                             %(fail)s
                         }
 
-                        if (%(V)s->nd != 5)
+                        if (CudaNdarray_NDIM(%(V)s) != 5)
                         {
                 PyErr_Format(PyExc_ValueError, "GpuConv3D: V must be a 5 dimensional CudaNdarray");
                             %(fail)s
                         }
 
-                        if (%(b)s->nd != 1)
+                        if (CudaNdarray_NDIM(%(b)s) != 1)
                         {
                 PyErr_Format(PyExc_ValueError, "GpuConv3D: b must be a vector CudaNdarray");
                             %(fail)s
                         }
 
-                        if (%(d)s->nd != 1)
+                        if (CudaNdarray_NDIM(%(d)s) != 1)
                         {
 PyErr_Format(PyExc_ValueError, "GpuConv3D: d must be a vector CudaNdarray");
                             %(fail)s
 
                         }
-                        if (%(d)s->dimensions[0] != 3)
+                        if (PyArray_DIMS(%(d)s)[0] != 3)
                         {
-                PyErr_Format(PyExc_ValueError, "GpuConv3D: 3 stride length arguments expected (row, col, time) but %%li were given", %(d)s->dimensions[0]);
+                PyErr_Format(PyExc_ValueError, "GpuConv3D: 3 stride length arguments expected (row, col, time) but %%li were given", PyArray_DIMS(%(d)s)[0]);
                             %(fail)s
 
                         }

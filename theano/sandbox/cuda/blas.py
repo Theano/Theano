@@ -124,8 +124,8 @@ class GpuDot22Scalar(GpuOp):
         return """
         #define REAL float
         float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
-        ? (REAL)(((float*)%(a)s->data)[0])
-        : (REAL)(((double*)%(a)s->data)[0]);
+        ? (REAL)(((float*)PyArray_DATA(%(a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(a)s))[0]);
         #undef REAL
         if (%(x)s->nd != 2)
         {
@@ -232,12 +232,12 @@ class GpuGemm(GpuOp):
 
         #define REAL float
         float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
-        ? (REAL)(((float*)%(a)s->data)[0])
-        : (REAL)(((double*)%(a)s->data)[0]);
+        ? (REAL)(((float*)PyArray_DATA(%(a)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(a)s))[0]);
 
         float %(name)s_b = (PyArray_TYPE(%(b)s) == NPY_FLOAT) ?
-        (REAL)(((float*)%(b)s->data)[0])
-        : (REAL)(((double*)%(b)s->data)[0]);
+        (REAL)(((float*)PyArray_DATA(%(b)s))[0])
+        : (REAL)(((double*)PyArray_DATA(%(b)s))[0]);
         #undef REAL
 
         if (%(inplace)s
@@ -344,8 +344,8 @@ class GpuGemv(GpuOp):
         sio = StringIO()
 
         print >> sio, """
-        float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
-        float %(name)s_beta = ((dtype_%(b)s*)(%(b)s->data))[0];
+        float %(name)s_alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
+        float %(name)s_beta = ((dtype_%(b)s*)(PyArray_DATA(%(b)s)))[0];
 
         if (%(inplace)s
             && ((CudaNdarray_HOST_STRIDES(%(z_in)s)[0] > 0)
@@ -441,7 +441,7 @@ class GpuGer(GpuOp):
         sio = StringIO()
 
         print >> sio, """
-        float %(name)s_alpha = ((dtype_%(a)s*)(%(a)s->data))[0];
+        float %(name)s_alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
 
         if (%(inplace)s
             && (CudaNdarray_HOST_STRIDES(%(z_in)s)[0] >= 0)
