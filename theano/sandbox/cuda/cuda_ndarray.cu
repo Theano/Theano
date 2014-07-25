@@ -3550,18 +3550,19 @@ static int
 cublas_init()
 {
     cublasStatus_t err;
-    if (handle != NULL)
-    {
-        err = cublasDestroy(handle);
-        if (CUBLAS_STATUS_SUCCESS != err)
-        {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "cublas_init tried to destroy the old cublas"
-                            " context, cublasDestroy() returned an error.");
-            return -1;
-        }
-        handle = NULL;
-    }
+    //The following is causing problems so I comment it.
+    // if (handle != NULL)
+    // {
+    //     err = cublasDestroy(handle);
+    //     if (CUBLAS_STATUS_SUCCESS != err)
+    //     {
+    //         PyErr_SetString(PyExc_RuntimeError,
+    //                         "cublas_init tried to destroy the old cublas"
+    //                         " context, cublasDestroy() returned an error.");
+    //         return -1;
+    //     }
+    //     handle = NULL;
+    // }
     err = cublasCreate(&handle);
     if (CUBLAS_STATUS_SUCCESS != err)
     {

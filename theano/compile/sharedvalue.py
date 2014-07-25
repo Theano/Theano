@@ -9,7 +9,7 @@ import logging
 import numpy
 
 # Theano imports
-from theano.gof import Container, Variable, generic
+from theano.gof import Container, Variable, generic, utils
 
 _logger = logging.getLogger('theano.compile.sharedvalue')
 
@@ -186,8 +186,10 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
 
         for ctor in reversed(shared.constructors):
             try:
-                return ctor(value, name=name, strict=strict,
-                            allow_downcast=allow_downcast, **kwargs)
+                var = ctor(value, name=name, strict=strict,
+                           allow_downcast=allow_downcast, **kwargs)
+                utils.add_tag_trace(var)
+                return var
             except TypeError:
                 continue
             # This may happen when kwargs were supplied
