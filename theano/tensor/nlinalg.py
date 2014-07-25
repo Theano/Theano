@@ -784,6 +784,9 @@ class TensorInv(Op):
     def __hash__(self):
         return hash(type(self))
 
+    def infer_shape(self, node, shapes):
+        return [(shapes[0][ind:]+shapes[0][:ind])]
+
     def make_node(self, x, ind=2):
         x = as_tensor_variable(x)
         ind = as_tensor_variable(ind)
