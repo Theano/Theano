@@ -6984,7 +6984,6 @@ class T_Choose():
             n_c = numpy.choose(A, B, mode=m)
             assert numpy.allclose(t_c, n_c)
 
-
     def wrong_choice_array(self):
 
         a = tensor.matrix(dtype='int64')
