@@ -3090,6 +3090,11 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                             "There is no device that supports CUDA");
     }
 
+    // Initialize cublas
+    if (handle != NULL)
+        if (cublas_shutdown() == -1)
+            return NULL;
+
     if(card_number_provided) {
         err = cudaSetDevice(card_nb);
         if(cudaSuccess != err) {
@@ -3100,10 +3105,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         }
     }
 
-    // Initialize cublas
-    if (handle != NULL)
-        cublas_shutdown();
-    cublas_init();
+    if (cublas_init() == -1)
+        return NULL;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3552,19 +3555,6 @@ static int
 cublas_init()
 {
     cublasStatus_t err;
-    //The following is causing problems so I comment it.
-    // if (handle != NULL)
-    // {
-    //     err = cublasDestroy(handle);
-    //     if (CUBLAS_STATUS_SUCCESS != err)
-    //     {
-    //         PyErr_SetString(PyExc_RuntimeError,
-    //                         "cublas_init tried to destroy the old cublas"
-    //                         " context, cublasDestroy() returned an error.");
-    //         return -1;
-    //     }
-    //     handle = NULL;
-    // }
     err = cublasCreate(&handle);
     if (CUBLAS_STATUS_SUCCESS != err)
     {
@@ -3594,11 +3584,16 @@ cublas_init()
 static int
 cublas_shutdown()
 {
-    if (CUBLAS_STATUS_SUCCESS != cublasDestroy(handle))
+    cublasStatus_t err;
+    err = cublasDestroy(handle);
+    if (CUBLAS_STATUS_SUCCESS != err)
     {
-        PyErr_SetString(PyExc_RuntimeError, "error shutting down device");
+        PyErr_SetString(PyExc_RuntimeError,
+                        "cublas_init tried to destroy the old cublas"
+                        " context, cublasDestroy() returned an error.");
         return -1;
     }
+    handle = NULL;
     return 0;
 }
 
