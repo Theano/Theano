@@ -889,6 +889,7 @@ class VM_Linker(link.LocalLinker):
                 if not hasattr(thunks[-1], 'lazy'):
                     # We don't want all ops maker to think about lazy Ops.
                     # So if they didn't specify that its lazy or not, it isn't.
+                    # If this member isn't present, it will crash later.
                     thunks[-1].lazy = False
             except Exception, e:
                 e.args = ("The following error happened while"

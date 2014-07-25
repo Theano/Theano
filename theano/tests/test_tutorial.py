@@ -976,11 +976,11 @@ class T_using_gpu(unittest.TestCase):
 
     def test_using_gpu_pycudaop(self):
         import theano.misc.pycuda_init
-        from pycuda.compiler import SourceModule
-        import theano.sandbox.cuda as cuda
         if not theano.misc.pycuda_init.pycuda_available:
             raise SkipTest("Pycuda not installed. Skip test of theano op"
                            " with pycuda code.")
+        from pycuda.compiler import SourceModule
+        import theano.sandbox.cuda as cuda
 
         import theano.sandbox.cuda as cuda_ndarray
         if not cuda_ndarray.cuda_available:
