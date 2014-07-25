@@ -655,20 +655,20 @@ class ProfileStats(object):
             5.  node_memory_saved_by_inplace
                 The sum of memory saved by reusing the input instead of
                 new allocation
-            
+
             """
             node_memory_size = 0
             running_memory_size = 0
             running_max_memory_size = 0
             node_memory_saved_by_view = 0
             node_memory_saved_by_inplace = 0
-            
+
             for node in order:
                 val = nodes_mem[node]
                 dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
-
-                for idx, v in enumerate(val):
+                idx = 0
+                for v in val:
                     # TODO check the op returned a view
                     if dmap and idx in dmap:
                         node_memory_saved_by_inplace += v
@@ -678,13 +678,14 @@ class ProfileStats(object):
                     elif not isinstance(v, str):
                         node_memory_size += v
                         running_memory_size += v
-                        if running_memory_size > running_max_memory_size:
-                            running_max_memory_size = running_memory_size
-                        old_storage = thunk_old_storage[order.index(node)]
-                        for old_s in old_storage:
-                            old_v = var_mem[node.inputs[old_s]]
-                            if not isinstance(old_v, str):
-                                running_memory_size -= old_v
+                    idx += 1
+                if running_memory_size > running_max_memory_size:
+                    running_max_memory_size = running_memory_size
+                old_storage = thunk_old_storage[order.index(node)]
+                for old_s in old_storage:
+                    old_v = var_mem[node.inputs[old_s]]
+                    if not isinstance(old_v, str):
+                        running_memory_size -= old_v
 
             return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
 
@@ -803,7 +804,7 @@ class ProfileStats(object):
             min_order = []
 
             # for count memory
-            # I tested 2 way 
+            # I tested 2 way
             # 1. create a new simple method
             # 2. using sum(nodes_mem[v[0]])
             def count_min_memory(order, thunk_old_storage, nodes_mem):
@@ -815,17 +816,19 @@ class ProfileStats(object):
                     dmap = getattr(node.op, 'destroy_map', None)
                     vmap = getattr(node.op, 'view_map', None)
 
-                    for idx, v in enumerate(val):
+                    idx = o
+                    for v in val:
                         # TODO check the op returned a view
                         if idx not in dmap and idx not in vmap and not isinstance(v, str):
                             running_memory_size += v
-                            if running_memory_size > running_max_memory_size:
-                                running_max_memory_size = running_memory_size
-                            old_storage = thunk_old_storage[order.index(node)]
-                            for old_s in old_storage:
-                                old_v = var_mem[node.inputs[old_s]]
-                                if not isinstance(old_v, str):
-                                    running_memory_size -= old_v
+                        idx += 1
+                    if running_memory_size > running_max_memory_size:
+                        running_max_memory_size = running_memory_size
+                    old_storage = thunk_old_storage[order.index(node)]
+                    for old_s in old_storage:
+                        old_v = var_mem[node.inputs[old_s]]
+                        if not isinstance(old_v, str):
+                            running_memory_size -= old_v
 
                 return running_max_memory_size
 
