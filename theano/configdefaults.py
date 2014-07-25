@@ -11,10 +11,18 @@ _logger = logging.getLogger('theano.configdefaults')
 
 config = TheanoConfigParser()
 
+def floatX_convert(s):
+    if s == "32":
+        return "float32"
+    elif s == "64":
+        return "float64"
+    else:
+        return s
+
 AddConfigVar('floatX',
-        "Default floating-point precision for python casts",
-        EnumStr('float64', 'float32'),
-        )
+             "Default floating-point precision for python casts",
+             EnumStr('float64', 'float32', convert=floatX_convert,),
+)
 
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
