@@ -717,6 +717,7 @@ class ProfileStats(object):
                 inputs = node.inputs
                 outputs = node.outputs
                 deps = inputs + node.destroy_dependencies
+                # TODO: Move at compute_map creation to speed things up.
                 for node in deps:
                     if isinstance(node, graph.Constant):
                         compute_map[node][0] = 1
@@ -770,7 +771,6 @@ class ProfileStats(object):
 
             executables_nodes = set()
 
-            compute_map = defaultdict(lambda: [0])
             # compute_map use to check if a node is valid
             for var in fgraph.inputs:
                 compute_map[var][0] = 1
@@ -783,25 +783,22 @@ class ProfileStats(object):
 
 
             def min_memory_generator(executables_nodes):
-                print executables_nodes
-                for node in list(executables_nodes):
-                    executables_nodes.remove(node)
+                for node in executables_nodes:
+                    new_exec_nodes = executables_nodes.copy()
+                    new_exec_nodes.remove(node)
                     for var in node.outputs:
                         compute_map[var][0] = 1
                     for var in node.outputs:
                         for c, _ in var.clients:
                             if c != "output" and check_node_state(c):
-                                executables_nodes.add(c)
-                    if not executables_nodes:
-                        # executables_nodes.add(node)
+                                new_exec_nodes.add(c)
+                    if not new_exec_nodes:
                         yield [node]
                     else:
-                        for p in min_memory_generator(executables_nodes):
+                        for p in min_memory_generator(new_exec_nodes):
                             yield [node]+p
                     for var in node.outputs:
                         compute_map[var][0] = 0
-                    # if check_node_sate(node):
-                    #     executables_nodes.add(node)
 
             min_order = []
 
