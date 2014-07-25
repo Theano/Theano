@@ -41,7 +41,7 @@
 #define CNDA_END_ALLOW_THREADS
 #endif
 
-cublasHandle_t handle;
+cublasHandle_t handle = NULL;
 
 /////////////////////////
 // Alloc and Free
@@ -3549,9 +3549,33 @@ CudaNdarray_New(int nd)
 static int
 cublas_init()
 {
-    if (CUBLAS_STATUS_SUCCESS != cublasCreate(&handle))
+    cublasStatus_t err;
+    if (handle != NULL)
     {
-        PyErr_SetString(PyExc_RuntimeError, "error initializing device");
+        err = cublasDestroy(handle);
+        if (CUBLAS_STATUS_SUCCESS != err)
+        {
+            PyErr_SetString(PyExc_RuntimeError,
+                            "cublas_init tried to destroy the old cublas"
+                            " context, cublasDestroy() returned an error.");
+            return -1;
+        }
+        handle = NULL;
+    }
+    err = cublasCreate(&handle);
+    if (CUBLAS_STATUS_SUCCESS != err)
+    {
+        if(CUBLAS_STATUS_NOT_INITIALIZED == err)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "cublasCreate() returned this error "
+                            "'the CUDA Runtime initialization failed'");
+        else if(CUBLAS_STATUS_ALLOC_FAILED == err)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "cublasCreate() returned this error "
+                            "'the resources could not be allocated'");
+        else
+            PyErr_SetString(PyExc_RuntimeError,
+                            "unknow error during returned by cublasCreate()");
         return -1;
     }
     // Set the default stream as the one to execute on (default)
