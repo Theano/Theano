@@ -633,17 +633,17 @@ arithmetic operators:
        def __str__(self):
            return self.name
 
-   add = BinaryDoubleOp(name = 'add',
-                        fn = lambda x, y: x + y)
+   add = BinaryDoubleOp(name='add',
+                        fn=lambda x, y: x + y)
 
-   sub = BinaryDoubleOp(name = 'sub',
-                        fn = lambda x, y: x - y)
+   sub = BinaryDoubleOp(name='sub',
+                        fn=lambda x, y: x - y)
 
-   mul = BinaryDoubleOp(name = 'mul',
-                        fn = lambda x, y: x * y)
+   mul = BinaryDoubleOp(name='mul',
+                        fn=lambda x, y: x * y)
 
-   div = BinaryDoubleOp(name = 'div',
-                        fn = lambda x, y: x / y)
+   div = BinaryDoubleOp(name='div',
+                        fn=lambda x, y: x / y)
 
 Instead of working directly on an instance of Op, we create a subclass of
 Op that we can parametrize. All the operations we define are binary. They

@@ -9,7 +9,7 @@ if not theano.misc.pycuda_init.pycuda_available:
                    " with pycuda code.")
 
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+if not cuda_ndarray.cuda_available:
     from nose.plugins.skip import SkipTest
     raise SkipTest('Optional package cuda disabled')
 
