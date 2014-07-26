@@ -1626,18 +1626,13 @@ def local_upcast_elemwise_constant_inputs(node):
             if new_inputs != node.inputs:
                 rval = [node.op(*new_inputs)]
                 if rval[0].type != node.outputs[0].type:
-                    print >> sys.stderr, "NODE:", node
-                    print >> sys.stderr, "NODE INPUT TYPES:", [i.type for i
-                                                               in node.inputs]
-                    print >> sys.stderr, "NODE OUTPUT TYPES:", [
-                        o.type for o in node.outputs]
-                    print >> sys.stderr, "RVAL:", rval
-                    print >> sys.stderr, "NEW INPUT TYPES:", [i.type for i
-                                                              in new_inputs]
-                    print >> sys.stderr, "RVAL INPUT TYPES:", [
-                        i.type for i in rval[0].owner.inputs]
-                    print >> sys.stderr, "RVAL TYPES:", [o.type for o in rval]
-                assert rval[0].type == node.outputs[0].type, (node, rval[0])
+                    # This can happen for example when floatX=float32
+                    # and we do the true division between and int64
+                    # and a constant that will get typed as int8.
+
+                    # As this is just to allow merging more case, if
+                    # the upcast don't work, we can just skip it.
+                    return
                 return rval
 
 ##################
