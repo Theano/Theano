@@ -4204,6 +4204,15 @@ def test_local_upcast_elemwise_constant_inputs():
     f = function([s], [tensor.grad(x, s)])
     f([-42, -2.1, -1, -0.5, 0, 0.2, 1, 2, 12])
 
+    # This test a corner where the optimization should not be applied.
+    old = theano.config.floatX
+    theano.config.floatX = 'float32'
+    try:
+        v = lvector() / 2
+        function([v], theano.tensor.basic.true_div(v, 2))
+    finally:
+        theano.config.floatX = old
+
 
 class TestShape_i(utt.InferShapeTester):
 
