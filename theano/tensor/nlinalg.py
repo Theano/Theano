@@ -6,7 +6,7 @@ import numpy
 
 from theano.gof import Op, Apply
 
-from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
+from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot, TensorType
 from theano.tensor.blas import Dot22
 from theano.tensor.opt import (register_stabilize,
         register_specialize, register_canonicalize)
@@ -784,7 +784,7 @@ class TensorSolve(Op):
         return hash(type(self))
 
     def _infer_shape(self, node, shapes):
-        return [(shapes[0][-(a.ndim - b.ndim):])]
+        return [(shapes[0][-(len(shapes[0]) - len(shapes[1])):])]
 
     def make_node(self, a, b, axes=None):
         a = as_tensor_variable(a)
@@ -805,7 +805,7 @@ class TensorSolve(Op):
         else:
             axes = as_tensor_variable(axes)
             xbroad = a.type.broadcastable[a.ndim-b.ndim:]
-            out_type = TensorType('float64', xbroad)
+            out_type = TensorType('float64', xbroad)()
 
         return Apply(self, [a, b, axes], [out_type])
 

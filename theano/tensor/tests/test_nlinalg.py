@@ -499,23 +499,24 @@ class T_TensorSolve():
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
-        a = tensor.tensor3()
+        a = tensor.tensor4()
         b = tensor.matrix()
+
+        A = rng.rand(1, 2, 1, 2).astype(theano.config.floatX)
+        B = rng.rand(1, 2).astype(theano.config.floatX)
+        C = rng.rand(2, 1, 1, 2).astype(theano.config.floatX)
+
+        n_ta = numpy.linalg.tensorsolve(A, B, (1,2))
+        n_tb = numpy.linalg.tensorsolve(C, B, (0,2))
+        n_t = numpy.linalg.tensorsolve(A, B)
 
         fa = function([a, b], tensorsolve(a, b, (1, 2)))
         fb = function([a, b], tensorsolve(a, b, (0, 2)))
         f = function([a, b], tensorsolve(a, b))
 
-        A = rng.rand(1, 2, 2).astype(theano.config.floatX)
-        B = rng.rand(1, 2).astype(theano.config.floatX)
-
         t_ta = fa(A, B)
-        t_tb = fb(A, B)
+        t_tb = fb(C, B)
         t_t = f(A, B)
-
-        n_ta = numpy.linalg.tensorsolve(A, B, (1,2))
-        n_tb = numpy.linalg.tensorsolve(A, B, (0,2))
-        n_t = numpy.linalg.tensorsolve(A, B)
 
         assert numpy.allclose(n_ta, t_ta)
         assert numpy.allclose(n_tb, t_tb)
@@ -532,3 +533,24 @@ class T_TensorSolve():
         B = rng.rand(24, 8, 3).astype(theano.config.floatX)
 
         assert_raises(numpy.linalg.linalg.LinAlgError, f, A, B)
+
+    def test_infer_shape(self):
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        a = tensor.tensor4()
+        b = tensor.tensor3()
+        c = tensor.matrix()
+
+        A = rng.rand(7, 2, 1, 14).astype(theano.config.floatX)
+        B = rng.rand(7, 2, 1).astype(theano.config.floatX)
+        C = rng.rand(7, 2).astype(theano.config.floatX)
+
+        ty = [b, c]
+        dim = [B, C]
+
+        for t, i in zip(ty, dim):
+            fa = function([a, t], tensorsolve(a, t))
+            t_ta = fa(A, i)
+            shapea = A.shape[-(A.ndim-i.ndim):]
+            assert numpy.allclose(t_ta.shape, shapea)
