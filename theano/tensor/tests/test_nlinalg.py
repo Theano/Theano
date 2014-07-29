@@ -523,3 +523,41 @@ class T_TensorInv():
         fa = function([a], tensorinv(a, 1))
         A = rng.rand(2, 2, 2).astype(theano.config.floatX)
         assert_raises(numpy.linalg.linalg.LinAlgError, fa, A)
+
+    def test_infer_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        a = tensor.tensor4()
+        b = tensor.tensor3()
+        c = tensor.matrix()
+
+        A = rng.rand(7, 2, 1, 14).astype(theano.config.floatX)
+        B = rng.rand(7, 2, 14).astype(theano.config.floatX)
+        C = rng.rand(7, 7).astype(theano.config.floatX)
+
+        type = [a, b, c]
+        num = [A, B, C]
+        ind = [2, 2, 1]
+
+        for t, n, i in zip(type, num, ind):
+            f = function([t], tensorinv(t, i))
+            t_t = f(n)
+            shape = n.shape[i:]+n.shape[:i]
+            assert numpy.allclose(t_t.shape, shape)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
