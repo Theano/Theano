@@ -1,10 +1,9 @@
 """
-Tests for GPU convolution
+Tests for Caffe GPU convolution
 """
 import sys
 import time
 import unittest
-import matplotlib.pyplot as plt
 
 
 import numpy

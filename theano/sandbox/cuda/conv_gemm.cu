@@ -1,11 +1,35 @@
-// Copyright 2014 BVLC and contributors.
+/*
+Copyright (c) 2014, The Regents of the University of California (Regents)
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met: 
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer. 
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
 #undef _GLIBCXX_ATOMIC_BUILTINS
 #include <Python.h>
 #include "cuda_ndarray.cuh"
 #include "caffe_common.hpp"
-// Author: Arjun Jain
 // Kernel for fast unfold+copy
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu)
+// Reference code: https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 __global__ void im2col_kernel(const int n, const float* data_im,
                               const int height, const int width, const int ksize, const int pad,
                               const int stride, const int height_col, const int width_col,
@@ -51,18 +75,13 @@ void im2col(const float* data_im, const int channels,
 
 
 
+// Author: Arjun Jain
 CudaNdarray* validMM(const CudaNdarray *input, 
 				      CudaNdarray *weight,
 				      CudaNdarray *output) 
 {
 
-    // TODO: This needs to be done in the singleton!
-    // Initialize CUBLAS
-    cublasHandle_t handle;
-  	cublasStatus_t status = cublasCreate(&handle);
-  	if (status != CUBLAS_STATUS_SUCCESS) {
-      		std::cerr << "!!!! CUBLAS initialization error\n";
-	}
+  	cublasStatus_t status;
 
     if (input->nd != 4)
     {
@@ -74,7 +93,6 @@ CudaNdarray* validMM(const CudaNdarray *input,
         PyErr_SetString(PyExc_ValueError, "required weight of 4D");
     }
         
-     // Reference code: https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
      // TODO: stride(dW, dH) and padding as function parameter
      int dH = 1; 
      int dW = 1;
@@ -146,20 +164,14 @@ CudaNdarray* validMM(const CudaNdarray *input,
                 output->devdata + elt * op_stride, m
                 );
 
-  
-		  cudaError_t err = cudaGetLastError();
-		  if (err != cudaSuccess) {
-		    printf("error in validMM: %s\n", cudaGetErrorString(err));
-		  }
+  	     if (status != CUBLAS_STATUS_SUCCESS) {
+      		std::cerr << "!!!! CUBLAS initialization error\n";
+	      }
 
       }
     
-    // TODO: How is columns and output deallocated? 
-    // device_free(columns->devdata);
-    // TODO: I did not kill the cublas context. If it comes from 
-    // the singleton, we dont need to kill it.
-
- 
+    Py_DECREF(columns);
+    
   return output;
 }
                
