@@ -2871,6 +2871,16 @@ CudaNdarray_synchronize(PyObject* _unused, PyObject* dummy)
     return Py_None;
 }
 
+/*
+ * Exist and return true if we link with cublas v2.
+ */
+PyObject *
+CudaNdarray_cublasv2(PyObject* _unused, PyObject* dummy)
+{
+    Py_INCREF(Py_True);
+    return Py_True;
+}
+
 #if COMPUTE_GPU_MEM_USED
 /*
  * Return the size in bytes that Theano currently have allocated on the gpu.
@@ -3414,6 +3424,8 @@ static PyMethodDef module_methods[] = {
     {"outstanding_mallocs", outstanding_mallocs, METH_VARARGS, "how many more mallocs have been called than free's"},
     {"from_gpu_pointer", CudaNdarray_from_gpu_pointer, METH_VARARGS, "Used to create a CudaNdarray from already allocated memory on the gpu.(example by pycuda)"},
     {"synchronize", CudaNdarray_synchronize, METH_NOARGS, "Used to synchronize the device"},
+    {"cublas_v2", CudaNdarray_cublasv2, METH_NOARGS,
+     "Used to know if this version of cuda_ndarray is linked with cublas v2."},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
