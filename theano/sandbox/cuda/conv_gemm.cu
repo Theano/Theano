@@ -115,6 +115,12 @@ CudaNdarray* validMM(const CudaNdarray *input,
 		    );
        return NULL;
      }
+     if (CudaNdarray_HOST_DIMS(input)[1]  != CudaNdarray_HOST_DIMS(weight)[1]){
+       PyErr_SetString(PyExc_ValueError,
+                    "GpuConvMM support only square images\n"
+		    );
+       return NULL;
+     }
      long inputHeight  = CudaNdarray_HOST_DIMS(input)[2];
      long inputWidth   = CudaNdarray_HOST_DIMS(input)[3];
      long outputWidth  = (inputWidth + 2*padding - kW) / dW + 1;
@@ -178,7 +184,7 @@ CudaNdarray* validMM(const CudaNdarray *input,
                 );
 
   	     if (status != CUBLAS_STATUS_SUCCESS) {
-      		std::cerr << "!!!! CUBLAS initialization error\n";
+      	         std::cerr << "!!!! CUBLAS error in GpuConvMM\n";
 	      }
 
       }
