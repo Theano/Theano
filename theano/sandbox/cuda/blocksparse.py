@@ -13,66 +13,6 @@ if cuda_available:
                                      HostFromGpu, host_from_gpu,
                                      GpuDimShuffle)
 
-import theano.misc.pycuda_init
-from theano.misc.pycuda_init import pycuda_available
-if pycuda_available:
-    import pycuda.gpuarray
-    from theano.misc.pycuda_utils import to_cudandarray
-
-try:
-    import scikits.cuda
-    from scikits.cuda import cublas
-    import scikits.cuda.misc
-    scikits.cuda.misc.init()
-    scikits_cuda_available = True
-except ImportError:
-    scikits_cuda_available = False
-
-
-def gemm_batched(tA, tB, m, n, k, Al, lda, Bl, ldb, Cl, ldc,
-                 alpha=numpy.float32(1.0), beta=numpy.float32(0.0)):
-    assert Al.shape[0] == Bl.shape[0]
-    assert Al.shape[0] == Cl.shape[0]
-
-    handle = scikits.cuda.misc._global_cublas_handle
-
-    cublas.cublasSgemmBatched(handle, tA, tB, m, n, k, alpha,
-                              Al.ptr, lda, Bl.ptr, ldb,
-                              beta, Cl.ptr, ldc,
-                              Cl.shape[0])
-
-
-def gemv(alpha, A, x, beta, y):
-    assert A.shape[0] == x.shape[0]
-    assert A.shape[1] == y.shape[0]
-
-    if A.strides[0] == 1:
-        n, m = 0, 1
-        trans = 't'
-    else:
-        n, m = 1, 0
-        trans = 'n'
-
-    handle = scikits.cuda.misc._global_cublas_handle
-
-    cublas.cublasSgemv(handle, trans, A.shape[n], A.shape[m], alpha,
-                       A.gpudata, A.strides[m],
-                       x.gpudata, x.strides[0],
-                       beta, y.gpudata, y.strides[0])
-
-
-def ger(alpha, x, y, A):
-    assert A.shape[1] == x.shape[0]
-    assert A.shape[0] == y.shape[0]
-
-    handle = scikits.cuda.misc._global_cublas_handle
-
-    cublas.cublasSger(handle, A.shape[1], A.shape[0], alpha,
-                      x.gpudata, x.strides[0],
-                      y.gpudata, y.strides[0],
-                      A.gpudata, A.strides[0])
-
-
 class SparseBlockGemvSS(GpuOp):
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -103,6 +43,9 @@ class SparseBlockGemvSS(GpuOp):
 
         return Apply(self, [o, W, h, inputIdx, outputIdx],
                      [o.type()])
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
     def c_support_code(self):
         return """
@@ -205,52 +148,6 @@ float *out, int o_str_0, int o_str_1, int o_str_2
           return 0;
         }
         """ % dict(n=nodename)
-
-    def perform(self, node, inputs, outputs):
-        o, W, h, inputIdx, outputIdx = inputs
-        out = outputs[0]
-
-        dd = (o.shape[0] * o.shape[1] * h.shape[1],)
-        weightHostB = numpy.empty(dd, dtype='intp')
-        outputHostB = numpy.empty(dd, dtype='intp')
-        inputHostB = numpy.empty(dd, dtype='intp')
-
-        outputBatched = pycuda.gpuarray.GPUArray((h.shape[0], h.shape[1],
-                                                  o.shape[1], o.shape[2]),
-                                                 dtype='float32')
-
-        k = 0
-        for b in range(o.shape[0]):
-            for j in range(o.shape[1]):
-                out_id = outputIdx[b, j]
-                for i in range(h.shape[1]):
-                    inp_id = inputIdx[b, i]
-                    weightHostB[k] = W[inp_id, out_id].gpudata
-                    outputHostB[k] = outputBatched[b, i, j].ptr
-                    inputHostB[k] = h[b, i].gpudata
-                    k += 1
-
-        weightB = pycuda.gpuarray.to_gpu(weightHostB)
-        inputB = pycuda.gpuarray.to_gpu(inputHostB)
-        outputB = pycuda.gpuarray.to_gpu(outputHostB)
-
-        tA = 'n'
-        lda = W.strides[2]
-        if lda == 1:
-            tA = 't'
-            lda = W.strides[3]
-
-
-        gemm_batched(tA, 'n', o.shape[2], 1, h.shape[2],
-                     weightB, lda, inputB, h.strides[1],
-                     outputB, o.strides[1],
-                     beta=numpy.asarray(0.0, dtype='float32'))
-
-        outputBatchedG = to_cudandarray(outputBatched)
-        out[0] = o + outputBatchedG.reduce_sum([0, 1, 0, 0])
-
-    def infer_shape(self, node, input_shapes):
-        return [input_shapes[0]]
 
     def c_code(self, node, nodename, inputs, outputs, sub):
         o, W, h, inputIdx, outputIdx = inputs
@@ -409,40 +306,6 @@ class SparseBlockOuterSS(GpuOp):
             beta = one
         return Apply(self, [o, x, y, xIdx, yIdx, alpha, beta],
                      [o.type()])
-
-    def perform(self, node, inputs, outputs):
-        o, x, y, xIdx, yIdx, alpha, beta = inputs
-        out = outputs[0]
-
-        if not self.inplace:
-            o = o.copy()
-
-        dd = (x.shape[0] * x.shape[1] * y.shape[1],)
-        xHostB = numpy.empty(dd, dtype='intp')
-        yHostB = numpy.empty(dd, dtype='intp')
-        outHostB = numpy.empty(dd, dtype='intp')
-
-        k = 0
-        for b in range(x.shape[0]):
-            for j in range(y.shape[1]):
-                out_id = yIdx[b, j]
-                for i in range(x.shape[1]):
-                    inp_id = xIdx[b, i]
-                    outHostB[k] = o[inp_id, out_id].gpudata
-                    xHostB[k] = x[b, i].gpudata
-                    yHostB[k] = y[b, j].gpudata
-                    k += 1
-
-        xB = pycuda.gpuarray.to_gpu(xHostB)
-        yB = pycuda.gpuarray.to_gpu(yHostB)
-        outB = pycuda.gpuarray.to_gpu(outHostB)
-
-        gemm_batched('n', 't', y.shape[2], x.shape[2], 1,
-                     yB, y.strides[1], xB, x.strides[1],
-                     outB, o.strides[2],
-                     alpha=alpha, beta=beta)
-
-        out[0] = o
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]
