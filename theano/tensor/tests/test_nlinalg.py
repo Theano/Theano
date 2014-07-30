@@ -557,16 +557,3 @@ class T_TensorSolve(utt.InferShapeTester):
                                     [A, d],
                                     # Op that should be removed from the graph.
                                     self.op_class)
-
-
-
-
-
-
-
-
-
-
-
-
-
