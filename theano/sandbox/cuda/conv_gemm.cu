@@ -119,15 +119,18 @@ CudaNdarray* validMM(const CudaNdarray *input,
      long inputWidth   = CudaNdarray_HOST_DIMS(input)[3];
      long outputWidth  = (inputWidth + 2*padding - kW) / dW + 1;
      long outputHeight = (inputHeight + 2*padding - kH) / dH + 1;
-     // Allocate output, size (batchSize, nOutputPlane, 
+     // check output, size (batchSize, nOutputPlane,
      //		outputHeight, outputWidth);
-     int out_dim[4];
-     out_dim[0] = batchSize;
-     out_dim[1] = nOutputPlane;
-     out_dim[2] = outputHeight;
-     out_dim[3] = outputWidth;
      
-     output = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+     if (batchSize != CudaNdarray_HOST_DIMS(output)[0] ||
+	 nOutputPlane != CudaNdarray_HOST_DIMS(output)[1] ||
+	 outputHeight != CudaNdarray_HOST_DIMS(output)[2] ||
+	 outputWidth != CudaNdarray_HOST_DIMS(output)[3]){
+       PyErr_SetString(PyExc_ValueError,
+                    "GpuConvMM outputs parameter don't have the good shape\n"
+		    );
+       return NULL;
+     }
      // Create temporary columns
      int col_dim[2];
      col_dim[0] = nInputPlane*kW*kH;

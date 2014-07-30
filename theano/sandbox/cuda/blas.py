@@ -577,8 +577,9 @@ class GpuConvMM(GpuOp):
         return ['cuda_ndarray.cuh', '<stdio.h>']
 
     def c_code_cache_version(self):
+        return
         # raise this whenever modifying any of the support_code_files
-        return (0, 22)
+        return (0, 21)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -591,8 +592,8 @@ class GpuConvMM(GpuOp):
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp
         out, = out_
-        dx = self.subsample
-        dy = self.subsample
+        dx = self.subsample[0]
+        dy = self.subsample[1]
         border_mode = self.border_mode
         sub = sub.copy()
         pad = self.pad
@@ -606,7 +607,9 @@ class GpuConvMM(GpuOp):
     //Optional args
     int dx = %(dx)s;
     int dy = %(dy)s;
-
+    CudaNdarray * img = %(img)s;
+    CudaNdarray * kern = %(kern)s;
+    CudaNdarray * out2 = NULL;
     int mode;
     if (strcmp(mode_str, "full") == 0)
     {
@@ -620,17 +623,45 @@ class GpuConvMM(GpuOp):
     {
         PyErr_SetString(PyExc_ValueError,
                         "mode must be one of 'full' or 'valid'");
-        return NULL;
+        %(fail)s;
     }
     //TODO: Send self.pad, stride, etc
-    CudaNdarray * out2 = validMM(%(img)s, %(kern)s, %(out)s);
-    // TODO, make out be decref before we alloc out2!
-    Py_XDECREF(%(out)s);
-    %(out)s = out2;
 
-    if (%(out)s==NULL){
-     %(fail)s
+    int out_dim[4];
+    out_dim[0] = CudaNdarray_HOST_DIMS(img)[0];
+    out_dim[1] = CudaNdarray_HOST_DIMS(kern)[0];
+    int logical_rows, logical_cols;
+    if (mode == 1)
+    {
+        logical_rows = CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1;
+        logical_cols = CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1;
     }
+    else
+    {
+        logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
+        logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
+    }
+    out_dim[2] = ceil_intdiv(logical_rows, dx);
+    out_dim[3] = ceil_intdiv(logical_cols, dy);
+
+    if ( !(%(out)s
+           && %(out)s->nd==4
+           && CudaNdarray_is_c_contiguous(%(out)s)
+           && CudaNdarray_HOST_DIMS(%(out)s)[0]==out_dim[0]
+           && CudaNdarray_HOST_DIMS(%(out)s)[1]==out_dim[1]
+           && CudaNdarray_HOST_DIMS(%(out)s)[2]==out_dim[2]
+           && CudaNdarray_HOST_DIMS(%(out)s)[3]==out_dim[3]))
+    {
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+
+    }
+
+    out2 = validMM(%(img)s, %(kern)s, %(out)s);
+    if (out2==NULL){
+       %(fail)s
+    }
+    assert (out2 == %(out)s);
 
 """ % sub
 
