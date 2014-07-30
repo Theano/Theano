@@ -103,8 +103,18 @@ CudaNdarray* validMM(const CudaNdarray *input,
      // filters: (number of filters, nInputPlane, rows, columns)
      int nOutputPlane = CudaNdarray_HOST_DIMS(weight)[0];
      long batchSize = CudaNdarray_HOST_DIMS(input)[0];
-     assert(kW == kH); //filters must be square (kW == kH)
-     assert(dW == dH); //stride must be square (dW == dH)
+     if (kW != kH){
+       PyErr_SetString(PyExc_ValueError,
+                    "GpuConvMM support only square kernel\n"
+		    );
+       return NULL;
+     }
+     if (kW != kH){
+       PyErr_SetString(PyExc_ValueError,
+                    "GpuConvMM support only square images\n"
+		    );
+       return NULL;
+     }
      long inputHeight  = CudaNdarray_HOST_DIMS(input)[2];
      long inputWidth   = CudaNdarray_HOST_DIMS(input)[3];
      long outputWidth  = (inputWidth + 2*padding - kW) / dW + 1;
@@ -169,9 +179,8 @@ CudaNdarray* validMM(const CudaNdarray *input,
 	      }
 
       }
-    
+
     Py_DECREF(columns);
-    
   return output;
 }
                

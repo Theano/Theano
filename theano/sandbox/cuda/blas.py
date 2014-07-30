@@ -7,6 +7,7 @@ from theano import tensor
 from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import as_cuda_ndarray_variable
 
 
 class GpuDot22(GpuOp):
@@ -542,6 +543,8 @@ class GpuConvMM(GpuOp):
             self.pad)
 
     def make_node(self, img, kern):
+        img = as_cuda_ndarray_variable(img)
+        kern = as_cuda_ndarray_variable(kern)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
@@ -575,7 +578,7 @@ class GpuConvMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
+        return (0, 22)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
