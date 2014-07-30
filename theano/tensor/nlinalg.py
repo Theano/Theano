@@ -820,7 +820,6 @@ class TensorSolve(Op):
         return self.__class__.__name__
 
 tensorsolve = TensorSolve()
-
 """
 Solve the tensor equation ``a x = b`` for x.
 
