@@ -712,7 +712,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             }
         }
 
-        if (PyArray_NDIM(%(o_rstate)s) != 1)
+        if (CudaNdarray_NDIM(%(o_rstate)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "rstate must be vector");
             %(fail)s;
