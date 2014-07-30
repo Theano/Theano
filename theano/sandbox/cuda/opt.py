@@ -1259,6 +1259,7 @@ gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
 
 import theano.tensor.signal.downsample as downsample
 
+
 @register_opt()
 @local_optimizer([downsample.DownsampleFactorMax])
 def local_gpu_downsample_factor_max(node):
@@ -1287,7 +1288,9 @@ def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'valid' and
         node.op.subsample == (1, 1)):
-        return [GpuConvMM(node.op.border_mode)(*node.inputs)]
+        print "WARNING, YOU ARE USING BUGGED CODE!"
+        return [GpuConvMM(node.op.border_mode)(node.inputs[0],
+                                               node.inputs[1],)]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
