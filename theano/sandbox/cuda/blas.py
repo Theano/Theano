@@ -522,6 +522,12 @@ class GpuConvMM(GpuOp):
         self.kshp = kshp
         self.imshp = imshp
         self.pad = pad
+        if pad != 0:
+            raise NotImplementedError(
+                "GpuConvMM don't implement the pad parameter")
+        if subsample != (1, 1):
+            raise NotImplementedError(
+                "GpuConvMM we don't implement the subsample parameter")
 
     def __eq__(self, other):
         return type(self) == type(other) \
