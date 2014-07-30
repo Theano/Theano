@@ -216,13 +216,16 @@ CudaNdarray_HOST_DIMS(%(o)s)[2],
             transA = CUBLAS_OP_T;
             lda = CudaNdarray_HOST_STRIDES(%(W)s)[3];
           }
+          if (lda == 0) lda = 1;
           err = cublasSgemmBatched(handle, transA, CUBLAS_OP_N,
                                    CudaNdarray_HOST_DIMS(%(o)s)[2], 1,
                                    CudaNdarray_HOST_DIMS(%(h)s)[2], &alpha,
                                    %(name)s_W_list, lda, %(name)s_inp_list,
-                                   CudaNdarray_HOST_STRIDES(%(h)s)[1],
+                                   CudaNdarray_HOST_STRIDES(%(h)s)[1] == 0 ?
+                                   1 : CudaNdarray_HOST_STRIDES(%(h)s)[1],
                                    &beta, %(name)s_out_list,
-                                   CudaNdarray_HOST_STRIDES(%(o)s)[1],
+                                   CudaNdarray_HOST_STRIDES(%(o)s)[1] == 0 ?
+                                   1 : CudaNdarray_HOST_STRIDES(%(o)s)[1],
                                    CudaNdarray_HOST_DIMS(%(o)s)[1] *
                                    CudaNdarray_HOST_DIMS(%(h)s)[1] *
                                    CudaNdarray_HOST_DIMS(%(o)s)[0]);
@@ -256,7 +259,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[2]);
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -442,12 +445,17 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 }
 {
   cublasStatus_t err;
+  int str_y = CudaNdarray_HOST_STRIDES(%(y)s)[1];
+  if (str_y == 0) str_y = 1;
+  int str_x = CudaNdarray_HOST_STRIDES(%(x)s)[1];
+  if (str_x == 0) str_x = 1;
+  int str_out = CudaNdarray_HOST_STRIDES(%(out)s)[2];
+  if (str_out == 0) str_out = 1;
   err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_T,
     CudaNdarray_HOST_DIMS(%(y)s)[2], CudaNdarray_HOST_DIMS(%(x)s)[2], 1,
-    (float *)PyArray_GETPTR1(%(alpha)s, 0), %(name)s_y_list,
-    CudaNdarray_HOST_STRIDES(%(y)s)[1], %(name)s_x_list,
-    CudaNdarray_HOST_STRIDES(%(x)s)[1], (float *)PyArray_GETPTR1(%(beta)s, 0),
-    %(name)s_out_list, CudaNdarray_HOST_STRIDES(%(out)s)[2],
+    (float *)PyArray_GETPTR1(%(alpha)s, 0), %(name)s_y_list, str_y,
+    %(name)s_x_list, str_x, (float *)PyArray_GETPTR1(%(beta)s, 0),
+    %(name)s_out_list, str_out,
     CudaNdarray_HOST_DIMS(%(x)s)[0] *
     CudaNdarray_HOST_DIMS(%(x)s)[1] *
     CudaNdarray_HOST_DIMS(%(y)s)[1]);
@@ -459,7 +467,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, beta=beta, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)

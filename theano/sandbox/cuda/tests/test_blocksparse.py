@@ -122,6 +122,22 @@ def test_blocksparse_grad():
 
     utt.verify_grad(f, [b_val, h_val, W_val])
 
+def test_blocksparse_grad_1():
+    # This tests that we correctly handle cases where dimensions are 1.
+    h_val = randn(1, 1, 1).astype('float32')
+    iIdx_val = numpy.random.permutation(1)[:1][None, :]
+    oIdx_val = numpy.random.permutation(1)[:1][None, :]
+    W_val = randn(1, 1, 1, 1).astype('float32')
+    b_val = randn(1, 1).astype('float32')
+
+    iIdx = theano.tensor.constant(iIdx_val)
+    oIdx = theano.tensor.constant(oIdx_val)
+
+    def f(b, h, W):
+        return sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+
+    utt.verify_grad(f, [b_val, h_val, W_val])
+
 
 def test_blocksparse_grad_shape():
     b = tensor.fmatrix()
