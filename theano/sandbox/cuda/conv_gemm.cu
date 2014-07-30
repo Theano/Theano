@@ -163,13 +163,12 @@ CudaNdarray* validMM(const CudaNdarray *input,
 	  // M,N,K are dims of matrix A and B
 	    // (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)
 
-		float alpha = 1.0f; float beta = 0.0f;
-         int m = CudaNdarray_HOST_DIMS(columns)[1];
-         int n = CudaNdarray_HOST_DIMS(weight)[1];
-         int k = CudaNdarray_HOST_DIMS(columns)[0];
+	float alpha = 1.0f; float beta = 0.0f;
+	int m = CudaNdarray_HOST_DIMS(columns)[1];
+	int n = CudaNdarray_HOST_DIMS(weight)[1];
+	int k = CudaNdarray_HOST_DIMS(columns)[0];
          
-         //Caffe::getRef().getCublasHandle().get()
-         status = cublasSgemm(handle,
+	status = cublasSgemm(handle,
                 CUBLAS_OP_N, CUBLAS_OP_N,
                 m, n, k,
                 &alpha,
