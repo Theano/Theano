@@ -422,7 +422,7 @@ class CudaNdarrayType(Type):
         #return ()
         #no need to put nvcc.fastmath in the tuple as the
         #c_compile_args is put in the key.
-        return (2,)  # with assertion about refcounts
+        return (3,)  # cublas v2 changes
 
     def c_compiler(self):
         return NVCC_compiler
