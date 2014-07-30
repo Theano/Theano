@@ -25,7 +25,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv, GpuConvMM)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -1281,6 +1281,15 @@ def local_gpu_downsample_factor_max_grad(node):
                                               gpu_from_host(z),
                                               gpu_from_host(gz)))]
 
+
+@local_optimizer([GpuConv])
+def local_conv_gemm(node):
+    if (isinstance(node.op, GpuConv) and
+        node.op.border_mode == 'valid' and
+        node.op.subsample == (1, 1)):
+        return [GpuConvMM(node.op.border_mode)(*node.inputs)]
+
+gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 
