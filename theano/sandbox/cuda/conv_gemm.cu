@@ -144,13 +144,9 @@ CudaNdarray* validMM(const CudaNdarray *input,
      CudaNdarray* columns = (CudaNdarray*)CudaNdarray_NewDims(2,col_dim);
 
 
-      int ip_stride = CudaNdarray_HOST_DIMS(input)[1] *
-        CudaNdarray_HOST_DIMS(input)[2] * 
-        CudaNdarray_HOST_DIMS(input)[3];
-        
-     int op_stride = CudaNdarray_HOST_DIMS(output)[1] *
-        CudaNdarray_HOST_DIMS(output)[2] * 
-        CudaNdarray_HOST_DIMS(output)[3];
+     int ip_stride = CudaNdarray_HOST_STRIDES(input)[0];
+
+     int op_stride = CudaNdarray_HOST_STRIDES(output)[0];
 
      // For each elt in batch, do:
      for (int elt = 0; elt < batchSize; elt ++) {
