@@ -36,7 +36,8 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     matrix_power,
                                     norm,
                                     svd,
-                                    tensorinv
+                                    tensorinv,
+                                    TensorInv
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -494,8 +495,9 @@ class T_NormTests(unittest.TestCase):
             assert _allclose(n_n, t_n)
 
 
-class T_TensorInv():
-
+class T_TensorInv(utt.InferShapeTester):
+    op_class = TensorInv
+    op = tensorinv
     def test_numpy_compare(self):
 
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -525,22 +527,21 @@ class T_TensorInv():
         assert_raises(numpy.linalg.linalg.LinAlgError, fa, A)
 
     def test_infer_shape(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = tensor.tensor3()
+        b = tensor.tensor4()
 
-        a = tensor.tensor4()
-        b = tensor.tensor3()
-        c = tensor.matrix()
+        A = numpy.random.rand(6, 2, 3)
+        B = numpy.random.rand(6, 2, 3, 4)
 
-        A = rng.rand(7, 2, 1, 14).astype(theano.config.floatX)
-        B = rng.rand(7, 2, 14).astype(theano.config.floatX)
-        C = rng.rand(7, 7).astype(theano.config.floatX)
+        inputs = [a, b]
+        data = [A, B]
+        ind = [1, 2]
 
-        type = [a, b, c]
-        num = [A, B, C]
-        ind = [2, 2, 1]
-
-        for t, n, i in zip(type, num, ind):
-            f = function([t], tensorinv(t, i))
-            t_t = f(n)
-            shape = n.shape[i:]+n.shape[:i]
-            assert numpy.allclose(t_t.shape, shape)
+        for i, o, d in zip(inputs, data, ind):
+            self._compile_and_check([i],  # theano.function inputs
+                                    [self.op(i, d)],  # theano.function outputs
+                                    # Always use not square matrix!
+                                    # inputs data
+                                    [o],
+                                    # Op that should be removed from the graph.
+                                    self.op_class)
