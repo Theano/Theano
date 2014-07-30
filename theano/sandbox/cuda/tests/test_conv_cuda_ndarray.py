@@ -199,7 +199,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
             rval = False
         if rval:
             rval = numpy.allclose(cpuval, gpuval, rtol=rtol)
-            assert numpy.all(numpy.isfinite(gpuval))
+            assert numpy.all(numpy.isfinite(gpuval)), gpuval
     except NotImplementedError, e:
         print >> sys.stdout, '_params_allgood Failed allclose', e
         rval = False

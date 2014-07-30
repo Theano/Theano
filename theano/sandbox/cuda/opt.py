@@ -17,7 +17,7 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
-    device_properties, gpu_eye,
+    device_properties, gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
@@ -1289,8 +1289,10 @@ def local_conv_gemm(node):
         node.op.border_mode == 'valid' and
         node.op.subsample == (1, 1)):
         print "WARNING, YOU ARE USING BUGGED CODE!"
-        return [GpuConvMM(node.op.border_mode)(node.inputs[0],
-                                               node.inputs[1],)]
+        img, kern = node.inputs
+        img = gpu_contiguous(img)
+        kern = gpu_contiguous(kern[:, :, ::-1, ::-1])
+        return [GpuConvMM(node.op.border_mode)(img, kern)]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
