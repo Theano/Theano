@@ -504,23 +504,14 @@ class GpuConvMM(GpuOp):
     """
     def __init__(self, border_mode,
             subsample=(1, 1),
-            kshp=None,
-            imshp=None,
             pad=0):
         """
-        :param kshp:    The size of the kernel. If provided, can generate
-                        faster code. If the GpuConv op is automatically
-                        inserted,
-                        we take its value automatically from the Conv op.
-        :param imshp:   The size of the image. Not used for code generation but
-                        allows to select an experimental new version in another
-                        repo.
-
+        :param border_mode: "valid" or "full"
+        :param subsample: not yet supported
+        :param pad: not yet supported
         """
         self.border_mode = border_mode
         self.subsample = subsample
-        self.kshp = kshp
-        self.imshp = imshp
         self.pad = pad
         if pad != 0:
             raise NotImplementedError(
@@ -533,13 +524,7 @@ class GpuConvMM(GpuOp):
         return type(self) == type(other) \
             and self.border_mode == other.border_mode \
             and self.subsample == other.subsample \
-            and self.kshp == other.kshp\
-            and self.imshp == other.imshp
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        if not hasattr(self, "imshp"):
-            self.imshp = None
+            and self.pad == other.pad
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and
@@ -547,16 +532,14 @@ class GpuConvMM(GpuOp):
         return hash(type(self)) \
             ^ hash(self.border_mode) \
             ^ hash(self.subsample) \
-            ^ hash(self.kshp)\
-            ^ hash(self.imshp)
+            ^ hash(self.pad)
 
     def __str__(self):
-        return '%s{%s, %s, %s, %s}' % (
+        return '%s{%s, %s, pad=%d}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
-            str(self.imshp),
-            str(self.kshp))
+            self.pad)
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:
@@ -587,12 +570,6 @@ class GpuConvMM(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def c_compile_args(self):
-        nb = 0
-        if self.kshp is not None:
-            nb = self.kshp[1]
-        return ['-DTHEANO_KERN_WID=' + str(nb), '-g'] # ,'-g','-G']
-
     def c_headers(self):
         return ['cuda_ndarray.cuh', '<stdio.h>']
 
@@ -603,7 +580,7 @@ class GpuConvMM(GpuOp):
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
-        files = [ 'conv_gemm.cu']
+        files = ['conv_gemm.cu']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                 for f in files]
         return reduce(str.__add__, codes)
