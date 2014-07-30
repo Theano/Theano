@@ -544,20 +544,3 @@ class T_TensorInv():
             t_t = f(n)
             shape = n.shape[i:]+n.shape[:i]
             assert numpy.allclose(t_t.shape, shape)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
