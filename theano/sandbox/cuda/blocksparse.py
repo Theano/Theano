@@ -298,16 +298,14 @@ class SparseBlockOuterSS(GpuOp):
     def __str__(self):
         return "SparseBlockOuterSS%s" % ("{inplace}" if self.inplace else "")
 
-    def make_node(self, o, x, y, xIdx, yIdx, alpha=None, beta=None):
+    def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
         o = basic_ops.as_cuda_ndarray_variable(o)
         x = basic_ops.as_cuda_ndarray_variable(x)
         y = basic_ops.as_cuda_ndarray_variable(y)
         if alpha is None:
             alpha = one
-        if beta is None:
-            beta = one
-        return Apply(self, [o, x, y, xIdx, yIdx, alpha, beta],
+        return Apply(self, [o, x, y, xIdx, yIdx, alpha],
                      [o.type()])
 
     def infer_shape(self, node, input_shapes):
@@ -337,6 +335,45 @@ const npy_intp *yIdx, int yI_str_0
   y_list[p] = &y[b * x_str_0 + j * y_str_1];
   out_list[p] = &out[xIdx[b * xI_str_0 + i] * o_str_0 +
                      yIdx[b * yI_str_0 + j] * o_str_1];
+}
+
+/* This is tuned for smaller sizes (< 512) since it's what we get normally */
+__global__ void _sgerBH_gen_small(const float *x[], int incx,
+                                  const float *y[], int incy,
+                                  float alpha,
+                                  float *A[], int lda,
+                                  int b) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  for (int p = blockIdx.z * blockDim.z + threadIdx.z;
+       p < b;
+       p += blockDim.z * gridDim.z) {
+    atomicAdd(&A[p][j * lda + i],
+              alpha * x[p][i * incx] * y[p][j * incy]);
+  }
+}
+
+static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
+                                  const float *alpha,
+                                  const float *x[], int incx,
+                                  const float *y[], int incy,
+                                  float *A[], int lda,
+                                  int batchCount) {
+  dim3 block(m, n, 1);
+  dim3 grid(1, 1, batchCount);
+  cublasPointerMode_t mode;
+  cudaError_t err;
+  cublasGetPointerMode(handle, &mode);
+  if (mode == CUBLAS_POINTER_MODE_HOST) {
+    _sgerBH_gen_small<<<grid, block>>>(x, incx, y, incy, *alpha, A, lda,
+                                       batchCount);
+  } else {
+    return CUBLAS_STATUS_NOT_SUPPORTED;
+  }
+  err = cudaGetLastError();
+  if (err != cudaSuccess)
+    return CUBLAS_STATUS_EXECUTION_FAILED;
+  return CUBLAS_STATUS_SUCCESS;
 }
 
 static int SparseBlockOuter_copy(PyArrayObject *a, npy_intp *b) {
@@ -394,7 +431,7 @@ static int %(n)s_prep(int b, int i, int j) {
 """ % dict(n=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        o, x, y, xIdx, yIdx, alpha, beta = inputs
+        o, x, y, xIdx, yIdx, alpha = inputs
         out = outputs[0]
         if self.inplace:
             res = """
@@ -445,16 +482,16 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 }
 {
   cublasStatus_t err;
-  int str_y = CudaNdarray_HOST_STRIDES(%(y)s)[1];
+  int str_y = CudaNdarray_HOST_STRIDES(%(y)s)[2];
   if (str_y == 0) str_y = 1;
-  int str_x = CudaNdarray_HOST_STRIDES(%(x)s)[1];
+  int str_x = CudaNdarray_HOST_STRIDES(%(x)s)[2];
   if (str_x == 0) str_x = 1;
   int str_out = CudaNdarray_HOST_STRIDES(%(out)s)[2];
   if (str_out == 0) str_out = 1;
-  err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_T,
-    CudaNdarray_HOST_DIMS(%(y)s)[2], CudaNdarray_HOST_DIMS(%(x)s)[2], 1,
+  err = SgerBatched(handle,
+    CudaNdarray_HOST_DIMS(%(y)s)[2], CudaNdarray_HOST_DIMS(%(x)s)[2],
     (float *)PyArray_GETPTR1(%(alpha)s, 0), %(name)s_y_list, str_y,
-    %(name)s_x_list, str_x, (float *)PyArray_GETPTR1(%(beta)s, 0),
+    %(name)s_x_list, str_x,
     %(name)s_out_list, str_out,
     CudaNdarray_HOST_DIMS(%(x)s)[0] *
     CudaNdarray_HOST_DIMS(%(x)s)[1] *
@@ -464,10 +501,10 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
     %(fail)s
   }
 }""" % dict(x=x, y=y, out=out, xIdx=xIdx, yIdx=yIdx, name=name,
-            alpha=alpha, beta=beta, fail=sub['fail'])
+            alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
@@ -537,8 +574,7 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
             if lr is None or ger is None:
                 return None
             alpha = lr * ger.inputs[5]
-            return [sparse_block_outer_ss(*(ger.inputs[:5] +
-                                           [alpha, ger.inputs[6]]))]
+            return [sparse_block_outer_ss(*(ger.inputs[:5] + [alpha]))]
 
     @opt.register_opt()
     @opt.local_optimizer([GpuElemwise])
@@ -554,7 +590,7 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
             if ger is None:
                 return None
             return [sparse_block_outer_ss(*([W] + ger.inputs[1:5] +
-                                            [-ger.inputs[5], ger.inputs[6]]))]
+                                            [-ger.inputs[5]]))]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
