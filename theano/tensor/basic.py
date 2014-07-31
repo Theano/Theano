@@ -5112,31 +5112,23 @@ class Choose(Op):
     def props(self):
         return self.mode
 
-    def infer_shape(self, nodes, shapes):
-        return [(shapes[0])]
-
     def make_node(self, a, choices):
         a = as_tensor_variable(a)
         if isinstance(choices, tuple):
-            choices1 = as_tensor_variable(choices[0])
-            choices2 = as_tensor_variable(choices[1])
-            return Apply(self, [a, choices1, choices2], [a.type()])
+            choice = as_tensor_variable(choices)
+            return Apply(self, [a, choice], [a.type()])
         else:
-            choices = as_tensor_variable(choices)
-            return Apply(self, [a, choices], [a.type()])
+            choice = as_tensor_variable(choices)
+            return Apply(self, [a, choice], [a.type()])
 
     def perform(self, node, inputs, (z, )):
         a = inputs[0]
-        if len(inputs)>2:
-            choices1 = inputs[1]
-            choices2 = inputs[2]
-            z[0] = numpy.choose(a, (choices1, choices2), mode=self.mode)
-        else:
-            choices = inputs[1]
-            z[0] = numpy.choose(a, (choices1, choices2), mode=self.mode)      
+        choice = tuple(inputs[1])
+        z[0] = numpy.choose(a, choice, mode=self.mode)      
 
     def __str__(self):
         return self.__class__.__name__
+
 """
 import theano
 from theano import tensor as T
@@ -5147,7 +5139,7 @@ x = T.tensor3(dtype='int64')
 y = T.tensor3(dtype='int64')
 z = T.tensor3(dtype='int64')
 w = choose(x,(y,z))
-f = function([x,y,z], w)
+f = function([x,y,z], w, on_unused_input='warn')
 a = np.array([0, 1]).reshape((2,1,1))
 c1 = np.array([1, 2, 3]).reshape((1,3,1))
 c2 = np.array([-1, -2, -3, -4, -5]).reshape((1,1,5))

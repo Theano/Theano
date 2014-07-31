@@ -7032,32 +7032,6 @@ class T_Choose(utt.InferShapeTester):
             n_c = numpy.choose(A, B, mode=m)
             assert numpy.allclose(t_c, n_c)
 
-    def test_infer_shape(self):
-
-        a = tensor.matrix(dtype='int64')
-        b = tensor.vector(dtype='int64')
-        c = tensor.matrix(dtype='int64')
-        d = tensor.vector(dtype='int64')            
-
-        A = numpy.asarray(numpy.random.rand(5, 4), dtype='int64')
-        B = numpy.asarray(numpy.random.rand(4), dtype='int64')
-        C = numpy.asarray(numpy.random.rand(7, 4), dtype='int64')
-        D = numpy.asarray(numpy.random.rand(4), dtype='int64')
-
-        var1 = [a, b, a, b]
-        var2 = [c, d, b, a]
-        mat1 = [A, B, A, B]
-        mat2 = [C, D, B, A]
-
-        for v, m, w, n in zip(var1, mat1, var2, mat2):
-            self._compile_and_check([v, w],  # theano.function inputs
-                                    [self.op(v, w)],  # theano.function outputs
-                                    # Always use not square matrix!
-                                    # inputs data
-                                    [m, n],
-                                    # Op that should be removed from the graph.
-                                    self.op_class)
-
 """
 
 if __name__ == '__main__':
