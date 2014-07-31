@@ -115,8 +115,8 @@ def py_conv_scipy(img, kern, mode, subsample):
         for k in xrange(out.shape[1]):
             for s in xrange(img.shape[1]):
                 out[b, k, :, :] += convolve2d(img[b, s, :, :],
-                                              kern[k, s, :, :],
-                                              mode)
+                  numpy.rot90(kern[k, s, :, :],2),
+                  mode)
     return out[:, :, ::subsample[0], ::subsample[1]]
 
 
@@ -819,7 +819,7 @@ class TestConv2DGPU(unittest.TestCase):
 
 
 def _test_dummy():
-    ishape = (1, 1, 5, 5)
+    ishape = (1, 1, 7, 7)
     kshape = (1, 1, 3, 3)
     mode = 'valid'
     subsample = (1, 1)
@@ -847,6 +847,7 @@ def _test_dummy():
     
     gpuval = numpy.asarray(gpuval)
     print gpuval
+    print '-------------------'
     print cpuval
 
 
