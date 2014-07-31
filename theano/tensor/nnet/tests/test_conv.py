@@ -359,6 +359,12 @@ class TestConv2D(utt.InferShapeTester):
         self.validate((None, 2, None, None), (None, 2, 5, 5),
                       N_image_shape=(3, 2, 8, 8),
                       N_filter_shape=(4, 2, 5, 5))
+        self.validate((3, 2, 8, 8), (4, 2, None, 5),
+                      N_image_shape=(3, 2, 8, 8),
+                      N_filter_shape=(4, 2, 5, 5))
+        self.validate((3, 2, 8, 8), (4, 2, 5, None),
+                      N_image_shape=(3, 2, 8, 8),
+                      N_filter_shape=(4, 2, 5, 5))
 
     def test_wrong_info(self):
         """
