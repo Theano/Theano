@@ -25,6 +25,7 @@ import numpy
 
 import theano
 from theano.gof import graph
+from theano.gof.vm import compute_gc_dependencies
 from theano.configparser import AddConfigVar, BoolParam, IntParam
 
 
@@ -697,6 +698,7 @@ class ProfileStats(object):
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global maybe_executed
+            global mem_count, mem_bound
             order = []
             min_order = []
             node_list = list(node_list)
@@ -734,10 +736,22 @@ class ProfileStats(object):
                     if c != "output" and check_node_state(c):
                         executables_nodes.add(c)
 
+            mem_count = 0
+            mem_bound = 0
+
             def min_memory_generator(executables_nodes):
+                global mem_count, mem_bound
                 for node in executables_nodes:
                     new_exec_nodes = executables_nodes.copy()
                     new_exec_nodes.remove(node)
+                    mem = count_node_memory(node)
+                    mem_count += mem
+                    if mem_bound:
+                        # check if at this time, mem_current and mem_bound
+                        # if higher use 'continue' 
+                        if mem_count > mem_bound:
+                            mem_count -= mem
+                            continue
                     for var in node.outputs:
                         compute_map[var][0] = 1
                     for var in node.outputs:
@@ -746,11 +760,28 @@ class ProfileStats(object):
                                 new_exec_nodes.add(c)
                     if not new_exec_nodes:
                         yield [node]
+                        if not mem_bound:
+                            # initial the mem_bound 
+                            mem_bound = mem_count
+                        elif mem_current < mem_bound:
+                            # update the mem_bound
+                            mem_bound = mem_current
                     else:
                         for p in min_memory_generator(new_exec_nodes):
                             yield [node]+p
+                    mem_count -= mem
                     for var in node.outputs:
                         compute_map[var][0] = 0
+
+            def count_node_memory(node):
+                dependencies = compute_gc_dependencies(node) 
+                mem = 0
+                for val in node.inputs:
+                    if (dependencies[val]
+                            and val.owner
+                            and val not in fgraph.outputs):
+                    mem += node.inputs.index(val)
+                return mem
 
             def count_min_memory(order, thunk_old_storage, nodes_mem):
                 running_memory_size = 0
@@ -799,7 +830,7 @@ class ProfileStats(object):
                     min_mem = current_mem
                     min_order = order
 
-            return min_order, min_mem
+            return min_order, mem_bound
 
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
