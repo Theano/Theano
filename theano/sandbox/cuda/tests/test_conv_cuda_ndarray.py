@@ -46,6 +46,7 @@ if device_id is None:
              enable_cuda=False,
              test_driver=True)
     device_id = theano.sandbox.cuda.use.device_number
+    
 cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
 device_prop = cuda_ndarray.device_properties(device_id)
 
@@ -816,6 +817,7 @@ class TestConv2DGPU(unittest.TestCase):
             theano_mode = theano_mode_orig
 
 
+
 def _test_dummy():
     ishape = (1, 1, 5, 5)
     kshape = (1, 1, 3, 3)
@@ -825,8 +827,8 @@ def _test_dummy():
     npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
     npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
 
-    img = cuda_ndarray.CudaNdarray(npy_img)
-    kern = cuda_ndarray.CudaNdarray(npy_kern)
+    i = cuda_tensor4()
+    k = cuda_tensor4()
 
     #print >> sys.stdout, '_params_allgood trying ', ishape, kshape, mode
     t2 = None
@@ -834,9 +836,15 @@ def _test_dummy():
 
     t0 = time.time()
     cpuval = py_conv(npy_img, npy_kern, mode, subsample)
+
     t1 = time.time()
-    gpuval = cuda_ndarray.conv(img, kern, mode, subsample)
+    
+    op = theano.sandbox.cuda.blas.GpuConvMM(border_mode=mode)(i, k)
+    f = theano.function([i, k], op, mode=theano_mode)
+    gpuval = f(npy_img, npy_kern)
+    
     t2 = time.time()
+    
     gpuval = numpy.asarray(gpuval)
     print gpuval
     print cpuval
@@ -909,3 +917,5 @@ def test_stack_rows_segfault_070312():
             nkern=1, bsize=1)
     f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)
     f()
+    
+#_test_dummy()
