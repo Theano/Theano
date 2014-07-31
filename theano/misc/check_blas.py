@@ -216,7 +216,7 @@ if __name__ == "__main__":
         C1060                                                       0.46s
         K600                     1.04s
 
-        GTX Titan Black   0.05s
+        GTX Titan Black          0.05s
         GTX Titan(D15U-50)       0.06s  0.06s  don't work
         GTX 780                  0.06s
         GTX 680                  0.11s  0.12s  0.154s               0.218s
