@@ -830,7 +830,7 @@ together with the rightmost indices of `a`, as is done in, for example,
 Parameters
 ----------
 a : array_like
-Coefficient tensor, of shape ``b.shape + Q``. `Q`, a tuple, equals
+Coefficient tensor, of shape ``b.shape + Q``.`Q`, a tuple, equals
 the shape of that sub-tensor of `a` consisting of the appropriate
 number of its rightmost indices, and must be such that
 ``prod(Q) == prod(b.shape)`` (in which sense `a` is said to be
