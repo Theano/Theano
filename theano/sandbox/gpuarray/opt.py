@@ -637,6 +637,8 @@ def gpu_reconstruct_graph(inputs, outputs, tag=None):
 @op_lifter([scan_op.Scan])
 def local_scan_to_gpua(node):
     info = copy.deepcopy(node.op.info)
+    if info.get('gpua', False):
+        return
     info['gpua'] = True
     nw_ins = [node.inputs[0]]
     e = (1 +
