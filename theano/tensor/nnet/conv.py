@@ -965,7 +965,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (10, self.openmp, blas.blas_header_version())
+        return (11, self.openmp, blas.blas_header_version())
 
     def c_support_code(self):
         return """
@@ -1048,16 +1048,40 @@ using namespace std;
         d["self_dy"] = self.dy
         d["mode"] = self.out_mode.upper()
         d["affectation"] = "="
-        if all_shape:
-            d["self_bsize"] = self.bsize
-            d["self_nkern"] = self.nkern
-            d["self_outshp0"] = self.outshp[0]
-            d["self_outshp1"] = self.outshp[1]
-            d["self_imshp0"] = self.imshp[0]
-            d["self_imshp1"] = self.imshp[1]
-            d["self_imshp2"] = self.imshp[2]
+
+        # Default values, will be overrided if the shape info is provided
+        d["self_bsize"] = "PyArray_DIMS(%(img2d)s)[0]" % d
+        d["self_nkern"] = "PyArray_DIMS(%(filtersflipped)s)[0]" % d
+        d["self_outshp0"] = "-1"
+        d["self_outshp1"] = "-1"
+        d["self_imshp0"] = "PyArray_DIMS(%(img2d)s)[1]" % d
+        d["self_imshp1"] = "PyArray_DIMS(%(img2d)s)[2]" % d
+        d["self_imshp2"] = "PyArray_DIMS(%(img2d)s)[3]" % d
+        d["self_kshp0"] = "PyArray_DIMS(%(filtersflipped)s)[2]" % d
+        d["self_kshp1"] = "PyArray_DIMS(%(filtersflipped)s)[3]" % d
+
+        # Override the default value if we have it
+        if self.kshp is not None and self.kshp[0]:
             d["self_kshp0"] = self.kshp[0]
+        if self.kshp is not None and self.kshp[1]:
             d["self_kshp1"] = self.kshp[1]
+        if self.outshp is not None and self.outshp[0]:
+            d["self_outshp0"] = self.outshp[0]
+        if self.outshp is not None and self.outshp[1]:
+            d["self_outshp1"] = self.outshp[1]
+        if self.imshp is not None and self.imshp[0]:
+            d["self_imshp0"] = self.imshp[0]
+        if self.imshp is not None and self.imshp[1]:
+            d["self_imshp1"] = self.imshp[1]
+        if self.imshp is not None and self.imshp[2]:
+            d["self_imshp2"] = self.imshp[2]
+        if self.bsize:
+            d["self_bsize"] = self.bsize
+        if self.nkern:
+            d["self_nkern"] = self.nkern
+
+        # Other hard coded stuff only if we have all shapes
+        if all_shape:
             d["self_kshp_logical_r"] = self.kshp_logical[0]
             d["self_kshp_logical_c"] = self.kshp_logical[1]
             d["self_kshp_logical_stride_r"] = int(numpy.ceil(
@@ -1158,15 +1182,6 @@ if(kerns_dim[3] %% %(self_kshp1)s!=0){
 
 """ % (locals())
         else:
-            d["self_bsize"] = "PyArray_DIMS(%(img2d)s)[0]" % d
-            d["self_nkern"] = "PyArray_DIMS(%(filtersflipped)s)[0]" % d
-            d["self_outshp0"] = "-1"
-            d["self_outshp1"] = "-1"
-            d["self_imshp0"] = "PyArray_DIMS(%(img2d)s)[1]" % d
-            d["self_imshp1"] = "PyArray_DIMS(%(img2d)s)[2]" % d
-            d["self_imshp2"] = "PyArray_DIMS(%(img2d)s)[3]" % d
-            d["self_kshp0"] = "PyArray_DIMS(%(filtersflipped)s)[2]" % d
-            d["self_kshp1"] = "PyArray_DIMS(%(filtersflipped)s)[3]" % d
             d["affectation"] = "+="
             d["all_shape"] = "0"
             d["dim_zz_const"] = ""
