@@ -636,7 +636,8 @@ def test_valid():
 #              print_=print_, ones=ones, rtol=1.1e-5)
 
     mode = theano_mode.including("conv_gemm")
-#    import pdb;pdb.set_trace()
+
+# Remove case not implemented
     shapes = [shp for shp in shapes if shp[1][2] == shp[1][3]]
     shapes = [shp for shp in shapes if shp[0][2] == shp[0][3]]
     exec_conv(version, shapes, verbose, random, 'valid',
@@ -644,7 +645,7 @@ def test_valid():
               theano_mode=mode, cls=cuda.blas.GpuConvMM)
 
 
-def test_full(gemm=False):
+def test_full():
     seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
