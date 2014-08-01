@@ -932,4 +932,3 @@ def test_stack_rows_segfault_070312():
     f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)
     f()
     
-_test_dummy()
