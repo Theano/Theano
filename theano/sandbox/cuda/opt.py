@@ -1288,11 +1288,10 @@ def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'valid' and
         node.op.subsample == (1, 1)):
-        print "WARNING, YOU ARE USING BUGGED CODE!"
         img, kern = node.inputs
         img = gpu_contiguous(img)
         kern = kern[:, :, ::-1, ::-1]
-        kern = gpu_contiguous(kern) 
+        kern = gpu_contiguous(kern)
         return [GpuConvMM(node.op.border_mode)(img, kern)]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
