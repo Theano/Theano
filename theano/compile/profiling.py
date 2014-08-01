@@ -755,21 +755,19 @@ class ProfileStats(object):
                     new_exec_nodes = executables_nodes.copy()
                     new_exec_nodes.remove(node)
 
-                    mem_created = sum(nodes_mem[node])
+                    mem_created = sum(nodes_mem[node] if )
                     mem_count += mem_created
                     # Add memory created
 
                     # dependencies = {}
                     mem_freed = 0
 
-                    for val in node.outputs:
-                        if (dependencies[val] and val.owner and
-                            val not in fgraph.outputs):
-                            if all(compute_map[v][0]
-                                    for v in dependencies[val]): 
+                    for val in node.inputs:
+                        if (dependencies[val] and val.owner and val not in fgraph.outputs):
+                            if all(compute_map[v][0] for v in dependencies[val]): 
                                 mem_freed += var_mem[val]
 
-                    print mem_freed
+                    # print mem_freed
                     mem_count -= mem_freed
                     # Reduce memory freed
                     if mem_count > mem_bound:
