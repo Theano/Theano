@@ -1256,102 +1256,79 @@ def local_conv_fft_full(node):
 gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
 gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
 
-
 from theano.sandbox.cuda.GpuConv3D import GpuConv3D
-def _gpu_conv3d_to_fftconv(node):
-    # we import conv3d_fft locally to avoid pycuda warnings
-    from theano.sandbox.cuda.fftconv import conv3d_fft
-
-    # Shuffle inputs signal from (b, 0, 1, t, c) to (b, c, 0, 1, t)
-    x = node.inputs[0]
-    x = gpu_from_host(x.dimshuffle(0, 4, 1, 2, 3))
-    # Shuffle filters from (oc, 0, 1, t, ic) to (oc, ic, 0, 1, t)
-    f = node.inputs[1]
-    f = gpu_from_host(f.dimshuffle(0, 4, 1, 2, 3))
-    rval = conv3d_fft(x, f)
-    # Shuffle from (oc, c, 0, 1, t) to (oc, 0, 1, t, c)
-    rval = gpu_from_host(rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[2])
-
-    return rval
-
 @local_optimizer([GpuConv3D])
 def local_conv3d_fft(node):
-
     try:
         stride_x = tensor.get_scalar_constant_value(node.inputs[3][0])
         stride_y = tensor.get_scalar_constant_value(node.inputs[3][1])
         stride_z = tensor.get_scalar_constant_value(node.inputs[3][2])
     except tensor.NotScalarConstantError:
-        pass
+        return False
     if (isinstance(node.op, GpuConv3D) and
         (stride_x, stride_y, stride_z) == (1, 1, 1)):
-        return [_gpu_conv3d_to_fftconv(node)]
+        # we import conv3d_fft locally to avoid pycuda warnings
+        from theano.sandbox.cuda.fftconv import conv3d_fft
+        # Shuffle inputs signal from (b, 0, 1, t, c) to (b, c, 0, 1, t)
+        x = node.inputs[0]
+        x = gpu_from_host(x.dimshuffle(0, 4, 1, 2, 3))
+        # Shuffle filters from (oc, 0, 1, t, ic) to (oc, ic, 0, 1, t)
+        f = node.inputs[1]
+        f = gpu_from_host(f.dimshuffle(0, 4, 1, 2, 3))
+        rval = conv3d_fft(x, f)
+        # Shuffle from (oc, c, 0, 1, t) to (oc, 0, 1, t, c)
+        rval = gpu_from_host(rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[2])
+        return rval
 
 gpu_optimizer.register("conv3d_fft", local_conv3d_fft)
 
-
 from theano.sandbox.cuda.GpuConvGrad3D import GpuConvGrad3D
-def _gpu_convgrad3d_to_fftconv(node):
-    # we import conv3d_fft locally to avoid pycuda warnings
-    from theano.sandbox.cuda.fftconv import conv3d_fft
-    
-    # Shuffle inputs signal from (b, 0, 1, t, ic) to (ic, b, 0, 1, t)
-    x = node.inputs[0]
-    x = x.dimshuffle(4, 0, 1, 2, 3)
-    # Shuffle dCdH from (b, 0, 1, t, oc) to (oc, b, 0, 1, t)
-    f = node.inputs[3]
-    f = f.dimshuffle(4, 0, 1, 2, 3)
-    rval = conv3d_fft(x, f)
-    # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
-    rval = gpu_from_host(rval.dimshuffle(1, 2, 3, 4, 0))
-
-    return rval
-
 @local_optimizer([GpuConvGrad3D])
 def local_convgrad3d_fft(node):
-
     try:
-        stride_x = tensor.get_scalar_constant_value(node.inputs[3][0])
-        stride_y = tensor.get_scalar_constant_value(node.inputs[3][1])
-        stride_z = tensor.get_scalar_constant_value(node.inputs[3][2])
+        stride_x = tensor.get_scalar_constant_value(node.inputs[1][0])
+        stride_y = tensor.get_scalar_constant_value(node.inputs[1][1])
+        stride_z = tensor.get_scalar_constant_value(node.inputs[1][2])
     except tensor.NotScalarConstantError:
-        pass
+        return False
     if (isinstance(node.op, GpuConvGrad3D) and
         (stride_x, stride_y, stride_z) == (1, 1, 1)):
-        return [_gpu_convgrad3d_to_fftconv(node)]
+        # Shuffle inputs signal from (b, 0, 1, t, ic) to (ic, b, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(4, 0, 1, 2, 3)
+        # Shuffle dCdH from (b, 0, 1, t, oc) to (oc, b, 0, 1, t)
+        f = node.inputs[3]
+        f = f.dimshuffle(4, 0, 1, 2, 3)
+        rval = conv3d_fft(x, f)
+        # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
+        rval = gpu_from_host(rval.dimshuffle(1, 2, 3, 4, 0))
+        return rval
 
 gpu_optimizer.register("convgrad3d_fft", local_convgrad3d_fft)
 
-
 from theano.sandbox.cuda.GpuConvTransp3D import GpuConvTransp3D
-def _gpu_convtransp3d_to_fftconv(node):
-    # we import conv3d_fft locally to avoid pycuda warnings
-    from theano.sandbox.cuda.fftconv import conv3d_fft
-    
-    # Shuffle filters from (oc, 0, 1, t, ic) to (ic, oc, 0, 1, t)
-    x = node.inputs[0]
-    x = x.dimshuffle(4, 0, 1, 2, 3)
-    # Shuffle dCdH from (b, 0, 1, t, oc) to (b, oc, 0, 1, t)
-    f = node.inputs[3]
-    f = f.dimshuffle(0, 4, 1, 2, 3)
-    rval = conv3d_fft(f, x, border_mode='full')
-    # Shuffle from (ic, b, 0, 1, t) to (b, 0, 1, t, ic)
-    rval = gpu_from_host(rval.dimshuffle(0, 2, 3, 4, 1))
-
-    return rval
-
 @local_optimizer([GpuConvTransp3D])
 def local_convtransp3d_fft(node):
-
     try:
-        stride_x = tensor.get_scalar_constant_value(node.inputs[3][0])
-        stride_y = tensor.get_scalar_constant_value(node.inputs[3][1])
-        stride_z = tensor.get_scalar_constant_value(node.inputs[3][2])
+        stride_x = tensor.get_scalar_constant_value(node.inputs[2][0])
+        stride_y = tensor.get_scalar_constant_value(node.inputs[2][1])
+        stride_z = tensor.get_scalar_constant_value(node.inputs[2][2])
     except tensor.NotScalarConstantError:
-        pass
+        return False
     if (isinstance(node.op, GpuConvTransp3D) and
         (stride_x, stride_y, stride_z) == (1, 1, 1)):
-        return [_gpu_convtransp3d_to_fftconv(node)]
+        # we import conv3d_fft locally to avoid pycuda warnings
+        from theano.sandbox.cuda.fftconv import conv3d_fft
+        # Shuffle filters from (oc, 0, 1, t, ic) to (ic, oc, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(4, 0, 1, 2, 3)
+        # Shuffle dCdH from (b, 0, 1, t, oc) to (b, oc, 0, 1, t)
+        f = node.inputs[3]
+        f = f.dimshuffle(0, 4, 1, 2, 3)
+        rval = conv3d_fft(f, x, border_mode='full')
+        # Shuffle from (ic, b, 0, 1, t) to (b, 0, 1, t, ic)
+        rval = gpu_from_host(rval.dimshuffle(0, 2, 3, 4, 1))
+        return rval
 
 gpu_optimizer.register("convtransp3d_fft", local_convtransp3d_fft)
 
