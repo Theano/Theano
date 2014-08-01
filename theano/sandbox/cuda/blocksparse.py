@@ -1,7 +1,7 @@
 import numpy
 import theano
 from theano import Apply, tensor, scalar, Constant
-from theano.tensor import DimShuffle
+from theano.tensor import DimShuffle, discrete_dtypes
 
 from theano.gradient import grad_undefined, grad_not_implemented
 
@@ -14,6 +14,14 @@ if cuda_available:
                                      GpuDimShuffle)
 
 class SparseBlockGemvSS(GpuOp):
+    """
+    This op computes the dot product of specified pieces of vectors
+    and matrices, returning pieces of vectors.
+
+    This should not be directly called since the interface is subject
+    to change without notice.  Use the sparse_block_dot_SS() function
+    for a stable interface.
+    """
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -38,8 +46,8 @@ class SparseBlockGemvSS(GpuOp):
         assert inputIdx.ndim == 2
         assert outputIdx.ndim == 2
 
-        assert 'int' in inputIdx.type.dtype
-        assert 'int' in outputIdx.type.dtype
+        assert inputIdx.type.dtype in discrete_dtypes
+        assert outputIdx.type.dtype in discrete_dtypes
 
         return Apply(self, [o, W, h, inputIdx, outputIdx],
                      [o.type()])
@@ -75,7 +83,7 @@ const npy_intp *oIdx, int oI_str_0
 
         __global__ void
         SparseBlockGemv_reduce(
-int red_dim,
+int red_dim, int m, int n,
 float *outB, int i_str_0, int i_str_1, int i_str_2, int i_str_3,
 float *out, int o_str_0, int o_str_1, int o_str_2
         ) {
@@ -83,6 +91,7 @@ float *out, int o_str_0, int o_str_1, int o_str_2
           int j = threadIdx.y + blockDim.y * blockIdx.y;
           int b = threadIdx.z + blockDim.z * blockIdx.z;
           float s = 0.0;
+          if (i > m || j > n) return;
           float *oB = &outB[b * i_str_0 + i * i_str_2 + j * i_str_3];
           for (int k = 0; k < red_dim; k++) {
             s += oB[k * i_str_1];
@@ -94,8 +103,8 @@ float *out, int o_str_0, int o_str_1, int o_str_2
           cudaError_t err;
           PyArrayObject *aa = (PyArrayObject *)PyArray_Cast(a, NPY_INTP);
           if (aa == NULL) { return -1; }
-          err = cudaMemcpy(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
-                           cudaMemcpyHostToDevice);
+          err = cudaMemcpyAsync(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
+                                cudaMemcpyHostToDevice);
           Py_DECREF(aa);
           if (err != cudaSuccess) {
             PyErr_SetString(PyExc_RuntimeError, "Cannot copy index data to GPU");
@@ -186,13 +195,22 @@ if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
         if (SparseBlockGemv_copy(%(outputIdx)s, %(name)s_oIdx) == -1)
           { %(fail)s }
         { /* Prepare lists for the batch */
-          // NOT batch-ready
           dim3 block;
+          dim3 grid;
           block.x = CudaNdarray_HOST_DIMS(%(h)s)[1];
           block.y = CudaNdarray_HOST_DIMS(%(o)s)[1];
-          block.z = CudaNdarray_HOST_DIMS(%(o)s)[0]; // batch size
-          SparseBlockGemv_fill_lists<<<block, 1>>>(
-block.x*block.y*block.z,
+          grid.z = CudaNdarray_HOST_DIMS(%(o)s)[0]; // batch size
+          int n = block.x*block.y*grid.z;
+          if (block.x > 32) {
+           grid.x = (block.x + 31)/32;
+           block.x = 32;
+          }
+          if (block.y > 32) {
+            grid.y = (block.y + 31)/32;
+            block.y = 32;
+          }
+          SparseBlockGemv_fill_lists<<<grid, block>>>(
+n,
 %(name)s_inp_list,
 %(name)s_out_list,
 %(name)s_W_list,
@@ -236,11 +254,21 @@ CudaNdarray_HOST_DIMS(%(o)s)[2],
         }
         { /* Perform final reduction and add biases */
           dim3 block;
+          dim3 grid;
           block.x = CudaNdarray_HOST_DIMS(%(o)s)[1];
           block.y = CudaNdarray_HOST_DIMS(%(o)s)[2];
-          block.z = CudaNdarray_HOST_DIMS(%(o)s)[0];
-          SparseBlockGemv_reduce<<<block, 1>>>(
+          grid.z = CudaNdarray_HOST_DIMS(%(o)s)[0];
+          if (block.x > 32) {
+           grid.x = (block.x + 31)/32;
+           block.x = 32;
+          }
+          if (block.y > 32) {
+            grid.y = (block.y + 31)/32;
+            block.y = 32;
+          }
+          SparseBlockGemv_reduce<<<grid, block>>>(
 CudaNdarray_HOST_DIMS(%(h)s)[1],
+CudaNdarray_HOST_DIMS(%(o)s)[1], CudaNdarray_HOST_DIMS(%(o)s)[2],
 %(name)s_outB,
 CudaNdarray_HOST_DIMS(%(h)s)[1] *
 CudaNdarray_HOST_DIMS(%(o)s)[1] *
@@ -259,7 +287,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[2]);
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -284,6 +312,14 @@ sparse_block_gemv_ss_inplace = SparseBlockGemvSS(True)
 
 
 class SparseBlockOuterSS(GpuOp):
+    """
+    This computes the outer product of two sets of pieces of vectors
+    updating a full matrix with the results.
+
+    This op should not be called directly since its interface is
+    subject to change without notice.  It is involved in the gradient
+    of SparseBlockGemvSS.
+    """
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -342,9 +378,10 @@ __global__ void _sgerBH_gen_small(const float *x[], int incx,
                                   const float *y[], int incy,
                                   float alpha,
                                   float *A[], int lda,
-                                  int b) {
+                                  int b, int m, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i > m || j > n) return;
   for (int p = blockIdx.z * blockDim.z + threadIdx.z;
        p < b;
        p += blockDim.z * gridDim.z) {
@@ -363,10 +400,18 @@ static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
   dim3 grid(1, 1, batchCount);
   cublasPointerMode_t mode;
   cudaError_t err;
+  if (block.x > 32) {
+    grid.x = (block.x + 31)/32;
+    block.x = 32;
+  }
+  if (block.y > 32) {
+    grid.y = (block.y + 31)/32;
+    block.y = 32;
+  }
   cublasGetPointerMode(handle, &mode);
   if (mode == CUBLAS_POINTER_MODE_HOST) {
     _sgerBH_gen_small<<<grid, block>>>(x, incx, y, incy, *alpha, A, lda,
-                                       batchCount);
+                                       batchCount, m, n);
   } else {
     return CUBLAS_STATUS_NOT_SUPPORTED;
   }
@@ -380,8 +425,8 @@ static int SparseBlockOuter_copy(PyArrayObject *a, npy_intp *b) {
   cudaError_t err;
   PyArrayObject *aa = (PyArrayObject *)PyArray_Cast(a, NPY_INTP);
   if (aa == NULL) { return -1; }
-  err = cudaMemcpy(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
-                   cudaMemcpyHostToDevice);
+  err = cudaMemcpyAsync(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
+                        cudaMemcpyHostToDevice);
   Py_DECREF(aa);
   if (err != cudaSuccess) {
     PyErr_SetString(PyExc_RuntimeError, "Cannot copy index data to GPU");
@@ -465,11 +510,21 @@ if (SparseBlockOuter_copy(%(yIdx)s, %(name)s_yIdx) == -1)
  { %(fail)s }
 {
   dim3 block;
+  dim3 grid;
   block.x = CudaNdarray_HOST_DIMS(%(x)s)[1];
   block.y = CudaNdarray_HOST_DIMS(%(y)s)[1];
-  block.z = CudaNdarray_HOST_DIMS(%(x)s)[0];
-  SparseBlockOuter_fill_lists<<<block, 1>>>(
-block.x * block.y * block.z,
+  grid.z = CudaNdarray_HOST_DIMS(%(x)s)[0];
+  int n = block.x * block.y * grid.z;
+  if (block.x > 32) {
+    grid.x = (block.x + 31)/32;
+    block.x = 32;
+  }
+  if (block.y > 32) {
+    grid.y = (block.y + 31)/32;
+    block.y = 32;
+  }
+  SparseBlockOuter_fill_lists<<<grid, block>>>(
+n,
 %(name)s_x_list,
 %(name)s_y_list,
 %(name)s_out_list,
@@ -497,14 +552,14 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
     CudaNdarray_HOST_DIMS(%(x)s)[1] *
     CudaNdarray_HOST_DIMS(%(y)s)[1]);
   if (err != CUBLAS_STATUS_SUCCESS) {
-    PyErr_SetString(PyExc_RuntimeError, "SgemmBatched failed");
+    PyErr_SetString(PyExc_RuntimeError, "SgerBatched failed");
     %(fail)s
   }
 }""" % dict(x=x, y=y, out=out, xIdx=xIdx, yIdx=yIdx, name=name,
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
