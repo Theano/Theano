@@ -3587,9 +3587,11 @@ cublas_init()
     cublasSetStream(handle, NULL);
     // Pointer to scalars are on the host (also default)
     cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_HOST);
+#if CUDA_VERSION >= 5000
     // atomics can be used in kernels to speed up operations (not default)
     // This may lead to a slight variance from run to run in some operations
     cublasSetAtomicsMode(handle, CUBLAS_ATOMICS_ALLOWED);
+#endif
     return 0;
 }
 
