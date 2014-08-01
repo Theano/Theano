@@ -755,7 +755,7 @@ class ProfileStats(object):
                     new_exec_nodes = executables_nodes.copy()
                     new_exec_nodes.remove(node)
 
-                    mem_created = sum(nodes_mem[node] if )
+                    mem_created = sum(nodes_mem[node])
                     mem_count += mem_created
                     # Add memory created
 
