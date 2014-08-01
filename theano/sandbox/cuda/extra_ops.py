@@ -306,7 +306,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         max_threads_dim0 = self.max_threads_dim0
         max_grid_size1 = self.max_grid_size1
         if max_threads_dim0 is None or max_grid_size1 is None:
-            raise NotImplementedError("GpuConv.c_code should not be called "
+            raise NotImplementedError("GpuCumsum.c_code should not be called "
                                       "directly. It should be called by "
                                       "make_thunk() that add some information "
                                       "related to the selected GPU.")
