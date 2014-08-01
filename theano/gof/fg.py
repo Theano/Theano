@@ -87,6 +87,11 @@ class FunctionGraph(utils.object2):
         #TODO: document what variables are[not] set in the FunctionGraph when a feature
         is added via the constructor.  How constructed is the FunctionGraph?
 
+        Note: the intermediate nodes between 'inputs' and 'outputs' are not explicitely
+        passed.
+         
+        :param inputs: inputs nodes of the graph, usually declared by the user
+        :param outputs: outputs nodes of the graph.
         :param clone: If true, we will clone the graph. This is
         useful to remove the constant cache problem.
 
@@ -738,3 +743,21 @@ class FunctionGraph(utils.object2):
         for feature in self._features:
             e.attach_feature(feature)
         return e, equiv
+
+    def __getstate__(self):
+        """This is needed as some feature introduce instancemethod and
+        this is not pickable.
+        """
+        d = self.__dict__.copy()
+        for feature in self._features:
+            for attr in getattr(feature, "pickle_rm_attr", []):
+                del d[attr]
+        # The class Updater take fct as parameter and they are lambda function, so unpicklable.
+#        del d["execute_callbacks_times"]
+        return d
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        for feature in self._features:
+            if hasattr(feature, "unpickle"):
+                feature.unpickle(self)
