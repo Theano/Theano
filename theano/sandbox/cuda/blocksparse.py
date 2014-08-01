@@ -65,60 +65,118 @@ float **out_list,
 const float **W_list,
 const float *W, int W_str_0, int W_str_1,
 const float *h, int h_str_0, int h_str_1,
-float *outB, int o_str_0, int o_str_1, int o_str_2,
+float *out, int o_str_0, int o_str_1,
 const npy_intp *iIdx, int iI_str_0,
 const npy_intp *oIdx, int oI_str_0
         ) {
-          int i = threadIdx.x + blockDim.x * blockIdx.x;
-          int j = threadIdx.y + blockDim.y * blockIdx.y;
-          int b = threadIdx.z + blockDim.z * blockIdx.z;
-          int p = i + j * blockDim.x * gridDim.x +
-                  b * blockDim.y * gridDim.y * blockDim.x * gridDim.x;
-          if (p >= n) return;
-          inp_list[p] = &h[b * h_str_0 + i * h_str_1];
-          out_list[p] = &outB[b * o_str_0 + i * o_str_1 + j * o_str_2];
-          W_list[p] = &W[iIdx[b*iI_str_0+i] * W_str_0 +
-                         oIdx[b*oI_str_0+j] * W_str_1];
-        }
+  int i = threadIdx.x + blockDim.x * blockIdx.x;
+  int j = threadIdx.y + blockDim.y * blockIdx.y;
+  int b = blockIdx.z;
+  int p = i + j * blockDim.x * gridDim.x +
+          b * blockDim.y * gridDim.y * blockDim.x * gridDim.x;
+  if (p >= n) return;
+  inp_list[p] = &h[b * h_str_0 + i * h_str_1];
+  out_list[p] = &out[b * o_str_0 + j * o_str_1];
+  W_list[p] = &W[iIdx[b*iI_str_0+i] * W_str_0 +
+                 oIdx[b*oI_str_0+j] * W_str_1];
+}
 
-        __global__ void
-        SparseBlockGemv_reduce(
-int red_dim, int m, int n,
-float *outB, int i_str_0, int i_str_1, int i_str_2, int i_str_3,
-float *out, int o_str_0, int o_str_1, int o_str_2
-        ) {
-          int i = threadIdx.x + blockDim.x * blockIdx.x;
-          int j = threadIdx.y + blockDim.y * blockIdx.y;
-          int b = threadIdx.z + blockDim.z * blockIdx.z;
-          float s = 0.0;
-          if (i > m || j > n) return;
-          float *oB = &outB[b * i_str_0 + i * i_str_2 + j * i_str_3];
-          for (int k = 0; k < red_dim; k++) {
-            s += oB[k * i_str_1];
-          }
-          out[b * o_str_0 + i * o_str_1 + j * o_str_2] += s;
-        }
+__global__ void _sgemvBH_N_a1_b1_small(const float *A[], int lda,
+                                       const float *x[], int incx,
+                                       float *y[], int incy,
+                                       int b, int m, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int p = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i >= m || p >= b) return;
+  float yi = 0.0f;
+  const float *Ap = A[p] + i;
+  const float *xp = x[p];
+  # pragma unroll 32
+  for (int j = 0; j < n; j++) {
+    yi += Ap[0] * xp[0];
+    Ap += lda;
+    xp += incx;
+  }
+  atomicAdd(&y[p][i*incy], yi);
+}
 
-        static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
-          cudaError_t err;
-          PyArrayObject *aa = (PyArrayObject *)PyArray_Cast(a, NPY_INTP);
-          if (aa == NULL) { return -1; }
-          err = cudaMemcpyAsync(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
-                                cudaMemcpyHostToDevice);
-          Py_DECREF(aa);
-          if (err != cudaSuccess) {
-            PyErr_SetString(PyExc_RuntimeError, "Cannot copy index data to GPU");
-            return -1;
-          }
-          return 0;
-        }
-        """
+__global__ void _sgemvBH_T_a1_b1_small(const float *A[], int lda,
+                                       const float *x[], int incx,
+                                       float *y[], int incy,
+                                       int b, int m, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int p = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i >= m || p >= b) return;
+  float yi = 0.0f;
+  const float *Ap = A[p] + i * lda;
+  const float *xp = x[p];
+  # pragma unroll 32
+  for (int j = 0; j < n; j++) {
+    yi += Ap[j] * xp[0];
+    xp += incx;
+  }
+  atomicAdd(&y[p][i*incy], yi);
+}
+
+static cublasStatus_t SgemvBatched(cublasHandle_t handle,
+                                   cublasOperation_t trans,
+                                   int m, int n,
+                                   const float *alpha,
+                                   const float *A[], int lda,
+                                   const float *x[], int incx,
+                                   const float *beta,
+                                   float *y[], int incy, int batchCount) {
+  dim3 block(m, batchCount, 1);
+  dim3 grid(1, 1, 1);
+  cublasPointerMode_t mode;
+  cudaError_t err;
+  if (block.x > 32) {
+    grid.x = (block.x + 31)/32;
+    block.x = 32;
+  }
+  if (block.y > 32) {
+    grid.y = (block.y + 31)/32;
+    block.y = 32;
+  }
+  cublasGetPointerMode(handle, &mode);
+  if (mode != CUBLAS_POINTER_MODE_HOST)
+    return CUBLAS_STATUS_INVALID_VALUE;
+  if (*alpha != 1.0 || *beta != 1.0)
+    return CUBLAS_STATUS_INVALID_VALUE;
+  if (trans == CUBLAS_OP_N)
+    _sgemvBH_N_a1_b1_small<<<grid, block>>>(A, lda, x, incx,
+                                            y, incy,
+                                            batchCount, m, n);
+  else if (trans == CUBLAS_OP_T)
+    _sgemvBH_T_a1_b1_small<<<grid, block>>>(A, lda, x, incx,
+                                            y, incy,
+                                            batchCount, m, n);
+  else
+    return CUBLAS_STATUS_INVALID_VALUE;
+  err = cudaGetLastError();
+  if (err != cudaSuccess)
+    return CUBLAS_STATUS_EXECUTION_FAILED;
+  return CUBLAS_STATUS_SUCCESS;
+}
+
+static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
+  cudaError_t err;
+  PyArrayObject *aa = (PyArrayObject *)PyArray_Cast(a, NPY_INTP);
+  if (aa == NULL) { return -1; }
+  err = cudaMemcpyAsync(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
+                        cudaMemcpyHostToDevice);
+  Py_DECREF(aa);
+  if (err != cudaSuccess) {
+    PyErr_SetString(PyExc_RuntimeError, "Cannot copy index data to GPU");
+    return -1;
+  }
+  return 0;
+}
+"""
 
     def c_support_code_apply(self, node, nodename):
         return """
         /* Statics are initialized with 0 */
-        static float *%(n)s_outB;
-        static size_t %(n)s_outB_size;
         static const float **%(n)s_inp_list;
         static float **%(n)s_out_list;
         static const float **%(n)s_W_list;
@@ -138,11 +196,6 @@ float *out, int o_str_0, int o_str_1, int o_str_2
             if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
             if (cudaMalloc(&%(n)s_W_list, s*sizeof(float *)) != cudaSuccess) return -1;
             %(n)s_list_len = s;
-          }
-          if (%(n)s_outB_size < s*outsize) {
-            cudaFree(%(n)s_outB);
-            if (cudaMalloc(&%(n)s_outB, s*outsize*sizeof(float)) != cudaSuccess) return -1;
-            %(n)s_outB_size = s*outsize;
           }
           if (%(n)s_iIdx_len < b*i) {
             cudaFree(%(n)s_iIdx);
@@ -216,17 +269,16 @@ n,
 %(name)s_W_list,
 CudaNdarray_DEV_DATA(%(W)s),
 CudaNdarray_HOST_STRIDES(%(W)s)[0], CudaNdarray_HOST_STRIDES(%(W)s)[1],
-CudaNdarray_DEV_DATA(%(h)s), CudaNdarray_HOST_STRIDES(%(h)s)[0], CudaNdarray_HOST_STRIDES(%(h)s)[1],
-%(name)s_outB,
-CudaNdarray_HOST_DIMS(%(h)s)[1] * CudaNdarray_HOST_DIMS(%(o)s)[1] * CudaNdarray_HOST_DIMS(%(o)s)[2],
-CudaNdarray_HOST_DIMS(%(o)s)[1] * CudaNdarray_HOST_DIMS(%(o)s)[2],
-CudaNdarray_HOST_DIMS(%(o)s)[2],
+CudaNdarray_DEV_DATA(%(h)s),
+CudaNdarray_HOST_STRIDES(%(h)s)[0], CudaNdarray_HOST_STRIDES(%(h)s)[1],
+CudaNdarray_DEV_DATA(%(out)s),
+CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 %(name)s_iIdx, PyArray_DIM(%(inputIdx)s, 1),
 %(name)s_oIdx, PyArray_DIM(%(outputIdx)s, 1));
         }
         { /* Run SgemmBatched */
-          float alpha = 1.0;
-          float beta = 0.0;
+          float alpha = 1.0f;
+          float beta = 1.0f;
           cublasStatus_t err;
           cublasOperation_t transA = CUBLAS_OP_N;
           int lda = CudaNdarray_HOST_STRIDES(%(W)s)[2];
@@ -235,59 +287,27 @@ CudaNdarray_HOST_DIMS(%(o)s)[2],
             lda = CudaNdarray_HOST_STRIDES(%(W)s)[3];
           }
           if (lda == 0) lda = 1;
-          err = cublasSgemmBatched(handle, transA, CUBLAS_OP_N,
-                                   CudaNdarray_HOST_DIMS(%(o)s)[2], 1,
-                                   CudaNdarray_HOST_DIMS(%(h)s)[2], &alpha,
-                                   %(name)s_W_list, lda, %(name)s_inp_list,
-                                   CudaNdarray_HOST_STRIDES(%(h)s)[1] == 0 ?
-                                   1 : CudaNdarray_HOST_STRIDES(%(h)s)[1],
-                                   &beta, %(name)s_out_list,
-                                   CudaNdarray_HOST_STRIDES(%(o)s)[1] == 0 ?
-                                   1 : CudaNdarray_HOST_STRIDES(%(o)s)[1],
-                                   CudaNdarray_HOST_DIMS(%(o)s)[1] *
-                                   CudaNdarray_HOST_DIMS(%(h)s)[1] *
-                                   CudaNdarray_HOST_DIMS(%(o)s)[0]);
+          err = SgemvBatched(handle, transA,
+                             CudaNdarray_HOST_DIMS(%(o)s)[2],
+                             CudaNdarray_HOST_DIMS(%(h)s)[2], &alpha,
+                             %(name)s_W_list, lda, %(name)s_inp_list,
+                             CudaNdarray_HOST_STRIDES(%(h)s)[2],
+                             &beta, %(name)s_out_list,
+                             CudaNdarray_HOST_STRIDES(%(o)s)[2],
+                             CudaNdarray_HOST_DIMS(%(o)s)[1] *
+                             CudaNdarray_HOST_DIMS(%(h)s)[1] *
+                             CudaNdarray_HOST_DIMS(%(o)s)[0]);
           if (err != CUBLAS_STATUS_SUCCESS) {
             PyErr_SetString(PyExc_RuntimeError, "SgemmBatched failed");
             %(fail)s
           }
-        }
-        { /* Perform final reduction and add biases */
-          dim3 block;
-          dim3 grid;
-          block.x = CudaNdarray_HOST_DIMS(%(o)s)[1];
-          block.y = CudaNdarray_HOST_DIMS(%(o)s)[2];
-          grid.z = CudaNdarray_HOST_DIMS(%(o)s)[0];
-          if (block.x > 32) {
-           grid.x = (block.x + 31)/32;
-           block.x = 32;
-          }
-          if (block.y > 32) {
-            grid.y = (block.y + 31)/32;
-            block.y = 32;
-          }
-          SparseBlockGemv_reduce<<<grid, block>>>(
-CudaNdarray_HOST_DIMS(%(h)s)[1],
-CudaNdarray_HOST_DIMS(%(o)s)[1], CudaNdarray_HOST_DIMS(%(o)s)[2],
-%(name)s_outB,
-CudaNdarray_HOST_DIMS(%(h)s)[1] *
-CudaNdarray_HOST_DIMS(%(o)s)[1] *
-CudaNdarray_HOST_DIMS(%(o)s)[2],
-CudaNdarray_HOST_DIMS(%(o)s)[1] *
-CudaNdarray_HOST_DIMS(%(o)s)[2],
-CudaNdarray_HOST_DIMS(%(o)s)[2],
-1,
-CudaNdarray_DEV_DATA(%(out)s),
-CudaNdarray_HOST_STRIDES(%(out)s)[0],
-CudaNdarray_HOST_STRIDES(%(out)s)[1],
-CudaNdarray_HOST_STRIDES(%(out)s)[2]);
         }
         // And we're done!
         """ % dict(out=out, h=h, o=o, inputIdx=inputIdx, outputIdx=outputIdx,
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -363,7 +383,7 @@ const npy_intp *yIdx, int yI_str_0
 ) {
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   int j = threadIdx.y + blockDim.y * blockIdx.y;
-  int b = threadIdx.z + blockDim.z * blockIdx.z;
+  int b = blockIdx.z;
   int p = i + j * blockDim.x * gridDim.x +
           b * blockDim.y * gridDim.y * blockDim.x * gridDim.x;
   if (p >= n) return;
@@ -381,13 +401,10 @@ __global__ void _sgerBH_gen_small(const float *x[], int incx,
                                   int b, int m, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int p = blockIdx.z;
   if (i > m || j > n) return;
-  for (int p = blockIdx.z * blockDim.z + threadIdx.z;
-       p < b;
-       p += blockDim.z * gridDim.z) {
-    atomicAdd(&A[p][j * lda + i],
-              alpha * x[p][i * incx] * y[p][j * incy]);
-  }
+  atomicAdd(&A[p][j * lda + i],
+            alpha * x[p][i * incx] * y[p][j * incy]);
 }
 
 static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
@@ -413,7 +430,7 @@ static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
     _sgerBH_gen_small<<<grid, block>>>(x, incx, y, incy, *alpha, A, lda,
                                        batchCount, m, n);
   } else {
-    return CUBLAS_STATUS_NOT_SUPPORTED;
+    return CUBLAS_STATUS_INVALID_VALUE;
   }
   err = cudaGetLastError();
   if (err != cudaSuccess)
@@ -559,7 +576,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
