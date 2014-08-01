@@ -5114,20 +5114,19 @@ class Choose(Op):
 
     def make_node(self, a, choices):
         a = as_tensor_variable(a)
-        if isinstance(choices, tuple):
-            choice = as_tensor_variable(choices)
-            return Apply(self, [a, choice], [a.type()])
+        if isinstance(choices, (tuple, list)):
+            choice = theano.typed_list.make_list(choices)
         else:
             choice = as_tensor_variable(choices)
-            return Apply(self, [a, choice], [a.type()])
+        return Apply(self, [a, choice], [a.type()])
 
     def perform(self, node, inputs, (z, )):
         a = inputs[0]
-        choice = tuple(inputs[1])
+        choice = inputs[1]
         z[0] = numpy.choose(a, choice, mode=self.mode)      
 
     def __str__(self):
-        return self.__class__.__name__
+        return self.__class__.__name
 
 """
 import theano
@@ -5139,7 +5138,7 @@ x = T.tensor3(dtype='int64')
 y = T.tensor3(dtype='int64')
 z = T.tensor3(dtype='int64')
 w = choose(x,(y,z))
-f = function([x,y,z], w, on_unused_input='warn')
+f = function([x,y,z], w)
 a = np.array([0, 1]).reshape((2,1,1))
 c1 = np.array([1, 2, 3]).reshape((1,3,1))
 c2 = np.array([-1, -2, -3, -4, -5]).reshape((1,1,5))
