@@ -80,9 +80,6 @@ def register_opt(*tags, **kwargs):
         return local_opt
     return f
 
-
-
-
 #register local_track_shape_i at this level too
 #to make multi-level lift of shape work.
 register_opt()(theano.tensor.opt.local_track_shape_i)
@@ -1120,6 +1117,7 @@ def local_gpu_softmax_with_bias(node):
 
 #### Convolution, maxpooling
 from theano.tensor.nnet import conv
+
 
 @register_opt()
 @local_optimizer([gpu_from_host, conv.ConvOp])
