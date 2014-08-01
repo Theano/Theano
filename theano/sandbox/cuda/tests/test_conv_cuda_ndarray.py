@@ -818,23 +818,20 @@ class TestConv2DGPU(unittest.TestCase):
 
 
 
-def _test_dummy():
+def test_gemm():
     """
     input: (batch size, channels, rows, columns)
     filters: (number of filters, channels, rows, columns)
     """
-    
     for bs in range(1, 5):
         for ch in range(1,4):
             for nf in range(1,4):
                 for rImg in range(5, 9):
-                    for rFlt in range(2, 3):
+                    for rFlt in range(2, 4):
                         ishape = (bs, ch, rImg, rImg)
                         kshape = (nf, ch, rFlt, rFlt)
                         print "ishape: ", ishape
                         print "kshape: ", kshape 
-                        # ishape = (2, 1, 5, 5)
-                        # kshape = (2, 1, 3, 3)
                         mode = 'valid'
                         subsample = (1, 1)
                     
@@ -935,4 +932,4 @@ def test_stack_rows_segfault_070312():
     f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)
     f()
     
-#_test_dummy()
+_test_dummy()
