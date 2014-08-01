@@ -115,8 +115,8 @@ def py_conv_scipy(img, kern, mode, subsample):
         for k in xrange(out.shape[1]):
             for s in xrange(img.shape[1]):
                 out[b, k, :, :] += convolve2d(img[b, s, :, :],
-                  numpy.rot90(kern[k, s, :, :],2),
-                  mode)
+                                  kern[k, s, :, :],
+                                  mode)
     return out[:, :, ::subsample[0], ::subsample[1]]
 
 
@@ -819,37 +819,53 @@ class TestConv2DGPU(unittest.TestCase):
 
 
 def _test_dummy():
-    ishape = (1, 1, 7, 7)
-    kshape = (1, 1, 3, 3)
-    mode = 'valid'
-    subsample = (1, 1)
-
-    npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-    npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
-
-    i = cuda_tensor4()
-    k = cuda_tensor4()
-
-    #print >> sys.stdout, '_params_allgood trying ', ishape, kshape, mode
-    t2 = None
-    rval = True
-
-    t0 = time.time()
-    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
-
-    t1 = time.time()
+    """
+    input: (batch size, channels, rows, columns)
+    filters: (number of filters, channels, rows, columns)
+    """
     
-    op = theano.sandbox.cuda.blas.GpuConvMM(border_mode=mode)(i, k)
-    f = theano.function([i, k], op, mode=theano_mode)
-    gpuval = f(npy_img, npy_kern)
-    
-    t2 = time.time()
-    
-    gpuval = numpy.asarray(gpuval)
-    print gpuval
-    print '-------------------'
-    print cpuval
-
+    for bs in range(1, 5):
+        for ch in range(1,4):
+            for nf in range(1,4):
+                for rImg in range(5, 9):
+                    for rFlt in range(2, 3):
+                        ishape = (bs, ch, rImg, rImg)
+                        kshape = (nf, ch, rFlt, rFlt)
+                        print "ishape: ", ishape
+                        print "kshape: ", kshape 
+                        # ishape = (2, 1, 5, 5)
+                        # kshape = (2, 1, 3, 3)
+                        mode = 'valid'
+                        subsample = (1, 1)
+                    
+                        npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
+                        npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+                    
+                        i = cuda_tensor4()
+                        k = cuda_tensor4()
+                    
+                        t2 = None
+                    
+                        t0 = time.time()
+                        cpuval = py_conv(npy_img, npy_kern, mode, subsample)
+                    
+                        t1 = time.time()
+                        
+                        op = theano.sandbox.cuda.blas.GpuConvMM(border_mode=mode)(i, k)
+                        f = theano.function([i, k], op, mode=theano_mode)
+                    
+                        for k in range(npy_kern.shape[0]):
+                            for s in range(npy_kern.shape[1]):
+                                npy_kern[k,s,:,:] = numpy.rot90(npy_kern[k,s,:,:], 2)
+                        
+                        gpuval = f(npy_img, npy_kern)
+                        
+                        t2 = time.time()
+                        
+                        gpuval = numpy.asarray(gpuval)
+                        rval = numpy.allclose(cpuval, gpuval, rtol=1e-4)
+                        assert (rval == True)
+                        print 'Test Passed'
 
 def benchmark():
 

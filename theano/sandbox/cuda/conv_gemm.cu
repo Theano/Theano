@@ -165,7 +165,7 @@ CudaNdarray* validMM(const CudaNdarray *input,
 
 	float alpha = 1.0f; float beta = 0.0f;
 	int m = CudaNdarray_HOST_DIMS(columns)[1];
-	int n = CudaNdarray_HOST_DIMS(weight)[1];
+	int n = CudaNdarray_HOST_DIMS(weight)[0];
 	int k = CudaNdarray_HOST_DIMS(columns)[0];
          
 	status = cublasSgemm(handle,
