@@ -103,21 +103,24 @@ CudaNdarray* validMM(const CudaNdarray *input,
      // filters: (number of filters, nInputPlane, rows, columns)
      int nOutputPlane = CudaNdarray_HOST_DIMS(weight)[0];
      long batchSize = CudaNdarray_HOST_DIMS(input)[0];
-     if (kW != kH){
-       PyErr_SetString(PyExc_ValueError,
-                    "GpuConvMM support only square kernel\n"
+     if (CudaNdarray_HOST_DIMS(input)[2] != CudaNdarray_HOST_DIMS(input)[3]){
+       PyErr_Format(PyExc_ValueError,
+                    "GpuConvMM support only square images. Got %dx%d images\n",
+		    CudaNdarray_HOST_DIMS(input)[2],
+		    CudaNdarray_HOST_DIMS(input)[3]
 		    );
        return NULL;
      }
      if (kW != kH){
-       PyErr_SetString(PyExc_ValueError,
-                    "GpuConvMM support only square images\n"
+       PyErr_Format(PyExc_ValueError,
+                    "GpuConvMM support only square kernel. Got %dx%d kernel\n",
+		    kW, kH
 		    );
        return NULL;
      }
      if (CudaNdarray_HOST_DIMS(input)[1]  != CudaNdarray_HOST_DIMS(weight)[1]){
        PyErr_SetString(PyExc_ValueError,
-                    "GpuConvMM support only square images\n"
+                    "GpuConvMM images and kernel must have the same stack size\n"
 		    );
        return NULL;
      }
