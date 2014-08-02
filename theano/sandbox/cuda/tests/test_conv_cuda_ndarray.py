@@ -839,7 +839,7 @@ def test_gemm():
                         kshape = (nf, ch, rFlt, rFlt)
                         print "ishape: ", ishape
                         print "kshape: ", kshape 
-                        mode = 'valid'
+                        mode = 'full'
                         subsample = (1, 1)
                     
                         npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
@@ -938,4 +938,3 @@ def test_stack_rows_segfault_070312():
             nkern=1, bsize=1)
     f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)
     f()
-    

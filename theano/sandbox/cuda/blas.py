@@ -597,7 +597,6 @@ class GpuConvMM(GpuOp):
         border_mode = self.border_mode
         sub = sub.copy()
         pad = self.pad
-
         sub.update(locals())
 
         return """
@@ -607,6 +606,7 @@ class GpuConvMM(GpuOp):
     //Optional args
     int dx = %(dx)s;
     int dy = %(dy)s;
+    int pad = 0;
     CudaNdarray * img = %(img)s;
     CudaNdarray * kern = %(kern)s;
     CudaNdarray * out2 = NULL;
@@ -640,6 +640,7 @@ class GpuConvMM(GpuOp):
     {
         logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
         logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
+        pad = CudaNdarray_HOST_DIMS(kern)[2] - 1;
     }
     out_dim[2] = ceil_intdiv(logical_rows, dx);
     out_dim[3] = ceil_intdiv(logical_cols, dy);
@@ -657,7 +658,7 @@ class GpuConvMM(GpuOp):
 
     }
 
-    out2 = validMM(%(img)s, %(kern)s, %(out)s);
+    out2 = validMM(%(img)s, %(kern)s, %(out)s, pad);
     if (out2==NULL){
        %(fail)s
     }
@@ -669,6 +670,7 @@ class GpuConvMM(GpuOp):
 ##
 # Not really a BLAS operation, but whatever.
 #
+
 class GpuConv(GpuOp):
     """
     Implement the batched and stacked 2d convolution on the gpu.

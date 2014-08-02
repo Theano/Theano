@@ -78,7 +78,8 @@ void im2col(const float* data_im, const int channels,
 // Author: Arjun Jain
 CudaNdarray* validMM(const CudaNdarray *input, 
 				      CudaNdarray *weight,
-				      CudaNdarray *output) 
+				      CudaNdarray *output,
+				      int padding = 0) 
 {
 
   	cublasStatus_t status;
@@ -96,7 +97,6 @@ CudaNdarray* validMM(const CudaNdarray *input,
      // TODO: stride(dW, dH) and padding as function parameter
      int dH = 1; 
      int dW = 1;
-     int padding = 0; 
      int kH = CudaNdarray_HOST_DIMS(weight)[2];
      int kW = CudaNdarray_HOST_DIMS(weight)[3];
      int nInputPlane = CudaNdarray_HOST_DIMS(input)[1]; 
