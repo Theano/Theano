@@ -3090,12 +3090,11 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                             "There is no device that supports CUDA");
     }
 
-    // Initialize cublas
-    if (handle != NULL)
-        if (cublas_shutdown() == -1)
-            return NULL;
-
     if(card_number_provided) {
+        if (handle != NULL)
+            if (cublas_shutdown() == -1)
+                return NULL;
+
         err = cudaSetDevice(card_nb);
         if(cudaSuccess != err) {
             return PyErr_Format(PyExc_EnvironmentError,
@@ -3103,10 +3102,9 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                                 card_nb,
                                 cudaGetErrorString(cudaGetLastError()));
         }
+        if (cublas_init() == -1)
+            return NULL;
     }
-
-    if (cublas_init() == -1)
-        return NULL;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3135,6 +3133,9 @@ CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
 
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
+    // Don't handle errors here
+    cublas_shutdown(handle);
+    handle = NULL;
     cudaThreadExit();
     g_gpu_context_active = 0; // context has now been closed down
     Py_INCREF(Py_None);
