@@ -694,19 +694,13 @@ class ProfileStats(object):
         max_minimum_peak = 0
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
-            global maybe_executed, mem_count, mem_bound, last_user, freed
+            global maybe_executed, mem_count, mem_bound
             order = []
             min_order = []
             node_list = list(node_list)
-            min_mem = sys.maxint
             current_mem = 0
             mem_count = 0
             mem_bound = numpy.inf
-            computed = set()            
-            last_user = {}
-            for node in node_list:
-                for ins in node.inputs:
-                    last_user[ins] = 0
 
             def check_node_state(node):
                 """
@@ -738,14 +732,18 @@ class ProfileStats(object):
                     if c != "output" and check_node_state(c):
                         executables_nodes.add(c)
 
-            for node in node_list:
-                for ins in node.inputs:
-                    last_user[ins] += 1
-                for outs in node.outputs:
-                    computed.add(outs)
+            dependencies = fgraph.profile.dependencies
+            # for node in node_list[0].inputs[0]:
+            #     dependencies[node] = []
+            #     if val.owner and val.clients:
+            #         ls = []
+            #         for c in val.clients:
+            #             if c[0] is not 'output':
+            #                 ls += c[0].outputs
+            #             dependencies[val] += ls
 
             def min_memory_generator(executables_nodes):
-                global mem_count, mem_bound, last_user, freed
+                global mem_count, mem_bound
                 for node in executables_nodes:
                     new_exec_nodes = executables_nodes.copy()
                     new_exec_nodes.remove(node)
@@ -759,8 +757,6 @@ class ProfileStats(object):
                     idx = 0
                     dmap = getattr(node.op, 'destroy_map', None)
                     vmap = getattr(node.op, 'view_map', None)
-                    for ins in node.inputs:
-                        last_user[ins] -= 1
 
                     # add mem_create
                     for i in nodes_mem[node]:
@@ -771,10 +767,11 @@ class ProfileStats(object):
                         idx += 1
 
                     #add mem_freed, this part is not working well
-                    for ins in node.inputs:             
-                        if (ins in computed) and (ins not in fgraph.outputs) and (last_user[ins] == 0):
-                            if not isinstance(var_mem[ins], str):
-                                mem_freed += var_mem[ins]
+                    print type(node)
+                    for val in node.inputs:
+                        if (dependencies[val] and val.owner and val not in fgraph.outputs):
+                            if all(compute_map[v] for v in dependencies[val]):
+                                mem_freed += var_mem[val]
 
                     mem_count += mem_created
                     mem_count -= mem_freed
@@ -783,8 +780,6 @@ class ProfileStats(object):
                     if mem_count > mem_bound:
                         mem_count -= mem_created
                         mem_count += mem_freed
-                        for ins in node.inputs:
-                            last_user[ins] += 1
                         continue
 
                     for var in node.outputs:
@@ -804,8 +799,6 @@ class ProfileStats(object):
                     # resetting part
                     mem_count -= mem_created
                     mem_count += mem_freed
-                    for ins in node.inputs:
-                        last_user[ins] += 1
                     for var in node.outputs:
                         compute_map[var][0] = 0
 
