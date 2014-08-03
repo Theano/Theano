@@ -3134,7 +3134,7 @@ CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     // Don't handle errors here
-    cublas_shutdown(handle);
+    cublas_shutdown();
     handle = NULL;
     cudaThreadExit();
     g_gpu_context_active = 0; // context has now been closed down
