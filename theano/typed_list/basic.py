@@ -598,22 +598,3 @@ Returns a list made from tuple's elements.
 
 :param a: tuple.
 """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
