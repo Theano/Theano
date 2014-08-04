@@ -755,7 +755,7 @@ class ProfileStats(object):
                         mem_count -= mem_created
                         mem_count += mem_freed
                         continue
-                        
+
                     for var in node.outputs:
                         compute_map[var][0] = 1
 
@@ -775,7 +775,8 @@ class ProfileStats(object):
                     for val in node.inputs:
                         if (dependencies[val] and val.owner and val not in fgraph.outputs):
                             if all(compute_map[v] for v in dependencies[val]):
-                                mem_freed += var_mem[val]
+                                if not dmap and not vmap:
+                                    mem_freed += var_mem[val]
 
                     mem_count += mem_created
                     mem_count -= mem_freed
