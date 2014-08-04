@@ -4208,7 +4208,7 @@ def test_local_upcast_elemwise_constant_inputs():
     old = theano.config.floatX
     theano.config.floatX = 'float32'
     try:
-        v = lvector() / 2
+        v = lvector()
         function([v], theano.tensor.basic.true_div(v, 2))
     finally:
         theano.config.floatX = old

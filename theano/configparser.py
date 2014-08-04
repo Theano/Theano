@@ -305,7 +305,11 @@ class EnumStr(ConfigParam):
                 raise ValueError('Valid values for an EnumStr parameter '
                         'should be strings', val, type(val))
 
+        convert = kwargs.get("convert", None)
+
         def filter(val):
+            if convert:
+                val = convert(val)
             if val in self.all:
                 return val
             else:

@@ -249,12 +249,12 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
         fail = sub['fail']
         return """
-        if (PyArray_NDIM(%(pvals)s) != 2)
+        if (CudaNdarray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (PyArray_NDIM(%(unis)s) != 1)
+        if (CudaNdarray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;
