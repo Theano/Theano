@@ -8,7 +8,7 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
-import theano.sandbox.linalg.tests.test_linalg
+import theano.tensor.tests.test_nlinalg
 
 from theano.tests import unittest_tools as utt
 
@@ -393,14 +393,14 @@ def test_erfinvgpu():
     assert numpy.allclose(f(xv),f2(xv))
 
 
-class test_diag(theano.sandbox.linalg.tests.test_linalg.test_diag):
+class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
     mode = mode_with_gpu
     shared = staticmethod(cuda.shared_constructor)
     floatX = 'float32'
     type = CudaNdarrayType
 
     def __init__(self, name):
-        super(theano.sandbox.linalg.tests.test_linalg.test_diag,
+        super(theano.tensor.tests.test_nlinalg.test_diag,
               self).__init__(name)
 
 
