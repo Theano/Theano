@@ -3043,7 +3043,7 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 }
 
 static int cublas_init();
-static int cublas_shutdown();
+static void cublas_shutdown();
 // Initialize the gpu.
 // Takes one optional parameter, the device number.
 // If provided, it sets that device to be the active device.
@@ -3100,11 +3100,6 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                             "There is no device that supports CUDA");
     }
 
-    // Initialize cublas
-    if (handle != NULL)
-        if (cublas_shutdown() == -1)
-            return NULL;
-
     if(card_number_provided) {
         err = cudaSetDevice(card_nb);
         if(cudaSuccess != err) {
@@ -3113,10 +3108,9 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                                 card_nb,
                                 cudaGetErrorString(cudaGetLastError()));
         }
+        if (cublas_init() == -1)
+            return NULL;
     }
-
-    if (cublas_init() == -1)
-        return NULL;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3145,6 +3139,8 @@ CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
 
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
+    // Don't handle errors here
+    cublas_shutdown();
     cudaThreadExit();
     g_gpu_context_active = 0; // context has now been closed down
     Py_INCREF(Py_None);
@@ -3595,20 +3591,13 @@ cublas_init()
     return 0;
 }
 
-static int
+static void
 cublas_shutdown()
 {
-    cublasStatus_t err;
-    err = cublasDestroy(handle);
-    if (CUBLAS_STATUS_SUCCESS != err)
-    {
-        PyErr_SetString(PyExc_RuntimeError,
-                        "cublas_init tried to destroy the old cublas"
-                        " context, cublasDestroy() returned an error.");
-        return -1;
-    }
+    if (handle != NULL)
+        cublasDestroy(handle);
+    // No point in handling any errors here
     handle = NULL;
-    return 0;
 }
 
 int
