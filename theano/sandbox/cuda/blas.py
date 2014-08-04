@@ -498,7 +498,7 @@ gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)
 
 
-class GpuConvMM(GpuOp):
+class GpuCorrMM(GpuOp):
     """
     Author: Arjun Jain
     Implement the caffe convolution
@@ -516,10 +516,10 @@ class GpuConvMM(GpuOp):
         self.pad = pad
         if pad != 0:
             raise NotImplementedError(
-                "GpuConvMM don't implement the pad parameter")
+                "GpuCorrMM don't implement the pad parameter")
         if subsample != (1, 1):
             raise NotImplementedError(
-                "GpuConvMM we don't implement the subsample parameter")
+                "GpuCorrMM we don't implement the subsample parameter")
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -658,7 +658,7 @@ class GpuConvMM(GpuOp):
 
     }
 
-    out2 = validMM(%(img)s, %(kern)s, %(out)s, pad);
+    out2 = corrMM(%(img)s, %(kern)s, %(out)s, pad);
     if (out2==NULL){
        %(fail)s
     }

@@ -648,7 +648,7 @@ def test_valid():
         shp[1][2]/shp[4][0] == shp[1][3]/shp[4][1])]
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5,
-              theano_mode=mode, cls=cuda.blas.GpuConvMM)
+              theano_mode=mode, cls=cuda.blas.GpuCorrMM)
 
 
 def test_full():
@@ -713,14 +713,14 @@ def test_full():
 
 #    exec_conv(version, shapes, verbose, random, 'full')
 
-    # Test the GpuConvMM version
+    # Test the GpuCorrMM version
     mode = theano_mode.including("conv_gemm")
 
     shapes = [shp for shp in shapes if shp[1][2] == shp[1][3]]
     shapes = [shp for shp in shapes if shp[0][2] == shp[0][3]]
     shapes = shapes[0:10]
     exec_conv(version, shapes, verbose, random, 'full',
-              theano_mode=mode, cls=cuda.blas.GpuConvMM)
+              theano_mode=mode, cls=cuda.blas.GpuCorrMM)
 
 
 def test_subsample():
@@ -856,7 +856,7 @@ def test_gemm():
                         
                             t1 = time.time()
                             
-                            op = theano.sandbox.cuda.blas.GpuConvMM(border_mode=mode)(i, k)
+                            op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=mode)(i, k)
                             f = theano.function([i, k], op, mode=theano_mode)
                         
                             for k in range(npy_kern.shape[0]):

@@ -105,7 +105,7 @@ CudaNdarray* corrMM(const CudaNdarray *input,
      long batchSize = CudaNdarray_HOST_DIMS(input)[0];
      if (CudaNdarray_HOST_DIMS(input)[2] != CudaNdarray_HOST_DIMS(input)[3]){
        PyErr_Format(PyExc_ValueError,
-                    "GpuConvMM support only square images. Got %dx%d images\n",
+                    "GpuCorrMM support only square images. Got %dx%d images\n",
 		    CudaNdarray_HOST_DIMS(input)[2],
 		    CudaNdarray_HOST_DIMS(input)[3]
 		    );
@@ -113,14 +113,14 @@ CudaNdarray* corrMM(const CudaNdarray *input,
      }
      if (kW != kH){
        PyErr_Format(PyExc_ValueError,
-                    "GpuConvMM support only square kernel. Got %dx%d kernel\n",
+                    "GpuCorrMM support only square kernel. Got %dx%d kernel\n",
 		    kW, kH
 		    );
        return NULL;
      }
      if (CudaNdarray_HOST_DIMS(input)[1]  != CudaNdarray_HOST_DIMS(weight)[1]){
        PyErr_SetString(PyExc_ValueError,
-                    "GpuConvMM images and kernel must have the same stack size\n"
+                    "GpuCorrMM images and kernel must have the same stack size\n"
 		    );
        return NULL;
      }
@@ -136,7 +136,7 @@ CudaNdarray* corrMM(const CudaNdarray *input,
 	 outputHeight != CudaNdarray_HOST_DIMS(output)[2] ||
 	 outputWidth != CudaNdarray_HOST_DIMS(output)[3]){
        PyErr_SetString(PyExc_ValueError,
-                    "GpuConvMM outputs parameter don't have the good shape\n"
+                    "GpuCorrMM outputs parameter don't have the good shape\n"
 		    );
        return NULL;
      }
@@ -182,7 +182,7 @@ CudaNdarray* corrMM(const CudaNdarray *input,
                 );
 
   	     if (status != CUBLAS_STATUS_SUCCESS) {
-      	         std::cerr << "!!!! CUBLAS error in GpuConvMM\n";
+      	         std::cerr << "!!!! CUBLAS error in GpuCorrMM\n";
 	      }
 
       }

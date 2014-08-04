@@ -25,7 +25,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv, GpuConvMM)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv, GpuCorrMM)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -1292,7 +1292,7 @@ def local_conv_gemm(node):
         img = gpu_contiguous(img)
         kern = kern[:, :, ::-1, ::-1]
         kern = gpu_contiguous(kern)
-        return [GpuConvMM(node.op.border_mode)(img, kern)]
+        return [GpuCorrMM(node.op.border_mode)(img, kern)]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
