@@ -5069,14 +5069,19 @@ class Choose(Op):
     def __eq__(self, other):
         return (type(self) == type(other) and self.props() == other.props())
 
+    def _infer_shape(self, node, shapes):
+        return[(shapes[0])]
+
     def props(self):
         return self.mode
 
     def make_node(self, a, choices):
+        from theano import typed_list
         a = as_tensor_variable(a)
         if isinstance(choices, (tuple, list)):
             choice = theano.typed_list.make_list(choices)
         else:
+            self.infer_shape = self._infer_shape
             choice = as_tensor_variable(choices)
         return Apply(self, [a, choice], [a.type()])
 
@@ -5085,8 +5090,6 @@ class Choose(Op):
         choice = inputs[1]
         z[0] = numpy.choose(a, choice, mode=self.mode)      
 
-    def __str__(self):
-        return self.__class__.__name
 
 """
 import theano
@@ -5099,7 +5102,7 @@ y = T.tensor3(dtype='int64')
 z = T.tensor3(dtype='int64')
 w = choose(x,(y,z))
 f = function([x,y,z], w)
-a = np.array([0, 1]).reshape((2,1,1))
+a = np.array([0, 1, 0, 1, 0, 1]).reshape((2,3,1))
 c1 = np.array([1, 2, 3]).reshape((1,3,1))
 c2 = np.array([-1, -2, -3, -4, -5]).reshape((1,1,5))
 """
