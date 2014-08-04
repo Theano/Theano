@@ -76,7 +76,7 @@ void im2col(const float* data_im, const int channels,
 
 
 // Author: Arjun Jain
-CudaNdarray* validMM(const CudaNdarray *input, 
+CudaNdarray* corrMM(const CudaNdarray *input, 
 				      CudaNdarray *weight,
 				      CudaNdarray *output,
 				      int padding = 0) 
