@@ -5129,20 +5129,3 @@ class Choose(Op):
         a = inputs[0]
         choice = inputs[1]
         z[0] = numpy.choose(a, choice, mode=self.mode)      
-
-
-"""
-import theano
-from theano import tensor as T
-from theano import function
-from theano.tensor.basic import choose
-import numpy as np
-x = T.tensor3(dtype='int64')
-y = T.tensor3(dtype='int64')
-z = T.tensor3(dtype='int64')
-w = choose(x,(y,z))
-f = function([x,y,z], w)
-a = np.array([0, 1, 0, 1, 0, 1]).reshape((2,3,1))
-c1 = np.array([1, 2, 3]).reshape((1,3,1))
-c2 = np.array([-1, -2, -3, -4, -5]).reshape((1,1,5))
-"""
