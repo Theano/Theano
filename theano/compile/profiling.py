@@ -751,6 +751,11 @@ class ProfileStats(object):
                     mem_created = 0
                     mem_freed = 0
 
+                    if mem_count > mem_bound:
+                        mem_count -= mem_created
+                        mem_count += mem_freed
+                        continue
+                        
                     for var in node.outputs:
                         compute_map[var][0] = 1
 
@@ -767,7 +772,6 @@ class ProfileStats(object):
                         idx += 1
 
                     #add mem_freed, this part is not working well
-                    print type(node)
                     for val in node.inputs:
                         if (dependencies[val] and val.owner and val not in fgraph.outputs):
                             if all(compute_map[v] for v in dependencies[val]):
@@ -777,10 +781,7 @@ class ProfileStats(object):
                     mem_count -= mem_freed
 
                     # check if cut path now
-                    if mem_count > mem_bound:
-                        mem_count -= mem_created
-                        mem_count += mem_freed
-                        continue
+
 
                     for var in node.outputs:
                         for c, _ in var.clients:
