@@ -301,7 +301,6 @@ class TestSP(unittest.TestCase):
                     l2hidval = l2propup(l2kernvals,l1hidval)
 
 
-
     def test_maxpool(self):
         # generate flatted images
         maxpoolshps = ((2,2),(3,3),(4,4),(5,5),(6,6))
