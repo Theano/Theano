@@ -787,7 +787,7 @@ class TensorSolve(Op):
         if theano.tensor.type_other.NoneConst.equals(node.inputs[2]):
             return [(shapes[0][-(len(shapes[0]) - len(shapes[1])):])]
         else:
-            return theano.tensor.basic.ShapeError
+            raise theano.tensor.basic.ShapeError('Case not implemented')
 
     def make_node(self, a, b, axes=None):
         a = as_tensor_variable(a)
