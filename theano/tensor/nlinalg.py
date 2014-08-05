@@ -783,8 +783,11 @@ class TensorSolve(Op):
     def __hash__(self):
         return hash(type(self))
 
-    def _infer_shape(self, node, shapes):
-        return [(shapes[0][-(len(shapes[0]) - len(shapes[1])):])]
+    def infer_shape(self, node, shapes):
+        if theano.tensor.type_other.NoneConst.equals(node.inputs[2]):
+            return [(shapes[0][-(len(shapes[0]) - len(shapes[1])):])]
+        else:
+            return theano.tensor.basic.ShapeError
 
     def make_node(self, a, b, axes=None):
         a = as_tensor_variable(a)
@@ -795,7 +798,6 @@ class TensorSolve(Op):
             xshape = a.shape[-(a.ndim - b.ndim):]
             x = a.reshape(xshape, ndim=a.ndim - b.ndim)
             out_type = x.type()
-            self.infer_shape = self._infer_shape
             """ The type of the output depends on both inputs.
                 First, xshape is obtained (see shape Q in the doc),
                 with this shape, x can be created as a referrence for the type
