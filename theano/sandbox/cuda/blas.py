@@ -262,6 +262,8 @@ class GpuGemm(GpuOp):
                     == CudaNdarray_HOST_DIMS(%(z_in)s)[1])
                 && (CudaNdarray_HOST_STRIDES(%(z_out)s)[0] >= 0)
                 && (CudaNdarray_HOST_STRIDES(%(z_out)s)[1] >= 0)
+        // The following condition is needed as this is a condition by cublas
+        // on the memory layout of the output it accepts.
                 && ((CudaNdarray_HOST_DIMS(%(z_out)s)[0] <= 1)
                     || (CudaNdarray_HOST_STRIDES(%(z_out)s)[0] == 1)
                     || (CudaNdarray_HOST_DIMS(%(z_out)s)[1] <= 1)
