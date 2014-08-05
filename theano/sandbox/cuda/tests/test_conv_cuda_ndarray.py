@@ -21,9 +21,9 @@ from theano import tensor
 from theano.gof.python25 import any
 from theano.tests.unittest_tools import seed_rng
 
-# Skip test if cuda_ndarray is not available.
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+# Skip test if cuda is not available.
+from theano.sandbox import cuda
+if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
 #needed as the gpu conv don't have a perform implementation.
@@ -32,11 +32,11 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     theano_mode = theano.compile.mode.get_default_mode().including('gpu')
 
-cuda_tensor4 = cuda_ndarray.CudaNdarrayType([False] * 4)
+cuda_tensor4 = cuda.CudaNdarrayType([False] * 4)
 
 device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
-    cuda_ndarray.shared_constructor(numpy.zeros(2, dtype='float32'))
+    cuda.shared_constructor(numpy.zeros(2, dtype='float32'))
 device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
     cuda.use("gpu",
@@ -46,6 +46,7 @@ if device_id is None:
              enable_cuda=False,
              test_driver=True)
     device_id = theano.sandbox.cuda.use.device_number
+    
 cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
 device_prop = cuda_ndarray.device_properties(device_id)
 
@@ -114,8 +115,8 @@ def py_conv_scipy(img, kern, mode, subsample):
         for k in xrange(out.shape[1]):
             for s in xrange(img.shape[1]):
                 out[b, k, :, :] += convolve2d(img[b, s, :, :],
-                                              kern[k, s, :, :],
-                                              mode)
+                                  kern[k, s, :, :],
+                                  mode)
     return out[:, :, ::subsample[0], ::subsample[1]]
 
 
@@ -126,7 +127,8 @@ def _params_allgood_header():
 def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                     kern_stride=(1, 1), version=-1, verbose=0, random=True,
                     print_=None, id=None, rtol=1e-5, atol=1e-8,
-                    nb_iter=0, ones=False, compile_kshp=None):
+                    nb_iter=0, ones=False, compile_kshp=None,
+                    theano_mode=None, cls=None):
     #
     # This function is the core of several of the big unit-test drivers,
     # but it can also be used very directly on its own to test a specific
@@ -181,6 +183,9 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                                               verbose=verbose,
                                               kshp=compile_kshp)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
+        if cls is not None:
+            assert any([isinstance(node.op, cls)
+                        for node in f.maker.fgraph.toposort()]), f.maker.fgraph.toposort()
         gpuval = f(img, kern)
         t2 = time.time()
         for i in range(nb_iter):
@@ -195,7 +200,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
             rval = False
         if rval:
             rval = numpy.allclose(cpuval, gpuval, rtol=rtol)
-            assert numpy.all(numpy.isfinite(gpuval))
+            assert numpy.all(numpy.isfinite(gpuval)), gpuval
     except NotImplementedError, e:
         print >> sys.stdout, '_params_allgood Failed allclose', e
         rval = False
@@ -247,7 +252,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
 
 
 def exec_conv(version, shapes, verbose, random, mode,
-              print_=None, rtol=1e-5, ones=False):
+              print_=None, rtol=1e-5, ones=False,
+              theano_mode=theano_mode, cls=None):
     if verbose > 0:
         _params_allgood_header()
     nb_failed = 0
@@ -273,7 +279,9 @@ def exec_conv(version, shapes, verbose, random, mode,
                         id=id,
                         print_=print_,
                         rtol=rtol,
-                        ones=ones)
+                        ones=ones,
+                        theano_mode=theano_mode,
+                        cls=cls)
             except Exception, e:
                 print ver, id, (ishape, kshape, subshape, istride, kstride)
                 print e
@@ -624,8 +632,23 @@ def test_valid():
     if ones:
         random = False
 
+#    exec_conv(version, shapes, verbose, random, 'valid',
+#              print_=print_, ones=ones, rtol=1.1e-5)
+
+    mode = theano_mode.including("conv_gemm")
+
+    version = [-1]
+    # Remove case not supported
+    # Add tests with strided inputs by still square images and filters.
+    shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
+    shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
+    # Keep only tests with square images and filters even with inputs strides
+    shapes = [shp for shp in shapes if (
+        shp[0][2]/shp[3][0] == shp[0][3]/shp[3][1] and
+        shp[1][2]/shp[4][0] == shp[1][3]/shp[4][1])]
     exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+              print_=print_, ones=ones, rtol=1.1e-5,
+              theano_mode=mode, cls=cuda.blas.GpuCorrMM)
 
 
 def test_full():
@@ -688,7 +711,16 @@ def test_full():
 #    version=[4]
     random = True
 
-    exec_conv(version, shapes, verbose, random, 'full')
+#    exec_conv(version, shapes, verbose, random, 'full')
+
+    # Test the GpuCorrMM version
+    mode = theano_mode.including("conv_gemm")
+
+    shapes = [shp for shp in shapes if shp[1][2] == shp[1][3]]
+    shapes = [shp for shp in shapes if shp[0][2] == shp[0][3]]
+    shapes = shapes[0:10]
+    exec_conv(version, shapes, verbose, random, 'full',
+              theano_mode=mode, cls=cuda.blas.GpuCorrMM)
 
 
 def test_subsample():
@@ -792,31 +824,53 @@ class TestConv2DGPU(unittest.TestCase):
             theano_mode = theano_mode_orig
 
 
-def _test_dummy():
-    ishape = (1, 1, 5, 5)
-    kshape = (1, 1, 3, 3)
-    mode = 'valid'
-    subsample = (1, 1)
 
-    npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-    npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
-
-    img = cuda_ndarray.CudaNdarray(npy_img)
-    kern = cuda_ndarray.CudaNdarray(npy_kern)
-
-    #print >> sys.stdout, '_params_allgood trying ', ishape, kshape, mode
-    t2 = None
-    rval = True
-
-    t0 = time.time()
-    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
-    t1 = time.time()
-    gpuval = cuda_ndarray.conv(img, kern, mode, subsample)
-    t2 = time.time()
-    gpuval = numpy.asarray(gpuval)
-    print gpuval
-    print cpuval
-
+def test_gemm():
+    """
+    input: (batch size, channels, rows, columns)
+    filters: (number of filters, channels, rows, columns)
+    """
+    for mode in ['valid', 'full']:
+        print 'Testing mode: ' + mode
+        for bs in range(1, 5):
+            for ch in range(1,4):
+                for nf in range(1,4):
+                    for rImg in range(5, 9):
+                        for rFlt in range(2, 4):
+                            ishape = (bs, ch, rImg, rImg)
+                            kshape = (nf, ch, rFlt, rFlt)
+                            print "ishape: ", ishape
+                            print "kshape: ", kshape 
+                            subsample = (1, 1)
+                        
+                            npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
+                            npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+                        
+                            i = cuda_tensor4()
+                            k = cuda_tensor4()
+                        
+                            t2 = None
+                        
+                            t0 = time.time()
+                            cpuval = py_conv(npy_img, npy_kern, mode, subsample)
+                        
+                            t1 = time.time()
+                            
+                            op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=mode)(i, k)
+                            f = theano.function([i, k], op, mode=theano_mode)
+                        
+                            for k in range(npy_kern.shape[0]):
+                                for s in range(npy_kern.shape[1]):
+                                    npy_kern[k,s,:,:] = numpy.rot90(npy_kern[k,s,:,:], 2)
+                            
+                            gpuval = f(npy_img, npy_kern)
+                            
+                            t2 = time.time()
+                            
+                            gpuval = numpy.asarray(gpuval)
+                            rval = numpy.allclose(cpuval, gpuval, rtol=1e-4)
+                            assert (rval == True)
+                            print 'Test Passed'
 
 def benchmark():
 

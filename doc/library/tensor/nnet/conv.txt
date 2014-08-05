@@ -51,8 +51,21 @@ TODO: Give examples for how to use these things! They are pretty complicated.
       implementation.
 
       Also, there is restrictions on which shape are supported.
+    - :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`
+      This is a GPU-only version of a correlation that computes correlations
+      as `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu>`. 
+      For each element in a batch, it first creates a 
+      Toeplitz<http://en.wikipedia.org/wiki/Toeplitz_matrix> matrix in a cuda kernel. 
+      Then, it performs a `gemm` call to multiply this Toeplitz matrix and to the kernel. 
+      It need extra memory for this, which is the size of the Toeplitz matrix. Precisely, 
+      the dimensions of this Toeplitz matrix is equal to 
+      (no of channels * filter width * filter height, output width * output height).
+      You can enable it for call to conv2d 2d by setting 'THEANO_FLAGS=optimizer_including=conv_gemm'
+      in your environment. This is not enabled by default because it
+      uses some extra memory. It don't support strides for now and requires square kernels.
 
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
 .. autofunction:: theano.tensor.nnet.conv3d2d.conv3d
 .. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
+.. autofunction:: theano.sandbox.cuda.blas.GpuCorrMM

@@ -7,6 +7,7 @@ from theano import tensor
 from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import as_cuda_ndarray_variable
 
 
 class GpuDot22(GpuOp):
@@ -497,9 +498,179 @@ gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)
 
 
+class GpuCorrMM(GpuOp):
+    """
+    Author: Arjun Jain
+    Implement the caffe convolution
+    """
+    def __init__(self, border_mode,
+            subsample=(1, 1),
+            pad=0):
+        """
+        :param border_mode: "valid" or "full"
+        :param subsample: not yet supported
+        :param pad: not yet supported
+        """
+        self.border_mode = border_mode
+        self.subsample = subsample
+        self.pad = pad
+        if pad != 0:
+            raise NotImplementedError(
+                "GpuCorrMM don't implement the pad parameter")
+        if subsample != (1, 1):
+            raise NotImplementedError(
+                "GpuCorrMM we don't implement the subsample parameter")
+
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and self.border_mode == other.border_mode \
+            and self.subsample == other.subsample \
+            and self.pad == other.pad
+
+    def __hash__(self):
+        # don't use hash(self.version) as hash(-1)==-2 and
+        # hash(-2)==-2 in python!
+        return hash(type(self)) \
+            ^ hash(self.border_mode) \
+            ^ hash(self.subsample) \
+            ^ hash(self.pad)
+
+    def __str__(self):
+        return '%s{%s, %s, pad=%d}' % (
+            self.__class__.__name__,
+            self.border_mode,
+            str(self.subsample),
+            self.pad)
+
+    def make_node(self, img, kern):
+        img = as_cuda_ndarray_variable(img)
+        kern = as_cuda_ndarray_variable(kern)
+        if img.type.ndim != 4:
+            raise TypeError('img must be 4D tensor')
+        if kern.type.ndim != 4:
+            raise TypeError('kern must be 4D tensor')
+
+        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
+                         False, False]
+        return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+
+    def flops(self, inputs, outputs):
+        """ Useful with the hack in profilemode to print the MFlops"""
+        images, kerns = inputs
+        out, = outputs
+        assert images[1] == kerns[1]
+        flops = 0
+        if self.border_mode == "valid":
+            # nb mul and add by output pixel
+            flops = kerns[2] * kerns[3] * 2
+            # nb flops by output image
+            flops *= out[2] * out[3]
+            # nb patch multiplied
+            flops *= images[1] * kerns[0] * images[0]
+        else:
+            flops = (images[0] * kerns[0] * images[1] *
+                     kerns[2] * kerns[3] *
+                     images[2] * images[3] * 2)
+        return flops
+
+    def c_headers(self):
+        return ['cuda_ndarray.cuh', '<stdio.h>']
+
+    def c_code_cache_version(self):
+        return
+        # raise this whenever modifying any of the support_code_files
+        return (0, 21)
+
+    def c_support_code_apply(self, node, nodename):
+        # REMEMBER TO RAISE c_code_cache_version when changing any of
+        # these files
+        files = ['conv_gemm.cu']
+        codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
+                for f in files]
+        return reduce(str.__add__, codes)
+
+    def c_code(self, node, nodename, inp, out_, sub):
+        img, kern = inp
+        out, = out_
+        dx = self.subsample[0]
+        dy = self.subsample[1]
+        border_mode = self.border_mode
+        sub = sub.copy()
+        pad = self.pad
+        sub.update(locals())
+
+        return """
+    //Mandatory args
+    const char *mode_str = "%(border_mode)s";
+
+    //Optional args
+    int dx = %(dx)s;
+    int dy = %(dy)s;
+    int pad = 0;
+    CudaNdarray * img = %(img)s;
+    CudaNdarray * kern = %(kern)s;
+    CudaNdarray * out2 = NULL;
+    int mode;
+    if (strcmp(mode_str, "full") == 0)
+    {
+        mode = 0;
+    }
+    else if (strcmp(mode_str, "valid") == 0)
+    {
+        mode = 1;
+    }
+    else
+    {
+        PyErr_SetString(PyExc_ValueError,
+                        "mode must be one of 'full' or 'valid'");
+        %(fail)s;
+    }
+    //TODO: Send self.pad, stride, etc
+
+    int out_dim[4];
+    out_dim[0] = CudaNdarray_HOST_DIMS(img)[0];
+    out_dim[1] = CudaNdarray_HOST_DIMS(kern)[0];
+    int logical_rows, logical_cols;
+    if (mode == 1)
+    {
+        logical_rows = CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1;
+        logical_cols = CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1;
+    }
+    else
+    {
+        logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
+        logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
+        pad = CudaNdarray_HOST_DIMS(kern)[2] - 1;
+    }
+    out_dim[2] = ceil_intdiv(logical_rows, dx);
+    out_dim[3] = ceil_intdiv(logical_cols, dy);
+
+    if ( !(%(out)s
+           && %(out)s->nd==4
+           && CudaNdarray_is_c_contiguous(%(out)s)
+           && CudaNdarray_HOST_DIMS(%(out)s)[0]==out_dim[0]
+           && CudaNdarray_HOST_DIMS(%(out)s)[1]==out_dim[1]
+           && CudaNdarray_HOST_DIMS(%(out)s)[2]==out_dim[2]
+           && CudaNdarray_HOST_DIMS(%(out)s)[3]==out_dim[3]))
+    {
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+
+    }
+
+    out2 = corrMM(%(img)s, %(kern)s, %(out)s, pad);
+    if (out2==NULL){
+       %(fail)s
+    }
+    assert (out2 == %(out)s);
+
+""" % sub
+
+
 ##
 # Not really a BLAS operation, but whatever.
 #
+
 class GpuConv(GpuOp):
     """
     Implement the batched and stacked 2d convolution on the gpu.

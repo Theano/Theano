@@ -17,7 +17,7 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
-    device_properties, gpu_eye,
+    device_properties, gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
@@ -25,7 +25,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv, GpuCorrMM)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -1259,6 +1259,7 @@ gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
 
 import theano.tensor.signal.downsample as downsample
 
+
 @register_opt()
 @local_optimizer([downsample.DownsampleFactorMax])
 def local_gpu_downsample_factor_max(node):
@@ -1281,6 +1282,19 @@ def local_gpu_downsample_factor_max_grad(node):
                                               gpu_from_host(z),
                                               gpu_from_host(gz)))]
 
+
+@local_optimizer([GpuConv])
+def local_conv_gemm(node):
+    if (isinstance(node.op, GpuConv) and
+        node.op.border_mode in ['full', 'valid'] and
+        node.op.subsample == (1, 1)):
+        img, kern = node.inputs
+        img = gpu_contiguous(img)
+        kern = kern[:, :, ::-1, ::-1]
+        kern = gpu_contiguous(kern)
+        return [GpuCorrMM(node.op.border_mode)(img, kern)]
+
+gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 
