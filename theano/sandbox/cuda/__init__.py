@@ -203,7 +203,7 @@ if cuda_available:
         # This only test if the cuda driver is available and if there
         # is at least one GPU that support cuda. This do not select a
         # device.
-        gpu_init()
+        gpu_test()
         cuda_available = True
         cuda_initialization_error_message = ""
 # actively closing our gpu session presents segfault-on-exit on some systems
@@ -363,7 +363,7 @@ def use(device,
                 # query the active GPU. If we check the active GPU before
                 # the device is initialized we will always receive 0
                 # event if another device is selected later.
-                cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
+                gpu_init()
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
                 gpu_init(use.device_number)

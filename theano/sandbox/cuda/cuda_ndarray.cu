@@ -3042,13 +3042,43 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
     return Py_BuildValue("iiii", gpu_sizes[0], sizeof(float*), sizeof(int), gpu_sizes[1]);
 }
 
+static PyObject *
+CudaNdarray_gpu_test(PyObject *self, PyObject *noargs) {
+    int deviceCount;
+    cudaError err = cudaGetDeviceCount(&deviceCount);
+    if(cudaSuccess != err) {
+        return PyErr_Format(PyExc_EnvironmentError,
+                            "Unable to get the number of gpus available: %s",
+                            cudaGetErrorString(cudaGetLastError()));
+    }
+
+    if(deviceCount <= 0) {
+        return PyErr_Format(PyExc_EnvironmentError,
+                            "Can't use the GPU, no devices support CUDA");
+    }
+
+    cudaDeviceProp deviceProp;
+    err = cudaGetDeviceProperties(&deviceProp, 0);
+    if(cudaSuccess != err) {
+        return PyErr_Format(PyExc_EnvironmentError,
+                            "Unable to get properties of gpu 0: %s",
+                            cudaGetErrorString(cudaGetLastError()));
+    }
+
+    if(deviceProp.major == 9999 && deviceProp.minor == 9999 ){
+        return PyErr_Format(PyExc_EnvironmentError,
+                            "There is no device that supports CUDA");
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static int cublas_init();
 static void cublas_shutdown();
 // Initialize the gpu.
 // Takes one optional parameter, the device number.
 // If provided, it sets that device to be the active device.
-// If not provided (usually just to test whether the gpu is available at all),
-// it does not set an active device.
 // Raises EnvironmentError or ValueError (as appropriate) if the initialization failed.
 PyObject *
 CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
@@ -3070,10 +3100,6 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                             "Unable to get the number of gpus available: %s",
                             cudaGetErrorString(cudaGetLastError()));
     }
-
-    // as soon as the first successful call to a cuda* function is made, a
-    // gpu context has been created
-    g_gpu_context_active = 1;
 
     if(deviceCount <= 0) {
         return PyErr_Format(PyExc_EnvironmentError,
@@ -3108,9 +3134,14 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                                 card_nb,
                                 cudaGetErrorString(cudaGetLastError()));
         }
-        if (cublas_init() == -1)
-            return NULL;
     }
+
+    // This will also initialize the context
+    if (cublas_init() == -1)
+        return NULL;
+    // The context is now active
+    g_gpu_context_active = 1;
+
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3121,7 +3152,10 @@ CudaNdarray_active_device_number(PyObject* _unused, PyObject* _unused_args) {
     // NB: No cuda error checking here; keeps things simple, and it's not
     // really necessary.
     int currentDevice;
-    cudaGetDevice(&currentDevice);
+    if (g_gpu_context_active)
+        cudaGetDevice(&currentDevice);
+    else
+        currentDevice = -1;
     return PyInt_FromLong(currentDevice);
 }
 
@@ -3130,11 +3164,15 @@ CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
     // NB: No cuda error checking here; keeps things simple, and it's not
     // really necessary.
     int currentDevice;
-    cudaGetDevice(&currentDevice);
+    if (g_gpu_context_active) {
+        cudaGetDevice(&currentDevice);
 
-    cudaDeviceProp deviceProp;
-    cudaGetDeviceProperties(&deviceProp, currentDevice);
-    return PyString_FromString(deviceProp.name);
+        cudaDeviceProp deviceProp;
+        cudaGetDeviceProperties(&deviceProp, currentDevice);
+        return PyString_FromString(deviceProp.name);
+    } else {
+        return PyString_FromString("");
+    }
 }
 
 PyObject *
@@ -3406,7 +3444,8 @@ filter(PyObject* __unsed_self, PyObject *args) // args = (data, broadcastable, s
 static PyMethodDef module_methods[] = {
     {"dimshuffle", CudaNdarray_Dimshuffle, METH_VARARGS, "Returns the dimshuffle of a CudaNdarray."},
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
-    {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
+    {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use."},
+    {"gpu_test", CudaNdarray_gpu_test, METH_NOARGS, "Test whether CUDA is available."},
     {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
     {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
