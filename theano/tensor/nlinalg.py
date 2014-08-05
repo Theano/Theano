@@ -42,12 +42,6 @@ class MatrixPinv(Op):
         """
         return ()
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2
@@ -83,12 +77,6 @@ class MatrixInverse(Op):
         For the ``MatrixInverse`` op, there are no properties to be exposed.
         """
         return ()
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -324,12 +312,6 @@ class Eig(Op):
         """
         return ()
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2
@@ -440,12 +422,6 @@ class EighGrad(Op):
     def props(self):
         return (self.UPLO,)
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
     def __str__(self):
         return 'EighGrad{%s}' % self.UPLO
 
@@ -511,12 +487,6 @@ class QRFull(Op):
     def __init__(self, mode):
         self.mode = mode
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2, "The input of qr function should be a matrix."
@@ -547,12 +517,6 @@ class QRIncomplete(Op):
 
     def __init__(self, mode):
         self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def props(self):
         return self.mode
@@ -643,12 +607,6 @@ class SVD(Op):
         """
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def props(self):
         return self.full_matrices, self.compute_uv,

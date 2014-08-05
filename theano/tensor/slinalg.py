@@ -50,12 +50,6 @@ class Cholesky(Op):
         return (self.lower,
                 self.destructive)
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
@@ -99,12 +93,6 @@ class CholeskyGrad(Op):
     def props(self):
         return (self.lower,
                 self.destructive)
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def __str__(self):
         if self.lower:
@@ -193,12 +181,6 @@ class Solve(Op):
                 self.overwrite_A,
                 self.overwrite_b)
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.props() == other.props()
-
     def __repr__(self):
         return 'Solve{%s}' % str(self.props())
 
@@ -247,12 +229,6 @@ class Eigvalsh(Op):
 
     def props(self):
         return (self.lower,)
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, a, b):
         assert imported_scipy, (
@@ -316,12 +292,6 @@ class EigvalshGrad(Op):
 
     def props(self):
         return (self.lower,)
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, a, b, gw):
         assert imported_scipy, (

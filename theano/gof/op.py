@@ -575,6 +575,18 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
 
+    def __hash__(self):
+        if hasattr(self, 'props'):
+            return hash((type(self), self.props()))
+        else:
+            raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
+
+    def __eq__(self, other):
+        if hasattr(self, 'props'):
+            return (type(self) == type(other) and self.props() == other.props())
+        else:
+            raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
+
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
         :param node: something previously returned by self.make_node
