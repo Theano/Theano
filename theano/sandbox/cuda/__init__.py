@@ -365,6 +365,8 @@ def use(device,
                 # event if another device is selected later.
                 cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
                 use.device_number = active_device_number()
+                # This is needed to initialize the cublas handle.
+                gpu_init(use.device_number)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
