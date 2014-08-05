@@ -785,8 +785,13 @@ class TensorInv(Op):
         return hash(type(self))
 
     def infer_shape(self, node, shapes):
-        ind = theano.tensor.get_scalar_constant_value(node.inputs[1])
-        return [(shapes[0][ind:]+shapes[0][:ind])]
+        try: 
+           ind = theano.tensor.get_scalar_constant_value(node.inputs[1])
+           return [(shapes[0][ind:]+shapes[0][:ind])]
+        except NotScalarConstantError:
+           ind = node.inputs[1]
+           sym_shapes = as_tensor_variable(shapes[0])
+           return sym_shapes[ind:] + sym_shapes[:ind]
 
     def make_node(self, x, ind=2):
         x = as_tensor_variable(x)
