@@ -85,19 +85,22 @@ __global__ void _sgemvBH_N_a1_b1_small(const float *A[], int lda,
                                        const float *x[], int incx,
                                        float *y[], int incy,
                                        int b, int m, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int p = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i >= m || p >= b) return;
-  float yi = 0.0f;
-  const float *Ap = A[p] + i;
-  const float *xp = x[p];
-  # pragma unroll 32
-  for (int j = 0; j < n; j++) {
-    yi += Ap[0] * xp[0];
-    Ap += lda;
-    xp += incx;
+  for (int p = blockIdx.y * blockDim.y + threadIdx.y; p < b;
+       p += gridDim.y * blockDim.y) {
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < m;
+         i += gridDim.x * blockDim.x) {
+      float yi = 0.0f;
+      const float *Ap = A[p] + i;
+      const float *xp = x[p];
+      #pragma unroll 32
+      for (int j = 0; j < n; j++) {
+        yi += Ap[0] * xp[0];
+        Ap += lda;
+        xp += incx;
+      }
+      atomicAdd(&y[p][i*incy], yi);
+    }
   }
-  atomicAdd(&y[p][i*incy], yi);
 }
 
 __global__ void _sgemvBH_T_a1_b1_small(const float *A[], int lda,
@@ -130,13 +133,20 @@ static cublasStatus_t SgemvBatched(cublasHandle_t handle,
   dim3 grid(1, 1, 1);
   cublasPointerMode_t mode;
   cudaError_t err;
-  if (block.x > 32) {
-    grid.x = (block.x + 31)/32;
+  if (m < 512) {
     block.x = 32;
+    if (batchCount > 16)
+      block.y = 16;
+    else
+      block.y = batchCount;
+  } else {
+    block.x = 512;
+    block.y = 1;
   }
-  if (block.y > 32) {
-    grid.y = (block.y + 31)/32;
-    block.y = 32;
+  grid.x = (m + block.x - 1) / block.x;
+  grid.y = (batchCount + block.y - 1) / block.y;
+  if (grid.x * grid.y > 65535) {
+    grid.y = (65535 / grid.x);
   }
   cublasGetPointerMode(handle, &mode);
   if (mode != CUBLAS_POINTER_MODE_HOST)
@@ -255,12 +265,12 @@ if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
           grid.z = CudaNdarray_HOST_DIMS(%(o)s)[0]; // batch size
           int n = block.x*block.y*grid.z;
           if (block.x > 32) {
-           grid.x = (block.x + 31)/32;
-           block.x = 32;
+            grid.x = (block.x + 31) / 32;
+            block.x = 32;
           }
-          if (block.y > 32) {
-            grid.y = (block.y + 31)/32;
-            block.y = 32;
+          if (block.x * block.y > 512) {
+            grid.y = (block.y + 15) / 16;
+            block.y = 16;
           }
           SparseBlockGemv_fill_lists<<<grid, block>>>(
 n,
@@ -307,7 +317,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -401,10 +411,11 @@ __global__ void _sgerBH_gen_small(const float *x[], int incx,
                                   int b, int m, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int p = blockIdx.z;
   if (i > m || j > n) return;
-  atomicAdd(&A[p][j * lda + i],
-            alpha * x[p][i * incx] * y[p][j * incy]);
+  for (int p = blockIdx.z; p < b; p += gridDim.z) {
+    atomicAdd(&A[p][j * lda + i],
+              alpha * x[p][i * incx] * y[p][j * incy]);
+  }
 }
 
 static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
@@ -417,13 +428,29 @@ static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
   dim3 grid(1, 1, batchCount);
   cublasPointerMode_t mode;
   cudaError_t err;
-  if (block.x > 32) {
-    grid.x = (block.x + 31)/32;
-    block.x = 32;
+  if (incx == 1) {
+    if (block.x > 32) {
+      grid.x = (block.x + 31)/32;
+      block.x = 32;
+    }
+    if (block.x * block.y > 512) {
+      grid.y = (block.y + 15) / 16;
+      block.y = 16;
+    }
+  } else {
+    if (block.y > 32) {
+      grid.y = (block.y + 31)/32;
+      block.y = 32;
+    }
+    if (block.x * block.y > 512) {
+      grid.x = (block.x + 15) / 16;
+      block.x = 16;
+    }
   }
-  if (block.y > 32) {
-    grid.y = (block.y + 31)/32;
-    block.y = 32;
+  if (grid.x * grid.y * grid.z > 65535) {
+     // If grid.x * grid.y is bigger than 65535 you deserve the error
+     // you'll get later because that is way too big for this op.
+    grid.z = (65535 / (grid.x * grid.y));
   }
   cublasGetPointerMode(handle, &mode);
   if (mode == CUBLAS_POINTER_MODE_HOST) {
@@ -533,12 +560,12 @@ if (SparseBlockOuter_copy(%(yIdx)s, %(name)s_yIdx) == -1)
   grid.z = CudaNdarray_HOST_DIMS(%(x)s)[0];
   int n = block.x * block.y * grid.z;
   if (block.x > 32) {
-    grid.x = (block.x + 31)/32;
+    grid.x = (block.x + 31) / 32;
     block.x = 32;
   }
-  if (block.y > 32) {
-    grid.y = (block.y + 31)/32;
-    block.y = 32;
+  if (block.x * block.y > 512) {
+    grid.y = (block.y + 15) / 16;
+    block.y = 16;
   }
   SparseBlockOuter_fill_lists<<<grid, block>>>(
 n,
@@ -576,7 +603,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
