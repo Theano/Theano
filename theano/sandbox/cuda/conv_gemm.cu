@@ -182,7 +182,8 @@ CudaNdarray* corrMM(const CudaNdarray *input,
                 );
 
   	     if (status != CUBLAS_STATUS_SUCCESS) {
-      	         std::cerr << "!!!! CUBLAS error in GpuCorrMM\n";
+	       std::cerr << "!!!! CUBLAS error: ";
+	       std::cerr << cublasGetErrorString(status) << "\n";
 	      }
 
       }
