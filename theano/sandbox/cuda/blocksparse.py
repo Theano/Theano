@@ -59,7 +59,7 @@ class SparseBlockGemvSS(GpuOp):
         return """
         __global__ void
         SparseBlockGemv_fill_lists(
-int n,
+int maxi, int maxj,
 const float **inp_list,
 float **out_list,
 const float **W_list,
@@ -72,9 +72,8 @@ const npy_intp *oIdx, int oI_str_0
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   int j = threadIdx.y + blockDim.y * blockIdx.y;
   int b = blockIdx.z;
-  int p = i + j * blockDim.x * gridDim.x +
-          b * blockDim.y * gridDim.y * blockDim.x * gridDim.x;
-  if (p >= n) return;
+  if (i >= maxi || j >= maxj) return;
+  int p = i + j * maxi + b * maxi * maxj;
   inp_list[p] = &h[b * h_str_0 + i * h_str_1];
   out_list[p] = &out[b * o_str_0 + j * o_str_1];
   W_list[p] = &W[iIdx[b*iI_str_0+i] * W_str_0 +
@@ -263,7 +262,6 @@ if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
           block.x = CudaNdarray_HOST_DIMS(%(h)s)[1];
           block.y = CudaNdarray_HOST_DIMS(%(o)s)[1];
           grid.z = CudaNdarray_HOST_DIMS(%(o)s)[0]; // batch size
-          int n = block.x*block.y*grid.z;
           if (block.x > 32) {
             grid.x = (block.x + 31) / 32;
             block.x = 32;
@@ -273,7 +271,7 @@ if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
             block.y = 16;
           }
           SparseBlockGemv_fill_lists<<<grid, block>>>(
-n,
+CudaNdarray_HOST_DIMS(%(h)s)[1], CudaNdarray_HOST_DIMS(%(o)s)[1],
 %(name)s_inp_list,
 %(name)s_out_list,
 %(name)s_W_list,
@@ -317,7 +315,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -381,7 +379,7 @@ class SparseBlockOuterSS(GpuOp):
         return """
 __global__ void
 SparseBlockOuter_fill_lists(
-int n,
+int maxi, int maxj,
 const float **x_list,
 const float **y_list,
 float **out_list,
@@ -394,9 +392,8 @@ const npy_intp *yIdx, int yI_str_0
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   int j = threadIdx.y + blockDim.y * blockIdx.y;
   int b = blockIdx.z;
-  int p = i + j * blockDim.x * gridDim.x +
-          b * blockDim.y * gridDim.y * blockDim.x * gridDim.x;
-  if (p >= n) return;
+  if (i >= maxi || j >= maxj) return;
+  int p = i + j * maxi + b * maxi * maxj;
   x_list[p] = &x[b * x_str_0 + i * x_str_1];
   y_list[p] = &y[b * x_str_0 + j * y_str_1];
   out_list[p] = &out[xIdx[b * xI_str_0 + i] * o_str_0 +
@@ -556,7 +553,6 @@ if (SparseBlockOuter_copy(%(yIdx)s, %(name)s_yIdx) == -1)
   block.x = CudaNdarray_HOST_DIMS(%(x)s)[1];
   block.y = CudaNdarray_HOST_DIMS(%(y)s)[1];
   grid.z = CudaNdarray_HOST_DIMS(%(x)s)[0];
-  int n = block.x * block.y * grid.z;
   if (block.x > 32) {
     grid.x = (block.x + 31) / 32;
     block.x = 32;
@@ -566,7 +562,7 @@ if (SparseBlockOuter_copy(%(yIdx)s, %(name)s_yIdx) == -1)
     block.y = 16;
   }
   SparseBlockOuter_fill_lists<<<grid, block>>>(
-n,
+CudaNdarray_HOST_DIMS(%(x)s)[1], CudaNdarray_HOST_DIMS(%(y)s)[1],
 %(name)s_x_list,
 %(name)s_y_list,
 %(name)s_out_list,
@@ -601,7 +597,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
