@@ -585,7 +585,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         if hasattr(self, 'props'):
             return (type(self) == type(other) and self.props() == other.props())
         else:
-            return super(Op, self).__eq__(other)
+            return NotImplemented
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
