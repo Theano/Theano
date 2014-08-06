@@ -7073,6 +7073,20 @@ class T_Choose(utt.InferShapeTester):
                                         # Op that should be removed from the graph.
                                         self.op_class)
 
+    def test_infer_shape_tuple(self):
+
+        a = tensor.tensor3(dtype='int64')
+        b = tensor.tensor3(dtype='int64')
+        c = tensor.tensor3(dtype='int64')
+
+        A = numpy.asarray([1, 0], dtype='int64').reshape((2,1,1))
+        B = numpy.asarray(numpy.random.rand(1, 4, 1), dtype='int64')
+        C = numpy.asarray(numpy.random.rand(1, 1, 7), dtype='int64')
+
+        f = function([a, b, c], choose(a, (b,c)))
+        shape = (2, 4, 7)
+        assert numpy.allclose(f(A, B, C).shape, shape)
+
 """
 
 if __name__ == '__main__':
