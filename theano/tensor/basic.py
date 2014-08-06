@@ -5069,8 +5069,14 @@ class Choose(Op):
     def __eq__(self, other):
         return (type(self) == type(other) and self.props() == other.props())
 
-    def _infer_shape(self, node, shapes):
-        return[(shapes[0])]
+    def infer_shape(self, node, shapes):
+        if isinstance(node.inputs[1], tuple):
+            shape = shapes[0]
+            for i in range(len(shapes[0])-1):
+                shape[i] = shapes[1][i]
+            return [(shape)]
+        else:
+            return[(shapes[0])]
 
     def props(self):
         return self.mode
@@ -5081,7 +5087,6 @@ class Choose(Op):
         if isinstance(choices, (tuple, list)):
             choice = theano.typed_list.make_list(choices)
         else:
-            self.infer_shape = self._infer_shape
             choice = as_tensor_variable(choices)
         return Apply(self, [a, choice], [a.type()])
 
@@ -5089,3 +5094,25 @@ class Choose(Op):
         a = inputs[0]
         choice = inputs[1]
         z[0] = numpy.choose(a, choice, mode=self.mode)      
+
+"""
+import theano
+from theano import tensor as T
+from theano import function
+from theano.tensor.basic import choose
+import numpy as np
+x = T.tensor4(dtype='int64')
+y = T.tensor4(dtype='int64')
+z = T.tensor4(dtype='int64')
+p = T.tensor4(dtype='int64')
+w = choose(x,(y,z,p))
+f = function([x,y,z,p], w)
+a = np.array([0, 1, 2]).reshape((3,1,1,1))
+c1 = np.array([1, 2, 3]).reshape((1,3,1,1))
+c2 = np.array([-1, -2, -3, -4, -5]).reshape((1,1,5,1))
+c3 = np.array([1, 2, 4]).reshape((1,1,1,3))
+"""
+
+
+
+
