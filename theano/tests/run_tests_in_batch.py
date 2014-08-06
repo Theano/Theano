@@ -152,7 +152,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     stderr.flush()
     assert rval == 0
     noseids_file = '.noseids'
-    data = cPickle.load(open(noseids_file, 'rb'))
+
+    with open(noseids_file, 'rb') as f: 
+        data = cPickle.load(f)
+
     ids = data['ids']
     n_tests = len(ids)
     if n_tests == 0:
@@ -193,8 +196,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             # otherwise this field may get erased. We use a set because it
             # seems like it is not systematically erased though, and we want
             # to avoid duplicates.
-            failed = failed.union(cPickle.load(open(noseids_file, 'rb'))
-                                  ['failed'])
+            with open(noseids_file, 'rb') as f:
+                failed = failed.union(cPickle.load(f)['failed'])
+
             print '%s%% done in %.3fs (failed: %s)' % (
                 (test_range[-1] * 100) // n_tests, t1 - t0, len(failed))
         # Sort for cosmetic purpose only.

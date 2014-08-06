@@ -476,8 +476,8 @@ class KeyData(object):
         """
         # Note that writing in binary mode is important under Windows.
         try:
-            cPickle.dump(self, open(self.key_pkl, 'wb'),
-                         protocol=cPickle.HIGHEST_PROTOCOL)
+            with open(self.key_pkl, 'wb') as f:
+                cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
                             self.keys)
@@ -681,7 +681,8 @@ class ModuleCache(object):
                                          "unpickle cache file %s", key_pkl)
 
                         try:
-                            key_data = cPickle.load(open(key_pkl, 'rb'))
+                            with open(key_pkl, 'rb') as f:
+                                key_data = cPickle.load(f)
                         except EOFError:
                             # Happened once... not sure why (would be worth
                             # investigating if it ever happens again).
@@ -1126,7 +1127,9 @@ class ModuleCache(object):
         # Verify that when we reload the KeyData from the pickled file, the
         # same key can be found in it, and is not equal to more than one
         # other key.
-        key_data = cPickle.load(open(key_pkl, 'rb'))
+        with open(key_pkl, 'rb') as f:
+            key_data = cPickle.load(f)
+
         found = sum(key == other_key for other_key in key_data.keys)
         msg = ''
         if found == 0:

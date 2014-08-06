@@ -178,13 +178,15 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
             other_dead = False
             while os.path.isdir(tmp_dir):
                 try:
-                    read_owner = open(lock_file).readlines()[0].strip()
-                    # the try is transtion code for old locks
-                    # it may be removed when poeple have upgraded
+                    with open(lock_file) as f:
+                        read_owner = f.readlines()[0].strip()
+
+                    # The try is transition code for old locks.
+                    # It may be removed when people have upgraded.
                     try:
                         other_host = read_owner.split('_')[2]
                     except IndexError:
-                        other_host = () # make sure it isn't equal to any host
+                        other_host = ()  # make sure it isn't equal to any host
                     if other_host == socket.gethostname():
                         try:
                             os.kill(int(read_owner.split('_')[0]), 0)
@@ -250,7 +252,9 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
 
             # Verify we are really the lock owner (this should not be needed,
             # but better be safe than sorry).
-            owner = open(lock_file).readlines()[0].strip()
+            with open(lock_file) as f:
+                owner = f.readlines()[0].strip()
+
             if owner != unique_id:
                 # Too bad, try again.
                 continue
