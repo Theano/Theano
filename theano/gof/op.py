@@ -579,13 +579,13 @@ class Op(utils.object2, PureOp, CLinkerOp):
         if hasattr(self, 'props'):
             return hash((type(self), self.props()))
         else:
-            raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
+            return super(Op, self).__hash__()
 
     def __eq__(self, other):
         if hasattr(self, 'props'):
             return (type(self) == type(other) and self.props() == other.props())
         else:
-            raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
+            return super(Op, self).__eq__()
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
