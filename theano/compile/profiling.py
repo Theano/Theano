@@ -740,7 +740,7 @@ class ProfileStats(object):
                 Generate all valid node order from node_list
                 and compute its memory peaf
                 """
-                global mem_count, mem_bound, max_mem_count, max_mem_count
+                global mem_count, mem_bound, max_mem_count
 
                 for node in executable_nodes:
                     new_exec_nodes = executable_nodes.copy()
@@ -748,6 +748,8 @@ class ProfileStats(object):
 
                     mem_created = 0
                     mem_freed = 0
+
+                    max_storage = max_mem_count
 
                     # check if we cut path now
                     if max_mem_count > mem_bound:
@@ -776,8 +778,7 @@ class ProfileStats(object):
                     for val in node.inputs:
                         if (dependencies[val] and val.owner and val not in fgraph.outputs):
                             if all(compute_map[v] for v in dependencies[val]):
-                                if not dmap and not vmap:
-                                    mem_freed += var_mem[val]
+                                mem_freed += var_mem[val]
 
                     mem_count -= mem_freed
 
@@ -797,7 +798,7 @@ class ProfileStats(object):
                     
                     # Reset track variables
                     mem_count -= mem_created
-                    max_mem_count -= mem_created
+                    max_mem_count = max_storage
                     mem_count += mem_freed
                     for var in node.outputs:
                         compute_map[var][0] = 0

@@ -44,7 +44,7 @@ def test_profiling():
         the_string = buf.getvalue()
         assert "Max if linker=cvm(default): 8208KB (16400KB)" in the_string
         assert "Minimum peak from all valid apply node order is 8192KB" in the_string
-        
+
     finally:
         theano.config.profile = old1
         theano.config.profile_memory = old2
