@@ -517,9 +517,6 @@ class GpuCorrMM(GpuOp):
         if pad != 0:
             raise NotImplementedError(
                 "GpuCorrMM don't implement the pad parameter")
-        if subsample != (1, 1):
-            raise NotImplementedError(
-                "GpuCorrMM we don't implement the subsample parameter")
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -662,7 +659,7 @@ class GpuCorrMM(GpuOp):
 
     }
 
-    out2 = corrMM(%(img)s, %(kern)s, %(out)s, padH, padW);
+    out2 = corrMM(%(img)s, %(kern)s, %(out)s, dx, dy, padH, padW);
     if (out2==NULL){
        %(fail)s
     }

@@ -92,7 +92,10 @@ void im2col(const float* data_im, const int channels,
 CudaNdarray* corrMM(const CudaNdarray *input, 
 				      CudaNdarray *weight,
 				      CudaNdarray *output,
-				      int padH, int padW = 0) 
+				      int dH = 1, 
+     				  int dW = 1,
+				      int padH = 0, 
+				      int padW = 0) 
 {
 
   	cublasStatus_t status;
@@ -107,9 +110,6 @@ CudaNdarray* corrMM(const CudaNdarray *input,
         PyErr_SetString(PyExc_ValueError, "required weight of 4D");
     }
         
-     // TODO: stride(dW, dH) and padding as function parameter
-     int dH = 1; 
-     int dW = 1;
      int kH = CudaNdarray_HOST_DIMS(weight)[2];
      int kW = CudaNdarray_HOST_DIMS(weight)[3];
      int nInputPlane = CudaNdarray_HOST_DIMS(input)[1]; 
