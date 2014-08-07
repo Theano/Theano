@@ -30,12 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cuda.h>
 #include <driver_types.h>  // cuda driver types
 
-// CUDA: grid stride looping
-#define CUDA_KERNEL_LOOP(i, n) \
-for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
-i < (n); \
-i += blockDim.x * gridDim.x)
-
 // CUDA: thread number configuration.
 // Use 1024 threads per block, which requires cuda sm_2x or above,
 // or fall back to attempt compatibility (best of luck to you).
