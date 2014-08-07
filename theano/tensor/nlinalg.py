@@ -50,9 +50,6 @@ class MatrixPinv(Op):
     def perform(self, node, (x,), (z, )):
         z[0] = numpy.linalg.pinv(x).astype(x.dtype)
 
-    def __str__(self):
-        return "MatrixPseudoInverse"
-
 pinv = MatrixPinv()
 
 
@@ -124,9 +121,6 @@ class MatrixInverse(Op):
         if ev is None:
             return [None]
         return [-matrix_dot(xi, ev, xi)]
-
-    def __str__(self):
-        return "MatrixInverse"
 
 matrix_inverse = MatrixInverse()
 
@@ -326,9 +320,6 @@ class Eig(Op):
         n = shapes[0][0]
         return [(n,), (n, n)]
 
-    def __str__(self):
-        return self._numop.__name__.capitalize()
-
 eig = Eig()
 
 
@@ -342,9 +333,6 @@ class Eigh(Eig):
     def __init__(self, UPLO='L'):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
-
-    def __str__(self):
-        return 'Eigh{%s}' % self.UPLO
 
     def props(self):
         return self.UPLO,
@@ -421,9 +409,6 @@ class EighGrad(Op):
 
     def props(self):
         return (self.UPLO,)
-
-    def __str__(self):
-        return 'EighGrad{%s}' % self.UPLO
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
@@ -503,9 +488,6 @@ class QRFull(Op):
         q[0], r[0] = self._numop(x,
                                  self.mode)
 
-    def __str__(self):
-        return self._numop.__class__.__name__
-
 
 class QRIncomplete(Op):
     """
@@ -531,9 +513,6 @@ class QRIncomplete(Op):
         assert x.ndim == 2, "The input of qr function should be a matrix."
         q[0] = self._numop(x,
                            self.mode)
-
-    def __str__(self):
-        return self._numop.__class__.__name__
 
 
 def qr(a, mode="full"):
@@ -624,9 +603,6 @@ class SVD(Op):
         w[0], u[0], v[0] = self._numop(x,
                                        self.full_matrices,
                                        self.compute_uv)
-
-    def __str__(self):
-        return self._numop.__name__.capitalize()
 
 
 def svd(a, full_matrices=1, compute_uv=1):

@@ -53,17 +53,6 @@ class Cholesky(Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
-    def __str__(self):
-        if self.lower:
-            lu = 'lower'
-        else:
-            lu = 'upper'
-        if self.destructive:
-            destr = 'destructive'
-        else:
-            destr = 'non-destructive'
-        return 'Cholesky{%s,%s}' % (lu, destr)
-
     def make_node(self, x):
         assert imported_scipy, (
             "Scipy not available. Scipy is needed for the Cholesky op")
@@ -93,17 +82,6 @@ class CholeskyGrad(Op):
     def props(self):
         return (self.lower,
                 self.destructive)
-
-    def __str__(self):
-        if self.lower:
-            lu = 'lower'
-        else:
-            lu = 'upper'
-        if self.destructive:
-            destr = 'destructive'
-        else:
-            destr = 'non-destructive'
-        return 'CholeskyGrad{%s,%s}' % (lu, destr)
 
     def make_node(self, x, l, dz):
         x = as_tensor_variable(x)

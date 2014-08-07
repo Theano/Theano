@@ -581,6 +581,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
         else:
             return super(Op, self).__hash__()
 
+    def __str__(self):
+        if hasattr(self, 'props'):
+            return self.__class__.__name__
+        else:
+            return super(Op, self).__str__()
+
     def __eq__(self, other):
         if hasattr(self, 'props'):
             return (type(self) == type(other) and self.props() == other.props())
