@@ -22,30 +22,44 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
+// Reference code: https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 #undef _GLIBCXX_ATOMIC_BUILTINS
 #include <Python.h>
 #include "cuda_ndarray.cuh"
 #include "caffe_common.hpp"
+
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n)                        \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
+       i < (n);                                       \
+       i += blockDim.x * gridDim.x)
+
+// Use 1024 threads per block, which requires cuda sm_2x or above
+const int CUDA_NUM_THREADS = 1024;
+
+// CUDA: number of blocks for threads.
+inline int GET_BLOCKS(const int N) {
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
+
 // Kernel for fast unfold+copy
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu)
-// Reference code: https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 __global__ void im2col_kernel(const int n, const float* data_im,
-                              const int height, const int width, const int ksize, const int pad,
-                              const int stride, const int height_col, const int width_col,
+                              const int height, const int width, const int ksize_h, const int ksize_w, const int pad_h,
+			      const int pad_w, const int stride_h, const int stride_w, const int height_col, const int width_col,
                               float* data_col) {
   CUDA_KERNEL_LOOP(index, n) {
     int w_out = index % width_col;
     index /= width_col;
     int h_out = index % height_col;
     int channel_in = index / height_col;
-    int channel_out = channel_in * ksize * ksize;
-    int h_in = h_out * stride - pad;
-    int w_in = w_out * stride - pad;
+    int channel_out = channel_in * ksize_h * ksize_w;
+    int h_in = h_out * stride_h - pad_h;
+    int w_in = w_out * stride_w - pad_w;
     data_col += (channel_out * height_col + h_out) * width_col + w_out;
     data_im += (channel_in * height + h_in) * width + w_in;
-    for (int i = 0; i < ksize; ++i) {
-      for (int j = 0; j < ksize; ++j) {
+    for (int i = 0; i < ksize_h; ++i) {
+      for (int j = 0; j < ksize_w; ++j) {
         int h = h_in + i;
         int w = w_in + j;
         *data_col = (h >= 0 && w >= 0 && h < height && w < width) ?
@@ -57,20 +71,19 @@ __global__ void im2col_kernel(const int n, const float* data_im,
 }
 
 void im2col(const float* data_im, const int channels,
-            const int height, const int width, const int ksize, const int pad,
-            const int stride, float* data_col) {
+            const int height, const int width, const int ksize_h, const int ksize_w, const int pad_h,
+	    const int pad_w, const int stride_h, const int stride_w, float* data_col) {
   // We are going to launch channels * height_col * width_col kernels, each
   // kernel responsible for copying a single-channel grid.
-  int height_col = (height + 2 * pad - ksize) / stride + 1;
-  int width_col = (width + 2 * pad - ksize) / stride + 1;
+  int height_col = (height + 2 * pad_h - ksize_h) / stride_h + 1;
+  int width_col = (width + 2 * pad_w - ksize_w) / stride_w + 1;
   int num_kernels = channels * height_col * width_col;
-    
   // Launch
-  im2col_kernel <<<CAFFE_GET_BLOCKS(num_kernels), CAFFE_CUDA_NUM_THREADS>>> (
-     num_kernels, data_im, height, width, ksize, 
-     pad, stride, 
-     height_col, width_col, data_col
-     );
+  im2col_kernel <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>> (
+                                                                 num_kernels, data_im, height, width, ksize_h, ksize_w, 
+                                                                 pad_h, pad_w, stride_h, stride_w, 
+                                                                 height_col, width_col, data_col
+                                                                 );
 }
 
 
@@ -79,7 +92,10 @@ void im2col(const float* data_im, const int channels,
 CudaNdarray* corrMM(const CudaNdarray *input, 
 				      CudaNdarray *weight,
 				      CudaNdarray *output,
-				      int padding = 0) 
+				      int dH = 1, 
+     				  int dW = 1,
+				      int padH = 0, 
+				      int padW = 0) 
 {
 
   	cublasStatus_t status;
@@ -94,30 +110,12 @@ CudaNdarray* corrMM(const CudaNdarray *input,
         PyErr_SetString(PyExc_ValueError, "required weight of 4D");
     }
         
-     // TODO: stride(dW, dH) and padding as function parameter
-     int dH = 1; 
-     int dW = 1;
      int kH = CudaNdarray_HOST_DIMS(weight)[2];
      int kW = CudaNdarray_HOST_DIMS(weight)[3];
      int nInputPlane = CudaNdarray_HOST_DIMS(input)[1]; 
      // filters: (number of filters, nInputPlane, rows, columns)
      int nOutputPlane = CudaNdarray_HOST_DIMS(weight)[0];
      long batchSize = CudaNdarray_HOST_DIMS(input)[0];
-     if (CudaNdarray_HOST_DIMS(input)[2] != CudaNdarray_HOST_DIMS(input)[3]){
-       PyErr_Format(PyExc_ValueError,
-                    "GpuCorrMM support only square images. Got %dx%d images\n",
-		    CudaNdarray_HOST_DIMS(input)[2],
-		    CudaNdarray_HOST_DIMS(input)[3]
-		    );
-       return NULL;
-     }
-     if (kW != kH){
-       PyErr_Format(PyExc_ValueError,
-                    "GpuCorrMM support only square kernel. Got %dx%d kernel\n",
-		    kW, kH
-		    );
-       return NULL;
-     }
      if (CudaNdarray_HOST_DIMS(input)[1]  != CudaNdarray_HOST_DIMS(weight)[1]){
        PyErr_SetString(PyExc_ValueError,
                     "GpuCorrMM images and kernel must have the same stack size\n"
@@ -126,18 +124,16 @@ CudaNdarray* corrMM(const CudaNdarray *input,
      }
      long inputHeight  = CudaNdarray_HOST_DIMS(input)[2];
      long inputWidth   = CudaNdarray_HOST_DIMS(input)[3];
-     long outputWidth  = (inputWidth + 2*padding - kW) / dW + 1;
-     long outputHeight = (inputHeight + 2*padding - kH) / dH + 1;
+     long outputWidth  = (inputWidth + 2*padW - kW) / dW + 1;
+     long outputHeight = (inputHeight + 2*padH - kH) / dH + 1;
      // check output, size (batchSize, nOutputPlane,
      //		outputHeight, outputWidth);
-     
      if (batchSize != CudaNdarray_HOST_DIMS(output)[0] ||
 	 nOutputPlane != CudaNdarray_HOST_DIMS(output)[1] ||
 	 outputHeight != CudaNdarray_HOST_DIMS(output)[2] ||
 	 outputWidth != CudaNdarray_HOST_DIMS(output)[3]){
-       PyErr_SetString(PyExc_ValueError,
-                    "GpuCorrMM outputs parameter don't have the good shape\n"
-		    );
+	   PyErr_SetString(PyExc_ValueError,
+           "GpuCorrMM outputs parameter don't have the good shape.");
        return NULL;
      }
      // Create temporary columns
@@ -158,7 +154,7 @@ CudaNdarray* corrMM(const CudaNdarray *input,
         // 1. Extract columns:
         im2col(
            input->devdata + elt*ip_stride,
-           nInputPlane, inputWidth, inputHeight, kW, padding, dW, 
+           nInputPlane, inputHeight, inputWidth, kH, kW, padH, padW, dH, dW, 
            columns->devdata
          );
       
