@@ -583,7 +583,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def __str__(self):
         if hasattr(self, 'props'):
-            return self.__class__.__name__
+            return "%s{%s}" % (self.__class__.__name__, ", ".join(str(p) for p in self.props()))
         else:
             return super(Op, self).__str__()
 
