@@ -499,16 +499,21 @@ gpu_ger_inplace = GpuGer(inplace=True)
 
 
 class GpuCorrMM(GpuOp):
-    """
-    Author: Arjun Jain
-    Implement the caffe convolution
+    """GPU correlation implementation using Matrix Multiply.
+
+    :note: It don't implement the grad. So you should use it by
+        enabling the Theano flag ``optimizer_including=conv_gemm`` and
+        use :func:`conv2d <theano.tensor.nnet.conv.conv2d>`.
+
     """
     def __init__(self, border_mode,
             subsample=(1, 1),
             pad=0):
         """
         :param border_mode: "valid" or "full"
-        :param subsample: not yet supported
+        :param subsample: the subsample operation applied on each output image.
+            Should be a tuple with 2 elements.
+            (sv, sh) is equivalent to GpuCorrMM(...)(...)[:,:,::sv, ::sh]
         :param pad: not yet supported
         """
         self.border_mode = border_mode
@@ -552,7 +557,6 @@ class GpuCorrMM(GpuOp):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def flops(self, inputs, outputs):
-        """ Useful with the hack in profilemode to print the MFlops"""
         images, kerns = inputs
         out, = outputs
         assert images[1] == kerns[1]

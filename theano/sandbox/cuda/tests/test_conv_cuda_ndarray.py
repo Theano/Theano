@@ -640,7 +640,6 @@ def test_valid():
     mode = theano_mode.including("conv_gemm")
 
     version = [-1]
-    # Remove case not supported
     # Add tests with strided inputs by still square images and filters.
     shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
     shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
