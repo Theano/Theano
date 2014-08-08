@@ -192,7 +192,6 @@ def test_clinker_straightforward():
     assert fn(2.0, 2.0, 2.0) == 2.0
 
 
-@attr('slow')
 def test_clinker_literal_inlining():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -208,7 +207,6 @@ def test_clinker_literal_inlining():
     assert "4.12345678" in code  # we expect the number to be inlined
 
 
-@attr('slow')
 def test_clinker_single_node():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -219,7 +217,6 @@ def test_clinker_single_node():
     assert fn(2.0, 7.0) == 9
 
 
-@attr('slow')
 def test_clinker_dups():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -232,7 +229,6 @@ def test_clinker_dups():
     # note: for now the behavior of fn(2.0, 7.0) is undefined
 
 
-@attr('slow')
 def test_clinker_not_used_inputs():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -244,7 +240,6 @@ def test_clinker_not_used_inputs():
     assert fn(2.0, 1.5, 1.0) == 3.5
 
 
-@attr('slow')
 def test_clinker_dups_inner():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -273,7 +268,6 @@ def test_opwiseclinker_straightforward():
         assert fn(2.0, 2.0, 2.0) == -6
 
 
-@attr('slow')
 def test_opwiseclinker_constant():
     x, y, z = inputs()
     x = Constant(tdouble, 7.2, name='x')
@@ -307,7 +301,6 @@ def test_duallinker_straightforward():
     assert res == 15.3
 
 
-@attr('slow')
 def test_duallinker_mismatch():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
