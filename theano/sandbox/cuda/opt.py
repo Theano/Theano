@@ -1286,13 +1286,12 @@ def local_gpu_downsample_factor_max_grad(node):
 @local_optimizer([GpuConv])
 def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
-        node.op.border_mode in ['full', 'valid'] and
-        node.op.subsample == (1, 1)):
+        node.op.border_mode in ['full', 'valid']):
         img, kern = node.inputs
         img = gpu_contiguous(img)
         kern = kern[:, :, ::-1, ::-1]
         kern = gpu_contiguous(kern)
-        return [GpuCorrMM(node.op.border_mode)(img, kern)]
+        return [GpuCorrMM(node.op.border_mode, node.op.subsample)(img, kern)]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
