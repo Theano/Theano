@@ -28,20 +28,24 @@ TODO: Give examples for how to use these things! They are pretty complicated.
     - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
     - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>`
-      This is a GPU-only version of conv2d that uses an FFT transform
-      to perform the work.  You can enable it by setting
+      This is a GPU-only version of nnet.conv2d that uses an FFT transform
+      to perform the work. conv2d_fft should not be used directly as it
+      does not implement a grad function. Instead, you should use
+       nnet.conv2d and enable the fft optimization by setting
       'THEANO_FLAGS=optimizer_including=conv_fft_valid:conv_fft_full'
       in your environement.  This is not enabled by default because it
       has some restrictions on input and uses more memory.  Also note
       that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and PyCUDA to run.
+    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
+      3D Convolution. Doesn't work on the GPU.
     - :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`
-      This is the same as conv2d_fft but with 3d data instead.
-       You can enable it by setting THEANO_FLAGS to
+      GPU-only version of conv3D using FFT transform. conv3d_fft should
+      not be call directly as it does not implement a grad function.
+      You can enable it by setting THEANO_FLAGS to
       'optimizer_including=conv3d_fft:convgrad3d_fft:convtransp3d_fft'
-      in your environement.  This is not enabled by default because it
-      has some restrictions on input and uses more memory.  Also note
-      that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and PyCUDA to run.
-    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`. Doesn't work on the GPU.
+      This is not enabled by default because it has some restrictions on
+      input and uses more memory. Also note that it requires CUDA >= 5.0,
+      scikits.cuda >= 0.5.0 and PyCUDA to run.
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
       It is faster in some cases than conv3d, specifically on the GPU.
