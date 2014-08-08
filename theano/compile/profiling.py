@@ -55,6 +55,11 @@ AddConfigVar('profiling.min_memory_size',
              IntParam(1024, lambda i: i >= 0),
              in_c_key=False)
 
+AddConfigVar('profiling.min_peak_memory',
+            """The min peak memory usage of the order""",
+            BoolParam(False),
+            in_c_key=False)
+
 
 def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
@@ -637,6 +642,9 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
+        # track min peak memory usage
+        max_min_peak = 0
+
         def count_running_memory(order, thunk_old_storage, nodes_mem):
             """
             Calculate memory with specific node order 
@@ -688,10 +696,6 @@ class ProfileStats(object):
                 node_idx += 1
 
             return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
-
-        # count the minimum peak
-        minimum_peak = 0
-        max_minimum_peak = 0
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global maybe_executed, mem_count, mem_bound, max_mem_count
@@ -856,12 +860,10 @@ class ProfileStats(object):
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
 
-
-            node_list = fgraph.apply_nodes
-            minimum_peak = count_minimum_peak(node_list, fgraph, nodes_mem)
-            # for the best order, we dont use it now
-            max_minimum_peak = max(max_minimum_peak, minimum_peak)
-            
+            if config.profiling.min_peak_memory:
+                node_list = fgraph.apply_nodes
+                min_peak = count_minimum_peak(node_list, fgraph, nodes_mem)
+                max_min_peak = max(max_min_peak, min_peak)
 
             del fgraph, nodes_mem, post_thunk_old_storage, node
 
@@ -885,7 +887,9 @@ class ProfileStats(object):
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
             new_max_running_max_memory_size / 1024.)), int(round(
             max_running_max_memory_size / 1024.)))
-        print >> file,  "    Minimum peak from all valid apply node order is %dKB" % int(round(max_minimum_peak / 1024.))
+        if max_min_peak:
+            print >> file,  "    Minimum peak from all valid apply node order is %dKB" % int(round(
+                max_min_peak / 1024.))
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
             round(max_node_memory_saved_by_view / 1024.)))
