@@ -12,11 +12,13 @@ import theano.tensor as T
 
 def test_profiling():
 
-    old1 = theano.config.profile
-    old2 = theano.config.profile_memory
+    config1 = theano.config.profile
+    config2 = theano.config.profile_memory
+    config3 = theano.config.profiling.min_peak_memory
     try:
         theano.config.profile = True
         theano.config.profile_memory = True
+        theano.config.profiling.min_peak_memory = True
 
         x = [T.dvector("val%i" % i) for i in range(3)]
 
@@ -46,8 +48,9 @@ def test_profiling():
         assert "Minimum peak from all valid apply node order is 8192KB" in the_string
 
     finally:
-        theano.config.profile = old1
-        theano.config.profile_memory = old2
+        theano.config.profile = config1
+        theano.config.profile_memory = config2
+        theano.config.profiling.min_peak_memory = config3
 
 
 if __name__ == '__main__':
