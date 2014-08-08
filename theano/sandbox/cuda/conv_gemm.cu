@@ -132,8 +132,12 @@ CudaNdarray* corrMM(const CudaNdarray *input,
 	 nOutputPlane != CudaNdarray_HOST_DIMS(output)[1] ||
 	 outputHeight != CudaNdarray_HOST_DIMS(output)[2] ||
 	 outputWidth != CudaNdarray_HOST_DIMS(output)[3]){
-	   PyErr_SetString(PyExc_ValueError,
-           "GpuCorrMM outputs parameter don't have the good shape.");
+	   PyErr_Format(
+	       PyExc_ValueError,
+	       "GpuCorrMM outputs parameter don't have the good shape %d %d %d %d, %d %d %d %d\n",
+	       batchSize, nOutputPlane, outputHeight, outputWidth,
+	       CudaNdarray_HOST_DIMS(output)[0], CudaNdarray_HOST_DIMS(output)[1],
+	       CudaNdarray_HOST_DIMS(output)[2], CudaNdarray_HOST_DIMS(output)[3]);
        return NULL;
      }
      // Create temporary columns

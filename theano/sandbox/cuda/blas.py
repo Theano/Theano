@@ -578,9 +578,8 @@ class GpuCorrMM(GpuOp):
         return ['cuda_ndarray.cuh', '<stdio.h>']
 
     def c_code_cache_version(self):
-        return
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
+        return (0, 22)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
