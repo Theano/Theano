@@ -742,10 +742,20 @@ def test_subsample():
     if ones:
         random = False
 
+#    exec_conv(version_valid, shapes, verbose, random, 'valid',
+#              print_=print_, ones=ones)
+#    exec_conv(version_full, shapes, verbose, random, 'full',
+#              print_=print_, ones=ones)
+
+    # Test the GpuCorrMM version
+    mode = theano_mode.including("conv_gemm")
+
     exec_conv(version_valid, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones)
+              print_=print_, ones=ones,
+              theano_mode=mode, cls=cuda.blas.GpuCorrMM)
     exec_conv(version_full, shapes, verbose, random, 'full',
-              print_=print_, ones=ones)
+              print_=print_, ones=ones,
+              theano_mode=mode, cls=cuda.blas.GpuCorrMM)
 
 
 class TestConv2DGPU(unittest.TestCase):
