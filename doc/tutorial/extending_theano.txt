@@ -418,7 +418,8 @@ have to be jointly optimized explicitly in the code.)
 as_op
 =====
 
-- Decorator that converts a function into a basic Theano op         that will call the supplied function as its implementation.
+- Decorator that converts a function into a basic Theano op 
+    that will call the supplied function as its implementation.
 - Takes an optional infer_shape parameter that should be a
     callable with this signature:
 
@@ -431,7 +432,9 @@ as_op
 
 .. note::
 
-    This should not be used when performance is a concern since the very basic nature of the resulting Op may interfere with certain graph optimizations.
+    This should not be used when performance is a concern since 
+    the very basic nature of the resulting Op may interfere with
+    certain graph optimizations.
 
 .. note::
 
@@ -446,11 +449,16 @@ FromfunctionOp
 .. note::
 
     Since the resulting Op is very basic and is missing most 
-    of the optional functionalities, some optimizations may not apply.
+    of the optional functionalities, some optimizations may not 
+    apply.
 
-    If you want to help, you can supply an infer_shape function that computes the shapes of the output given the shapes of the inputs.
+    If you want to help, you can supply an infer_shape function 
+    that computes the shapes of the output given the shapes of 
+    the inputs.
 
-    Also the gradient is undefined in the resulting op and Theano will raise an error if you attempt to get the gradient of a graph containing this op.
+    Also the gradient is undefined in the resulting op and 
+    Theano will raise an error if you attempt to get the 
+    gradient of a graph containing this op.
 
 
 Op Example
@@ -467,6 +475,10 @@ Op Example
           otypes=[theano.tensor.fmatrix])
     def numpy_dot(a, b):
        return numpy.dot(a, b)
+
+        def infer_shape(self, node, shapes):
+            xshp, yshp = shapes
+            return [xshp[:-1] + yshp[-1:]]
 
 You can try it as follows:
 
