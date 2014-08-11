@@ -986,6 +986,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
                                  # optimized for that case.
                                  ((4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
                                                  -1, -2, -3, -4], False),
+                                 ((1, 10), [0, 0], True),
                              ]:
             # If there is not enough memory on the GPU, skip the test
             size_needed = numpy.prod(shape) * (4 + 1)
