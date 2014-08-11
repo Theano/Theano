@@ -10,7 +10,14 @@ from theano import tensor
 from theano.tensor import dmatrix, dvector
 from numpy import allclose
 from theano.compile import as_op
+import pickle
 
+
+# This is for test_pickle, since the function still has to be
+# reachable from pickle (as in it cannot be defined inline)
+@as_op([dmatrix, dmatrix], dmatrix)
+def mul(a, b):
+    return a*b
 
 class OpDecoratorTests(utt.InferShapeTester):
     def test_1arg(self):
@@ -59,3 +66,14 @@ class OpDecoratorTests(utt.InferShapeTester):
         self._compile_and_check([x, y], [diag_mult(x, y)],
                                 [[[1.5, 5], [2, 2]], [1, 100]],
                                 diag_mult.__class__, warn=False)
+
+    def test_pickle(self):
+        x = dmatrix('x')
+        y = dmatrix('y')
+
+        m = mul(x, y)
+
+        s = pickle.dumps(m)
+        m2 = pickle.loads(s)
+
+        assert m2.owner.op == m.owner.op
