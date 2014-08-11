@@ -478,7 +478,21 @@ Op Example
 
         def infer_shape(self, node, shapes):
             xshp, yshp = shapes
-            return [xshp[:-1] + yshp[-1:]]
+            x, y = node.inputs
+
+            # vector / vector
+            if x.ndim == 1 and y.ndim == 1:
+                return [()]
+            # matrix / vector
+            if x.ndim == 2 and y.ndim == 1:
+                return [xshp[:-1]]
+            # vector / matrix
+            if x.ndim == 1 and y.ndim == 2:
+                return [yshp[-1:]]
+            # matrix / matrix
+            if x.ndim == 2 and y.ndim == 2:
+                return [xshp[:-1] + yshp[-1:]]
+            raise NotImplementedError()
 
 You can try it as follows:
 
