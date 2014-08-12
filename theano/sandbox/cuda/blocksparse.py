@@ -446,7 +446,7 @@ static cublasStatus_t SgerBatched(cublasHandle_t handle, int m, int n,
   }
   if (grid.x * grid.y * grid.z > 65535) {
     if (grid.x * grid.y > 65535)
-      return CUBLAS_INVALID_VALUE;
+      return CUBLAS_STATUS_INVALID_VALUE;
     grid.z = (65535 / (grid.x * grid.y));
   }
   cublasGetPointerMode(handle, &mode);
@@ -592,7 +592,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
     CudaNdarray_HOST_DIMS(%(x)s)[1] *
     CudaNdarray_HOST_DIMS(%(y)s)[1]);
   if (err != CUBLAS_STATUS_SUCCESS) {
-    if (err == CUBLAS_INVALID_VALUE) {
+    if (err == CUBLAS_STATUS_INVALID_VALUE) {
        /* The current code would be much too slow for sizes any larger
           than this. */
        PyErr_SetString(PyExc_ValueError,
