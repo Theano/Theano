@@ -120,10 +120,6 @@ class TestConv2dFFT(unittest.TestCase):
         utt.assert_allclose(res_ref, res_fft)
 
 
-
-
-
-
 class TestConv3dFFT(unittest.TestCase):
 
     @staticmethod
@@ -149,7 +145,8 @@ class TestConv3dFFT(unittest.TestCase):
         return outputs
 
     @staticmethod
-    def perform_conv3d_through_multiple_conv2d_fft(inputs, filters, border_mode, function_mode):
+    def perform_conv3d_through_multiple_conv2d_fft(inputs, filters,
+                                                   border_mode, function_mode):
 
         assert(border_mode in ['valid', 'full'])
         # function_mode is just mode_with_gpu from the environment
@@ -231,10 +228,3 @@ class TestConv3dFFT(unittest.TestCase):
                     self.run_conv(inputs_shape=(5, 3, 5 + offset1, 6 + offset2, 4 + offset3),
                                   filters_shape=(2, 3, 3 + offset1, 3 + offset2, 3 + offset3),
                                   border_mode='full')
-
-
-
-
-
-
-
