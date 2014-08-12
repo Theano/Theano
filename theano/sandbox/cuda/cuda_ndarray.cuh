@@ -82,7 +82,7 @@ typedef float real;
 #define NO_VERBOSE_DEVICE_MALLOC 0
 
 /* Use this handle to make cublas calls */
-extern cublasHandle_t handle;
+extern DllExport cublasHandle_t handle;
 
 /**
  * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.
