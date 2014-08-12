@@ -7,7 +7,6 @@ import unittest
 
 
 import numpy
-import scipy
 
 from nose.plugins.skip import SkipTest
 imported_scipy_convolve2d = False
@@ -116,7 +115,7 @@ def py_conv_scipy(img, kern, mode, subsample):
         for k in xrange(out.shape[1]):
             for s in xrange(img.shape[1]):
                 #convolve2d or correlate
-                out[b, k, :, :] += scipy.signal.convolve2d(img[b, s, :, :],
+                out[b, k, :, :] += convolve2d(img[b, s, :, :],
                                   kern[k, s, :, :],
                                   mode)
     return out[:, :, ::subsample[0], ::subsample[1]]
@@ -859,13 +858,8 @@ def test_gemm():
                                             i = cuda_tensor4()
                                             k = cuda_tensor4()
                                         
-                                            t2 = None
-                                        
-                                            t0 = time.time()
                                             cpuval = py_conv(npy_img, npy_kern, mode, subsample)
                                         
-                                            t1 = time.time()
-                                            
                                             op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=mode, \
                                                     subsample=subsample)(i, k)
                                             f = theano.function([i, k], op, mode=theano_mode)
@@ -873,8 +867,6 @@ def test_gemm():
                                             npy_kern = npy_kern[:,:,::-1,::-1]
                                             
                                             gpuval = f(npy_img, npy_kern)
-                                            
-                                            t2 = time.time()
                                             
                                             gpuval = numpy.asarray(gpuval)
                                             rval = numpy.allclose(cpuval, gpuval, rtol=1e-4)
