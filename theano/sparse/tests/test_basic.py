@@ -451,22 +451,6 @@ class TestConstructSparseFromList(unittest.TestCase):
         assert isinstance(g.owner.op, tensor.AdvancedIncSubtensor1)
 
         # Test that we create a sparse grad when asked
-        # OLD INTERFACE
-        m = theano.tensor.matrix()
-        sub = m[v]
-        m.type.sparse_grad = True
-        g = theano.grad(sub.sum(), m)
-        assert isinstance(g.owner.op, ConstructSparseFromList)
-
-        # Test that we create a sparse grad when asked
-        # OLD INTERFACE CONSEQUENCE
-        m = theano.tensor.matrix()
-        sub = m[v]
-        sub.type.sparse_grad = True
-        g = theano.grad(sub.sum(), m)
-        assert isinstance(g.owner.op, ConstructSparseFromList)
-
-        # Test that we create a sparse grad when asked
         # USER INTERFACE
         m = theano.tensor.matrix()
         v = theano.tensor.ivector()

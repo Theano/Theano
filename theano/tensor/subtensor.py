@@ -1567,14 +1567,7 @@ class AdvancedSubtensor1(Op):
         x, ilist = inputs
         gz, = grads
         assert len(inputs) == 2
-        sparse = False
-        if getattr(x.type, 'sparse_grad', False):
-            sparse = True
-            warnings.warn(
-                "DEPRECATION WARNING: AdvancedSubtensor1, you are using"
-                " an old interface to the sparse grad. You should use"
-                " theano.sparse_grad(a_tensor[an_int_vector]). ")
-        if sparse or self.sparse_grad:
+        if self.sparse_grad:
             if x.type.ndim != 2:
                 raise TypeError(
                     "AdvancedSubtensor1: you can't take the sparse grad"
