@@ -848,7 +848,7 @@ def test_gemm_directly():
     input: (batch size, channels, rows, columns)
     filters: (number of filters, channels, rows, columns)
     """
-    for mode in ['full', 'valid']:
+    for mode in ['valid']:  # 'full' currently disabled; doesn't allow subsampling
         print 'Testing mode: ' + mode
         for bs in range(1, 5):
             for ch in range(1,4):

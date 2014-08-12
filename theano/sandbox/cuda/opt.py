@@ -1351,10 +1351,22 @@ def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode in ['full', 'valid']):
         img, kern = node.inputs
+        border_mode = node.op.border_mode
+        subsample = node.op.subsample
+        pad = (0,0)
+        if (border_mode == 'full') and ((subsample != (1,1)) or (pad != (0,0))):
+            # need to simulate this via a padded valid convolution
+            pad = 'auto'
+            border_mode = 'valid'
+        if (border_mode == 'valid'):
+            # need to flip the kernel for valid convolution
+            kern = gpu_contiguous(kern[:, :, ::-1, ::-1])
+        elif (border_mode == 'full'):
+            # need to bring kernel into correct memory layout for full convolution
+            kern = gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)).dimshuffle(1, 0, 2, 3)
+        # need C-contiguous inputs
         img = gpu_contiguous(img)
-        kern = kern[:, :, ::-1, ::-1]
-        kern = gpu_contiguous(kern)
-        return [GpuCorrMM(node.op.border_mode, node.op.subsample)(img, kern)]
+        return [GpuCorrMM(border_mode, subsample, pad)(img, kern)]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 

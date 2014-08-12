@@ -501,29 +501,59 @@ gpu_ger_inplace = GpuGer(inplace=True)
 
 
 class GpuCorrMM(GpuOp):
-    """GPU correlation implementation using Matrix Multiply.
+    """GPU correlation/convolution implementation using Matrix Multiplication.
 
-    :note: It don't implement the grad. So you should use it by
-        enabling the Theano flag ``optimizer_including=conv_gemm`` and
-        use :func:`conv2d <theano.tensor.nnet.conv.conv2d>`.
+    :note: It doesn't implement the grad. So you shouldn't use it directly, but
+        use :func:`conv2d <theano.tensor.nnet.conv.conv2d>` and then enable the
+        Theano flag ``optimizer_including=conv_gemm`` to automatically replace
+        all convolution operations with `GpuCorrMM`.
 
     """
     def __init__(self, border_mode,
             subsample=(1, 1),
-            pad=0):
+            pad=(0, 0)):
         """
         :param border_mode: "valid" or "full"
-        :param subsample: the subsample operation applied on each output image.
+        :param subsample: the subsample operation applied to each output image.
             Should be a tuple with 2 elements.
             (sv, sh) is equivalent to GpuCorrMM(...)(...)[:,:,::sv, ::sh]
-        :param pad: not yet supported
+            If border_mode="full", this is instead treated as an upsampling
+            operation applied to each input image.
+            Set to (1, 1) to disable downsampling/upsampling.
+        :param pad: the width of a border of implicit zeros to pad the input
+            image with. Should be a tuple with 2 elements giving the numbers of
+            rows and columns to pad on each side, or "auto" to set the padding
+            to (kernel_rows - 1, kernel_columns - 1) at runtime.
+            If border_mode="full", this is instead treated as the width of a
+            border to crop from the output image.
+            Set to (0, 0) to disable padding/cropping.
+
+        :note: The border_mode changes the meaning of several parameters.
+            If border_mode="valid", the Op does a valid correlation of a padded
+            input image and subsamples it. (To perform a convolution instead,
+            you will need to flip the kernels.)
+            If border_mode="full", the Op does a full convolution of an
+            upsampled input image and crops it. (This can be used as a backward
+            pass of the valid correlation done with border_mode="valid".)
+            Combined with pad="auto", you can use border_mode="valid" to
+            simulate a full correlation with subsampling, or border_mode="full"
+            to simulate a valid convolution with upsampling.
+
+        :note: Currently, the Op requires a very specific memory layout.
+            For border_mode="valid", inputs, filters and outputs must be
+            C-contiguous. For border_mode="full", the same applies, except that
+            the strides of the first two dimensions of the filters (output and
+            input channels) must be swapped compared to C-contiguity.
         """
         self.border_mode = border_mode
         self.subsample = subsample
+        #if (border_mode == "full") and (subsample != (1,1)):
+        #    raise NotImplementedError(
+        #        "GpuCorrMM doesn't support subsampling for border_mode='full'")
         self.pad = pad
-        if pad != 0:
-            raise NotImplementedError(
-                "GpuCorrMM don't implement the pad parameter")
+        #if (border_mode == "full") and (pad != (0,0)):
+        #    raise NotImplementedError(
+        #        "GpuCorrMM doesn't support padding for border_mode='full'")
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -540,7 +570,7 @@ class GpuCorrMM(GpuOp):
             ^ hash(self.pad)
 
     def __str__(self):
-        return '%s{%s, %s, pad=%d}' % (
+        return '%s{%s, %s, pad=%r}' % (
             self.__class__.__name__,
             self.border_mode,
             str(self.subsample),
@@ -581,7 +611,7 @@ class GpuCorrMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 22)
+        return (0, 23)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -596,13 +626,18 @@ class GpuCorrMM(GpuOp):
         out, = out_
         dx = self.subsample[0]
         dy = self.subsample[1]
-        sub = sub.copy()
-        pad = self.pad
+        if self.pad == "auto":
+            padH = padW = -1
+        else:
+            padH = self.pad[0]
+            padW = self.pad[1]
         if self.border_mode == "valid":
             bmode = 1
-        else:
-            assert self.border_mode == "full"
+        elif self.border_mode == "full":
             bmode = 0
+        else:
+            raise ValueError("mode must be one of 'full' or 'valid'")
+        sub = sub.copy()
         sub.update(locals())
 
         return """
@@ -612,33 +647,34 @@ class GpuCorrMM(GpuOp):
     //Optional args
     int dx = %(dx)s;
     int dy = %(dy)s;
-    int padH = 0;
-    int padW = 0;
+    int padH = %(padH)s;
+    int padW = %(padW)s;
     
     CudaNdarray * img = %(img)s;
     CudaNdarray * kern = %(kern)s;
     CudaNdarray * out2 = NULL;
-    //TODO: Send self.pad, stride, etc
+
+    //Auto-padding if requested
+    if (padH < 0) {
+        padH = CudaNdarray_HOST_DIMS(kern)[2] - 1;
+    }
+    if (padW < 0) {
+        padW = CudaNdarray_HOST_DIMS(kern)[3] - 1;
+    }
 
     int out_dim[4];
     out_dim[0] = CudaNdarray_HOST_DIMS(img)[0];
     out_dim[1] = CudaNdarray_HOST_DIMS(kern)[0];
-    int logical_rows, logical_cols;
-    if (mode == 1)
+    if (mode == 1)  // valid correlation with padding and subsampling
     {
-        logical_rows = CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1;
-        logical_cols = CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1;
+        out_dim[2] = ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2] + 2*padH - CudaNdarray_HOST_DIMS(kern)[2] + 1, dx);
+        out_dim[3] = ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3] + 2*padW - CudaNdarray_HOST_DIMS(kern)[3] + 1, dy);
     }
-    else
+    else  // full convolution with upsampling and cropping
     {
-        logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
-        logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
-        padH = CudaNdarray_HOST_DIMS(kern)[2] - 1;
-        padW = CudaNdarray_HOST_DIMS(kern)[3] - 1;
-    
+        out_dim[2] = (CudaNdarray_HOST_DIMS(img)[2] - 1) * dx + CudaNdarray_HOST_DIMS(kern)[2] - 2*padH;
+        out_dim[3] = (CudaNdarray_HOST_DIMS(img)[3] - 1) * dy + CudaNdarray_HOST_DIMS(kern)[3] - 2*padW;
     }
-    out_dim[2] = ceil_intdiv(logical_rows, dx);
-    out_dim[3] = ceil_intdiv(logical_cols, dy);
 
     if ( !(%(out)s
            && %(out)s->nd==4
@@ -650,10 +686,9 @@ class GpuCorrMM(GpuOp):
     {
         Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
-
     }
 
-    out2 = corrMM(%(img)s, %(kern)s, %(out)s, dx, dy, padH, padW);
+    out2 = corrMM(%(img)s, %(kern)s, %(out)s, mode, dx, dy, padH, padW);
     if (out2==NULL){
        %(fail)s
     }
