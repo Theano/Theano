@@ -5,6 +5,7 @@ import theano
 import theano.tensor as T
 
 from theano.sandbox.cuda import cuda_available, GpuOp
+from theano.ifelse import ifelse
 
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
@@ -526,13 +527,11 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     the inputs and the filters. For example, when the convolution
     is done on a sequence of images, they could be either
     (duration, height, width) or (height, width, duration).
-    
+
     If you must use input which has an odd width, you can either pad
     it or use the `pad_last_dim` argument which will do it for you and
-    take care to strip the padding before returning.  Don't use this
-    argument if you are not sure the input is odd since the padding is
-    unconditional and will make even input odd, thus leading to
-    problems.
+    take care to strip the padding before returning. pad_last_dim checks
+    that the last dimension is odd before the actual paddding
 
     On valid mode the filters must be smaller than the input.
 
@@ -558,19 +557,20 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     # output channels, input channels, filter dim 0, filter dim 1
     oc, ic_, f0, f1, f2 = filter_shape
 
+    # Check that the last dimension is odd
+    is_odd = T.eq(T.mod(input.shape[4], 2), 1)
+
     # pad filters/image to output shape
     if border_mode == 'valid':
         o0 = i0
         o1 = i1
+        o2 = i2
+        input_padded = input
         if pad_last_dim:
-            o2 = i2 + 1
+            o2 = ifelse(is_odd, o2 + 1, o2)
             input_padded = T.zeros((b, ic, o0, o1, o2), dtype='float32')
             input_padded = T.set_subtensor(input_padded[:, :, :i0, :i1, :i2],
-                                       input)
-        else:
-            o2 = i2 
-            input_padded = input
-
+                                           input)
         filters_padded = T.zeros((oc, ic, o0, o1, o2), dtype='float32')
         filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1, :f2],
                                          filters)
@@ -585,7 +585,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
         o2 = i2 + 2 * (f2 - 1)
 
         if pad_last_dim:
-            o2 = o2 + 1
+            o2 = ifelse(is_odd, o2 + 1, o2)
 
         # We line up the filters and the images in a way
         # such that the filters are tightly placed against the
@@ -593,7 +593,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
         # them on one pixel. The top-left pixel of the images
         # is the bottom-right pixel of the filters when we
         # do the layout here.
-        
+
         filters_padded = T.zeros((oc, ic, o0, o1, o2), dtype='float32')
         filters_padded = T.set_subtensor(filters_padded[:, :, :f0, :f1, :f2],
                                          filters)
@@ -619,6 +619,8 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     # the two dimensions intact.
     input_fft_v_shape = (b, ic, o0 * o1, o2 // 2 + 1, 2)
     filters_fft_v_shape = (oc, ic, o0 * o1, o2 // 2 + 1, 2)
+
+
     input_fft_v = input_fft_flat.reshape(input_fft_v_shape)
     filters_fft_v = filters_fft_flat.reshape(filters_fft_v_shape)
 
@@ -626,6 +628,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     output_fft_s = mult_and_reduce(input_fft_v, filters_fft_v,
                                    input_shape=input_fft_v_shape,
                                    filter_shape=filters_fft_v_shape)
+    #output_fft_s = input_fft_v
 
 
     # reshape for IFFT
@@ -649,6 +652,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
         output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1), (f2-1):(f2-1 + i2+f2-1)]
     else:
         raise ValueError('invalid mode')
+    #output = output_circ[:, :, :, :, :]
 
     # Rescale manually. This is just a factor that comes in during the
     # trip through FFT and inverse FFT.

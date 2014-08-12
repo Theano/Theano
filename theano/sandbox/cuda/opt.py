@@ -1275,7 +1275,7 @@ def local_conv3d_fft(node):
         # Shuffle filters from (oc, 0, 1, t, ic) to (oc, ic, 0, 1, t)
         f = node.inputs[1]
         f = gpu_from_host(f.dimshuffle(0, 4, 1, 2, 3))
-        rval = conv3d_fft(x, f)
+        rval = conv3d_fft(x, f, border_mode='valid', pad_last_dim=True)
         # Shuffle from (oc, c, 0, 1, t) to (oc, 0, 1, t, c)
         return [gpu_from_host(rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[2])]
 
@@ -1301,7 +1301,7 @@ def local_convgrad3d_fft(node):
         # Shuffle dCdH from (b, 0, 1, t, oc) to (oc, b, 0, 1, t)
         f = node.inputs[3]
         f = f.dimshuffle(4, 0, 1, 2, 3)
-        rval = conv3d_fft(x, f)
+        rval = conv3d_fft(x, f, border_mode='valid', pad_last_dim=True)
         # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
         return [gpu_from_host(rval.dimshuffle(1, 2, 3, 4, 0))]
 
@@ -1327,7 +1327,7 @@ def local_convtransp3d_fft(node):
         # Shuffle dCdH from (b, 0, 1, t, oc) to (b, oc, 0, 1, t)
         f = node.inputs[3]
         f = f.dimshuffle(0, 4, 1, 2, 3)
-        rval = conv3d_fft(f, x, border_mode='full')
+        rval = conv3d_fft(f, x, border_mode='full', pad_last_dim=True)
         # Shuffle from (ic, b, 0, 1, t) to (b, 0, 1, t, ic)
         return [gpu_from_host(rval.dimshuffle(0, 2, 3, 4, 1))]
 
