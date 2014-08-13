@@ -749,40 +749,52 @@ class ProfileStats(object):
                 for node in executable_nodes:
                     new_exec_nodes = executable_nodes.copy()
                     new_exec_nodes.remove(node)
+                    for var in node.outputs:
+                        compute_map[var][0] = 1
 
                     mem_created = 0
                     mem_freed = 0
-
                     max_storage = max_mem_count
+
+                    # {var1:[vars that view var1]}
+                    viewed_by = {}
+                    # {var1: original var viewed by var1}
+                    view_of = {}
 
                     # check if we cut path now
                     if max_mem_count > mem_bound:
                         continue
 
-                    for var in node.outputs:
-                        compute_map[var][0] = 1
-
-                    idx = 0
                     dmap = getattr(node.op, 'destroy_map', None)
                     vmap = getattr(node.op, 'view_map', None)
 
-                    # Compute mem_create
-                    for i in nodes_mem[node]:
-                        if (dmap and idx in dmap) or (vmap and idx in vmap):
-                            continue
-                        elif not isinstance(i, str):
-                            mem_created += i
-                        idx += 1
+                    for out in node.outputs:
+                        if (dmap or vmap):
+                            for i in node.inputs:
+                                view_of[out] = view_of.get(i, i)
+                                if i in viewed_by:
+                                    viewed_by[i].append[out]                                    
+                                else:
+                                    viewed_by[i] = [out]
+                        else:
+                            mem_created += var_mem[out]
 
                     mem_count += mem_created
-                    if mem_count > max_mem_count:
-                        max_mem_count = mem_count
+                    max_mem_count = max(max_mem_count, mem_count)
 
-                    #Compute mem_freed
-                    for val in node.inputs:
-                        if (dependencies[val] and val.owner and val not in fgraph.outputs):
-                            if all(compute_map[v] for v in dependencies[val]):
-                                mem_freed += var_mem[val]
+                    for ins in node.inputs:
+                        assert not (ins in view_of and i in viewed_by)
+                        if dependencies[ins] and ins not in fgraph.outputs:
+                            if all(compute_map[v] for v in dependencies[ins]):
+                                if ins not in view_of and not viewed_by.get(ins, []):
+                                    mem_freed += var_mem[ins]
+                                elif ins in view_of:
+                                    origin = view_of[ins]
+                                    viewed_by[origin].remove(ins)
+                                    if not viewed_by[origin]:
+                                        mem_freed += var_mem[origin]
+                        else:
+                            pass
 
                     mem_count -= mem_freed
 
