@@ -1523,7 +1523,9 @@ class AdvancedSubtensor1(Op):
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
-        return Apply(self, [x_, ilist_], [x_.type()])
+        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
+        return Apply(self, [x_, ilist_], [TensorType(dtype=x.dtype,
+                                                     broadcastable=bcast)()])
 
     def perform(self, node, inp, out_):
         x, i = inp
@@ -1565,14 +1567,7 @@ class AdvancedSubtensor1(Op):
         x, ilist = inputs
         gz, = grads
         assert len(inputs) == 2
-        sparse = False
-        if getattr(x.type, 'sparse_grad', False):
-            sparse = True
-            warnings.warn(
-                "DEPRECATION WARNING: AdvancedSubtensor1, you are using"
-                " an old interface to the sparse grad. You should use"
-                " theano.sparse_grad(a_tensor[an_int_vector]). ")
-        if sparse or self.sparse_grad:
+        if self.sparse_grad:
             if x.type.ndim != 2:
                 raise TypeError(
                     "AdvancedSubtensor1: you can't take the sparse grad"
@@ -1742,8 +1737,9 @@ class AdvancedIncSubtensor1(Op):
                 'cannot %s x subtensor with ndim=%s'
                 ' by y with ndim=%s to x subtensor with ndim=%s ' % (
                     opname, x_.type.ndim, y_.type.ndim))
-
-        return Apply(self, [x_, y_, ilist_], [x_.type()])
+        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
+        return Apply(self, [x_, y_, ilist_], [TensorType(dtype=x.dtype,
+                                                     broadcastable=bcast)()])
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
