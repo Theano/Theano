@@ -126,22 +126,6 @@ class CLinkerObject(object):
         """
         return ()
 
-    def c_code_cache_version_apply(self, node):
-        """Return a tuple of integers indicating the version of this Op.
-
-        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
-
-        The cache mechanism may erase cached modules that have been superceded by newer
-        versions.  See `ModuleCache` for details.
-
-        :note: See also `c_code_cache_version()`
-
-        :note: This function overrides `c_code_cache_version` unless it explicitly calls
-        `c_code_cache_version`.  The default implementation simply calls `c_code_cache_version`
-        and ignores the `node` argument.
-        """
-        return self.c_code_cache_version()
-
     def c_compile_args(self):
         """Optional: Return a list of compile args recommended to compile the
         code returned by other methods in this class.
@@ -187,18 +171,6 @@ class CLinkerObject(object):
                                      self.__class__.__name__)
 
 
-    def c_init_code_apply(self, node, name):
-        """
-        Optional: return a list of code snippets specific to the apply
-        to be inserted in module initialization.
-
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
-        """
-        raise utils.MethodNotDefined("c_init_code_apply", type(self),
-                                     self.__class__.__name__)
-
-
 class CLinkerOp(CLinkerObject):
     """
     Interface definition for `Op` subclasses compiled by `CLinker`.
@@ -217,24 +189,25 @@ class CLinkerOp(CLinkerObject):
 
         :Parameters:
          `node` : Apply instance
-           WRITEME
-         `name` : WRITEME
-           WRITEME
+           The node for which we are compiling the current c_code.
+           The same Op may be used in more than one node.
+         `name` : A string
+           A name that is automatically assigned and guaranteed to be unique.
          `inputs` : list of strings
-           There is a string for each input of the function, and the string is the name of a C
-           `PyObject` variable pointing to that input.
+           There is a string for each input of the function, and the
+           string is the name of a C `PyObject` variable pointing to
+           that input.
          `outputs` : list of strings
-           Each string is the name of a `PyObject` pointer where the Op should
-           store its variables.  As of version 0.4.0, this pointer could be
-           NULL, or contain an object allocated during a previous call to the
-           same function, unchanged from the end of the previous execution.
-           In a future version, there will be no guarantee on where that
-           object will be created (it could be allocated during a previous
-           execution, or by another Op, by the Mode, etc.). It will still
-           be of an appropriate Type (in the Theano sense) to store the output
-           of the computation: for instance, for a TensorVariable, it will be a
-           Numpy ndarray with the right number of dimensions, and the right dtype.
-           However, its shape, or stride pattern, could not be adequate.
+           Each string is the name of a `PyObject` pointer where the
+           Op should store its variables. This pointer may either be
+           NULL, indicating that the Op must allocate appropriate
+           objects or it may point to preallocated objects of the
+           right type and number of dimensions. In the case of
+           preallocated objects, the Op must make sure that the shape
+           and strides meet requirements, and in the case they don't
+           either reallocate the object inplace or free it and
+           allocate an appropriate output. The type and number of
+           dimensions are guaranteed to be appropriate.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
@@ -246,10 +219,28 @@ class CLinkerOp(CLinkerObject):
         raise utils.MethodNotDefined('%s.c_code' \
                 % self.__class__.__name__)
 
-    def c_code_cleanup(self, node, name, inputs, outputs, sub):
-        """Optional: Return C code to run after c_code, whether it failed or not.
+    def c_code_cache_version_apply(self, node):
+        """Return a tuple of integers indicating the version of this Op.
 
-        QUESTION: is this function optional?
+        An empty tuple indicates an 'unversioned' Op that will not be
+        cached between processes.
+
+        The cache mechanism may erase cached modules that have been
+        superceded by newer versions.  See `ModuleCache` for details.
+
+        :note: See also `c_code_cache_version()`
+
+        :note: This function overrides `c_code_cache_version` unless
+               it explicitly calls `c_code_cache_version`.  The
+               default implementation simply calls
+               `c_code_cache_version` and ignores the `node` argument.
+        """
+        return self.c_code_cache_version()
+
+    def c_code_cleanup(self, node, name, inputs, outputs, sub):
+        """
+        Optional: Return C code to run after c_code, whether it failed
+                  or not.
 
         This is a convenient place to clean up things allocated by c_code().
 
@@ -259,39 +250,45 @@ class CLinkerOp(CLinkerObject):
          `name` : WRITEME
            WRITEME
          `inputs` : list of strings
-           There is a string for each input of the function, and the string is the name of a C
-           `PyObject` variable pointing to that input.
+           There is a string for each input of the function, and the
+           string is the name of a C `PyObject` variable pointing to
+           that input.
          `outputs` : list of strings
-           Each string is the name of a `PyObject` pointer where the Op should store its
-           variables.  This pointer could be NULL, or contain an object of the right
-           Type (in the Theano sense) to store the output of the computation.
-           For instance, for a TensorVariable, it will be a Numpy ndarray with
-           the right number of dimensions, and the right dtype. However, its
-           shape, or stride pattern, could not be adequate.
-           It could be unchanged from the end of the previous execution, or allocated
-           by another Op, or by the Mode.
+           Each string is the name of a `PyObject` pointer where the
+           Op should store its variables.  This pointer could be NULL,
+           or contain an object of the right Type (in the Theano
+           sense) to store the output of the computation.  For
+           instance, for a TensorVariable, it will be a Numpy ndarray
+           with the right number of dimensions, and the right
+           dtype. However, its shape, or stride pattern, could not be
+           adequate.  It could be unchanged from the end of the
+           previous execution, or allocated by another Op, or by the
+           Mode.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
 
-        WRITEME
-
         :Exceptions:
          - `MethodNotDefined`: the subclass does not override this method
-
         """
         raise utils.MethodNotDefined('%s.c_code_cleanup' \
                 % self.__class__.__name__)
 
     def c_support_code_apply(self, node, name):
-        """Optional: Return utility code for use by an `Op` that will be inserted at global
-        scope, that can be specialized for the support of a particular `Apply` node.
+        """Optional: Return utility code for use by an `Op` that will be
+        inserted at struct scope, that can be specialized for the
+        support of a particular `Apply` node.
 
         :param node: an Apply instance in the graph being compiled
 
-        :param node_id: a string or number that serves to uniquely identify this node.
-        Symbol names defined by this support code should include the node_id, so that they can
-        be called from the c_code, and so that they do not cause name collisions.
+        :param name: a string or number that serves to uniquely
+                     identify this node.  Symbol names defined by this
+                     support code should include the name, so that
+                     they can be called from the c_code, and so that
+                     they do not cause name collisions.
+
+        :note: This function is called in addition to c_support_code
+               and will supplement whatever is returned from there.
 
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
@@ -299,6 +296,28 @@ class CLinkerOp(CLinkerObject):
         """
         raise utils.MethodNotDefined("c_support_code_apply",
                 type(self), self.__class__.__name__)
+
+    def c_init_code_apply(self, node, name):
+        """
+        Optional: return a code string specific to the apply
+        to be inserted in the struct initialization code.
+
+        :param node: an Apply instance in the graph being compiled
+
+        :param name: a string or number that serves to uniquely
+                     identify this node.  Symbol names defined by this
+                     support code should include the name, so that
+                     they can be called from the c_code, and so that
+                     they do not cause name collisions.
+
+        :note: This function is called in addition to c_init_code
+               and will supplement whatever is returned from there.
+
+        :Exceptions:
+         - `MethodNotDefined`: the subclass does not override this method
+        """
+        raise utils.MethodNotDefined("c_init_code_apply", type(self),
+                                     self.__class__.__name__)
 
 
 class PureOp(object):

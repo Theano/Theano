@@ -1522,8 +1522,6 @@ def gcc_llvm():
     It don't support all g++ parameters even if it support many of them.
     """
     if gcc_llvm.is_llvm is None:
-        pass
-        p = None
         try:
             p_out = output_subprocess_Popen(['g++', '--version'])
             output = p_out[0] + p_out[1]
@@ -1535,9 +1533,9 @@ def gcc_llvm():
             # compile when g++ is not available. If this happen, it
             # will crash later so supposing it is not llvm is "safe".
             output = b('')
-        del p
         gcc_llvm.is_llvm = b("llvm") in output
     return gcc_llvm.is_llvm
+
 gcc_llvm.is_llvm = None
 
 

@@ -535,7 +535,6 @@ class CLinker(link.Linker):
         for variable in self.variables:
 
             # it might be possible to inline constant variables as C literals
-##            if getattr(variable, 'constant', False):
             # policy = [[what to declare in the struct,
             #            what to do at construction,
             #            what to do at destruction],
@@ -545,9 +544,6 @@ class CLinker(link.Linker):
             if variable in self.inputs:
                 # we need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync
-#                 if isinstance(variable, Constant):
-#                     raise TypeError("Inputs to CLinker cannot be Constant.",
-#                                     variable)
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
