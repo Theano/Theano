@@ -743,6 +743,8 @@ class ProfileStats(object):
                 """
                 Generate all valid node order from node_list
                 and compute its memory peaf
+
+                :param executable_nodes: Set of executable nodes
                 """
                 global mem_count, mem_bound, max_mem_count
 
@@ -750,6 +752,7 @@ class ProfileStats(object):
                     new_exec_nodes = executable_nodes.copy()
                     new_exec_nodes.remove(node)
 
+                    # Check if cut path now
                     if max_mem_count > mem_bound:
                         continue
 
@@ -766,7 +769,6 @@ class ProfileStats(object):
                         viewed_by[i] = []
                     # {var1: original var viewed by var1}
                     view_of = {}
-
                     dmap = getattr(node.op, 'destroy_map', None)
                     vmap = getattr(node.op, 'view_map', None)
 
@@ -818,6 +820,7 @@ class ProfileStats(object):
                     for var in node.outputs:
                         compute_map[var][0] = 0
 
+            # Loop all valid orders and find min peak(store in mem_bound)
             for order in min_memory_generator(executable_nodes):
                 continue
 
@@ -871,6 +874,7 @@ class ProfileStats(object):
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
 
+            # Config: whether print min memory peak
             if config.profiling.min_peak_memory:
                 node_list = fgraph.apply_nodes
                 min_peak = count_minimum_peak(node_list, fgraph, nodes_mem)
