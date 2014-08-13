@@ -276,7 +276,7 @@ class CLinkerOp(CLinkerObject):
 
     def c_support_code_apply(self, node, name):
         """Optional: Return utility code for use by an `Op` that will be
-        inserted at struct scope, that can be specialized for the
+        inserted at global scope, that can be specialized for the
         support of a particular `Apply` node.
 
         :param node: an Apply instance in the graph being compiled
@@ -300,7 +300,7 @@ class CLinkerOp(CLinkerObject):
     def c_init_code_apply(self, node, name):
         """
         Optional: return a code string specific to the apply
-        to be inserted in the struct initialization code.
+        to be inserted in the module initialization code.
 
         :param node: an Apply instance in the graph being compiled
 
@@ -317,6 +317,61 @@ class CLinkerOp(CLinkerObject):
          - `MethodNotDefined`: the subclass does not override this method
         """
         raise utils.MethodNotDefined("c_init_code_apply", type(self),
+                                     self.__class__.__name__)
+
+    def c_init_code_struct(self, node, struct_id):
+        """
+        Optional: return a code string specific to the apply
+        to be inserted in the struct initialization code.
+
+        :param node: an Apply instance in the graph being compiled
+
+        :param struct_id: a number that serves to uniquely identify
+                          this code.  The c_code will receive another
+                          sub parameter named struct_id that will
+                          contain this name.
+
+        :Exceptions:
+         - `MethodNotDefined`: the subclass does not override this method
+        """
+        raise utils.MethodNotDefined("c_init_code_apply", type(self),
+                                     self.__class__.__name__)
+
+    def c_support_code_struct(self, node, struct_id):
+        """Optional: Return utility code for use by an `Op` that will be
+        inserted at struct scope, that can be specialized for the
+        support of a particular `Apply` node.
+
+        :param node: an Apply instance in the graph being compiled
+
+        :param struct_id: a number that serves to uniquely identify
+                          this code.  The c_code will receive another
+                          sub parameter named struct_id that will
+                          contain this name.
+
+        :Exceptions:
+         - `MethodNotDefined`: Subclass does not implement this method
+
+        """
+        raise utils.MethodNotDefined("c_support_code_struct",
+                type(self), self.__class__.__name__)
+
+    def c_cleanup_code_struct(self, node, struct_id):
+        """
+        Optional: return a code string specific to the apply to be
+        inserted in the struct cleanup code.
+
+        :param node: an Apply instance in the graph being compiled
+
+        :param struct_id: a number that serves to uniquely identify
+                          this code.  The c_code will receive another
+                          sub parameter named struct_id that will
+                          contain this name.
+
+        :Exceptions:
+        - `MethodNotDefined`: the subclass does not override this method
+        """
+        raise utils.MethodNotDefined("c_cleanup_code_struct", type(self),
                                      self.__class__.__name__)
 
 
