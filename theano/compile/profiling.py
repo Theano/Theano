@@ -749,6 +749,10 @@ class ProfileStats(object):
                 for node in executable_nodes:
                     new_exec_nodes = executable_nodes.copy()
                     new_exec_nodes.remove(node)
+
+                    if max_mem_count > mem_bound:
+                        continue
+
                     for var in node.outputs:
                         compute_map[var][0] = 1
 
@@ -758,12 +762,10 @@ class ProfileStats(object):
 
                     # {var1:[vars that view var1]}
                     viewed_by = {}
+                    for i in node.inputs:
+                        viewed_by[i] = []
                     # {var1: original var viewed by var1}
                     view_of = {}
-
-                    # check if we cut path now
-                    if max_mem_count > mem_bound:
-                        continue
 
                     dmap = getattr(node.op, 'destroy_map', None)
                     vmap = getattr(node.op, 'view_map', None)
@@ -772,10 +774,7 @@ class ProfileStats(object):
                         if (dmap or vmap):
                             for i in node.inputs:
                                 view_of[out] = view_of.get(i, i)
-                                if i in viewed_by:
-                                    viewed_by[i].append[out]                                    
-                                else:
-                                    viewed_by[i] = [out]
+                                viewed_by[i].append(out)  
                         else:
                             mem_created += var_mem[out]
 
