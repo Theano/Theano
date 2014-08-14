@@ -24,6 +24,11 @@ AddConfigVar('floatX',
              EnumStr('float64', 'float32', convert=floatX_convert,),
 )
 
+AddConfigVar('warn_float64',
+             "Warning for float64 output",
+            BoolParam(False)
+)
+
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
         EnumStr('custom', 'numpy+floatX',

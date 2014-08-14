@@ -574,6 +574,14 @@ class _tensor_py_operators:
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
 
+     def __init__(self, type)
+          if (config.warn_float64 and type = float64):
+                print '''Warning, you are instanciating parts of your graph 
+                    with the float64 type (possibly by accident).  
+                    This means that those parts will not run on the GPU.  
+                    If that is what you want, you can disable this warning by 
+                    setting warn_float64=False in your theano flags.'''
+
 TensorType.Variable = TensorVariable
 
 
