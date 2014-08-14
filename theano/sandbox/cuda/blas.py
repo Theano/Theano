@@ -501,16 +501,21 @@ gpu_ger_inplace = GpuGer(inplace=True)
 
 
 class GpuCorrMM(GpuOp):
-    """
-    Author: Arjun Jain
-    Implement the caffe convolution
+    """GPU correlation implementation using Matrix Multiply.
+
+    :note: It don't implement the grad. So you should use it by
+        enabling the Theano flag ``optimizer_including=conv_gemm`` and
+        use :func:`conv2d <theano.tensor.nnet.conv.conv2d>`.
+
     """
     def __init__(self, border_mode,
             subsample=(1, 1),
             pad=0):
         """
         :param border_mode: "valid" or "full"
-        :param subsample: not yet supported
+        :param subsample: the subsample operation applied on each output image.
+            Should be a tuple with 2 elements.
+            (sv, sh) is equivalent to GpuCorrMM(...)(...)[:,:,::sv, ::sh]
         :param pad: not yet supported
         """
         self.border_mode = border_mode
@@ -519,9 +524,6 @@ class GpuCorrMM(GpuOp):
         if pad != 0:
             raise NotImplementedError(
                 "GpuCorrMM don't implement the pad parameter")
-        if subsample != (1, 1):
-            raise NotImplementedError(
-                "GpuCorrMM we don't implement the subsample parameter")
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -557,7 +559,6 @@ class GpuCorrMM(GpuOp):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def flops(self, inputs, outputs):
-        """ Useful with the hack in profilemode to print the MFlops"""
         images, kerns = inputs
         out, = outputs
         assert images[1] == kerns[1]
@@ -611,7 +612,9 @@ class GpuCorrMM(GpuOp):
     //Optional args
     int dx = %(dx)s;
     int dy = %(dy)s;
-    int pad = 0;
+    int padH = 0;
+    int padW = 0;
+    
     CudaNdarray * img = %(img)s;
     CudaNdarray * kern = %(kern)s;
     CudaNdarray * out2 = NULL;
@@ -630,7 +633,9 @@ class GpuCorrMM(GpuOp):
     {
         logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
         logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
-        pad = CudaNdarray_HOST_DIMS(kern)[2] - 1;
+        padH = CudaNdarray_HOST_DIMS(kern)[2] - 1;
+        padW = CudaNdarray_HOST_DIMS(kern)[3] - 1;
+    
     }
     out_dim[2] = ceil_intdiv(logical_rows, dx);
     out_dim[3] = ceil_intdiv(logical_cols, dy);
@@ -648,7 +653,7 @@ class GpuCorrMM(GpuOp):
 
     }
 
-    out2 = corrMM(%(img)s, %(kern)s, %(out)s, pad);
+    out2 = corrMM(%(img)s, %(kern)s, %(out)s, dx, dy, padH, padW);
     if (out2==NULL){
        %(fail)s
     }

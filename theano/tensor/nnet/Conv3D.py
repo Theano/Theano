@@ -40,7 +40,9 @@ from theano.gradient import grad_undefined
 #the output function is only defined when dr, dc, dt are natural numbers.
 
 class Conv3D(theano.Op):
-    """ 3D "convolution" of multiple filters on a minibatch (does not flip the kernel, moves kernel with a user specified stride) """
+    """ 3D `convolution` of multiple filters on a minibatch
+        :note: does not flip the kernel, moves kernel with a user specified stride
+    """
     def __eq__(self,other):
         return type(self) == type(other)
 
