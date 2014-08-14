@@ -293,7 +293,7 @@ class NVCC_compiler(object):
         #nvcc argument
         preargs1 = []
         for pa in preargs:
-            for pattern in ['-O', '-arch=', '-ccbin=',
+            for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g',
                             '--fmad', '--ftz', '--maxrregcount',
                             '--prec-div', '--prec-sqrt',  '--use_fast_math',
                             '-fmad', '-ftz', '-maxrregcount',
@@ -303,7 +303,7 @@ class NVCC_compiler(object):
         preargs2 = [pa for pa in preargs
                     if pa not in preargs1]  # other arguments
 
-        cmd = [nvcc_path, '-shared', '-g', '-G'] + preargs1
+        cmd = [nvcc_path, '-shared'] + preargs1
         if config.nvcc.compiler_bindir:
             cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
 
