@@ -699,10 +699,7 @@ class ProfileStats(object):
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global maybe_executed, mem_count, mem_bound, max_mem_count
-            order = []
-            min_order = []
             node_list = list(node_list)
-            current_mem = 0
             mem_count = 0
             max_mem_count = 0
             mem_bound = numpy.inf
