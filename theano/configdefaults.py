@@ -25,7 +25,7 @@ AddConfigVar('floatX',
 )
 
 AddConfigVar('warn_float64',
-             "Warning for float64 output",
+             "Warning, parts of the graph are in float64 which can't be run on the GPU",
             BoolParam(False)
 )
 
