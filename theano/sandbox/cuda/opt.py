@@ -1958,3 +1958,5 @@ optdb.register('gpu_scanOp_make_inplace',
                'fast_run',
                'inplace',
                'scan')
+
+import theano.sandbox.cuda.extra_ops
