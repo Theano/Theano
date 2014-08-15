@@ -122,109 +122,72 @@ class TestConv2dFFT(unittest.TestCase):
 
 class TestConv3dFFT(unittest.TestCase):
 
-    @staticmethod
-    def perform_conv2d_fft(inputs, filters, border_mode, function_mode):
-
-        assert(border_mode in ['valid', 'full'])
-        # function_mode is just mode_with_gpu from the environment
-
-        if inputs.shape[-1] % 2 == 1:
-            pad_last_dim = True
-        else:
-            pad_last_dim = False
-
-        sym_inputs  = theano.tensor.tensor4()
-        sym_filters = theano.tensor.tensor4()
-
-        sym_outputs = theano.sandbox.cuda.fftconv.conv2d_fft(sym_inputs, sym_filters, image_shape=inputs.shape, filter_shape=filters.shape, border_mode=border_mode, pad_last_dim=pad_last_dim)
-        #f = theano.function([sym_inputs, sym_filters], sym_outputs, mode=function_mode)
-        f = theano.function([sym_inputs, sym_filters], sym_outputs)
-        outputs_on_gpu = f(inputs, filters)
-        outputs = numpy.array(outputs_on_gpu)
-
-        return outputs
-
-    @staticmethod
-    def perform_conv3d_through_multiple_conv2d_fft(inputs, filters,
-                                                   border_mode, function_mode):
-
-        assert(border_mode in ['valid', 'full'])
-        # function_mode is just mode_with_gpu from the environment
-
-        (nbr_images, nbr_channels, image_height,  image_width,  image_duration)  = inputs.shape
-        (nbr_filters,           _, filter_height, filter_width, filter_duration) = filters.shape
-
-        if border_mode == 'valid':
-            outputs = numpy.zeros( (nbr_images, nbr_filters,
-                                    image_height - filter_height + 1,
-                                    image_width - filter_width + 1,
-                                    image_duration - filter_duration + 1), dtype=numpy.float32 )
-
-            for t in range(image_duration - filter_duration + 1):
-                for sub_t in range(filter_duration):
-                    #print "(t, sub_t) is (%d, %d),     (t + sub_t, filter_duration - 1 -sub_t) is (%d, %d)" % (t, sub_t, t + sub_t, filter_duration - 1 -sub_t)
-                    outputs[:,:,:,:,t] = outputs[:,:,:,:,t] + TestConv3dFFT.perform_conv2d_fft(inputs[:,:,:,:,t + sub_t].copy(), filters[:,:,:,:, filter_duration - 1 - sub_t].copy(), border_mode, function_mode)
-
-            return outputs
-
-        elif border_mode == 'full':
-
-            # pad in time, and then rely on the proper 2d convolution to work out the padding in the height and width
-            padded_inputs = numpy.zeros( (nbr_images, nbr_channels,
-                                          image_height + 2 * (filter_height - 1),
-                                          image_width + 2 * (filter_width - 1),
-                                          image_duration + 2 * (filter_duration - 1) ), dtype=numpy.float32)
-            padded_inputs[:,:,filter_height-1:filter_height-1+image_height,filter_width-1:filter_width-1+image_width,filter_duration-1:filter_duration-1+image_duration] = inputs.copy()
-
-            return TestConv3dFFT.perform_conv3d_through_multiple_conv2d_fft(padded_inputs, filters, border_mode='valid', function_mode=function_mode)
-
-    @staticmethod
-    def perform_fftconv3d(inputs, filters, border_mode, function_mode):
-
-        assert(border_mode in ['valid', 'full'])
-
-        if inputs.shape[-1] % 2 == 1:
-            pad_last_dim = True
-        else:
-            pad_last_dim = False
-
-        tensor5 = theano.tensor.TensorType('float32', (False,)*5)
-
-        sym_inputs  = tensor5()
-        sym_filters = tensor5()
-
-        sym_outputs = theano.sandbox.cuda.fftconv.conv3d_fft(sym_inputs, sym_filters, image_shape=inputs.shape, filter_shape=filters.shape, border_mode=border_mode, pad_last_dim=pad_last_dim)
-        #f = theano.function([sym_inputs, sym_filters], sym_outputs, mode=mode_with_gpu)
-        f = theano.function([sym_inputs, sym_filters], sym_outputs)
-        outputs_on_gpu = f(inputs, filters)
-        outputs = numpy.array(outputs_on_gpu)
-
-        return outputs
-
-
-    def run_conv(self, inputs_shape, filters_shape, border_mode):
+    def run_conv_valid(self, inputs_shape, filters_shape, pad=False):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
 
-        res_ref = TestConv3dFFT.perform_conv3d_through_multiple_conv2d_fft(inputs_val, filters_val, border_mode, mode_with_gpu)
-        res_fft = TestConv3dFFT.perform_fftconv3d(inputs_val, filters_val, border_mode, mode_with_gpu)
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
-        utt.assert_allclose(res_ref, res_fft)
+        # Flip filter as conv3D compute correlation
+        filters_flip = filters[:,::-1,::-1,::-1,:]
+        #filters_flip = filters
+        conv_ref = theano.tensor.nnet.conv3D(V=inputs, W=filters_flip,
+                                             b=bias, d=(1,1,1))
+
+        conv_fft = theano.sandbox.cuda.fftconv.conv3d_fft(inputs.dimshuffle(0, 4, 1, 2, 3),
+                                                          filters.dimshuffle(0, 4, 1, 2, 3),
+                                                          border_mode = "valid",
+                                                          pad_last_dim = pad)
+        conv_fft = conv_fft.dimshuffle(0, 2, 3, 4, 1)
+
+        f_ref = theano.function([], conv_ref)
+        f_fft = theano.function([], conv_fft, mode=mode_with_gpu)
+
+        res_ref = f_ref()
+        res_fft = f_fft()
+        utt.assert_allclose(res_ref, res_fft,  rtol=1e-05, atol=1e-05)
+
+
+
+    def run_conv_full(self, inputs_shape, filters_shape, pad=False):
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
+
+        conv_ref = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1,1,1),
+                                                   H=inputs)
+
+        filters = filters.dimshuffle(4, 0, 1, 2, 3)
+        inputs = inputs.dimshuffle(0, 4, 1, 2, 3)
+        conv_fft = theano.sandbox.cuda.fftconv.conv3d_fft(inputs, filters,
+                                                          border_mode = "full",
+                                                          pad_last_dim = pad)
+        conv_fft = conv_fft.dimshuffle(0, 2, 3, 4, 1)
+
+        f_ref = theano.function([], conv_ref)
+        f_fft = theano.function([], conv_fft, mode=mode_with_gpu)
+
+        res_ref = f_ref()
+        res_fft = f_fft()
+        utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
+
 
     def test_valid(self):
-
-        for offset1 in range(2):
-            for offset2 in range(2):
-                for offset3 in range(2):
-                    self.run_conv(inputs_shape=(5, 3, 5 + offset1, 6 + offset2, 4 + offset3),
-                                  filters_shape=(2, 3, 3 + offset1, 3 + offset2, 2 + offset3),
-                                  border_mode='valid')
-
+        self.run_conv_valid(inputs_shape=(16, 20, 32, 16, 1),
+                            filters_shape=(10, 6, 12, 4, 1),
+                            pad=True)
+        self.run_conv_valid(inputs_shape=(16, 20, 32, 15, 1),
+                            filters_shape=(10, 6, 12, 4, 1),
+                            pad=True)
     def test_full(self):
-
-        for offset1 in range(2):
-            for offset2 in range(2):
-                for offset3 in range(2):
-                    self.run_conv(inputs_shape=(5, 3, 5 + offset1, 6 + offset2, 4 + offset3),
-                                  filters_shape=(2, 3, 3 + offset1, 3 + offset2, 3 + offset3),
-                                  border_mode='full')
+        self.run_conv_full(inputs_shape=(16, 15, 21, 16, 10),
+                           filters_shape=(10, 6, 12, 4, 1),
+                           pad=True)
+        self.run_conv_full(inputs_shape=(16, 15, 21, 12, 10),
+                           filters_shape=(10, 6, 12, 4, 1),
+                           pad=True)
