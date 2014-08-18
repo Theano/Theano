@@ -350,7 +350,7 @@ class ConvOp(OpenMPOp):
         :param verbose: passed to GpuConv
         :type version: int or str
         :param version: passed to GpuConv, if version='no_fft', fft
-            optimization will be desactivated the at the op level.
+            optimization will be desactivated at the op level.
 
         The 3 following parameters are used internally when we generate
         the gradient when dx!=1 or dy!=1.
