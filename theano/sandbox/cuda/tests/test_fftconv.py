@@ -191,3 +191,93 @@ class TestConv3dFFT(unittest.TestCase):
         self.run_conv_full(inputs_shape=(16, 15, 21, 12, 10),
                            filters_shape=(10, 6, 12, 4, 1),
                            pad=True)
+
+    def test_opt_conv3d(self):
+        inputs_shape = (16, 20, 32, 16, 1)
+        filters_shape = (10, 6, 12, 4, 1)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+
+        conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
+                                         b=bias, d=(1,1,1))
+        mode = mode_with_gpu.including('conv_fft_valid')
+
+        f_ref = theano.function([], conv)
+        f_fft = theano.function([], conv, mode=mode)
+
+        # make sure we inserted the fft trickery
+        topo = f_fft.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 2
+
+
+        res_ref = f_ref()
+        res_fft = f_fft()
+
+        utt.assert_allclose(res_ref, res_fft)
+
+    def test_opt_convgrad3d(self):
+        inputs_shape = (16, 20, 32, 16, 1)
+        filters_shape = (10, 6, 12, 4, 1)
+        dCdH_shape = (16, 15, 12, 12, 10)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        dCdH = shared(dCdH_val)
+
+        conv = theano.tensor.nnet.convGrad3D(V=inputs, dCdH=dCdH,
+                                             WShape=filters_shape,
+                                             d=(1,1,1))
+        mode = mode_with_gpu.including('conv_fft_valid')
+
+        f_ref = theano.function([], conv)
+        f_fft = theano.function([], conv, mode=mode)
+
+        # make sure we inserted the fft trickery
+        topo = f_fft.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 2
+
+
+        res_ref = f_ref()
+        res_fft = f_fft()
+
+        utt.assert_allclose(res_ref, res_fft)
+
+
+    def test_opt_convtransp3d(self):
+        inputs_shape = (16, 15, 21, 12, 10)
+        filters_shape = (10, 6, 12, 4, 1)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+        bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+
+        conv = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1,1,1),
+                                               H=inputs)
+        mode = mode_with_gpu.including('conv_fft_valid')
+
+        f_ref = theano.function([], conv)
+        f_fft = theano.function([], conv, mode=mode)
+
+        # make sure we inserted the fft trickery
+        topo = f_fft.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 2
+
+
+        res_ref = f_ref()
+        res_fft = f_fft()
+
+        utt.assert_allclose(res_ref, res_fft)
+
