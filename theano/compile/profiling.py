@@ -682,6 +682,7 @@ class ProfileStats(object):
                 view_of = {}
 
                 for v in val:
+                    # TODO check the op returned a view
                     if dmap and idx in dmap:
                         node_memory_saved_by_inplace += v
                     elif vmap and idx in vmap:
@@ -710,7 +711,8 @@ class ProfileStats(object):
                             if not viewed_by[origin]:
                                 running_memory_size -= var_mem[origin]
 
-            return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
+            return [node_memory_size, running_memory_size, running_max_memory_size,\
+                 node_memory_saved_by_inplace, node_memory_saved_by_view]
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global maybe_executed, mem_count, mem_bound, max_mem_count
@@ -856,8 +858,6 @@ class ProfileStats(object):
 
             new_running_memory = count_running_memory(new_order, fgraph, nodes_mem)
             
-            print old_running_memory
-
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
             max_node_memory_size = max(max_node_memory_size, old_running_memory[0])
