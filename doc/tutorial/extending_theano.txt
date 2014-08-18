@@ -418,33 +418,35 @@ have to be jointly optimized explicitly in the code.)
 as_op
 =====
 
-- Decorator that converts a function into a basic Theano op 
-    that will call the supplied function as its implementation.
+- Decorator that converts a python function into a basic Theano op
+  that will call the supplied function as its implementation.
 - Takes an optional infer_shape parameter that should be a
-    callable with this signature:
+  callable with this signature:
+
+  .. code-block:: python
 
            def infer_shape(node, input_shapes):
-            ...
-            return output_shapes
+                # ...
+                return output_shapes
 
-- `input_shapes` and `output_shapes` are lists of tuples that
+  - `input_shapes` and `output_shapes` are lists of tuples that
     represent the shape of the corresponding inputs/outputs.
 
 .. note::
 
     This should not be used when performance is a concern since 
     the very basic nature of the resulting Op may interfere with
-    certain graph optimizations.
+    certain graph optimizations. WHY?!?!? I think it need more detail or should be removed.!?!?!
 
 .. note::
 
     Returns FromFunctionOp(fn, itypes, otypes, infer_shape)
 
 
-FromfunctionOp
-==============
+FromFunctionOp
+--------------
 
-- Build a basic Theano Op around a function.
+- Build a basic Theano Op around a python function.
 
 .. note::
 
@@ -461,23 +463,21 @@ FromfunctionOp
     gradient of a graph containing this op.
 
 
-Op Example
-==========
+as_op Example
+-------------
 
 .. code-block:: python
 
     import theano
     import numpy
     from theano.compile.ops import as_op
-    from theano.compile.ops import FromFunctionOp
 
     def infer_shape_numpy_dot(node, input_shapes):
         ashp, bshp = input_shapes
         return [ashp[:-1] + bshp[-1:]]
 
     @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
-          otypes=[theano.tensor.fmatrix], infer_shape=infer_shape_numpy_dot)
-
+           otypes=[theano.tensor.fmatrix], infer_shape=infer_shape_numpy_dot)
     def numpy_dot(a, b):
        return numpy.dot(a, b)
 
@@ -494,7 +494,7 @@ You can try it as follows:
 
 
 Exercise
-========
+--------
 
 Run the code of the *numpy_dot* example above.
 
