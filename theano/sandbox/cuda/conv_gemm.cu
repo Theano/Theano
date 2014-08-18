@@ -208,11 +208,15 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             topHeight != CudaNdarray_HOST_DIMS(top)[2] ||
             topWidth != CudaNdarray_HOST_DIMS(top)[3]) {
         PyErr_Format(PyExc_ValueError,
-                "GpuCorrMM shape inconsistency: From bottom and weights, "
-                "top shape should be %d %d %d %d, but is %d %d %d %d.\n",
-                batchSize, nFilters, topHeight, topWidth,
+                "GpuCorrMM shape inconsistency:\n"
+                "  bottom shape: %d %d %d %d\n"
+                "  weight shape: %d %d %d %d\n"
+                "  top shape: %d %d %d %d (expected %d %d %d %d)\n",
+                batchSize, nChannels, bottomHeight, bottomWidth,
+                nFilters, nChannels, kH, kW,
                 CudaNdarray_HOST_DIMS(top)[0], CudaNdarray_HOST_DIMS(top)[1],
-                CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3]);
+                CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3],
+                batchSize, nFilters, topHeight, topWidth);
         return NULL;
     }
 
