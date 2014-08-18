@@ -574,8 +574,8 @@ class _tensor_py_operators:
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
 
-    def __init__(self, type):
-        if (config.warn_float64 and type == float64):
+    def __init__(self, type, name=None):
+        if (config.warn_float64 and type == 'float64'):
             print '''Warning, you are instanciating parts of your graph 
                 with the float64 type (possibly by accident).  
                 This means that those parts will not run on the GPU.  
