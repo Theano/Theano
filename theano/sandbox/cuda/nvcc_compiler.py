@@ -303,6 +303,8 @@ class NVCC_compiler(object):
         preargs2 = [pa for pa in preargs
                     if pa not in preargs1]  # other arguments
 
+        # Don't put -G by default, as it slow things down.
+        # We aren't sure if -g slow things down, so we don't put it by default.
         cmd = [nvcc_path, '-shared'] + preargs1
         if config.nvcc.compiler_bindir:
             cmd.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
