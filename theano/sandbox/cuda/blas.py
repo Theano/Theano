@@ -687,7 +687,8 @@ class GpuConv(GpuOp):
             verbose=0,
             kshp=None,
             imshp=None,
-            max_threads_dim0=None):
+            max_threads_dim0=None,
+            fft_opt=True):
         """
         :param version: each version of c_code implements many kernel for the
                         convolution. By default we try to guess the best one.
@@ -706,6 +707,8 @@ class GpuConv(GpuOp):
         :param max_threads_dim0: The maximum number of threads for the
                         block size dimensions 0 (blockDim.x) used by the
                         GPU function.
+        :param fft_opt: desactivate fft_opt optimization at the op level when
+                        set to False.
 
         """
         self.border_mode = border_mode
@@ -730,6 +733,7 @@ class GpuConv(GpuOp):
         self.kshp = kshp
         self.imshp = imshp
         self.max_threads_dim0 = max_threads_dim0
+        self.fft_opt = fft_opt
 
     def __eq__(self, other):
         return type(self) == type(other) \
