@@ -205,7 +205,7 @@ class TestConv3dFFT(unittest.TestCase):
 
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1,1,1))
-        mode = mode_with_gpu.including('conv_fft_valid')
+        mode = mode_with_gpu.including('conv3d_fft')
 
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
@@ -224,7 +224,7 @@ class TestConv3dFFT(unittest.TestCase):
     def test_opt_convgrad3d_fft(self):
         inputs_shape = (16, 20, 32, 16, 1)
         filters_shape = (10, 6, 12, 4, 1)
-        dCdH_shape = (16, 15, 12, 12, 10)
+        dCdH_shape = (16, 15, 21, 13, 10)
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
@@ -235,7 +235,7 @@ class TestConv3dFFT(unittest.TestCase):
         conv = theano.tensor.nnet.convGrad3D(V=inputs, dCdH=dCdH,
                                              WShape=filters_shape,
                                              d=(1,1,1))
-        mode = mode_with_gpu.including('conv_fft_valid')
+        mode = mode_with_gpu.including('convgrad3d_fft')
 
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
@@ -249,7 +249,7 @@ class TestConv3dFFT(unittest.TestCase):
         res_ref = f_ref()
         res_fft = f_fft()
 
-        utt.assert_allclose(res_ref, res_fft)
+        utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
 
 
     def test_opt_convtransp3d_fft(self):
@@ -265,7 +265,7 @@ class TestConv3dFFT(unittest.TestCase):
 
         conv = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1,1,1),
                                                H=inputs)
-        mode = mode_with_gpu.including('conv_fft_valid')
+        mode = mode_with_gpu.including('convtransp3d_fft')
 
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
@@ -279,5 +279,5 @@ class TestConv3dFFT(unittest.TestCase):
         res_ref = f_ref()
         res_fft = f_fft()
 
-        utt.assert_allclose(res_ref, res_fft)
+        utt.assert_allclose(res_ref, res_fft, rtol=1e-04, atol=1e-04)
 
