@@ -136,7 +136,7 @@ class TestConv2dFFT(unittest.TestCase):
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
 
-        # make sure we inserted the fft trickery
+        # make sure we that no CuFFTOp has been inserted
         topo = f_fft.maker.fgraph.toposort()
         assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
                    for n in topo) == 0
