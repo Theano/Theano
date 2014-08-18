@@ -192,7 +192,7 @@ class TestConv3dFFT(unittest.TestCase):
                            filters_shape=(10, 6, 12, 4, 1),
                            pad=True)
 
-    def test_opt_conv3d(self):
+    def test_opt_conv3d_fft(self):
         inputs_shape = (16, 20, 32, 16, 1)
         filters_shape = (10, 6, 12, 4, 1)
 
@@ -221,7 +221,7 @@ class TestConv3dFFT(unittest.TestCase):
 
         utt.assert_allclose(res_ref, res_fft)
 
-    def test_opt_convgrad3d(self):
+    def test_opt_convgrad3d_fft(self):
         inputs_shape = (16, 20, 32, 16, 1)
         filters_shape = (10, 6, 12, 4, 1)
         dCdH_shape = (16, 15, 12, 12, 10)
@@ -252,7 +252,7 @@ class TestConv3dFFT(unittest.TestCase):
         utt.assert_allclose(res_ref, res_fft)
 
 
-    def test_opt_convtransp3d(self):
+    def test_opt_convtransp3d_fft(self):
         inputs_shape = (16, 15, 21, 12, 10)
         filters_shape = (10, 6, 12, 4, 1)
 
