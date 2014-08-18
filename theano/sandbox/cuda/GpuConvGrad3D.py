@@ -7,7 +7,7 @@ from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 from theano.misc import strutil
 
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
-from theano.sandbox.cuda.opt import register_opt
+from theano.sandbox.cuda.opt import gpu_optimizer
 from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
                                  host_from_gpu, GpuOp)
 
@@ -341,9 +341,8 @@ convgrad_rows_stack( float* img, float* dCdH, float* dCdW,
 gpu_conv_grad3d = GpuConvGrad3D()
 
 
-@register_opt()
 @local_optimizer([ConvGrad3D])
-def local_gpu_conv_gradd(node):
+def local_gpu_conv_grad3d(node):
     if isinstance(node.op, ConvGrad3D):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu)
                       for i in node.inputs]):
@@ -354,3 +353,5 @@ def local_gpu_conv_gradd(node):
                     d,
                     WShape,
                     as_cuda_ndarray_variable(dCdH)))]
+# Not enabled by default as we don't want people to use it.
+gpu_optimizer.register("local_gpu_conv_grad3d", local_gpu_conv_grad3d)

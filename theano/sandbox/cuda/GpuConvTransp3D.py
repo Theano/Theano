@@ -8,7 +8,7 @@ from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
 from theano.gof import local_optimizer
 
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-from theano.sandbox.cuda.opt import register_opt
+from theano.sandbox.cuda.opt import gpu_optimizer
 from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
                                  host_from_gpu, GpuOp)
 
@@ -347,15 +347,16 @@ conv_transp_rows_stack( float* H, float* kern, float* bias, float* R,
 gpu_conv_transpd = GpuConvTransp3D()
 
 
-@register_opt()
 @local_optimizer([ConvTransp3D])
-def local_gpu_conv_transpd(node):
+def local_gpu_conv_transp3d(node):
     if isinstance(node.op, ConvTransp3D):
         if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu)
                       for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
                 W, b, d, H, RShape = node.inputs
                 return [host_from_gpu(gpu_conv_transpd(W, b, d, H, RShape))]
+# Not enabled by default as we don't want people to use it.
+gpu_optimizer.register("local_gpu_conv_transp3d", local_gpu_conv_transp3d)
 
 
 #If the input size wasn't a multiple of D we may need to cause some automatic padding to get the right size of reconstruction
