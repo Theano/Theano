@@ -642,8 +642,8 @@ class BaseGpuCorrMM(GpuOp):
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = bottom + 2*pad - (top - 1) * sample
-        out_dim[0] = CudaNdarray_HOST_DIMS(top)[0];
-        out_dim[1] = CudaNdarray_HOST_DIMS(bottom)[0];
+        out_dim[0] = CudaNdarray_HOST_DIMS(top)[1];
+        out_dim[1] = CudaNdarray_HOST_DIMS(bottom)[1];
         out_dim[2] = kH;  // already inferred further above
         out_dim[3] = kW;  // how convenient
         break;
