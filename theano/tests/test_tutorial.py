@@ -453,6 +453,38 @@ class T_extending(unittest.TestCase):
         simplify = gof.TopoOptimizer(local_simplify)
         simplify.optimize(e)
 
+    def test_as_op(self):
+        import theano
+        import numpy
+        from theano.compile.ops import as_op
+
+        def infer_shape_numpy_dot(node, input_shapes):
+            ashp, bshp = input_shapes
+            return [ashp[:-1] + bshp[-1:]]
+
+        @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+               otypes=[theano.tensor.fmatrix],
+               infer_shape=infer_shape_numpy_dot)
+        def numpy_add(a, b):
+            return numpy.add(a, b)
+
+        def infer_shape_numpy_add_sub(node, input_shapes):
+            ashp, bshp = input_shapes
+            # Both inputs should have that same shape, so we just
+            # return one of them.
+            return [ashp[0]]
+
+        @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+               otypes=[theano.tensor.fmatrix],
+               infer_shape=infer_shape_numpy_add_sub)
+        def numpy_add(a, b):
+            return numpy.add(a, b)
+
+        @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+               otypes=[theano.tensor.fmatrix],
+               infer_shape=infer_shape_numpy_add_sub)
+        def numpy_sub(a, b):
+            return numpy.sub(a, b)
 
 
 class T_introduction(unittest.TestCase):

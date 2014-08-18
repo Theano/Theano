@@ -418,10 +418,14 @@ have to be jointly optimized explicitly in the code.)
 as_op
 =====
 
-- Decorator that converts a python function into a basic Theano op
-  that will call the supplied function as its implementation.
-- Takes an optional infer_shape parameter that should be a
-  callable with this signature:
+as_op is a python decorator that converts a python function into a
+basic Theano op that will call the supplied function during execution.
+
+This isn't the recommand way way to build an op, but allow quick
+implementation.
+
+It takes an optional :func:`infer_shape` parameter that must have this
+signature:
 
   .. code-block:: python
 
@@ -434,34 +438,20 @@ as_op
 
 .. note::
 
-    This should not be used when performance is a concern since 
-    the very basic nature of the resulting Op may interfere with
-    certain graph optimizations. WHY?!?!? I think it need more detail or should be removed.!?!?!
+    Not providing the `infer_shape` method cause shapes related
+    optimization to don't work with that op. For example
+    `you_op(inputs, ...).shape` will need the op to be executed just
+    to get the shape.
 
 .. note::
 
-    Returns FromFunctionOp(fn, itypes, otypes, infer_shape)
-
-
-FromFunctionOp
---------------
-
-- Build a basic Theano Op around a python function.
+    As no grad is defined, this mean you won't be able to
+    differenciate path that include this op.
 
 .. note::
 
-    Since the resulting Op is very basic and is missing most 
-    of the optional functionalities, some optimizations may not 
-    apply.
-
-    If you want to help, you can supply an infer_shape function 
-    that computes the shapes of the output given the shapes of 
-    the inputs.
-
-    Also the gradient is undefined in the resulting op and 
-    Theano will raise an error if you attempt to get the 
-    gradient of a graph containing this op.
-
+    It convert the python function to a callable object that take as
+    inputs Theano variable that was declared.
 
 as_op Example
 -------------
