@@ -36,6 +36,9 @@ TODO: Give examples for how to use these things! They are pretty complicated.
       in your environement.  This is not enabled by default because it
       has some restrictions on input and uses more memory.  Also note
       that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and PyCUDA to run.
+      To desactivate the fft optimization on a specific nnet.conv2d
+      while the optimization flags are active, you can set its parameters
+      version to 'no_fft'
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
       3D Convolution. Doesn't work on the GPU.
     - :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`

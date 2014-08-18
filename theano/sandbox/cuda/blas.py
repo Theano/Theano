@@ -710,7 +710,7 @@ class GpuConv(GpuOp):
         :param fft_opt: desactivate fft_opt optimization at the op level when
                         set to False. Note that by default fft optimization
                         aren't enabled. See
-                        :ref:convolution documentation <libdoc_tensor_nnet_conv>
+                        :ref:`convolution documentation <libdoc_tensor_nnet_conv>`
                         to enable them.
         """
         self.border_mode = border_mode
