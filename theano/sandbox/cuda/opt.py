@@ -25,7 +25,8 @@ from theano.sandbox.cuda.basic_ops import (
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv, GpuCorrMM)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
+        GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -1354,19 +1355,23 @@ def local_conv_gemm(node):
         border_mode = node.op.border_mode
         subsample = node.op.subsample
         pad = (0,0)
-        if (border_mode == 'full') and ((subsample != (1,1)) or (pad != (0,0))):
+        if (border_mode == 'full') and (subsample != (1,1)):
             # need to simulate this via a padded valid convolution
             pad = 'auto'
             border_mode = 'valid'
         if (border_mode == 'valid'):
             # need to flip the kernel for valid convolution
-            kern = gpu_contiguous(kern[:, :, ::-1, ::-1])
+            kern = kern[:, :, ::-1, ::-1]
+            # call GpuCorrMM
+            # TODO: call GpuCorrMM_gradWeights instead if appropriate
+            return [GpuCorrMM('valid', subsample, pad)(
+                    gpu_contiguous(img), gpu_contiguous(kern))]
         elif (border_mode == 'full'):
-            # need to bring kernel into correct memory layout for full convolution
-            kern = gpu_contiguous(kern.dimshuffle(1, 0, 2, 3)).dimshuffle(1, 0, 2, 3)
-        # need C-contiguous inputs
-        img = gpu_contiguous(img)
-        return [GpuCorrMM(border_mode, subsample, pad)(img, kern)]
+            # need to dimshuffle the kernel for full convolution
+            kern = kern.dimshuffle(1, 0, 2, 3)
+            # call GpuCorrMM_gradInputs
+            return [GpuCorrMM_gradInputs('valid', subsample, pad)(
+                    gpu_contiguous(kern), gpu_contiguous(img))]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 

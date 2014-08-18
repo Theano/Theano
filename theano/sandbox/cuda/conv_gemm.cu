@@ -161,18 +161,18 @@ void col2im(const float* data_col, const int channels,
 // Authors: Arjun Jain, Frédéric Bastien, Jan Schlüter
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
-CudaNdarray* corrMM(const CudaNdarray *input, 
-                    CudaNdarray *weight,
-                    CudaNdarray *output,
-                    int mode,
-                    int dH = 1,
-                    int dW = 1,
-                    int padH = 0,
-                    int padW = 0)
+CudaNdarray* corrMM(CudaNdarray *const bottom,
+                    CudaNdarray *const weight,
+                    CudaNdarray *const top,
+                    const int direction,
+                    const int dH = 1,
+                    const int dW = 1,
+                    const int padH = 0,
+                    const int padW = 0)
 {
-    if (input->nd != 4)
+    if (bottom->nd != 4)
     {
-        PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires input of 4D");
+        PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires bottom of 4D");
     }
     
     if (weight->nd != 4)
@@ -180,83 +180,75 @@ CudaNdarray* corrMM(const CudaNdarray *input,
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires weight of 4D");
     }
 
-    if (output->nd != 4)
+    if (top->nd != 4)
     {
-        PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires output of 4D");
+        PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires top of 4D");
     }
 
     // Extract some shape information for later and check shape consistency
-    // inputs: (batchSize, nInputPlane, inputHeight, inputWidth)
-    const int batchSize = CudaNdarray_HOST_DIMS(input)[0];
-    const int nInputPlane = CudaNdarray_HOST_DIMS(input)[1];
-    const int inputHeight = CudaNdarray_HOST_DIMS(input)[2];
-    const int inputWidth = CudaNdarray_HOST_DIMS(input)[3];
-    // filters: (nOutputPlane, nInputPlane, rows, columns)
-    const int nOutputPlane = CudaNdarray_HOST_DIMS(weight)[0];
+    // bottom: (batchSize, nChannels, bottomHeight, bottomWidth)
+    const int batchSize = CudaNdarray_HOST_DIMS(bottom)[0];
+    const int nChannels = CudaNdarray_HOST_DIMS(bottom)[1];
+    const int bottomHeight = CudaNdarray_HOST_DIMS(bottom)[2];
+    const int bottomWidth = CudaNdarray_HOST_DIMS(bottom)[3];
+    // weights: (nFilters, nChannels, rows, columns)
+    const int nFilters = CudaNdarray_HOST_DIMS(weight)[0];
     const int kH = CudaNdarray_HOST_DIMS(weight)[2];
     const int kW = CudaNdarray_HOST_DIMS(weight)[3];
-    if (nInputPlane != CudaNdarray_HOST_DIMS(weight)[1]) {
+    if (nChannels != CudaNdarray_HOST_DIMS(weight)[1]) {
         PyErr_SetString(PyExc_ValueError,
                 "GpuCorrMM images and kernel must have the same stack size\n");
         return NULL;
     }
-    // outputs: (batchSize, nOutputPlane, outputHeight, outputWidth)
-    int outputHeight, outputWidth;
-    if (mode == 1) {  // valid correlation with padding and subsampling
-        outputHeight = (inputHeight + 2*padH - kH) / dH + 1;
-        outputWidth  = (inputWidth + 2*padW - kW) / dW + 1;
-    }
-    else if (mode == 0) {  // full convolution with upsampling and cropping
-        // these would be the shapes for a standard full convolution:
-        //outputHeight = (inputHeight + 2*padH + kH - 2) / dH + 1;
-        //outputWidth  = (inputWidth + 2*padW + kW - 2) / dW + 1;
-        // but here, dH and dW are *upsampling* factors, and padding is reversed
-        // (because the implementation was meant as a backward pass for a CNN)
-        outputHeight = (inputHeight - 1) * dH + kH - 2*padH;
-        outputWidth = (inputWidth - 1) * dW + kW - 2*padW;
-    }
-    if (batchSize != CudaNdarray_HOST_DIMS(output)[0] ||
-            nOutputPlane != CudaNdarray_HOST_DIMS(output)[1] ||
-            outputHeight != CudaNdarray_HOST_DIMS(output)[2] ||
-            outputWidth != CudaNdarray_HOST_DIMS(output)[3]) {
+    // top: (batchSize, nFilters, topHeight, topWidth)
+    const int topHeight = (bottomHeight + 2*padH - kH) / dH + 1;
+    const int topWidth  = (bottomWidth + 2*padW - kW) / dW + 1;
+    if (batchSize != CudaNdarray_HOST_DIMS(top)[0] ||
+            nFilters != CudaNdarray_HOST_DIMS(top)[1] ||
+            topHeight != CudaNdarray_HOST_DIMS(top)[2] ||
+            topWidth != CudaNdarray_HOST_DIMS(top)[3]) {
         PyErr_Format(PyExc_ValueError,
-                "GpuCorrMM output parameter has wrong shape %d %d %d %d, expected %d %d %d %d\n",
-                CudaNdarray_HOST_DIMS(output)[0], CudaNdarray_HOST_DIMS(output)[1],
-                CudaNdarray_HOST_DIMS(output)[2], CudaNdarray_HOST_DIMS(output)[3],
-                batchSize, nOutputPlane, outputHeight, outputWidth);
+                "GpuCorrMM shape inconsistency: From bottom and weights, "
+                "top shape should be %d %d %d %d, but is %d %d %d %d.\n",
+                batchSize, nFilters, topHeight, topWidth,
+                CudaNdarray_HOST_DIMS(top)[0], CudaNdarray_HOST_DIMS(top)[1],
+                CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3]);
         return NULL;
     }
 
-    if (mode == 1) {  // valid correlation: im2col, then gemm
-        // Create temporary columns (col_data)
-        int col_dim[2];
-        col_dim[0] = nInputPlane * kW * kH;
-        col_dim[1] = outputHeight * outputWidth;
-        CudaNdarray* col_data = (CudaNdarray*)CudaNdarray_NewDims(2, col_dim);
+    // Create temporary columns
+    int col_dim[2];
+    col_dim[0] = nChannels * kW * kH;
+    col_dim[1] = topHeight * topWidth;
+    CudaNdarray* col = (CudaNdarray*)CudaNdarray_NewDims(2, col_dim);
 
-        // Define some useful variables
-        const int ip_stride = CudaNdarray_HOST_STRIDES(input)[0];
-        const int op_stride = CudaNdarray_HOST_STRIDES(output)[0];
-        const int K_ = col_dim[0];
-        const int N_ = col_dim[1];
-        const int M_ = nOutputPlane;
-        const float alpha = 1.0f;
-        const float beta = 0.0f;
-        
+    // Define some useful variables
+    const int bottom_stride = CudaNdarray_HOST_STRIDES(bottom)[0];
+    const int top_stride = CudaNdarray_HOST_STRIDES(top)[0];
+    const int K_ = col_dim[0];
+    const int N_ = col_dim[1];
+    const int M_ = nFilters;
+    const float one = 1.0f;
+    const float zero = 0.0f;
+
+    CudaNdarray *output;
+    if (direction == 0) {  // forward pass
+        output = top;
+        // valid correlation: im2col, then gemm
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col(input->devdata + n * ip_stride, nInputPlane, inputHeight,
-                    inputWidth, kH, kW, padH, padW, dH, dW, col_data->devdata);
+            im2col(bottom->devdata + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, col->devdata);
             // Second, gemm
             cublasStatus_t status = cublasSgemm(handle,
                     CUBLAS_OP_N, CUBLAS_OP_N,
                     N_, M_, K_,
-                    &alpha,
-                    col_data->devdata, N_,
+                    &one,
+                    col->devdata, N_,
                     weight->devdata, K_,
-                    &beta,
-                    output->devdata + n * op_stride, N_);
+                    &zero,
+                    top->devdata + n * top_stride, N_);
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
                         "GpuCorrMM encountered a CUBLAS error: %s\n",
@@ -264,17 +256,11 @@ CudaNdarray* corrMM(const CudaNdarray *input,
                 return NULL;
             }
         }
-        // Free temporary columns
-        Py_DECREF(col_data);
-
         /*
         // Original caffe code for comparison
         // https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
-        // Note that this is for grouped convolution; we can ignore groups
-        const Dtype* bottom_data = bottom[i]->gpu_data();
-        Dtype* top_data = (*top)[i]->mutable_gpu_data();
-        Dtype* col_data = col_buffer_.mutable_gpu_data();
-        const Dtype* weight = this->blobs_[0]->gpu_data();
+        // Note that this is for grouped convolution; we can ignore groups here,
+        // but the group-related offsets help explain what M_, N_ and K_ are
         int weight_offset = M_ * K_;
         int col_offset = K_ * N_;
         int top_offset = M_ * N_;
@@ -300,33 +286,81 @@ CudaNdarray* corrMM(const CudaNdarray *input,
         }
         */
     }
-    else if (mode == 0) {  // full convolution: gemm, then col2im
-        // Create temporary columns (col_diff)
-        int col_dim[2];
-        col_dim[0] = nOutputPlane * kW * kH;
-        col_dim[1] = inputHeight * inputWidth;
-        CudaNdarray* col_diff = (CudaNdarray*)CudaNdarray_NewDims(2, col_dim);
-
-        // Define some useful variables
-        const int ip_stride = CudaNdarray_HOST_STRIDES(input)[0];
-        const int op_stride = CudaNdarray_HOST_STRIDES(output)[0];
-        const int K_ = col_dim[0];
-        const int N_ = col_dim[1];
-        const int M_ = nInputPlane;
-        const float alpha = 1.0f;
-        const float beta = 0.0f;
-
+    else if (direction == 1) {  // backprop wrt. weights
+        output = weight;
+        // valid convolution: im2col, then gemm
+        // Initialize target with zeros as we will accumulate into it
+        // (all kernels run on the null stream, so we don't need to synchronize)
+        cudaError_t err = cudaMemsetAsync(weight->devdata, 0,
+                sizeof(float) * M_ * K_);
+        if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                        "GpuCorrMM encountered a CUDA error: %s\n",
+                        cudaGetErrorString(err));
+                return NULL;
+        }
+        // Iterate over batch
+        for (int n = 0; n < batchSize; n++) {
+            // First, im2col
+            im2col(bottom->devdata + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, col->devdata);
+            // Second, gemm
+            cublasStatus_t status = cublasSgemm(handle,
+                    CUBLAS_OP_T, CUBLAS_OP_N,
+                    K_, M_, N_,
+                    &one,
+                    col->devdata, N_,
+                    top->devdata + n * top_stride, N_,
+                    &one,
+                    weight->devdata, K_);
+            if (status != CUBLAS_STATUS_SUCCESS) {
+                PyErr_Format(PyExc_RuntimeError,
+                        "GpuCorrMM encountered a CUBLAS error: %s\n",
+                        cublasGetErrorString(status));
+                return NULL;
+            }
+        }
+        /*
+        // Original caffe code for comparison
+        // https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
+        // Note that this is for grouped convolution; we can ignore groups
+        for (int n = 0; n < num_; ++n) {
+          // Since we saved memory in the forward pass by not storing all col
+          // data, we will need to recompute them.
+          im2col_gpu(bottom_data + (*bottom)[i]->offset(n), channels_, height_,
+                     width_, kernel_h_, kernel_w_, pad_h_, pad_w_,
+                     stride_h_, stride_w_, col_data);
+          // gradient w.r.t. weight. Note that we will accumulate diffs.
+          for (int g = 0; g < group_; ++g) {
+            caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_,
+                (Dtype)1., top_diff + top[i]->offset(n) + top_offset * g,
+                col_data + col_offset * g, (Dtype)1.,
+                weight_diff + weight_offset * g);
+            == (see https://github.com/BVLC/caffe/blob/master/src/caffe/util/math_functions.cu#L16)
+            cublasSgemm(CUBLAS_OP_T, CUBLAS_OP_N, K_, M_, N_,
+                1.0,
+                col_data + col_offset * g, N_,
+                top_diff + top[i]->offset(n) + top_offset * g, N_,
+                1.0,
+                weight_diff + weight_offset * g, K_);
+          }
+        }
+        */
+    }
+    else if (direction == 2) {  // backprop wrt. inputs
+        output = bottom;
+        // full convolution: gemm, then col2im
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // gemm into columns
             cublasStatus_t status = cublasSgemm(handle,
                     CUBLAS_OP_N, CUBLAS_OP_T,
                     N_, K_, M_,
-                    &alpha,
-                    input->devdata + n * ip_stride, N_,
+                    &one,
+                    top->devdata + n * top_stride, N_,
                     weight->devdata, K_,
-                    &beta,
-                    col_diff->devdata, N_);
+                    &zero,
+                    col->devdata, N_);
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
                         "GpuCorrMM encountered a CUBLAS error: %s\n",
@@ -334,22 +368,15 @@ CudaNdarray* corrMM(const CudaNdarray *input,
                 return NULL;
             }
             // col2im back to the data
-            col2im(col_diff->devdata, nOutputPlane, outputHeight, outputWidth,
-                    kH, kW, padH, padW, dH, dW, output->devdata + n * op_stride);
+            col2im(col->devdata, nChannels, bottomHeight, bottomWidth,
+                    kH, kW, padH, padW, dH, dW, bottom->devdata + n * bottom_stride);
         }
-        // Free temporary columns
-        Py_DECREF(col_diff);
-
         /*
         // Original caffe code for comparison
         // https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
-        // Note that this is the backward pass of a valid convolution, so
-        // top_diff is the input, bottom_diff is the output, weights are weights
-        Dtype* col_data = col_buffer_.mutable_gpu_data();
-        Dtype* col_diff = col_buffer_.mutable_gpu_diff();
-        Dtype* bottom_diff = (*bottom)[i]->mutable_gpu_diff();
         for (int n = 0; n < num_; ++n) {
-            // gradient w.r.t. bottom data, if necessary
+          // gradient w.r.t. bottom data, if necessary
+          if (propagate_down[i]) {
             for (int g = 0; g < group_; ++g) {
               caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_,
                   (Dtype)1., weight + weight_offset * g,
@@ -367,9 +394,13 @@ CudaNdarray* corrMM(const CudaNdarray *input,
             col2im_gpu(col_diff, channels_, height_, width_,
                 kernel_h_, kernel_w_, pad_h_, pad_w_, stride_h_, stride_w_,
                 bottom_diff + (*bottom)[i]->offset(n));
+          }
         }
         */
     }
+    // Free temporary columns
+    Py_DECREF(col);
+
     return output;
 }
 

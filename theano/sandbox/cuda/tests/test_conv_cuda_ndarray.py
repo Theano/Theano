@@ -186,7 +186,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         f = theano.function([i, k], op, mode=theano_mode)
         if cls is not None:
             assert any([isinstance(node.op, cls)
-                        for node in f.maker.fgraph.toposort()]), f.maker.fgraph.toposort()
+                        for node in f.maker.fgraph.toposort()]), "Cannot find class %r in %r" % (cls, f.maker.fgraph.toposort())
         gpuval = f(img, kern)
         t2 = time.time()
         for i in range(nb_iter):
@@ -284,7 +284,7 @@ def exec_conv(version, shapes, verbose, random, mode,
                         cls=cls)
             except Exception, e:
                 print ver, id, (ishape, kshape, subshape, istride, kstride)
-                print e
+                print "Exception", type(e), e
                 pass
             if not ret:
                 failed_version.add(ver)
@@ -634,7 +634,7 @@ def test_valid(conv_gemm=False):
     if conv_gemm:
         # Test the GpuCorrMM version
         mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.GpuCorrMM
+        cls = cuda.blas.BaseGpuCorrMM
         # dummy version; not used by GpuCorrMM so one version is enough
         version = [-1]
         # Add tests with strided inputs by still square images and filters.
@@ -713,7 +713,7 @@ def test_full(conv_gemm=False):
     if conv_gemm:
         # Test the GpuCorrMM version
         mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.GpuCorrMM
+        cls = cuda.blas.BaseGpuCorrMM
         # dummy version; not used by GpuCorrMM so one version is enough
         version = [-1]
     else:
@@ -753,7 +753,7 @@ def test_subsample(conv_gemm=False):
     if conv_gemm:
         # Test the GpuCorrMM version
         mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.GpuCorrMM
+        cls = cuda.blas.BaseGpuCorrMM
         # dummy version; not used by GpuCorrMM so one version is enough
         version_valid = version_full = [-1]
     else:
