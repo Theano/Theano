@@ -1256,6 +1256,87 @@ def local_conv_fft_full(node):
 gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
 gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
 
+from theano.tensor.nnet.Conv3D import Conv3D
+@local_optimizer([Conv3D])
+def local_conv3d_fft(node):
+    try:
+        stride_x = tensor.get_scalar_constant_value(node.inputs[3][0])
+        stride_y = tensor.get_scalar_constant_value(node.inputs[3][1])
+        stride_z = tensor.get_scalar_constant_value(node.inputs[3][2])
+    except tensor.NotScalarConstantError:
+        return False
+    if (isinstance(node.op, Conv3D) and
+        (stride_x, stride_y, stride_z) == (1, 1, 1)):
+        # we import conv3d_fft locally to avoid pycuda warnings
+        from theano.sandbox.cuda.fftconv import conv3d_fft
+        # Shuffle inputs signal from (b, 0, 1, t, c) to (b, c, 0, 1, t)
+        x = node.inputs[0]
+        x = gpu_from_host(x.dimshuffle(0, 4, 1, 2, 3))
+        # Shuffle filters from (oc, 0, 1, t, ic) to (oc, ic, 0, 1, t)
+        f = node.inputs[1]
+        f = gpu_from_host(f.dimshuffle(0, 4, 1, 2, 3))
+        # filter flip
+        f = f[:,:,::-1,::-1,::-1]
+        rval = conv3d_fft(x, f, border_mode='valid', pad_last_dim=True)
+        # Shuffle from (oc, c, 0, 1, t) to (oc, 0, 1, t, c)
+        return [rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[2]]
+
+
+gpu_optimizer.register("conv3d_fft", local_conv3d_fft)
+
+from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
+@local_optimizer([ConvGrad3D])
+def local_convgrad3d_fft(node):
+    try:
+        stride_x = tensor.get_scalar_constant_value(node.inputs[1][0])
+        stride_y = tensor.get_scalar_constant_value(node.inputs[1][1])
+        stride_z = tensor.get_scalar_constant_value(node.inputs[1][2])
+    except tensor.NotScalarConstantError:
+        return False
+    if (isinstance(node.op, ConvGrad3D) and
+        (stride_x, stride_y, stride_z) == (1, 1, 1)):
+        # we import conv3d_fft locally to avoid pycuda warnings
+        from theano.sandbox.cuda.fftconv import conv3d_fft
+        # Shuffle inputs signal from (b, 0, 1, t, ic) to (ic, b, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(4, 0, 1, 2, 3)
+        # Shuffle dCdH from (b, 0, 1, t, oc) to (oc, b, 0, 1, t)
+        f = node.inputs[3]
+        f = f.dimshuffle(4, 0, 1, 2, 3)
+        # filter flip
+        f = f[:,:,::-1,::-1,::-1]
+        rval = conv3d_fft(x, f, border_mode='valid', pad_last_dim=True)
+        # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
+        return [rval.dimshuffle(1, 2, 3, 4, 0)]
+
+
+gpu_optimizer.register("convgrad3d_fft", local_convgrad3d_fft)
+
+from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
+@local_optimizer([ConvTransp3D])
+def local_convtransp3d_fft(node):
+    try:
+        stride_x = tensor.get_scalar_constant_value(node.inputs[2][0])
+        stride_y = tensor.get_scalar_constant_value(node.inputs[2][1])
+        stride_z = tensor.get_scalar_constant_value(node.inputs[2][2])
+    except tensor.NotScalarConstantError:
+        return False
+    if (isinstance(node.op, ConvTransp3D) and
+        (stride_x, stride_y, stride_z) == (1, 1, 1)):
+        # we import conv3d_fft locally to avoid pycuda warnings
+        from theano.sandbox.cuda.fftconv import conv3d_fft
+        # Shuffle filters from (oc, 0, 1, t, ic) to (ic, oc, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(4, 0, 1, 2, 3)
+        # Shuffle dCdH from (b, 0, 1, t, oc) to (b, oc, 0, 1, t)
+        f = node.inputs[3]
+        f = f.dimshuffle(0, 4, 1, 2, 3)
+        rval = conv3d_fft(f, x, border_mode='full', pad_last_dim=True)
+        # Shuffle from (ic, b, 0, 1, t) to (b, 0, 1, t, ic)
+        return [rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[1]]
+
+gpu_optimizer.register("convtransp3d_fft", local_convtransp3d_fft)
+
 
 import theano.tensor.signal.downsample as downsample
 
