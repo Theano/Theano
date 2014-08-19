@@ -1,0 +1,39 @@
+
+.. _omlw2014_pylearn2:
+
+
+********
+Pylearn2
+********
+
+
+Pointers
+--------
+
+TODO:
+* http://deeplearning.net/software/pylearn2/
+* User mailing list: http://groups.google.com/group/pylearn-users
+* Dev mailing list: http://groups.google.com/group/pylearn-dev
+* Installation: http://deeplearning.net/software/pylearn2/index.html#download-and-installation
+
+Description
+-----------
+
+TODO:
+* ...
+ 
+Simple example
+--------------
+
+(logistic regression?) TODO
+
+Real example
+------------
+
+(maxout?)TODO
+
+Known limitations
+-----------------
+
+TODO
+* It is getting stabilized, but still heavily modified.
