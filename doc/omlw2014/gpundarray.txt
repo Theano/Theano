@@ -1,9 +1,9 @@
 
-.. _omlw2014_libgpundarray:
+.. _omlw2014_libgpuarray:
 
-*************
-libGpuNdArray
-*************
+***********
+libgpuarray
+***********
 
 Why a common GPU ndarray?
 -------------------------
@@ -36,7 +36,6 @@ Design Goals
 Final Note
 ----------
 
-TODO: update
-- Usable, but under development.
-- Is the next GPU array container for Theano
+- Usable directly, but not all implementation available.
+- Is the next GPU array container for Theano and is working (not all implementation available now)
 - Mailing list: http://lists.tiker.net/listinfo/gpundarray

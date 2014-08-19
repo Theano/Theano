@@ -79,51 +79,6 @@ NumPy in one slide
 Arrays can be combined with numeric operators, standard mathematical
 functions. NumPy has great `documentation <http://docs.scipy.org/doc/numpy/reference/>`_.
 
-Training an MNIST-ready classification neural network in pure NumPy might look like this:
-
-.. code-block:: python
-
-    #########################
-    # NumPy for Training a
-    # Neural Network on MNIST
-    #########################
-
-    x = np.load('data_x.npy')
-    y = np.load('data_y.npy')
-    w = np.random.normal(
-        avg=0,
-        std=.1,
-        size=(784, 500))
-    b = np.zeros((500,))
-    v = np.zeros((500, 10))
-    c = np.zeros((10,))
-
-    batchsize = 100
-    for i in xrange(1000):
-        x_i = x[i * batchsize: (i + 1) * batchsize]
-        y_i = y[i * batchsize: (i + 1) * batchsize]
-
-        hidin = np.dot(x_i, w) + b
-
-        hidout = np.tanh(hidin)
-
-        outin = np.dot(hidout, v) + c
-        outout = (np.tanh(outin) + 1) / 2.0
-
-        g_outout = outout - y_i
-        err = 0.5 * np.sum(g_outout) ** 2
-
-        g_outin = g_outout * outout * (1.0 - outout)
-
-        g_hidout = np.dot(g_outin, v.T)
-        g_hidin = g_hidout * (1 - hidout ** 2)
-
-        b -= lr * np.sum(g_hidin, axis=0)
-        c -= lr * np.sum(g_outin, axis=0)
-        w -= lr * np.dot(x_i.T, g_hidin)
-        v -= lr * np.dot(hidout.T, g_outin)
-
-
 What's missing?
 ---------------
 
@@ -236,7 +191,29 @@ Project status
 
  * Github (`bleeding edge` repository, the one recommanded): unknown
 
-* Github stats?????
+* TODO: Github stats?????
+
+
+Pylearn2 in one slide
+---------------------
+
+TODO
+
+Other global information
+------------------------
+
+Theano have small basic operation, not layers as base operation:
+
+* Easy reuse
+* Don't need to reimplement the grad for each variation of layers
+
+This could cause slowness (more small operation), but the optimizer fix that.
+
+Pylearn2 wrap the small operations into layers like other
+projects:
+
+* There is no overhead to this extra layer, due to the
+  compilation of the function by Theano.
 
 
 Why scripting for GPUs?

@@ -4,7 +4,7 @@
 Sharing code
 ************
 
-* License
-* Common base object?
-* If not, important implementation that use raw ptr/shape?
-* Important, acknowledgement section on web site AND in paper about the software.
+* License (BSD 3 clauses suggested, don't forget to add the license info in the code)
+* Common base object? libgpuarray.
+* If not, important implementation that use raw ptr/shape? Doc that interface.
+* Important, *acknowledgement section on web site*(citation like) AND *in paper* about the software we reuse! (and use too)
