@@ -49,7 +49,11 @@ class CudaNdarrayConstant(_operators, Constant):
     def __str__(self):
         if self.name is not None:
             return self.name
-        return "CudaNdarrayConstant{"+str(numpy.asarray(self.data))+"}"
+        try:
+            data = str(numpy.asarray(self.data))
+        except Exception, e:
+            data = "error while transfering the value:" + str(e)
+        return "CudaNdarrayConstant{"+data+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
 class CudaNdarraySharedVariable(_operators, SharedVariable):
