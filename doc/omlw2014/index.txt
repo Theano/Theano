@@ -113,3 +113,4 @@ from gurus on hand if you get stuck.
     theano
     pylearn2
     gpundarray
+    sharing

@@ -1,0 +1,10 @@
+.. _omlw2014_sharing:
+
+************
+Sharing code
+************
+
+* License
+* Common base object?
+* If not, important implementation that use raw ptr/shape?
+* Important, acknowledgement section on web site AND in paper about the software.
