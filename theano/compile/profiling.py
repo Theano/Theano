@@ -643,7 +643,7 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_inplace = 0
 
         # track min peak memory usage
-        max_min_peak = 0
+        min_max_peak = 0
 
         def count_running_memory(order, fgraph, nodes_mem):
             """
@@ -711,7 +711,7 @@ class ProfileStats(object):
                             if not viewed_by[origin]:
                                 running_memory_size -= var_mem[origin]
 
-            return [node_memory_size, running_memory_size, running_max_memory_size,\
+            return [node_memory_size, running_memory_size, running_max_memory_size,
                  node_memory_saved_by_inplace, node_memory_saved_by_view]
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
