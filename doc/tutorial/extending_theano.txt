@@ -421,7 +421,7 @@ as_op
 as_op is a python decorator that converts a python function into a
 basic Theano op that will call the supplied function during execution.
 
-This isn't the recommand way way to build an op, but allow quick
+This isn't the recommended way to build an op, but allows for a quick
 implementation.
 
 It takes an optional :func:`infer_shape` parameter that must have this

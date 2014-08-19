@@ -450,7 +450,8 @@ static PyObject *CudaNdarray_NewDims(int nd, const inttype * dims)
             return NULL;
         }
     }else{
-        PyErr_SetString(PyExc_MemoryError, "Failed to the CudaNdarray structure.");
+        PyErr_SetString(PyExc_MemoryError,
+                        "Failed to allocate the CudaNdarray structure.");
     }
     return (PyObject*)rval;
 }
