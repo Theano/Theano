@@ -736,6 +736,7 @@ class ProfileStats(object):
             mem_count = 0
             max_mem_count = 0
             mem_bound = numpy.inf
+            # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
 
             # Initial compute_map which is used to check if a node is valid
