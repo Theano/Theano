@@ -577,7 +577,7 @@ class TensorVariable(_tensor_py_operators, Variable):
 
     def __init__(self, type, owner=None, index=None, name=None):
         super(TensorVariable, self).__init__(type, owner=owner, index=index, name=name)
-        if (config.warn_float64 and type == 'float64'):
+        if (config.warn_float64 and type.dtype == 'float64'):
             print '''Warning, you are instanciating parts of your graph 
                 with the float64 type (possibly by accident).  
                 This means that those parts will not run on the GPU.  
