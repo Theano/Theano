@@ -348,8 +348,9 @@ class ConvOp(OpenMPOp):
 
         :type verbose: int
         :param verbose: passed to GpuConv
-        :type version: int
-        :param version: passed to GpuConv
+        :type version: int or str
+        :param version: passed to GpuConv, if version='no_fft', fft
+            optimization will be desactivated at the op level.
 
         The 3 following parameters are used internally when we generate
         the gradient when dx!=1 or dy!=1.
@@ -367,6 +368,13 @@ class ConvOp(OpenMPOp):
             Set to False in the grad again the weight when the
             output_mode is full.
         """
+        # Desactivate fft_optimization at the op level if specified
+        if version == "no_fft":
+            self.fft_opt = False
+            version = -1
+        else:
+            self.fft_opt = True
+
         # We must continue to consider None as 1 for backward compatibility.
         if dx is None:
             dx = 1

@@ -119,6 +119,52 @@ class TestConv2dFFT(unittest.TestCase):
 
         utt.assert_allclose(res_ref, res_fft)
 
+    def test_opt_nofft_valid(self):
+        inputs_shape = (5, 3, 7, 6)
+        filters_shape = (2, 3, 3, 3)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+
+        conv = theano.tensor.nnet.conv.conv2d(inputs, filters, version='no_fft')
+
+        mode = mode_with_gpu.including('conv_fft_valid')
+
+        f_ref = theano.function([], conv)
+        f_fft = theano.function([], conv, mode=mode)
+
+        # make sure we that no CuFFTOp has been inserted
+        topo = f_fft.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 0
+
+    def test_opt_nofft_full(self):
+        inputs_shape = (5, 3, 7, 6)
+        filters_shape = (2, 3, 3, 3)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+
+        conv = theano.tensor.nnet.conv.conv2d(inputs, filters,
+                                              border_mode='full',
+                                              version='no_fft')
+
+        mode = mode_with_gpu.including('conv_fft_full')
+
+        f_ref = theano.function([], conv)
+        f_fft = theano.function([], conv, mode=mode)
+
+        # make sure we that no CuFFTOp has been inserted
+        topo = f_fft.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
+                   for n in topo) == 0
+
 
 class TestConv3dFFT(unittest.TestCase):
 

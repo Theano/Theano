@@ -1143,6 +1143,7 @@ def local_gpu_conv(node):
                     version=op.version,
                     verbose=op.verbose,
                     imshp=op.imshp,
+                    fft_opt=op.fft_opt
                     )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
@@ -1242,7 +1243,8 @@ def _gpu_conv_to_fftconv(node):
 def local_conv_fft_valid(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'valid' and
-        node.op.subsample == (1, 1)):
+        node.op.subsample == (1, 1) and
+        node.op.fft_opt):
         return [_gpu_conv_to_fftconv(node)]
 
 
@@ -1250,7 +1252,8 @@ def local_conv_fft_valid(node):
 def local_conv_fft_full(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode == 'full' and
-        node.op.subsample == (1, 1)):
+        node.op.subsample == (1, 1) and
+        node.op.fft_opt):
         return [_gpu_conv_to_fftconv(node)]
 
 gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
