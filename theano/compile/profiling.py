@@ -722,7 +722,7 @@ class ProfileStats(object):
                         elif ins in view_of:
                             origin = view_of[ins]
                             viewed_by[origin].remove(ins)
-                            if not viewed_by[origin]:
+                            if not viewed_by[origin] and origin not in fgraph.inputs:
                                 running_memory_size -= var_mem[origin]
                     else:
                         # ins is viewed_by something else, so its memory isn't freed
@@ -736,6 +736,7 @@ class ProfileStats(object):
             mem_count = 0
             max_mem_count = 0
             mem_bound = numpy.inf
+            # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
 
             # Initial compute_map which is used to check if a node is valid
@@ -773,7 +774,7 @@ class ProfileStats(object):
             viewed_by = {}# {var1: [vars that view var1]} 
             # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
             # This is more safe to help detect potential bug  in the algo
-            for var in fgraph.apply_nodes:
+            for var in fgraph.variables:
                 viewed_by[var] = []
             view_of = {}# {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
@@ -833,7 +834,7 @@ class ProfileStats(object):
                                 elif ins in view_of:
                                     origin = view_of[ins]
                                     viewed_by[origin].remove(ins)
-                                    if not viewed_by[origin]:
+                                    if not viewed_by[origin] and origin not in fgraph.inputs:
                                         mem_freed += var_mem[origin]
                         else:
                             # ins is viewed_by something else, so its memory isn't freed
