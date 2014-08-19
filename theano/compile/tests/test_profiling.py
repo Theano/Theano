@@ -46,8 +46,8 @@ def test_profiling():
         the_string = buf.getvalue()
         lines1 = [l for l in the_string.split("\n") if "Max if linker" in l]
         lines2 = [l for l in the_string.split("\n") if "Minimum peak" in l]
-        assert "Max if linker=cvm(default): 8208KB (16400KB)" in the_string, (lines1, lines2)
-        assert "Minimum peak from all valid apply node order is 8192KB" in the_string, (lines1, lines2)
+        assert "Max if linker=cvm(default): 8224KB (16408KB)" in the_string, (lines1, lines2)
+        assert "Minimum peak from all valid apply node order is 8208KB" in the_string, (lines1, lines2)
 
     finally:
         theano.config.profile = config1
