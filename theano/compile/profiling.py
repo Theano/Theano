@@ -675,9 +675,8 @@ class ProfileStats(object):
             viewed_by = {}# {var1: [vars that view var1]} 
             # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
             # This is more safe to help detect potential bug  in the algo
-            for node in fgraph.apply_nodes:
-                for var in node.inputs:
-                    viewed_by[var] = []
+            for var in fgraph.variables:
+                viewed_by[var] = []
             view_of = {} # {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
@@ -715,7 +714,7 @@ class ProfileStats(object):
 
                 # Mimic the combination of Theano and Python gc
                 for ins in node.inputs:
-                    assert not (ins in view_of and ins in viewed_by)
+                    assert not (ins in view_of and viewed_by[ins])
                     # we keep trac of the original var, so this shouldn't happen
                     if dependencies[ins] and ins not in fgraph.outputs and ins.owner:
                         if ins not in view_of and not viewed_by.get(ins, []):
@@ -774,9 +773,8 @@ class ProfileStats(object):
             viewed_by = {}# {var1: [vars that view var1]} 
             # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
             # This is more safe to help detect potential bug  in the algo
-            for node in fgraph.apply_nodes:
-                for var in node.inputs:
-                    viewed_by[var] = []
+            for var in fgraph.apply_nodes:
+                viewed_by[var] = []
             view_of = {}# {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
@@ -826,7 +824,7 @@ class ProfileStats(object):
 
                     # Mimic the combination of Theano and Python gc.
                     for ins in node.inputs:
-                        assert not (ins in view_of and ins in viewed_by)
+                        assert not (ins in view_of and viewed_by[ins])
                         # we keep track of the original var, so this shouldn't happen
                         if dependencies[ins] and ins not in fgraph.outputs and ins.owner:
                             if all(compute_map[v] for v in dependencies[ins]):
