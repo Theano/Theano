@@ -685,9 +685,10 @@ class ProfileStats(object):
                     # TODO check the op returned a view
                     if dmap and idx in dmap:
                         node_memory_saved_by_inplace += v
+                    # TODO check the op returned a view
                     elif vmap and idx in vmap:
                         node_memory_saved_by_view += v
-                    idx = 1
+                    idx += 1
 
                 for out in node.outputs:
                         if (dmap or vmap):
@@ -881,7 +882,7 @@ class ProfileStats(object):
             if config.profiling.min_peak_memory:
                 node_list = fgraph.apply_nodes
                 min_peak = count_minimum_peak(node_list, fgraph, nodes_mem)
-                max_min_peak = max(max_min_peak, min_peak)
+                min_max_peak = max(min_max_peak, min_peak)
 
             del fgraph, nodes_mem, node
 
@@ -904,9 +905,9 @@ class ProfileStats(object):
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
             new_max_running_max_memory_size / 1024.)), int(round(
             max_running_max_memory_size / 1024.)))
-        if max_min_peak:
+        if min_max_peak:
             print >> file,  "    Minimum peak from all valid apply node order is %dKB" % int(round(
-                max_min_peak / 1024.))
+                min_max_peak / 1024.))
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
             round(max_node_memory_saved_by_view / 1024.)))
