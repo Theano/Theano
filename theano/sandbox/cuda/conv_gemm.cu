@@ -225,6 +225,13 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     col_dim[0] = nChannels * kW * kH;
     col_dim[1] = topHeight * topWidth;
     CudaNdarray* col = (CudaNdarray*)CudaNdarray_NewDims(2, col_dim);
+    if (NULL == col)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                "GpuCorrMM failed to allocate working memory of %d x %d\n",
+                col_dim[0], col_dim[1]);
+        return NULL;
+    }
 
     // Define some useful variables
     const int bottom_stride = CudaNdarray_HOST_STRIDES(bottom)[0];
@@ -244,6 +251,13 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             // First, im2col
             im2col(bottom->devdata + n * bottom_stride, nChannels, bottomHeight,
                     bottomWidth, kH, kW, padH, padW, dH, dW, col->devdata);
+            cudaError_t err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM encountered a CUDA error in im2col: %s\n",
+                             cudaGetErrorString(err));
+                return NULL;
+            }
             // Second, gemm
             cublasStatus_t status = cublasSgemm(handle,
                     CUBLAS_OP_N, CUBLAS_OP_N,
@@ -299,7 +313,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                 sizeof(float) * M_ * K_);
         if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered a CUDA error: %s\n",
+                        "GpuCorrMM encountered a CUDA error in cudaMemsetAsync: %s\n",
                         cudaGetErrorString(err));
                 return NULL;
         }
@@ -308,6 +322,13 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             // First, im2col
             im2col(bottom->devdata + n * bottom_stride, nChannels, bottomHeight,
                     bottomWidth, kH, kW, padH, padW, dH, dW, col->devdata);
+            err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM encountered a CUDA error in im2col: %s\n",
+                             cudaGetErrorString(err));
+                return NULL;
+            }
             // Second, gemm
             cublasStatus_t status = cublasSgemm(handle,
                     CUBLAS_OP_T, CUBLAS_OP_N,
@@ -374,6 +395,13 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             // col2im back to the data
             col2im(col->devdata, nChannels, bottomHeight, bottomWidth,
                     kH, kW, padH, padW, dH, dW, bottom->devdata + n * bottom_stride);
+            cudaError_t err = cudaGetLastError();
+            if (err != cudaSuccess) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM encountered a CUDA error in col2im: %s\n",
+                             cudaGetErrorString(err));
+                return NULL;
+            }
         }
         /*
         // Original caffe code for comparison

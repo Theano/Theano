@@ -569,12 +569,29 @@ class BaseGpuCorrMM(GpuOp):
                 for f in files]
         return reduce(str.__add__, codes)
 
-    def c_code(self, bottom, weights, top, direction, sub):
-        # This is the shared code for GpuCorrMM (direction="forward"),
-        # GpuCorrMM_gradWeights (direction="backprop weights"), and
-        # GpuCorrMM_gradInputs (direction="backprop inputs").
-        # Depending on the direction, one of bottom, weights, top will
-        # receive the output, while the other two serve as inputs.
+    def c_code_helper(self, bottom, weights, top, direction, sub):
+        """
+        This generates the C code for GpuCorrMM (direction="forward"),
+        GpuCorrMM_gradWeights (direction="backprop weights"), and
+        GpuCorrMM_gradInputs (direction="backprop inputs").
+        Depending on the direction, one of bottom, weights, top will
+        receive the output, while the other two serve as inputs.
+
+        :param bottom: Variable name of the input images in the forward pass,
+            or the gradient of the input images in backprop wrt. inputs
+        :param weights: Variable name of the filters in the forward pass,
+            or the gradient of the filters in backprop wrt. weights
+        :param top: Variable name of the output images / feature maps in the
+            forward pass, or the gradient of the outputs in the backprop passes
+        :param direction: "forward" to correlate bottom with weights and store
+            results in top,
+            "backprop weights" to do a valid convolution of bottom with top
+            (swapping the first two dimensions) and store results in weights,
+            and "backprop inputs" to do a full convolution of top with weights
+            (swapping the first two dimensions) and store results in bottom.
+        :param sub: Dictionary of substitutions useable to help generating the
+            C code.
+        """
         if self.border_mode != "valid":
             raise ValueError("mode must be 'valid'")
         dH, dW = self.subsample
@@ -591,6 +608,9 @@ class BaseGpuCorrMM(GpuOp):
         elif direction == "backprop inputs":
             direction = 2
             out = bottom
+        else:
+            raise ValueError("direction must be one of 'forward', "
+                    "'backprop weights', 'backprop inputs'")
         sub = sub.copy()
         sub.update(locals())
 
@@ -671,6 +691,13 @@ class BaseGpuCorrMM(GpuOp):
     {
         Py_XDECREF(%(out)s);
         %(out)s = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+        if (NULL == %(out)s)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                    "BaseGpuCorrMM: Failed to allocate output of %%d x %%d x %%d x %%d",
+                    out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
+            %(fail)s
+        }
     }
 
     // Call CUDA code
@@ -736,7 +763,7 @@ class GpuCorrMM(BaseGpuCorrMM):
         bottom, weights = inp
         top, = out_
         direction = "forward"
-        return super(GpuCorrMM, self).c_code(bottom, weights, top, direction, sub)
+        return super(GpuCorrMM, self).c_code_helper(bottom, weights, top, direction, sub)
 
     def grad(self, inp, grads):
         bottom, weights = inp
@@ -776,7 +803,7 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
         bottom, top = inp
         weights, = out_
         direction = "backprop weights"
-        return super(GpuCorrMM_gradWeights, self).c_code(bottom, weights, top, direction, sub)
+        return super(GpuCorrMM_gradWeights, self).c_code_helper(bottom, weights, top, direction, sub)
 
 
 class GpuCorrMM_gradInputs(BaseGpuCorrMM):
@@ -806,7 +833,7 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         weights, top = inp
         bottom, = out_
         direction = "backprop inputs"
-        return super(GpuCorrMM_gradInputs, self).c_code(bottom, weights, top, direction, sub)
+        return super(GpuCorrMM_gradInputs, self).c_code_helper(bottom, weights, top, direction, sub)
 
 
 ##
