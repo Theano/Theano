@@ -698,17 +698,17 @@ class ProfileStats(object):
                 # Update the Python emulating dicts and add the memory allocated by the node
                 idx2 = 0
                 for out in node.outputs:
-                        if (dmap and idx2 in dmap) or (vmap and idx2 in vmap):
-                            # This is needed for destroy_map in case it return a partial view that is destroyed.
-                            # So the output could be different then the input.
-                            for ins in node.inputs:
-                                assert len[ins] == 1
-                                view_of[out] = view_of.get(ins, ins)# This get make that we keep trac of view only again the original
-                                viewed_by[ins].append(out)  
-                        else:
-                            running_memory_size += var_mem[out]
-                            node_memory_size += var_mem[out]
-                        idx2 += 1
+                    if (dmap and idx2 in dmap) or (vmap and idx2 in vmap):
+                        # This is needed for destroy_map in case it return a partial view that is destroyed.
+                        # So the output could be different then the input.
+                        for ins in node.inputs:
+                            assert len[ins] == 1
+                            view_of[out] = view_of.get(ins, ins)# This get make that we keep trac of view only again the original
+                            viewed_by[ins].append(out)  
+                    else:
+                        running_memory_size += var_mem[out]
+                        node_memory_size += var_mem[out]
+                    idx2 += 1
 
                 running_max_memory_size = max(running_max_memory_size, running_memory_size)
 
