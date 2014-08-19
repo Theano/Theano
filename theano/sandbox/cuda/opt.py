@@ -675,35 +675,10 @@ def local_gpu_careduce(node):
                         assert reduce_mask[a] == 0
                         reduce_mask[a] = 1
                 greduce = GpuCAReduce(reduce_mask, scalar_op)
+                out = node.outputs[0]
                 if greduce.supports_c_code([gpu_from_host(x)]):
                     rval = host_from_gpu(greduce(gpu_from_host(x)))
-                    out = node.outputs[0]
-                    if rval.type == out.type:
-                        return [rval]
-                    else:
-                        for b1, b2 in zip(rval.broadcastable,
-                                          out.type.broadcastable):
-                            if b1 is True:
-                                # It can happen that during
-                                # optimization we discover that the
-                                # input can be broadcasted, but didn't
-                                # know that at graph build time.
-                                continue
-                            if b1 is False and b2 is True:
-                                # We should not loose the information
-                                # that one dimensions was
-                                # broadcastable.
-                                print >> sys.stderr, (
-                                    "WARNING: local_gpu_careduce got type"
-                                    " wrong",
-                                    rval.type, out.type,
-                                    node.inputs[0].type, x.type,
-                                    node)
-                                return None
-                        rval = patternbroadcast(rval,
-                                                out.type.broadcastable)
                 else:
-
                     # Try to make a simpler pattern based on reshaping
                     # The principle is that if two adjacent dimensions have
                     # the same value in the reduce_mask, then we can reshape
@@ -730,37 +705,39 @@ def local_gpu_careduce(node):
                     if new_greduce.supports_c_code(reshaped_gpu_inputs):
                         reduce_reshaped_x = host_from_gpu(
                             new_greduce(gpu_reshaped_x))
-                        out = node.outputs[0]
 
                         if reduce_reshaped_x.ndim != out.ndim:
                             rval = reduce_reshaped_x.reshape(
                                 tensor.stack(*shape_of[out]))
                         else:
                             rval = reduce_reshaped_x
-                        if rval.type == out.type:
-                            return [rval]
-                        else:
-                            for b1, b2 in zip(rval.broadcastable,
-                                              out.type.broadcastable):
-                                if b1 is True:
-                                    # It can happen that during
-                                    # optimization we discover that the
-                                    # input can be broadcasted, but didn't
-                                    # know that at graph build time.
-                                    continue
-                                if b1 is False and b2 is True:
-                                    # We should not loose the information
-                                    # that one dimensions was
-                                    # broadcastable.
-                                    print >> sys.stderr, (
-                                        "WARNING: local_gpu_careduce got type"
-                                        " wrong",
-                                        rval.type, out.type,
-                                        node.inputs[0].type, x.type,
-                                        node)
-                                    return None
-                                rval = patternbroadcast(rval,
-                                                        out.broadcastable)
+                    else:
+                        return
+                if rval.type == out.type:
+                    return [rval]
+                else:
+                    for b1, b2 in zip(rval.broadcastable,
+                                      out.type.broadcastable):
+                        if b1 is True:
+                            # It can happen that during
+                            # optimization we discover that the
+                            # input can be broadcasted, but didn't
+                            # know that at graph build time.
+                            continue
+                        if b1 is False and b2 is True:
+                            # We should not loose the information
+                            # that one dimensions was
+                            # broadcastable.
+                            print >> sys.stderr, (
+                                "WARNING: local_gpu_careduce got type"
+                                " wrong",
+                                rval.type, out.type,
+                                node.inputs[0].type, x.type,
+                                node)
+                            return None
+                    rval = tensor.patternbroadcast(rval,
+                                                   out.broadcastable)
+                    return [rval]
 
     return False
 
