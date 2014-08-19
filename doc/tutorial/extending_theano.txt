@@ -438,20 +438,20 @@ signature:
 
 .. note::
 
-    Not providing the `infer_shape` method cause shapes related
-    optimization to don't work with that op. For example
-    `you_op(inputs, ...).shape` will need the op to be executed just
+    Not providing the `infer_shape` method cause shapes-related
+    optimization to not work with that op. For example
+    `your_op(inputs, ...).shape` will need the op to be executed just
     to get the shape.
 
 .. note::
 
-    As no grad is defined, this mean you won't be able to
-    differenciate path that include this op.
+    As no grad is defined, this means you won't be able to
+    differentiate paths that include this op.
 
 .. note::
 
-    It convert the python function to a callable object that take as
-    inputs Theano variable that was declared.
+    It converts the python function to a callable object that takes as
+    inputs Theano variables that were declared.
 
 as_op Example
 -------------
