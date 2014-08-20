@@ -669,6 +669,7 @@ class ProfileStats(object):
             running_max_memory_size = 0
             node_memory_saved_by_view = 0
             node_memory_saved_by_inplace = 0
+            # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
 
             # Initial compute_map which is used to check if a node is valid
@@ -975,7 +976,7 @@ class ProfileStats(object):
                 min_peak = count_minimum_peak(node_list, fgraph, nodes_mem)
                 min_max_peak = max(min_max_peak, min_peak)
 
-            del fgraph, nodes_mem, node
+            del fgraph, nodes_mem
 
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
