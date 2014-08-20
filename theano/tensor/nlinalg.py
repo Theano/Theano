@@ -34,14 +34,6 @@ class MatrixPinv(Op):
     def __init__(self):
         pass
 
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``MatrixPinv`` op, there are no properties to be exposed.
-        """
-        return ()
-
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2
@@ -66,14 +58,6 @@ class MatrixInverse(Op):
 
     def __init__(self):
         pass
-
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``MatrixInverse`` op, there are no properties to be exposed.
-        """
-        return ()
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -298,14 +282,6 @@ class Eig(Op):
     """
     _numop = staticmethod(numpy.linalg.eig)
 
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``Eig`` op, there are no properties to be exposed.
-        """
-        return ()
-
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2
@@ -329,13 +305,11 @@ class Eigh(Eig):
 
     """
     _numop = staticmethod(numpy.linalg.eigh)
+    __props__ = ('UPLO',)
 
     def __init__(self, UPLO='L'):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
-
-    def props(self):
-        return self.UPLO,
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -397,6 +371,8 @@ class EighGrad(Op):
     """Gradient of an eigensystem of a Hermitian matrix.
 
     """
+    __props__ = ('UPLO',)
+
     def __init__(self, UPLO='L'):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
@@ -406,9 +382,6 @@ class EighGrad(Op):
         else:
             self.tri0 = numpy.triu
             self.tri1 = lambda a: numpy.tril(a, -1)
-
-    def props(self):
-        return (self.UPLO,)
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
@@ -468,6 +441,7 @@ class QRFull(Op):
     and r is upper-triangular.
     """
     _numop = staticmethod(numpy.linalg.qr)
+    __props__ = ('mode',)
 
     def __init__(self, mode):
         self.mode = mode
@@ -478,9 +452,6 @@ class QRFull(Op):
         q = theano.tensor.matrix(dtype=x.dtype)
         r = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [q, r])
-
-    def props(self):
-        return self.mode
 
     def perform(self, node, (x,), (q, r)):
         assert x.ndim == 2, "The input of qr function should be a matrix."
@@ -496,12 +467,10 @@ class QRIncomplete(Op):
     Factor the matrix a as qr and return a single matrix.
     """
     _numop = staticmethod(numpy.linalg.qr)
+    __props__ = ('mode',)
 
     def __init__(self, mode):
         self.mode = mode
-
-    def props(self):
-        return self.mode
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -570,6 +539,7 @@ class SVD(Op):
 
     # See doc in the docstring of the function just after this class.
     _numop = staticmethod(numpy.linalg.svd)
+    __props__ = ('full_matrices', 'compute_uv')
 
     def __init__(self, full_matrices=True, compute_uv=True):
         """
@@ -586,9 +556,6 @@ class SVD(Op):
         """
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
-
-    def props(self):
-        return self.full_matrices, self.compute_uv,
 
     def make_node(self, x):
         x = as_tensor_variable(x)

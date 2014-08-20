@@ -575,21 +575,24 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
 
+    def _props(self):
+        return (getattr(self, a) for a in self.__props__)
+
     def __hash__(self):
-        if hasattr(self, 'props'):
-            return hash((type(self), self.props()))
+        if hasattr(self, '__props__'):
+            return hash((type(self), self._props()))
         else:
             return super(Op, self).__hash__()
 
     def __str__(self):
-        if hasattr(self, 'props'):
-            return "%s{%s}" % (self.__class__.__name__, ", ".join(str(p) for p in self.props()))
+        if hasattr(self, '__props__'):
+            return "%s{%s}" % (self.__class__.__name__, ", ".join(str(p) for p in self._props()))
         else:
             return super(Op, self).__str__()
 
     def __eq__(self, other):
-        if hasattr(self, 'props'):
-            return (type(self) == type(other) and self.props() == other.props())
+        if hasattr(self, '__props__'):
+            return (type(self) == type(other) and self._props() == other._props())
         else:
             return NotImplemented
 

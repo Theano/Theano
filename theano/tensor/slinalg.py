@@ -42,13 +42,12 @@ class Cholesky(Op):
     #TODO: inplace
     #TODO: for specific dtypes
     #TODO: LAPACK wrapper with in-place behavior, for solve also
+
+    __props__ = ('lower', 'destructive')
+
     def __init__(self, lower=True):
         self.lower = lower
         self.destructive = False
-
-    def props(self):
-        return (self.lower,
-                self.destructive)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
@@ -75,13 +74,12 @@ cholesky = Cholesky()
 class CholeskyGrad(Op):
     """
     """
+
+    __props__ = ('lower', 'destructive')
+
     def __init__(self, lower=True):
         self.lower = lower
         self.destructive = False
-
-    def props(self):
-        return (self.lower,
-                self.destructive)
 
     def make_node(self, x, l, dz):
         x = as_tensor_variable(x)
@@ -141,6 +139,9 @@ class CholeskyGrad(Op):
 
 class Solve(Op):
     """Solve a system of linear equations"""
+
+    __props__ = ('A_structure', 'lower', 'overwrite_A', 'overwrite_b')
+
     def __init__(self,
                  A_structure='general',
                  lower=False,
@@ -152,12 +153,6 @@ class Solve(Op):
         self.lower = lower
         self.overwrite_A = overwrite_A
         self.overwrite_b = overwrite_b
-
-    def props(self):
-        return (self.A_structure,
-                self.lower,
-                self.overwrite_A,
-                self.overwrite_b)
 
     def __repr__(self):
         return 'Solve{%s}' % str(self.props())
@@ -201,12 +196,11 @@ class Eigvalsh(Op):
     """Generalized eigenvalues of a Hermetian positive definite eigensystem
     """
 
+    __props__ = ('lower',)
+
     def __init__(self, lower=True):
         assert lower in [True, False]
         self.lower = lower
-
-    def props(self):
-        return (self.lower,)
 
     def make_node(self, a, b):
         assert imported_scipy, (
@@ -258,6 +252,8 @@ class EigvalshGrad(Op):
     # discussion on github at
     # https://github.com/Theano/Theano/pull/1846#discussion-diff-12486764
 
+    __props__ = ('lower',)
+
     def __init__(self, lower=True):
         assert lower in [True, False]
         self.lower = lower
@@ -267,9 +263,6 @@ class EigvalshGrad(Op):
         else:
             self.tri0 = numpy.triu
             self.tri1 = lambda a: numpy.tril(a, -1)
-
-    def props(self):
-        return (self.lower,)
 
     def make_node(self, a, b, gw):
         assert imported_scipy, (
