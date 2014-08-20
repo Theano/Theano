@@ -1,0 +1,181 @@
+\documentclass[utf8x,xcolor=pdftex,dvipsnames,table]{beamer}
+\usetheme{Malmoe}  % Now it's a beamer presentation with the lisa theme!
+\setbeamertemplate{footline}[page number]
+\usecolortheme{beaver}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage[utf8x]{inputenc}
+%\logo{\includegraphics[width=.8in]{UdeM_NoirBleu_logo_Marie_crop}}
+
+\newcommand{\superscript}[1]{\ensuremath{^{\textrm{#1}}}}
+
+\mode<presentation>
+
+\title{Theano, Pylearn2, libgpuarray Presentation}
+
+\author{
+\footnotesize
+Frédéric Bastien\superscript{a}, Bart van Merriënboer\superscript{a} \newline
+\superscript{a}Département d'Informatique et de Recherche Opérationnelle \newline
+Université de Montréal \newline
+Montréal, Canada \newline
+\texttt{\{bastienf, vanmerb\}@iro.umontreal.ca} \newline \newline
+}
+
+\date{OML Workshop 2014}
+
+\setbeamertemplate{navigation symbols}{}
+
+\begin{document}
+
+\begin{frame}[plain]
+ \titlepage
+ \vspace{-5em}
+ \includegraphics[width=1in]{../hpcs2011_tutorial/pics/lisabook_logo_text_3.png}
+ \hfill
+ \includegraphics[width=.8in]{../hpcs2011_tutorial/pics/UdeM_NoirBleu_logo_Marie_crop}
+\end{frame}
+
+\section{Introduction}
+\begin{frame}{High level}\setcounter{page}{1}
+\end{frame}
+\begin{frame}{Python}
+\end{frame}
+\begin{frame}{NumPy}
+\end{frame}
+\begin{frame}{What's missing?}
+\end{frame}
+\begin{frame}{Why scripting for GPUs?}
+\end{frame}
+
+\begin{frame}{Theano}
+\end{frame}
+\begin{frame}{Pylearn2}
+\end{frame}
+\begin{frame}{libgpuarray}
+\end{frame}
+\begin{frame}{High level}
+\end{frame}
+
+
+\section{Theano}
+\begin{frame}{Theano in one slice}
+\end{frame}
+\begin{frame}{Project status?}
+\end{frame}
+
+
+\section{Pylearn2}
+\begin{frame}{Pylearn2 in one slice}
+\end{frame}
+\begin{frame}{Project status?}
+\end{frame}
+
+\section{libgpuarray}
+\begin{frame}{libgpuarray in one slice}
+\end{frame}
+\begin{frame}{Project status?}
+\end{frame}
+
+\section{sharing}
+\begin{frame}{How can we do it?}
+\end{frame}
+
+\begin{frame}{OLD STUFF Why do we need this?}
+\begin{itemize}
+\item Efficient linear algebra is a the core of many scientific applications
+\item On the CPU, numpy ndarray provides a standard object (for python at least)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Why a new implementation?}
+\begin{block}{There are already a number of existing GPU computing codebases:}
+Theano, PyCUDA/PyOpenCL, CUDAmat, Gnumpy, Thrust, ...
+\end {block}
+\begin{enumerate}
+\item<2-> All are incompatible, which hinders code sharing.
+\item<3-> They do not support the full range of numpy ndarray features
+\item<4-> None support both CUDA and OpenCL
+\end{enumerate}
+\end{frame}
+
+\section{Features}
+
+\begin{frame}{Strides}
+\only<1>{Strides is a way to specify how much memory to skip between each element of a dimension.}
+\only<2>{We can use strides to take submatrix ${\color{cyan!50}B}$ without copying any memory.}
+\begin{center}
+\onslide<1->{Matrix ${\color{red!50}A}$}\hspace{5em}\onslide<2->{Matrix ${\color{cyan!50}B}$}
+\end{center}
+\begin{center}
+%%\only<1>{\includegraphics{strides-1}}
+%%\only<2>{\includegraphics{strides-2}}
+\end{center}
+\end{frame}
+
+\begin{frame}{Features desired}
+\begin{itemize}
+\item {\color{gray!80} Support for varying datatypes}
+\item {\color{gray!80} Support for an arbitrary number of dimensions}
+\item {\color{gray!80} Support for strides}
+\item Support for broadcasting
+\item {\color{gray!80} Compatibility with CUDA and OpenCL}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Comparison of existing implementations}
+\begin{table}
+\rowcolors{2}{RoyalBlue!5}{RoyalBlue!23}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+Package & strides & bcast & dims & types & backends \\
+\hline
+\hline
+Theano & yes\footnote{as number of elements} & yes & any & float32 & CUDA \\
+PyCUDA& no & no & any & all & CUDA \\
+PyOpenCL & no & no & any & all & OpenCL \\
+CUDAMat & no & yes\footnote{via a function} & 2 & float32 & CUDA \\
+Gnumpy & no & yes & any & float32\footnote{and a hackish form of boolean} & CUDA \\
+Thrust & no & no & 1 & all & CUDA \\
+\hline
+\hiderowcolors
+Desired & yes & yes & any & all & both \\
+\hline
+\end{tabular}
+\end{table}
+\end{frame}
+
+
+%%\vspace{-1em}
+
+\section{Conclusion}
+\begin{frame}{Future plans}
+\begin{itemize}
+\item<1-> Use in Theano/PyOpenCL/PyCUDA
+\item<2-> Design and implement a good C/C++ interface
+\item<3-> Find ways to lower the overhead
+\item<4-> Use the implicit looping provided by CUDA and OpenCL
+\item<5-> World domination!
+\begin{itemize}
+\item<6-> Library authors $\to$ come see us
+\item<6-> Supervisers $\to$ talk to your students about this project
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Acknowledgment}
+\begin{itemize}
+\item James Bergstra
+\item Compute Canada, RQCHP, NSERC, and Canada Research Chairs for providing funds or access to compute resources.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{center}
+\Huge
+Questions?
+\end{center}
+\end{frame}
+
+
+\end{document}
