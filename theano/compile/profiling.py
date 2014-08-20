@@ -740,8 +740,7 @@ class ProfileStats(object):
                     if (dependencies[ins] and
                         ins not in fgraph.outputs and
                         ins.owner and
-                        all(compute_map[v] for v in dependencies[ins])):
-
+                        all([compute_map[v][0] for v in dependencies[ins]])):
                         if ins not in view_of and not viewed_by.get(ins, []):
                             running_memory_size -= var_mem[ins]
                         elif ins in view_of:
@@ -873,7 +872,7 @@ class ProfileStats(object):
                         if (dependencies[ins] and
                             ins not in fgraph.outputs and
                             ins.owner and
-                            all(compute_map[v] for v in dependencies[ins])):
+                            all([compute_map[v][0] for v in dependencies[ins]])):
                             if ins not in view_of_temp and not viewed_by_temp.get(ins, []):
                                 mem_freed += var_mem[ins]
                             elif ins in view_of_temp:
