@@ -103,69 +103,68 @@ Montréal, Canada \newline
 \end{frame}
 
 \begin{frame}{Why scripting for GPUs?}
-\begin{bf}They Complement each other\end{bf}
+  \begin{bf}They Complement each other\end{bf}
 
-GPUs are everything that scripting/high level languages are not
+  GPUs are everything that scripting/high level languages are not
 
-    \begin{itemize}
+  \begin{itemize}
     \item Highly parallel
     \item Very architecture-sensitive
     \item Built for maximum FP/memory throughput
     \item So hard to program that meta-programming is easier.
-    \end{itemize}
-\end{itemize}
+  \end{itemize}
 
-\begin{bf}Best of both:\end{bf} easy scripted development invokes GPU kernel.
+  \begin{bf}Best of both:\end{bf} easy scripted development invokes GPU kernel.
 
-\begin{bf}Theano C code generation removes overhead\end{bf} from
-function call between Python and C, by launching many C functions at once.
+  \begin{bf}Theano C code generation removes overhead\end{bf} from
+  function call between Python and C, by launching many C functions at once.
 
 \end{frame}
 
 \begin{frame}{Theano}
 
-High-level domain-specific language tailored to numeric computation.
+  High-level domain-specific language tailored to numeric computation.
 
-\begin{itemize}
-  \item Syntax as close to NumPy as possible
-  \item Compiles most common expressions to C for CPU and GPU
-  \item Limited expressivity means lots of opportunities for expression-level optimizations
   \begin{itemize}
-    \item No subroutines -> global optimization
-    \item Strongly typed -> compiles to machine instructions
-    \item Array oriented -> easy parallelism
-    \item Support for looping and branching in expressions
-  \end{itemize}
-  \item Expression substitution optimizations automatically draw
-  on many back-end technologies for best performance.
-  \begin{itemize}
-    \item BLAS, SciPy, Cython, CUDA
-    \item Slower fallbacks always available
-  \end{itemize}
-  \item Automatic differentiation and R op
+    \item Syntax as close to NumPy as possible
+    \item Compiles most common expressions to C for CPU and GPU
+    \item Limited expressivity means lots of opportunities for expression-level optimizations
+    \begin{itemize}
+      \item No subroutines -> global optimization
+      \item Strongly typed -> compiles to machine instructions
+      \item Array oriented -> easy parallelism
+      \item Support for looping and branching in expressions
+    \end{itemize}
+    \item Expression substitution optimizations automatically draw
+    on many back-end technologies for best performance.
+    \begin{itemize}
+      \item BLAS, SciPy, Cython, CUDA
+      \item Slower fallbacks always available
+    \end{itemize}
+    \item Automatic differentiation and R op
 
-  \item Sparse matrices
-\end{itemize}
+    \item Sparse matrices
+  \end{itemize}
 \end{frame}
 
 
 \begin{frame}{Pylearn2}
 
-Machine Learning library aimed at researchers
+  Machine Learning library aimed at researchers
 
-\begin{itemize}
-  \item Built on top of Theano, for fast execution and use of GPU
-  \item Easy to try variants of implemented algorithms, and to extend them (using Theano)
-  \item Contains a collection of:
   \begin{itemize}
-    \item Training Algorithms (i.e., Stochastic and Batch GD, model-specific rules)
-    \item Costs and Estimation Criteria, supervised and unsupervised (NLL, Score Matching, NCE, ...)
-    \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs, ...)
-    \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
+    \item Built on top of Theano, for fast execution and use of GPU
+    \item Easy to try variants of implemented algorithms, and to extend them (using Theano)
+    \item Contains a collection of:
+    \begin{itemize}
+      \item Training Algorithms (i.e., Stochastic and Batch GD, model-specific rules)
+      \item Costs and Estimation Criteria, supervised and unsupervised (NLL, Score Matching, NCE)
+      \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
+      \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
+    \end{itemize}
+    \item Experiments can be specified through a YAML config file, or by a Python script
+    \item Scripts for visualizing weights, plot monitored values during training
   \end{itemize}
-  \item Experiments can be specified through a YAML config file, or by a Python script
-  \item Scripts for visualizing weights, plot monitored values during training
-\end{itemize}
 
 \end{frame}
 
