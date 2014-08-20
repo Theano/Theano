@@ -83,21 +83,21 @@ Pylearn2 Vision
 
 TODO: SHould we split this in 2 part, what is done, what is the vision not done yet?
 
-* Researchers *add features as they need them*. We avoid getting bogged down by
+* Researchers **add features as they need them**. We avoid getting bogged down by
   too much top-down planning in advance.
-* A machine learning toolbox for *easy scientific experimentation*.
+* A machine learning toolbox for **easy scientific experimentation**.
 * All models/algorithms published by the LISA lab should have reference
   implementations in Pylearn2. TODO REMOVE???
-* Pylearn2 *may wrap other libraries* such as scikits.learn when this is practical
-* Pylearn2 *differs from scikits.learn* in that Pylearn2 aims to provide great
+* Pylearn2 **may wrap other libraries** such as scikits.learn when this is practical
+* Pylearn2 **differs from scikits.learn** in that Pylearn2 aims to provide great
   flexibility and make it possible for a researcher to do almost anything,
-  while *scikits.learn aims to work as a "black box"*.
-* *Dataset interface* for vector, images, video, ... TODO (DO WE HAVE VIDEO?)
+  while **scikits.learn aims to work as a "black box"**.
+* **Dataset interface** for vector, images, video, ... TODO (DO WE HAVE VIDEO?)
 * Small framework for all what is needed for one normal MLP/RBM/SDA/Convolution
   experiments. (TODO: I think I would remove this)
-* *Easy reuse* of *sub-component* of Pylearn2.
+* **Easy reuse of sub-component** of Pylearn2.
   * Using one sub-component of the library does not force you to use / learn to
-    use all of the other sub-components if you choose not to.
+    use all of the other sub-components if you choose not to. TODO remove?
 * Support cross-platform serialization of learned models.(TODO, I think this isn't done)
 * Remain approachable enough to be used in the classroom
 
