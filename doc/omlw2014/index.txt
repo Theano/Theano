@@ -1,13 +1,17 @@
 
 .. _omlw2014_index:
 
-====================================================
-Theano/Pylearn2/libgpuarray Presentation @ OMLW 2014
-====================================================
+======================================================
+Theano, Pylearn2, libgpuarray Presentation @ OMLW 2014
+======================================================
 
 August 22, 2014, New York University, US.
 
+By Frédéric Bastien and Bart van Merriënboer. University of Montréal, Canada.
+
+
 Theano, Pylearn2 and libgpuarray software stack for machine learning.
+
 
 It complements the Python numeric/scientific software stack (e.g. NumPy, SciPy,
 scikits, matplotlib, PIL.)
@@ -50,22 +54,20 @@ It has proven to be useful for implementing:
 
  - sparse coding
 
- - recurrent neural networks, echo state, (HMM?)
+ - recurrent neural networks, echo state, (HMM?) TODO
 
  - online and batch learning and optimization
 
  - Even SVM!
 
 As people's needs change this list will grow, but Theano is built
-around vector, matrix, and tensor expressions; there is little reason
-to use it for calculations on other data structures except. It
-also support sparse matrix.
+around vector, matrix, and tensor expressions. It also support sparse matrix.
 
 
 Pylearn2
 ========
 
-Pylearn2 is still undergoing rapid development. Don’t expect a clean
+Pylearn2 is undergoing rapid development. Don’t expect a clean
 road without bumps! It is made for machine learning
 practitioner/researcher first.
 
@@ -79,23 +81,24 @@ them to a backend of your choice (CPU or GPU).
 Pylearn2 Vision
 ---------------
 
-* Researchers add features as they need them. We avoid getting bogged down by
+TODO: SHould we split this in 2 part, what is done, what is the vision not done yet?
+
+* Researchers *add features as they need them*. We avoid getting bogged down by
   too much top-down planning in advance.
-* A machine learning toolbox for easy scientific experimentation.
+* A machine learning toolbox for *easy scientific experimentation*.
 * All models/algorithms published by the LISA lab should have reference
   implementations in Pylearn2. TODO REMOVE???
-* Pylearn2 may wrap other libraries such as scikits.learn when this is practical
-* Pylearn2 differs from scikits.learn in that Pylearn2 aims to provide great
+* Pylearn2 *may wrap other libraries* such as scikits.learn when this is practical
+* Pylearn2 *differs from scikits.learn* in that Pylearn2 aims to provide great
   flexibility and make it possible for a researcher to do almost anything,
-  while scikits.learn aims to work as a "black box" that can produce good
-  results even if the user does not understand the implementation
-* Dataset interface for vector, images, video, ...
+  while *scikits.learn aims to work as a "black box"*.
+* *Dataset interface* for vector, images, video, ... TODO (DO WE HAVE VIDEO?)
 * Small framework for all what is needed for one normal MLP/RBM/SDA/Convolution
-  experiments.
-* *Easy reuse* of sub-component of Pylearn2.
-* Using one sub-component of the library does not force you to use / learn to
-  use all of the other sub-components if you choose not to.
-* Support cross-platform serialization of learned models.
+  experiments. (TODO: I think I would remove this)
+* *Easy reuse* of *sub-component* of Pylearn2.
+  * Using one sub-component of the library does not force you to use / learn to
+    use all of the other sub-components if you choose not to.
+* Support cross-platform serialization of learned models.(TODO, I think this isn't done)
 * Remain approachable enough to be used in the classroom
 
 
@@ -126,17 +129,12 @@ Design Goals
 * Be compatible with CUDA and OpenCL.
 * Not too simple, (don't support just matrix).
 * But still easy to develop new code that support only a few memory layout.
-  * This easy the development of new code.
+  * This ease the development of new code.
 
 
 
 Contents
 ========
-
-The structured part of these lab sessions will be a walk-through of the following
-material. Interleaved with this structured part will be blocks of time for
-individual or group work.  The idea is that you can try out Theano and get help
-from gurus on hand if you get stuck.
 
 .. toctree::
 
