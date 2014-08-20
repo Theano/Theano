@@ -1695,6 +1695,7 @@ Gradient / Differentiation
     :return: Returns lists of gradients with respect to `wrt` and `end`,
             respectively.
 
+    .. versionadded:: 0.6.1
 
 .. _R_op_list:
 

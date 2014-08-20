@@ -7,10 +7,9 @@ from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 from theano.misc import strutil
 
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
-from theano.sandbox.cuda.opt import register_opt
+from theano.sandbox.cuda.opt import gpu_optimizer
 from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
                                  host_from_gpu, GpuOp)
-
 
 
 class GpuConvGrad3D(GpuOp):
@@ -27,9 +26,10 @@ class GpuConvGrad3D(GpuOp):
         d_ = T.as_tensor_variable(d)
         WShape_ = T.as_tensor_variable(WShape)
         dCdH_ = as_cuda_ndarray_variable(dCdH)
-
+        broad = (False,)*5
         return theano.Apply(self, inputs=[V_, d_, WShape_, dCdH_],
-                            outputs = [ CudaNdarrayType(dtype=V_.dtype, broadcastable=(False,)*5)()])
+                            outputs=[CudaNdarrayType(dtype=V_.dtype,
+                                                     broadcastable=broad)()])
 
     def perform_(self, node, inputs, output_storage):
         V, d, WShape, dCdH = inputs
@@ -51,18 +51,18 @@ class GpuConvGrad3D(GpuOp):
 
         dCdW = numpy.zeros(WShape, dtype=V.dtype)
 
-        #block
-        for j in xrange(0,WShape[0]):
-            for z in xrange(0,WShape[1]):
-                for k in xrange(0,WShape[2]):
-                    for l in xrange(0,WShape[3]):
-                        #threads
-                        for m in xrange(0,WShape[4]):
-                            #thread
-                            for i in xrange(0,batchSize):
-                                for p in xrange(0,outputHeight):
-                                    for q in xrange(0,outputWidth):
-                                        for r in xrange(0,outputDur):
+        # block
+        for j in xrange(0, WShape[0]):
+            for z in xrange(0, WShape[1]):
+                for k in xrange(0, WShape[2]):
+                    for l in xrange(0, WShape[3]):
+                        # threads
+                        for m in xrange(0, WShape[4]):
+                            # thread
+                            for i in xrange(0, batchSize):
+                                for p in xrange(0, outputHeight):
+                                    for q in xrange(0, outputWidth):
+                                        for r in xrange(0, outputDur):
                                             dCdW[j,z,k,l,m] += dCdH[i,j,p,q,r] * V[i,z,dr*p+k,dc*q+l,dt*r+m]
 
         output_storage[0][0] = dCdW
@@ -340,11 +340,18 @@ convgrad_rows_stack( float* img, float* dCdH, float* dCdW,
 
 gpu_conv_grad3d = GpuConvGrad3D()
 
-@register_opt()
+
 @local_optimizer([ConvGrad3D])
-def local_gpu_conv_gradd(node):
+def local_gpu_conv_grad3d(node):
     if isinstance(node.op, ConvGrad3D):
-        if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu) for i in node.inputs]):
+        if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu)
+                      for i in node.inputs]):
             if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
                 V, d, WShape, dCdH = node.inputs
-                return [host_from_gpu(gpu_conv_grad3d(as_cuda_ndarray_variable(V),d, WShape, as_cuda_ndarray_variable(dCdH)))]
+                return [host_from_gpu(gpu_conv_grad3d(
+                    as_cuda_ndarray_variable(V),
+                    d,
+                    WShape,
+                    as_cuda_ndarray_variable(dCdH)))]
+# Not enabled by default as we don't want people to use it.
+gpu_optimizer.register("local_gpu_conv_grad3d", local_gpu_conv_grad3d)

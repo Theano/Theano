@@ -436,6 +436,7 @@ static int CudaNdarray_alloc_contiguous(CudaNdarray *self, const int nd,
 
 /*
  * Return a CudaNdarray whose 'nd' dimensions are set to dims, and allocated.
+ * Set the python error.
  */
 template<typename inttype> 
 static PyObject *CudaNdarray_NewDims(int nd, const inttype * dims)
@@ -448,6 +449,9 @@ static PyObject *CudaNdarray_NewDims(int nd, const inttype * dims)
             Py_DECREF(rval);
             return NULL;
         }
+    }else{
+        PyErr_SetString(PyExc_MemoryError,
+                        "Failed to allocate the CudaNdarray structure.");
     }
     return (PyObject*)rval;
 }
