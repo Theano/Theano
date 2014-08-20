@@ -817,8 +817,13 @@ class ProfileStats(object):
                     if max_mem_count > mem_bound:
                         continue
 
-                    viewed_by_temp = viewed_by.copy()
                     view_of_temp = view_of.copy()
+                    # We don't want a shallow copy, but we don't want
+                    # a deep copy. So this do a "middle" copy, where
+                    # we copy the dict and the list, but not the var
+                    viewed_by_temp = {}
+                    for k, v in viewed_by.iteritems():
+                        viewed_by_temp[k] = list(v)
 
                     for var in node.outputs:
                         compute_map[var][0] = 1
