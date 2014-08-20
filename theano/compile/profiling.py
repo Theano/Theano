@@ -874,15 +874,17 @@ class ProfileStats(object):
                         assert not (ins in view_of_temp and
                                     viewed_by_temp[ins])
                         # We track of the original var, so this shouldn't happen
-                        if dependencies[ins] and ins not in fgraph.outputs and ins.owner:
-                            if all(compute_map[v] for v in dependencies[ins]):
-                                if ins not in view_of_temp and not viewed_by_temp.get(ins, []):
-                                    mem_freed += var_mem[ins]
-                                elif ins in view_of_temp:
-                                    origin = view_of_temp[ins]
-                                    viewed_by_temp[origin].remove(ins)
-                                    if not viewed_by_temp[origin] and origin not in fgraph.inputs:
-                                        mem_freed += var_mem[origin]
+                        if (dependencies[ins] and
+                            ins not in fgraph.outputs and
+                            ins.owner and
+                            all(compute_map[v] for v in dependencies[ins])):
+                            if ins not in view_of_temp and not viewed_by_temp.get(ins, []):
+                                mem_freed += var_mem[ins]
+                            elif ins in view_of_temp:
+                                origin = view_of_temp[ins]
+                                viewed_by_temp[origin].remove(ins)
+                                if not viewed_by_temp[origin] and origin not in fgraph.inputs:
+                                    mem_freed += var_mem[origin]
                         else:
                             # ins is viewed_by something else, so its
                             # memory isn't freed
