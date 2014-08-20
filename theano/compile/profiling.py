@@ -722,9 +722,10 @@ class ProfileStats(object):
                         # the output could be different then the
                         # input.
                         assert isinstance(ins, theano.Variable)
-                        # we keep trac of view only again the original
-                        view_of[out] = view_of.get(ins, ins)
-                        viewed_by[ins].append(out)
+                        # we keep trac of view only again the origin
+                        origin = view_of.get(ins, ins)
+                        view_of[out] = origin
+                        viewed_by[origin].append(out)
                     else:
                         running_memory_size += var_mem[out]
                         node_memory_size += var_mem[out]
@@ -855,8 +856,9 @@ class ProfileStats(object):
                             # input.
                             assert isinstance(ins, theano.Variable)
                             # We keep trac of view only again the original
-                            view_of_temp[out] = view_of_temp.get(ins, ins)
-                            viewed_by_temp[ins].append(out)
+                            origin = view_of_temp.get(ins, ins)
+                            view_of_temp[out] = origin
+                            viewed_by_temp[origin].append(out)
                         else:
                             mem_created += var_mem[out]
                         idx += 1
