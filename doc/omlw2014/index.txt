@@ -105,7 +105,7 @@ TODO: SHould we split this in 2 part, what is done, what is the vision not done 
 libgpuarray
 ===========
 
-Make a common GPU ndarray(matrix/tensor or n dimensions) that can be
+Make a common GPU ndarray(vector, matrix or n dimensions) that can be
 reused by all projects. It support CUDA and OpenCL.
 
 Motivation

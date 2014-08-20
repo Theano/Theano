@@ -9,9 +9,9 @@ Introduction
 Python in one slide
 -------------------
 
-* General-purpose high-level OO interpreted language
+* General-purpose high-level **OO interpreted language**
  
-* Emphasizes code readability
+* Emphasizes **code readability**
  
 * Comprehensive standard library
  
@@ -21,7 +21,7 @@ Python in one slide
 
 * Slow execution
 
-* Popular in *web-dev* and *scientific communities*
+* Popular in **web-dev** and **scientific communities**
 
 
 NumPy in one slide
@@ -88,8 +88,7 @@ What's missing?
 
 * NumPy lacks symbolic or automatic differentiation
 
-Now let's have a look at the same algorithm in Theano, which runs 15 times faster if
-you have GPU (I'm skipping some dtype-details which we'll come back to).
+Quick look at a small examples:
 
 .. code-block:: python
 
@@ -150,14 +149,14 @@ Theano in one slide
 
  * Strongly typed -> compiles to machine instructions
 
- * Array oriented -> parallelizable across cores
+ * Array oriented -> easy parallelism
 
  * Support for looping and branching in expressions
 
 * Expression substitution optimizations automatically draw
   on many backend technologies for best performance.
 
- * FFTW, MKL, ATLAS, SciPy, Cython, CUDA
+ * BLAS, SciPy, Cython, CUDA
 
  * Slower fallbacks always available
 
@@ -177,21 +176,13 @@ Project status
 
 * Active mailing list with participants from outside our lab
 
-* Core technology for a few funded Silicon-Valley startup
+* Core technology for a few Silicon-Valley startup
 
 * Many contributors (some from outside our lab)
 
 * Used to teach many university classes
 
-* Used for research at Google and Yahoo.
-
-* Downloads
-
- * Pypi (August 18th 2014, the last release): 255 last day, 2140 last week, 9145 last month
-
- * Github (`bleeding edge` repository, the one recommanded): unknown
-
-* TODO: Github stats?????
+* Used for research at Google and Yahoo. (TODO, should we remove? I think so)
 
 
 Pylearn2 in one slide
