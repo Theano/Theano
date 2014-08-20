@@ -514,8 +514,8 @@ class BaseGpuCorrMM(GpuOp):
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
         self.subsample = subsample
-        if (pad != "auto") and (len(pad) != 2):
-            raise ValueError("pad must be 'auto' or have two elements")
+        if (pad not in ("half", "full")) and (len(pad) != 2):
+            raise ValueError("pad must be 'half', 'full', or have two elements")
         self.pad = pad
 
     def __eq__(self, other):
@@ -569,7 +569,7 @@ class BaseGpuCorrMM(GpuOp):
                 for f in files]
         return reduce(str.__add__, codes)
 
-    def c_code_helper(self, bottom, weights, top, direction, sub):
+    def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
         This generates the C code for GpuCorrMM (direction="forward"),
         GpuCorrMM_gradWeights (direction="backprop weights"), and
@@ -591,12 +591,26 @@ class BaseGpuCorrMM(GpuOp):
             (swapping the first two dimensions) and store results in bottom.
         :param sub: Dictionary of substitutions useable to help generating the
             C code.
+        :param height: If self.subsample[0] != 1, a variable giving the height
+            of the filters for direction="backprop weights" or the height of the
+            input images for direction="backprop inputs".
+            If self.pad == 'half', a variable giving the height of the filters
+            for direction="backprop weights".
+            Ignored otherwise.
+        :param width: If self.subsample[1] != 1, a variable giving the width
+            of the filters for direction="backprop weights" or the width of the
+            input images for direction="backprop inputs".
+            If self.pad == 'half', a variable giving the width of the filters
+            for direction="backprop weights".
+            Ignored otherwise.
         """
         if self.border_mode != "valid":
             raise ValueError("mode must be 'valid'")
         dH, dW = self.subsample
-        if self.pad == "auto":
+        if self.pad == "half":
             padH = padW = -1
+        elif self.pad == "full":
+            padH = padW = -2
         else:
             padH, padW = self.pad
         if direction == "forward":
@@ -611,6 +625,21 @@ class BaseGpuCorrMM(GpuOp):
         else:
             raise ValueError("direction must be one of 'forward', "
                     "'backprop weights', 'backprop inputs'")
+        # When subsampling, we cannot unambiguously infer the height and width
+        # of bottom and weights from top, so we require them to be given.
+        # Similarly, when pad="half", we cannot infer the weight size.
+        if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+            if not height:
+                raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
+            height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
+        else:
+            height = 'NULL'
+        if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+            if not width:
+                raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
+            width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
+        else:
+            width = 'NULL'
         sub = sub.copy()
         sub.update(locals())
 
@@ -630,22 +659,57 @@ class BaseGpuCorrMM(GpuOp):
     CudaNdarray * out2 = NULL;
 
     // Obtain or infer kernel width and height
+    // (we need to know it early to be able to handle auto-padding)
     int kH, kW;
     if (direction != 1) {
+        // weight is an input variable, we can just read its shape
         kH = CudaNdarray_HOST_DIMS(weights)[2];
         kW = CudaNdarray_HOST_DIMS(weights)[3];
     }
     else {
-        kH = CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
-        kW = CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+        if ((dH != 1) || (padH == -1)) {
+            // vertical subsampling or half padding, kernel height is specified
+            kH = %(height)s;
+        }
+        else if (padH == -2) {
+            // vertical full padding, we can infer the kernel height
+            kH = 2 - CudaNdarray_HOST_DIMS(bottom)[2] + (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
+        }
+        else {
+            // explicit padding, we can infer the kernel height
+            kH = CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
+        }
+        if ((dW != 1) || (padW == -1)) {
+            kW = %(width)s;
+        }
+        else if (padW == -2) {
+            kW = 2 - CudaNdarray_HOST_DIMS(bottom)[3] + (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+        }
+        else {
+            kW = CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+        }
     }
 
     // Auto-padding if requested
-    if (padH < 0) {
+    if (padH == -1) {  // vertical half padding
+        padH = kH / 2;
+    }
+    else if (padH == -2) {  // vertical full padding
         padH = kH - 1;
     }
-    if (padW < 0) {
+    else if (padH < 0) {
+        PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: padH must be >= -2");
+        %(fail)s
+    }
+    if (padW == -1) {  // horizontal half padding
+        padW = kW / 2;
+    }
+    else if (padW == -2) {  // horizontal full padding
         padW = kW - 1;
+    }
+    else if (padW < 0) {
+        PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: padW must be >= -2");
+        %(fail)s
     }
 
     // Infer output shape
@@ -672,8 +736,8 @@ class BaseGpuCorrMM(GpuOp):
         // height and width: bottom = (top - 1) * sample + weights - 2*pad
         out_dim[0] = CudaNdarray_HOST_DIMS(top)[0];
         out_dim[1] = CudaNdarray_HOST_DIMS(weights)[1];
-        out_dim[2] = (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + CudaNdarray_HOST_DIMS(weights)[2] - 2*padH;
-        out_dim[3] = (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + CudaNdarray_HOST_DIMS(weights)[3] - 2*padW;
+        out_dim[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + CudaNdarray_HOST_DIMS(weights)[2] - 2*padH;
+        out_dim[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + CudaNdarray_HOST_DIMS(weights)[3] - 2*padW;
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: direction must be 0, 1, or 2\\n");
@@ -727,7 +791,7 @@ class GpuCorrMM(BaseGpuCorrMM):
             pad=(0, 0)):
         """
         :param border_mode: currently supports "valid" only; "full" can be
-            simulated by setting `pad="auto"` (at the cost of performance), or
+            simulated by setting `pad="full"` (at the cost of performance), or
             by using `GpuCorrMM_gradInputs`
         :param subsample: the subsample operation applied to each output image.
             Should be a tuple with 2 elements.
@@ -736,8 +800,9 @@ class GpuCorrMM(BaseGpuCorrMM):
             Set to `(1, 1)` to disable subsampling.
         :param pad: the width of a border of implicit zeros to pad the input
             image with. Should be a tuple with 2 elements giving the numbers of
-            rows and columns to pad on each side, or "auto" to set the padding
-            to `(kernel_rows - 1, kernel_columns - 1)` at runtime.
+            rows and columns to pad on each side, or "half" to set the padding
+            to `(kernel_rows // 2, kernel_columns // 2)`, or "full" to set the
+            padding to `(kernel_rows - 1, kernel_columns - 1)` at runtime.
             Set to `(0, 0)` to disable padding.
 
         :note: Currently, the Op requires the inputs, filters and outputs to be
@@ -770,9 +835,9 @@ class GpuCorrMM(BaseGpuCorrMM):
         top, = grads
         top = gpu_contiguous(top)
         d_bottom = GpuCorrMM_gradInputs(self.border_mode, self.subsample, self.pad)(
-                weights, top)
+                weights, top, bottom.shape[-2:])
         d_weights = GpuCorrMM_gradWeights(self.border_mode, self.subsample, self.pad)(
-                bottom, top)
+                bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 
 
@@ -787,23 +852,30 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
             pad=(0, 0)):
         super(GpuCorrMM_gradWeights, self).__init__(border_mode, subsample, pad)
 
-    def make_node(self, img, topgrad):
+    def make_node(self, img, topgrad, shape=None):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
+        if self.subsample != (1, 1) or self.pad == "half":
+            if shape is None:
+                raise ValueError('shape must be given if subsample != (1, 1) or pad == "half"')
+            height_width = [shape[0], shape[1]]
+        else:
+            height_width = []
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False]
-        return Apply(self, [img, topgrad], [CudaNdarrayType(broadcastable)()])
+        return Apply(self, [img, topgrad] + height_width, [CudaNdarrayType(broadcastable)()])
 
     def c_code(self, node, nodename, inp, out_, sub):
-        bottom, top = inp
+        bottom, top = inp[:2]
+        height, width = inp[2:] or (None, None)
         weights, = out_
         direction = "backprop weights"
-        return super(GpuCorrMM_gradWeights, self).c_code_helper(bottom, weights, top, direction, sub)
+        return super(GpuCorrMM_gradWeights, self).c_code_helper(bottom, weights, top, direction, sub, height, width)
 
 
 class GpuCorrMM_gradInputs(BaseGpuCorrMM):
@@ -817,23 +889,27 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             pad=(0, 0)):
         super(GpuCorrMM_gradInputs, self).__init__(border_mode, subsample, pad)
 
-    def make_node(self, kern, topgrad):
+    def make_node(self, kern, topgrad, shape=None):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
+        if self.subsample != (1, 1) and shape is None:
+            raise ValueError('shape must be given if subsample != (1, 1)')
+        height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]
-        return Apply(self, [kern, topgrad], [CudaNdarrayType(broadcastable)()])
+        return Apply(self, [kern, topgrad] + height_width, [CudaNdarrayType(broadcastable)()])
 
     def c_code(self, node, nodename, inp, out_, sub):
-        weights, top = inp
+        weights, top = inp[:2]
+        height, width = inp[2:] or (None, None)
         bottom, = out_
         direction = "backprop inputs"
-        return super(GpuCorrMM_gradInputs, self).c_code_helper(bottom, weights, top, direction, sub)
+        return super(GpuCorrMM_gradInputs, self).c_code_helper(bottom, weights, top, direction, sub, height, width)
 
 
 ##

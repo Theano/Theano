@@ -914,7 +914,7 @@ def test_gemm_grads():
                                             i = cuda_tensor4()
                                             k = cuda_tensor4()
 
-                                            pad = 'auto' if mode == 'full' else (0, 0)
+                                            pad = 'full' if mode == 'full' else (0, 0)
                                             # TODO: also test custom pad values
                                             corr_op = theano.sandbox.cuda.blas.GpuCorrMM(
                                                     'valid', subsample, pad)(i, k)

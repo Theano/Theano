@@ -1357,7 +1357,7 @@ def local_conv_gemm(node):
         pad = (0,0)
         if (border_mode == 'full') and (subsample != (1,1)):
             # need to simulate this via a padded valid convolution
-            pad = 'auto'
+            pad = 'full'
             border_mode = 'valid'
         if (border_mode == 'valid'):
             # need to flip the kernel for valid convolution
