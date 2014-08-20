@@ -6,6 +6,7 @@
 \usepackage{amsmath}
 \usepackage[utf8x]{inputenc}
 %\logo{\includegraphics[width=.8in]{UdeM_NoirBleu_logo_Marie_crop}}
+\usepackage{listings}
 
 \newcommand{\superscript}[1]{\ensuremath{^{\textrm{#1}}}}
 
@@ -208,23 +209,34 @@ Montréal, Canada \newline
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Simple example}
-%--------------
-%
-%>>> import theano
-%>>> a = theano.tensor.vector("a")      # declare symbolic variable
-%>>> b = a + a ** 10                    # build symbolic expression
-%>>> f = theano.function([a], b)        # compile function
-%>>> print f([0, 1, 2])                 # prints `array([0, 2, 1026])`
-%
-%
-%======================================================  =====================================================
-%        Unoptimized graph                                    Optimized graph
-%======================================================  =====================================================
-%.. image:: ../hpcs2011_tutorial/pics/f_unoptimized.png   .. image:: ../hpcs2011_tutorial/pics/f_optimized.png
-%======================================================  =====================================================
-%
+% The following does not work with lstset, for some reason
+%\begin{frame}{Simple example}
+\begin{frame}[fragile]
+  \frametitle{Simple example}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue}
+        }
+\begin{lstlisting}
+import theano
+# declare symbolic variable
+a = theano.tensor.vector("a")
+# build symbolic expression
+b = a + a ** 10
+# compile function
+f = theano.function([a], b)
+print f([0, 1, 2])
+# prints `array([0, 2, 1026])`
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Simple example: graph optimization}
+\center
+\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_unoptimized.png}
+\hspace{0.1\textwidth}
+\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_optimized.png}
 %Symbolic programming = *Paradigm shift*: people need to use it to understand it.
+
 \end{frame}
 
 
