@@ -671,6 +671,11 @@ class ProfileStats(object):
             node_memory_saved_by_inplace = 0
             dependencies = fgraph.profile.dependencies
 
+            # Initial compute_map which is used to check if a node is valid
+            compute_map = defaultdict(lambda: [0])
+            for var in fgraph.inputs:
+                compute_map[var][0] = 1
+
             # two data structure used to mimic Python gc
             viewed_by = {}  # {var1: [vars that view var1]}
             # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
@@ -681,6 +686,8 @@ class ProfileStats(object):
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
             for node in order:
+                for var in node.outputs:
+                    compute_map[var][0] = 1
                 idx = 0
                 dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
@@ -732,7 +739,8 @@ class ProfileStats(object):
                     # we trac the original var, so this shouldn't happen
                     if (dependencies[ins] and
                         ins not in fgraph.outputs and
-                        ins.owner):
+                        ins.owner and
+                        all(compute_map[v] for v in dependencies[ins])):
 
                         if ins not in view_of and not viewed_by.get(ins, []):
                             running_memory_size -= var_mem[ins]
