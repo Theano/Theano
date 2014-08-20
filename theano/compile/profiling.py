@@ -784,12 +784,12 @@ class ProfileStats(object):
                         executable_nodes.add(c)
 
             # two data structure used to mimic Python gc
-            viewed_by = {}# {var1: [vars that view var1]} 
+            viewed_by = {}  # {var1: [vars that view var1]}
             # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
             # This is more safe to help detect potential bug  in the algo
             for var in fgraph.variables:
                 viewed_by[var] = []
-            view_of = {}# {var1: original var viewed by var1}
+            view_of = {}  # {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
             def min_memory_generator(executable_nodes, viewed_by, view_of):
@@ -823,15 +823,19 @@ class ProfileStats(object):
                     vmap = getattr(node.op, 'view_map', None)
 
                     idx = 0
-                    # Update the Python emulating dicts and add the memory allocated by the node
+                    # Update the Python emulating dicts and add the
+                    # memory allocated by the node
                     for out in node.outputs:
                         if (dmap and idx in dmap) or (vmap and idx in vmap):
-                        # This is needed for destroy_map in case it return a partial view that is destroyed.
-                        # So the output could be different then the input.
+                            # This is needed for destroy_map in case it
+                            # return a partial view that is destroyed.  So
+                            # the output could be different then the
+                            # input.
                             for ins in node.inputs:
                                 assert isinstance(ins, theano.Variable)
-                                view_of_temp[out] = view_of_temp.get(ins, ins)# This get make that we keep trac of view only again the original
-                                viewed_by_temp[ins].append(out)  
+                                # We keep trac of view only again the original
+                                view_of_temp[out] = view_of_temp.get(ins, ins)
+                                viewed_by_temp[ins].append(out)
                         else:
                             mem_created += var_mem[out]
                         idx += 1
@@ -841,8 +845,9 @@ class ProfileStats(object):
 
                     # Mimic the combination of Theano and Python gc.
                     for ins in node.inputs:
-                        assert not (ins in view_of_temp and viewed_by_temp[ins])
-                        # we keep track of the original var, so this shouldn't happen
+                        assert not (ins in view_of_temp and
+                                    viewed_by_temp[ins])
+                        # We track of the original var, so this shouldn't happen
                         if dependencies[ins] and ins not in fgraph.outputs and ins.owner:
                             if all(compute_map[v] for v in dependencies[ins]):
                                 if ins not in view_of_temp and not viewed_by_temp.get(ins, []):
@@ -853,7 +858,8 @@ class ProfileStats(object):
                                     if not viewed_by_temp[origin] and origin not in fgraph.inputs:
                                         mem_freed += var_mem[origin]
                         else:
-                            # ins is viewed_by something else, so its memory isn't freed
+                            # ins is viewed_by something else, so its
+                            # memory isn't freed
                             pass
 
                     mem_count -= mem_freed
@@ -865,13 +871,15 @@ class ProfileStats(object):
 
                     if not new_exec_nodes:
                         yield [node]
-                        #Check and Update mem_bound
+                        # Check and Update mem_bound
                         if max_mem_count < mem_bound:
                             mem_bound = max_mem_count
                     else:
-                        for p in min_memory_generator(new_exec_nodes, viewed_by_temp, view_of_temp):
+                        for p in min_memory_generator(new_exec_nodes,
+                                                      viewed_by_temp,
+                                                      view_of_temp):
                             yield [node]+p
-                    
+
                     # Reset track variables
                     mem_count -= mem_created
                     max_mem_count = max_storage
@@ -880,7 +888,9 @@ class ProfileStats(object):
                         compute_map[var][0] = 0
 
             # Loop all valid orders and find min peak(store in mem_bound)
-            for order in min_memory_generator(executable_nodes, viewed_by, view_of):
+            for order in min_memory_generator(executable_nodes,
+                                              viewed_by,
+                                              view_of):
                 continue
 
             return mem_bound
@@ -888,7 +898,7 @@ class ProfileStats(object):
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
             sum_size = sum([sum([v for v in val if not isinstance(v, str)])
-                            for key, val in nodes_mem.iteritems()])    
+                            for key, val in nodes_mem.iteritems()])
 
             order = fgraph.toposort()
             # A list of intermediate variable that are not need
@@ -901,24 +911,27 @@ class ProfileStats(object):
             new_order = fgraph.profile.node_executed_order
             # A list of new executed node order
 
-            new_running_memory = count_running_memory(new_order, fgraph, nodes_mem)
-            
+            new_running_memory = count_running_memory(new_order,
+                                                      fgraph, nodes_mem)
+
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size, old_running_memory[0])
+            max_node_memory_size = max(max_node_memory_size,
+                                       old_running_memory[0])
             max_running_max_memory_size = max(max_running_max_memory_size,
-                                          old_running_memory[2])
+                                              old_running_memory[2])
             max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
                                                 old_running_memory[4])
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, old_running_memory[3])
 
             # Store max of some stats with new order
-            new_max_node_memory_size = max(new_max_node_memory_size, new_running_memory[0])
+            new_max_node_memory_size = max(new_max_node_memory_size,
+                                           new_running_memory[0])
             new_max_running_max_memory_size = max(new_max_running_max_memory_size,
-                                        new_running_memory[2])
+                                                  new_running_memory[2])
             new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
-                                                new_running_memory[4])
+                                                    new_running_memory[4])
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
 
