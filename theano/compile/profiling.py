@@ -840,7 +840,7 @@ class ProfileStats(object):
                                     if not viewed_by_temp[origin] and origin not in fgraph.inputs:
                                         mem_freed += var_mem[origin]
                         else:
-                            # ins is viewed_by_temp something else, so its memory isn't freed
+                            # ins is viewed_by something else, so its memory isn't freed
                             pass
 
                     mem_count -= mem_freed
