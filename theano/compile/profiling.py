@@ -672,12 +672,12 @@ class ProfileStats(object):
             dependencies = fgraph.profile.dependencies
 
             # two data structure used to mimic Python gc
-            viewed_by = {}# {var1: [vars that view var1]} 
+            viewed_by = {}  # {var1: [vars that view var1]}
             # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
             # This is more safe to help detect potential bug  in the algo
             for var in fgraph.variables:
                 viewed_by[var] = []
-            view_of = {} # {var1: original var viewed by var1}
+            view_of = {}  # {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
             for node in order:
@@ -695,40 +695,53 @@ class ProfileStats(object):
                         node_memory_saved_by_view += v
                     idx += 1
 
-                # Update the Python emulating dicts and add the memory allocated by the node
+                # Update the Python emulating dicts and add the memory
+                # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
                     if (dmap and idx2 in dmap) or (vmap and idx2 in vmap):
-                        # This is needed for destroy_map in case it return a partial view that is destroyed.
-                        # So the output could be different then the input.
+                        # This is needed for destroy_map in case it
+                        # return a partial view that is destroyed.  So
+                        # the output could be different then the
+                        # input.
                         for ins in node.inputs:
                             assert isinstance(ins, theano.Variable)
-                            view_of[out] = view_of.get(ins, ins)# This get make that we keep trac of view only again the original
+                            # we keep trac of view only again the original
+                            view_of[out] = view_of.get(ins, ins)
                             viewed_by[ins].append(out)  
                     else:
                         running_memory_size += var_mem[out]
                         node_memory_size += var_mem[out]
                     idx2 += 1
 
-                running_max_memory_size = max(running_max_memory_size, running_memory_size)
+                running_max_memory_size = max(running_max_memory_size,
+                                              running_memory_size)
 
                 # Mimic the combination of Theano and Python gc
                 for ins in node.inputs:
                     assert not (ins in view_of and viewed_by[ins])
-                    # we keep trac of the original var, so this shouldn't happen
-                    if dependencies[ins] and ins not in fgraph.outputs and ins.owner:
+                    # we trac the original var, so this shouldn't happen
+                    if (dependencies[ins] and
+                        ins not in fgraph.outputs and
+                        ins.owner):
+
                         if ins not in view_of and not viewed_by.get(ins, []):
                             running_memory_size -= var_mem[ins]
                         elif ins in view_of:
                             origin = view_of[ins]
                             viewed_by[origin].remove(ins)
-                            if not viewed_by[origin] and origin not in fgraph.inputs:
+                            if (not viewed_by[origin] and
+                                origin not in fgraph.inputs):
+
                                 running_memory_size -= var_mem[origin]
                     else:
-                        # ins is viewed_by something else, so its memory isn't freed
+                        # ins is viewed_by something else, so its
+                        # memory isn't freed
                         pass
 
-            return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
+            return [node_memory_size, running_memory_size,
+                    running_max_memory_size, node_memory_saved_by_inplace,
+                    node_memory_saved_by_view]
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global mem_count, mem_bound, max_mem_count
