@@ -38,14 +38,88 @@ Montréal, Canada \newline
 
 \section{Introduction}
 \begin{frame}{High level}\setcounter{page}{1}
+  Python <- \{NumPy/SciPy/libgpuarray\} <- Theano <- Pylearn2
+  \begin{itemize}
+  \item Python: OO coding language
+  \item Numpy: n-dimension array object and scientific computing toolbox
+  \item SciPy: sparse matrix object and more scientfic computing functionality
+  \item libgpuarray: gpu n-dimentional array object in C for CUDA and OpenCL
+  \item Theano: compiler/symbolic graph manipulation
+  \item Pylearn2: machine learning framework
+  \end{itemize}
 \end{frame}
+
 \begin{frame}{Python}
+  \begin{itemize}
+  \item General-purpose high-level OO interpreted language
+  \item Emphasizes code readability
+  \item Comprehensive standard library
+  \item Dynamic type and memory management
+  \item Slow execution
+  \item Easily extensible from C
+  \item Popular in *web-dev* and *scientific communities*
+  \end{itemize}
 \end{frame}
-\begin{frame}{NumPy}
+
+\begin{frame}{NumPy/SciPy}
+  \begin{itemize}
+  \item Python floats are full-fledged objects on the heap
+      \begin{itemize}
+      \item Not suitable for high-performance computing!
+      \end{itemize}
+
+  \item NumPy provides a N-dimensional numeric array in Python
+      \begin{itemize}
+      \item Perfect for high-performance computing.
+      \item Slice are return view (no copy)
+      \end{itemize}
+    
+  \item NumPy provides
+      \begin{itemize}
+      \item elementwise computations
+      \item linear algebra, Fourier transforms
+      \item pseudorandom numbers from many distributions
+      \end{itemize}
+
+  \item SciPy provides lots more, including
+      \begin{itemize}
+      \item sparse matrix
+      \item more linear algebra
+      \item solvers and optimization algorithms
+      \item matlab-compatible I/O
+      \item I/O and signal processing for images and audio
+      \end{itemize}
+  \end{itemize}
 \end{frame}
+
 \begin{frame}{What's missing?}
+  \begin{itemize}
+    \item Non-lazy evaluation (required by Python) hurts performance
+    \item Bound to the CPU
+    \item Lacks symbolic or automatic differentiation
+    \item No automatic speed and stability optimization
+  \end{itemize}
+
 \end{frame}
+
 \begin{frame}{Why scripting for GPUs?}
+\begin{bf}They Complement each other\end{bf}
+\begin{itemize}
+
+  \item GPUs are everything that scripting/high level languages are not
+
+    \begin{itemize}
+    \item Highly parallel
+    \item Very architecture-sensitive
+    \item Built for maximum FP/memory throughput
+    \item So hard to program that meta-programming is easier.
+    \end{itemize}
+\end{itemize}
+
+\begin{bf}Best of both:\end{bf} easy scripted development invokes GPU kernel.
+Combined with Theano c code generation...
+\begin{bf}Theano c code generation remove overhead\end{bf} from function call between Python and C.
+
 \end{frame}
 
 \begin{frame}{Theano}

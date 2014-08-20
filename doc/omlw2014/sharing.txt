@@ -8,3 +8,7 @@ Sharing code
 * Common base object? libgpuarray.
 * If not, important implementation that use raw ptr/shape? Doc that interface.
 * Important, *acknowledgement section on web site*(citation like) AND *in paper* about the software we reuse! (and use too)
+
+*************
+Theano future
+*************
