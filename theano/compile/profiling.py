@@ -800,15 +800,6 @@ class ProfileStats(object):
                     if c != "output" and check_node_state(c):
                         executable_nodes.add(c)
 
-            # two data structure used to mimic Python gc
-            viewed_by = {}  # {var1: [vars that view var1]}
-            # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
-            # This is more safe to help detect potential bug  in the algo
-            for var in fgraph.variables:
-                viewed_by[var] = []
-            view_of = {}  # {var1: original var viewed by var1}
-            # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
-
             def min_memory_generator(executable_nodes, viewed_by, view_of):
                 """
                 Generate all valid node order from node_list
@@ -914,6 +905,15 @@ class ProfileStats(object):
                     mem_count += mem_freed
                     for var in node.outputs:
                         compute_map[var][0] = 0
+
+            # two data structure used to mimic Python gc
+            viewed_by = {}  # {var1: [vars that view var1]}
+            # The len of the list is the value of python ref count. But we use a list, not just the ref count value.
+            # This is more safe to help detect potential bug  in the algo
+            for var in fgraph.variables:
+                viewed_by[var] = []
+            view_of = {}  # {var1: original var viewed by var1}
+            # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
             # Loop all valid orders and find min peak(store in mem_bound)
             for order in min_memory_generator(executable_nodes,
