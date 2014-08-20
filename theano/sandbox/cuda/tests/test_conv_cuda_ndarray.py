@@ -895,13 +895,13 @@ def test_gemm_directly():
 
 def test_gemm_grads():
     for mode in 'valid', 'full':
-        for bs in range(1, 5):
+        for bs in [1, 4, 5]:
             for ch in range(1,4):
                 for nf in range(1,4):
-                    for rImg1 in range(5, 9):
-                        for rImg2 in range(5, 9):
-                            for rFlt1 in range(2, 4):
-                                for rFlt2 in range(2, 4):
+                    for rImg1 in [2, 5, 8]:
+                        for rImg2 in [2, 5, 8]:
+                            for rFlt1 in [1, 2]:
+                                for rFlt2 in [1, 2]:
                                     for subsx in range(1, 3):
                                         for subsy in range(1, 3):
                                             ishape = (bs, ch, rImg1, rImg2)
@@ -920,19 +920,33 @@ def test_gemm_grads():
                                                     'valid', subsample, pad)(i, k)
                                             conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
                                                     ishape, kshape, mode, subsample)
+                                            corr_op_di = theano.grad(corr_op.sum(), i)
+                                            conv_op_di = theano.grad(conv_op.sum(), i)
+                                            corr_op_dk = theano.grad(corr_op.sum(), k)
+                                            conv_op_dk = theano.grad(conv_op.sum(), k)
+                                            outputs = [corr_op, conv_op,
+                                                    corr_op_di, conv_op_di,
+                                                    corr_op_dk, conv_op_dk]
+                                            try:
+                                                conv_op_dik = theano.grad(conv_op_di.sum(), k)
+                                                conv_op_dki = theano.grad(conv_op_dk.sum(), i)
+                                            except Exception:
+                                                # skip if the reference implementation can't do it
+                                                print ".",
+                                            else:
+                                                corr_op_dik = theano.grad(corr_op_di.sum(), k)
+                                                corr_op_dki = theano.grad(corr_op_dk.sum(), i)
+                                                outputs.extend([corr_op_dik, conv_op_dik,
+                                                        corr_op_dki, conv_op_dki])
+                                                print ":",
 
-                                            f = theano.function([i, k],
-                                                    [corr_op,
-                                                    theano.grad(corr_op.sum(), i),
-                                                    theano.grad(corr_op.sum(), k),
-                                                    conv_op,
-                                                    theano.grad(conv_op.sum(), i),
-                                                    theano.grad(conv_op.sum(), k)],
-                                                    mode=theano_mode)
+                                            f = theano.function([i, k], outputs, mode=theano_mode)
 
                                             allvals = f(npy_img, npy_kern)
 
-                                            for a, b, p in zip(allvals[:3], allvals[3:], ('fprop', 'bprop img', 'bprop kern')):
+                                            for a, b, p in zip(allvals[::2], allvals[1::2],
+                                                    ('top', 'dtop/dbottom', 'dtop/dweight',
+                                                    'dtop/dbottom/dweight', 'dtop/dweight/dbottom')):
                                                 if (a.shape != b.shape) or not numpy.allclose(a, b, rtol=1e-4):
                                                     print "Test failed for", p
                                                     print "mode: ", mode
@@ -940,6 +954,7 @@ def test_gemm_grads():
                                                     print "kshape: ", kshape
                                                     print "subsample: ", subsample
                                                     assert False
+                                            sys.stdout.flush()
 
 
 def benchmark():

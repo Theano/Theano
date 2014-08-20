@@ -877,6 +877,23 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
         direction = "backprop weights"
         return super(GpuCorrMM_gradWeights, self).c_code_helper(bottom, weights, top, direction, sub, height, width)
 
+    def grad(self, inp, grads):
+        bottom, top = inp[:2]
+        weights, = grads
+        weights = gpu_contiguous(weights)
+        d_bottom = GpuCorrMM_gradInputs(self.border_mode, self.subsample, self.pad)(
+                weights, top, bottom.shape[-2:])
+        d_top = GpuCorrMM(self.border_mode, self.subsample, self.pad)(
+                bottom, weights)
+        d_height_width = (theano.gradient.DisconnectedType()(),) * 2 if len(inp) == 4 else ()
+        return (d_bottom, d_top) + d_height_width
+
+    def connection_pattern(self, node):
+        if node.nin == 2:
+            return [[1], [1]]
+        else:
+            return [[1], [1], [0], [0]]  # no connection to height, width
+
 
 class GpuCorrMM_gradInputs(BaseGpuCorrMM):
     """Gradient wrt. inputs for `GpuCorrMM`.
@@ -910,6 +927,23 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         bottom, = out_
         direction = "backprop inputs"
         return super(GpuCorrMM_gradInputs, self).c_code_helper(bottom, weights, top, direction, sub, height, width)
+
+    def grad(self, inp, grads):
+        weights, top = inp[:2]
+        bottom, = grads
+        bottom = gpu_contiguous(bottom)
+        d_weights = GpuCorrMM_gradWeights(self.border_mode, self.subsample, self.pad)(
+                bottom, top, weights.shape[-2:])
+        d_top = GpuCorrMM(self.border_mode, self.subsample, self.pad)(
+                bottom, weights)
+        d_height_width = (theano.gradient.DisconnectedType()(),) * 2 if len(inp) == 4 else ()
+        return (d_weights, d_top) + d_height_width
+
+    def connection_pattern(self, node):
+        if node.nin == 2:
+            return [[1], [1]]
+        else:
+            return [[1], [1], [0], [0]]  # no connection to height, width
 
 
 ##
