@@ -777,7 +777,7 @@ class ProfileStats(object):
 
             def check_node_state(node):
                 """
-                check if an Apply node is valid(has inputs).
+                Check if an Apply node is valid(has inputs).
 
                 :param node: Apply Node
                 """
@@ -804,7 +804,7 @@ class ProfileStats(object):
             def min_memory_generator(executable_nodes, viewed_by, view_of):
                 """
                 Generate all valid node order from node_list
-                and compute its memory peak
+                and compute its memory peak.
 
                 :param executable_nodes: Set of executable nodes
                 """
