@@ -316,6 +316,8 @@ print f([0, 1, 2])
     \end{itemize}
   \item Be compatible with CUDA and OpenCL.
   \item Not too simple, (don’t support just matrix).
+  \item Support all dtype.
+  \item Allow strided views.
   \item But still easy to develop new code that support only a few memory layout.
     \begin{itemize}
     \item This ease the development of new code.
@@ -338,15 +340,21 @@ print f([0, 1, 2])
 \end{frame}
 
 \section{sharing}
-\begin{frame}{How can we do it?}
+\begin{frame}{Simplifing code sharing}
+\begin{enumerate}
+  \item<1-> License: \begin{bf}Suggest BSD\end{bf} as it is used by many software in our field.
+    \begin{itemize}
+    \item Common license help share code.
+    \item When reusing code, don't forget to keep the license and the copyright notice
+    \end{itemize}
+  \item<2-> Common base object! \begin{bf}libgpuarray\end{bf}
+  \item<3-> Otherwise: put important implementation(e.g convolution) in \begin{bf}separate file\end{bf} and \begin{bf}use raw ptr/shape/strides\end{bf} as inputs. Document that interface.
+  \item<4-> Acknowledge reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in papers\end{bf} about the software we reuse! (and use too)
+\end{enumerate}
 
-  \only<1>{License: Suggest BSD as it is used by many software in our field.}
-  \only<1>{Common license help share code.}
-  \only<1>{Don't forget to copy the copyright notice when you copy code.}
-  \only<2>{Common base object! \begin{bf}libgpuarray\end{bf}}
-  \only<3>{Otherwise: put important implementation(e.g convolution) in separate file and use raw ptr/shape/strides as inputs? Doc that interface.}
-  \only<4>{acknowled reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in paper\end{bf} about the software we reuse! (and use too)}
+\end{frame}
 
+\begin{frame}{Theano/PyLearn2 Future}
 \end{frame}
 
 \begin{frame}{OLD STUFF Why do we need this?}
@@ -354,17 +362,6 @@ print f([0, 1, 2])
 \item Efficient linear algebra is a the core of many scientific applications
 \item On the CPU, numpy ndarray provides a standard object (for python at least)
 \end{itemize}
-\end{frame}
-
-\begin{frame}{Why a new implementation?}
-\begin{block}{There are already a number of existing GPU computing codebases:}
-Theano, PyCUDA/PyOpenCL, CUDAmat, Gnumpy, Thrust, \ldots
-\end {block}
-\begin{enumerate}
-\item<2-> All are incompatible, which hinders code sharing.
-\item<3-> They do not support the full range of numpy ndarray features
-\item<4-> None support both CUDA and OpenCL
-\end{enumerate}
 \end{frame}
 
 \section{Features}
@@ -417,19 +414,6 @@ Desired & yes & yes & any & all & both \\
 %%\vspace{-1em}
 
 \section{Conclusion}
-\begin{frame}{Future plans}
-\begin{itemize}
-\item<1-> Use in Theano/PyOpenCL/PyCUDA
-\item<2-> Design and implement a good C/C++ interface
-\item<3-> Find ways to lower the overhead
-\item<4-> Use the implicit looping provided by CUDA and OpenCL
-\item<5-> World domination!
-\begin{itemize}
-\item<6-> Library authors $\to$ come see us
-\item<6-> Supervisers $\to$ talk to your students about this project
-\end{itemize}
-\end{itemize}
-\end{frame}
 
 \begin{frame}{Acknowledgment}
 \begin{itemize}
