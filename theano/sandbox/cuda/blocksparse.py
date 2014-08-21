@@ -684,7 +684,7 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
     def local_merge_blocksparse_output(node):
         if (isinstance(node.op, GpuElemwise) and
             (node.op.scalar_op == scalar.sub or
-             node.scalar_op == scalar.add) and
+             node.op.scalar_op == scalar.add) and
             node.nin == 2):
             ger = grab_ger(node.inputs[0])
             W = node.inputs[1]
