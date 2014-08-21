@@ -42,7 +42,7 @@ Montréal, Canada \newline
   Python <- \{NumPy/SciPy/libgpuarray\} <- Theano <- Pylearn2
   \begin{itemize}
   \item Python: OO coding language
-  \item Numpy: n-dimensional array object and scientific computing toolbox
+  \item Numpy: $n$-dimensional array object and scientific computing toolbox
   \item SciPy: sparse matrix objects and more scientific computing functionality
   \item libgpuarray: GPU n-dimentional array object in C for CUDA and OpenCL
   \item Theano: compiler/symbolic graph manipulation
@@ -81,7 +81,7 @@ Montréal, Canada \newline
   \item NumPy provides an $n$-dimensional numeric array in Python
       \begin{itemize}
       \item Perfect for high-performance computing
-      \item Slices of arrays are views (no copy)
+      \item Slices of arrays are views (no copying)
       \end{itemize}
 
   \item NumPy provides
@@ -121,13 +121,13 @@ Montréal, Canada \newline
     \item Highly parallel
     \item Very architecture-sensitive
     \item Built for maximum FP/memory throughput
-    \item So hard to program that meta-programming is easier.
+    \item So hard to program that meta-programming is easier
   \end{itemize}
 
-  \begin{bf}Best of both:\end{bf} easily scripted code which invokes high-performance GPU kernels.
+  \begin{bf}Best of both worlds:\end{bf} easily scripted code which invokes high-performance GPU kernels.
 
-  \begin{bf}Theano C code generation removes overhead\end{bf} from
-  function call between Python and C, by launching many C functions at once.
+  \begin{bf}Theano C code generation removes overhead\end{bf} of
+  function calls between Python and C by launching many C functions at once.
 
 \end{frame}
 
@@ -171,27 +171,26 @@ Montréal, Canada \newline
 
 
 \begin{frame}{Goal of the stack}
-You can't have your cake and eat it too.\newline
-We want our cake and eat it too.???\newline
-Target the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fast to run\end{bf}.
+We want our cake and eat it too.\newline
+Our target is the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fast to run\end{bf}.
 \end{frame}
 
 
 \begin{frame}{libgpuarray}
-  GOAL: A common GPU n dimensions array that can be reused by all projects. It support CUDA and OpenCL.
+  Goal: A common GPU $n$-dimensional array that can be reused by all projects, support for both CUDA and OpenCL.
   \newline \newline
   Motivation:
   \begin{itemize}
-  \item Currently there are at least 6 different gpu arrays in python
+  \item Currently there are at least 6 different GPU arrays in Python
     \begin{itemize}
-    \item CudaNdarray(Theano), GPUArray(pycuda), CUDAMatrix(cudamat), GPUArray(pyopencl), Clyther, Copperhead, ...
+    \item CudaNdarray (Theano), GPUArray (pycuda), CUDAMatrix (cudamat), GPUArray (pyopencl), Clyther, Copperhead, ...
     \item There are even more if we include other languages.
     \end{itemize}
   \item They are incompatible
     \begin{itemize}
     \item None have the same properties and interface.
     \end{itemize}
-  \item All of them are a subset of numpy.ndarray on the gpu!
+  \item All of them are a subset of numpy.ndarray on the GPU!
   \end{itemize}
 \end{frame}
 
@@ -203,18 +202,18 @@ Target the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fast to r
     \item Expressions mimic NumPy's syntax and semantics (easier to use)
     \item Dynamic C/CUDA code generation
     \begin{itemize}
-      \item Is used with other technologie to generate fast code: C/C++, CUDA, OpenCL, PyCUDA, Cython, Numba, \ldots
+      \item Can use other technologies to generate fast code: C/C++, CUDA, OpenCL, PyCUDA, Cython, Numba, \ldots
     \end{itemize}
     \item Efficient symbolic differeniation
     \begin{itemize}
       \item Theano computes derivatives of functions with one or many inputs.
-      \item Also support computation of the Jacobian, Hessian, R and L op.
+      \item Also supports computation of the Jacobian, Hessian, R and L op.
     \end{itemize}
     \item Speed and stability optimizations
     \begin{itemize}
-      \item Gives the right answer for ``log(1+x)'' even if x is really tiny.
+      \item Gives the right answer for ``$\log (1 + x)$'' even if $x$ is really tiny.
     \end{itemize}
-    \item Works on Linux, Mac and Windows
+    \item Works on Linux, OS X and Windows
     \item Transparent use of a GPU
     \begin{itemize}
       \item {\tt float32} only for now (working on other data types)
@@ -303,17 +302,63 @@ print f([0, 1, 2])
   \item Allows for automatic conversion e.g. labels to one-hot vectors, images to flattened vectors
 \end{itemize}
 \end{frame}
+
 \begin{frame}{Project status}
   \begin{itemize}
     \item Has been used for scientific publications, Kaggle competitions, used by many researchers at LISA
     \item Still under rapid development, however the API shouldn't break without warning
-    \item Documentation is incomplete, but improving
+    \item Documentation is incomplete, but quickly improving
     \item Features currently in development:
     \begin{itemize}
       \item Recurrent neural networks (RNNs), based on the GroundHog framework developed at LISA
       \item Better hyperparameter search support for YAML files
     \end{itemize}
   \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Simple example}
+
+\lstset{language=yaml,
+        commentstyle=\itshape\color{blue}
+        }
+\begin{lstlisting}
+!obj:pylearn2.train.Train {
+    "dataset": !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix &dataset {
+        "X" : !obj:numpy.random.normal { 'size': [5,3] },
+    },
+    "model": !obj:pylearn2.models.autoencoder.DenoisingAutoencoder {
+        "nvis" : 3,
+        "nhid" : 4,
+        "irange" : 0.05,  # Interval from which to sample weights
+        "corruptor": !obj:pylearn2.corruption.BinomialCorruptor {
+            "corruption_level": 0.5,
+        },
+        "act_enc": "tanh",
+        "act_dec": null,    # Linear activation on the decoder side.
+    },
+    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+        "learning_rate" : 1e-3,
+        "batch_size" : 5,
+        "monitoring_dataset" : *dataset,
+        "cost" : !obj:pylearn2.costs.autoencoder.MeanSquaredReconstructionError {},
+        "termination_criterion" : !obj:pylearn2.termination_criteria.EpochCounter {
+            "max_epochs": 10,
+        },
+    }
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Simple example}
+
+\lstset{language=python,
+        commentstyle=\itshape\color{blue}
+        }
+\begin{lstlisting}
+# Example of using a single part of Pylearn2 to show its modularity
+\end{lstlisting}
 \end{frame}
 
 \section{libgpuarray}
