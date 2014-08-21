@@ -287,19 +287,19 @@ print f([0, 1, 2])
       \begin{itemize}
         \item Costs, supervised/unsupervised and exact/estimated (NLL, Score matching, NCE)
         \item Monitor, history of (functions of) parameters and hyperparameters on different data sets (training, validation, test)
-        \item TerminationCriterion, determines when to stop training
+        \item Termination criteria, determine when to stop training
       \end{itemize}
-      \item Training extensions, perform actions throughout the training process based on the model's state (e.g. early stopping)
+      \item Training extensions, perform actions throughout the training process (e.g. early stopping)
       \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
       \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
     \end{itemize}
   \item Data specifications which give semantics to data
   \begin{itemize}
-    \item IndexSpace, labels in the form of a 1D array of integers
-    \item VectorSpace, numerica data as 1D float32 array
-    \item Conv2DSpace, color images as 3D float32 arrays
+    \item IndexSpace, 1D integer array e.g. for labels
+    \item VectorSpace, 1D float array e.g. for softmax output
+    \item Conv2DSpace, 3D float32 arrays e.g. for color image input
   \end{itemize}
-  \item Allows for automatic conversion e.g. labels to one-hot vectors, images to flattened vectors
+  \item Allows for automatic conversion when needed e.g. labels to one-hot vectors, images to flattened vectors
 \end{itemize}
 \end{frame}
 
@@ -311,7 +311,7 @@ print f([0, 1, 2])
     \item Features currently in development:
     \begin{itemize}
       \item Recurrent neural networks (RNNs), based on the GroundHog framework developed at LISA
-      \item Better hyperparameter search support for YAML files
+      \item Better hyperparameter search support, using e.g. Hyperopt
     \end{itemize}
   \end{itemize}
 \end{frame}
