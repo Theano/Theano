@@ -67,7 +67,7 @@ Montréal, Canada \newline
   \item Dynamic type and memory management
   \item Slow execution
   \item Easily extensible with C
-  \item Popular in *web development* and *scientific communities*
+  \item Popular in {\em web development}\ and {\em scientific communities}
   \end{itemize}
 \end{frame}
 
@@ -88,7 +88,7 @@ Montréal, Canada \newline
       \begin{itemize}
       \item Elementwise computations
       \item Linear algebra, Fourier transforms
-      \item Pseudorandom number generators, supporting many distributions
+      \item Pseudorandom number generators (many distributions)
       \end{itemize}
 
   \item SciPy provides lots more, including
@@ -196,33 +196,37 @@ Our target is the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fa
 
 
 \section{Theano}
+% I think it is a good idea to make explicit the change into a new section -- PL
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
 \begin{frame}{Description}
   \begin{itemize}
     \item Mathematical symbolic expression compiler
-    \item Expressions mimic NumPy's syntax and semantics (easier to use)
+    \item Expressions mimic NumPy's syntax and semantics
     \item Dynamic C/CUDA code generation
     \begin{itemize}
-      \item Can use other technologies to generate fast code: C/C++, CUDA, OpenCL, PyCUDA, Cython, Numba, \ldots
+      \item C/C++, CUDA, OpenCL, PyCUDA, Cython, Numba, \ldots
     \end{itemize}
-    \item Efficient symbolic differeniation
-    \begin{itemize}
-      \item Theano computes derivatives of functions with one or many inputs.
-      \item Also supports computation of the Jacobian, Hessian, R and L op.
-    \end{itemize}
+    \item Efficient symbolic differentiation
+    %\begin{itemize}
+    %  \item Derivatives of functions with one or many inputs.
+    %  \item Computation of the Jacobian, Hessian, R and L op.
+    %\end{itemize}
     \item Speed and stability optimizations
     \begin{itemize}
       \item Gives the right answer for ``$\log (1 + x)$'' even if $x$ is really tiny.
     \end{itemize}
+    \item Extensive unit-testing and self-verification
+    %\begin{itemize}
+    %  \item Detects and diagnoses many types of errors
+    %\end{itemize}
     \item Works on Linux, OS X and Windows
     \item Transparent use of a GPU
     \begin{itemize}
       \item {\tt float32} only for now (working on other data types)
       \item Still in experimental state on Windows
-    \end{itemize}
-
-    \item Extensive unit-testing and self-verification
-    \begin{itemize}
-      \item Detects and diagnoses many types of errors
     \end{itemize}
 
 %    \item Statically typed and purely functional
@@ -236,7 +240,8 @@ Our target is the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fa
   \frametitle{Simple example}
 
 \lstset{language=Python,
-        commentstyle=\itshape\color{blue}
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
         }
 \begin{lstlisting}
 import theano
@@ -279,9 +284,12 @@ print f([0, 1, 2])
 
 
 \section{Pylearn2}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
 \begin{frame}{Pylearn2 details}
-  \begin{itemize}
-    \item The core library contains a collection of:
+    The core library contains a collection of:
     \begin{itemize}
       \item Training algorithms (i.e., Stochastic and Batch GD, model-specific rules)
       \begin{itemize}
@@ -289,22 +297,21 @@ print f([0, 1, 2])
         \item Monitor, history of (functions of) parameters and hyperparameters on different data sets (training, validation, test)
         \item Termination criteria, determine when to stop training
       \end{itemize}
-      \item Training extensions, perform actions throughout the training process (e.g. early stopping)
+      \item Training extensions, perform actions throughout the training process (e.g., early stopping)
       \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
       \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
     \end{itemize}
-  \end{itemize}
 \end{frame}
 
 \begin{frame}{Pylearn2 details, continued}
 \begin{itemize}
   \item Data specifications which give semantics to data
   \begin{itemize}
-    \item IndexSpace, 1D integer array e.g. for labels
-    \item VectorSpace, 1D float array e.g. for softmax output
-    \item Conv2DSpace, 3D float32 arrays e.g. for color image input
+    \item IndexSpace, 1D integer array e.g.\ for labels
+    \item VectorSpace, 1D float array e.g.\ for softmax output
+    \item Conv2DSpace, 3D float32 arrays e.g.\ for color image input
   \end{itemize}
-  \item Allows for automatic conversion when needed e.g. labels to one-hot vectors, images to flattened vectors
+  \item Allows for automatic conversion when needed e.g.\ labels to one-hot vectors, images to flattened vectors
 \end{itemize}
 \end{frame}
 
@@ -324,7 +331,12 @@ print f([0, 1, 2])
 \begin{frame}[fragile]
   \frametitle{Simple example}
 
-\lstset{commentstyle=\itshape\color{blue},basicstyle=\tiny}
+% I know it is not Python, but YAML is not supported by listings
+% close enough? -- PL
+\lstset{language=python,
+        commentstyle=\slshape\color{blue},
+        stringstyle=\color{violet},
+        basicstyle=\tiny\ttfamily}
 \begin{lstlisting}
 !obj:pylearn2.train.Train {
     "dataset": !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix &dataset {
@@ -357,7 +369,9 @@ print f([0, 1, 2])
   \frametitle{Simple example}
 
 \lstset{language=python,
-        commentstyle=\itshape\color{blue}
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        basicstyle=\small
         }
 \begin{lstlisting}
 # Use Pylearn2 to perform a linear transformation
@@ -377,11 +391,15 @@ print f([0.12, 0.12, 0.43, 0.32, 0.96])
 \end{frame}
 
 \section{libgpuarray}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
 \begin{frame}{libgpuarray: Design Goals}
   \begin{itemize}
   \item Have the base object in C to allow collaboration with more projects.
     \begin{itemize}
-    \item We want people from C, C++, ruby, R, ... all use the same base GPU ndarray.
+    \item We want people from C, C++, ruby, R, \ldots all use the same base GPU ndarray.
     \end{itemize}
   \item Be compatible with CUDA and OpenCL.
   \item Not too simple, (don’t support just matrix).
@@ -397,7 +415,7 @@ print f([0.12, 0.12, 0.43, 0.32, 0.96])
 \begin{frame}{Project status?}
   \begin{itemize}
   \item Usable directly, but not all implementation available.
-  \item Multiple GPU work.
+  \item Multiple GPU works.
   \item Is the next GPU array container for Theano and is working.
     \begin{itemize}
     \item Not all Theano implementation available now.
@@ -408,8 +426,12 @@ print f([0.12, 0.12, 0.43, 0.32, 0.96])
   \end{itemize}
 \end{frame}
 
-\section{sharing}
-\begin{frame}{Simplifing code sharing}
+\section{Sharing}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{Simplifying code sharing}
 \begin{enumerate}
   \item<1-> License: \begin{bf}Suggest BSD\end{bf} as it is used by many software in our field.
     \begin{itemize}
@@ -427,6 +449,9 @@ print f([0.12, 0.12, 0.43, 0.32, 0.96])
 \end{frame}
 
 \section{Features}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
 
 \begin{frame}{OLD STUFF Strides}
 \only<1>{Strides is a way to specify how much memory to skip between each element of a dimension.}
@@ -476,8 +501,11 @@ Desired & yes & yes & any & all & both \\
 %%\vspace{-1em}
 
 \section{Conclusion}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
 
-\begin{frame}{Acknowledgment}
+\begin{frame}{Acknowledgments}
 \begin{itemize}
 \item James Bergstra
 \item Compute Canada, RQCHP, NSERC, and Canada Research Chairs for providing funds or access to compute resources.
