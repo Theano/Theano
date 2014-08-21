@@ -129,21 +129,19 @@ Montréal, Canada \newline
   \begin{itemize}
     \item Syntax as close to NumPy as possible
     \item Compiles most common expressions to C for CPU and GPU
-    \item Limited expressivity means lots of opportunities for expression-level optimizations
+    \item Limited expressivity means more opportunities optimizations
     \begin{itemize}
       \item No subroutines -> global optimization
       \item Strongly typed -> compiles to machine instructions
       \item Array oriented -> easy parallelism
       \item Support for looping and branching in expressions
     \end{itemize}
-    \item Expression substitution optimizations automatically draw
-    on many back-end technologies for best performance.
+    \item Automatic speed and stability optimizations
+    \item Can reuse other technologies for best performance.
     \begin{itemize}
-      \item BLAS, SciPy, Cython, CUDA
-      \item Slower fallbacks always available
+      \item BLAS, SciPy, Cython, Numba, PyCUDA, CUDA
     \end{itemize}
     \item Automatic differentiation and R op
-
     \item Sparse matrices
   \end{itemize}
 \end{frame}
@@ -166,11 +164,32 @@ Montréal, Canada \newline
     \item Experiments can be specified through a YAML config file, or by a Python script
     \item Scripts for visualizing weights, plot monitored values
   \end{itemize}
+\end{frame}
 
+
+\begin{frame}{Goal of the stack}
+You can't have your cake and eat it too.\newline
+We want our cake and eat it too.???\newline
+Target the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fast to run\end{bf}.
 \end{frame}
 
 
 \begin{frame}{libgpuarray}
+  GOAL: A common GPU n dimensions array that can be reused by all projects. It support CUDA and OpenCL.
+  \newline \newline
+  Motivation:
+  \begin{itemize}
+  \item Currently there are at least 6 different gpu arrays in python
+    \begin{itemize}
+    \item CudaNdarray(Theano), GPUArray(pycuda), CUDAMatrix(cudamat), GPUArray(pyopencl), Clyther, Copperhead, ...
+    \item There are even more if we include other languages.
+    \end{itemize}
+  \item They are incompatible
+    \begin{itemize}
+    \item None have the same properties and interface.
+    \end{itemize}
+  \item All of them are a subset of numpy.ndarray on the gpu!
+  \end{itemize}
 \end{frame}
 
 
@@ -264,13 +283,45 @@ print f([0, 1, 2])
 \end{frame}
 
 \section{libgpuarray}
-\begin{frame}{libgpuarray details}
+\begin{frame}{libgpuarray: Design Goals}
+  \begin{itemize}
+  \item Have the base object in C to allow collaboration with more projects.
+    \begin{itemize}
+    \item We want people from C, C++, ruby, R, ... all use the same base GPU ndarray.
+    \end{itemize}
+  \item Be compatible with CUDA and OpenCL.
+  \item Not too simple, (don’t support just matrix).
+  \item But still easy to develop new code that support only a few memory layout.
+    \begin{itemize}
+    \item This ease the development of new code.
+    \end{itemize}
+  \end{itemize}
 \end{frame}
+
 \begin{frame}{Project status?}
+  \begin{itemize}
+  \item Usable directly, but not all implementation available.
+  \item Multiple GPU work.
+  \item Is the next GPU array container for Theano and is working.
+    \begin{itemize}
+    \item Not all Theano implementation available now.
+    \item OpenCL miss more implementation.
+    \item Multiple GPU on the way.
+    \end{itemize}
+  \item Web site: \url{http://deeplearning.net/software/libgpuarray/}
+  \end{itemize}
 \end{frame}
 
 \section{sharing}
 \begin{frame}{How can we do it?}
+
+  \only<1>{License: Suggest BSD as it is used by many software in our field.}
+  \only<1>{Common license help share code.}
+  \only<1>{Don't forget to copy the copyright notice when you copy code.}
+  \only<2>{Common base object! \begin{bf}libgpuarray\end{bf}}
+  \only<3>{Otherwise: put important implementation(e.g convolution) in separate file and use raw ptr/shape/strides as inputs? Doc that interface.}
+  \only<4>{acknowled reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in paper\end{bf} about the software we reuse! (and use too)}
+
 \end{frame}
 
 \begin{frame}{OLD STUFF Why do we need this?}
