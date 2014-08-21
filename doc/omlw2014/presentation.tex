@@ -154,13 +154,7 @@ Montréal, Canada \newline
   \begin{itemize}
     \item Built on top of Theano, for fast execution and use of GPU
     \item Easy to try variants of implemented algorithms, and to extend them (using Theano)
-    \item Contains a collection of:
-    \begin{itemize}
-      \item Training algorithms (i.e., Stochastic and Batch GD, model-specific rules)
-      \item Costs, supervised/unsupervised and exact/estimated (NLL, Score matching, NCE)
-      \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
-      \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
-    \end{itemize}
+    \item Very modular, each component of the library can be used in isolation
     \item Experiments can be specified through a YAML config file, or by a Python script
     \item Scripts for visualizing weights, plot monitored values
   \end{itemize}
@@ -278,8 +272,39 @@ print f([0, 1, 2])
 
 \section{Pylearn2}
 \begin{frame}{Pylearn2 details}
+  \begin{itemize}
+    \item The core library contains a collection of:
+    \begin{itemize}
+      \item Training algorithms (i.e., Stochastic and Batch GD, model-specific rules)
+      \begin{itemize}
+        \item Costs, supervised/unsupervised and exact/estimated (NLL, Score matching, NCE)
+        \item Monitor, history of (functions of) parameters and hyperparameters on different data sets (training, validation, test)
+        \item TerminationCriterion, determines when to stop training
+      \end{itemize}
+      \item Training extensions, perform actions throughout the training process based on the model's state (e.g. early stopping)
+      \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
+      \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
+    \end{itemize}
+  \item Data specifications which give semantics to data
+  \begin{itemize}
+    \item IndexSpace, labels in the form of a 1D array of integers
+    \item VectorSpace, numerica data as 1D float32 array
+    \item Conv2DSpace, color images as 3D float32 arrays
+  \end{itemize}
+  \item Allows for automatic conversion e.g. labels to one-hot vectors, images to flattened vectors
+\end{itemize}
 \end{frame}
-\begin{frame}{Project status?}
+\begin{frame}{Project status}
+  \begin{itemize}
+    \item Has been used for scientific publications, Kaggle competitions, used by many researchers at LISA
+    \item Still under rapid development, however the API shouldn't break without warning
+    \item Documentation is incomplete, but improving
+    \item Features currently in development:
+    \begin{itemize}
+      \item Recurrent neural networks (RNNs), based on the GroundHog framework developed at LISA
+      \item Better hyperparameter search support for YAML files
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \section{libgpuarray}
