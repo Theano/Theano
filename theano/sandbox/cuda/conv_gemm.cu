@@ -433,6 +433,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     // Free temporary columns
     Py_DECREF(col);
 
+    // Note that we don't change the refcount of the output matrix here. Output
+    // (re)allocation and refcounting is done in BaseGpuCorrMM.c_code_helper();
+    // in here output is just aliased to one of bottom, weights, or top.
     return output;
 }
 
