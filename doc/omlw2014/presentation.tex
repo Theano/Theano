@@ -357,7 +357,16 @@ print f([0, 1, 2])
         commentstyle=\itshape\color{blue}
         }
 \begin{lstlisting}
-# Example of using a single part of Pylearn2 to show its modularity
+# Use Pylearn2 to perform a linear transformation followed by a softmax
+x = theano.tensor.vector("x")
+softmax = pylearn2.models.mlp.Softmax(n_classes=2,
+                                      layer_name="softmax",
+                                      irange=0.05)
+softmax.set_input_space(pylearn2.space.VectorSpace(dim=5))
+y = softmax.fprop(x)
+f = theano.function([x], y)
+print f([0.12, 0.12, 0.43, 0.32, 0.96])
+# prints [0.43, 0.54]
 \end{lstlisting}
 \end{frame}
 
