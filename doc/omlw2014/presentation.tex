@@ -293,6 +293,11 @@ print f([0, 1, 2])
       \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
       \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
     \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Pylearn2 details, continued}
+\begin{itemize}
   \item Data specifications which give semantics to data
   \begin{itemize}
     \item IndexSpace, 1D integer array e.g. for labels
@@ -319,8 +324,7 @@ print f([0, 1, 2])
 \begin{frame}[fragile]
   \frametitle{Simple example}
 
-\lstset{commentstyle=\itshape\color{blue}
-        }
+\lstset{commentstyle=\itshape\color{blue},basicstyle=\tiny}
 \begin{lstlisting}
 !obj:pylearn2.train.Train {
     "dataset": !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix &dataset {
@@ -356,12 +360,15 @@ print f([0, 1, 2])
         commentstyle=\itshape\color{blue}
         }
 \begin{lstlisting}
-# Use Pylearn2 to perform a linear transformation followed by a softmax
+# Use Pylearn2 to perform a linear transformation
+# followed by a softmax
 x = theano.tensor.vector("x")
-softmax = pylearn2.models.mlp.Softmax(n_classes=2,
-                                      layer_name="softmax",
-                                      irange=0.05)
-softmax.set_input_space(pylearn2.space.VectorSpace(dim=5))
+softmax = pylearn2.models.mlp.Softmax(
+    n_classes=2, layer_name="softmax", irange=0.05
+)
+softmax.set_input_space(
+  pylearn2.space.VectorSpace(dim=5)
+)
 y = softmax.fprop(x)
 f = theano.function([x], y)
 print f([0.12, 0.12, 0.43, 0.32, 0.96])
