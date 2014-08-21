@@ -42,9 +42,9 @@ Montréal, Canada \newline
   Python <- \{NumPy/SciPy/libgpuarray\} <- Theano <- Pylearn2
   \begin{itemize}
   \item Python: OO coding language
-  \item Numpy: n-dimension array object and scientific computing toolbox
-  \item SciPy: sparse matrix object and more scientific computing functionality
-  \item libgpuarray: gpu n-dimentional array object in C for CUDA and OpenCL
+  \item Numpy: n-dimensional array object and scientific computing toolbox
+  \item SciPy: sparse matrix objects and more scientific computing functionality
+  \item libgpuarray: GPU n-dimentional array object in C for CUDA and OpenCL
   \item Theano: compiler/symbolic graph manipulation
   \item Pylearn2: machine learning framework
   \end{itemize}
@@ -57,8 +57,8 @@ Montréal, Canada \newline
   \item Comprehensive standard library
   \item Dynamic type and memory management
   \item Slow execution
-  \item Easily extensible from C
-  \item Popular in *web-dev* and *scientific communities*
+  \item Easily extensible with C
+  \item Popular in *web development* and *scientific communities*
   \end{itemize}
 \end{frame}
 
@@ -69,9 +69,9 @@ Montréal, Canada \newline
       \item Not suitable for high-performance computing!
       \end{itemize}
 
-  \item NumPy provides a N-dimensional numeric array in Python
+  \item NumPy provides an $n$-dimensional numeric array in Python
       \begin{itemize}
-      \item Perfect for high-performance computing.
+      \item Perfect for high-performance computing
       \item Slices of arrays are views (no copy)
       \end{itemize}
 
@@ -79,12 +79,12 @@ Montréal, Canada \newline
       \begin{itemize}
       \item Elementwise computations
       \item Linear algebra, Fourier transforms
-      \item Pseudorandom numbers from many distributions
+      \item Pseudorandom number generators, supporting many distributions
       \end{itemize}
 
   \item SciPy provides lots more, including
       \begin{itemize}
-      \item Sparse matrix
+      \item Sparse matrices
       \item More linear algebra
       \item Solvers and optimization algorithms
       \item Matlab-compatible I/O
@@ -104,9 +104,9 @@ Montréal, Canada \newline
 \end{frame}
 
 \begin{frame}{Why scripting for GPUs?}
-  \begin{bf}They Complement each other\end{bf}
+  \begin{bf}They complement each other\end{bf}
 
-  GPUs are everything that scripting/high level languages are not
+  GPUs are everything that high level languages are not
 
   \begin{itemize}
     \item Highly parallel
@@ -115,7 +115,7 @@ Montréal, Canada \newline
     \item So hard to program that meta-programming is easier.
   \end{itemize}
 
-  \begin{bf}Best of both:\end{bf} easy scripted development invokes GPU kernel.
+  \begin{bf}Best of both:\end{bf} easily scripted code which invokes high-performance GPU kernels.
 
   \begin{bf}Theano C code generation removes overhead\end{bf} from
   function call between Python and C, by launching many C functions at once.
@@ -128,7 +128,7 @@ Montréal, Canada \newline
 
   \begin{itemize}
     \item Syntax as close to NumPy as possible
-    \item Compiles most common expressions to C for CPU and GPU
+    \item Compiles most common expressions to C for CPU and/or GPU
     \item Limited expressivity means lots of opportunities for expression-level optimizations
     \begin{itemize}
       \item No subroutines -> global optimization
@@ -158,8 +158,8 @@ Montréal, Canada \newline
     \item Easy to try variants of implemented algorithms, and to extend them (using Theano)
     \item Contains a collection of:
     \begin{itemize}
-      \item Training Algorithms (i.e., Stochastic and Batch GD, model-specific rules)
-      \item Costs and Estimation Criteria, supervised and unsupervised (NLL, Score Matching, NCE)
+      \item Training algorithms (i.e., Stochastic and Batch GD, model-specific rules)
+      \item Costs, supervised/unsupervised and exact/estimated (NLL, Score matching, NCE)
       \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
       \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
     \end{itemize}
