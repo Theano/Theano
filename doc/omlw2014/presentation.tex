@@ -16,8 +16,8 @@
 
 \author{%
 \footnotesize
-Frédéric Bastien\superscript{a}, Bart van Merriënboer\superscript{a} \newline
-\superscript{a}Département d'Informatique et de Recherche Opérationnelle \newline
+Frédéric Bastien, Bart van Merriënboer \newline
+Département d'Informatique et de Recherche Opérationnelle \newline
 Université de Montréal \newline
 Montréal, Canada \newline
 \texttt{\{bastienf, vanmerb\}@iro.umontreal.ca} \newline \newline
@@ -357,16 +357,9 @@ print f([0, 1, 2])
 \begin{frame}{Theano/PyLearn2 Future}
 \end{frame}
 
-\begin{frame}{OLD STUFF Why do we need this?}
-\begin{itemize}
-\item Efficient linear algebra is a the core of many scientific applications
-\item On the CPU, numpy ndarray provides a standard object (for python at least)
-\end{itemize}
-\end{frame}
-
 \section{Features}
 
-\begin{frame}{Strides}
+\begin{frame}{OLD STUFF Strides}
 \only<1>{Strides is a way to specify how much memory to skip between each element of a dimension.}
 \only<2>{We can use strides to take submatrix ${\color{cyan!50}B}$ without copying any memory.}
 \begin{center}
