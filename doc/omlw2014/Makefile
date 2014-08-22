@@ -8,12 +8,6 @@ cleantmp:
 
 presentation.pdf: presentation.tex
 	pdflatex presentation
-	pdflatex presentation
-	bibtexall
-	pdflatex presentation
 
 sharing.pdf: sharing.tex
-	pdflatex sharing
-	pdflatex sharing
-	bibtexall
 	pdflatex sharing
