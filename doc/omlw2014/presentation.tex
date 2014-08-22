@@ -44,20 +44,20 @@ Montréal, Canada \newline
   \item Python: OO coding language
   \item Numpy: $n$-dimensional array object and scientific computing toolbox
   \item SciPy: sparse matrix objects and more scientific computing functionality
-  \item libgpuarray: GPU n-dimentional array object in C for CUDA and OpenCL
+  \item libgpuarray: GPU $n$-dimensional array object in C for CUDA and OpenCL
   \item Theano: compiler/symbolic graph manipulation
   \item Pylearn2: machine learning framework
   \end{itemize}
 \end{frame}
 
 
-\begin{frame}{Others}\setcounter{page}{1}
-  \begin{itemize}
-  \item matplotlib: one of the many plotting library
-  \item IPython: Advanced python shell
-  \item IPython notebook: web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document
-  \end{itemize}
-\end{frame}
+%% \begin{frame}{Others}
+%%   \begin{itemize}
+%%   \item matplotlib: one of the many plotting library
+%%   \item IPython: Advanced python shell
+%%   \item IPython notebook: web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document
+%%   \end{itemize}
+%% \end{frame}
 
 \begin{frame}{Python}
   \begin{itemize}
@@ -112,24 +112,24 @@ Montréal, Canada \newline
 
 \end{frame}
 
-\begin{frame}{Why scripting for GPUs?}
-  \begin{bf}They complement each other\end{bf}
+%% \begin{frame}{Why scripting for GPUs?}
+%%   \begin{bf}They complement each other\end{bf}
 
-  GPUs are everything that high level languages are not
+%%   GPUs are everything that high level languages are not
 
-  \begin{itemize}
-    \item Highly parallel
-    \item Very architecture-sensitive
-    \item Built for maximum FP/memory throughput
-    \item So hard to program that meta-programming is easier
-  \end{itemize}
+%%   \begin{itemize}
+%%     \item Highly parallel
+%%     \item Very architecture-sensitive
+%%     \item Built for maximum FP/memory throughput
+%%     \item So hard to program that meta-programming is easier
+%%   \end{itemize}
 
-  \begin{bf}Best of both worlds:\end{bf} easily scripted code which invokes high-performance GPU kernels.
+%%   \begin{bf}Best of both worlds:\end{bf} easily scripted code which invokes high-performance GPU kernels.
 
-  \begin{bf}Theano C code generation removes overhead\end{bf} of
-  function calls between Python and C by launching many C functions at once.
+%%   \begin{bf}Theano C code generation removes overhead\end{bf} of
+%%   function calls between Python and C by launching many C functions at once.
 
-\end{frame}
+%% \end{frame}
 
 \begin{frame}{Theano}
 
@@ -141,7 +141,7 @@ Montréal, Canada \newline
     \item Limited expressivity means more opportunities optimizations
     \begin{itemize}
       \item No subroutines -> global optimization
-      \item Strongly typed -> compiles to machine instructions
+      \item Strongly typed -> compiles to C
       \item Array oriented -> easy parallelism
       \item Support for looping and branching in expressions
     \end{itemize}
@@ -170,12 +170,6 @@ Montréal, Canada \newline
 \end{frame}
 
 
-\begin{frame}{Goal of the stack}
-We want our cake and eat it too.\newline
-Our target is the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fast to run\end{bf}.
-\end{frame}
-
-
 \begin{frame}{libgpuarray}
   Goal: A common GPU $n$-dimensional array that can be reused by all projects, support for both CUDA and OpenCL.
   \newline \newline
@@ -188,10 +182,21 @@ Our target is the holy grail: \begin{bf}fast to develop\end{bf} and \begin{bf}fa
     \end{itemize}
   \item They are incompatible
     \begin{itemize}
-    \item None have the same properties and interface.
+    \item None have the same properties and interface
     \end{itemize}
-  \item All of them are a subset of numpy.ndarray on the GPU!
+  \item All of them implement a subset of numpy.ndarray properties
+  \item This is the new GPU backend on Theano
   \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Goal of the stack}
+\begin{center}
+\begin{bf}fast to develop\end{bf}\newline \bigskip
+\begin{bf}fast to run\end{bf}\newline \bigskip
+
+\includegraphics[width=0.35\textwidth]{road-runner-1.jpg}
+\end{center}
 \end{frame}
 
 
@@ -291,15 +296,15 @@ print f([0, 1, 2])
 \begin{frame}{Pylearn2 details}
     The core library contains a collection of:
     \begin{itemize}
-      \item Training algorithms (i.e., Stochastic and Batch GD, model-specific rules)
+      \item Training algorithms (e.g. Stochastic and Batch GD, model-specific rules)
       \begin{itemize}
-        \item Costs, supervised/unsupervised and exact/estimated (NLL, Score matching, NCE)
+        \item Costs, supervised/unsupervised and exact/estimated (e.g. NLL, Score matching, NCE)
         \item Monitor, history of (functions of) parameters and hyperparameters on different data sets (training, validation, test)
         \item Termination criteria, determine when to stop training
       \end{itemize}
       \item Training extensions, perform actions throughout the training process (e.g., early stopping)
-      \item Models (NNets, ConvNets, RBMs, k-means, PCA, SVMs)
-      \item Datasets (MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
+      \item Models (e.g. NNets, ConvNets, RBMs, k-means, PCA, SVMs)
+      \item Datasets (e.g. MNIST, CIFAR-10) and preprocessors (LCN, ZCA)
     \end{itemize}
 \end{frame}
 
@@ -312,6 +317,7 @@ print f([0, 1, 2])
     \item Conv2DSpace, 3D float32 arrays e.g.\ for color image input
   \end{itemize}
   \item Allows for automatic conversion when needed e.g.\ labels to one-hot vectors, images to flattened vectors
+  \item YAML file allows experiments to be conducted without writing code
 \end{itemize}
 \end{frame}
 
@@ -331,64 +337,64 @@ print f([0, 1, 2])
 \begin{frame}[fragile]
   \frametitle{Simple example}
 
-% I know it is not Python, but YAML is not supported by listings
-% close enough? -- PL
-\lstset{language=python,
-        commentstyle=\slshape\color{blue},
-        stringstyle=\color{violet},
-        basicstyle=\tiny\ttfamily}
-\begin{lstlisting}
-!obj:pylearn2.train.Train {
-    "dataset": !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix &dataset {
-        "X" : !obj:numpy.random.normal { 'size': [5,3] },
-    },
-    "model": !obj:pylearn2.models.autoencoder.DenoisingAutoencoder {
-        "nvis" : 3,
-        "nhid" : 4,
-        "irange" : 0.05,  # Interval from which to sample weights
-        "corruptor": !obj:pylearn2.corruption.BinomialCorruptor {
-            "corruption_level": 0.5,
-        },
-        "act_enc": "tanh",
-        "act_dec": null,    # Linear activation on the decoder side.
-    },
-    "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
-        "learning_rate" : 1e-3,
-        "batch_size" : 5,
-        "monitoring_dataset" : *dataset,
-        "cost" : !obj:pylearn2.costs.autoencoder.MeanSquaredReconstructionError {},
-        "termination_criterion" : !obj:pylearn2.termination_criteria.EpochCounter {
-            "max_epochs": 10,
-        },
-    }
-}
-\end{lstlisting}
-\end{frame}
+%% % I know it is not Python, but YAML is not supported by listings
+%% % close enough? -- PL
+%% \lstset{language=python,
+%%         commentstyle=\slshape\color{blue},
+%%         stringstyle=\color{violet},
+%%         basicstyle=\tiny\ttfamily}
+%% \begin{lstlisting}
+%% !obj:pylearn2.train.Train {
+%%     "dataset": !obj:pylearn2.datasets.dense_design_matrix.DenseDesignMatrix &dataset {
+%%         "X" : !obj:numpy.random.normal { 'size': [5,3] },
+%%     },
+%%     "model": !obj:pylearn2.models.autoencoder.DenoisingAutoencoder {
+%%         "nvis" : 3,
+%%         "nhid" : 4,
+%%         "irange" : 0.05,  # Interval from which to sample weights
+%%         "corruptor": !obj:pylearn2.corruption.BinomialCorruptor {
+%%             "corruption_level": 0.5,
+%%         },
+%%         "act_enc": "tanh",
+%%         "act_dec": null,    # Linear activation on the decoder side.
+%%     },
+%%     "algorithm": !obj:pylearn2.training_algorithms.sgd.SGD {
+%%         "learning_rate" : 1e-3,
+%%         "batch_size" : 5,
+%%         "monitoring_dataset" : *dataset,
+%%         "cost" : !obj:pylearn2.costs.autoencoder.MeanSquaredReconstructionError {},
+%%         "termination_criterion" : !obj:pylearn2.termination_criteria.EpochCounter {
+%%             "max_epochs": 10,
+%%         },
+%%     }
+%% }
+%% \end{lstlisting}
+%% \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Simple example}
+%% \begin{frame}[fragile]
+%%   \frametitle{Simple example}
 
-\lstset{language=python,
-        commentstyle=\itshape\color{blue},
-        stringstyle=\color{violet},
-        basicstyle=\small
-        }
-\begin{lstlisting}
-# Use Pylearn2 to perform a linear transformation
-# followed by a softmax
-x = theano.tensor.vector("x")
-softmax = pylearn2.models.mlp.Softmax(
-    n_classes=2, layer_name="softmax", irange=0.05
-)
-softmax.set_input_space(
-  pylearn2.space.VectorSpace(dim=5)
-)
-y = softmax.fprop(x)
-f = theano.function([x], y)
-print f([0.12, 0.12, 0.43, 0.32, 0.96])
-# prints [0.43, 0.54]
-\end{lstlisting}
-\end{frame}
+%% \lstset{language=python,
+%%         commentstyle=\itshape\color{blue},
+%%         stringstyle=\color{violet},
+%%         basicstyle=\small
+%%         }
+%% \begin{lstlisting}
+%% # Use Pylearn2 to perform a linear transformation
+%% # followed by a softmax
+%% x = theano.tensor.vector("x")
+%% softmax = pylearn2.models.mlp.Softmax(
+%%     n_classes=2, layer_name="softmax", irange=0.05
+%% )
+%% softmax.set_input_space(
+%%   pylearn2.space.VectorSpace(dim=5)
+%% )
+%% y = softmax.fprop(x)
+%% f = theano.function([x], y)
+%% print f([0.12, 0.12, 0.43, 0.32, 0.96])
+%% # prints [0.43, 0.54]
+%% \end{lstlisting}
+%% \end{frame}
 
 \section{libgpuarray}
 \begin{frame}
@@ -415,12 +421,12 @@ print f([0.12, 0.12, 0.43, 0.32, 0.96])
 \begin{frame}{Project status?}
   \begin{itemize}
   \item Usable directly, but not all implementation available.
-  \item Multiple GPU works.
+  \item Multiple GPUs works.
   \item Is the next GPU array container for Theano and is working.
     \begin{itemize}
-    \item Not all Theano implementation available now.
-    \item OpenCL miss more implementation.
-    \item Multiple GPU on the way.
+    \item Not all Theano implementations available now.
+    \item OpenCL misses more implementations.
+    \item Multiple GPUs on the way.
     \end{itemize}
   \item Web site: \url{http://deeplearning.net/software/libgpuarray/}
   \end{itemize}
