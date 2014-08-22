@@ -25,7 +25,7 @@ AddConfigVar('floatX',
 )
 
 AddConfigVar('warn_float64',
-             "Warning, parts of the graph are in float64 which can't be run on the GPU with the current(old) gpu back-end.",
+             "Warning for float64 part in the function's graph which can't be run on the GPU with the current(old) gpu back-end.",
              BoolParam(False),
              in_c_key=False,
 )
