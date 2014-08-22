@@ -1,4 +1,4 @@
-all: presentation.pdf
+all: presentation.pdf sharing.pdf
 
 clean:
 	rm -f pygpu_ndarray.so core.* *.o *~
@@ -11,3 +11,9 @@ presentation.pdf: presentation.tex
 	pdflatex presentation
 	bibtexall
 	pdflatex presentation
+
+sharing.pdf: sharing.tex
+	pdflatex sharing
+	pdflatex sharing
+	bibtexall
+	pdflatex sharing
