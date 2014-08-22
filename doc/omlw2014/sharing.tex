@@ -37,27 +37,12 @@ Montréal, Canada \newline
  \includegraphics[width=.8in]{../hpcs2011_tutorial/pics/UdeM_NoirBleu_logo_Marie_crop}
 \end{frame}
 
-\section{Sharing}
-\begin{frame}{Simplifying code sharing between}\setcounter{page}{1}
-\begin{enumerate}
-  \item<1-> License: \begin{bf}Suggest BSD\end{bf} as it is used by many software in our field.
-    \begin{itemize}
-    \item Common license help share code.
-    \item When reusing code, don't forget to keep the license and the copyright notice
-    \end{itemize}
-  \item<2-> Common base object! \begin{bf}libgpuarray\end{bf}
-  \item<3-> Otherwise: put important implementation(e.g. convolution) in \begin{bf}separate file\end{bf} and \begin{bf}use raw ptr/shape/strides\end{bf} as inputs. Document that interface.
-  \item<4-> Acknowledge reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in papers\end{bf} about the software we reuse! (and use too)
-\end{enumerate}
-\end{frame}
-
-
 \section{Future}
 \begin{frame}
   \tableofcontents[currentsection]
 \end{frame}
 
-\begin{frame}{Theano}
+\begin{frame}{Theano}\setcounter{page}{1}
 \begin{itemize}
 \item Easier C code development and better documentation of that
 \item Faster compilation
@@ -66,6 +51,15 @@ Montréal, Canada \newline
 \item Allow checkpoint with GPU to reload without GPU
 \item Less memory allocation(lower Theano overhead)
 \item Faster convolution
+\end{itemize}
+\end{frame}
+
+\begin{frame}{libgpuarray}
+\begin{itemize}
+\item Find other projects to use it?
+\item More functionality as NumPy
+\item Move some of the functionality from Python/Theano to the C level
+\item Optimize the kernel selection and parametrization based on the GPU
 \end{itemize}
 \end{frame}
 
@@ -82,13 +76,21 @@ Montréal, Canada \newline
 \end{itemize}
 \end{frame}
 
-\begin{frame}{libgpuarray}
-\begin{itemize}
-\item Find other projects to use it?
-\item More functionality as NumPy
-\item Move some of the functionality from Python/Theano to the C level
-\item Optimize the kernel selection and parametrization based on the GPU?
-\end{itemize}
+\begin{frame}
 \end{frame}
+
+\begin{frame}{Simplifying code sharing between}
+\begin{enumerate}
+  \item<1-> License: \begin{bf}Suggest BSD\end{bf} as it is used by many software in our field.
+    \begin{itemize}
+    \item Common license help share code.
+    \item When reusing code, don't forget to keep the license and the copyright notice
+    \end{itemize}
+  \item<2-> Common base object! \begin{bf}libgpuarray\end{bf}
+  \item<3-> Otherwise: put important implementation(e.g. convolution) in \begin{bf}separate file\end{bf} and \begin{bf}use raw ptr/shape/strides\end{bf} as inputs. Document that interface.
+  \item<4-> Acknowledge reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in papers\end{bf} about the software we reuse! (and use too)
+\end{enumerate}
+\end{frame}
+
 
 \end{document}

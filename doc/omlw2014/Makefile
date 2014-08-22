@@ -8,6 +8,8 @@ cleantmp:
 
 presentation.pdf: presentation.tex
 	pdflatex presentation
+	pdflatex presentation
 
 sharing.pdf: sharing.tex
+	pdflatex sharing
 	pdflatex sharing
