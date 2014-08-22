@@ -71,7 +71,7 @@ class Hint(Op):
 
     """
 
-    __props__ = ('hints', 'view_map')
+    __props__ = ('hints',)
 
     def __init__(self, **kwargs):
         self.hints = tuple(kwargs.items())

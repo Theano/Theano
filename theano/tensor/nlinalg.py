@@ -31,6 +31,9 @@ class MatrixPinv(Op):
     exact and faster to compute. Also this op does not get optimized into a
     solve op.
     """
+
+    __props__ = ()
+
     def __init__(self):
         pass
 
@@ -55,6 +58,8 @@ class MatrixInverse(Op):
     :note: When possible, the call to this op will be optimized to the call
            of ``solve``.
     """
+
+    __props__ = ()
 
     def __init__(self):
         pass
@@ -281,6 +286,7 @@ class Eig(Op):
 
     """
     _numop = staticmethod(numpy.linalg.eig)
+    __props__ = ()
 
     def make_node(self, x):
         x = as_tensor_variable(x)

@@ -587,7 +587,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def __str__(self):
         if hasattr(self, '__props__'):
             if len(self.__props__) == 0:
-                return "%s" % (self.__class__.__name__, ", ".join("%s=%r"))
+                return "%s" % (self.__class__.__name__,)
             else:
                 return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%r" % (p, getattr(self, p)) for p in self.__props__))
         else:
