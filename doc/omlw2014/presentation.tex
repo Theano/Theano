@@ -192,8 +192,8 @@ Montréal, Canada \newline
 
 \begin{frame}{Goal of the stack}
 \begin{center}
-\begin{bf}fast to develop\end{bf}\newline \bigskip
-\begin{bf}fast to run\end{bf}\newline \bigskip
+\begin{bf}Fast to develop\end{bf}\newline \bigskip
+\begin{bf}Fast to run\end{bf}\newline \bigskip
 
 \includegraphics[width=0.35\textwidth]{road-runner-1.jpg}
 \end{center}
@@ -334,8 +334,8 @@ print f([0, 1, 2])
   \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]
-  \frametitle{Simple example}
+%% \begin{frame}[fragile]
+%%   \frametitle{Simple example}
 
 %% % I know it is not Python, but YAML is not supported by listings
 %% % close enough? -- PL
@@ -432,88 +432,21 @@ print f([0, 1, 2])
   \end{itemize}
 \end{frame}
 
-\section{Sharing}
-\begin{frame}
-  \tableofcontents[currentsection]
-\end{frame}
-
-\begin{frame}{Simplifying code sharing}
-\begin{enumerate}
-  \item<1-> License: \begin{bf}Suggest BSD\end{bf} as it is used by many software in our field.
-    \begin{itemize}
-    \item Common license help share code.
-    \item When reusing code, don't forget to keep the license and the copyright notice
-    \end{itemize}
-  \item<2-> Common base object! \begin{bf}libgpuarray\end{bf}
-  \item<3-> Otherwise: put important implementation(e.g convolution) in \begin{bf}separate file\end{bf} and \begin{bf}use raw ptr/shape/strides\end{bf} as inputs. Document that interface.
-  \item<4-> Acknowledge reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in papers\end{bf} about the software we reuse! (and use too)
-\end{enumerate}
-
-\end{frame}
-
-\begin{frame}{Theano/PyLearn2 Future}
-\end{frame}
-
-\section{Features}
-\begin{frame}
-  \tableofcontents[currentsection]
-\end{frame}
-
-\begin{frame}{OLD STUFF Strides}
-\only<1>{Strides is a way to specify how much memory to skip between each element of a dimension.}
-\only<2>{We can use strides to take submatrix ${\color{cyan!50}B}$ without copying any memory.}
-\begin{center}
-\onslide<1->{Matrix ${\color{red!50}A}$}\hspace{5em}\onslide<2->{Matrix ${\color{cyan!50}B}$}
-\end{center}
-\begin{center}
-%%\only<1>{\includegraphics{strides-1}}
-%%\only<2>{\includegraphics{strides-2}}
-\end{center}
-\end{frame}
-
-\begin{frame}{Features desired}
-\begin{itemize}
-\item {\color{gray!80} Support for varying datatypes}
-\item {\color{gray!80} Support for an arbitrary number of dimensions}
-\item {\color{gray!80} Support for strides}
-\item Support for broadcasting
-\item {\color{gray!80} Compatibility with CUDA and OpenCL}
-\end{itemize}
-\end{frame}
-
-\begin{frame}{Comparison of existing implementations}
-\begin{table}
-\rowcolors{2}{RoyalBlue!5}{RoyalBlue!23}
-\begin{tabular}{|l|c|c|c|c|c|}
-\hline
-Package & strides & bcast & dims & types & backends \\
-\hline
-\hline
-Theano & yes\footnote{as number of elements} & yes & any & float32 & CUDA \\
-PyCUDA& no & no & any & all & CUDA \\
-PyOpenCL & no & no & any & all & OpenCL \\
-CUDAMat & no & yes\footnote{via a function} & 2 & float32 & CUDA \\
-Gnumpy & no & yes & any & float32\footnote{and a hackish form of boolean} & CUDA \\
-Thrust & no & no & 1 & all & CUDA \\
-\hline
-\hiderowcolors
-Desired & yes & yes & any & all & both \\
-\hline
-\end{tabular}
-\end{table}
-\end{frame}
-
-
-%%\vspace{-1em}
-
 \section{Conclusion}
 \begin{frame}
   \tableofcontents[currentsection]
 \end{frame}
 
+\begin{frame}{Conclusion}
+Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
+\begin{bf}Fast to develop\end{bf}\newline
+\begin{bf}Fast to run\end{bf}\newline
+\end{frame}
+
 \begin{frame}{Acknowledgments}
 \begin{itemize}
-\item James Bergstra
+\item All people working or having worked at the LISA lab.
+\item All Theano/Pylearn 2 users/contributors
 \item Compute Canada, RQCHP, NSERC, and Canada Research Chairs for providing funds or access to compute resources.
 \end{itemize}
 \end{frame}
