@@ -1122,6 +1122,8 @@ def local_gpu_conv(node):
                     version=op.version,
                     verbose=op.verbose,
                     imshp=op.imshp,
+                    nkern=op.nkern,
+                    bsize=op.bsize,
                     fft_opt=op.fft_opt
                     )
         if op.imshp_logical is not None:
@@ -1207,14 +1209,19 @@ def _gpu_conv_to_fftconv(node):
         node.op.imshp[-1] is not None and
         node.op.imshp[-1] % 2 == 1):
         kwargs['pad_last_dim'] = True
-    # TODO: If the user supplied the full nonsymbolic image_shape and
-    # filter_shape in conv2d(), we could pass it on to conv2d_fft(). However,
-    # information on batch size and channel counts is currently discarded
-    # when a ConvOp is replaced by a GpuConv, so this would need more changes.
-    #if (node.op.imshp is not None) and (None not in node.op.imshp):
-    #    kwargs['image_shape'] = (bsize, inchannels) + node.op.imshp
-    #if (node.op.kshp is not None) and (None not in node.op.kshp):
-    #    kwargs['filter_shape'] = (outchannels, inchannels) + node.op.kshp
+    # If the user supplied the full nonsymbolic image_shape and
+    # filter_shape in conv2d(), we can pass it on to conv2d_fft().
+    if ((node.op.imshp is not None) and
+            (len(node.op.imshp) == 3) and
+            (None not in node.op.imshp) and
+            (node.op.bsize is not None)):
+        kwargs['image_shape'] = (node.op.bsize,) + node.op.imshp
+    if ((node.op.kshp is not None) and
+            (None not in node.op.kshp) and
+            (node.op.nkern is not None) and
+            (len(node.op.imshp) == 3) and
+            (node.op.imshp[0] is not None)):
+        kwargs['filter_shape'] = (node.op.nkern, node.op.imshp[0]) + node.op.kshp
     return conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
 
 
@@ -1363,25 +1370,34 @@ def local_conv_gemm(node):
             # need to flip the kernel for valid convolution
             kern = kern[:, :, ::-1, ::-1]
             # call GpuCorrMM or GpuCorrMM_gradWeights
-            # (GpuCorrMM seems faster if batchsize * kernelHeight * kernelWidth
-            # is smaller than inputChannels * outputHeight * outputWidth.
-            # GpuConv does not store information on the batchsize and not always
-            # on the channels, so we only use what information we have.)
+            # (the latter is faster if batchsize * kernelHeight * kernelWidth
+            # is larger than inputChannels * outputHeight * outputWidth.
+            # GpuConv does not always store information on the batchsize and
+            # channels, though, so we only use what information we have.)
             if ((subsample == (1,1)) and
                     (node.op.imshp is not None) and
                     (None not in node.op.imshp[-2:]) and
                     (node.op.kshp is not None) and
-                    (None not in node.op.kshp) and
-                    (node.op.kshp[0] * node.op.kshp[1] >
-                    (node.op.imshp[-2] - node.op.kshp[0] + 1) *
-                    (node.op.imshp[-1] - node.op.kshp[1] + 1))):
-                return [gpu_contiguous(GpuCorrMM_gradWeights('valid', subsample, pad)(
+                    (None not in node.op.kshp)):
+                # we know the kernel and output size
+                prod1 = node.op.kshp[0] * node.op.kshp[1]
+                prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
+                    (node.op.imshp[-1] - node.op.kshp[1] + 1))
+                if ((node.op.bsize is not None) and
+                        (len(node.op.imshp) == 3) and
+                        (node.op.imshp[0] is not None)):
+                    # we also know batchsize and input channels
+                    prod1 *= node.op.bsize
+                    prod2 *= node.op.imshp[0]
+                # compare to decide
+                if prod1 > prod2:
+                    return [gpu_contiguous(GpuCorrMM_gradWeights('valid', subsample, pad)(
                             gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                             gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
-                        ).dimshuffle(1, 0, 2, 3))]
-            else:
-                return [GpuCorrMM('valid', subsample, pad)(
-                        gpu_contiguous(img), gpu_contiguous(kern))]
+                            ).dimshuffle(1, 0, 2, 3))]
+            # use GpuCorrMM if we did not choose GpuCorrMM_gradWeights above
+            return [GpuCorrMM('valid', subsample, pad)(
+                    gpu_contiguous(img), gpu_contiguous(kern))]
         elif (border_mode == 'full'):
             # need to dimshuffle the kernel for full convolution
             kern = kern.dimshuffle(1, 0, 2, 3)

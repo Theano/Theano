@@ -972,6 +972,8 @@ class GpuConv(GpuOp):
             kshp=None,
             imshp=None,
             max_threads_dim0=None,
+            nkern=None,
+            bsize=None,
             fft_opt=True):
         """
         :param version: each version of c_code implements many kernel for the
@@ -991,7 +993,15 @@ class GpuConv(GpuOp):
         :param max_threads_dim0: The maximum number of threads for the
                         block size dimensions 0 (blockDim.x) used by the
                         GPU function.
-        :param fft_opt: desactivate fft_opt optimization at the op level when
+        :param nkern:   The number of kernels. Not used for this op, but can be
+                        used by graph optimizers to select a more optimal
+                        convolution implementation. If the GpuConv op is inserted
+                        automatically, we take its value from the Conv op.
+        :param bsize:   The batch size. Not used for this op, but can be
+                        used by graph optimizers to select a more optimal
+                        convolution implementation. If the GpuConv op is inserted
+                        automatically, we take its value from the Conv op.
+        :param fft_opt: deactivate fft_opt optimization at the op level when
                         set to False. Note that by default fft optimization
                         aren't enabled. See
                         :ref:`convolution documentation <libdoc_tensor_nnet_conv>`
@@ -1019,6 +1029,8 @@ class GpuConv(GpuOp):
         self.kshp = kshp
         self.imshp = imshp
         self.max_threads_dim0 = max_threads_dim0
+        self.nkern = nkern
+        self.bsize = bsize
         self.fft_opt = fft_opt
 
     def __eq__(self, other):
