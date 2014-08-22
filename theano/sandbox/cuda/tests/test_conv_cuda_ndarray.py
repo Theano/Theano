@@ -895,15 +895,15 @@ def test_gemm_directly():
 
 def test_gemm_grads():
     for mode in 'valid', 'full':
-        for bs in [1, 4, 5]:
-            for ch in range(1,4):
-                for nf in range(1,4):
-                    for rImg1 in [2, 5, 8]:
-                        for rImg2 in [2, 5, 8]:
+        for bs in [1, 5]:
+            for ch in [4]:
+                for nf in [3]:
+                    for rImg1 in [2, 5]:
+                        for rImg2 in [2, 8]:
                             for rFlt1 in [1, 2]:
                                 for rFlt2 in [1, 2]:
-                                    for subsx in range(1, 3):
-                                        for subsy in range(1, 3):
+                                    for subsx in [1, 2]:
+                                        for subsy in [1, 2] if subsx == 1 else [2]:
                                             ishape = (bs, ch, rImg1, rImg2)
                                             kshape = (nf, ch, rFlt1, rFlt2)
                                             subsample = (subsx, subsy)
@@ -918,12 +918,21 @@ def test_gemm_grads():
                                             # TODO: also test custom pad values
                                             corr_op = theano.sandbox.cuda.blas.GpuCorrMM(
                                                     'valid', subsample, pad)(i, k)
+                                            # try to compile reference implementation without shape,
+                                            # so we don't have to compile hundreds of versions
                                             conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
-                                                    ishape, kshape, mode, subsample)
+                                                    border_mode=mode, subsample=subsample)
+                                            try:
+                                                conv_op_di = theano.grad(conv_op.sum(), i)
+                                                conv_op_dk = theano.grad(conv_op.sum(), k)
+                                            except Exception:
+                                                # compile with shape information only when needed
+                                                conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
+                                                        ishape, kshape, mode, subsample)
+                                                conv_op_di = theano.grad(conv_op.sum(), i)
+                                                conv_op_dk = theano.grad(conv_op.sum(), k)
                                             corr_op_di = theano.grad(corr_op.sum(), i)
-                                            conv_op_di = theano.grad(conv_op.sum(), i)
                                             corr_op_dk = theano.grad(corr_op.sum(), k)
-                                            conv_op_dk = theano.grad(conv_op.sum(), k)
                                             outputs = [corr_op, conv_op,
                                                     corr_op_di, conv_op_di,
                                                     corr_op_dk, conv_op_dk]
