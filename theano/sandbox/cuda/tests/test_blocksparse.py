@@ -38,7 +38,7 @@ def blocksparse_data():
     outputSize = 30
     inputWindowSize = 7
     outputWindowSize = 9
-    batchSize = 4
+    batchSize = 2
 
     input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
     inputIndice = numpy.vstack(numpy.random.permutation(nInputBlock)[:inputWindowSize] for _ in range(batchSize))

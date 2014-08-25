@@ -395,7 +395,7 @@ const npy_intp *yIdx, int yI_str_0
   if (i >= maxi || j >= maxj) return;
   int p = i + j * maxi + b * maxi * maxj;
   x_list[p] = &x[b * x_str_0 + i * x_str_1];
-  y_list[p] = &y[b * x_str_0 + j * y_str_1];
+  y_list[p] = &y[b * y_str_0 + j * y_str_1];
   out_list[p] = &out[xIdx[b * xI_str_0 + i] * o_str_0 +
                      yIdx[b * yI_str_0 + j] * o_str_1];
 }
@@ -408,7 +408,7 @@ __global__ void _sgerBH_gen_small(const float *x[], int incx,
                                   int b, int m, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i > m || j > n) return;
+  if (i >= m || j >= n) return;
   for (int p = blockIdx.z; p < b; p += gridDim.z) {
     atomicAdd(&A[p][j * lda + i],
               alpha * x[p][i * incx] * y[p][j * incy]);
@@ -608,7 +608,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
