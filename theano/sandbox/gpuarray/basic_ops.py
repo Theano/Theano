@@ -5,6 +5,7 @@ import numpy
 import theano
 from theano import Op, Apply
 from theano import tensor, scalar, config
+from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 from theano.tensor.basic import Alloc, Join, Split
 
@@ -938,7 +939,7 @@ class GpuEye(GpuKernelBase, Op):
         return [out_shape]
 
     def grad(self, inp, grads):
-        return [theano.gradient.grad_undefined(self, i, inp[i])
+        return [grad_undefined(self, i, inp[i])
                 for i in xrange(3)]
 
     def __eq__(self, other):
