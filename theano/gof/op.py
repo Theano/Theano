@@ -817,6 +817,12 @@ class OpenMPOp(Op):
             return ['-fopenmp']
         return []
 
+    def c_headers(self):
+        self.update_self_openmp()
+        if self.openmp:
+            return ["omp.h"]
+        return []
+
     @staticmethod
     def test_gxx_support():
         code = """
@@ -845,11 +851,12 @@ int main( int argc, const char* argv[] )
             if OpenMPOp.gxx_support_openmp is None:
                 OpenMPOp.gxx_support_openmp = OpenMPOp.test_gxx_support()
                 if not OpenMPOp.gxx_support_openmp:
-                    #We want to warn only once.
+                    # We want to warn only once.
                     warnings.warn(
                         "Your g++ compiler fails to compile OpenMP code. We"
                         " know this happen with some version of the EPD mingw"
-                        " compiler. We disable openmp everywhere in Theano."
+                        " compiler and LLVM compiler on Mac OS X."
+                        " We disable openmp everywhere in Theano."
                         " To remove this warning set the theano flags `openmp`"
                         " to False.",
                         stacklevel=3)
