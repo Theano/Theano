@@ -532,12 +532,13 @@ def numpy_scalar(data):
             'v.data is non-numeric, non-scalar, or has more than one'
             ' unique value', data)
 
+
 get_scalar_constant_value_elemwises = (
     scal.Cast, scal.Switch,
     scal.NEQ, scal.EQ,
     scal.LT, scal.GT, scal.LE, scal.GE,
     scal.Sub, scal.Add, scal.Mod, scal.Mul,
-    scal.IntDiv, scal.TrueDiv)
+    scal.IntDiv, scal.TrueDiv, scal.Minimum, scal.Maximum)
 def get_scalar_constant_value(orig_v, elemwise=True):
     """return the constant scalar(0-D) value underlying variable `v`
 
