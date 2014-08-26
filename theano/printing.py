@@ -82,22 +82,26 @@ def debugprint(obj, depth=-1, print_type=False,
     done = dict()
     results_to_print = []
     order = []
-    if isinstance(obj, gof.Variable):
-        results_to_print.append(obj)
-    elif isinstance(obj, gof.Apply):
-        results_to_print.extend(obj.outputs)
-    elif isinstance(obj, Function):
-        results_to_print.extend(obj.maker.fgraph.outputs)
-        order = obj.maker.fgraph.toposort()
-    elif isinstance(obj, (list, tuple)):
-        results_to_print.extend(obj)
-    elif isinstance(obj, gof.FunctionGraph):
-        results_to_print.extend(obj.outputs)
-        order = obj.toposort()
-    elif isinstance(obj, (int, long, float, numpy.ndarray)):
-        print obj
+    if isinstance(obj, (list, tuple)):
+        lobj = obj
     else:
-        raise TypeError("debugprint cannot print an object of this type", obj)
+        lobj = [obj]
+    for obj in lobj:
+        if isinstance(obj, gof.Variable):
+            results_to_print.append(obj)
+        elif isinstance(obj, gof.Apply):
+            results_to_print.extend(obj.outputs)
+        elif isinstance(obj, Function):
+            results_to_print.extend(obj.maker.fgraph.outputs)
+            order = obj.maker.fgraph.toposort()
+        elif isinstance(obj, gof.FunctionGraph):
+            results_to_print.extend(obj.outputs)
+            order = obj.toposort()
+        elif isinstance(obj, (int, long, float, numpy.ndarray)):
+            print obj
+        else:
+            raise TypeError("debugprint cannot print an object of this type",
+                            obj)
     for r in results_to_print:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
