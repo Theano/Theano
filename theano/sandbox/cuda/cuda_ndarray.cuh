@@ -1,6 +1,8 @@
 #ifndef _CUDA_NDARRAY_H
 #define _CUDA_NDARRAY_H
 
+#include <algorithm>
+
 // Defines for Python 2/3 compatibility.
 #if PY_MAJOR_VERSION >= 3
 // Py3k treats all ints as longs. This one is not caught by npy_3kcompat.h.
