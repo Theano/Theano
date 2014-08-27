@@ -19,7 +19,7 @@ import copy
 import os
 import sys
 import time
-from collections import defaultdict
+from theano.compat.python2x import defaultdict
 
 import numpy
 
