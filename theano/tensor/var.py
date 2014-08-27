@@ -1,4 +1,5 @@
 import copy
+import warnings
 
 import numpy
 
@@ -576,13 +577,29 @@ class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
 
     def __init__(self, type, owner=None, index=None, name=None):
-        super(TensorVariable, self).__init__(type, owner=owner, index=index, name=name)
+        super(TensorVariable, self).__init__(type, owner=owner,
+                                             index=index, name=name)
         if (config.warn_float64 and type.dtype == 'float64'):
-            print '''Warning, you are instanciating parts of your graph 
-                with the float64 type (possibly by accident).  
-                This means that those parts will not run on the GPU.  
-                If that is what you want, you can disable this warning by 
-                setting warn_float64=False in your theano flags.'''
+            # Get the user stack. We don't want function inside the
+            # tensor and gof directory to be shown to the user.
+            import traceback as tb
+            x = tb.extract_stack()
+            nb_rm = 0
+            while x:
+                file_path = x[-1][0]
+                rm = False
+                for p in ["theano/tensor/",
+                          "theano/gof/"]:
+                    if p in file_path:
+                        x = x[:-1]
+                        nb_rm += 1
+                        rm = True
+                if not rm:
+                    break
+            warnings.warn(
+                'Warning, you are creating a TensorVariable '
+                'with float64 dtype. You requested this warning via '
+                'the Theano flag warn_float64=True.', stacklevel=1 + nb_rm)
 
 TensorType.Variable = TensorVariable
 

@@ -25,7 +25,9 @@ AddConfigVar('floatX',
 )
 
 AddConfigVar('warn_float64',
-             "Warning for float64 part in the function's graph which can't be run on the GPU with the current(old) gpu back-end.",
+             "If True, warn when a tensor variable with float64 dtype is"
+             " created. They can't be run on the GPU with the current(old)"
+             " gpu back-end and are slow with gamer GPUs.",
              BoolParam(False),
              in_c_key=False,
 )
