@@ -5,6 +5,7 @@ import numpy
 import theano
 from theano import Op, Apply
 from theano import tensor, scalar, config
+from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 from theano.tensor.basic import Alloc, Join, Split
 
@@ -516,7 +517,7 @@ class CudaFromGpu(Op):
         return [gpu_from_cuda(gz)]
 
     def R_op(self, inputs, eval_points):
-        from theano.sandbox.cuda import CudaNdArrayType
+        from theano.sandbox.cuda import CudaNdarrayType
         ev, = eval_points
         if (isinstance(ev, CudaNdarrayType)):
             return [gpu_from_cuda(ev)]
@@ -750,6 +751,73 @@ class GpuAlloc(HideC, Alloc):
 gpu_alloc = GpuAlloc()
 
 
+class GpuContiguous(Op):
+    """
+    Always return a c contiguous output. Copy the input only if it is
+    not already c contiguous.
+    """
+    view_map = {0: [0]}
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def grad(self, inputs, dout):
+
+        x, = inputs
+        dout, = dout
+        dout = as_gpuarray_variable(dout)
+
+        return [dout]
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def make_node(self, input):
+        input = as_gpuarray_variable(input)
+        return Apply(self, [input], [input.type()])
+
+    def c_headers(self):
+        return ['<numpy_compat.h>']
+
+    def c_code_cache_version(self):
+        return (3,)
+
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        z, = out
+        fail = sub['fail']
+        str = """
+        {
+            if (GpuArray_IS_C_CONTIGUOUS(&(%(input)s->ga))){
+                Py_XDECREF(%(z)s);
+                %(z)s = %(input)s;
+                Py_INCREF(%(z)s);
+
+            } else if ((NULL == %(z)s)""" % locals()
+        for i in xrange(len(node.inputs[0].type.broadcastable)):
+            str += "\n|| (PyGpuArray_DIMS(%(input)s)[%(i)s] != PyGpuArray_DIMS(%(z)s)[%(i)s])" % locals()
+        str += """
+                || !GpuArray_IS_C_CONTIGUOUS(&(%(z)s->ga)))
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = pygpu_copy(%(input)s, GA_C_ORDER);
+                if (!%(z)s)
+                {
+                    %(fail)s;
+                }
+            }else if(pygpu_move(%(z)s, %(input)s) == -1) {
+                %(fail)s;
+            }
+        }
+        """ % locals()
+        return str
+
+gpu_contiguous = GpuContiguous()
+
+
 class GpuReshape(HideC, tensor.Reshape):
     """
     Implement Reshape on the gpu.
@@ -769,7 +837,6 @@ class GpuReshape(HideC, tensor.Reshape):
             raise ValueError('shape argument to GpuReshape.perform'
                              ' has incorrect length %i'
                              ', should be %i' % (len(shp), self.ndim), shp)
-        s = shp.prod()
 
         if shp.prod() != x.size:
             # We need to do check here to raise the same error as NumPy.
@@ -872,7 +939,8 @@ class GpuEye(GpuKernelBase, Op):
         return [out_shape]
 
     def grad(self, inp, grads):
-        return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
+        return [grad_undefined(self, i, inp[i])
+                for i in xrange(3)]
 
     def __eq__(self, other):
         return type(self) == type(other) and self.dtype == other.dtype

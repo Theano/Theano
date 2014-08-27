@@ -7,7 +7,8 @@ import theano.sandbox.gpuarray
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
     GpuAlloc, GpuReshape, gpu_alloc, gpu_from_host, host_from_gpu)
-from theano.sandbox.gpuarray.elemwise import GpuCAReduceCuda, GpuElemwise
+from theano.sandbox.gpuarray.elemwise import (
+    GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise)
 from theano.sandbox.gpuarray.tests.test_basic_ops import (
     rand_gpuarray, mode_with_gpu, mode_without_gpu
     )
@@ -50,17 +51,26 @@ def test_flatten():
 
 
 def test_reduce():
-    for method in ['sum', 'prod', 'max', 'min']:
+    dev = theano.sandbox.gpuarray.init_dev.device
+
+    for method, param in [('sum', dict(acc_dtype='float32')),
+                          ('prod', dict(acc_dtype='float32')),
+                          ('max', {}), ('min', {})]:
         m = theano.tensor.fmatrix()
-        f = theano.function([m], getattr(m, method)(axis=0),
+        f = theano.function([m], getattr(m, method)(axis=0,
+                                                    **param),
                             mode=mode_with_gpu)
         val = numpy.random.rand(10, 11).astype("float32")
         res = f(val)
         utt.assert_allclose(res, getattr(val, method)(axis=0))
         assert res.shape == (11,)
         topo = f.maker.fgraph.toposort()
-        assert GpuCAReduceCuda in [type(node.op)
-                                   for node in topo], topo
+        ops = [type(node.op) for node in topo]
+
+        if dev.startswith('opencl') and method in ["max", "min"]:
+            assert not(GpuCAReduceCuda in ops or GpuCAReduceCPY in ops)
+        else:
+            assert GpuCAReduceCuda in ops or GpuCAReduceCPY in ops
 
 
 def test_local_gpualloc_memset_0():

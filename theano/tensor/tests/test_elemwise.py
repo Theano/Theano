@@ -19,6 +19,7 @@ from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
 from theano.tests import unittest_tools
 import math
 
+
 def FunctionGraph(i, o):
     e = gof.FunctionGraph(i, o)
     return e
@@ -46,8 +47,8 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
             #test that DimShuffle.infer_shape work correctly
             x = TensorType('float64', ib)('x')
             e = self.op(ib, shuffle)(x)
-            f = copy(linker).accept(FunctionGraph([x], [e.
-                shape])).make_function()
+            f = copy(linker).accept(FunctionGraph([x],
+                                                  [e.shape])).make_function()
             assert all(f(numpy.ones(xsh))) == all(zsh)
 
         # Test when we drop a axis that is not broadcastable
@@ -100,43 +101,51 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
         self.assertRaises(ValueError, y.eval, {x: 0})
 
+
 class test_reduce_axes(unittest.TestCase):
 
     def test_sum_axes(self):
-        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        axes = [None, 0, 1, [0, 1], numpy.array(1),
+                [numpy.array(0), numpy.array(1)]]
         for a in axes:
             x = tensor.matrix()
             m = x.sum(a)
 
     def test_mean_axes(self):
-        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        axes = [None, 0, 1, [0, 1], numpy.array(1),
+                [numpy.array(0), numpy.array(1)]]
         for a in axes:
             x = tensor.matrix()
             m = x.mean(a)
 
     def test_max_axes(self):
-        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        axes = [None, 0, 1, [0, 1], numpy.array(1),
+                [numpy.array(0), numpy.array(1)]]
         for a in axes:
             x = tensor.matrix()
             m = x.max(a)
 
     def test_min_axes(self):
-        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        axes = [None, 0, 1, [0, 1], numpy.array(1),
+                [numpy.array(0), numpy.array(1)]]
         for a in axes:
             x = tensor.matrix()
             m = x.min(a)
 
     def test_argmax_axes(self):
-        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        axes = [None, 0, 1, [0, 1], numpy.array(1),
+                [numpy.array(0), numpy.array(1)]]
         for a in axes:
             x = tensor.matrix()
             m = x.argmax(a)
 
     def test_var_axes(self):
-        axes = [None, 0, 1, [0, 1], numpy.array(1), [numpy.array(0), numpy.array(1)]]
+        axes = [None, 0, 1, [0, 1], numpy.array(1),
+                [numpy.array(0), numpy.array(1)]]
         for a in axes:
             x = tensor.matrix()
             m = x.var(a)
+
 
 class test_Broadcast(unittest.TestCase):
     # this is to allow other types to reuse this class to test their ops
@@ -148,6 +157,9 @@ class test_Broadcast(unittest.TestCase):
 
     openmp_minsize = 2*config.openmp_elemwise_minsize
     openmp_minsize_sqrt = math.ceil(math.sqrt(openmp_minsize))
+
+    # The order is important if you change them.
+    linkers = [gof.PerformLinker, gof.CLinker]
 
     def rand_val(self, shp):
         return numpy.asarray(numpy.random.rand(*shp))
@@ -165,7 +177,10 @@ class test_Broadcast(unittest.TestCase):
                          ((1, 5), (5, 1)),
                          ((1, 1), (1, 1)),
                          ((self.openmp_minsize,), (self.openmp_minsize,)),
-                         ((self.openmp_minsize_sqrt, self.openmp_minsize_sqrt), (self.openmp_minsize_sqrt, self.openmp_minsize_sqrt)),
+                         ((self.openmp_minsize_sqrt,
+                           self.openmp_minsize_sqrt),
+                          (self.openmp_minsize_sqrt,
+                           self.openmp_minsize_sqrt)),
                          ((2, 3, 4, 5), (2, 3, 4, 5)),
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
@@ -186,8 +201,8 @@ class test_Broadcast(unittest.TestCase):
                 x = type('float64', [(entry == 1) for entry in xsh])('x')
                 y = type('float64', [(entry == 1) for entry in ysh])('y')
                 e = op(scalar.add)(x, y)
-                f = copy(linker).accept(FunctionGraph([x,
-                     y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph(
+                    [x, y], [e.shape])).make_function()
                 assert tuple(f(xv, yv)) == tuple(zv.shape)
 
     def with_linker_inplace(self, linker, op, type, rand_val):
@@ -216,8 +231,8 @@ class test_Broadcast(unittest.TestCase):
                 x = type('float64', [(entry == 1) for entry in xsh])('x')
                 y = type('float64', [(entry == 1) for entry in ysh])('y')
                 e = op(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
-                f = copy(linker).accept(FunctionGraph([x,
-                     y], [e.shape])).make_function()
+                f = copy(linker).accept(FunctionGraph(
+                    [x, y], [e.shape])).make_function()
                 xv = rand_val(xsh)
                 yv = rand_val(ysh)
                 zv = xv + yv
@@ -250,12 +265,13 @@ class test_Broadcast(unittest.TestCase):
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = self.ctype('float64', [0, 0])('x')
         y = self.ctype('float64', [1, 1])('y')
-        e = self.cop(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
-        f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
-        xv = self.rand_cval((5, 5))
-        yv = self.rand_cval((1, 1))
-        f(xv, yv)
-        assert (xv == yv).all()
+        for linker, op in zip(self.linkers, [self.op, self.cop]):
+            e = op(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
+            f = linker().accept(FunctionGraph([x, y], [e])).make_function()
+            xv = self.rand_cval((5, 5))
+            yv = self.rand_cval((1, 1))
+            f(xv, yv)
+            assert (xv == yv).all()
 
     def test_fill_var(self):
         x = tensor.matrix()
@@ -274,22 +290,24 @@ class test_Broadcast(unittest.TestCase):
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = self.ctype('float64', [0, 0, 0, 0, 0])('x')
         y = self.ctype('float64', [0, 0, 0, 0, 0])('y')
-        e = self.cop(scalar.add)(x, y)
-        f = gof.CLinker().accept(FunctionGraph([x, y], [e])).make_function()
-        xv = self.rand_cval((2, 2, 2, 2, 2))
-        yv = self.rand_cval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
-        zv = xv + yv
-        assert (f(xv, yv) == zv).all()
+        for linker, op in zip(self.linkers, [self.op, self.cop]):
+            e = op(scalar.add)(x, y)
+            f = linker().accept(FunctionGraph([x, y], [e])).make_function()
+            xv = self.rand_cval((2, 2, 2, 2, 2))
+            yv = self.rand_cval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
+            zv = xv + yv
+            assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = self.ctype('float64', [0, 0])('x')
-        e = self.cop(scalar.add)(x, x)
-        f = gof.CLinker().accept(FunctionGraph([x], [e])).make_function()
-        xv = self.rand_cval((2, 2))
-        zv = xv + xv
-        assert (f(xv) == zv).all()
+        for linker, op in zip(self.linkers, [self.op, self.cop]):
+            e = op(scalar.add)(x, x)
+            f = linker().accept(FunctionGraph([x], [e])).make_function()
+            xv = self.rand_cval((2, 2))
+            zv = xv + xv
+            assert (f(xv) == zv).all()
 
 
 class test_CAReduce(unittest_tools.InferShapeTester):
@@ -309,7 +327,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
              ((5, 0), ()),
              ((), None),
              ((), ())
-         ]
+    ]
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     pre_scalar_op=None,
@@ -429,7 +447,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     try:
                         f_xv = f(xv)
                         self.assertTrue((f_xv.shape == zv.shape), (f_xv, zv))
-                        self.assertTrue(numpy.allclose(f_xv, zv), (f_xv, zv, xsh, tosum))
+                        self.assertTrue(numpy.allclose(f_xv, zv),
+                                        (f_xv, zv, xsh, tosum))
                     except NotImplementedError:
                         # GpuCAReduce don't implement all cases when size is 0
                         assert xv.size == 0
@@ -553,7 +572,7 @@ class test_Prod(unittest.TestCase):
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
         x_val = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-             dtype='float32')
+                              dtype='float32')
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)
 
@@ -568,7 +587,7 @@ class test_Prod(unittest.TestCase):
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
         x_val = numpy.asarray([[1., 2., 3.], [0., 5., 6.], [0., 0., 9.]],
-             dtype='float32')
+                              dtype='float32')
         x = theano.tensor.dmatrix()
 
         # sanity check
@@ -760,7 +779,8 @@ class T_reduce_dtype(unittest.TestCase):
                 ).get(dtype, dtype)
                 f = theano.function([x], s, mode=self.mode)
                 topo = f.maker.fgraph.toposort()
-                assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+                assert [n for n in topo if isinstance(n.op, self.op)], (topo,
+                                                                        dtype)
                 data = numpy.random.rand(3, 4) * 10
                 data = data.astype(dtype)
                 f(data)
@@ -785,7 +805,8 @@ class T_reduce_dtype(unittest.TestCase):
                 ).get(dtype, dtype)
                 f = theano.function([x], s, mode=self.mode)
                 topo = f.maker.fgraph.toposort()
-                assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+                assert [n for n in topo if isinstance(n.op, self.op)], (topo,
+                                                                        dtype)
                 data = numpy.random.rand(3, 4) * 10
                 data = data.astype(dtype)
                 f(data)
@@ -814,7 +835,8 @@ class T_reduce_dtype(unittest.TestCase):
 
                     f = theano.function([x], var, mode=self.mode)
                     topo = f.maker.fgraph.toposort()
-                    assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+                    assert [n for n in topo if isinstance(n.op, self.op)], (topo,
+                                                                            dtype)
                     data = numpy.random.rand(3, 4) * 10
                     data = data.astype(input_dtype)
                     f(data)
@@ -850,7 +872,8 @@ class T_reduce_dtype(unittest.TestCase):
                         (input_dtype in tensor.discrete_dtypes and
                             acc_dtype in tensor.continuous_dtypes)
                         ):
-                        var = getattr(x, method)(acc_dtype=acc_dtype, axis=axis)
+                        var = getattr(x, method)(acc_dtype=acc_dtype,
+                                                 axis=axis)
                         assert var.owner.op.acc_dtype == acc_dtype
 
                         if "complex" in input_dtype:
@@ -873,10 +896,12 @@ class T_reduce_dtype(unittest.TestCase):
             s = getattr(x, method)()
             f = theano.function([], s, mode=self.mode)
             topo = f.maker.fgraph.toposort()
-            assert [n for n in topo if isinstance(n.op, self.op)], (topo, dtype)
+            assert [n for n in topo if isinstance(n.op, self.op)], (topo,
+                                                                    dtype)
             s_val = f()
             # Use extra precision in NumPy to compute the good answer.
-            ret = getattr(numpy.asarray([1e8, 1, -1e8], dtype='float64'), method)()
+            ret = getattr(numpy.asarray([1e8, 1, -1e8], dtype='float64'),
+                          method)()
             assert numpy.allclose(s_val, ret), (s_val, ret)
 
 
@@ -922,10 +947,10 @@ class T_mean_dtype(unittest.TestCase):
                     # Executed if no TypeError was raised
                     if sum_dtype in tensor.discrete_dtypes and axis != []:
                         assert mean_var.dtype == 'float64', (
-                                (mean_var.dtype, sum_dtype))
+                            (mean_var.dtype, sum_dtype))
                     else:
                         assert mean_var.dtype == sum_dtype, (
-                                (mean_var.dtype, sum_dtype))
+                            (mean_var.dtype, sum_dtype))
                     if (('complex' in input_dtype or
                          'complex' in sum_dtype) and
                         input_dtype != sum_dtype):
@@ -970,13 +995,13 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             axis = axes[idx % len(axes)]
             x = ProdWithoutZeros(axis=axis)(tensor.matrix(dtype=dtype))
             assert x.dtype == dict(
-                    int8='int64',
-                    int16='int64',
-                    int32='int64',
-                    uint8='uint64',
-                    uint16='uint64',
-                    uint32='uint64',
-                    ).get(dtype, dtype)
+                int8='int64',
+                int16='int64',
+                int32='int64',
+                uint8='uint64',
+                uint16='uint64',
+                uint32='uint64',
+            ).get(dtype, dtype)
 
     def test_prod_without_zeros_default_acc_dtype(self):
         """

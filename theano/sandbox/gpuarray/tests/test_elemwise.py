@@ -1,5 +1,7 @@
+import theano
 from theano import scalar, gof
 from theano.gof.python25 import all, any
+from theano.tests.unittest_tools import SkipTest
 
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
@@ -19,16 +21,31 @@ class test_gpu_Broadcast(test_Broadcast):
     type = GpuArrayType
     cop = GpuElemwise
     ctype = GpuArrayType
+    # The order is important
+    linkers = [gof.PerformLinker, gof.CLinker]
+
+    def setUp(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            self.linkers = [gof.PerformLinker]
 
     def rand_val(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
 
-    # no c_code() yet
-    #cop = GpuElemwise
-    #ctype = GpuArrayType
-
     def rand_cval(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
+
+    def test_c(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
+        super(test_gpu_Broadcast, self).test_c()
+
+    def test_c_inplace(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
+        super(test_gpu_Broadcast, self).test_c_inplace()
 
 
 class test_GpuDimShuffle(test_DimShuffle):
@@ -149,7 +166,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 #             ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
 #             ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
 #             ((5,4,3,10,11),[1,2]),
-        ]
+    ]
     op = GpuCAReduceCuda
     reds = [scalar.add, scalar.mul,
             scalar.maximum, scalar.minimum]
@@ -161,6 +178,12 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     def test_perform_nan(self):
         return
 
+    def setUp(self):
+        super(test_GpuCAReduceCuda, self).setUp()
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
+
 
 class T_gpureduce_dtype(T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
@@ -171,6 +194,11 @@ class T_gpureduce_dtype(T_reduce_dtype):
     dtypes = ['int8', 'int16', 'int32', 'int64',
               'uint8', 'uint16', 'uint32', 'uint64',
               'float32', 'float64']
+
+    def setUp(self):
+        dev = theano.sandbox.gpuarray.init_dev.device
+        if not dev.startswith('cuda'):
+            raise SkipTest("Cuda specific tests")
 
 
 def speed_reduce10():
