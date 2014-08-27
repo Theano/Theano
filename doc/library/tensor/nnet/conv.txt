@@ -82,6 +82,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       This is not enabled by default because it uses some extra memory, but the
       overhead is small compared to conv2d_fft, there are no restrictions on
       input or kernel shapes and it is sometimes still faster than cuda-convnet.
+      If using it, please see the warning about a bug in CUDA 5.0 to 6.0 below.
       To enable it for just one Theano function:
 
       .. code-block:: python

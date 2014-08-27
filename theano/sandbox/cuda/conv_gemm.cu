@@ -254,7 +254,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "GpuCorrMM encountered a CUDA error in im2col: %s\n",
+                             "GpuCorrMM encountered a CUDA error in im2col: %s\n"
+                             "This could be a known bug in CUDA, please see the "
+                             "GpuCorrMM() documentation.\n",
                              cudaGetErrorString(err));
                 return NULL;
             }
@@ -269,7 +271,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                     top->devdata + n * top_stride, N_);
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered a CUBLAS error: %s\n",
+                        "GpuCorrMM encountered a CUBLAS error: %s\n"
+                        "This could be a known bug in CUDA, please see the "
+                        "GpuCorrMM() documentation.\n",
                         cublasGetErrorString(status));
                 return NULL;
             }
@@ -313,7 +317,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                 sizeof(float) * M_ * K_);
         if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered a CUDA error in cudaMemsetAsync: %s\n",
+                        "GpuCorrMM encountered a CUDA error in cudaMemsetAsync: %s\n"
+                        "This could be a known bug in CUDA, please see the "
+                        "GpuCorrMM() documentation.\n",
                         cudaGetErrorString(err));
                 return NULL;
         }
@@ -325,7 +331,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             err = cudaGetLastError();
             if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "GpuCorrMM encountered a CUDA error in im2col: %s\n",
+                             "GpuCorrMM encountered a CUDA error in im2col: %s\n"
+                             "This could be a known bug in CUDA, please see the "
+                             "GpuCorrMM() documentation.\n",
                              cudaGetErrorString(err));
                 return NULL;
             }
@@ -340,7 +348,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                     weight->devdata, K_);
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered a CUBLAS error: %s\n",
+                        "GpuCorrMM encountered a CUBLAS error: %s\n"
+                        "This could be a known bug in CUDA, please see the "
+                        "GpuCorrMM() documentation.\n",
                         cublasGetErrorString(status));
                 return NULL;
             }
@@ -388,7 +398,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                     col->devdata, N_);
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered a CUBLAS error: %s\n",
+                        "GpuCorrMM encountered a CUBLAS error: %s\n"
+                        "This could be a known bug in CUDA, please see the "
+                        "GpuCorrMM() documentation.\n",
                         cublasGetErrorString(status));
                 return NULL;
             }
@@ -398,7 +410,9 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "GpuCorrMM encountered a CUDA error in col2im: %s\n",
+                             "GpuCorrMM encountered a CUDA error in col2im: %s\n"
+                             "This could be a known bug in CUDA, please see the "
+                             "GpuCorrMM() documentation.\n",
                              cudaGetErrorString(err));
                 return NULL;
             }

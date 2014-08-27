@@ -785,6 +785,12 @@ class GpuCorrMM(BaseGpuCorrMM):
         faster, but note that it computes a correlation -- if you need to
         compute a convolution, flip the filters as `filters[:,:,::-1,::-1]`.
 
+    :warning: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
+        to 6.0, there is a bug in CUBLAS' matrix multiplication function that
+        can make GpuCorrMM or its gradients crash for some input and filter
+        shapes. So if you have a Tesla K20, Tesla K40, Quadro K6000, GeForce GT
+        640 (DDR5), GeForce GTX 780 (or Ti), GeForce GTX TITAN (or Black or Z)
+        and experience a crash, switching to CUDA 6.5 or CUDA 4.2 should fix it.
     """
     def __init__(self, border_mode="valid",
             subsample=(1, 1),
