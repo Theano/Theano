@@ -192,22 +192,23 @@ class CLinkerOp(CLinkerObject):
            The node for which we are compiling the current c_code.
            The same Op may be used in more than one node.
          `name` : A string
-           A name that is automatically assigned and guaranteed to be unique.
+           A name that is automatically assigned and guaranteed to be
+           unique.
          `inputs` : list of strings
            There is a string for each input of the function, and the
-           string is the name of a C `PyObject` variable pointing to
-           that input.
+           string is the name of a C variable pointing to that input.
+           The type of the variable depends on the declared type of
+           the input.  There is a corresponding python variable that
+           can be accessed by prepending "py_" to the name in the
+           list.
          `outputs` : list of strings
-           Each string is the name of a `PyObject` pointer where the
-           Op should store its variables. This pointer may either be
-           NULL, indicating that the Op must allocate appropriate
-           objects or it may point to preallocated objects of the
-           right type and number of dimensions. In the case of
-           preallocated objects, the Op must make sure that the shape
-           and strides meet requirements, and in the case they don't
-           either reallocate the object inplace or free it and
-           allocate an appropriate output. The type and number of
-           dimensions are guaranteed to be appropriate.
+           Each string is the name of a C variable where the Op should
+           store its output.  The type depends on the declared type of
+           the output.  There is a corresponding python variable that
+           can be accessed by prepending "py_" to the name in the
+           list.  In some cases the outputs will be preallocated and
+           the value of the variable may be pre-filled.  The value for
+           an unallocated output is type-dependent.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
@@ -247,23 +248,22 @@ class CLinkerOp(CLinkerObject):
         :Parameters:
          `node` : Apply instance
            WRITEME
-         `name` : WRITEME
-           WRITEME
+         `name` : A string
+           A name that is automatically assigned and guaranteed to be
+           unique.
          `inputs` : list of strings
            There is a string for each input of the function, and the
-           string is the name of a C `PyObject` variable pointing to
-           that input.
+           string is the name of a C variable pointing to that input.
+           The type of the variable depends on the declared type of
+           the input. There is a corresponding python variable that
+           can be accessed by prepending "py_" to the name in the
+           list.
          `outputs` : list of strings
-           Each string is the name of a `PyObject` pointer where the
-           Op should store its variables.  This pointer could be NULL,
-           or contain an object of the right Type (in the Theano
-           sense) to store the output of the computation.  For
-           instance, for a TensorVariable, it will be a Numpy ndarray
-           with the right number of dimensions, and the right
-           dtype. However, its shape, or stride pattern, could not be
-           adequate.  It could be unchanged from the end of the
-           previous execution, or allocated by another Op, or by the
-           Mode.
+           Each string is the name of a C variable correspoinding to
+           one of the outputs of the Op. The type depends on the
+           declared type of the output. There is a corresponding
+           python variable that can be accessed by prepending "py_" to
+           the name in the list.
          `sub` : dict of strings
            extra symbols defined in `CLinker` sub symbols (such as 'fail').
            WRITEME
