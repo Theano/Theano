@@ -19,10 +19,12 @@ import copy
 import os
 import sys
 import time
+from theano.compat.python2x import defaultdict
 
 import numpy
 
 import theano
+from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam
 
 
@@ -53,6 +55,11 @@ AddConfigVar('profiling.min_memory_size',
              of their outputs (in bytes) is lower than this threshold""",
              IntParam(1024, lambda i: i >= 0),
              in_c_key=False)
+
+AddConfigVar('profiling.min_peak_memory',
+            """The min peak memory usage of the order""",
+            BoolParam(False),
+            in_c_key=False)
 
 
 def _atexit_print_fn():
@@ -641,7 +648,10 @@ class ProfileStats(object):
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
-        def count_running_memory(order, thunk_old_storage, nodes_mem):
+        # track min peak memory usage
+        min_max_peak = 0
+
+        def count_running_memory(order, fgraph, nodes_mem):
             """
             Calculate memory with specific node order 
             Return a list including the following values
@@ -658,88 +668,320 @@ class ProfileStats(object):
             5.  node_memory_saved_by_inplace
                 The sum of memory saved by reusing the input instead of
                 new allocation
-            
             """
+
             node_memory_size = 0
             running_memory_size = 0
             running_max_memory_size = 0
             node_memory_saved_by_view = 0
             node_memory_saved_by_inplace = 0
-            
+            # This take only the inputs/outputs dependencies.
+            dependencies = fgraph.profile.dependencies
+
+            # Initial compute_map which is used to check if a node is valid
+            compute_map = defaultdict(lambda: [0])
+            for var in fgraph.inputs:
+                compute_map[var][0] = 1
+
+            # two data structure used to mimic Python gc
+            viewed_by = {}  # {var1: [vars that view var1]}
+            # The len of the list is the value of python ref count. But we use a list, not just the ref count value. 
+            # This is more safe to help detect potential bug  in the algo
+            for var in fgraph.variables:
+                viewed_by[var] = []
+            view_of = {}  # {var1: original var viewed by var1}
+            # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
+
             for node in order:
-                val = nodes_mem[node]
+                for var in node.outputs:
+                    compute_map[var][0] = 1
+                idx = 0
                 dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
+                val = nodes_mem[node]
 
-                for idx, v in enumerate(val):
+                for v in val:
                     # TODO check the op returned a view
                     if dmap and idx in dmap:
                         node_memory_saved_by_inplace += v
                     # TODO check the op returned a view
                     elif vmap and idx in vmap:
                         node_memory_saved_by_view += v
-                    elif not isinstance(v, str):
-                        node_memory_size += v
-                        running_memory_size += v
-                        if running_memory_size > running_max_memory_size:
-                            running_max_memory_size = running_memory_size
-                        old_storage = thunk_old_storage[order.index(node)]
-                        for old_s in old_storage:
-                            old_v = var_mem[node.inputs[old_s]]
-                            if not isinstance(old_v, str):
-                                running_memory_size -= old_v
+                    idx += 1
 
-            return [node_memory_size, running_memory_size, running_max_memory_size, node_memory_saved_by_inplace, node_memory_saved_by_view]
+                # Update the Python emulating dicts and add the memory
+                # allocated by the node
+                idx2 = 0
+                for out in node.outputs:
+                    ins = None
+                    if dmap and idx2 in dmap:
+                        vidx = dmap[idx2]
+                        assert len(vidx) == 1, "Here we only support the possibility to destroy one input"
+                        ins = node.inputs[vidx[0]]
+                    if vmap and idx2 in vmap:
+                        assert ins is None
+                        vidx = vmap[idx2]
+                        assert len(vidx) == 1, "Here we only support the possibility to view one input"
+                        ins = node.inputs[vidx[0]]
+                    if ins is not None:
+                        # This is needed for destroy_map in case it
+                        # return a partial view that is destroyed.  So
+                        # the output could be different then the
+                        # input.
+                        assert isinstance(ins, theano.Variable)
+                        # we keep trac of view only again the origin
+                        origin = view_of.get(ins, ins)
+                        view_of[out] = origin
+                        viewed_by[origin].append(out)
+                    else:
+                        running_memory_size += var_mem[out]
+                        node_memory_size += var_mem[out]
+                    idx2 += 1
+
+                running_max_memory_size = max(running_max_memory_size,
+                                              running_memory_size)
+
+                # Mimic the combination of Theano and Python gc
+                for ins in node.inputs:
+                    assert not (ins in view_of and viewed_by[ins])
+                    # we trac the original var, so this shouldn't happen
+                    if (dependencies[ins] and
+                        ins not in fgraph.outputs and
+                        ins.owner and
+                        all([compute_map[v][0] for v in dependencies[ins]])):
+                        if ins not in view_of and not viewed_by.get(ins, []):
+                            running_memory_size -= var_mem[ins]
+                        elif ins in view_of:
+                            origin = view_of[ins]
+                            viewed_by[origin].remove(ins)
+                            if (not viewed_by[origin] and
+                                origin not in fgraph.inputs and
+                                not isinstance(origin, theano.Constant)):
+                                running_memory_size -= var_mem[origin]
+                    else:
+                        # ins is viewed_by something else, so its
+                        # memory isn't freed
+                        pass
+
+            return [node_memory_size, running_memory_size,
+                    running_max_memory_size, node_memory_saved_by_inplace,
+                    node_memory_saved_by_view]
+
+        def count_minimum_peak(node_list, fgraph, nodes_mem):
+            global mem_count, mem_bound, max_mem_count
+            node_list = list(node_list)
+            mem_count = 0
+            max_mem_count = 0
+            mem_bound = numpy.inf
+            # This take only the inputs/outputs dependencies.
+            dependencies = fgraph.profile.dependencies
+
+            # Initial compute_map which is used to check if a node is valid
+            compute_map = defaultdict(lambda: [0])
+            for var in fgraph.inputs:
+                compute_map[var][0] = 1
+
+            def check_node_state(node):
+                """
+                Check if an Apply node is valid(has inputs).
+
+                :param node: Apply Node
+                """
+                inputs = node.inputs
+                outputs = node.outputs
+                deps = inputs + node.destroy_dependencies
+                # TODO: Move at compute_map creation to speed things up.
+                for node in inputs:
+                    if isinstance(node, graph.Constant):
+                        compute_map[node][0] = 1
+                computed_ins = all(compute_map[v][0] for v in deps)
+                return computed_ins
+
+            # Initial executable_nodes
+            executable_nodes = set()
+            for var in fgraph.inputs:
+                for c, _ in var.clients:
+                    if c != "output" and check_node_state(c):
+                        executable_nodes.add(c)
+
+            def min_memory_generator(executable_nodes, viewed_by, view_of):
+                """
+                Generate all valid node order from node_list
+                and compute its memory peak.
+
+                :param executable_nodes: Set of executable nodes
+                """
+                global mem_count, mem_bound, max_mem_count
+
+                for node in executable_nodes:
+                    new_exec_nodes = executable_nodes.copy()
+                    new_exec_nodes.remove(node)
+
+                    # Check if cut path now
+                    if max_mem_count > mem_bound:
+                        continue
+
+                    view_of_temp = view_of.copy()
+                    # We don't want a shallow copy, but we don't want
+                    # a deep copy. So this do a "middle" copy, where
+                    # we copy the dict and the list, but not the var
+                    viewed_by_temp = {}
+                    for k, v in viewed_by.iteritems():
+                        viewed_by_temp[k] = list(v)
+
+                    for var in node.outputs:
+                        compute_map[var][0] = 1
+
+                    mem_created = 0
+                    mem_freed = 0
+                    max_storage = max_mem_count
+
+                    dmap = getattr(node.op, 'destroy_map', None)
+                    vmap = getattr(node.op, 'view_map', None)
+
+                    idx = 0
+                    # Update the Python emulating dicts and add the
+                    # memory allocated by the node
+                    for out in node.outputs:
+                        ins = None
+                        if dmap and idx in dmap:
+                            vidx = dmap[idx]
+                            assert len(vidx) == 1, "Here we only support the possibility to destroy one input"
+                            ins = node.inputs[vidx[0]]
+                        if vmap and idx in vmap:
+                            assert ins is None
+                            vidx = vmap[idx]
+                            assert len(vidx) == 1, "Here we only support the possibility to destroy one input"
+                            ins = node.inputs[vidx[0]]
+                        if ins is not None:
+                            # This is needed for destroy_map in case it
+                            # return a partial view that is destroyed.  So
+                            # the output could be different then the
+                            # input.
+                            assert isinstance(ins, theano.Variable)
+                            # We keep trac of view only again the original
+                            origin = view_of_temp.get(ins, ins)
+                            view_of_temp[out] = origin
+                            viewed_by_temp[origin].append(out)
+                        else:
+                            mem_created += var_mem[out]
+                        idx += 1
+
+                    mem_count += mem_created
+                    max_mem_count = max(max_mem_count, mem_count)
+
+                    # Mimic the combination of Theano and Python gc.
+                    for ins in node.inputs:
+                        assert not (ins in view_of_temp and
+                                    viewed_by_temp[ins])
+                        # We track of the original var, so this shouldn't happen
+                        if (dependencies[ins] and
+                            ins not in fgraph.outputs and
+                            ins.owner and
+                            all([compute_map[v][0] for v in dependencies[ins]])):
+                            if ins not in view_of_temp and not viewed_by_temp.get(ins, []):
+                                mem_freed += var_mem[ins]
+                            elif ins in view_of_temp:
+                                origin = view_of_temp[ins]
+                                viewed_by_temp[origin].remove(ins)
+                                if (not viewed_by_temp[origin] and
+                                    origin not in fgraph.inputs and
+                                    not isinstance(origin, theano.Constant)):
+                                    mem_freed += var_mem[origin]
+                        else:
+                            # ins is viewed_by something else, so its
+                            # memory isn't freed
+                            pass
+
+                    mem_count -= mem_freed
+
+                    for var in node.outputs:
+                        for c, _ in var.clients:
+                            if c != "output" and check_node_state(c):
+                                new_exec_nodes.add(c)
+
+                    if not new_exec_nodes:
+                        yield [node]
+                        # Check and Update mem_bound
+                        if max_mem_count < mem_bound:
+                            mem_bound = max_mem_count
+                    else:
+                        for p in min_memory_generator(new_exec_nodes,
+                                                      viewed_by_temp,
+                                                      view_of_temp):
+                            yield [node]+p
+
+                    # Reset track variables
+                    mem_count -= mem_created
+                    max_mem_count = max_storage
+                    mem_count += mem_freed
+                    for var in node.outputs:
+                        compute_map[var][0] = 0
+
+            # two data structure used to mimic Python gc
+            viewed_by = {}  # {var1: [vars that view var1]}
+            # The len of the list is the value of python ref count. But we use a list, not just the ref count value.
+            # This is more safe to help detect potential bug  in the algo
+            for var in fgraph.variables:
+                viewed_by[var] = []
+            view_of = {}  # {var1: original var viewed by var1}
+            # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
+
+            # Loop all valid orders and find min peak(store in mem_bound)
+            for order in min_memory_generator(executable_nodes,
+                                              viewed_by,
+                                              view_of):
+                continue
+
+            return mem_bound
 
         for fgraph, nodes_mem in fct_memory.iteritems():
             # Sum of the size of all variables in bytes
             sum_size = sum([sum([v for v in val if not isinstance(v, str)])
-                            for key, val in nodes_mem.iteritems()])    
+                            for key, val in nodes_mem.iteritems()])
 
             order = fgraph.toposort()
             # A list of intermediate variable that are not need
             # after the execution of the corresponding node.
             # It mean that after executing the node,
             # the corresponding variable can be gc.
-            post_thunk_old_storage = []
-            computed, last_user = theano.gof.link.gc_helper(order)
-            for node in order:
-                post_thunk_old_storage.append([
-                    input_idx
-                    for input_idx, input in enumerate(node.inputs)
-                    if (input in computed) and
-                    (input not in fgraph.outputs) and
-                    node == last_user[input]])
 
-            old_running_memory = count_running_memory(order, post_thunk_old_storage, nodes_mem)
+            old_running_memory = count_running_memory(order, fgraph, nodes_mem)
 
             new_order = fgraph.profile.node_executed_order
             # A list of new executed node order
-            new_storage = fgraph.profile.node_cleared_order
-            # A list of variables that get freed
 
-            new_running_memory = count_running_memory(new_order, new_storage, nodes_mem)
+            new_running_memory = count_running_memory(new_order,
+                                                      fgraph, nodes_mem)
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size, old_running_memory[0])
+            max_node_memory_size = max(max_node_memory_size,
+                                       old_running_memory[0])
             max_running_max_memory_size = max(max_running_max_memory_size,
-                                          old_running_memory[2])
+                                              old_running_memory[2])
             max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
                                                 old_running_memory[4])
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, old_running_memory[3])
 
             # Store max of some stats with new order
-            new_max_node_memory_size = max(new_max_node_memory_size, new_running_memory[0])
+            new_max_node_memory_size = max(new_max_node_memory_size,
+                                           new_running_memory[0])
             new_max_running_max_memory_size = max(new_max_running_max_memory_size,
-                                        new_running_memory[2])
+                                                  new_running_memory[2])
             new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
-                                                new_running_memory[4])
+                                                    new_running_memory[4])
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
 
-            del fgraph, nodes_mem, post_thunk_old_storage, node
+            # Config: whether print min memory peak
+            if config.profiling.min_peak_memory:
+                node_list = fgraph.apply_nodes
+                min_peak = count_minimum_peak(node_list, fgraph, nodes_mem)
+                min_max_peak = max(min_max_peak, min_peak)
+
+            del fgraph, nodes_mem
 
         if len(fct_memory) > 1:
             print >> file,  ("Memory Profile "
@@ -760,6 +1002,9 @@ class ProfileStats(object):
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
             new_max_running_max_memory_size / 1024.)), int(round(
             max_running_max_memory_size / 1024.)))
+        if min_max_peak:
+            print >> file,  "    Minimum peak from all valid apply node order is %dKB" % int(round(
+                min_max_peak / 1024.))
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
             round(max_node_memory_saved_by_view / 1024.)))
@@ -837,6 +1082,7 @@ class ProfileStats(object):
                          " emitted in those cases.")
         print >> file, ''
 
+
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_apply_to_print=20):
         self.summary_function(file)
@@ -855,6 +1101,8 @@ class ProfileStats(object):
             print >> file, "-----------------"
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
+
+
 
 
 if 0: # old code still to be ported from ProfileMode
@@ -1155,6 +1403,8 @@ if 0: # old code still to be ported from ProfileMode
                 apply_time, op_cimpl, message, outputs_size,
                 n_apply_to_print=n_apply_to_print,
                 n_ops_to_print=n_ops_to_print, print_apply=False)
+
+
 
 
 class ScanProfileStats(ProfileStats):

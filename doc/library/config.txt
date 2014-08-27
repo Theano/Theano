@@ -320,6 +320,15 @@ import theano and print the config variable, as in:
     For the memory profile, do not print Apply nodes if the size
     of their outputs (in bytes) is lower than this.
 
+.. attribute:: profiling.min_peak_memory
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the memory profile print the min peak memory usage?
+    It only works when profile=True, profile_memory=True
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False
