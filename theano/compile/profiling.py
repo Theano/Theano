@@ -749,8 +749,8 @@ class ProfileStats(object):
                             origin = view_of[ins]
                             viewed_by[origin].remove(ins)
                             if (not viewed_by[origin] and
-                                origin not in fgraph.inputs):
-
+                                origin not in fgraph.inputs and
+                                not isinstance(origin, theano.Constant)):
                                 running_memory_size -= var_mem[origin]
                     else:
                         # ins is viewed_by something else, so its
@@ -878,7 +878,9 @@ class ProfileStats(object):
                             elif ins in view_of_temp:
                                 origin = view_of_temp[ins]
                                 viewed_by_temp[origin].remove(ins)
-                                if not viewed_by_temp[origin] and origin not in fgraph.inputs:
+                                if (not viewed_by_temp[origin] and
+                                    origin not in fgraph.inputs and
+                                    not isinstance(origin, theano.Constant)):
                                     mem_freed += var_mem[origin]
                         else:
                             # ins is viewed_by something else, so its
