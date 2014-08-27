@@ -584,8 +584,8 @@ class TensorVariable(_tensor_py_operators, Variable):
                                              index=index, name=name)
         if (config.warn_float64 != 'ignore' and type.dtype == 'float64'):
             msg = ('You are creating a TensorVariable '
-                   'with float64 dtype. You requested this warning via '
-                   'the Theano flag warn_float64=True.')
+                   'with float64 dtype. You requested an action via '
+                   'the Theano flag warn_float64={ignore,warn,raise,pdb}.')
             if config.warn_float64 == "warn":
                 # Get the user stack. We don't want function inside the
                 # tensor and gof directory to be shown to the user.
