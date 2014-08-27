@@ -179,6 +179,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
         return
 
     def setUp(self):
+        super(test_GpuCAReduceCuda, self).setUp()
         dev = theano.sandbox.gpuarray.init_dev.device
         if not dev.startswith('cuda'):
             raise SkipTest("Cuda specific tests")
