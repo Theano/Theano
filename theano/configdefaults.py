@@ -24,6 +24,14 @@ AddConfigVar('floatX',
              EnumStr('float64', 'float32', convert=floatX_convert,),
 )
 
+AddConfigVar('warn_float64',
+             "Do an action when a tensor variable with float64 dtype is"
+             " created. They can't be run on the GPU with the current(old)"
+             " gpu back-end and are slow with gamer GPUs.",
+             EnumStr('ignore', 'warn', 'raise', 'pdb'),
+             in_c_key=False,
+)
+
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
         EnumStr('custom', 'numpy+floatX',

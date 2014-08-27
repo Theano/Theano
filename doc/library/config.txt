@@ -184,6 +184,15 @@ import theano and print the config variable, as in:
     and similar functions.  It also sets the default theano bit width for
     arguments passed as Python floating-point numbers.
 
+.. attribute:: warn_float64
+
+    String value: either 'ignore', 'warn', 'raise' or 'pdb'
+
+    Default: 'float64'
+
+    When creating a TensorVariable with dtype float64, what should be done?
+    This is useful to help find upcast to float64 in user code.
+
 .. attribute:: allow_gc
 
     Bool value: either ``True`` or ``False``
