@@ -713,7 +713,7 @@ class ProfileStats(object):
                         assert len(vidx) == 1, "Here we only support the possibility to destroy one input"
                         ins = node.inputs[vidx[0]]
                     if vmap and idx2 in vmap:
-                        assert ins is None, "Here we only support the possibility to view one input"
+                        assert ins is None
                         vidx = vmap[idx2]
                         assert len(vidx) == 1, "Here we only support the possibility to view one input"
                         ins = node.inputs[vidx[0]]
@@ -843,7 +843,7 @@ class ProfileStats(object):
                             assert len(vidx) == 1, "Here we only support the possibility to destroy one input"
                             ins = node.inputs[vidx[0]]
                         if vmap and idx in vmap:
-                            assert ins is None, "Here we only support the possibility to view one input"
+                            assert ins is None
                             vidx = vmap[idx]
                             assert len(vidx) == 1, "Here we only support the possibility to destroy one input"
                             ins = node.inputs[vidx[0]]
