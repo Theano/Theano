@@ -70,15 +70,12 @@ class Hint(Op):
     transfer that information out of the graph.
 
     """
+
+    __props__ = ('hints',)
+
     def __init__(self, **kwargs):
         self.hints = tuple(kwargs.items())
         self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.hints == other.hints
-
-    def __hash__(self):
-        return hash((type(self), self.hints))
 
     def make_node(self, x):
         return Apply(self, [x], [x.type()])

@@ -31,22 +31,11 @@ class MatrixPinv(Op):
     exact and faster to compute. Also this op does not get optimized into a
     solve op.
     """
+
+    __props__ = ()
+
     def __init__(self):
         pass
-
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``MatrixPinv`` op, there are no properties to be exposed.
-        """
-        return ()
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -55,9 +44,6 @@ class MatrixPinv(Op):
 
     def perform(self, node, (x,), (z, )):
         z[0] = numpy.linalg.pinv(x).astype(x.dtype)
-
-    def __str__(self):
-        return "MatrixPseudoInverse"
 
 pinv = MatrixPinv()
 
@@ -73,22 +59,10 @@ class MatrixInverse(Op):
            of ``solve``.
     """
 
+    __props__ = ()
+
     def __init__(self):
         pass
-
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``MatrixInverse`` op, there are no properties to be exposed.
-        """
-        return ()
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -136,9 +110,6 @@ class MatrixInverse(Op):
         if ev is None:
             return [None]
         return [-matrix_dot(xi, ev, xi)]
-
-    def __str__(self):
-        return "MatrixInverse"
 
 matrix_inverse = MatrixInverse()
 
@@ -315,20 +286,7 @@ class Eig(Op):
 
     """
     _numop = staticmethod(numpy.linalg.eig)
-
-    def props(self):
-        """Function exposing different properties of each instance of the
-        op.
-
-        For the ``Eig`` op, there are no properties to be exposed.
-        """
-        return ()
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
+    __props__ = ()
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -344,9 +302,6 @@ class Eig(Op):
         n = shapes[0][0]
         return [(n,), (n, n)]
 
-    def __str__(self):
-        return self._numop.__name__.capitalize()
-
 eig = Eig()
 
 
@@ -356,16 +311,11 @@ class Eigh(Eig):
 
     """
     _numop = staticmethod(numpy.linalg.eigh)
+    __props__ = ('UPLO',)
 
     def __init__(self, UPLO='L'):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
-
-    def __str__(self):
-        return 'Eigh{%s}' % self.UPLO
-
-    def props(self):
-        return self.UPLO,
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -427,6 +377,8 @@ class EighGrad(Op):
     """Gradient of an eigensystem of a Hermitian matrix.
 
     """
+    __props__ = ('UPLO',)
+
     def __init__(self, UPLO='L'):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
@@ -436,18 +388,6 @@ class EighGrad(Op):
         else:
             self.tri0 = numpy.triu
             self.tri1 = lambda a: numpy.tril(a, -1)
-
-    def props(self):
-        return (self.UPLO,)
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def __str__(self):
-        return 'EighGrad{%s}' % self.UPLO
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
@@ -507,15 +447,10 @@ class QRFull(Op):
     and r is upper-triangular.
     """
     _numop = staticmethod(numpy.linalg.qr)
+    __props__ = ('mode',)
 
     def __init__(self, mode):
         self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -524,17 +459,11 @@ class QRFull(Op):
         r = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [q, r])
 
-    def props(self):
-        return self.mode
-
     def perform(self, node, (x,), (q, r)):
         assert x.ndim == 2, "The input of qr function should be a matrix."
 
         q[0], r[0] = self._numop(x,
                                  self.mode)
-
-    def __str__(self):
-        return self._numop.__class__.__name__
 
 
 class QRIncomplete(Op):
@@ -544,18 +473,10 @@ class QRIncomplete(Op):
     Factor the matrix a as qr and return a single matrix.
     """
     _numop = staticmethod(numpy.linalg.qr)
+    __props__ = ('mode',)
 
     def __init__(self, mode):
         self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def props(self):
-        return self.mode
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -567,9 +488,6 @@ class QRIncomplete(Op):
         assert x.ndim == 2, "The input of qr function should be a matrix."
         q[0] = self._numop(x,
                            self.mode)
-
-    def __str__(self):
-        return self._numop.__class__.__name__
 
 
 def qr(a, mode="full"):
@@ -627,6 +545,7 @@ class SVD(Op):
 
     # See doc in the docstring of the function just after this class.
     _numop = staticmethod(numpy.linalg.svd)
+    __props__ = ('full_matrices', 'compute_uv')
 
     def __init__(self, full_matrices=True, compute_uv=True):
         """
@@ -644,15 +563,6 @@ class SVD(Op):
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
 
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
-
-    def props(self):
-        return self.full_matrices, self.compute_uv,
-
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2, "The input of svd function should be a matrix."
@@ -666,9 +576,6 @@ class SVD(Op):
         w[0], u[0], v[0] = self._numop(x,
                                        self.full_matrices,
                                        self.compute_uv)
-
-    def __str__(self):
-        return self._numop.__name__.capitalize()
 
 
 def svd(a, full_matrices=1, compute_uv=1):
