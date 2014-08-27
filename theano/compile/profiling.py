@@ -783,9 +783,8 @@ class ProfileStats(object):
                 """
                 inputs = node.inputs
                 outputs = node.outputs
-                deps = inputs + node.destroy_dependencies
                 # TODO: Move at compute_map creation to speed things up.
-                for node in deps:
+                for node in inputs:
                     if isinstance(node, graph.Constant):
                         compute_map[node][0] = 1
                 computed_ins = all(compute_map[v][0] for v in inputs)
