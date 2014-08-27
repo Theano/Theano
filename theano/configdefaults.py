@@ -24,6 +24,12 @@ AddConfigVar('floatX',
              EnumStr('float64', 'float32', convert=floatX_convert,),
 )
 
+AddConfigVar('warn_float64',
+             "Warning for float64 part in the function's graph which can't be run on the GPU with the current(old) gpu back-end.",
+             BoolParam(False),
+             in_c_key=False,
+)
+
 AddConfigVar('cast_policy',
         "Rules for implicit type casting",
         EnumStr('custom', 'numpy+floatX',
