@@ -28,7 +28,7 @@ AddConfigVar('warn_float64',
              "If True, warn when a tensor variable with float64 dtype is"
              " created. They can't be run on the GPU with the current(old)"
              " gpu back-end and are slow with gamer GPUs.",
-             BoolParam(False),
+             EnumStr('ignore', 'warn', 'raise', 'pdb'),
              in_c_key=False,
 )
 

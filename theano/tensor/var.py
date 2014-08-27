@@ -1,4 +1,7 @@
 import copy
+import pdb
+import sys
+import traceback as tb
 import warnings
 
 import numpy
@@ -579,28 +582,31 @@ class TensorVariable(_tensor_py_operators, Variable):
     def __init__(self, type, owner=None, index=None, name=None):
         super(TensorVariable, self).__init__(type, owner=owner,
                                              index=index, name=name)
-        if (config.warn_float64 and type.dtype == 'float64'):
-            # Get the user stack. We don't want function inside the
-            # tensor and gof directory to be shown to the user.
-            import traceback as tb
-            x = tb.extract_stack()
-            nb_rm = 0
-            while x:
-                file_path = x[-1][0]
-                rm = False
-                for p in ["theano/tensor/",
-                          "theano/gof/"]:
-                    if p in file_path:
-                        x = x[:-1]
-                        nb_rm += 1
-                        rm = True
-                if not rm:
-                    break
-            warnings.warn(
-                'Warning, you are creating a TensorVariable '
-                'with float64 dtype. You requested this warning via '
-                'the Theano flag warn_float64=True.', stacklevel=1 + nb_rm)
-
+        if (config.warn_float64 != 'ignore' and type.dtype == 'float64'):
+            msg = ('You are creating a TensorVariable '
+                   'with float64 dtype. You requested this warning via '
+                   'the Theano flag warn_float64=True.')
+            if config.warn_float64 == "warn":
+                # Get the user stack. We don't want function inside the
+                # tensor and gof directory to be shown to the user.
+                x = tb.extract_stack()
+                nb_rm = 0
+                while x:
+                    file_path = x[-1][0]
+                    rm = False
+                    for p in ["theano/tensor/",
+                              "theano/gof/"]:
+                        if p in file_path:
+                            x = x[:-1]
+                            nb_rm += 1
+                            rm = True
+                    if not rm:
+                        break
+                warnings.warn(msg, stacklevel=1 + nb_rm)
+            elif config.warn_float64 == "raise":
+                raise Exception(msg)
+            elif config.warn_float64 == 'pdb':
+                import pdb;pdb.set_trace()
 TensorType.Variable = TensorVariable
 
 
