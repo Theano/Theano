@@ -789,10 +789,7 @@ class ProfileStats(object):
                     if isinstance(node, graph.Constant):
                         compute_map[node][0] = 1
                 computed_ins = all(compute_map[v][0] for v in deps)
-                if computed_ins:
-                    return True
-                else:
-                    return False
+                return computed_ins
 
             # Initial executable_nodes
             executable_nodes = set()
