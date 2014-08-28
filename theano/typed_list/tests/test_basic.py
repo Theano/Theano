@@ -1,5 +1,6 @@
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
@@ -12,7 +13,12 @@ from theano.typed_list.basic import (GetItem, Insert,
                                       Index, Count, Length)
 from theano import sparse
 from theano.tests import unittest_tools as utt
-import scipy.sparse as sp
+# TODO, handle the case where scipy isn't installed.
+try:
+    import scipy.sparse as sp
+    scipy_imported = True
+except ImportError:
+    scipy_imported = False
 
 
 #took from tensors/tests/test_basic.py
@@ -435,6 +441,8 @@ class test_index(unittest.TestCase):
         self.assertTrue(f([[x, y], [x, y, y]], [x, y]) == 0)
 
     def test_sparse(self):
+        if not scipy_imported:
+            raise SkipTest('Optional package SciPy not installed')
         mySymbolicSparseList = TypedListType(sparse.SparseType('csr',
                                                 theano.config.floatX))()
         mySymbolicSparse = sparse.csr_matrix()
@@ -499,6 +507,8 @@ class test_count(unittest.TestCase):
         self.assertTrue(f([[x, y], [x, y, y]], [x, y]) == 1)
 
     def test_sparse(self):
+        if not scipy_imported:
+            raise SkipTest('Optional package SciPy not installed')
         mySymbolicSparseList = TypedListType(sparse.SparseType('csr',
                                                 theano.config.floatX))()
         mySymbolicSparse = sparse.csr_matrix()
