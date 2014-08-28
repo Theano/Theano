@@ -39,7 +39,7 @@ def parse_config_string(config_string, issue_warnings=True):
     Parses a config string (comma-separated key=value components) into a dict.
     """
     config_dict = {}
-    for kv_pair in THEANO_FLAGS.split(','):
+    for kv_pair in config_string.split(','):
         kv_pair = kv_pair.strip()
         if not kv_pair:
             continue
