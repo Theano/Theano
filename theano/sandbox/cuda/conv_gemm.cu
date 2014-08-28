@@ -174,15 +174,45 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires bottom of 4D");
     }
+    if (!CudaNdarray_is_c_contiguous(bottom))
+    {
+        PyErr_Format(PyExc_ValueError,
+                "GpuCorrMM requires bottom to be C-contiguous, "
+                "but strides are: %d %d %d %d\n",
+                CudaNdarray_HOST_STRIDES(bottom)[0],
+                CudaNdarray_HOST_STRIDES(bottom)[1],
+                CudaNdarray_HOST_STRIDES(bottom)[2],
+                CudaNdarray_HOST_STRIDES(bottom)[3]);
+    }
     
     if (weight->nd != 4)
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires weight of 4D");
     }
+    if (!CudaNdarray_is_c_contiguous(weight))
+    {
+        PyErr_Format(PyExc_ValueError,
+                "GpuCorrMM requires weight to be C-contiguous, "
+                "but strides are: %d %d %d %d\n",
+                CudaNdarray_HOST_STRIDES(weight)[0],
+                CudaNdarray_HOST_STRIDES(weight)[1],
+                CudaNdarray_HOST_STRIDES(weight)[2],
+                CudaNdarray_HOST_STRIDES(weight)[3]);
+    }
 
     if (top->nd != 4)
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires top of 4D");
+    }
+    if (!CudaNdarray_is_c_contiguous(top))
+    {
+        PyErr_Format(PyExc_ValueError,
+                "GpuCorrMM requires top to be C-contiguous, "
+                "but strides are: %d %d %d %d\n",
+                CudaNdarray_HOST_STRIDES(top)[0],
+                CudaNdarray_HOST_STRIDES(top)[1],
+                CudaNdarray_HOST_STRIDES(top)[2],
+                CudaNdarray_HOST_STRIDES(top)[3]);
     }
 
     // Extract some shape information for later and check shape consistency
