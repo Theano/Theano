@@ -78,7 +78,7 @@ def test_blocksparse():
 
     o = sparse_block_dot_SS(W, h, iIdx, b, oIdx)
 
-    f = theano.function([W, h, iIdx, b, oIdx], o)
+    f = theano.function([W, h, iIdx, b, oIdx], o, mode=mode_with_gpu)
 
     W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
 
@@ -103,7 +103,7 @@ def test_blocksparseF():
                                               as_cuda_ndarray_variable(W)),
                             h, iIdx, b, oIdx)
 
-    f = theano.function([W, h, iIdx, b, oIdx], o)
+    f = theano.function([W, h, iIdx, b, oIdx], o, mode=mode_with_gpu)
 
     W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
 
@@ -126,7 +126,7 @@ def test_blocksparse_grad():
     def f(b, h, W):
         return sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
-    utt.verify_grad(f, [b_val, h_val, W_val])
+    utt.verify_grad(f, [b_val, h_val, W_val], mode=mode_with_gpu)
 
 
 def test_blocksparse_grad_1():
@@ -143,7 +143,7 @@ def test_blocksparse_grad_1():
     def f(b, h, W):
         return sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
-    utt.verify_grad(f, [b_val, h_val, W_val])
+    utt.verify_grad(f, [b_val, h_val, W_val], mode=mode_with_gpu)
 
 
 def test_blocksparse_grad_shape():
@@ -187,7 +187,11 @@ def test_blocksparse_grad_merge():
     f1 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)],
                          mode=mode_with_gpu)
     # not running with mode=gpu ensures that the elemwise is not merged in
-    f2 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)])
+    mode = None
+    if theano.config.mode == 'FAST_COMPILE':
+        mode = theano.compile.mode.get_mode('FAST_RUN')
+
+    f2 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)], mode=mode)
 
     f2(h_val, iIdx_val, b_val, oIdx_val)
     W_ref = W.get_value()
