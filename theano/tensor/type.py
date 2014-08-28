@@ -436,33 +436,50 @@ class TensorType(Type):
         %(name)s = NULL;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
-    def c_extract(self, name, sub, check_input=True):
-        """Override `CLinkerType.c_extract` """
-        if(check_input):
-            check = """
-            %(name)s = NULL;
-            if (py_%(name)s == Py_None) {
+    def c_checkNDim(self, name, sub, pre='py_'):
+        return """if (PyArray_NDIM((PyArrayObject*)%(pre)s%(name)s) != %(ndim)s){
+                        PyErr_Format(PyExc_RuntimeError,
+                                     "c_extract: Some Tensor Ndarray has rank %%i, it was supposed to have rank %(ndim)s",
+                                     PyArray_NDIM((PyArrayObject*)%(pre)s%(name)s));
+                }
+                """ % dict(sub, name=name, type_num=self.dtype_specs()[2], pre=pre, ndim = self.ndim)
+
+    def c_checkType(self, name, sub, pre='py_'):
+        return """
+                // This is a TypeError to be consistent with DEBUG_MODE
+                // Note: DEBUG_MODE also tells the name of the container
+                if (PyArray_TYPE((PyArrayObject*) %(pre)s%(name)s) != %(type_num)s) {
+                    PyErr_Format(PyExc_TypeError,
+                                 "expected type_num %%d (%(type_num)s) got %%d",
+                                 %(type_num)s, PyArray_TYPE((PyArrayObject*) %(pre)s%(name)s));
+                    %(fail)s
+                }
+                """ % dict(sub, name=name, type_num=self.dtype_specs()[2], pre=pre)
+
+    def c_check(self, name, sub, checkType=True, checkNDim=True, pre='py_'):
+        ct = ""
+        cnd = ""
+        mc = """
+        if ((PyObject*)%(pre)s%(name)s == Py_None) {
                 // We can either fail here or set %(name)s to NULL and rely on Ops
                 // using tensors to handle the NULL case, but if they fail to do so
                 // they'll end up with nasty segfaults, so this is public service.
                 PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
                 %(fail)s
             }
-            if (!PyArray_Check(py_%(name)s)) {
+            if (!PyArray_Check((PyObject*)%(pre)s%(name)s)) {
                 PyErr_SetString(PyExc_ValueError, "expected an ndarray");
                 %(fail)s
             }
-            // We expect %(type_num)s
-            if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
-                PyArrayObject * tmp = (PyArrayObject*) py_%(name)s;
+            if (!PyArray_ISALIGNED((PyArrayObject*) %(pre)s%(name)s)) {
+                PyArrayObject * tmp = (PyArrayObject*) %(pre)s%(name)s;
                 PyErr_Format(PyExc_NotImplementedError,
                              "expected an aligned array of type %%ld "
-                             "(%(type_num)s), got non-aligned array of type %%ld"
+                             "got non-aligned array of type %%ld"
                              " with %%ld dimensions, with 3 last dims "
                              "%%ld, %%ld, %%ld"
                              " and 3 last strides %%ld %%ld, %%ld.",
-                             (long int) %(type_num)s,
-                             (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
+                             (long int) PyArray_TYPE((PyArrayObject*) %(pre)s%(name)s),
                              (long int) PyArray_NDIM(tmp),
                              (long int) PyArray_NDIM(tmp) >= 3 ?
             PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
@@ -479,18 +496,22 @@ class TensorType(Type):
             );
                 %(fail)s
             }
-            // This is a TypeError to be consistent with DEBUG_MODE
-            // Note: DEBUG_MODE also tells the name of the container
-            if (PyArray_TYPE((PyArrayObject*) py_%(name)s) != %(type_num)s) {
-                PyErr_Format(PyExc_TypeError,
-                             "expected type_num %%d (%(type_num)s) got %%d",
-                             %(type_num)s, PyArray_TYPE((PyArrayObject*) py_%(name)s));
-                %(fail)s
-            }
-            """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
+            """ % dict(sub, name=name, type_num=self.dtype_specs()[2], pre=pre)
+        if(checkType):
+            ct = self.c_checkType(name, sub, pre)
+        if(checkNDim):
+            cnd = self.c_checkNDim(name, sub, pre)
+
+        return mc + ct + cnd
+
+    def c_extract(self, name, sub, check_input=True):
+        """Override `CLinkerType.c_extract` """
+        pre = "%(name)s = NULL;" % dict(name=name)
+        if(check_input):
+            check = self.c_check(name, sub)
         else:
             check = ""
-        return check + """
+        return pre + check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
@@ -564,7 +585,7 @@ class TensorType(Type):
     def c_code_cache_version(self):
         scalar_version = scal.get_scalar_type(self.dtype).c_code_cache_version()
         if scalar_version:
-            return (11,) + scalar_version
+            return (12,) + scalar_version
         else:
             return ()
 

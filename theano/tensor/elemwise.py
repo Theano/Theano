@@ -450,6 +450,8 @@ class Elemwise(OpenMPOp):
       Elemwise(log)(rand(3, 4, 5))
     """
 
+    check_input = False
+
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
         """
@@ -1173,9 +1175,159 @@ class Elemwise(OpenMPOp):
             """ % locals()
         return decl, checks, alloc, loop
 
-    def c_code(self, node, nodename, inames, onames, sub):
+    def c_code(self, node, nodename, inames, onames, sub, flag_ci=True):
+        decl = ""
+        check = ""
+        if theano.config.check_input and flag_ci:
+            for (inp, name) in zip(node.inputs, inames):
+                check += inp.type.c_check(name, sub, True, True, "")
+        for (name, out) in zip(onames, node.outputs):
+                decl += """
+                        typedef %(dtype)s dtype_%(name)s;
+                        """ % dict(sub, name=name,
+                                   dtype=out.type.dtype_specs()[1])
+        for (name, inp) in zip(inames, node.inputs):
+            decl += """
+                typedef %(dtype)s dtype_%(name)s;
+                """ % dict(sub, name=name,
+                    dtype=inp.type.dtype_specs()[1])
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
-        return code
+        return decl + check + code
+
+    def c_code_all_dtype(self, node, nodename, inames, onames, sub):
+
+        fail = sub['fail']
+
+        if all([inp.dtype == node.inputs[0].dtype for inp in node.inputs]):
+            if node.inputs[0].dtype.startswith('float'):
+                alldtypes = [[type for inp in node.inputs] for type in (
+                    'float32', 'float64')]
+            elif node.inputs[0].dtype.startswith('uint'):
+                alldtypes = [[type for inp in node.inputs] for type in (
+                            'uint8', 'uint16', 'uint32', 'uint64')]
+            elif node.inputs[0].dtype.startswith('int'):
+                alldtypes = [[type for inp in node.inputs] for type in (
+                            'int8', 'int16', 'int32', 'int64')]
+            else:
+                alldtypes = None
+        else:
+            alldtypes = None
+
+        #This code won't be inplace if the input dtype differ from the
+        #output dtype
+        if alldtypes != None:
+            for dtypes in alldtypes[:]:
+                shadow = self.scalar_op.make_node(
+                    *[get_scalar_type(dtype=dtype)() for dtype in dtypes])
+                out_dtypes = [o.type.dtype for o in shadow.outputs]
+                if any(dtypes[i] != out_dtypes[o]
+                        for o, i in self.inplace_pattern.items()):
+                        alldtypes.remove(dtypes)
+
+        if alldtypes != None and len(alldtypes) > 1:
+            code = ""
+            for dtypes in alldtypes:
+                checkType = ""
+                if theano.config.check_input:
+                    for (inp, name) in zip(node.inputs[1:], inames[1:]):
+                        checkType += inp.type.c_checkType(name, sub, "")
+                inputs = []
+                ref = {}
+                for (t, inp, name) in zip(dtypes, node.inputs, inames):
+                    if not name in ref:
+                        x = TensorType(t, inp.broadcastable)()
+                        inputs.append(x)
+                        ref[name] = x
+                    else:
+                        inputs.append(ref[name])
+                decl = ""
+                for name in set(inames):
+                    decl += """
+                            typedef %(dtype)s dtype_%(name)s;
+                            """ % dict(sub, name=name, dtype="npy_"
+                                       + dtypes[0])
+
+                nnode = self.make_node(*inputs)
+                for (name, out) in zip(onames, nnode.outputs):
+                    decl += """
+                            typedef %(dtype)s dtype_%(name)s;
+                            """ % dict(sub, name=name,
+                                       dtype=out.type.dtype_specs()[1])
+                type = "NPY_" + dtypes[0].upper()
+                name = inames[0]
+
+                code += "if (PyArray_TYPE((PyArrayObject*) py_%(name)s) =="\
+                    "%(type)s){ " % locals() + decl + checkType \
+                    + self.c_code(nnode, nodename, inames,
+                    onames, sub, False) + "}else "
+            code += """
+            {
+            PyErr_SetString(PyExc_NotImplementedError,
+            "Elemwise unexpected type");
+            %(fail)s
+            }
+            """ % locals()
+
+            return code
+        else:
+            checkType = ""
+            if theano.config.check_input:
+                for (inp, name) in zip(node.inputs, inames):
+                    checkType += inp.type.c_checkType(name, sub, "")
+            return checkType + self.c_code(node,
+                            nodename, inames, onames, sub, False)
+
+    def c_code_multiple(self, node, nodename, inames, onames, sub):
+        bnb = 3 #number of dimensions per batch
+        fail = sub['fail']
+        check = ""
+        name = inames[0]
+        if theano.config.check_input:
+            for (inp, name) in zip(node.inputs, inames):
+                check += inp.type.c_check(name, sub, False, False, "")
+        if all([inp.ndim == node.inputs[0].ndim for inp in node.inputs]):
+            bdim = (inp.ndim // bnb) * bnb
+            code = ""
+            for i in range(bnb):
+                checkNDim = ""
+                if theano.config.check_input:
+                    for (inp, name) in zip(node.inputs[1:], inames[1:]):
+                        checkNDim += inp.type.c_checkNDim(name, sub, "")
+                inputs = []
+                ref = {}
+                for (inp, name) in zip(node.inputs, inames):
+                    if not name in ref:
+                        newbroadcastable = inp.broadcastable
+                        if i + bdim < inp.ndim:
+                            newbroadcastable = inp.broadcastable[inp.ndim - (i + bdim):]
+                        elif i + bdim == inp.ndim:
+                            pass
+                        else:
+                            newbroadcastable = [False] * (i + bdim - inp.ndim) + list(newbroadcastable)
+                        x = TensorType(inp.dtype, newbroadcastable)()
+                        inputs.append(x)
+                        ref[name] = x
+                    else:
+                        inputs.append(ref[name])
+                nnode = self.make_node(*inputs)
+                ndim = bdim + i
+                code += "if (PyArray_NDIM(%(name)s) == %(ndim)s){" \
+                        % locals() + checkNDim + self.c_code_all_dtype(
+                        nnode, nodename, inames, onames, sub) + "}else "
+            code += """
+                    {
+                    PyErr_Format(PyExc_NotImplementedError,
+                    "Elemwise unexpected ndim. Received %%d",
+                    PyArray_NDIM(%(name)s));
+                    %(fail)s
+                    }
+                    """ % locals()
+            return check + code
+        else:
+            if theano.config.check_input:
+                for (inp, name) in zip(node.inputs, inames):
+                    check += inp.type.c_checkNDim(name, sub, "")
+            return check + self.c_code_all_dtype(node, nodename, inames, onames, sub)
 
     def c_headers(self):
         return ['<vector>', '<algorithm>']
@@ -1189,7 +1341,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [11]  # the version corresponding to the c code in this Op
+        version = [17]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,

@@ -672,7 +672,16 @@ class CLinker(link.Linker):
 
             # emit c_code
             try:
-                behavior = op.c_code(node, name, isyms, osyms, sub)
+                if hasattr(node, 'fgraph'):
+                    if len(node.fgraph.apply_nodes) == 1 and\
+                    hasattr(op, 'c_code_multiple'):
+                        behavior = op.c_code_multiple(node, name, isyms, osyms,
+                                                       sub)
+                    else:
+                        behavior = op.c_code(node, name, isyms, osyms, sub)
+                else:
+                    behavior = op.c_code(node, name, isyms, osyms, sub)
+
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
             assert isinstance(behavior, basestring), (
