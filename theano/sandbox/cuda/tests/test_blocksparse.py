@@ -10,7 +10,7 @@ from theano import tensor
 import theano.tests.unittest_tools as utt
 
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+if not cuda_ndarray.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
 from theano.sandbox.cuda.basic_ops import (GpuDimShuffle,
@@ -31,6 +31,7 @@ else:
 def setup():
     utt.seed_rng()
 
+
 def blocksparse_data():
     nInputBlock = 128
     nOutputBlock = 64
@@ -41,12 +42,17 @@ def blocksparse_data():
     batchSize = 2
 
     input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
-    inputIndice = numpy.vstack(numpy.random.permutation(nInputBlock)[:inputWindowSize] for _ in range(batchSize))
-    outputIndice = numpy.vstack(numpy.random.permutation(nOutputBlock)[:outputWindowSize] for _ in range(batchSize))
-    weight = randn(nInputBlock, nOutputBlock, inputSize, outputSize).astype('float32')
+    permutation = numpy.random.permutation
+    inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
+                               for _ in range(batchSize))
+    outputIndice = numpy.vstack(permutation(nOutputBlock)[:outputWindowSize]
+                                for _ in range(batchSize))
+    weight = randn(nInputBlock, nOutputBlock,
+                   inputSize, outputSize).astype('float32')
     bias = randn(nOutputBlock, outputSize).astype('float32')
 
     return weight, input, inputIndice, bias, outputIndice
+
 
 def blocksparse(W, h, iIdx, b, oIdx):
     o = b.take(oIdx, axis=0)
@@ -94,7 +100,7 @@ def test_blocksparseF():
 
     o = sparse_block_dot_SS(GpuDimShuffle((False, False, False, False),
                                           (0, 1, 3, 2))(
-            as_cuda_ndarray_variable(W)),
+                                              as_cuda_ndarray_variable(W)),
                             h, iIdx, b, oIdx)
 
     f = theano.function([W, h, iIdx, b, oIdx], o)
@@ -121,6 +127,7 @@ def test_blocksparse_grad():
         return sparse_block_gemv_ss(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
     utt.verify_grad(f, [b_val, h_val, W_val])
+
 
 def test_blocksparse_grad_1():
     # This tests that we correctly handle cases where dimensions are 1.
