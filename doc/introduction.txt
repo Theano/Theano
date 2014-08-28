@@ -169,7 +169,7 @@ Here is the state of that vision as of December 3th, 2013 (after Theano release
 0.6):
 
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
-* We support sparse types by using the `scipy.{csc,csr}_matrix` object and support some operations on them.
+* We support sparse types by using the `scipy.{csc,csr,bsr}_matrix` object and support some operations on them.
 * We have started implementing/wrapping more advanced linear algebra operations.
 * We have many graph transformations that cover the 4 categories listed above.
 * We can improve the graph transformation with better storage optimization
@@ -184,10 +184,10 @@ Here is the state of that vision as of December 3th, 2013 (after Theano release
 
 * We have a CUDA backend for tensors of type `float32` only.
 * Efforts have begun towards a generic GPU ndarray (GPU tensor) (started in the
-  `libgpuarray <https://github.com/abergeron/libgpuarray>`_ project)
+  `libgpuarray <https://github.com/Theano/libgpuarray>`_ project)
 
-  * Move GPU backend outside of Theano (on top of PyCUDA/PyOpenCL)
-  * Will provide better support for GPU on Windows and use an OpenCL backend on CPU.
+  * Move GPU backend outside of Theano.
+  * Will provide better support for GPU on Windows and support an OpenCL backend on CPU.
 
 * Loops work, but not all related optimizations are currently done.
 * The cvm linker allows lazy evaluation. It is the current default linker.
