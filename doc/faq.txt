@@ -59,7 +59,9 @@ that reuses memory where it will not negatively impact the integrity of the
 operation. Such operations can be time consuming. However using this flag will
 result in greater memory usage because space must be allocated for the results
 which would be unnecessary otherwise. In short, using this flag will speed up
-compilation but it will also use more memory.
+compilation but it will also use more memory because
+``optimizer_excluding=fast_compile`` excludes inplace optimizations resulting
+in a trade off between speed of compilation and memory usage.
 
 Faster Theano function
 ----------------------
@@ -118,14 +120,21 @@ than enough reporting:
 
 where X is far less than Y and Z (i.e. X << Y < Z).
 
-This occurs when an operation requires allocation of a large contiguous block
-of memory but no blocks of sufficient size are available.
+This scenario arises when an operation requires allocation of a large contiguous
+block of memory but no blocks of sufficient size are available.
+
+GPUs do not have virtual memory and as such all allocations must be assigned to
+a continuous memory region. CPUs do not have this limitation because or their
+support for virtual memory. Multiple allocations on a GPU can result in memory
+fragmentation which can makes it more difficult to find contiguous regions
+of memory of sufficient size during subsequent memory allocations.
 
 A known example is related to writing data to shared variables. When updating a
 shared variable Theano will allocate new space if the size of the data does not
-match the size of the space already assigned to the variable. The error above
-will result if there is not a contiguous block of memory of sufficient capacity
-to hold the data even if the overall free memory is large enough.
+match the size of the space already assigned to the variable. This can lead to
+memory fragmentation which means that a continugous block of memory of
+sufficient capacity may not be available even if the free memory overall is
+large enough.
 
 Related Projects
 ----------------
