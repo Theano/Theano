@@ -194,8 +194,6 @@ class test_Solve(utt.InferShapeTester):
 
 class test_SolveCholesky(utt.InferShapeTester):
     def setUp(self):
-        import scipy as sp
-        
         super(test_SolveCholesky, self).setUp()
         self.op_class = SolveCholesky
         self.op = SolveCholesky()
@@ -211,7 +209,7 @@ class test_SolveCholesky(utt.InferShapeTester):
         self.A_mat = self.A_mat.T.dot(self.A_mat)
         self.B_mat = numpy.asarray(rng.rand(self.dim, self.dim), dtype=self.dtype)
         self.b_vec = numpy.asarray(rng.rand(self.dim), dtype=self.dtype)
-        self.L_mat = sp.linalg.cholesky(self.A_mat, lower=True)
+        self.L_mat = scipy.linalg.cholesky(self.A_mat, lower=True)
 
     def test_infer_shape_B_mat(self):
         if not imported_scipy:
