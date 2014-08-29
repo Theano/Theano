@@ -42,25 +42,22 @@ Inputs and Outputs are lists of Theano variables.
    how to make a quality contribution.
 
 
-Op Contract
-===========
+Op Structure
+============
 
+This an overview of the methods you typically have to implement to
+make a new op.  It does not provide extensive coverage of all the
+possibilities you may encounter or need.  For that refer to
+:ref:`op_contract`.
 
 .. code-block:: python
 
     import theano
 
     class MyOp(theano.Op):
+        __props__ = ()
+
         def make_node(self, *inputs):
-            pass
-
-        def __eq__(self, other):
-            pass
-
-        def __hash__(self):
-            pass
-
-        def __str__(self):
             pass
 
         # Python implementation:
@@ -72,11 +69,13 @@ Op Contract
             # ...
             pass
 
-        # others implementation (pycuda, ...):
+        # Other implementations (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
             pass
 
         # optional:
+        check_input = True
+
         def __init__(self, ...):
             pass
 
@@ -89,42 +88,44 @@ Op Contract
         def infer_shape(node, (i0_shapes, ...)):
             pass
 
-        def flops(self, inputs, outputs):
-            pass
-        
-        check_input = True
-
 .. ../extending/op.txt
 
-There are two mandatory methods that one needs to implement.
-The first one is :func:`make_node`. The second one 
-would describe the computations that are required to be done
-at run time. Currently there are 2 different possibilites:
-implement the :func:`perform`
-and/or :func:`c_code <Op.c_code>` methods (and other related :ref:`c methods
-<cop>`), or the :func:`make_thunk` method. ``perform`` allows
-to easily wrap an existing Python function into Theano. ``c_code``
-and the related methods allow the op to generate C code that will be 
-compiled and linked by Theano. On the other hand, ``make_thunk``
-will be called only once during compilation and should generate
-a ``thunk``: a standalone function that when called will do the wanted computations.
-This is useful if you want to generate code and compile it yourself. For
-example, this allows you to use PyCUDA to compile GPU code.
+There are two mandatory methods that one needs to implement.  The
+first one is :func:`make_node`. The second one would describe the
+computations that are required to be done at run time. Currently there
+are 2 different possibilites: implement the :func:`perform` and/or
+:func:`c_code <Op.c_code>` methods (and other related :ref:`c methods
+<cop>`), or the :func:`make_thunk` method. ``perform`` allows to
+easily wrap an existing Python function into Theano. ``c_code`` and
+the related methods allow the op to generate C code that will be
+compiled and linked by Theano. On the other hand, ``make_thunk`` will
+be called only once during compilation and should generate a
+``thunk``: a standalone function that when called will do the wanted
+computations.  This is useful if you want to generate code and compile
+it yourself. For example, this allows you to use PyCUDA to compile GPU
+code.
 
-Also there are two methods whose implementations are highly recommended. They are
-needed in order to merge duplicate computations involving your op. So if you
-do not want Theano to execute your op multiple times with the same inputs,
-do implement them. Those methods are :func:`__eq__` and
-:func:`__hash__`.
+The :attr:`__props__` attribute serves to make Op generate an appropriate
+:func:`__eq__` and :func:`__hash__` for your Op.  It must be a tuple
+that lists the properties that influence how the computation is
+performed (Ususally these are those that you set in
+:func:`__init__`). If you don't have any properties, then you should
+set this attribute to the emtpy tuple `()`.
+
+:func:`__eq__` and :func:`__hash__` will be used by the optimization
+phase to merge nodes that are doing a equivalent compuation (same
+inputs, same operation).  It is especially important that two Ops that
+compare equal (have the same values for all the properties listed in
+__props__ and the same type) compute the same thing when presented
+with the same inputs.
+
+Also note that this attribute will also generate a suitable
+:func:`__str__` method for your Op.  You may override this default
+with a custom one if you want another format for the output.
 
 The :func:`infer_shape` method allows to infer the shape of some variable, somewhere in the
 middle of the computational graph without actually computing the outputs (when possible).
 This could be helpful if one only needs the shape of the output instead of the actual outputs.
-
-The :func:`flops` method allows to have the number of mega flops and
-giga flops per second printed by the memory profiler. It takes as
-inputs two lists: one for the inputs and one for the outputs. They
-contain tuples that are the shapes of the corresponding inputs/outputs.
 
 The :func:`grad` method is required if you want to differentiate some cost whose expression
 includes your op.
@@ -135,8 +136,9 @@ string representation of your op.
 The :func:`R_op` method is needed if you want ``theano.tensor.Rop`` to
 work with your op.
 
-The optional boolean :func:'check_input' attribute is used to specify if you want the types used in 
-your op to check their inputs in their c_code. It can be used to speed up compilation, reduce overhead 
+The optional boolean :attr:`check_input` attribute is used to specify
+if you want the types used in your op to check their inputs in their
+c_code. It can be used to speed up compilation, reduce overhead
 (particularly for scalars) and reduce the number of generated C files.
 
 Op Example
@@ -147,15 +149,7 @@ Op Example
     import theano
 
     class DoubleOp(theano.Op):
-        def __eq__(self, other):
-            return type(self) == type(other)
-
-        def __hash__(self):
-            return hash(type(self))
-
-        def __str__(self):
-            return self.__class__.__name__
-
+        __props__ = ()
         def make_node(self, x):
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
@@ -327,24 +321,27 @@ For instance, to verify the Rop method of the DoubleOp, you can use this:
 Testing GPU Ops
 ---------------
 
-Ops to be executed on the GPU should inherit from the ``theano.sandbox.cuda.GpuOp`` 
-and not ``theano.Op``. This allows Theano to distinguish them. Currently, we
-use this to test if the NVIDIA driver works correctly with our sum reduction code on the
-GPU.
+Ops to be executed on the GPU should inherit from the
+``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows
+Theano to distinguish them. Currently, we use this to test if the
+NVIDIA driver works correctly with our sum reduction code on the GPU.
 
 
 Running Your Tests
 ==================
 
-To perform your tests, you may select either one of the three following methods:
+To perform your tests, you may select either one of the three
+following methods:
 
 theano-nose
 -----------
 
-The method of choice to conduct tests is to run the file ``theano-nose``. In a regular
-Theano installation, the latter will be on the operating system's path and directly accessible
-from any folder. Otherwise, it can be accessed in the ``Theano/bin`` folder. The following command
-lines may be used for the corresponding purposes:
+The method of choice to conduct tests is to run the file
+``theano-nose``. In a regular Theano installation, the latter will be
+on the operating system's path and directly accessible from any
+folder. Otherwise, it can be accessed in the ``Theano/bin``
+folder. The following command lines may be used for the corresponding
+purposes:
 
 * ``theano-nose --theano``: Run every test found in Theano's path.
 
@@ -352,23 +349,25 @@ lines may be used for the corresponding purposes:
 
 * ``theano-nose test_file.py``: Run every test found in the file *test_file.py*.
 
-The following are particularly useful for development purposes since they call for
-particular classes or even for particular tests: 
+The following are particularly useful for development purposes since
+they call for particular classes or even for particular tests:
 
 * ``theano-nose test_file.py:test_DoubleRop``: Run every test found inside the class *test_DoubleRop*.
 
 * ``theano-nose test_file.py:test_DoubleRop.test_double_op``: Run only the test *test_double_op*
   in the class *test_DoubleRop*.
 
-Help with the use and functionalities of ``theano-nose`` may be obtained by running
-it with the command line parameter ``--help (-h)``. 
+Help with the use and functionalities of ``theano-nose`` may be
+obtained by running it with the command line parameter ``--help
+(-h)``.
 
 nosetests
 ---------
 
-The command ``nosetests`` can also be used.  Although it lacks the useful 
-functionalities that ``theano-nose`` provides, ``nosetests`` can be called similarly
-to ``theano-nose`` from any folder in Python's path like so:
+The command ``nosetests`` can also be used.  Although it lacks the
+useful functionalities that ``theano-nose`` provides, ``nosetests``
+can be called similarly to ``theano-nose`` from any folder in Python's
+path like so:
 
 ``nosetests [suffix similar to the above]``.
 
@@ -378,9 +377,10 @@ More documentation on ``nosetests`` is available here:
 In-file
 -------
 
-One may also add a block of code similar to the following at the end of the
-file containing a specific test of interest and run the file. In this example, the test
-*test_DoubleRop* in the class *test_double_op* would be performed.
+One may also add a block of code similar to the following at the end
+of the file containing a specific test of interest and run the
+file. In this example, the test *test_DoubleRop* in the class
+*test_double_op* would be performed.
 
 .. code-block:: python
 
@@ -407,7 +407,8 @@ Modify and execute to compute: x * y.
 
 Modify and execute the example to return two outputs: x + y and x - y.
 
-You can omit the Rop functions. Try to implement the testing apparatus described above.
+You can omit the Rop functions. Try to implement the testing apparatus
+described above.
 
 (Notice that Theano's current *elemwise fusion* optimization is
 only applicable to computations involving a single output. Hence, to gain
@@ -452,6 +453,7 @@ signature:
 
     It converts the python function to a callable object that takes as
     inputs Theano variables that were declared.
+
 
 as_op Example
 -------------
