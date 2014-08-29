@@ -7,8 +7,8 @@ from theano import tensor
 from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
-from theano.sandbox.cuda import as_cuda_ndarray_variable
-from theano.sandbox.cuda.basic_ops import gpu_contiguous
+from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
+                                           gpu_contiguous)
 
 
 class GpuDot22(GpuOp):
