@@ -105,12 +105,13 @@ computations.  This is useful if you want to generate code and compile
 it yourself. For example, this allows you to use PyCUDA to compile GPU
 code.
 
-The :attr:`__props__` attribute serves to make Op generate an appropriate
-:func:`__eq__` and :func:`__hash__` for your Op.  It must be a tuple
-that lists the properties that influence how the computation is
-performed (Ususally these are those that you set in
+The :attr:`__props__` attribute serves to make Op generate an
+appropriate :func:`__eq__` and :func:`__hash__` for your Op.  It must
+be a tuple that lists the properties that influence how the
+computation is performed (Ususally these are those that you set in
 :func:`__init__`). If you don't have any properties, then you should
-set this attribute to the emtpy tuple `()`.
+set this attribute to the emtpy tuple `()`.  This requires development
+version after September 1st, 2014 or version 0.7.
 
 :func:`__eq__` and :func:`__hash__` will be used by the optimization
 phase to merge nodes that are doing a equivalent compuation (same
@@ -150,7 +151,10 @@ Op Example
 
     class DoubleOp(theano.Op):
         __props__ = ()
+
         def make_node(self, x):
+            # check that the theano version has support for __props__
+            assert hasattr(self, '_props')
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
 

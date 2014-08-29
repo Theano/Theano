@@ -36,9 +36,9 @@ define the following methods.
   This method computes the function associated to this Op. ``node`` is
   an Apply node created by the Op's ``make_node`` method. ``inputs``
   is a list of references to data to operate on using non-symbolic
-  statements, (i.e., statements in Python, Numpy and C
-  languages). ``output_storage`` is a list of storage cells where the
-  variables of the computation must be put.
+  statements, (i.e., statements in Python, Numpy). ``output_storage``
+  is a list of storage cells where the variables of the computation
+  must be put.
 
   More specifically:
 
@@ -125,6 +125,8 @@ Optional methods or attributes
   Should be set to `()` if you have no attributes that are relevant to
   the computation to generate the methods.
 
+  .. versionadded:: 0.7
+
 .. attribute:: default_output
 
   *Default:* None
@@ -133,7 +135,8 @@ Optional methods or attributes
   implementation of ``__call__`` will return
   ``node.outputs[self.default_output]``, where ``node`` was returned
   by ``make_node``.  Otherwise, the entire list of outputs will be
-  returned.
+  returned, unless it is of length 1, where the single element will be
+  returned by itself.
 
 .. function:: make_thunk(node, storage_map, compute_map, no_recycling)
 
@@ -160,20 +163,22 @@ Optional methods or attributes
    The returned function must ensure that is sets the computed
    variables as computed in the `compute_map`.
 
-   If you make your op class inherit from :class:`gof.Op`, then you
-   can use the much easier :ref:`perform_meth` method below.
+   Defining this function removes the requirement for :meth:`perform`
+   or C code, as you will define the thunk for the computation
+   yourself.
 
 .. function:: __call__(*inputs, **kwargs)
 
-   By default this is a convinience function which calls
+   By default this is a convenience function which calls
    :meth:`make_node` with the supplied arguments and returns the
    result indexed by `default_output`.  This can be overridden by
-   subclasses to do anything else, but must return an Apply node
-   representing the computation to be performed.
+   subclasses to do anything else, but must return either a theano
+   Variable or a list of Variables.
 
-   In cases where the returned graph may differ based on the arguments
-   or their types, it is recommended to create a helper function
-   rather than overriding `__call__` on an Op.
+   If you feel the need to override `__call__` to change the graph
+   based on the arguments, you should instead create a function that
+   will use your Op and build the graphs that you want and call that
+   instead of the Op instance directly.
 
 .. function:: infer_shape(node, shapes)
 
@@ -228,7 +233,7 @@ Optional methods or attributes
    As done in the Alloc op, you can return False only in some cases by
    analyzing the graph from the node parameter.
 
-If you want you op to work with gradient.grad() you also need to
+If you want your op to work with gradient.grad() you also need to
 implement the functions described below.
 
 Gradient
@@ -516,12 +521,9 @@ First, we'll instantiate a ``mul`` Op:
 
 This function must take as many arguments as the operation we are
 defining is supposed to take as inputs---in this example that would be
-two.
-This function ensures that both inputs have the ``double``
-type.
-Since multiplying two doubles yields a double,
-this function makes an Apply node with an output Variable of type
-``double``.
+two.  This function ensures that both inputs have the ``double`` type.
+Since multiplying two doubles yields a double, this function makes an
+Apply node with an output Variable of type ``double``.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
