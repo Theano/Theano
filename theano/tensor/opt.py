@@ -310,15 +310,14 @@ compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
 
 
 def register_canonicalize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
-
-
-def register_canonicalize_tags(*tags, **kwargs):
-    def register(lopt):
-        return register_canonicalize(lopt, *tags, **kwargs)
-    return register
+    if type(lopt) == str:
+        def register(lopt):
+            return register_canonicalize(lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
                     
 def register_stabilize(lopt, *tags, **kwargs):
@@ -1310,7 +1309,7 @@ def local_track_shape_i(node):
 
 
 @register_specialize
-@register_canonicalize_tags('gpu')
+@register_canonicalize('gpu')
 @gof.local_optimizer([Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
@@ -1360,7 +1359,7 @@ def local_subtensor_make_vector(node):
 
 #TODO: the other optimization for and, or, xor, le and ge see ticket #496.
 
-@register_canonicalize_tags('fast_compile')
+@register_canonicalize('fast_compile')
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
 def local_useless_elemwise(node):
@@ -3513,7 +3512,7 @@ def local_reduce_join(node):
         #else the reduction do something about the dtype.
 
 
-@register_canonicalize_tags('fast_compile')
+@register_canonicalize('fast_compile')
 @gof.local_optimizer(ALL_REDUCE)
 def local_cut_useless_reduce(node):
     """Sum(a, axis=[]) -> a  """
