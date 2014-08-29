@@ -1,6 +1,6 @@
 ..  ../../../../theano/sandbox/slinalg.py
 
-.. _libdoc_linalg:
+.. _libdoc_slinalg:
 
 ===================================================================
 :mod:`tensor.slinalg` --  Linear Algebra Ops Using Scipy
