@@ -650,7 +650,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         self._op_use_c_code = use_c_code
 
     def _props(self):
-        return (getattr(self, a) for a in self.__props__)
+        return tuple(getattr(self, a) for a in self.__props__)
 
     def __hash__(self):
         if hasattr(self, '__props__'):
