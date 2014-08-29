@@ -496,20 +496,35 @@ def qr(a, mode="full"):
     Factor the matrix a as qr, where q
     is orthonormal and r is upper-triangular.
 
-    Parameters :
-    ------------
-
-    a : array_like, shape (M, N)
+    :type a:
+        array_like, shape (M, N)
+    :param a:
         Matrix to be factored.
 
-    mode : {'reduced', 'complete', 'r', 'raw', 'full', 'economic'}, optional
+    :type mode:
+        one of 'reduced', 'complete', 'r', 'raw', 'full' and
+        'economic', optional
+    :keyword mode:
         If K = min(M, N), then
-        'reduced' : returns q, r with dimensions (M, K), (K, N) (default)
-        'complete' : returns q, r with dimensions (M, M), (M, N)
-        'r' : returns r only with dimensions (K, N)
-        'raw' : returns h, tau with dimensions (N, M), (K,)
-        'full' : alias of 'reduced', deprecated
-        'economic' : returns h from 'raw', deprecated. The options 'reduced',
+
+        'reduced'
+          returns q, r with dimensions (M, K), (K, N)
+
+        'complete'
+           returns q, r with dimensions (M, M), (M, N)
+
+        'r'
+          returns r only with dimensions (K, N)
+
+        'raw'
+          returns h, tau with dimensions (N, M), (K,)
+
+        'full'
+          alias of 'reduced', deprecated (default)
+
+        'economic'
+          returns h from 'raw', deprecated. The options 'reduced',
+
         'complete', and 'raw' are new in numpy 1.8, see the notes for more
         information. The default is 'reduced' and to maintain backward
         compatibility with earlier versions of numpy both it and the old
@@ -518,21 +533,25 @@ def qr(a, mode="full"):
         deprecated. The modes 'full' and 'economic' may be passed using only
         the first letter for backwards compatibility, but all others
         must be spelled out.
+
         Default mode is 'full' which is also default for numpy 1.6.1.
 
-        Note:   Default mode was left to full as full and reduced are both doing
-                the same thing in the new numpy version but only full works on the old
-                previous numpy version.
-    Returns :
-    ---------
-    q : matrix of float or complex, optional
-    A matrix with orthonormal columns. When mode = 'complete'
-    the result is an orthogonal/unitary matrix depending on whether
-    or not a is real/complex. The determinant may be either +/- 1 in that case.
+        :note: Default mode was left to full as full and reduced are
+           both doing the same thing in the new numpy version but only
+           full works on the old previous numpy version.
 
-    r : matrix of float or complex, optional
-    The upper-triangular matrix.
+    :rtype q:
+      matrix of float or complex, optional
+    :return q:
+      A matrix with orthonormal columns. When mode = 'complete' the
+      result is an orthogonal/unitary matrix depending on whether or
+      not a is real/complex. The determinant may be either +/- 1 in
+      that case.
 
+    :rtype r:
+      matrix of float or complex, optional
+    :return r:
+      The upper-triangular matrix.
     """
     x = [[2, 1], [3, 4]]
     if isinstance(numpy.linalg.qr(x,mode), tuple):
@@ -549,8 +568,6 @@ class SVD(Op):
 
     def __init__(self, full_matrices=True, compute_uv=True):
         """
-        inputs :
-        --------
         full_matrices : bool, optional
             If True (default), u and v have the shapes (M, M) and (N, N),
             respectively.
@@ -582,21 +599,18 @@ def svd(a, full_matrices=1, compute_uv=1):
     """
     This function performs the SVD on CPU.
 
-    Parameters :
-    ------------
-
-    full_matrices : bool, optional
+    :type full_matrices: bool, optional
+    :param full_matrices:
         If True (default), u and v have the shapes (M, M) and (N, N),
         respectively.
         Otherwise, the shapes are (M, K) and (K, N), respectively,
         where K = min(M, N).
-    compute_uv : bool, optional
+    :type compute_uv: bool, optional
+    :param compute_uv:
         Whether or not to compute u and v in addition to s.
         True by default.
 
-    Returns :
-    -------
-    U, V and D matrices.
+    :returns: U, V and D matrices.
     """
     return SVD(full_matrices, compute_uv)(a)
 
