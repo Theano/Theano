@@ -128,7 +128,7 @@ class MatrixInverseCholesky(Op):
            of ``solve_cholesky``. Inverting matrices is almost always a bad 
            idea -- always multiply them to another term to use a linear solve.
     """
-    __props__ = ()
+    __props__ = ("lower",)
 
     def __init__(self, lower=True):
         self.lower = lower
