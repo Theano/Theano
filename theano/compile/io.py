@@ -79,6 +79,7 @@ class SymbolicInput(object):
         return str(self)
 
 
+# TODO: FB: I think this isn't used, confirm this and remove.
 class SymbolicInputKit(object):
     """
     Represents a group ("kit") of SymbolicInputs. If fed into function or
