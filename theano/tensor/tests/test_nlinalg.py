@@ -504,8 +504,6 @@ class T_NormTests(unittest.TestCase):
 
 class test_MatrixInverseCholesky(unittest.TestCase):
     def setUp(self):
-        import scipy as sp
-        
         super(test_MatrixInverseCholesky, self).setUp()
         self.op_class = MatrixInverseCholesky
         self.op = MatrixInverseCholesky(lower = True)
@@ -520,39 +518,27 @@ class test_MatrixInverseCholesky(unittest.TestCase):
         self.A_mat = numpy.asarray(self.rng.rand(self.dim, self.dim), dtype=self.dtype)
         self.A_mat = self.A_mat.T.dot(self.A_mat)
         self.B_mat = numpy.asarray(self.rng.rand(self.dim, self.B_cols), dtype=self.dtype)
-        self.L_mat = sp.linalg.cholesky(self.A_mat, lower=True)
+        self.L_mat = scipy.linalg.cholesky(self.A_mat, lower=True)
 
     def test_shape_plain_inversion(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-        
         f = function([self.L], self.op(self.L))
         A_inv = f(self.L_mat)
         
         assert A_inv.shape == self.A_mat.shape
 
     def test_shape_dot_right(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-        
         f = function([self.L, self.B], self.op(self.L).dot(self.B))
         A_inv_b = f(self.L_mat, self.B_mat)
         
         assert A_inv_b.shape == (self.dim, self.B_cols)
 
     def test_shape_dot_left(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-        
         f = function([self.L, self.B], self.B.T.dot(self.op(self.L)))
         b_A_inv = f(self.L_mat, self.B_mat)
         
         assert b_A_inv.shape == (self.B_cols, self.dim)
 
     def test_plain_inversion_lower(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-        
         f = function([self.L], self.op(self.L))
         A_inv = f(self.L_mat)
         A_inv_ref = numpy.linalg.inv(self.A_mat)
@@ -560,9 +546,6 @@ class test_MatrixInverseCholesky(unittest.TestCase):
         assert numpy.allclose(A_inv, A_inv_ref)
 
     def test_plain_inversion_upper(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-        
         f = function([self.L], MatrixInverseCholesky(lower=False)(self.L))
         A_inv = f(self.L_mat.T)
         A_inv_ref = numpy.linalg.inv(self.A_mat)
@@ -571,7 +554,7 @@ class test_MatrixInverseCholesky(unittest.TestCase):
 
     def test_dot_right_lower(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
+            raise SkipTest("Scipy needed for the cho_solve comparison.")
          
         f = function([self.L, self.B], self.op(self.L).dot(self.B))
         A_inv_B = f(self.L_mat, self.B_mat)
@@ -582,7 +565,7 @@ class test_MatrixInverseCholesky(unittest.TestCase):
  
     def test_dot_right_upper(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
+            raise SkipTest("Scipy needed for the cho_solve comparison.")
          
         lower = False
         f = function([self.L, self.B], MatrixInverseCholesky(lower=lower)(self.L).dot(self.B))
@@ -592,27 +575,21 @@ class test_MatrixInverseCholesky(unittest.TestCase):
         assert numpy.allclose(A_inv_B, A_inv_B_ref)
 
     def test_dot_left_lower(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-         
         f = function([self.L, self.B], self.B.dot(self.op(self.L)))
         # B.T to make shapes match
         B_A_inv = f(self.L_mat, self.B_mat.T)
         
         # B.T.T since the B.T from above is transposed due to left multiply
-        B_A_inv_ref = scipy.linalg.solve(self.A_mat.T, self.B_mat.T.T).T
+        B_A_inv_ref = numpy.linalg.solve(self.A_mat.T, self.B_mat.T.T).T
         
         assert numpy.allclose(B_A_inv, B_A_inv_ref)
 
     def test_dot_left_upper(self):
-        if not imported_scipy:
-            raise SkipTest("Scipy needed for the MatrixInverseCholesky op.")
-         
         f = function([self.L, self.B], self.B.dot(MatrixInverseCholesky(lower=False)(self.L)))
         # B.T to make shapes match
         B_A_inv = f(self.L_mat.T, self.B_mat.T)
         
         # B.T.T since the B.T from above is transposed due to left multiply
-        B_A_inv_ref = scipy.linalg.solve(self.A_mat.T, self.B_mat.T.T).T
+        B_A_inv_ref = numpy.linalg.solve(self.A_mat.T, self.B_mat.T.T).T
         
         assert numpy.allclose(B_A_inv, B_A_inv_ref)
