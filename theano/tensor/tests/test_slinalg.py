@@ -17,7 +17,9 @@ from theano.tensor.slinalg import ( Cholesky,
                                     cholesky,
                                     CholeskyGrad,
                                     Solve,
+                                    SolveCholesky,
                                     solve,
+                                    solve_cholesky,
                                     Eigvalsh,
                                     EigvalshGrad,
                                     eigvalsh
@@ -31,7 +33,7 @@ try:
     import scipy.linalg
     imported_scipy = True
 except ImportError:
-    # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
+    # some ops (e.g. Cholesky, Solve, SolveCholesky, A_Xinv_b) won't work
     imported_scipy = False
 
 def check_lower_triangular(pd, ch_f):
@@ -189,3 +191,83 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX)],
                                 self.op_class,
                                 warn=False)
+
+class test_SolveCholesky(utt.InferShapeTester):
+    def setUp(self):
+        import scipy as sp
+        
+        super(test_SolveCholesky, self).setUp()
+        self.op_class = SolveCholesky
+        self.op = SolveCholesky()
+        self.dtype = config.floatX
+        self.A = theano.tensor.matrix(self.dtype)
+        self.L = cholesky(self.A)
+        self.B = theano.tensor.matrix(self.dtype)
+        self.b = theano.tensor.vector(self.dtype)
+        self.dim = 5
+        
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        self.A_mat = numpy.asarray(rng.rand(self.dim, self.dim), dtype=self.dtype)
+        self.A_mat = self.A_mat.T.dot(self.A_mat)
+        self.B_mat = numpy.asarray(rng.rand(self.dim, self.dim), dtype=self.dtype)
+        self.b_vec = numpy.asarray(rng.rand(self.dim), dtype=self.dtype)
+        self.L_mat = sp.linalg.cholesky(self.A_mat, lower=True)
+
+    def test_infer_shape_B_mat(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the SolveCholesky op.")
+        
+        self._compile_and_check([self.A, self.B],  # theano.function inputs
+                                [self.op(self.A, self.B)],  # theano.function outputs
+                                # L must be square
+                                [self.L_mat, self.B_mat,],
+                                self.op_class,
+                                warn=False)
+
+    def test_infer_shape_B_vec(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the SolveCholesky op.")
+        
+        self._compile_and_check([self.A, self.b],  # theano.function inputs
+                                [self.op(self.A, self.b)],  # theano.function outputs
+                                # L must be square
+                                [self.L_mat, self.b_vec,],
+                                self.op_class,
+                                warn=False)
+        
+    def test_mat_vec_lower(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the SolveCholesky op.")
+    
+        f = function([self.L, self.b], solve_cholesky(self.L, self.b))
+    
+        reference = scipy.linalg.cho_solve((self.L_mat, True), self.b_vec)
+        result = f(self.L_mat, self.b_vec)
+        numpy.testing.assert_array_almost_equal(result, reference)
+
+    def test_mat_vec_upper(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the SolveCholesky op.")
+        f = function([self.L, self.b], SolveCholesky(lower=False)(self.L, self.b))
+    
+        reference = scipy.linalg.cho_solve((self.L_mat, False), self.b_vec)
+        result = f(self.L_mat, self.b_vec)
+        numpy.testing.assert_array_almost_equal(result, reference)
+    
+    def test_mat_mat_lower(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the SolveCholesky op.")
+        f = function([self.L, self.B], solve_cholesky(self.L, self.B))
+    
+        reference = scipy.linalg.cho_solve((self.L_mat, True), self.B_mat)
+        result = f(self.L_mat, self.B_mat)
+        numpy.testing.assert_array_almost_equal(result, reference)
+
+    def test_mat_mat_upper(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the SolveCholesky op.")
+        f = function([self.L, self.B], SolveCholesky(lower=False)(self.L, self.B))
+    
+        reference = scipy.linalg.cho_solve((self.L_mat, False), self.B_mat)
+        result = f(self.L_mat, self.B_mat)
+        numpy.testing.assert_array_almost_equal(result, reference)
