@@ -173,6 +173,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     if (bottom->nd != 4)
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires bottom of 4D");
+        return NULL;
     }
     if (!CudaNdarray_is_c_contiguous(bottom))
     {
@@ -183,11 +184,13 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                 CudaNdarray_HOST_STRIDES(bottom)[1],
                 CudaNdarray_HOST_STRIDES(bottom)[2],
                 CudaNdarray_HOST_STRIDES(bottom)[3]);
+        return NULL;
     }
     
     if (weight->nd != 4)
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires weight of 4D");
+        return NULL;
     }
     if (!CudaNdarray_is_c_contiguous(weight))
     {
@@ -198,11 +201,13 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                 CudaNdarray_HOST_STRIDES(weight)[1],
                 CudaNdarray_HOST_STRIDES(weight)[2],
                 CudaNdarray_HOST_STRIDES(weight)[3]);
+        return NULL;
     }
 
     if (top->nd != 4)
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires top of 4D");
+        return NULL;
     }
     if (!CudaNdarray_is_c_contiguous(top))
     {
@@ -213,6 +218,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                 CudaNdarray_HOST_STRIDES(top)[1],
                 CudaNdarray_HOST_STRIDES(top)[2],
                 CudaNdarray_HOST_STRIDES(top)[3]);
+        return NULL;
     }
 
     // Extract some shape information for later and check shape consistency
