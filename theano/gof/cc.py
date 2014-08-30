@@ -535,7 +535,6 @@ class CLinker(link.Linker):
         for variable in self.variables:
 
             # it might be possible to inline constant variables as C literals
-##            if getattr(variable, 'constant', False):
             # policy = [[what to declare in the struct,
             #            what to do at construction,
             #            what to do at destruction],
@@ -545,9 +544,6 @@ class CLinker(link.Linker):
             if variable in self.inputs:
                 # we need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync
-#                 if isinstance(variable, Constant):
-#                     raise TypeError("Inputs to CLinker cannot be Constant.",
-#                                     variable)
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
@@ -619,15 +615,8 @@ class CLinker(link.Linker):
             id += 2
 
         for node_num, node in enumerate(self.node_order):
-
-            # We populate sub with a mapping from the variable names
-            # specified by the op's c_var_names method to the actual
-            # variable names that we will use.
-##            ivnames, ovnames = op.c_var_names()
+            # Why is this here?
             sub = dict(failure_var=failure_var)
-##            for variable, vname in zip(op.inputs + op.outputs,
-##                                       ivnames + ovnames):
-##                sub[vname] = symbol[variable]
 
             # The placeholder will be replaced by a hash of the entire
             # code (module + support code) in DynamicModule.code.
@@ -640,14 +629,14 @@ class CLinker(link.Linker):
             isyms = [symbol[r] for r in node.inputs]
             osyms = [symbol[r] for r in node.outputs]
 
-            # c_validate_update is deprecated
-            if hasattr(node.op, 'c_validate_update'):
-                raise Exception("c_validate_update is deprecated,"
-                                " move contents to c_code", node.op)
-
             # Make the CodeBlock for c_code
             sub['id'] = id
+            sub['struct_id'] = id + 1
             sub['fail'] = failure_code(sub)
+
+            struct_support = ""
+            struct_init = ""
+            struct_cleanup = ""
 
             op = node.op
             # type-specific support code
@@ -661,6 +650,7 @@ class CLinker(link.Linker):
                 assert isinstance(c_support_code_apply[-1], basestring), (
                     str(node.op) +
                     " didn't return a string for c_support_code_apply")
+
             try:
                 c_init_code_apply.append(op.c_init_code_apply(node, name))
             except utils.MethodNotDefined:
@@ -669,6 +659,30 @@ class CLinker(link.Linker):
                 assert isinstance(c_init_code_apply[-1], basestring), (
                     str(node.op) +
                     " didn't return a string for c_init_code_apply")
+
+            try:
+                struct_init = op.c_init_code_struct(node, id + 1)
+                assert isinstance(struct_init, basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_init_code_struct")
+            except utils.MethodNotDefined:
+                pass
+
+            try:
+                struct_support = op.c_support_code_struct(node, id + 1)
+                assert isinstance(struct_support, basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_support_code_struct")
+            except utils.MethodNotDefined:
+                pass
+
+            try:
+                struct_cleanup = op.c_cleanup_code_struct(node, id + 1)
+                assert isinstance(struct_cleanup, basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_cleanup_code_struct")
+            except utils.MethodNotDefined:
+                pass
 
             # emit c_code
             try:
@@ -693,6 +707,12 @@ class CLinker(link.Linker):
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((node, 'code', id))
             id += 1
+
+            init_blocks.append(CodeBlock(struct_support, struct_init,
+                                         struct_cleanup, {'id': id}))
+            init_tasks.append((node, 'init', id))
+            id += 1
+
 
         # List of arg names for use in struct_gen. Note the call to
         # uniq: duplicate inputs must only be passed once because they
@@ -959,7 +979,8 @@ class CLinker(link.Linker):
             id += 2
         for node in self.node_order:
             tasks.append((node, 'code', id))
-            id += 1
+            init_tasks.append((node, 'init', id + 1))
+            id += 2
         return init_tasks, tasks
 
     def make_thunk(self, input_storage=None, output_storage=None,

@@ -63,6 +63,10 @@ class HideC(object):
     c_init_code = __hide
     c_init_code_apply = __hide
 
+    c_init_code_struct = __hide
+    c_support_code_struct = __hide
+    c_cleanup_code_struct = __hide
+
     def c_code_cache_version(self):
         return ()
 
