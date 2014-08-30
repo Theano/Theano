@@ -1391,10 +1391,10 @@ def local_conv_gemm(node):
                     prod2 *= node.op.imshp[0]
                 # compare to decide
                 if prod1 > prod2:
-                    return [gpu_contiguous(GpuCorrMM_gradWeights('valid', subsample, pad)(
+                    return [GpuCorrMM_gradWeights('valid', subsample, pad)(
                             gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                             gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
-                            ).dimshuffle(1, 0, 2, 3))]
+                            ).dimshuffle(1, 0, 2, 3)]
             # use GpuCorrMM if we did not choose GpuCorrMM_gradWeights above
             return [GpuCorrMM('valid', subsample, pad)(
                     gpu_contiguous(img), gpu_contiguous(kern))]
