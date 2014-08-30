@@ -1690,6 +1690,48 @@ def local_upcast_elemwise_constant_inputs(node):
 
 @register_canonicalize
 @register_specialize
+@gof.local_optimizer([IncSubtensor])
+def local_useless_inc_subtensor(node):
+    """Remove IncSubtensor, when we overwrite the full inputs with the
+    new value.
+
+    """
+    if not isinstance(node.op, IncSubtensor):
+        return
+    if node.op.set_instead_of_inc is False:
+        # This is an IncSubtensor, so the init value must be zeros
+        try:
+            c = get_scalar_constant_value(node.inputs[0])
+            if c != 0:
+                return
+        except NotScalarConstantError:
+            return
+    if (node.inputs[0].ndim != node.inputs[1].ndim or
+        node.inputs[0].broadcastable != node.inputs[1].broadcastable):
+        # FB: I didn't check if this case can happen, but this opt
+        # don't support it.
+        return
+    # We have a SetSubtensor or an IncSubtensor on zeros
+    # If is this IncSubtensor useful?
+
+    # Check that we keep all the original data.
+    if all(isinstance(e, slice) and e.start is None and
+           e.stop is None and e.step is None
+           for e in node.op.idx_list):
+        assert len(node.inputs) == 2
+        # IncSubtensor broadcast node.inputs[1] on node.inputs[0]
+        # based on run time shapes, so we must check they are the same.
+        if not hasattr(node.fgraph, 'shape_feature'):
+            return
+        if not node.fgraph.shape_feature.same_shape(node.inputs[0],
+                                                    node.inputs[1]):
+            return
+        # They are the same shape, so we can remore this IncSubtensor
+        return node.inputs[1]
+
+
+@register_canonicalize
+@register_specialize
 @gof.local_optimizer([Subtensor])
 def local_useless_subtensor(node):
     """

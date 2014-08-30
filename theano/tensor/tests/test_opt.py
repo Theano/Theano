@@ -1571,6 +1571,41 @@ def test_log_add():
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 
+def test_local_useless_inc_subtensor():
+    x = tensor.matrix('x')
+    y = tensor.matrix('y')
+    o = tensor.set_subtensor(x[::, ::], y)
+    o_shape = tensor.set_subtensor(x[::, ::],
+                                   tensor.specify_shape(y, x.shape))
+    f_shape = theano.function([x, y], o_shape)
+    f = theano.function([x, y], o)
+
+    # Test with shape info
+    topo = f_shape.maker.fgraph.toposort()
+    assert len(topo) == 5, topo
+    assert not isinstance(topo[-1].op, tensor.IncSubtensor)
+    out = f_shape([[2, 3]], [[3, 4]])
+    assert (out == [[3, 4]]).all()
+
+    # Test that without shape info, we don't apply the opt.
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, tensor.IncSubtensor)
+    out = f([[2, 3]], [[3, 4]])
+    assert (out == [[3, 4]]).all()
+
+    # Test that we don't remove shape error
+    try:
+        f([[2, 3]], [[3, 4], [4, 5]])
+        assert False
+    except (ValueError, AssertionError):
+        pass
+
+    # Test that we don't remove broadcastability
+    out = f([[2, 3], [3, 4]], [[5, 6]])
+    assert (out == [[5, 6], [5, 6]]).all()
+
+
 def test_local_useless_subtensor():
     x = tensor.matrix('x')
 
