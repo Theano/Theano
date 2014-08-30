@@ -791,6 +791,8 @@ class GpuCorrMM(BaseGpuCorrMM):
         shapes. So if you have a Tesla K20, Tesla K40, Quadro K6000, GeForce GT
         640 (DDR5), GeForce GTX 780 (or Ti), GeForce GTX TITAN (or Black or Z)
         and experience a crash, switching to CUDA 6.5 or CUDA 4.2 should fix it.
+        If this is not possible, changing the input or filter shapes (e.g., the
+        batchsize or number of filters) may also work around the CUBLAS bug.
     """
     def __init__(self, border_mode="valid",
             subsample=(1, 1),
