@@ -805,8 +805,8 @@ class ConvOp(OpenMPOp):
                 shuffled_kerns.name = 'shuffled_for_conv3D(%s)' % flipped_kerns.name
 
             tmp_node = theano.tensor.nnet.conv3D(
-                V = shuffled_inputs,
-                W= shuffled_kerns,
+                V=shuffled_inputs,
+                W=shuffled_kerns,
                 b=theano.tensor.alloc(numpy.asarray(0, dtype=kerns.dtype),
                                       kerns.shape[0]),
                 d=(self.dx, self.dy, 1))
