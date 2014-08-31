@@ -71,6 +71,7 @@ class MatrixInverse(Op):
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z, )):
+        logger.warning("MatrixInverse: Doing explicit matrix inversion (almost always bad!)")
         z[0] = numpy.linalg.inv(x).astype(x.dtype)
 
     def grad(self, inputs, g_outputs):
@@ -143,7 +144,8 @@ class MatrixInverseCholesky(Op):
             A = x.dot(x.T)
         else:
             A = x.T.dot(x)
-            
+        
+        logger.warning("MatrixInverseCholesky: Doing explicit matrix inversion (almost always bad!)")
         z[0] = numpy.linalg.inv(A).astype(x.dtype)
 
 matrix_inverse_cholesky = MatrixInverseCholesky()
