@@ -25,7 +25,8 @@ from theano.sandbox.cuda.basic_ops import (
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv, GpuCorrMM)
+        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
+        GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -1121,6 +1122,8 @@ def local_gpu_conv(node):
                     version=op.version,
                     verbose=op.verbose,
                     imshp=op.imshp,
+                    nkern=op.nkern,
+                    bsize=op.bsize,
                     fft_opt=op.fft_opt
                     )
         if op.imshp_logical is not None:
@@ -1206,15 +1209,25 @@ def _gpu_conv_to_fftconv(node):
         node.op.imshp[-1] is not None and
         node.op.imshp[-1] % 2 == 1):
         kwargs['pad_last_dim'] = True
-    # TODO: If the user supplied the full nonsymbolic image_shape and
-    # filter_shape in conv2d(), we could pass it on to conv2d_fft(). However,
-    # information on batch size and channel counts is currently discarded
-    # when a ConvOp is replaced by a GpuConv, so this would need more changes.
-    #if (node.op.imshp is not None) and (None not in node.op.imshp):
-    #    kwargs['image_shape'] = (bsize, inchannels) + node.op.imshp
-    #if (node.op.kshp is not None) and (None not in node.op.kshp):
-    #    kwargs['filter_shape'] = (outchannels, inchannels) + node.op.kshp
-    return conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
+    # If the user supplied the full nonsymbolic image_shape and
+    # filter_shape in conv2d(), we can pass it on to conv2d_fft().
+    if ((node.op.imshp is not None) and
+            (len(node.op.imshp) == 3) and
+            (None not in node.op.imshp) and
+            (node.op.bsize is not None)):
+        kwargs['image_shape'] = (node.op.bsize,) + node.op.imshp
+    if ((node.op.kshp is not None) and
+            (None not in node.op.kshp) and
+            (node.op.nkern is not None) and
+            (len(node.op.imshp) == 3) and
+            (node.op.imshp[0] is not None)):
+        kwargs['filter_shape'] = (node.op.nkern, node.op.imshp[0]) + node.op.kshp
+    rval = conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
+    if ('image_shape' in kwargs) or ('filter_shape' in kwargs):
+        # With given shape information, conv2d_fft may return a different
+        # broadcast pattern than GpuConv. This is forbidden, so we fix it.
+        rval = tensor.patternbroadcast(rval, node.outputs[0].type.broadcastable)
+    return rval
 
 
 @local_optimizer([GpuConv])
@@ -1351,10 +1364,55 @@ def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
         node.op.border_mode in ['full', 'valid']):
         img, kern = node.inputs
-        img = gpu_contiguous(img)
-        kern = kern[:, :, ::-1, ::-1]
-        kern = gpu_contiguous(kern)
-        return [GpuCorrMM(node.op.border_mode, node.op.subsample)(img, kern)]
+        border_mode = node.op.border_mode
+        subsample = node.op.subsample
+        pad = (0,0)
+        if (border_mode == 'full') and (subsample != (1,1)):
+            # need to simulate this via a padded valid convolution
+            pad = 'full'
+            border_mode = 'valid'
+        if (border_mode == 'valid'):
+            # need to flip the kernel for valid convolution
+            kern = kern[:, :, ::-1, ::-1]
+            # call GpuCorrMM or GpuCorrMM_gradWeights
+            # (the latter is faster if batchsize * kernelHeight * kernelWidth
+            # is larger than inputChannels * outputHeight * outputWidth.
+            # GpuConv does not always store information on the batchsize and
+            # channels, though, so we only use what information we have.)
+            if ((subsample == (1,1)) and
+                    (node.op.imshp is not None) and
+                    (None not in node.op.imshp[-2:]) and
+                    (node.op.kshp is not None) and
+                    (None not in node.op.kshp)):
+                # we know the kernel and output size
+                prod1 = node.op.kshp[0] * node.op.kshp[1]
+                prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
+                    (node.op.imshp[-1] - node.op.kshp[1] + 1))
+                if ((node.op.bsize is not None) and
+                        (len(node.op.imshp) == 3) and
+                        (node.op.imshp[0] is not None)):
+                    # we also know batchsize and input channels
+                    prod1 *= node.op.bsize
+                    prod2 *= node.op.imshp[0]
+                # compare to decide
+                if prod1 > prod2:
+                    # (we need to wrap the result in as_cuda_ndarray_variable,
+                    # because we are not allowed to replace a CudaNdarray with
+                    # a DimShuffle instance in a graph optimization)
+                    return [theano.sandbox.cuda.as_cuda_ndarray_variable(
+                            GpuCorrMM_gradWeights('valid', subsample, pad)(
+                            gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
+                            gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
+                            ).dimshuffle(1, 0, 2, 3))]
+            # use GpuCorrMM if we did not choose GpuCorrMM_gradWeights above
+            return [GpuCorrMM('valid', subsample, pad)(
+                    gpu_contiguous(img), gpu_contiguous(kern))]
+        elif (border_mode == 'full'):
+            # need to dimshuffle the kernel for full convolution
+            kern = kern.dimshuffle(1, 0, 2, 3)
+            # call GpuCorrMM_gradInputs
+            return [GpuCorrMM_gradInputs('valid', subsample, pad)(
+                    gpu_contiguous(kern), gpu_contiguous(img))]
 
 gpu_optimizer.register("conv_gemm", local_conv_gemm)
 

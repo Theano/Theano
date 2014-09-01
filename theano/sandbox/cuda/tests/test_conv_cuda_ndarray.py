@@ -186,7 +186,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         f = theano.function([i, k], op, mode=theano_mode)
         if cls is not None:
             assert any([isinstance(node.op, cls)
-                        for node in f.maker.fgraph.toposort()]), f.maker.fgraph.toposort()
+                        for node in f.maker.fgraph.toposort()]), "Cannot find class %r in %r" % (cls, f.maker.fgraph.toposort())
         gpuval = f(img, kern)
         t2 = time.time()
         for i in range(nb_iter):
@@ -284,7 +284,7 @@ def exec_conv(version, shapes, verbose, random, mode,
                         cls=cls)
             except Exception, e:
                 print ver, id, (ishape, kshape, subshape, istride, kstride)
-                print e
+                print "Exception", type(e), e
                 pass
             if not ret:
                 failed_version.add(ver)
@@ -634,7 +634,7 @@ def test_valid(conv_gemm=False):
     if conv_gemm:
         # Test the GpuCorrMM version
         mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.GpuCorrMM
+        cls = cuda.blas.BaseGpuCorrMM
         # dummy version; not used by GpuCorrMM so one version is enough
         version = [-1]
         # Add tests with strided inputs by still square images and filters.
@@ -713,7 +713,7 @@ def test_full(conv_gemm=False):
     if conv_gemm:
         # Test the GpuCorrMM version
         mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.GpuCorrMM
+        cls = cuda.blas.BaseGpuCorrMM
         # dummy version; not used by GpuCorrMM so one version is enough
         version = [-1]
     else:
@@ -753,7 +753,7 @@ def test_subsample(conv_gemm=False):
     if conv_gemm:
         # Test the GpuCorrMM version
         mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.GpuCorrMM
+        cls = cuda.blas.BaseGpuCorrMM
         # dummy version; not used by GpuCorrMM so one version is enough
         version_valid = version_full = [-1]
     else:
@@ -842,14 +842,9 @@ class TestConv2DGPU(unittest.TestCase):
             theano_mode = theano_mode_orig
 
 
-
 def test_gemm_directly():
-    """
-    input: (batch size, channels, rows, columns)
-    filters: (number of filters, channels, rows, columns)
-    """
-    for mode in ['full', 'valid']:
-        print 'Testing mode: ' + mode
+    for direction in ['fprop', 'bprop img', 'bprop kern']:
+        print 'Testing direction: ' + direction
         for bs in range(1, 5):
             for ch in range(1,4):
                 for nf in range(1,4):
@@ -857,35 +852,119 @@ def test_gemm_directly():
                         for rImg2 in range(5, 9):
                             for rFlt1 in range(2, 4):
                                 for rFlt2 in range(2, 4):
-                                    for subsx in range(1, 3):
-                                        for subsy in range(1, 3):
+                                    for subsx in range(1, 3) if direction == 'fprop' else [1]:
+                                        for subsy in range(1, 3) if direction == 'fprop' else [1]:
                                             ishape = (bs, ch, rImg1, rImg2)
                                             kshape = (nf, ch, rFlt1, rFlt2)
-                                            print "ishape: ", ishape
-                                            print "kshape: ", kshape 
                                             subsample = (subsx, subsy)
-                                            print "subsample: ", subsample 
-                                        
+
                                             npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
                                             npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
-                                        
+
                                             i = cuda_tensor4()
                                             k = cuda_tensor4()
-                                        
-                                            cpuval = py_conv(npy_img, npy_kern, mode, subsample)
-                                        
-                                            op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=mode, \
-                                                    subsample=subsample)(i, k)
-                                            f = theano.function([i, k], op, mode=theano_mode)
-                                        
-                                            npy_kern = npy_kern[:,:,::-1,::-1]
-                                            
-                                            gpuval = f(npy_img, npy_kern)
-                                            
-                                            gpuval = numpy.asarray(gpuval)
-                                            rval = numpy.allclose(cpuval, gpuval, rtol=1e-4)
-                                            assert (rval == True)
-                                            print 'Test Passed'
+
+                                            if direction == 'fprop':
+                                                cpuval = py_conv(npy_img, npy_kern, 'valid', subsample)
+                                                op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode='valid',
+                                                        subsample=subsample)(i, k)
+                                                f = theano.function([i, k], op, mode=theano_mode)
+                                                gpuval = f(npy_img, npy_kern[:,:,::-1,::-1])
+                                            elif direction == 'bprop img':
+                                                cpuval = py_conv(npy_img, npy_kern, 'full', subsample)
+                                                op = theano.sandbox.cuda.blas.GpuCorrMM_gradInputs(border_mode='valid',
+                                                        subsample=subsample)(i, k)
+                                                f = theano.function([i, k], op, mode=theano_mode)
+                                                gpuval = f(npy_kern.transpose(1, 0, 2, 3), npy_img)
+                                            elif direction == 'bprop kern':
+                                                cpuval = py_conv(npy_img, npy_kern, 'valid', subsample)
+                                                op = theano.sandbox.cuda.blas.GpuCorrMM_gradWeights(border_mode='valid',
+                                                        subsample=subsample)(i, k)
+                                                f = theano.function([i, k], op, mode=theano_mode)
+                                                gpuval = numpy.array(f(npy_img.transpose(1, 0, 2, 3),
+                                                        npy_kern.transpose(1, 0, 2, 3)[:,:,::-1,::-1])).transpose(1, 0, 2, 3)
+
+                                            if not numpy.allclose(cpuval, gpuval, rtol=1e-4):
+                                                print "Test failed for"
+                                                print "direction: ", direction
+                                                print "ishape: ", ishape
+                                                print "kshape: ", kshape
+                                                print "subsample: ", subsample
+                                                assert False
+
+
+def test_gemm_grads():
+    for mode in 'valid', 'full':
+        for bs in [1, 5]:
+            for ch in [4]:
+                for nf in [3]:
+                    for rImg1 in [2, 5]:
+                        for rImg2 in [2, 8]:
+                            for rFlt1 in [1, 2]:
+                                for rFlt2 in [1, 2]:
+                                    for subsx in [1, 2]:
+                                        for subsy in [1, 2] if subsx == 1 else [2]:
+                                            ishape = (bs, ch, rImg1, rImg2)
+                                            kshape = (nf, ch, rFlt1, rFlt2)
+                                            subsample = (subsx, subsy)
+
+                                            npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
+                                            npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+
+                                            i = cuda_tensor4()
+                                            k = cuda_tensor4()
+
+                                            pad = 'full' if mode == 'full' else (0, 0)
+                                            # TODO: also test custom pad values
+                                            corr_op = theano.sandbox.cuda.blas.GpuCorrMM(
+                                                    'valid', subsample, pad)(i, k)
+                                            # try to compile reference implementation without shape,
+                                            # so we don't have to compile hundreds of versions
+                                            conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
+                                                    border_mode=mode, subsample=subsample)
+                                            try:
+                                                conv_op_di = theano.grad(conv_op.sum(), i)
+                                                conv_op_dk = theano.grad(conv_op.sum(), k)
+                                            except Exception:
+                                                # compile with shape information only when needed
+                                                conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
+                                                        ishape, kshape, mode, subsample)
+                                                conv_op_di = theano.grad(conv_op.sum(), i)
+                                                conv_op_dk = theano.grad(conv_op.sum(), k)
+                                            corr_op_di = theano.grad(corr_op.sum(), i)
+                                            corr_op_dk = theano.grad(corr_op.sum(), k)
+                                            outputs = [corr_op, conv_op,
+                                                    corr_op_di, conv_op_di,
+                                                    corr_op_dk, conv_op_dk]
+                                            try:
+                                                conv_op_dik = theano.grad(conv_op_di.sum(), k)
+                                                conv_op_dki = theano.grad(conv_op_dk.sum(), i)
+                                            except Exception:
+                                                # skip if the reference implementation can't do it
+                                                print ".",
+                                            else:
+                                                corr_op_dik = theano.grad(corr_op_di.sum(), k)
+                                                corr_op_dki = theano.grad(corr_op_dk.sum(), i)
+                                                outputs.extend([corr_op_dik, conv_op_dik,
+                                                        corr_op_dki, conv_op_dki])
+                                                print ":",
+
+                                            f = theano.function([i, k], outputs, mode=theano_mode)
+
+                                            allvals = f(npy_img, npy_kern)
+
+                                            for a, b, p in zip(allvals[::2], allvals[1::2],
+                                                    ('top', 'dtop/dbottom', 'dtop/dweight',
+                                                    'dtop/dbottom/dweight', 'dtop/dweight/dbottom')):
+                                                if (a.shape != b.shape) or not numpy.allclose(a, b, rtol=1e-4):
+                                                    print "Test failed for", p
+                                                    print "mode: ", mode
+                                                    print "ishape: ", ishape
+                                                    print "kshape: ", kshape
+                                                    print "subsample: ", subsample
+                                                    assert False
+                                            sys.stdout.flush()
+
 
 def benchmark():
 
