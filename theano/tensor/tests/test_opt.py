@@ -1574,36 +1574,48 @@ def test_log_add():
 def test_local_useless_inc_subtensor():
     x = tensor.matrix('x')
     y = tensor.matrix('y')
-    o = tensor.set_subtensor(x[::, ::], y)
-    o_shape = tensor.set_subtensor(x[::, ::],
-                                   tensor.specify_shape(y, x.shape))
+    for sub in [slice(None), slice(None, None, -1)]:
+        o = tensor.set_subtensor(x[::, sub], y)
+        f = theano.function([x, y], o)
+        o_shape = tensor.set_subtensor(x[::, sub],
+                                       tensor.specify_shape(y, x.shape))
+        f_shape = theano.function([x, y], o_shape)
+
+        # Test with shape info
+        topo = f_shape.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
+        out = f_shape([[2, 3]], [[3, 4]])
+        assert (out == numpy.asarray([[3, 4]])[::, sub]).all()
+
+        # Test that without shape info, we don't apply the opt.
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, tensor.IncSubtensor)
+        out = f([[2, 3]], [[3, 4]])
+        assert (out == numpy.asarray([[3, 4]])[::, sub]).all()
+
+        # Test that we don't remove shape error
+        try:
+            f([[2, 3]], [[3, 4], [4, 5]])
+            assert False
+        except (ValueError, AssertionError):
+            pass
+
+        # Test that we don't remove broadcastability
+        out = f([[2, 3], [3, 4]], [[5, 6]])
+        assert (out == numpy.asarray([[5, 6], [5, 6]])[::, sub]).all()
+
+    # Test that we do not optimize others strides even when sub and y
+    # have same shapes
+    sub = x[::, ::2]
+    o_shape = tensor.set_subtensor(sub,
+                                   tensor.specify_shape(y, sub.shape))
     f_shape = theano.function([x, y], o_shape)
-    f = theano.function([x, y], o)
-
-    # Test with shape info
     topo = f_shape.maker.fgraph.toposort()
-    assert len(topo) == 5, topo
-    assert not isinstance(topo[-1].op, tensor.IncSubtensor)
-    out = f_shape([[2, 3]], [[3, 4]])
-    assert (out == [[3, 4]]).all()
-
-    # Test that without shape info, we don't apply the opt.
-    topo = f.maker.fgraph.toposort()
-    assert len(topo) == 1
-    assert isinstance(topo[0].op, tensor.IncSubtensor)
-    out = f([[2, 3]], [[3, 4]])
-    assert (out == [[3, 4]]).all()
-
-    # Test that we don't remove shape error
-    try:
-        f([[2, 3]], [[3, 4], [4, 5]])
-        assert False
-    except (ValueError, AssertionError):
-        pass
-
-    # Test that we don't remove broadcastability
-    out = f([[2, 3], [3, 4]], [[5, 6]])
-    assert (out == [[5, 6], [5, 6]]).all()
+    theano.printing.debugprint(f_shape)
+    assert any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
+    out = f_shape([[2, 3, 6, 7]], [[8, 9]])
+    assert (out == numpy.asarray([[8, 3, 9, 7]])).all()
 
 
 def test_local_useless_subtensor():

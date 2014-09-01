@@ -1715,10 +1715,12 @@ def local_useless_inc_subtensor(node):
     # If is this IncSubtensor useful?
 
     # Check that we keep all the original data.
+    # Put the constant inputs in the slice.
+    idx_cst = theano.tensor.subtensor.get_idx_list(node.inputs[1:],
+                                                   node.op.idx_list)
     if all(isinstance(e, slice) and e.start is None and
-           e.stop is None and e.step is None
-           for e in node.op.idx_list):
-        assert len(node.inputs) == 2
+           e.stop is None and (e.step is None or T.extract_constant(e.step) == -1)
+           for e in idx_cst):
         # IncSubtensor broadcast node.inputs[1] on node.inputs[0]
         # based on run time shapes, so we must check they are the same.
         if not hasattr(node.fgraph, 'shape_feature'):
@@ -1726,8 +1728,12 @@ def local_useless_inc_subtensor(node):
         if not node.fgraph.shape_feature.same_shape(node.inputs[0],
                                                     node.inputs[1]):
             return
-        # They are the same shape, so we can remore this IncSubtensor
-        return node.inputs[1]
+        # There is no reverse, so we don't need a replacement.
+        if all(e.step is None
+               for e in node.op.idx_list):
+            # They are the same shape, so we can remore this IncSubtensor
+            return [node.inputs[1]]
+        return [Subtensor(node.op.idx_list)(*node.inputs[1:])]
 
 
 @register_canonicalize
