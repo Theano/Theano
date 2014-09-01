@@ -1222,7 +1222,12 @@ def _gpu_conv_to_fftconv(node):
             (len(node.op.imshp) == 3) and
             (node.op.imshp[0] is not None)):
         kwargs['filter_shape'] = (node.op.nkern, node.op.imshp[0]) + node.op.kshp
-    return conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
+    rval = conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
+    if ('image_shape' in kwargs) or ('filter_shape' in kwargs):
+        # With given shape information, conv2d_fft may return a different
+        # broadcast pattern than GpuConv. This is forbidden, so we fix it.
+        rval = tensor.patternbroadcast(rval, node.outputs[0].type.broadcastable)
+    return rval
 
 
 @local_optimizer([GpuConv])
