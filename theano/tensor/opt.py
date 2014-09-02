@@ -3462,11 +3462,17 @@ ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.Sum, T.elemwise.Prod,
               T.elemwise.ProdWithoutZeros]
 
+
 @register_canonicalize
 @register_uncanonicalize  # Needed for MaxAndArgmax -> CAReduce
 @gof.local_optimizer(ALL_REDUCE)
 def local_reduce_join(node):
-    """Max(Join(a,b), axis=0) -> Maximum(a,b)  """
+    """Reduce{scalar.op}(Join(a, b), axis=0) -> Elemwise{scalar.op}(a, b)
+
+    :note: supported scalar.op are Maximum, Mimimum in some cases and
+    Add and Mul in all cases.
+
+    """
     if (isinstance(node.op, T.CAReduce) and
         node.inputs[0].owner and
         isinstance(node.inputs[0].owner.op, T.Join)):
@@ -3480,6 +3486,9 @@ def local_reduce_join(node):
             if len(join.inputs) != 3:
                 return
         elif not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul)):
+            return
+        elif len(join.inputs) <= 2:
+            # This is a useless join, that will get removed by another opt.
             return
 
         new_inp = []
