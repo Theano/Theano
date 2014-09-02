@@ -110,7 +110,8 @@ appropriate :func:`__eq__` and :func:`__hash__` for your Op.  It must
 be a tuple that lists the properties that influence how the
 computation is performed (Ususally these are those that you set in
 :func:`__init__`). If you don't have any properties, then you should
-set this attribute to the emtpy tuple `()`.  This requires development
+set this attribute to the emtpy tuple `()`. It will also generate a
+suitable :func:`__str__` for your op. This requires development
 version after September 1st, 2014 or version 0.7.
 
 :func:`__eq__` and :func:`__hash__` will be used by the optimization
