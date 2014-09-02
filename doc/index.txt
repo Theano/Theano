@@ -67,16 +67,17 @@ installation and configuration, see :ref:`installing Theano <install>`.
   Status
   ======
 
-  .. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
-      :target: http://travis-ci.org/Theano/Theano/builds
+  .. raw:: html
 
-  .. image:: https://pypip.in/v/Theano/badge.png
-      :target: https://crate.io/packages/Theano/
-      :alt: Latest PyPI version
+     <a href="http://travis-ci.org/Theano/Theano/builds"><img src="https://secure.travis-ci.org/Theano/Theano.png?branch=master" /></a>&nbsp;
 
-  .. image:: https://pypip.in/d/Theano/badge.png
-      :target: https://crate.io/packages/Theano/
-      :alt: Number of PyPI downloads
+  .. raw:: html
+
+     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/v/Theano/badge.png" alt="Latest PyPI version" /></a>&nbsp;
+
+  .. raw:: html
+
+     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/d/Theano/badge.png" alt="Number of PyPI downloads" /></a>&nbsp;
 
   .. _available on PyPI: http://pypi.python.org/pypi/Theano
   .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects

@@ -1143,11 +1143,12 @@ class GetItem2Lists(gof.op.Op):
 get_item_2lists = GetItem2Lists()
 """Select elements of sparse matrix, returning them in a vector.
 
-:param x: Sparse matrix.
-:param index: List of two lists, first list indicating the row 
-of each element and second list indicating its column.
+  :param x: Sparse matrix.
 
-:return: The corresponding elements in `x`.
+  :param index: List of two lists, first list indicating the row of
+                each element and second list indicating its column.
+
+  :return: The corresponding elements in `x`.
 """
 
 
@@ -1737,13 +1738,14 @@ class Diag(gof.op.Op):
 diag = Diag()
 """Extract the diagonal of a square sparse matrix as a dense vector.
 
-:param x: A square sparse matrix in csc format.
+  :param x: A square sparse matrix in csc format.
 
-:return: A dense vector representing the diagonal elements.
+  :return: A dense vector representing the diagonal elements.
 
-:note: The grad implemented is regular, i.e. not structured, since
-the output is a dense vector.
+.. note::
 
+  The grad implemented is regular, i.e. not structured, since the
+  output is a dense vector.
 """
 
 

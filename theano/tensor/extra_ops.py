@@ -863,18 +863,21 @@ class FillDiagonalOffset(gof.Op):
 
         return [wr_a, wr_val,wr_offset]
 
-fill_diagonal_offset = FillDiagonalOffset()
-""" Returns a copy of an array with all
+fill_diagonal_offset_ = FillDiagonalOffset()
+
+def fill_diagonal_offset(a, val, offset):
+    """
+    Returns a copy of an array with all
     elements of the main diagonal set to a specified scalar value.
 
-    :param a: Rectangular array of two dimensions.
-    :param val: Scalar value to fill the diagonal whose type must be
-        compatible with that of array 'a' (i.e. 'val' cannot be viewed
-        as an upcast of 'a').
-    :params offset : Scalar value Offset of the diagonal from the main 
-        diagonal. Can be positive or negative integer.
-    :return: An array identical to 'a' except that its offset diagonal
-        is filled with scalar 'val'. The output is unwrapped.
-
-"""
+      :param a: Rectangular array of two dimensions.
+      :param val: Scalar value to fill the diagonal whose type must be
+          compatible with that of array 'a' (i.e. 'val' cannot be viewed
+          as an upcast of 'a').
+      :param offset: Scalar value Offset of the diagonal from the main
+          diagonal. Can be positive or negative integer.
+      :return: An array identical to 'a' except that its offset diagonal
+          is filled with scalar 'val'. The output is unwrapped.
+    """
+    return fill_diagonal_offset_(a, val, offset)
 

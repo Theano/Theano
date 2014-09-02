@@ -32,18 +32,20 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       Most of the more efficient GPU implementations listed below can be used
       as an automatic replacement for nnet.conv2d by enabling specific graph
       optimizations.
-    - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>`
-      This is a GPU-only version of nnet.conv2d that uses an FFT transform
-      to perform the work. conv2d_fft should not be called directly as it
-      does not provide a gradient. Instead, use nnet.conv2d and allow
-      Theano's graph optimizer to replace it by the FFT version by setting
-      ``THEANO_FLAGS=optimizer_including=conv_fft_valid:conv_fft_full``
+    - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>` This
+      is a GPU-only version of nnet.conv2d that uses an FFT transform
+      to perform the work. conv2d_fft should not be used directly as
+      it does not provide a gradient. Instead, use nnet.conv2d and
+      allow Theano's graph optimizer to replace it by the FFT version
+      by setting
+      'THEANO_FLAGS=optimizer_including=conv_fft_valid:conv_fft_full'
       in your environement.  This is not enabled by default because it
-      has some restrictions on input and uses a lot more memory.  Also note
-      that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and PyCUDA to run.
-      To deactivate the FFT optimization on a specific nnet.conv2d
-      while the optimization flags are active, you can set its ``version``
-      parameter to ``'no_fft'``. To enable it for just one Theano function:
+      has some restrictions on input and uses a lot more memory.  Also
+      note that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and
+      PyCUDA to run.  To deactivate the FFT optimization on a specific
+      nnet.conv2d while the optimization flags are active, you can set
+      its ``version`` parameter to ``'no_fft'``. To enable it for just
+      one Theano function:
 
       .. code-block:: python
 
