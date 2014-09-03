@@ -78,13 +78,9 @@ __global__ void im3d2col_kernel(const int n, const float* data_im,
 
     int channel_out = channel_in * kernel_h * kernel_w * kernel_d;
 
-    printf("%d %d\n", channel_in,  channel_out);
-
-
     int h_in = h_out * stride_h - pad_h;
     int w_in = w_out * stride_w - pad_w;
     int d_in = d_out * stride_d - pad_d;
-
 
     float* data_col_ptr = data_col;
     data_col_ptr += channel_out * (height_col * width_col * depth_col) +
@@ -106,12 +102,6 @@ __global__ void im3d2col_kernel(const int n, const float* data_im,
           *data_col_ptr = (h >= 0 && w >= 0 && d >= 0 &&
                            h < height && w < width && d < depth) ?
                            data_im_ptr[i * (width * depth) + j *depth + k] : 0;
-          printf("(ic(%d) oc(%d)\n h_out(%d) w_out(%d) d_out(%d)\n h_in(%d) w_in(%d) d_in(%d)\n i(%d) j(%d) k(%d): %f\n\n \n",
-                 channel_in, channel_out,
-                 h_out, w_out, d_out,
-                 h_in, w_in, d_in,
-                 i, j, k,
-                 *data_col_ptr);
           data_col_ptr += height_col * width_col * depth_col;
         }
       }
