@@ -688,6 +688,26 @@ def use_c_gemv(node):
     if (node.op == gemv_no_inplace and
             node.outputs[0].dtype in ['float32', 'float64']):
 
+        """
+        We want to maintain the behavoir of any operation that the user adds
+        even if it results in NaNs. However we do not want optimizations to
+        introduce NaNs.
+
+        GEMV is not always implemented consistenly across BLAS libraries.
+        Sometimes, when beta is 0, they still perform the multiplication with
+        beta. As such, what was in newly allocated memory does not matter as
+        the multiplication will make all the values 0. Other implmentations do
+        not perform the multiplication. This can cause problems for the inplace
+        GEMV implementation. When the multiplication is done we don't need to
+        initialize the output memory resulting in a speed up. Otherwise we must
+        initialize the memory to avoid introducing NaN's in the output that
+        weren't in the original graph.
+
+        The following check determines whether the output memory needs to be
+        initiliazed. It is done here, as opposed to in global scope, because
+        the setup has not been completed at that time and therefore the check
+        cannot be performed at that time.
+        """
         force_init_beta = check_force_gemv_init()
 
         return [CGemv(inplace=False, force_init_beta=force_init_beta)(*node.inputs)]
