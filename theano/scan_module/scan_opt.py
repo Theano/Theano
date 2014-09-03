@@ -972,6 +972,11 @@ class ScanSaveMem(gof.Optimizer):
             # twice since bad things usually happen if I do that
             info['_scan_savemem_visited'] = True
 
+            # TODO: currently we don't support scan with 0 step. So
+            # don't create one.
+            if theano.tensor.extract_constant(node_ins[0]) == 0:
+                return
+
             # Do not call make_node for test_value
             new_outs = scan_op.Scan(inps, outs, info)(*node_ins,
                                                       **dict(return_list=True))
