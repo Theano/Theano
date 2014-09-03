@@ -7,6 +7,7 @@ except ImportError:
 from theano.gof.python25 import OrderedDict
 import types
 
+
 def check_deterministic(iterable):
     # Most places where OrderedSet is used, theano interprets any exception
     # whatsoever as a problem that an optimization introduced into the graph.
@@ -84,6 +85,35 @@ if MutableSet is not None:
                 last = root.prev
                 link.prev, link.next, link.key = last, root, key
                 last.next = root.prev = proxy(link)
+
+        def union(self, s):
+            check_deterministic(s)
+            n = self.copy()
+            for elem in s:
+                if elem not in n:
+                    n.add(elem)
+            return n
+
+        def intersection_update(self, s):
+            l = []
+            for elem in self:
+                if elem not in s:
+                    l.append(elem)
+            for elem in l:
+                self.remove(elem)
+            return self
+
+        def difference_update(self, s):
+            check_deterministic(s)
+            for elem in s:
+                if elem in self:
+                    self.remove(elem)
+            return self
+
+        def copy(self):
+            n = OrderedSet()
+            n.update(self)
+            return n
 
         def discard(self, key):
             # Remove an existing item using self.__map to find the link which is
