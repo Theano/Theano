@@ -959,8 +959,8 @@ class GpuCorr3DMM(GpuOp):
     """GPU correlation 3D implementation using Matrix Multiply.
 
     :note: It don't implement the grad. So you should use it by
-        enabling the Theano flag ``optimizer_including=conv3d_gemm`` and
-        use :func:`conv3d <theano.tensor.nnet.conv.conv3d>`.
+        enabling the Theano flag ``optimizer_including=conv3d_gemm,convgrad3d_gemm, convtransp3d`` and
+        use :func:`conv3d <theano.tensor.nnet.conv.conOAv3d>`.
 
     """
     def __init__(self, border_mode,
