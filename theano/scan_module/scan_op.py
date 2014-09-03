@@ -835,15 +835,14 @@ class Scan(PureOp):
         n_steps = args[0]
         seqs = []
         if n_steps < 0:
-            n_steps = abs(n_steps)
-            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
-                if seq.shape[0] < n_steps:
-                    raise ValueError(('Sequence is shorter then the required '
-                                     'number of steps : (n_steps, seq, '
-                                      'seq.shape):'), n_steps,
-                                      node.inputs[1 + idx],
-                                      seq.shape)
-                seqs.append(seq[::-1])
+            # History, in the past, this was used for backward
+            # scan. Now we reverse the inputs outside of scan.
+            raise IndexError(
+                "Scan was asked to run for negative number of step %d" %
+                n_steps)
+        elif n_steps == 0:
+            raise NotImplementedError(
+                "We didn't implemented yet the case where scan do 0 iteration")
         else:
             for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
                 if seq.shape[0] < n_steps:

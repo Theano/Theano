@@ -16,7 +16,7 @@ _logger = logging.getLogger('theano.scan_module.scan_perform')
 _logger.setLevel(logging.WARN)
 
 
-version = 0.280  # must match constant returned in function get_version()
+version = 0.281  # must match constant returned in function get_version()
 
 need_reload = False
 
