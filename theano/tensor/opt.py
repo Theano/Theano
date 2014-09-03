@@ -311,8 +311,8 @@ compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
 
 def register_canonicalize(lopt, *tags, **kwargs):
     if type(lopt) == str:
-        def register(lopt):
-            return register_canonicalize(lopt, *tags, **kwargs)
+        def register(inner_lopt):
+            return register_canonicalize(inner_lopt, *tags, **kwargs)
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
