@@ -161,7 +161,7 @@ inc_diagonal_subtensor = IncDiagonalSubtensor(False)
 
 def conv3d(signals, filters,
            signals_shape=None, filters_shape=None,
-           border_mode='valid'):
+           stride=None, border_mode='valid'):
     """Convolve spatio-temporal filters with a movie.
 
     It flips the filters.
@@ -196,6 +196,11 @@ def conv3d(signals, filters,
         _filters_shape_5d = filters.shape
     else:
         _filters_shape_5d = filters_shape
+		
+    if stride is None:
+        _stride = (1,1)
+    else:  
+        _stride= stride
 
     _signals_shape_4d = (
         _signals_shape_5d[0] * _signals_shape_5d[1],
@@ -234,8 +239,8 @@ def conv3d(signals, filters,
             _signals_shape_5d[1],  # Ts
             _filters_shape_5d[0],  # Nf
             _filters_shape_5d[1],  # Tf
-            _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
-            _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
+            (theano.tensor.cast(((_signals_shape_5d[3] - _filters_shape_5d[3])/float(_stride[0])),'int64') + 1),
+            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[0])),'int64') + 1),
             ))
     elif border_mode[1] == 'full':
         out_tmp = out_4d.reshape((
