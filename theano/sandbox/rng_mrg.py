@@ -554,7 +554,12 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             otype = 'double'
             NORM = '4.656612873077392578125e-10'
         return """
-        static int %(nodename)s_printed_warning = 0;
+        // FB: I disable the printing of the warning, as we
+        //receive too much email about this and this don't help
+        //people. I'm not even sure if the "fix" to give the info about
+        //the shape statically give a speed up. So I consider this
+        //warning as useless until proved it can speed the user code.
+        static int %(nodename)s_printed_warning = 1;
 
         static __global__ void %(nodename)s_mrg_uniform(
                 %(otype)s*sample_data,

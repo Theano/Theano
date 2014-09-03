@@ -695,6 +695,12 @@ class ConvOp(OpenMPOp):
         kshp_logical = self.kshp_logical
         if kshp_logical is None:
             kshp_logical = kshp
+        else:
+            if kshp_logical[0] is None:
+                kshp_logical = (kshp[0], kshp_logical[1])
+            if kshp_logical[1] is None:
+                kshp_logical = (kshp_logical[0], kshp[1])
+
         if numpy.any([x is None for x in kshp_logical]):
             kshp = tuple(filtersflipped.shape[2:])
 

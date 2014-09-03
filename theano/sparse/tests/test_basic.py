@@ -19,7 +19,7 @@ from theano.gof.python25 import all, any, product
 from theano.tensor.basic import _allclose
 
 if not enable_sparse:
-    raise SkipTest('Optional package sparse disabled')
+    raise SkipTest('Optional package SciPy not installed')
 
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
