@@ -954,6 +954,160 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             return [[1], [1], [0], [0]]  # no connection to height, width
 
 
+
+class GpuCorr3DMM(GpuOp):
+    """GPU correlation 3D implementation using Matrix Multiply.
+
+    :note: It don't implement the grad. So you should use it by
+        enabling the Theano flag ``optimizer_including=conv3d_gemm`` and
+        use :func:`conv3d <theano.tensor.nnet.conv.conv3d>`.
+
+    """
+    def __init__(self, border_mode,
+                 subsample=(1, 1, 1),
+                 pad=0):
+        """
+        :param border_mode: "valid" or "full"
+        :param subsample: the subsample operation applied on each output image.
+            Should be a tuple with 2 elements.
+            (sv, sh, sz) is equivalent to GpuCorr3DMM(...)(...)[:,:,::sv, ::sh, ::sz]
+        :param pad: not yet supported
+        """
+        self.border_mode = border_mode
+        self.subsample = subsample
+        self.pad = pad
+        if pad != 0:
+            raise NotImplementedError(
+                "GpuCorr3DMM don't implement the pad parameter")
+
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and self.border_mode == other.border_mode \
+            and self.subsample == other.subsample \
+            and self.pad == other.pad
+
+    def __hash__(self):
+        # don't use hash(self.version) as hash(-1)==-2 and
+        # hash(-2)==-2 in python!
+        return hash(type(self)) \
+            ^ hash(self.border_mode) \
+            ^ hash(self.subsample) \
+            ^ hash(self.pad)
+
+    def __str__(self):
+        return '%s{%s, %s, pad=%d}' % (
+            self.__class__.__name__,
+            self.border_mode,
+            str(self.subsample),
+            self.pad)
+
+    def make_node(self, img, kern):
+        img = gpu_contiguous(as_cuda_ndarray_variable(img))
+        kern = gpu_contiguous(as_cuda_ndarray_variable(kern))
+        if img.type.ndim != 5:
+            raise TypeError('img must be 5D tensor')
+
+        if kern.type.ndim != 5:
+            raise TypeError('kern must be 5D tensor')
+
+        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
+                         False, False, False]
+        return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+
+    def c_headers(self):
+        return ['cuda_ndarray.cuh', '<stdio.h>']
+
+    def c_code_cache_version(self):
+        # raise this whenever modifying any of the support_code_files
+        return (0, 22)
+
+    def c_support_code_apply(self, node, nodename):
+        # REMEMBER TO RAISE c_code_cache_version when changing any of
+        # these files
+        files = ['conv3d_gemm.cu']
+        codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
+                for f in files]
+        return reduce(str.__add__, codes)
+
+    def c_code(self, node, nodename, inp, out_, sub):
+        img, kern = inp
+        out, = out_
+        dx = self.subsample[0]
+        dy = self.subsample[1]
+        dz = self.subsample[2]
+        sub = sub.copy()
+        pad = self.pad
+        if self.border_mode == "valid":
+            bmode = 1
+        else:
+            assert self.border_mode == "full"
+            bmode = 0
+        sub.update(locals())
+
+        return """
+    //Mandatory args
+    int mode = %(bmode)s;
+
+    //Optional args
+    int dx = %(dx)s;
+    int dy = %(dy)s;
+    int dz = %(dz)s;
+    int padH = 0;
+    int padW = 0;
+    int padD = 0;
+
+    CudaNdarray* img = %(img)s;
+    CudaNdarray* kern = %(kern)s;
+    CudaNdarray* out2 = NULL;
+    //TODO: Send self.pad, stride, etc
+
+    int out_dim[5];
+    out_dim[0] = CudaNdarray_HOST_DIMS(img)[0];
+    out_dim[1] = CudaNdarray_HOST_DIMS(kern)[0];
+    int logical_rows, logical_cols, logical_depths;
+    if (mode == 1)
+    {
+        logical_rows = CudaNdarray_HOST_DIMS(img)[2] - CudaNdarray_HOST_DIMS(kern)[2] + 1;
+        logical_cols = CudaNdarray_HOST_DIMS(img)[3] - CudaNdarray_HOST_DIMS(kern)[3] + 1;
+        logical_depths = CudaNdarray_HOST_DIMS(img)[4] - CudaNdarray_HOST_DIMS(kern)[4] + 1;
+    }
+    else
+    {
+        logical_rows = CudaNdarray_HOST_DIMS(img)[2] + CudaNdarray_HOST_DIMS(kern)[2] - 1;
+        logical_cols = CudaNdarray_HOST_DIMS(img)[3] + CudaNdarray_HOST_DIMS(kern)[3] - 1;
+        logical_depths = CudaNdarray_HOST_DIMS(img)[4] + CudaNdarray_HOST_DIMS(kern)[4] - 1;
+        padH = CudaNdarray_HOST_DIMS(kern)[2] - 1;
+        padW = CudaNdarray_HOST_DIMS(kern)[3] - 1;
+        padD = CudaNdarray_HOST_DIMS(kern)[4] - 1;
+
+    }
+    out_dim[2] = ceil_intdiv(logical_rows, dx);
+    out_dim[3] = ceil_intdiv(logical_cols, dy);
+    out_dim[4] = ceil_intdiv(logical_depths, dz);
+
+    if (!(%(out)s
+          && %(out)s->nd == 5
+          && CudaNdarray_is_c_contiguous(%(out)s)
+          && CudaNdarray_HOST_DIMS(%(out)s)[0] == out_dim[0]
+          && CudaNdarray_HOST_DIMS(%(out)s)[1] == out_dim[1]
+          && CudaNdarray_HOST_DIMS(%(out)s)[2] == out_dim[2]
+          && CudaNdarray_HOST_DIMS(%(out)s)[3] == out_dim[3]
+          && CudaNdarray_HOST_DIMS(%(out)s)[4] == out_dim[4]))
+    {
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*)CudaNdarray_NewDims(5, out_dim);
+
+    }
+
+    out2 = corr3dMM(%(img)s, %(kern)s, %(out)s, dx, dy, dz, padH, padW, padD);
+    if (out2 == NULL)
+    {
+       %(fail)s
+    }
+    assert (out2 == %(out)s);
+
+""" % sub
+
 ##
 # Not really a BLAS operation, but whatever.
 #
