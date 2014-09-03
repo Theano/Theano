@@ -313,6 +313,10 @@ class NVCC_compiler(object):
             # add flags for Microsoft compiler to create .pdb files
             preargs2.extend(['/Zi', '/MD'])
             cmd.extend(['-Xlinker', '/DEBUG'])
+            # remove the complaints for the duplication of `double round(double)`
+            # in both math_functions.h and pymath.h,
+            # by not including the one in pymath.h
+            cmd.extend(['-D HAVE_ROUND'])
 
         if local_bitwidth() == 64:
             cmd.append('-m64')
