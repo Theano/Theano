@@ -26,7 +26,7 @@ from theano.sandbox.cuda.basic_ops import (
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
-        GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights)
+        GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights, GpuCorr3DMM)
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -45,6 +45,7 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 from theano.tensor import nlinalg
 from theano.tensor.nnet.Conv3D import Conv3D
+
 
 #optdb.print_summary()  # shows what is currently registered
 
@@ -1332,6 +1333,73 @@ def local_convtransp3d_fft(node):
 
 gpu_optimizer.register("convtransp3d_fft", local_convtransp3d_fft)
 
+
+@local_optimizer([Conv3D])
+def local_conv3d_gemm(node):
+    if not isinstance(node.op, Conv3D):
+        return
+    try:
+        sx = tensor.get_scalar_constant_value(node.inputs[3][0])
+        sy = tensor.get_scalar_constant_value(node.inputs[3][1])
+        sz = tensor.get_scalar_constant_value(node.inputs[3][2])
+    except tensor.NotScalarConstantError:
+        return False
+    if isinstance(node.op, Conv3D):
+        # Shuffle inputs signal from (b, 0, 1, t, c) to (b, c, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(0, 4, 1, 2, 3)
+        # Shuffle filters from (oc, 0, 1, t, ic) to (oc, ic, 0, 1, t)
+        f = node.inputs[1]
+        f = f.dimshuffle(0, 4, 1, 2, 3)
+        rval = GpuCorr3DMM(border_mode='valid', subsample=(sx, sy, sz))(x, f)
+        # Shuffle from (oc, c, 0, 1, t) to (oc, 0, 1, t, c)
+        return [rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[2]]
+
+gpu_optimizer.register("conv3d_gemm", local_conv3d_gemm)
+
+@local_optimizer([ConvGrad3D])
+def local_convgrad3d_gemm(node):
+    try:
+        sx = tensor.get_scalar_constant_value(node.inputs[1][0])
+        sy = tensor.get_scalar_constant_value(node.inputs[1][1])
+        sz = tensor.get_scalar_constant_value(node.inputs[1][2])
+    except tensor.NotScalarConstantError:
+        return False
+    if isinstance(node.op, ConvGrad3D):
+        # Shuffle inputs signal from (b, 0, 1, t, ic) to (ic, b, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(4, 0, 1, 2, 3)
+        # Shuffle dCdH from (b, 0, 1, t, oc) to (oc, b, 0, 1, t)
+        f = node.inputs[3]
+        f = f.dimshuffle(4, 0, 1, 2, 3)
+        rval = GpuCorr3DMM(border_mode='valid', subsample=(sx, sy, sz))(x, f)
+        # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
+        return [rval.dimshuffle(1, 2, 3, 4, 0)]
+
+gpu_optimizer.register("convgrad3d_gemm", local_convgrad3d_gemm)
+
+@local_optimizer([ConvTransp3D])
+def local_convtransp3d_gemm(node):
+    try:
+        sx = tensor.get_scalar_constant_value(node.inputs[2][0])
+        sy = tensor.get_scalar_constant_value(node.inputs[2][1])
+        sz = tensor.get_scalar_constant_value(node.inputs[2][2])
+    except tensor.NotScalarConstantError:
+        return False
+    if isinstance(node.op, ConvTransp3D):
+        # Shuffle filters from (oc, 0, 1, t, ic) to (ic, oc, 0, 1, t)
+        x = node.inputs[0]
+        x = x.dimshuffle(4, 0, 1, 2, 3)
+        # Shuffle dCdH from (b, 0, 1, t, oc) to (b, oc, 0, 1, t)
+        f = node.inputs[3]
+        f = f.dimshuffle(0, 4, 1, 2, 3)
+        # filter flip
+        x = x[:,:,::-1,::-1,::-1]
+        rval = GpuCorr3DMM(border_mode='full', subsample=(sx, sy, sz))(f, x)
+        # Shuffle from (ic, b, 0, 1, t) to (b, 0, 1, t, ic)
+        return [rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[1]]
+
+gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 import theano.tensor.signal.downsample as downsample
 
