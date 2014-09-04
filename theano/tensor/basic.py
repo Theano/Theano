@@ -167,7 +167,12 @@ def as_tensor_variable(x, name=None, ndim=None):
                 # strip off leading broadcastable dimensions
                 first_non_broadcastable = [idx for idx in range(x.ndim)
                                            if x.broadcastable[idx] == False][0]
-                return x.dimshuffle(range(x.ndim)[first_non_broadcastable:])
+                x = x.dimshuffle(range(x.ndim)[first_non_broadcastable:])
+                if x.ndim > ndim:
+                    raise ValueError(
+                        'TensorType could not be cast to have %i dimensions' % ndim, x.type
+                    )
+                return x
             elif (x.type.ndim < ndim):
                 return shape_padleft(x, n_ones=(ndim - x.type.ndim))
             else:

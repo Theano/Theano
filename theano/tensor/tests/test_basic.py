@@ -1920,9 +1920,16 @@ Allocb4GradTester = makeBroadcastTester(
 
 
 def test_as_tensor_variable():
-    x = tensor.TensorType(config.floatX, (True, False))()
+    x = tensor.TensorType(config.floatX, (True, False))('x')
     x = as_tensor_variable(x, ndim=1)
     assert(x.ndim == 1)
+
+    x = tensor.matrix('x', dtype=config.floatX)
+    try:
+        x = as_tensor_variable(x, ndim=1)
+        assert(False)  # The call above should have failed
+    except ValueError:
+        pass
 
 
 class TestAlloc(unittest.TestCase):
