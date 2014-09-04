@@ -71,9 +71,9 @@ def upcast(dtype, *dtypes):
 
 def get_scalar_type(dtype):
     """
-    Return an Scalar(dtype) object.
+    Return a Scalar(dtype) object.
 
-    This cache objects to save allocation and run time.
+    This caches objects to save allocation and run time.
     """
     if dtype not in get_scalar_type.cache:
         get_scalar_type.cache[dtype] = Scalar(dtype=dtype)
@@ -144,6 +144,13 @@ class Scalar(Type):
             dtype = config.floatX
         self.dtype = dtype
         self.dtype_specs()  # error checking
+
+    @staticmethod
+    def may_share_memory(a, b):
+        # This class represent basic c type, represented in python
+        # with numpy.scalar. They are read only. So from python, they
+        # can never share memory.
+        return False
 
     def filter(self, data, strict=False, allow_downcast=None):
         py_type = self.dtype_specs()[0]
@@ -254,11 +261,16 @@ class Scalar(Type):
             raise NotImplementedError("No literal for complex values.")
         return str(data)
 
-    def c_declare(self, name, sub):
-        return """
+    def c_declare(self, name, sub, check_input=True):
+        if(check_input):
+            pre = """
+                typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+                typedef %(dtype)s dtype_%(name)s;
+            """ % dict(name=name, dtype=self.dtype_specs()[1])
+        else:
+            pre = ""
+        return pre + """
         %(dtype)s %(name)s;
-        typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
-        typedef %(dtype)s dtype_%(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
@@ -266,20 +278,25 @@ class Scalar(Type):
         %(name)s = 0;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         specs = self.dtype_specs()
-        return """
-        if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
-        {
-            PyErr_Format(PyExc_ValueError,
-                "Scalar check failed (%(dtype)s)");
-            %(fail)s
-        }
+        if(check_input):
+            pre = """
+            if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
+            {
+                PyErr_Format(PyExc_ValueError,
+                    "Scalar check failed (%(dtype)s)");
+                %(fail)s
+            }
+            """ % dict(sub,
+                       name=name,
+                       dtype=specs[1],
+                       pyarr_type='Py%sArrType_Type' % specs[2])
+        else:
+            pre = ""
+        return pre + """
         PyArray_ScalarAsCtype(py_%(name)s, &%(name)s);
-        """ % dict(sub,
-                   name=name,
-                   dtype=specs[1],
-                   pyarr_type='Py%sArrType_Type' % specs[2])
+        """ % dict(sub, name=name)
 
     def c_sync(self, name, sub):
         specs = self.dtype_specs()
@@ -452,7 +469,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (12, numpy.__version__)
+        return (13, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize
@@ -869,7 +886,8 @@ class ScalarOp(Op):
             return self.name
         else:
             param = [(k, v) for k, v in self.__dict__.items()
-                     if k not in ["name", "_op_use_c_code"]]
+                     if k not in ["name", "_op_use_c_code",
+                                  "output_types_preference"]]
             if param:
                 return "%s{%s}" % (self.__class__.__name__,
                                    ", ".join("%s=%s" % (k, v)
@@ -908,7 +926,22 @@ class UnaryScalarOp(ScalarOp):
             node.inputs[0].type != node.outputs[0].type):
             raise theano.gof.utils.MethodNotDefined()
 
-        dtype = node.inputs[0].dtype
+        dtype = node.inputs[0].type.dtype_specs()[1]
+        fct_call = self.c_code_contiguous_raw(dtype, 'n', 'x', 'z')
+        return """
+{
+        npy_intp n = PyArray_SIZE(%(z)s);
+        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
+        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
+        %(fct_call)s;
+}
+        """ % locals()
+
+    def c_code_contiguous_raw(self, dtype, n, i, o):
+        if not config.lib.amdlibm:
+            raise theano.gof.utils.MethodNotDefined()
+        if dtype.startswith('npy_'):
+            dtype = dtype[4:]
         if dtype == 'float32' and self.amd_float32 is not None:
             dtype = 'float'
             fct = self.amd_float32
@@ -917,12 +950,7 @@ class UnaryScalarOp(ScalarOp):
             fct = self.amd_float64
         else:
             raise theano.gof.utils.MethodNotDefined()
-        return """
-        npy_intp n = PyArray_SIZE(%(z)s);
-        %(dtype)s * x = (%(dtype)s*) PyArray_DATA(%(x)s);
-        %(dtype)s * z = (%(dtype)s*) PyArray_DATA(%(z)s);
-        %(fct)s(n, x, z);
-        """ % locals()
+        return "%(fct)s(%(n)s, %(i)s, %(o)s)" % locals()
 
 
 class BinaryScalarOp(ScalarOp):
@@ -2325,7 +2353,10 @@ class Expm1(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = exp(%(x)s) - 1;" % locals()
+        return "%(z)s = expm1(%(x)s);" % locals()
+
+    def c_code_cache_version(self):
+        return (5,)
 expm1 = Expm1(upgrade_to_float, name='expm1')
 
 
@@ -2964,7 +2995,40 @@ class Composite(ScalarOp):
         # We need to clone the graph as sometimes its nodes already
         # contain a reference to an fgraph. As we want the Composite
         # to be pickable, we can't have reference to fgraph.
-        inputs, outputs = gof.graph.clone(inputs, outputs)
+
+        # Also, if there is Composite in the inner graph, we want to
+        # remove them. In that case, we do a more complicated clone
+        # that will flatten Composite. We don't need to do this
+        # recusively, as the way the fusion optimizer work, we have
+        # only 1 new Composite each time at the output.
+        if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
+                                        for var in outputs]):
+            # No inner Composite
+            inputs, outputs = gof.graph.clone(inputs, outputs)
+        else:
+            # Inner Composite that we need to flatten
+            assert len(outputs) == 1
+            # 1. Create a new graph from inputs up to the
+            # Composite
+            res = theano.compile.rebuild_collect_shared(
+                inputs=inputs,
+                outputs=outputs[0].owner.inputs,
+                copy_inputs_over=False) #  Clone also the inputs
+            # 2. We continue this partial clone with the graph in
+            # the inner Composite
+            res2 = theano.compile.rebuild_collect_shared(
+                inputs=outputs[0].owner.op.inputs,
+                outputs=outputs[0].owner.op.outputs,
+                replace=dict(zip(outputs[0].owner.op.inputs, res[1]))
+            )
+            assert len(res2[1]) == len(outputs)
+            assert len(res[0]) == len(inputs)
+            assert res[0] != inputs
+            inputs, outputs = res[0], res2[1]
+            # Next assert comment just for speed
+            #assert not any([isinstance(node.op, Composite) for node in
+            #                theano.gof.graph.ops(inputs, outputs)])
+
         self.inputs = copy(inputs)
         self.outputs = copy(outputs)
         self.inputs_type = tuple([input.type for input in inputs])

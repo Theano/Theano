@@ -1,5 +1,5 @@
 # This is work in progress
-from theano import Op, Apply
+from theano import Op, Apply, tensor
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 
@@ -7,7 +7,8 @@ from theano.sandbox.neighbours import Images2Neibs
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
-    from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
+    from theano.sandbox.cuda.basic_ops import (
+        as_cuda_ndarray_variable, host_from_gpu, gpu_from_host)
     from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
 
 
@@ -21,13 +22,16 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
         self.mode = mode
 
     def make_node(self, ten4, neib_shape, neib_step):
-        assert ten4.dtype == 'float32'
-        if not isinstance(ten4.type, CudaNdarrayType):
-            raise TypeError('ten4 must be cudandarray', ten4)
+        ten4 = as_cuda_ndarray_variable(ten4)
+        neib_shape = tensor.as_tensor_variable(neib_shape)
+        neib_step = tensor.as_tensor_variable(neib_step)
 
         assert ten4.ndim == 4
+        assert ten4.dtype == 'float32'
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
+        assert "int" in neib_shape.dtype
+        assert "int" in neib_step.dtype
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [CudaNdarrayType(broadcastable=(False, False),
@@ -202,12 +206,12 @@ class GpuImages2Neibs(Images2Neibs, GpuOp):
         int grid_d = -1;
 
         {
-            if (%(ten4)s->nd != 4)
+            if (CudaNdarray_NDIM(%(ten4)s) != 4)
             {
                 PyErr_Format(PyExc_TypeError, "pvals wrong rank");
                 %(fail)s;
             }
-            if (%(neib_shape)s->nd != 1)
+            if (PyArray_NDIM(%(neib_shape)s) != 1)
             {
                 PyErr_Format(PyExc_TypeError, "unis wrong rank");
                 %(fail)s;

@@ -156,3 +156,13 @@ Here is a list of some of the known limitations:
   interact with the rest of the graph).
 
 - Neither *goto* nor *recursion* is supported or planned within expression graphs.
+
+
+"float32 / int{32, 64} gives float64"
+-------------------------------------
+
+It should be noted that using float32 and int{32, 64} together
+inside a function would provide float64 as output.
+
+Since the GPU can't compute this kind of output, it would be
+preferable not to use those dtypes together.

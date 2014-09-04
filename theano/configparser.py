@@ -39,7 +39,7 @@ def parse_config_string(config_string, issue_warnings=True):
     Parses a config string (comma-separated key=value components) into a dict.
     """
     config_dict = {}
-    for kv_pair in THEANO_FLAGS.split(','):
+    for kv_pair in config_string.split(','):
         kv_pair = kv_pair.strip()
         if not kv_pair:
             continue
@@ -74,8 +74,14 @@ def config_files_from_theanorc():
 
 config_files = config_files_from_theanorc()
 theano_cfg = ConfigParser.SafeConfigParser(
-        {'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1])}
-        )
+    {'USER': os.getenv("USER", os.path.split(os.path.expanduser('~'))[-1]),
+     'LSCRATCH': os.getenv("LSCRATCH", ""),
+     'TMPDIR': os.getenv("TMPDIR", ""),
+     'TEMP': os.getenv("TEMP", ""),
+     'TMP': os.getenv("TMP", ""),
+     'PID': str(os.getpid()),
+ }
+)
 theano_cfg.read(config_files)
 # Having a raw version of the config around as well enables us to pass
 # through config values that contain format strings.
@@ -299,7 +305,11 @@ class EnumStr(ConfigParam):
                 raise ValueError('Valid values for an EnumStr parameter '
                         'should be strings', val, type(val))
 
+        convert = kwargs.get("convert", None)
+
         def filter(val):
+            if convert:
+                val = convert(val)
             if val in self.all:
                 return val
             else:

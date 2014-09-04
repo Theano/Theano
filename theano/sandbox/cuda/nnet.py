@@ -2,13 +2,14 @@ from theano import Op, Apply
 from theano.compat.six import StringIO
 
 from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
                                                 inline_softmax_fixed_shared)
 
 
-class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
+class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
     """
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
     """
@@ -95,17 +96,17 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
         fail = sub['fail']
         sio = StringIO()
         print >> sio, """
-        if (%(y_idx)s->nd != 1)
+        if (CudaNdarray_NDIM(%(y_idx)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
             %(fail)s;
         }
-        if (%(x)s->nd != 2)
+        if (CudaNdarray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "x not 2d tensor");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (CudaNdarray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "b not 1d tensor");
             %(fail)s;
@@ -216,7 +217,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias (GpuOp):
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 
-class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
+class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
     """
@@ -247,9 +248,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
         dx, = out
         fail = sub['fail']
         return """
-        if ((%(dnll)s->nd != 1)
-            || (%(sm)s->nd != 2)
-            || (%(y_idx)s->nd != 1))
+        if ((CudaNdarray_NDIM(%(dnll)s) != 1)
+            || (CudaNdarray_NDIM(%(sm)s) != 2)
+            || (CudaNdarray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
@@ -364,7 +365,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx (GpuOp):
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 
-class GpuSoftmax (GpuOp):
+class GpuSoftmax(GpuOp):
     """
     Implement Softmax on the gpu.
     """
@@ -391,7 +392,7 @@ class GpuSoftmax (GpuOp):
         z, = out
         fail = sub['fail']
         return """
-        if (%(x)s->nd != 2)
+        if (CudaNdarray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
@@ -483,8 +484,8 @@ class GpuSoftmax (GpuOp):
     def c_support_code_apply(self, node, nodename):
         ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                        'const float * x', 'const int sx0', 'const int sx1',
+                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
@@ -506,8 +507,8 @@ class GpuSoftmax (GpuOp):
                 ])
         ret2 = nvcc_kernel("kSoftmax_fixed_shared%s" % nodename,
                 params=['int M', 'int N',
-                    'const float * x', 'const int sx0', 'const int sx1',
-                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+                        'const float * x', 'const int sx0', 'const int sx1',
+                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
                     "extern __shared__ float buf[]",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
@@ -525,7 +526,7 @@ class GpuSoftmax (GpuOp):
 gpu_softmax = GpuSoftmax()
 
 
-class GpuSoftmaxWithBias (GpuOp):
+class GpuSoftmaxWithBias(GpuOp):
     """
     Implement SoftmaxWithBias on the gpu.
     """
@@ -545,23 +546,23 @@ class GpuSoftmaxWithBias (GpuOp):
         return Apply(self, [x, b], [x.type()])
 
     def infer_shape(self, node, shape):
-        return  [shape[0]]
+        return [shape[0]]
 
     def c_code_cache_version(self):
         #return ()
-        return (8,) + inline_softmax.code_version
+        return (9,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):
         x, b = inp
         z, = out
         fail = sub['fail']
         return """
-        if (%(x)s->nd != 2)
+        if (CudaNdarray_NDIM(%(x)s) != 2)
         {
             PyErr_SetString(PyExc_ValueError, "rank error input");
             %(fail)s;
         }
-        if (%(b)s->nd != 1)
+        if (CudaNdarray_NDIM(%(b)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "rank error for the bias");
             %(fail)s;
@@ -649,9 +650,11 @@ class GpuSoftmaxWithBias (GpuOp):
                 if( cudaSuccess != err)
                 {
                     PyErr_Format(PyExc_RuntimeError,
-                                 "Cuda error: %%s: %%s.\\n",
+                                 "Cuda error: %%s: %%s. n_blocks=%%d,"
+                                 " n_threads=%%d, n_shared_bytes=%%d\\n",
                                  "kSoftmaxWithBias_%(nodename)s",
-                                 cudaGetErrorString(err));
+                                 cudaGetErrorString(err),
+                                 n_blocks, n_threads, n_shared_bytes);
                     %(fail)s;
                 }
             }
@@ -660,12 +663,13 @@ class GpuSoftmaxWithBias (GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
-                params=['int M', 'int N',
-                        'const float * x', 'const int sx0', 'const int sx1',
-                        'const float * b', 'const int sb0',
-                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
-                body=[
+        ret1 = nvcc_kernel(
+            "kSoftmaxWithBias_%s" % nodename,
+            params=['int M', 'int N',
+                    'const float * x', 'const int sx0', 'const int sx1',
+                    'const float * b', 'const int sb0',
+                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+            body=[
                     "extern __shared__ float buf[]",
                     "float * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
@@ -683,7 +687,7 @@ class GpuSoftmaxWithBias (GpuOp):
                       "}",
                       "__syncthreads()",
                     "}",
-                    ])
+            ])
         ret2 = nvcc_kernel("kSoftmaxWithBias_fixed_shared%s" % nodename,
                            params=['int M', 'int N',
                                    'const float * x',

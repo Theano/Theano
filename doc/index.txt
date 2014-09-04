@@ -13,14 +13,19 @@ arrays efficiently. Theano features:
 * **dynamic C code generation** -- Evaluate expressions faster.
 * **extensive unit-testing and self-verification** -- Detect and diagnose many types of mistake.
 
-Theano has been powering large-scale computationally intensive scientific investigations
-since 2007.  But it is also approachable enough to be used in the classroom
-(IFT6266 at the University of Montreal).
+Theano has been powering large-scale computationally intensive
+scientific investigations since 2007.  But it is also approachable
+enough to be used in the classroom (IFT6266 at the University of
+Montreal).
 
 News
 ====
 
-* Theano 0.6rc3 was released. Everybody is encouraged to update.
+* Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
+
+* Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
+
+* Theano 0.6 was released. Everybody is encouraged to update.
 
 * New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
   However, please keep citing the other paper below in scientific work involving Theano.
@@ -57,22 +62,25 @@ directory, so that when you pull updates via Git, they will be
 automatically reflected the "installed" version. For more information about
 installation and configuration, see :ref:`installing Theano <install>`.
 
-Status
-======
+.. only:: html
 
-.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
-    :target: http://travis-ci.org/Theano/Theano/builds
+  Status
+  ======
 
-.. image:: https://pypip.in/v/Theano/badge.png
-    :target: https://crate.io/packages/Theano/
-    :alt: Latest PyPI version
+  .. raw:: html
 
-.. image:: https://pypip.in/d/Theano/badge.png
-    :target: https://crate.io/packages/Theano/
-    :alt: Number of PyPI downloads
+     <a href="http://travis-ci.org/Theano/Theano/builds"><img src="https://secure.travis-ci.org/Theano/Theano.png?branch=master" /></a>&nbsp;
 
-.. _available on PyPI: http://pypi.python.org/pypi/Theano
-.. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
+  .. raw:: html
+
+     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/v/Theano/badge.png" alt="Latest PyPI version" /></a>&nbsp;
+
+  .. raw:: html
+
+     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/d/Theano/badge.png" alt="Number of PyPI downloads" /></a>&nbsp;
+
+  .. _available on PyPI: http://pypi.python.org/pypi/Theano
+  .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
 
 Citing Theano
 ==============

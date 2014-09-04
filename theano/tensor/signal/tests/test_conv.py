@@ -17,7 +17,7 @@ class TestSignalConv2D(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
-    def validate(self, image_shape, filter_shape, verify_grad=True):
+    def validate(self, image_shape, filter_shape, out_dim, verify_grad=True):
 
         image_dim = len(image_shape)
         filter_dim = len(filter_shape)
@@ -36,6 +36,7 @@ class TestSignalConv2D(unittest.TestCase):
         def sym_conv2d(input, filters):
             return conv.conv2d(input, filters)
         output = sym_conv2d(input, filters)
+        assert output.ndim == out_dim
         theano_conv = theano.function([input, filters], output)
 
         # initialize input and compute result
@@ -90,10 +91,10 @@ class TestSignalConv2D(unittest.TestCase):
             theano.config.cxx == ""):
             raise SkipTest("conv2d tests need SciPy or a c++ compiler")
 
-        self.validate((1, 4, 5), (2, 2, 3), verify_grad=True)
-        self.validate((7, 5), (5, 2, 3), verify_grad=False)
-        self.validate((3, 7, 5), (2, 3), verify_grad=False)
-        self.validate((7, 5), (2, 3), verify_grad=False)
+        self.validate((1, 4, 5), (2, 2, 3), out_dim=4, verify_grad=True)
+        self.validate((7, 5), (5, 2, 3), out_dim=3, verify_grad=False)
+        self.validate((3, 7, 5), (2, 3), out_dim=3, verify_grad=False)
+        self.validate((7, 5), (2, 3), out_dim=2, verify_grad=False)
 
     def test_fail(self):
         """

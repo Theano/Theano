@@ -95,6 +95,8 @@ class DimShuffle(Op):
     Adding, subtracting dimensions can be done with reshape.
     """
 
+    check_input = False
+
     def __init__(self, input_broadcastable, new_order, inplace=False):
         """
         Usage: DimShuffle(input_broadcastable, new_order, inplace = False)
@@ -369,7 +371,7 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
         return full_code % dict(locals(), **sub)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def grad(self, inp, grads):
         x, = inp
@@ -774,8 +776,7 @@ class Elemwise(OpenMPOp):
             super(Elemwise, self).perform(node, inputs, output_storage)
 
         maxsize = max(len(input.shape) for input in inputs)
-        for dims in izip(*[([(1, True)] * (maxsize - len(input.shape))
-                            + zip(input.shape, sinput.type.broadcastable))
+        for dims in izip(*[zip(input.shape, sinput.type.broadcastable)
                           for input, sinput in zip(inputs, node.inputs)]):
             if max(d for d, b in dims) != 1 and (1, False) in dims:
                 # yes there may be more compact ways to write this code,
@@ -808,34 +809,36 @@ class Elemwise(OpenMPOp):
                 out_shape.append(max(values))
         out_shape = tuple(out_shape)
 
-        if not self.inplace_pattern:
-            for output, storage in izip(node.outputs, output_storage):
-                odat = storage[0]
-                if odat is not None:
-                    if odat.shape != out_shape:
-                        # It is unsafe to try to resize odat,
-                        # we have to allocate output storage.
-                        odat = None
-                if odat is None:
-                    odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
-                storage[0] = odat
-        else:
-            for i, (output, storage) in enumerate(
-                    izip(node.outputs, output_storage)):
-                #i is an output idx
-                if i in self.inplace_pattern:
-                    odat = inputs[self.inplace_pattern[i]]
-                else:
-                    odat = storage[0]
-                    if odat is not None:
-                        if odat.shape != out_shape:
-                            # It is unsafe to try to resize odat,
-                            # we have to allocate output storage.
-                            odat = None
-                    if odat is None:
-                        odat = numpy.ndarray(out_shape,
-                                dtype=output.type.dtype)
-                storage[0] = odat
+        # Commented as we don't reuse outputs now.
+        #
+        # if not self.inplace_pattern:
+        #     for output, storage in izip(node.outputs, output_storage):
+        #         odat = storage[0]
+        #         if odat is not None:
+        #             if odat.shape != out_shape:
+        #                 # It is unsafe to try to resize odat,
+        #                 # we have to allocate output storage.
+        #                 odat = None
+        #         if odat is None:
+        #             odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
+        #         storage[0] = odat
+        # else:
+        #     for i, (output, storage) in enumerate(
+        #             izip(node.outputs, output_storage)):
+        #         #i is an output idx
+        #         if i in self.inplace_pattern:
+        #             odat = inputs[self.inplace_pattern[i]]
+        #         else:
+        #             odat = storage[0]
+        #             if odat is not None:
+        #                 if odat.shape != out_shape:
+        #                     # It is unsafe to try to resize odat,
+        #                     # we have to allocate output storage.
+        #                     odat = None
+        #             if odat is None:
+        #                 odat = numpy.ndarray(out_shape,
+        #                         dtype=output.type.dtype)
+        #         storage[0] = odat
 
         ufunc_args = inputs  # + output_storage
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
@@ -860,26 +863,31 @@ class Elemwise(OpenMPOp):
 
         if nout == 1:
             variables = [variables]
+        i = 0
         for variable, storage, nout in izip(variables, output_storage,
                                             node.outputs):
-            if str(getattr(variable, "dtype", "")) == 'object':
+            if getattr(variable, "dtype", "") == 'object':
                 # Since numpy 1.6, function created with numpy.frompyfunc
                 # always return an ndarray with dtype object
                 variable = numpy.asarray(variable, dtype=nout.dtype)
 
-            # The storage has been resized earlier.
-            if hasattr(variable, 'shape'):
-                assert storage[0].shape == variable.shape
+            if i in self.inplace_pattern:
+                odat = inputs[self.inplace_pattern[i]]
+                odat[...] = variable
+                storage[0] = odat
+            # Sometimes NumPy return a Python type.
+            # Some Theano op return a different dtype like floor, ceil,
+            # trunc, eq, ...
+            elif (not isinstance(variable, numpy.ndarray) or
+                  variable.dtype != nout.dtype):
+                variable = numpy.asarray(variable, nout.dtype)
+                storage[0] = variable
+            # numpy.real return a view!
+            elif not variable.flags.owndata:
+                storage[0] = variable.copy()
             else:
-                # If variable has not shape, then it is a scalar.
-                assert numpy.prod(storage[0].shape) == 1
-
-            storage[0][...] = variable
-            assert str(storage[0].dtype) != 'object'
-
-        # the following should be used instead of the previous loop,
-        # unfortunately it tends to segfault
-        # self.ufunc(*(ufunc_args+[s[0] for s in output_storage]))
+                storage[0] = variable
+            i += 1
 
     def infer_shape(self, node, i_shapes):
         rval = []

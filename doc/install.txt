@@ -1,4 +1,3 @@
-
 .. _install:
 
 
@@ -21,9 +20,10 @@ instructions below for detailed installation steps):
         We develop mainly on 64-bit Linux machines. other architectures are
         not well-tested.
 
-    Python_ >= 2.4
+    Python_ >= 2.6
         The development package (``python-dev`` or ``python-devel``
         on most Linux distributions) is recommended (see just below).
+	Python 2.4 was supported up to and including the release 0.6.
 
     ``g++``, ``python-dev``
         Not technically required but *highly* recommended, in order to compile
@@ -69,12 +69,17 @@ The following libraries and software are optional:
         To be able to make picture of Theano computation graph.
 
     `NVIDIA CUDA drivers and SDK`_
-        Required for GPU code generation/execution. Only NVIDIA GPUs using
-        32-bit floating point numbers are currently supported.
+        Required for GPU code generation/execution on NVIDIA gpus
+
+    `libgpuarray`_
+        Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
+
+        :note: OpenCL support is still minimal for now.
 
 .. _LaTeX: http://www.latex-project.org/
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
+.. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
 
 Linux
 -----
@@ -130,20 +135,11 @@ by typing
 
 You may need to add ``sudo``  before this command to install into your
 system's ``site-packages`` directory. If you do not have administrator access
-to your machine, you can install to an alternate prefix using
+to your machine, you can install Theano locally (to ~/.local) using
 
 .. code-block:: bash
 
-    pip install Theano --install-option='--prefix=~/.local'
-
-e.g. using ``--install-option='--prefix=~/.local'`` on Python 2.4 would
-install Theano into ``.local/lib/python2.4/site-packages`` inside your home
-directory on Mac OS X or Unix/Linux (this ``site-packages`` directory must be
-listed in your ``PYTHONPATH`` environment variable; for Python 2.6 and later,
-``~/.local`` is
-automatically searched and does *not* need to be explicitly included in
-``PYTHONPATH``, see :ref:`config_pythonpath` for instructions).
-You can change ``~/.local``, but you need to change your ``PYTHONPATH`` as said above.
+    pip install Theano --user
 
 Alternatively you can use virtualenv_ to create an isolated ``site-packages``
 directory; see the `virtualenv documentation`_ for details.
@@ -225,7 +221,7 @@ or (if you want to install it for the current user only):
 
 .. code-block:: bash
 
-    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --install-option='--prefix=~/.local'
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user
 
 The following are general instructions that will set you up with the
 bleeding-edge version of Theano and allow you to hack it. First,
@@ -244,8 +240,8 @@ From here, the easiest way to get started is (this requires setuptools_ or distr
 
 .. note::
 
-   "python setup.py develop ..." don't work on Python 3 as it don't call
-   the converter from Python2 code to Python 3 code.
+   "python setup.py develop ..." does not work on Python 3 as it does not call
+   the converter from Python 2 code to Python 3 code.
 
 This will install a ``.pth`` file in your ``site-packages`` directory that
 tells Python where to look for your Theano installation (i.e. in the

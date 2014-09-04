@@ -6,6 +6,7 @@ import numpy
 try:
     import scipy.sparse as sp
     import scipy.sparse
+    from scipy.sparse import csr_matrix
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
@@ -15,10 +16,10 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.gof.python25 import all, any, product
-
+from theano.tensor.basic import _allclose
 
 if not enable_sparse:
-    raise SkipTest('Optional package sparse disabled')
+    raise SkipTest('Optional package SciPy not installed')
 
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
@@ -31,7 +32,7 @@ from theano.sparse import (
     AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0,
     add, mul, structured_dot, transpose,
     csc_from_dense, csr_from_dense, dense_from_sparse,
-    Dot, Usmm, sp_ones_like, GetItemScalar,
+    Dot, Usmm, sp_ones_like, GetItemScalar, GetItemList, GetItem2Lists,
     SparseFromDense,
     Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
     structured_minimum, structured_maximum, structured_add,
@@ -40,7 +41,7 @@ from theano.sparse import (
     Diag, diag, SquareDiagonal, square_diagonal,
     EnsureSortedIndices, ensure_sorted_indices, clean,
     ConstructSparseFromList, construct_sparse_from_list,
-    TrueDot, true_dot)
+    TrueDot, true_dot, eq, neq, le, ge, gt, lt)
 
 # Probability distributions are currently tested in test_sp2.py
 #from theano.sparse import (
@@ -450,22 +451,6 @@ class TestConstructSparseFromList(unittest.TestCase):
         assert isinstance(g.owner.op, tensor.AdvancedIncSubtensor1)
 
         # Test that we create a sparse grad when asked
-        # OLD INTERFACE
-        m = theano.tensor.matrix()
-        sub = m[v]
-        m.type.sparse_grad = True
-        g = theano.grad(sub.sum(), m)
-        assert isinstance(g.owner.op, ConstructSparseFromList)
-
-        # Test that we create a sparse grad when asked
-        # OLD INTERFACE CONSEQUENCE
-        m = theano.tensor.matrix()
-        sub = m[v]
-        sub.type.sparse_grad = True
-        g = theano.grad(sub.sum(), m)
-        assert isinstance(g.owner.op, ConstructSparseFromList)
-
-        # Test that we create a sparse grad when asked
         # USER INTERFACE
         m = theano.tensor.matrix()
         v = theano.tensor.ivector()
@@ -645,6 +630,140 @@ class T_AddMul(unittest.TestCase):
                             b = b.data
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=False)
+
+
+class test_comparison(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    #took from tensor basic_test.py
+    def _rand_ranged(self, min, max, shape):
+        return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+                         dtype=config.floatX)
+
+    tests = [lambda x, y: x > y, lambda x, y: x < y,
+                lambda x, y: x >= y, lambda x, y: x <= y]
+
+    testsDic = {gt: lambda x, y: x > y, lt: lambda x, y: x < y,
+                ge: lambda x, y: x >= y, le: lambda x, y: x <= y}
+
+    def __generalized_ss_test(self, theanop, symbolicType, testOp, scipyType):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = symbolicType()
+        y = symbolicType()
+
+        op = theanop(x, y)
+
+        f = theano.function([x, y], op)
+
+        m1 = scipyType(random_lil((10, 40), config.floatX, 3))
+        m2 = scipyType(random_lil((10, 40), config.floatX, 3))
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, testOp(m1, m2).data))
+
+    def __generalized_sd_test(self, theanop, symbolicType, testOp, scipyType):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = symbolicType()
+        y = theano.tensor.matrix()
+
+        op = theanop(x, y)
+
+        f = theano.function([x, y], op)
+
+        m1 = scipyType(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m1, m2).data, testOp(m1, m2).data))
+
+    def __generalized_ds_test(self, theanop, symbolicType, testOp, scipyType):
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = symbolicType()
+        y = theano.tensor.matrix()
+
+        op = theanop(y, x)
+
+        f = theano.function([y, x], op)
+
+        m1 = scipyType(random_lil((10, 40), config.floatX, 3))
+        m2 = self._rand_ranged(1000, -1000, [10, 40])
+
+        self.assertTrue(numpy.array_equal(f(m2, m1).data, testOp(m2, m1).data))
+
+    def test_ss_csr_comparison(self):
+
+        for op in self.tests:
+            self.__generalized_ss_test(op, sparse.csr_matrix,
+                              op, sp.csr_matrix)
+
+    def test_ss_csc_comparison(self):
+
+        for op in self.tests:
+            self.__generalized_ss_test(op, sparse.csc_matrix,
+                              op, sp.csc_matrix)
+
+    def test_sd_csr_comparison(self):
+
+        for op in self.tests:
+            self.__generalized_sd_test(op, sparse.csr_matrix,
+                              op, sp.csr_matrix)
+
+    def test_sd_csc_comparison(self):
+
+        for op in self.tests:
+            self.__generalized_sd_test(op, sparse.csc_matrix,
+                              op, sp.csc_matrix)
+
+    def test_ds_csc_comparison(self):
+
+        for op in self.testsDic:
+            self.__generalized_ds_test(op, sparse.csc_matrix,
+                              self.testsDic[op], sp.csc_matrix)
+
+    def test_ds_csr_comparison(self):
+
+        for op in self.testsDic:
+            self.__generalized_ds_test(op, sparse.csr_matrix,
+                              self.testsDic[op], sp.csr_matrix)
+
+    def test_equality_case(self):
+        """
+        Test assuring normal behaviour when values
+        in the matrices are equal
+        """
+
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+
+        if (bool(scipy_ver < [0, 13])):
+            raise SkipTest("comparison operators need newer release of scipy")
+
+        x = sparse.csc_matrix()
+        y = theano.tensor.matrix()
+
+        m1 = sp.csc_matrix((2, 2), dtype=theano.config.floatX)
+        m2 = numpy.asarray([[0, 0], [0, 0]], dtype=theano.config.floatX)
+
+        for func in self.testsDic:
+
+            op = func(y, x)
+            f = theano.function([y, x], op)
+
+            self.assertTrue(numpy.array_equal(f(m2, m1),
+                                              self.testsDic[func](m2, m1)))
 
 
 class T_conversion(unittest.TestCase):
@@ -971,10 +1090,11 @@ class test_structureddot(unittest.TestCase):
         #test dot for 2 input sparse matrix
         sparse_dtype = 'float64'
         sp_mat = {'csc': sp.csc_matrix,
-                  'csr': sp.csr_matrix}
+                  'csr': sp.csr_matrix,
+                  'bsr': sp.csr_matrix}
 
-        for sparse_format_a in ['csc', 'csr']:
-            for sparse_format_b in ['csc', 'csr']:
+        for sparse_format_a in ['csc', 'csr', 'bsr']:
+            for sparse_format_b in ['csc', 'csr', 'bsr']:
                 a = SparseType(sparse_format_a, dtype=sparse_dtype)()
                 b = SparseType(sparse_format_b, dtype=sparse_dtype)()
                 d = theano.dot(a, b)
@@ -1884,6 +2004,83 @@ class Remove0Tester(utt.InferShapeTester):
 class Test_getitem(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_GetItemList(self):
+
+        a, A = sparse_random_inputs('csr', (4, 5))
+        b, B = sparse_random_inputs('csc', (4, 5))
+        y = a[0][[0, 1, 2, 3, 1]]
+        z = b[0][[0, 1, 2, 3, 1]]
+
+        fa = theano.function([a[0]], y)
+        fb = theano.function([b[0]], z)
+
+        t_geta = fa(A[0]).todense()
+        t_getb = fb(B[0]).todense()
+
+        s_geta = scipy.sparse.csr_matrix(A[0])[[0, 1, 2, 3, 1]].todense()
+        s_getb = scipy.sparse.csc_matrix(B[0])[[0, 1, 2, 3, 1]].todense()
+
+        utt.assert_allclose(t_geta, s_geta)
+        utt.assert_allclose(t_getb, s_getb)
+
+    def test_GetItemList_wrong_index(self):
+        a, A = sparse_random_inputs('csr', (4, 5))
+        y = a[0][[0, 4]]
+        f = theano.function([a[0]], y)
+
+        self.assertRaises(IndexError, f, A[0])
+
+    def test_get_item_list_grad(self):
+        op = theano.sparse.basic.GetItemList()
+        def op_with_fixed_index(x):
+            return op(x, index=numpy.asarray([0, 1]))
+
+        x, x_val = sparse_random_inputs("csr", (4,5))
+
+        try:
+            verify_grad_sparse(op_with_fixed_index, x_val)
+        except NotImplementedError, e:
+            assert "Scipy version is to old" in str(e)
+
+    def test_GetItem2Lists(self):
+
+        a, A = sparse_random_inputs('csr', (4, 5))
+        b, B = sparse_random_inputs('csc', (4, 5))
+        y = a[0][[0, 0, 1, 3], [0, 1, 2, 4]]
+        z = b[0][[0, 0, 1, 3], [0, 1, 2, 4]]
+
+        fa = theano.function([a[0]], y)
+        fb = theano.function([b[0]], z)
+
+        t_geta = fa(A[0])
+        t_getb = fb(B[0])
+
+        s_geta = numpy.asarray(scipy.sparse.csr_matrix(A[0])[[0, 0, 1, 3], [0, 1, 2, 4]])
+        s_getb = numpy.asarray(scipy.sparse.csc_matrix(B[0])[[0, 0, 1, 3], [0, 1, 2, 4]])
+
+        utt.assert_allclose(t_geta, s_geta)
+        utt.assert_allclose(t_getb, s_getb)
+
+    def test_GetItem2Lists_wrong_index(self):
+        a, A = sparse_random_inputs('csr', (4, 5))
+        y1 = a[0][[0, 5], [0, 3]]
+        y2 = a[0][[0, 3], [0, 5]]
+
+        f1 = theano.function([a[0]], y1)
+        f2 = theano.function([a[0]], y2)
+
+        self.assertRaises(IndexError, f1, A[0])
+        self.assertRaises(IndexError, f2, A[0])
+
+    def test_get_item_2lists_grad(self):
+        op = theano.sparse.basic.GetItem2Lists()
+        def op_with_fixed_index(x):
+            return op(x, ind1=numpy.asarray([0, 1]), ind2=numpy.asarray([2, 3]))
+
+        x, x_val = sparse_random_inputs("csr", (4,5))
+
+        verify_grad_sparse(op_with_fixed_index, x_val)
 
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')

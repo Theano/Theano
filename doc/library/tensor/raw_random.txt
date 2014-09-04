@@ -22,110 +22,130 @@ Reference
     :class:`theano.tensor.shared_randomstreams.RandomStreams` subclass and the
     :class:`theano.tensor.randomstreams.RandomStreams` subclass.
 
-    .. method:: binomial(self, size=(), n=1, prob=0.5, ndim=None):
+    .. method:: binomial(self, size=(), n=1, p=0.5, ndim=None):
 
-        Sample n times with probability of success prob for each trial, return the number of
-        successes.
+        Sample ``n`` times with probability of success ``p`` for each
+        trial and return the number of successes.
 
-        If the size argument is ambiguous on the number of dimensions, the first argument may be a
-        plain integer to supplement the missing information.
+        If ``size`` is ambiguous on the number of dimensions, ``ndim``
+        may be a plain integer to supplement the missing information.
+
+	This wraps the numpy implementation, so it has the same
+	behavior.
 
     .. method:: uniform(self,  size=(), low=0.0, high=1.0, ndim=None):
 
-        Sample a tensor of given size whose element from a uniform distribution between low and high.
+        Sample a tensor of the given size whose elements come from a
+        uniform distribution between low and high.
 
-        If the size argument is ambiguous on the number of
-        dimensions, the first argument may be a plain integer
-        to supplement the missing information.
+        If ``size`` is ambiguous on the number of dimensions, ``ndim``
+        may be a plain integer to supplement the missing information.
+
+	This wraps the numpy implementation, so it has the same
+        bounds: [``low``, ``high``\[.
 
     .. method:: normal(self, size=(), avg=0.0, std=1.0, ndim=None):
 
-        Usage: normal(random_state, size,
-        Sample from a normal distribution centered on avg with
-        the specified standard deviation (std)
+        Sample from a normal distribution centered on ``avg`` with the
+        specified standard deviation (``std``)
 
-        If the size argument is ambiguous on the number of
-        dimensions, the first argument may be a plain integer
-        to supplement the missing information.
+        If ``size`` is ambiguous on the number of dimensions, ``ndim``
+        may be a plain integer to supplement the missing information.
+
+	This wrap numpy implementation, so it have the same behavior.
 
     .. method:: random_integers(self, size=(), low=0, high=1, ndim=None):
 
-        Usage: random_integers(random_state, size, low=0, high=1)
         Sample a random integer between low and high, both inclusive.
 
-        If the size argument is ambiguous on the number of
-        dimensions, the first argument may be a plain integer
-        to supplement the missing information.
+        If ``size`` is ambiguous on the number of dimensions, ``ndim``
+        may be a plain integer to supplement the missing information.
+
+	This is a generalization of :py:func:`numpy.random.random_integers`
+        to the case where low and high are tensors. Otherwise it
+        behaves the same.
 
     .. method:: choice(self, size=(), a=2, replace=True, p=None, ndim=None, dtype='int64'):
 
-        Choose values from `a` with or without replacement. `a` can be a 1-D
-        array or a positive scalar. If `a` is a scalar, the samples are drawn
-        from the range 0,...,a-1.
+        Choose values from ``a`` with or without replacement. ``a``
+        can be a 1-D array or a positive scalar. If ``a`` is a scalar,
+        the samples are drawn from the range [0, ``a``\[.
 
-        If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        If ``size`` is ambiguous on the number of dimensions, ``ndim``
+        may be a plain integer to supplement the missing information.
+
+	This wraps the numpy implementation so it has the same behavior.
 
     .. method:: poisson(self, size=(), lam=None, ndim=None, dtype='int64'):
 
-        Usage: poisson(random_state, size, lam=5)
-
         Draw samples from a Poisson distribution.
   
-        The Poisson distribution is the limit of the Binomial distribution for large N.
+        The Poisson distribution is the limit of the Binomial
+        distribution for large N.
 
-        If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        If ``size`` is ambiguous on the number of dimensions, ``ndim``
+        may be a plain integer to supplement the missing information.
+
+	This wraps the numpy implementation so it has the same behavior.
 
     .. method:: permutation(self, size=(), n=1, ndim=None):
 
-        Returns permutations of the integers between 0 and n-1, as many times
-        as required by size. For instance, if size=(p,q), p*q permutations
-        will be generated, and the output shape will be (p,q,n), because each
-        permutation is of size n.
+        Returns permutations of the integers between 0 and ``n-1``, as
+        many times as required by ``size``. For instance, if
+        ``size=(p,q)``, ``p*q`` permutations will be generated, and
+        the output shape will be ``(p,q,n)``, because each permutation
+        is of size ``n``.
 
-        Theano tries to infer the number of dimensions from the length of the size argument, but you
-        may always specify it with the `ndim` parameter.
+        Theano tries to infer the number of dimensions from the length
+        of ``size``, but you may always specify it with ``ndim``.
 
-        .. note:: 
-            Note that the output will then be of dimension ndim+1.
+        .. note::
+            The output will have ``ndim+1`` dimensions.
+
+        This is a generalization of :py:func:`numpy.random.permutation` to
+        tensors. Otherwise it behaves the same.
 
     .. method:: multinomial(self, size=(), n=1, pvals=[0.5, 0.5], ndim=None):
 
-        Sample n times from a multinomial distribution defined by probabilities pvals,
-        as many times as required by size. For instance, if size=(p,q), p*q
-        samples will be drawn, and the output shape will be (p,q,len(pvals)).
+        Sample n times from a multinomial distribution defined by
+        probabilities ``pvals``, as many times as required by
+        ``size``. For instance, if ``size=(p,q)``, ``p*q`` samples
+        will be drawn, and the output shape will be
+        ``(p,q,len(pvals))``.
 
-        Theano tries to infer the number of dimensions from the length of the size argument, but you
-        may always specify it with the `ndim` parameter.
+        Theano tries to infer the number of dimensions from the length
+        of ``size``, but you may always specify it with ``ndim``.
 
-        .. note:: 
-            Note that the output will then be of dimension ndim+1.
+        .. note::
+            The output will have ``ndim+1`` dimensions.
+
+	This is a generalization of :py:func:`numpy.random.multinomial`
+        to the case where ``n`` and ``pvals`` are tensors. Otherwise
+        it behaves the same.
 
     .. method:: shuffle_row_elements(self, input):
-        
+
         Return a variable with every row (rightmost index) shuffled.
-        
-        This uses permutation random variable internally, available via the ``.permutation``
-        attribute of the return value.
-    
+
+        This uses a permutation random variable internally, available
+        via the ``.permutation`` attribute of the return value.
 
 .. class:: RandomStateType(gof.Type)
 
-    A `Type` for variables that will take ``numpy.random.RandomState`` values.
+    A `Type` for variables that will take ``numpy.random.RandomState``
+    values.
 
 .. function:: random_state_type(name=None)
 
-    Return a new Variable whose ``.type`` is ``random_state_variable``.
+    Return a new Variable whose ``.type`` is ``random_state_type``.
 
 .. class:: RandomFunction(gof.Op)
 
-    Op that draws random numbers from a numpy.RandomState object.  This Op is
-    parametrized to draw numbers from many possible distributions.
+    Op that draws random numbers from a numpy.RandomState object.
+    This Op is parametrized to draw numbers from many possible
+    distributions.
 
-.. function:: uniform(random_state, size=(), low=0.0, high=1.0)
+.. function:: uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=None)
 
     Sample from a uniform distribution between low and high.
 
@@ -135,59 +155,62 @@ Reference
 
     :returns: :class:`RandomVariable`, NewRandomState
 
-.. function:: binomial(random_state, size=(), n=1, p=0.5)
+.. function:: binomial(random_state, size=None, n=1, p=0.5, ndim=None, dtype='int64')
 
-    Sample n times with probability of success prob for each trial,
-    return the number of successes.
+    Sample ``n`` times with probability of success ``p`` for each
+    trial and return the number of successes.
 
-    If the size argument is ambiguous on the number of
-    dimensions, the first argument may be a plain integer
-    to supplement the missing information.
-    :returns: :class:`RandomVariable`, NewRandomState
-
-.. function:: normal(random_state, size=(), avg=0.0, std=1.0)
-
-    Sample from a normal distribution centered on avg with
-    the specified standard deviation (std)
-
-    If the size argument is ambiguous on the number of
-    dimensions, the first argument may be a plain integer
-    to supplement the missing information.
+    If ``size`` is ambiguous on the number of dimensions, ``ndim`` may
+    be a plain integer to supplement the missing information.
 
     :returns: :class:`RandomVariable`, NewRandomState
 
-.. function:: random_integers(random_state, size=(), low=0, high=1)
+.. function:: normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=None)
 
-    Sample a random integer between low and high, both inclusive.
+    Sample from a normal distribution centered on ``avg`` with the
+    specified standard deviation (``std``).
 
-    If the size argument is ambiguous on the number of
-    dimensions, the first argument may be a plain integer
-    to supplement the missing information.
-
-    :returns: :class:`RandomVariable`, NewRandomState
-
-.. function:: permutation(random_state, size=(), n=1)
-
-    Returns permutations of the integers between 0 and n-1, as many times
-    as required by size. For instance, if size=(p,q), p*q permutations
-    will be generated, and the output shape will be (p,q,n), because each
-    permutation is of size n.
-
-    If the size argument is ambiguous on the number of dimensions, the first
-    argument may be a plain integer i, which should correspond to len(size).
-    Note that the output will then be of dimension i+1.
+    If ``size`` is ambiguous on the number of dimensions, ``ndim`` may
+    be a plain integer to supplement the missing information.
 
     :returns: :class:`RandomVariable`, NewRandomState
 
-.. function:: multinomial(random_state, size=(), p_vals=[0.5, 0.5])
+.. function:: random_integers(random_state, size=None, low=0, high=1, ndim=None, dtype='int64')
 
-    Sample from a multinomial distribution defined by probabilities pvals,
-    as many times as required by size. For instance, if size=(p,q), p*q
-    samples will be drawn, and the output shape will be (p,q,len(pvals)).
+    Sample random integers in [``low``, ``high``] to fill up ``size``.
 
-    If the size argument is ambiguous on the number of dimensions, the first
-    argument may be a plain integer i, which should correspond to len(size).
-    Note that the output will then be of dimension i+1.
+    If ``size`` is ambiguous on the number of dimensions, ``ndim`` may
+    be a plain integer to supplement the missing information.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: permutation(random_state, size=None, n=1, ndim=None, dtype='int64')
+
+    Returns permutations of the integers in [0, ``n``\[, as many times
+    as required by ``size``. For instance, if ``size=(p,q)``, ``p*q``
+    permutations will be generated, and the output shape will be
+    ``(p,q,n)``, because each permutation is of size ``n``.
+
+    If ``size`` is ambiguous on the number of dimensions, ``ndim``
+    may be a plain integer, which should correspond to ``len(size)``.
+
+    .. note::
+        The output will have ``ndim+1`` dimensions.
+
+    :returns: :class:`RandomVariable`, NewRandomState
+
+.. function:: multinomial(random_state, size=None, p_vals=[0.5, 0.5], ndim=None, dtype='int64')
+
+    Sample from a multinomial distribution defined by probabilities
+    ``pvals``, as many times as required by ``size``. For instance, if
+    ``size=(p,q)``, ``p*q`` samples will be drawn, and the output
+    shape will be ``(p,q,len(pvals))``.
+
+    If ``size`` is ambiguous on the number of dimensions, ``ndim``
+    may be a plain integer, which should correspond to ``len(size)``.
+
+    .. note::
+        The output will have ``ndim+1`` dimensions.
 
     :returns: :class:`RandomVariable`, NewRandomState
 

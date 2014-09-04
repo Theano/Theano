@@ -7,7 +7,9 @@ import theano
 import theano.tensor as T
 from theano.tensor import TensorType
 from theano.tensor.basic import alloc
-from theano.tensor.tests.test_basic import rand, safe_make_node, T_reshape
+from theano.tensor.tests.test_basic import (
+    rand, safe_make_node, T_reshape, T_Join_and_Split
+    )
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -16,6 +18,8 @@ import theano.sandbox.gpuarray
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
+# If you are writing a new test file, don't copy this code, but rather
+# import stuff from this file (like mode_with_gpu) to reuse it.
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
     if not cuda_ndarray.use.device_number:
@@ -32,11 +36,14 @@ if not theano.sandbox.gpuarray.pygpu_activated:
 
 from theano.sandbox.gpuarray.type import (GpuArrayType,
                                           gpuarray_shared_constructor)
-from theano.sandbox.gpuarray.basic_ops import (host_from_gpu, gpu_from_host,
-                                               gpu_alloc, gpu_from_cuda,
-                                               cuda_from_gpu, HostFromGpu,
-                                               GpuFromHost, GpuReshape,
-                                               GpuEye)
+from theano.sandbox.gpuarray.basic_ops import (
+    host_from_gpu, gpu_from_host,
+    gpu_alloc, GpuAlloc,
+    gpu_from_cuda,
+    cuda_from_gpu, HostFromGpu,
+    GpuFromHost, GpuReshape,
+    gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
+from theano.sandbox.gpuarray.subtensor import GpuSubtensor
 
 from theano.tests import unittest_tools as utt
 utt.seed_rng()
@@ -67,6 +74,7 @@ def may_fail(msg, EClass):
         return wrapper
     return test_decorator
 
+
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                  on_unused_input='raise', name=None):
     if mode is None:
@@ -86,6 +94,7 @@ def fake_shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
                      allow_downcast=allow_downcast, **kwargs)
         except TypeError:
             continue
+
 
 def rand_gpuarray(*shape, **kwargs):
     r = rng.rand(*shape) * 2 - 1
@@ -202,10 +211,10 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
 def test_transfer_cpu_gpu():
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
-    
+
     av = numpy.asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
-    
+
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
     assert GpuArrayType.values_eq(fv, gv)
@@ -217,15 +226,16 @@ def test_transfer_cpu_gpu():
 
 def test_transfer_strided():
     # This is just to ensure that it works in theano
-    # compyte has a much more comprehensive suit of tests to ensure correctness
+    # libgpuarray has a much more comprehensive suit of tests to
+    # ensure correctness
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
 
     av = numpy.asarray(rng.rand(5, 8), dtype='float32')
     gv = gpuarray.array(av)
 
-    av = av[:,::2]
-    gv = gv[:,::2]
+    av = av[:, ::2]
+    gv = gv[:, ::2]
 
     f = theano.function([a], gpu_from_host(a))
     fv = f(av)
@@ -240,7 +250,7 @@ def test_transfer_strided():
           "that the tests will be run this way", ValueError)
 def test_transfer_cuda_gpu():
     import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available == False:
+    if cuda_ndarray.cuda_available is False:
         raise SkipTest("Can't test interaction with cuda if cuda not present")
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
     c = cuda_ndarray.CudaNdarrayType((False, False))('c')
@@ -248,8 +258,8 @@ def test_transfer_cuda_gpu():
     av = theano._asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
     cv = cuda_ndarray.CudaNdarray(av)
-    gvs = gv[:,::-2]
-    cvs = cv[:,::-2]
+    gvs = gv[:, ::-2]
+    cvs = cv[:, ::-2]
 
     f = theano.function([c], gpu_from_cuda(c))
     fv = f(cv)
@@ -290,6 +300,13 @@ GpuAllocTester = makeTester(
 )
 
 
+class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
+    dtype = "float32"
+    mode = mode_with_gpu
+    shared = staticmethod(gpuarray_shared_constructor)
+    allocs = [GpuAlloc, GpuAlloc, T.Alloc]
+
+
 def test_shape():
     x = GpuArrayType(dtype='float32', broadcastable=[False, False, False])()
     v = gpuarray.zeros((3, 4, 5), dtype='float32')
@@ -310,6 +327,19 @@ def test_shape():
     assert isinstance(topo[0].op, T.Shape)
 
 
+def test_gpu_contiguous():
+    a = T.fmatrix('a')
+    i = T.iscalar('i')
+    a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
+    f = theano.function([a, i], gpu_contiguous(a[::i]),
+                        mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert f(a_val, 1).flags.c_contiguous
+    assert f(a_val, 2).flags.c_contiguous
+    assert f(a_val, 2).flags.c_contiguous
+
+
 class G_reshape(T_reshape):
     def shortDescription(self):
         return None
@@ -321,12 +351,63 @@ class G_reshape(T_reshape):
                            mode=mode_with_gpu,
                            # avoid errors with limited devices
 #                             dtype='float32',
-                             ignore_topo=(HostFromGpu, GpuFromHost,
-                                          theano.compile.DeepCopyOp,
-                                          theano.sandbox.gpuarray.elemwise.GpuElemwise,
-                                          theano.tensor.opt.Shape_i,
-                                          theano.tensor.opt.MakeVector))
+                           ignore_topo=(HostFromGpu, GpuFromHost,
+                                        theano.compile.DeepCopyOp,
+                                        theano.sandbox.gpuarray.elemwise.GpuElemwise,
+                                        theano.tensor.opt.Shape_i,
+                                        theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
+
+
+class G_Join_and_Split(T_Join_and_Split):
+    def setUp(self):
+        super(G_Join_and_Split, self).setUp()
+        self.mode = mode_with_gpu.excluding('constant_folding')
+        self.join_op = GpuJoin
+        self.split_op = GpuSplit
+        # Use join instead of MakeVector since there is no MakeVector on GPU
+        self.make_vector_op = GpuJoin
+        # this is to avoid errors with limited devices
+        self.floatX = 'float32'
+        self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
+        self.shared = gpuarray_shared_constructor
+
+    def test_gpusplit_opt(self):
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
+        m = self.shared(rng.rand(4, 6).astype(self.floatX))
+        o = T.Split(2)(m, 0, [2, 2])
+        f = theano.function([], o, mode=self.mode)
+        assert any([isinstance(node.op, self.split_op)
+                    for node in f.maker.fgraph.toposort()])
+        o1, o2 = f()
+        assert numpy.allclose(o1, m.get_value(borrow=True)[:2])
+        assert numpy.allclose(o2, m.get_value(borrow=True)[2:])
+
+
+def test_gpujoin_gpualloc():
+    a = T.fmatrix('a')
+    a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
+    b = T.fmatrix('b')
+    b_val = numpy.asarray(numpy.random.rand(3, 5), dtype='float32')
+
+    f = theano.function([a, b], T.join(0, T.zeros_like(a), T.ones_like(b)) + 4,
+                        mode=mode_without_gpu)
+    f_gpu = theano.function([a, b], T.join(0, T.zeros_like(a), T.ones_like(b)),
+                            mode=mode_with_gpu)
+    f_gpu2 = theano.function([a, b], T.join(0, T.zeros_like(a),
+                                            T.ones_like(b)) + 4,
+                             mode=mode_with_gpu)
+    assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
+    assert sum([isinstance(node.op, GpuAlloc)
+                for node in f_gpu.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == gpu_join
+                for node in f_gpu.maker.fgraph.toposort()]) == 1
+    assert sum([isinstance(node.op, GpuAlloc)
+                for node in f_gpu2.maker.fgraph.toposort()]) == 2
+    assert sum([node.op == gpu_join
+                for node in f_gpu2.maker.fgraph.toposort()]) == 1
+    assert numpy.allclose(f(a_val, b_val), f_gpu2(a_val, b_val))
 
 
 def test_gpueye():
@@ -364,7 +445,8 @@ def test_hostfromgpu_shape_i():
     """
 
     m = mode_with_gpu.including('local_dot_to_dot22',
-                                'local_dot22_to_dot22scalar','specialize')
+                                'local_dot22_to_dot22scalar',
+                                'specialize')
     a = T.fmatrix('a')
     ca = theano.sandbox.gpuarray.type.GpuArrayType('float32', (False, False))()
     av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')

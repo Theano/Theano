@@ -176,19 +176,19 @@ has more implemented distributions.
 The slowest is our wrapper on NumPy's random generator.
 
 We explain and provide advice on 3 possibles implementations of new
-distributions here::
+distributions here:
 
-1) Extend our wrapper around NumPy random functions.
+1. Extend our wrapper around NumPy random functions.
    See this `PR <https://github.com/Theano/Theano/pull/1607>`_ as an example.
 
-2) Extend MRG implementation by reusing existing Theano Op. Look into
+2. Extend MRG implementation by reusing existing Theano Op. Look into
    the ``theano/sandbox/rng_mrg.py`` file and grep for all code about
    binomial(). This distribution uses the output of the uniform
    distribution and converts it to a binomial distribution with
    existing Theano operations. The tests go in
    ``theano/sandbox/test_rng_mrg.py``
 
-3) Extend MRG implementation with a new Op that takes a uniform sample as
+3. Extend MRG implementation with a new Op that takes a uniform sample as
    input. Look in the ``theano/sandbox/{rng_mrg,multinomial}.py`` file
    and its test in ``theano/sandbox/test_multinomal.py``. This is
    recommended when current Theano ops aren't well suited to modify

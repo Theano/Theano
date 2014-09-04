@@ -41,19 +41,19 @@ class DB(object):
             raise ValueError('The name of the object cannot be an existing'
                              ' tag or the name of another existing object.',
                              obj, name)
-        # This restriction is there because in many place we suppose that
-        # something in the DB is there only once.
-        if getattr(obj, 'name', "") in self.__db__:
-            raise ValueError('''You can\'t register the same optimization
-multiple time in a DB. Tryed to register "%s" again under the new name "%s".
- Use theano.gof.ProxyDB to work around that''' % (obj.name, name))
 
         if self.name is not None:
             tags = tags + (self.name,)
         obj.name = name
+        # This restriction is there because in many place we suppose that
+        # something in the DB is there only once.
+        if obj.name in self.__db__:
+            raise ValueError('''You can\'t register the same optimization
+multiple time in a DB. Tryed to register "%s" again under the new name "%s".
+ Use theano.gof.ProxyDB to work around that''' % (obj.name, name))
         self.__db__[name] = set([obj])
         self._names.add(name)
-
+        self.__db__[obj.__class__.__name__].add(obj)
         self.add_tags(name, *tags)
 
     def add_tags(self, name, *tags):
@@ -179,10 +179,15 @@ class Query(object):
 
 
 class EquilibriumDB(DB):
-    """ A set of potential optimizations which should be applied in an
+    """A set of potential optimizations which should be applied in an
         arbitrary order until equilibrium is reached.
 
     Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
+
+    :param ignore_newtrees: If False, we will apply local opt on new
+        node introduced during local optimization application. This
+        could result in less fgraph iterations, but this don't mean it
+        will be faster globally.
 
     .. note::
 
@@ -190,13 +195,17 @@ class EquilibriumDB(DB):
         suppor both.
 
     """
+    def __init__(self, ignore_newtrees=True):
+        super(EquilibriumDB, self).__init__()
+        self.ignore_newtrees = ignore_newtrees
 
     def query(self, *tags, **kwtags):
         opts = super(EquilibriumDB, self).query(*tags, **kwtags)
-        return opt.EquilibriumOptimizer(opts,
-                max_depth=5,
-                max_use_ratio=config.optdb.max_use_ratio,
-                failure_callback=opt.NavigatorOptimizer.warn_inplace)
+        return opt.EquilibriumOptimizer(
+            opts,
+            max_use_ratio=config.optdb.max_use_ratio,
+            ignore_newtrees=self.ignore_newtrees,
+            failure_callback=opt.NavigatorOptimizer.warn_inplace)
 
 
 class SequenceDB(DB):
@@ -239,6 +248,11 @@ class SequenceDB(DB):
                 position_cutoff = tags[0].position_cutoff
 
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
+        # We want to sort by position and then if collision by name
+        # for deterministic optimization.  Since Python 2.2, sort is
+        # stable, so sort by name first, then by position. This give
+        # the order we want.
+        opts.sort(key=lambda obj: obj.name)
         opts.sort(key=lambda obj: self.__position__[obj.name])
         ret = opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
         if hasattr(tags[0], 'name'):

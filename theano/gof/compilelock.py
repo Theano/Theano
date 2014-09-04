@@ -165,8 +165,12 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     my_pid = os.getpid()
     no_display = (verbosity == 0)
 
-    # Acquire lock.
     nb_error = 0
+    # The number of time we sleep when their is no errors.
+    # Used to don't display it the first time to display it less frequently.
+    # And so don't get as much email about this!
+    nb_wait = 0
+    # Acquire lock.
     while True:
         try:
             last_owner = 'no_owner'
@@ -174,13 +178,15 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
             other_dead = False
             while os.path.isdir(tmp_dir):
                 try:
-                    read_owner = open(lock_file).readlines()[0].strip()
-                    # the try is transtion code for old locks
-                    # it may be removed when poeple have upgraded
+                    with open(lock_file) as f:
+                        read_owner = f.readlines()[0].strip()
+
+                    # The try is transition code for old locks.
+                    # It may be removed when people have upgraded.
                     try:
                         other_host = read_owner.split('_')[2]
                     except IndexError:
-                        other_host = () # make sure it isn't equal to any host
+                        other_host = ()  # make sure it isn't equal to any host
                     if other_host == socket.gethostname():
                         try:
                             os.kill(int(read_owner.split('_')[0]), 0)
@@ -214,7 +220,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     last_owner = read_owner
                     time_start = time.time()
                     no_display = (verbosity == 0)
-                if not no_display:
+                if not no_display and nb_wait > 0:
                     if read_owner == 'failure':
                         msg = 'unknown process'
                     else:
@@ -225,6 +231,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                                  tmp_dir)
                     if verbosity <= 1:
                         no_display = True
+                nb_wait += 1
                 time.sleep(random.uniform(min_wait, max_wait))
 
             try:
@@ -245,7 +252,9 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
 
             # Verify we are really the lock owner (this should not be needed,
             # but better be safe than sorry).
-            owner = open(lock_file).readlines()[0].strip()
+            with open(lock_file) as f:
+                owner = f.readlines()[0].strip()
+
             if owner != unique_id:
                 # Too bad, try again.
                 continue

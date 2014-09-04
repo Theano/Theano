@@ -2,11 +2,15 @@ import numpy
 import theano
 
 # Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
-    raise SkipTest('Optional package cuda disabled')
-
+try:
+    from nose.plugins.skip import SkipTest
+    import theano.sandbox.cuda as cuda_ndarray
+    if cuda_ndarray.cuda_available == False:
+        raise SkipTest('Optional package cuda disabled')
+except ImportError:
+    # To have the GPU back-end work without nose, we need this file to
+    # be importable without nose.
+    pass
 from theano.gof.python25 import any
 import theano.sandbox.cuda as cuda
 import theano.sandbox.cuda.basic_ops as B

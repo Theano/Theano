@@ -15,10 +15,10 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import copy
 import logging
+import warnings
 from itertools import izip
 
 import numpy
-import warnings
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
@@ -157,10 +157,12 @@ def hash_listsDictsTuples(x):
     return hash_value
 
 
+DEPRECATED_ARG = object()
 def clone(output,
           replace=None,
           strict=True,
-          copy_inputs=True):
+          share_inputs=True,
+          copy_inputs=DEPRECATED_ARG):
     """
     Function that allows replacing subgraphs of a computational
     graph. It returns a copy of the initial subgraph with the corresponding
@@ -174,12 +176,17 @@ def clone(output,
     :param replace: dictionary describing which subgraphs should be
                     replaced by what
 
-    :type copy_inputs: bool
-    :param copy_inputs: If True, use the same inputs (and shared variables)
+    :type share_inputs: bool
+    :param share_inputs: If True, use the same inputs (and shared variables)
         as the original graph. If False, clone them. Note that cloned
         shared variables still use the same underlying storage, so they
         will always have the same value.
     """
+    if copy_inputs is not DEPRECATED_ARG:
+        warnings.warn('In `clone()` function, the argument `copy_inputs` has been deprecated and renamed into `share_inputs`')
+        assert share_inputs  # since we used `copy_inputs` we should have default value for `share_inputs`
+        share_inputs = copy_inputs
+
     if isinstance(replace, dict):
         items = replace.items()
     elif isinstance(replace, (list, tuple)):
@@ -198,14 +205,15 @@ def clone(output,
                                          tmp_replace,
                                          [],
                                          strict,
-                                         copy_inputs)
+                                         share_inputs)
 
+    # TODO Explain why we call it twice ?!
     _, outs, _ = rebuild_collect_shared(_outs,
                                         [],
                                         new_replace,
                                         [],
                                         strict,
-                                        copy_inputs)
+                                        share_inputs)
 
     return outs
 
@@ -383,6 +391,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     or `ys`.
 
     '''
+    assert len(xs) == len(ys)
     if in_xs is None:
         in_xs = []
     if in_ys is None:
@@ -393,68 +402,64 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
             return False
         if y.owner and not x.owner:
             return False
-        if x.owner and y.owner:
+        if x.owner:  # Check above tell that y.owner eval to True too.
             if x.owner.outputs.index(x) != y.owner.outputs.index(y):
                 return False
+        if x not in in_xs and x.type != y.type:
+            return False
     if len(in_xs) != len(in_ys):
         return False
     for _x, _y in izip(in_xs, in_ys):
         if _x.type != _y.type:
             return False
 
-    nds_x = gof.graph.io_toposort(in_xs, xs)
-    nds_y = gof.graph.io_toposort(in_ys, ys)
-    if len(nds_x) != len(nds_y):
-        return False
     common = set(zip(in_xs, in_ys))
-    n_nodes = len(nds_x)
-    cont = True
-    idx = 0
     for dx, dy in izip(xs, ys):
-        if not dx.owner or not dy.owner:
-            if dy.owner or dx.owner:
-                return False
-            elif (isinstance(dx, tensor.Constant) and
+        # We checked above that both dx and dy have an owner or not
+        if not dx.owner:
+            if (isinstance(dx, tensor.Constant) and
                   isinstance(dy, tensor.Constant)):
-                if not (numpy.all(dx.data == dy.data) and
-                        dx.type.dtype == dy.type.dtype and
-                        dx.data.shape == dy.data.shape):
+                if not dx.equals(dy):
                     return False
                 else:
                     pass
             elif (dx, dy) not in common and dx != dy:
                 return False
 
-    while cont and idx < n_nodes:
+    nds_x = gof.graph.io_toposort(in_xs, xs)
+    nds_y = gof.graph.io_toposort(in_ys, ys)
+    if len(nds_x) != len(nds_y):
+        return False
+
+    n_nodes = len(nds_x)
+    idx = 0
+    while idx < n_nodes:
         nd_x = nds_x[idx]
         nd_y = nds_y[idx]
         if nd_x.op != nd_y.op:
-            cont = False
+            return False
         elif len(nd_x.inputs) != len(nd_y.inputs):
-            cont = False
+            return False
         elif len(nd_x.outputs) != len(nd_y.outputs):
-            cont = False
+            return False
         else:
             for dx, dy in izip(nd_x.inputs, nd_y.inputs):
                 if (dx, dy) not in common:
                     if dx != dy:
                         if (isinstance(dx, tensor.Constant) and
                             isinstance(dy, tensor.Constant)):
-                            if not (numpy.all(dx.data == dy.data) and
-                                dx.type.dtype == dy.type.dtype and
-                                dx.data.shape == dy.data.shape):
+                            if not dx.equals(dy):
                                 return False
                             else:
                                 pass
                         else:
-                            cont = False
+                            return False
 
-        if cont:
             for dx, dy in izip(nd_x.outputs, nd_y.outputs):
                 common.add((dx, dy))
         idx += 1
 
-    return cont
+    return True
 
 
 def infer_shape(outs, inputs, input_shapes):

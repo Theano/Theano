@@ -29,8 +29,8 @@ def max_pool_2d(input, ds, ignore_border=False):
     :param input: input images. Max pooling will be done over the 2 last
         dimensions.
     :type ds: tuple of length 2
-    :param ds: factor by which to downscale. (2,2) will halve the image in
-        each dimension.
+    :param ds: factor by which to downscale (vertical ds, horizontal ds). 
+        (2,2) will halve the image in each dimension. 
     :param ignore_border: boolean value. When True, (5,5) input with ds=(2,2)
         will generate a (2,2) output. (3,3) otherwise.
     """

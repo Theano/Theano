@@ -33,7 +33,6 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
-
 #is_nvcc_available called here to initialize global vars in
 #nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
@@ -237,7 +236,7 @@ class GpuOp(theano.gof.Op):
                                              compute_map, no_recycling)
 
 theano.compile.debugmode.default_make_thunk.append(
-                                        get_unbound_function(GpuOp.make_thunk))
+    get_unbound_function(GpuOp.make_thunk))
 
 # We must do those import to be able to create the full doc when
 # nvcc is not available
@@ -366,6 +365,8 @@ def use(device,
                 # event if another device is selected later.
                 cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
                 use.device_number = active_device_number()
+                # This is needed to initialize the cublas handle.
+                gpu_init(use.device_number)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver

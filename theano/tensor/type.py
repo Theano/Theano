@@ -164,7 +164,8 @@ class TensorType(Type):
                             " Theano C code does not support that.",
                             msg,
                             "object shape", data.shape,
-                            "object strides", data.strides)
+                            "object strides", data.strides,
+                            "object dtype", data.dtype)
 
         i = 0
         for b in self.broadcastable:
@@ -415,72 +416,81 @@ class TensorType(Type):
         return str(self)
         #"TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         """Override `CLinkerType.c_declare` """
-        return """
+        if(check_input):
+            check = """
+            typedef %(dtype)s dtype_%(name)s;
+            """ % dict(sub, name=name, dtype=self.dtype_specs()[1])
+        else:
+            check = ""
+        declaration = """
         PyArrayObject* %(name)s;
-        int type_num_%(name)s;
-        typedef %(dtype)s dtype_%(name)s;
         """ % dict(sub, name=name, dtype=self.dtype_specs()[1])
+
+        return declaration + check
 
     def c_init(self, name, sub):
         """Override `CLinkerType.c_init` """
         return """
         %(name)s = NULL;
-        type_num_%(name)s = %(type_num)s;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         """Override `CLinkerType.c_extract` """
-        return """
-        %(name)s = NULL;
-        if (py_%(name)s == Py_None) {
-            // We can either fail here or set %(name)s to NULL and rely on Ops
-            // using tensors to handle the NULL case, but if they fail to do so
-            // they'll end up with nasty segfaults, so this is public service.
-            PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
-            %(fail)s
-        }
-        if (!PyArray_Check(py_%(name)s)) {
-            PyErr_SetString(PyExc_ValueError, "expected an ndarray");
-            %(fail)s
-        }
-        // We expect %(type_num)s
-        type_num_%(name)s = PyArray_TYPE((PyArrayObject*) py_%(name)s);
-        if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
-            PyArrayObject * tmp = (PyArrayObject*) py_%(name)s;
-            PyErr_Format(PyExc_NotImplementedError,
-                         "expected an aligned array of type %%ld "
-                         "(%(type_num)s), got non-aligned array of type %%ld"
-                         " with %%ld dimensions, with 3 last dims "
-                         "%%ld, %%ld, %%ld"
-                         " and 3 last strides %%ld %%ld, %%ld.",
-                         (long int) %(type_num)s,
-                         (long int) type_num_%(name)s,
-                         (long int) PyArray_NDIM(tmp),
-                         (long int) PyArray_NDIM(tmp) >= 3 ?
-        PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 2 ?
-        PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-2] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 1 ?
-        PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-1] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 3 ?
-        PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-3] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 2 ?
-        PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-2] : -1,
-                         (long int) PyArray_NDIM(tmp) >= 1 ?
-        PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-1] : -1
-        );
-            %(fail)s
-        }
-        // This is a TypeError to be consistent with DEBUG_MODE
-        // Note: DEBUG_MODE also tells the name of the container
-        if (type_num_%(name)s != %(type_num)s) {
-            PyErr_Format(PyExc_TypeError,
-                         "expected type_num %%d (%(type_num)s) got %%d",
-                         %(type_num)s, type_num_%(name)s);
-            %(fail)s
-        }
+        if(check_input):
+            check = """
+            %(name)s = NULL;
+            if (py_%(name)s == Py_None) {
+                // We can either fail here or set %(name)s to NULL and rely on Ops
+                // using tensors to handle the NULL case, but if they fail to do so
+                // they'll end up with nasty segfaults, so this is public service.
+                PyErr_SetString(PyExc_ValueError, "expected an ndarray, not None");
+                %(fail)s
+            }
+            if (!PyArray_Check(py_%(name)s)) {
+                PyErr_SetString(PyExc_ValueError, "expected an ndarray");
+                %(fail)s
+            }
+            // We expect %(type_num)s
+            if (!PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
+                PyArrayObject * tmp = (PyArrayObject*) py_%(name)s;
+                PyErr_Format(PyExc_NotImplementedError,
+                             "expected an aligned array of type %%ld "
+                             "(%(type_num)s), got non-aligned array of type %%ld"
+                             " with %%ld dimensions, with 3 last dims "
+                             "%%ld, %%ld, %%ld"
+                             " and 3 last strides %%ld %%ld, %%ld.",
+                             (long int) %(type_num)s,
+                             (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
+                             (long int) PyArray_NDIM(tmp),
+                             (long int) PyArray_NDIM(tmp) >= 3 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 2 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-2] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 1 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-1] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 3 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-3] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 2 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-2] : -1,
+                             (long int) PyArray_NDIM(tmp) >= 1 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-1] : -1
+            );
+                %(fail)s
+            }
+            // This is a TypeError to be consistent with DEBUG_MODE
+            // Note: DEBUG_MODE also tells the name of the container
+            if (PyArray_TYPE((PyArrayObject*) py_%(name)s) != %(type_num)s) {
+                PyErr_Format(PyExc_TypeError,
+                             "expected type_num %%d (%(type_num)s) got %%d",
+                             %(type_num)s, PyArray_TYPE((PyArrayObject*) py_%(name)s));
+                %(fail)s
+            }
+            """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
+        else:
+            check = ""
+        return check + """
         %(name)s = (PyArrayObject*)(py_%(name)s);
         Py_XINCREF(%(name)s);
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
@@ -511,13 +521,11 @@ class TensorType(Type):
 
         if (%(name)s && !PyArray_ISALIGNED((PyArrayObject*) py_%(name)s)) {
             PyErr_Format(PyExc_NotImplementedError,
-                         "c_sync: expected an aligned array of type %%ld "
-                         "(%(type_num)s), got non-aligned array of type %%ld"
+                         "c_sync: expected an aligned array, got non-aligned array of type %%ld"
                          " with %%ld dimensions, with 3 last dims "
                          "%%ld, %%ld, %%ld"
                          " and 3 last strides %%ld %%ld, %%ld.",
-                         (long int) %(type_num)s,
-                         (long int) type_num_%(name)s,
+                         (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
                          (long int) PyArray_NDIM(%(name)s),
                          (long int) PyArray_NDIM(%(name)s) >= 3 ?
         PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
@@ -635,10 +643,17 @@ theano.compile.register_shape_i_c_code(
         TensorType,
         """
         if(!%(oname)s)
-            %(oname)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
+            %(oname)s=(PyArrayObject*)PyArray_EMPTY(0, NULL, NPY_INT64, 0);
         ((npy_int64*)PyArray_DATA(%(oname)s))[0]=PyArray_DIMS(%(iname)s)[%(i)s];
         """,
-        version=1)
+        """
+        if (%(i)s>=PyArray_NDIM(%(iname)s)){
+            PyErr_SetString(PyExc_TypeError,
+                "Number of dimensions lower than expected");
+            %(fail)s
+        }
+        """,
+        version=3)
 
 # Register TensorType C code for DeepCopyOp
 theano.compile.register_deep_copy_op_c_code(
@@ -670,3 +685,47 @@ theano.compile.register_deep_copy_op_c_code(
         }
         """,
         version=2)
+
+
+theano.compile.register_rebroadcast_c_code(
+    TensorType,
+    """
+    if(PyArray_DIMS(%(iname)s)[%(axis)s] != 1){
+        PyErr_Format(PyExc_ValueError,
+            "Dimension %(axis)s in Rebroadcast's input was"
+            " supposed to be 1 (got %%d instead)",
+            PyArray_DIMS(%(iname)s)[%(axis)s]);
+        %(fail)s
+    }
+    """,
+        version=1)
+
+
+theano.compile.register_specify_shape_c_code(
+    TensorType,
+    """
+        if (PyArray_NDIM(%(iname)s) != PyArray_DIMS(%(shape)s)[0]) {
+            PyErr_Format(PyExc_AssertionError,
+                         "SpecifyShape: vector of shape has %%d elements,"
+                         " but the input has %%d dimensions.",
+                         PyArray_NDIM(%(iname)s),
+                         PyArray_DIMS(%(shape)s)[0]);
+            %(fail)s;
+        }
+        for(int i = 0; i < PyArray_NDIM(%(iname)s); i++){
+            dtype_%(shape)s shp = ((dtype_%(shape)s*)PyArray_GETPTR1(%(shape)s,
+                                                                     i))[0];
+            if (PyArray_DIMS(%(iname)s)[i] != shp) {
+                PyErr_Format(PyExc_AssertionError,
+                             "SpecifyShape: dim %%d of input has shape %%d,"
+                             " expected %%d.",
+                             i, PyArray_DIMS(%(iname)s)[i],
+                             shp);
+                %(fail)s;
+            }
+        }
+        Py_XDECREF(%(oname)s);
+        %(oname)s = %(iname)s;
+        Py_XINCREF(%(oname)s);
+    """,
+    version=1)

@@ -44,7 +44,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_literal", type(self), self.__class__.__name__)
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         """Required: Return c code to declare variables that will be
         instantiated by `c_extract`.
 
@@ -96,7 +96,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_init", type(self), self.__class__.__name__)
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         """Required: Return c code to extract a PyObject * instance.
 
         The code returned from this function must be templated using
@@ -137,7 +137,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_extract", type(self), self.__class__.__name__)
 
-    def c_extract_out(self, name, sub):
+    def c_extract_out(self, name, sub, check_input=True):
         """Optional: C code to extract a PyObject * instance.
 
         Unlike c_extract, c_extract_out has to accept Py_None,
@@ -155,7 +155,7 @@ class CLinkerType(CLinkerObject):
         """ % dict(
                 name=name,
                 c_init_code=self.c_init(name, sub),
-                c_extract_code=self.c_extract(name, sub))
+                c_extract_code=self.c_extract(name, sub, check_input))
 
     def c_cleanup(self, name, sub):
         """Optional: Return c code to clean up after `c_extract`.
@@ -401,10 +401,17 @@ class SingletonType(Type):
     It saves having to implement __eq__ and __hash__
     """
     __instance = None
+
     def __new__(cls):
-        if cls.__instance is None:
+        # If sub-subclass of SingletonType don't redeclare __instance
+        # when we look for it, we will find it in the subclass.  We
+        # don't want that, so we check the class.  When we add one, we
+        # add one only to the current class, so all is working
+        # correctly.
+        if cls.__instance is None or not isinstance(cls.__instance, cls):
             cls.__instance = Type.__new__(cls)
         return cls.__instance
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -427,7 +434,7 @@ class Generic(SingletonType):
     def is_valid_value(self, a):
         return True
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """
         PyObject* %(name)s;
         """ % locals()
@@ -437,7 +444,7 @@ class Generic(SingletonType):
         %(name)s = NULL;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         return """
         Py_INCREF(py_%(name)s);
         %(name)s = py_%(name)s;

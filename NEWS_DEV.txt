@@ -13,6 +13,9 @@ Done up to PR 1608
 
 * https://github.com/Theano/Theano/pull/1591 # need info
 
+Interface change:
+ - theano.tensor.signal.conv2d(2d,2d) output 2d answer. (Frederic B., reported by Alexander Izvorski)
+
 
 Theano Development version
 ==========================

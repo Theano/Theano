@@ -68,6 +68,21 @@ class test_sort(unittest.TestCase):
         gt = np.sort(self.m_val, None)
         assert np.allclose(gv, gt)
 
+    def test_grad_vector(self):
+        a = theano.tensor.vector()
+        data = np.random.rand(10).astype(theano.config.floatX)
+        utt.verify_grad(sort, [data])
+
+    def test_grad_none_axis(self):
+        data = np.random.rand(10).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, None), [data])
+        utt.verify_grad(lambda x: sort(x, 0), [data])
+
+        data = np.random.rand(2, 3).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, None), [data])
+        #utt.verify_grad(lambda x: sort(x, 0), [data])
+        #utt.verify_grad(lambda x: sort(x, 1), [data])
+
 
 class TensorInferShapeTester(utt.InferShapeTester):
     def test_sort(self):
@@ -143,3 +158,5 @@ def test_argsort():
     gv = f(m_val)
     gt = np.argsort(m_val, None)
     assert np.allclose(gv, gt)
+
+

@@ -49,6 +49,8 @@ else:
     if pycuda_available:
         if hasattr(pycuda.driver.Context, "attach"):
             pycuda.driver.Context.attach()
+            import atexit
+            atexit.register(pycuda.driver.Context.pop)
         else:
             # Now we always import this file when we call
             # theano.sandbox.cuda.use. So this should not happen

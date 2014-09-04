@@ -57,11 +57,11 @@ from theano.compile import \
     SymbolicOutput, Out, \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
-    FunctionMaker, function, OpFromGraph, \
+    FunctionMaker, function, function_dump, OpFromGraph, \
     Component, External, Member, Method, \
     Composite, ComponentList, ComponentDict, Module, \
     ProfileMode, ProfileStats, \
-    Param, shared
+    Param, shared, as_op
 
 from theano.misc.safe_asarray import _asarray
 
@@ -79,7 +79,7 @@ from theano.updates import Updates, OrderedUpdates
 #we don't import by default as we don't want to force having scipy installed.
 #import sparse
 
-from theano.gradient import Rop, Lop, grad
+from theano.gradient import Rop, Lop, grad, subgraph_grad
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
@@ -197,7 +197,6 @@ else:
 # This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
 # depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
 # here and inject an instance in tensor.
-from theano import tensor
 from theano.tensor.randomstreams import RandomStreams
 # Imitate the numpy.random symbol with a tensor.random one
 tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)

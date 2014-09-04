@@ -62,7 +62,7 @@ import sys
 import time
 
 import theano
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import output_subprocess_Popen
 
 
 def main(stdout=None, stderr=None, argv=None, theano_nose=None,
@@ -152,7 +152,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     stderr.flush()
     assert rval == 0
     noseids_file = '.noseids'
-    data = cPickle.load(open(noseids_file, 'rb'))
+
+    with open(noseids_file, 'rb') as f: 
+        data = cPickle.load(f)
+
     ids = data['ids']
     n_tests = len(ids)
     if n_tests == 0:
@@ -193,8 +196,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             # otherwise this field may get erased. We use a set because it
             # seems like it is not systematically erased though, and we want
             # to avoid duplicates.
-            failed = failed.union(cPickle.load(open(noseids_file, 'rb'))
-                                  ['failed'])
+            with open(noseids_file, 'rb') as f:
+                failed = failed.union(cPickle.load(f)['failed'])
+
             print '%s%% done in %.3fs (failed: %s)' % (
                 (test_range[-1] * 100) // n_tests, t1 - t0, len(failed))
         # Sort for cosmetic purpose only.
@@ -271,19 +275,17 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                     time.ctime(), test_id, data["ids"][test_id]))
                 f_rawlog.flush()
 
-                proc = call_subprocess_Popen(
+                p_out = output_subprocess_Popen(
                     ([python, theano_nose, '-v', '--with-id']
-                    + [str(test_id)] + argv +
-                     ['--disabdocstring']),
+                     + [str(test_id)] + argv +
+                     ['--disabdocstring']))
                     # the previous option calls a custom Nosetests plugin
                     # precluding automatic sustitution of doc. string for
                     # test name in display
                     # (see class 'DisabDocString' in file theano-nose)
-                    stderr=subprocess.PIPE,
-                    stdout=dummy_out.fileno())
 
                 # recovering and processing data from pipe
-                err = proc.stderr.read()
+                err = p_out[1]
                 # print the raw log
                 f_rawlog.write(err)
                 f_rawlog.flush()

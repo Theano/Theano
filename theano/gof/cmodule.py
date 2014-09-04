@@ -29,7 +29,8 @@ from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import (subprocess_Popen, call_subprocess_Popen,
+                                 output_subprocess_Popen)
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
@@ -60,6 +61,11 @@ AddConfigVar('cmodule.compilation_warning',
              "If True, will print compilation warnings.",
              BoolParam(False))
 
+
+AddConfigVar('cmodule.preload_cache',
+             "If set to True, will preload the C module cache at import time",
+             BoolParam(False, allow_override=False),
+             in_c_key=False)
 
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
@@ -470,8 +476,8 @@ class KeyData(object):
         """
         # Note that writing in binary mode is important under Windows.
         try:
-            cPickle.dump(self, open(self.key_pkl, 'wb'),
-                         protocol=cPickle.HIGHEST_PROTOCOL)
+            with open(self.key_pkl, 'wb') as f:
+                cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
                             self.keys)
@@ -675,7 +681,8 @@ class ModuleCache(object):
                                          "unpickle cache file %s", key_pkl)
 
                         try:
-                            key_data = cPickle.load(open(key_pkl, 'rb'))
+                            with open(key_pkl, 'rb') as f:
+                                key_data = cPickle.load(f)
                         except EOFError:
                             # Happened once... not sure why (would be worth
                             # investigating if it ever happens again).
@@ -1120,7 +1127,9 @@ class ModuleCache(object):
         # Verify that when we reload the KeyData from the pickled file, the
         # same key can be found in it, and is not equal to more than one
         # other key.
-        key_data = cPickle.load(open(key_pkl, 'rb'))
+        with open(key_pkl, 'rb') as f:
+            key_data = cPickle.load(f)
+
         found = sum(key == other_key for other_key in key_data.keys)
         msg = ''
         if found == 0:
@@ -1438,8 +1447,12 @@ def get_gcc_shared_library_arg():
 
 
 def std_include_dirs():
-    return (numpy.distutils.misc_util.get_numpy_include_dirs()
-            + [distutils.sysconfig.get_python_inc()])
+    numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
+    py_inc = distutils.sysconfig.get_python_inc()
+    py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
+    python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
+                       else [py_inc, py_plat_spec_inc])
+    return numpy_inc_dirs + python_inc_dirs
 
 
 def std_lib_dirs_and_libs():
@@ -1509,14 +1522,9 @@ def gcc_llvm():
     It don't support all g++ parameters even if it support many of them.
     """
     if gcc_llvm.is_llvm is None:
-        pass
-        p = None
         try:
-            p = call_subprocess_Popen(['g++', '--version'],
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
-            p.wait()
-            output = p.stdout.read() + p.stderr.read()
+            p_out = output_subprocess_Popen(['g++', '--version'])
+            output = p_out[0] + p_out[1]
         except OSError:
             # Typically means g++ cannot be found.
             # So it is not an llvm compiler.
@@ -1525,9 +1533,9 @@ def gcc_llvm():
             # compile when g++ is not available. If this happen, it
             # will crash later so supposing it is not llvm is "safe".
             output = b('')
-        del p
         gcc_llvm.is_llvm = b("llvm") in output
     return gcc_llvm.is_llvm
+
 gcc_llvm.is_llvm = None
 
 
@@ -1569,11 +1577,11 @@ class GCC_compiler(object):
             GCC_compiler.march_flags = []
 
             def get_lines(cmd, parse=True):
-                p = call_subprocess_Popen(cmd,
-                                          stdout=subprocess.PIPE,
-                                          stderr=subprocess.PIPE,
-                                          stdin=subprocess.PIPE,
-                                          shell=True)
+                p = subprocess_Popen(cmd,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     stdin=subprocess.PIPE,
+                                     shell=True)
                 # For mingw64 with GCC >= 4.7, passing os.devnull
                 # as stdin (which is the default) results in the process
                 # waiting forever without returning. For that reason,
@@ -1713,7 +1721,7 @@ class GCC_compiler(object):
                                     continue
                                 mj, mn, patch = [int(vp) for vp in version]
                                 if (((mj, mn) == (4, 6) and patch < 4) or
-                                        ((mj, mn) == (4, 7) and patch < 3) or
+                                        ((mj, mn) == (4, 7) and patch <= 3) or
                                         ((mj, mn) == (4, 8) and patch < 1)):
                                     new_flags[i] = p.rstrip('-avx')
 
@@ -1758,7 +1766,7 @@ class GCC_compiler(object):
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
         # Pi.
-        if any([not 'arm' in flag for flag in cxxflags]):
+        if not any(['arm' in flag for flag in cxxflags]):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
@@ -1806,26 +1814,20 @@ class GCC_compiler(object):
                 # Python3 compatibility: try to cast Py3 strings as Py2 strings
                 try:
                     src_code = b(src_code)
-                except:
+                except Exception:
                     pass
                 os.write(fd, src_code)
                 os.close(fd)
                 fd = None
-                proc = call_subprocess_Popen(
-                        ['g++', path, '-o', exe_path] + flags,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
-                proc.wait()
-                if proc.returncode != 0:
+                p_ret = call_subprocess_Popen(
+                    ['g++', path, '-o', exe_path] + flags)
+                if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
                     # Try to execute the program
                     try:
-                        proc = call_subprocess_Popen([exe_path],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-                        proc.wait()
-                        run_ok = (proc.returncode == 0)
+                        p_ret = call_subprocess_Popen([exe_path])
+                        run_ok = (p_ret == 0)
                     finally:
                         os.remove(exe_path)
             finally:
@@ -1958,14 +1960,14 @@ class GCC_compiler(object):
             print >> sys.stderr, ' '.join(cmd)
 
         try:
-            p = call_subprocess_Popen(cmd, stderr=subprocess.PIPE)
-            compile_stderr = decode(p.communicate()[1])
+            p_out = output_subprocess_Popen(cmd)
+            compile_stderr = decode(p_out[1])
         except Exception:
             # An exception can occur e.g. if `g++` is not found.
             print_command_line_error()
             raise
 
-        status = p.returncode
+        status = p_out[2]
 
         if status:
             print '==============================='

@@ -364,8 +364,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     that are neither in "updates" nor in "no_default_updates".
 
     :type name: None or string
-    :param name: attaches a name to the Profiling result of this function when
-    using ProfileMode (will be deprecated).
+    :param name: attaches a name to the profiling result of this function.
 
     :type allow_input_downcast: Boolean
     :param allow_input_downcast: True means that the values passed as

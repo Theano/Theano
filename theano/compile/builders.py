@@ -1,5 +1,5 @@
+import theano
 from theano import gof
-from theano import gradient as G
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
@@ -24,6 +24,7 @@ class OpFromGraph(gof.Op):
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
+
     :note:
         - We support shared variables in the inner graph. This is automatic and
           invisible to the user. They can be as input to the node or in the
@@ -142,7 +143,7 @@ class OpFromGraph(gof.Op):
         if hasattr(self, "grad_ops"):
             grad_ops = self.grad_ops
         else:
-            gs = G.grad(cost=None,
+            gs = theano.gradient.grad(cost=None,
                         known_grads=dict(zip(self.new_outputs, output_grads)),
                         wrt=self.new_inputs,
                         disconnected_inputs='ignore')

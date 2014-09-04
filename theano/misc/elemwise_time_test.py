@@ -11,7 +11,7 @@ parser = OptionParser(usage='%prog <options>\n Compute time for'
                       ' fast and slow elemwise operations')
 parser.add_option('-N', '--N', action='store', dest='N',
                   default=theano.config.openmp_elemwise_minsize, type="int",
-                  help="Number of vector element")
+                  help="Number of vector elements")
 parser.add_option('--script', action='store_true', dest='script',
                   default=False,
                   help="Run program as script and print results on stdoutput")

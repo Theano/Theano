@@ -5,7 +5,8 @@ from theano.sparse.basic import SparseType, _sparse_py_operators
 
 
 class SparseTensorSharedVariable(_sparse_py_operators, SharedVariable):
-    pass
+    dtype = property(lambda self: self.type.dtype)
+    format = property(lambda self: self.type.format)
 
 
 @shared_constructor

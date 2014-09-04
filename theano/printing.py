@@ -783,7 +783,7 @@ def pydotprint(fct, outfile=None,
             elif var.name or not compact:
                 g.add_edge(pd.Edge(astr, varstr, label=label))
 #            else:
-            #don't add egde here as it is already added from the inputs.
+            # don't add egde here as it is already added from the inputs.
 
     if cond_highlight:
         g.add_subgraph(c1)
@@ -863,8 +863,8 @@ def pydotprint_variables(vars,
                 dstr = dstr[:dstr.index('\n')]
             varstr = '%s %s' % (dstr, str(var.type))
         else:
-            #a var id is needed as otherwise var with the same type will be
-            #merged in the graph.
+            # a var id is needed as otherwise var with the same type will be
+            # merged in the graph.
             varstr = str(var.type)
 
         varstr += ' ' + str(len(var_str))
@@ -1090,8 +1090,6 @@ def min_informative_str(obj, indent_level=0,
     return rval
 
 
-
-
 def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
     """
     Returns a string, with no endlines, fully specifying
@@ -1153,6 +1151,7 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
     rval = prefix + name
 
     return rval
+
 
 def position_independent_str(obj):
     if isinstance(obj, theano.gof.graph.Variable):

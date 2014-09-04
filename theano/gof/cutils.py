@@ -1,3 +1,4 @@
+import errno
 import os
 import sys
 
@@ -248,7 +249,11 @@ fail:
 
     loc = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(loc):
-        os.mkdir(loc)
+        try:
+            os.mkdir(loc)
+        except OSError, e:
+            assert e.errno == errno.EEXIST
+            assert os.path.exists(loc), loc
 
     args = cmodule.GCC_compiler.compile_args()
     cmodule.GCC_compiler.compile_str('cutils_ext', code, location=loc,
@@ -264,7 +269,11 @@ try:
     sys.path.insert(0, config.compiledir)
     location = os.path.join(config.compiledir, 'cutils_ext')
     if not os.path.exists(location):
-        os.mkdir(location)
+        try:
+            os.mkdir(location)
+        except OSError, e:
+            assert e.errno == errno.EEXIST
+            assert os.path.exists(location), location
     if not os.path.exists(os.path.join(location, '__init__.py')):
         open(os.path.join(location, '__init__.py'), 'w').close()
 
