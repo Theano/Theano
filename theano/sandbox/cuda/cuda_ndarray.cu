@@ -1002,7 +1002,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
             return NULL;
 
         indices = (CudaNdarray*) CudaNdarray_New();
-        if (verbose) printf("ndarray after new\n");
+        if (verbose) printf("\nndarray after new\n");
         if (! indices){
             Py_DECREF(indices_float32);
             return NULL;
@@ -1149,7 +1149,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                     printf("cudaGetLastError=%d, nd=%d"
                            " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
-                           self->nd, cudaGetLastError(),
+                           cudaGetLastError(), self->nd,
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
                 k3<<<n_blocks, n_threads>>>(
                         dims[0],
@@ -1205,7 +1205,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                     printf("cudaGetLastError=%d, nd=%d"
                            " kernel config: (n_blocks.x=%d, n_blocks.y=%d,"
                            " n_threads.x=%i, n_threads.y=%i)\n",
-                           self->nd, cudaGetLastError(),
+                           cudaGetLastError(), self->nd,
                            n_blocks.x, n_blocks.y, n_threads.x, n_threads.y);
                 k3<<<n_blocks, n_threads>>>(
                         dims[0], //dimensions
