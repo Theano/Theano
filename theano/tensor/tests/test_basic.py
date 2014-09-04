@@ -1919,6 +1919,48 @@ Allocb4GradTester = makeBroadcastTester(
 )
 
 
+class ApplyDefaultTestOp(theano.Op):
+    def __init__(self, id):
+        self.default_output = id
+
+    def make_node(self, x):
+        x = theano.tensor.as_tensor_variable(x)
+        return theano.Apply(self, [x], [x.type()])
+
+
+class TestApplyDefaultOutput(unittest.TestCase):
+    def setUp(self):
+        self.x = tensor.scalar('x')
+
+    def test_one_output(self):
+        good_apply_var = ApplyDefaultTestOp(0).make_node(self.x)
+        x = as_tensor_variable(good_apply_var)
+
+    def test_below_zero_output(self):
+        bad_apply_var = ApplyDefaultTestOp(-1).make_node(self.x)
+        try:
+            x = as_tensor_variable(bad_apply_var)
+            assert(False)  # The above call should have failed
+        except AttributeError:
+            pass
+
+    def test_above_output_len(self):
+        bad_apply_var = ApplyDefaultTestOp(2).make_node(self.x)
+        try:
+            x = as_tensor_variable(bad_apply_var)
+            assert(False)  # The above call should have failed
+        except AttributeError:
+            pass
+
+    def test_list(self):
+        bad_apply_var = ApplyDefaultTestOp([0, 1]).make_node(self.x)
+        try:
+            x = as_tensor_variable(bad_apply_var)
+            assert(False)  # The above call should have failed
+        except AttributeError:
+            pass
+
+
 class TestAlloc(unittest.TestCase):
     dtype = config.floatX
     mode = mode_opt

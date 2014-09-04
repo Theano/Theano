@@ -145,13 +145,13 @@ def as_tensor_variable(x, name=None, ndim=None):
         return x._as_TensorVariable()  # TODO: pass name and ndim arguments
 
     if isinstance(x, gof.Apply):
-        # TODO: use Apply's default output mechanism
-        if len(x.outputs) != 1:
+        # use Apply's default output mechanism
+        if (x.op.default_output is None) and (len(x.outputs) != 1):
             raise ValueError(
                 "It is ambiguous which output of a multi-output Op has"
                 " to be fetched.", x)
-        else:
-            x = x.outputs[0]
+
+        x = x.default_output()
     if isinstance(x, Variable):
         if isinstance(x.type, scal.Scalar):
             x = tensor_from_scalar(x)
