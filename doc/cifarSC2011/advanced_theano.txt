@@ -16,46 +16,55 @@ Conditions
 
 **IfElse Example: Comparison with Switch**
 
-.. code-block:: python
+.. testcode::
 
-  from theano import tensor as T
-  from theano.ifelse import ifelse
-  import theano, time, numpy
+   from theano import tensor as T
+   from theano.ifelse import ifelse
+   import theano, time, numpy
 
-  a,b = T.scalars('a','b')
-  x,y = T.matrices('x','y')
-  
-  z_switch = T.switch(T.lt(a,b), T.mean(x), T.mean(y))
-  z_lazy = ifelse(T.lt(a,b), T.mean(x), T.mean(y))
+   a,b = T.scalars('a','b')
+   x,y = T.matrices('x','y')
 
-  f_switch = theano.function([a,b,x,y], z_switch, 
-                      mode=theano.Mode(linker='vm'))
-  f_lazyifelse = theano.function([a,b,x,y], z_lazy,
-                      mode=theano.Mode(linker='vm'))
+   z_switch = T.switch(T.lt(a,b), T.mean(x), T.mean(y))
+   z_lazy = ifelse(T.lt(a,b), T.mean(x), T.mean(y))
 
-  val1 = 0.
-  val2 = 1.
-  big_mat1 = numpy.ones((10000,1000))
-  big_mat2 = numpy.ones((10000,1000))
+   f_switch = theano.function([a,b,x,y], z_switch,
+                              mode=theano.Mode(linker='vm'))
+   f_lazyifelse = theano.function([a,b,x,y], z_lazy,
+                                  mode=theano.Mode(linker='vm'))
 
-  n_times = 10
+   val1 = 0.
+   val2 = 1.
+   big_mat1 = numpy.ones((10000,1000))
+   big_mat2 = numpy.ones((10000,1000))
 
-  tic = time.clock()
-  for i in xrange(n_times):
-      f_switch(val1, val2, big_mat1, big_mat2)
-  print 'time spent evaluating both values %f sec'%(time.clock()-tic)
+   n_times = 10
 
-  tic = time.clock()
-  for i in xrange(n_times):
-      f_lazyifelse(val1, val2, big_mat1, big_mat2)
-  print 'time spent evaluating one value %f sec'%(time.clock()-tic)
+   tic = time.clock()
+   for i in xrange(n_times):
+       f_switch(val1, val2, big_mat1, big_mat2)
+   print 'time spent evaluating both values %f sec'%(time.clock()-tic)
+
+   tic = time.clock()
+   for i in xrange(n_times):
+       f_lazyifelse(val1, val2, big_mat1, big_mat2)
+   print 'time spent evaluating one value %f sec'%(time.clock()-tic)
+
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+   time spent evaluating both values ... sec
+   time spent evaluating one value ... sec
 
 IfElse Op spend less time (about an half) than Switch since it computes only
 one variable instead of both.
 
->>> python ifelse_switch.py
-time spent evaluating both values 0.6700 sec
-time spent evaluating one value 0.3500 sec
+.. code-block:: none
+
+  $ python ifelse_switch.py
+  time spent evaluating both values 0.6700 sec
+  time spent evaluating one value 0.3500 sec
 
 Note that IfElse condition is a boolean while Switch condition is a tensor, so
 Switch is more general.
@@ -112,7 +121,7 @@ Loops
 
 **Scan Example: Calculating a Polynomial**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -133,7 +142,10 @@ Loops
 
   test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
   print calculate_polynomial(test_coeff, 3)
-  # 19.0
+
+.. testoutput::
+
+  19.0
 
 
 
@@ -267,7 +279,7 @@ Printing/Drawing Theano graphs
 
 ``theano.printing.pprint(variable)``
 
->>> theano.printing.pprint(prediction)
+>>> theano.printing.pprint(prediction) # doctest: +SKIP
 gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),TensorConstant{0.5})
 
 
@@ -275,7 +287,7 @@ gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),TensorC
 
 ``theano.printing.debugprint({fct, variable, list of variables})``
 
->>> theano.printing.debugprint(prediction)
+>>> theano.printing.debugprint(prediction) # doctest: +SKIP
 Elemwise{gt,no_inplace} [@181772236] ''
  |Elemwise{true_div,no_inplace} [@181746668] ''
  | |InplaceDimShuffle{x} [@181746412] ''
@@ -293,7 +305,7 @@ Elemwise{gt,no_inplace} [@181772236] ''
  | | | | | |b [@181730156]
  |InplaceDimShuffle{x} [@181771788] ''
  | |TensorConstant{0.5} [@181771148]
->>> theano.printing.debugprint(predict)
+>>> theano.printing.debugprint(predict) # doctest: +SKIP
 Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
  |dot [@183018796] ''   1
  | |x [@183000780]
@@ -304,19 +316,19 @@ Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
 
 - Picture Printing of Graphs
 
->>> theano.printing.pydotprint_variables(prediction)
+>>> theano.printing.pydotprint_variables(prediction) # doctest: +SKIP
 
 .. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
 All pydotprint* requires graphviz and pydot
 
->>> theano.printing.pydotprint(predict)
+>>> theano.printing.pydotprint(predict) # doctest: +SKIP
 
 .. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_predic.png
    :width: 800 px
 
->>> theano.printing.pydotprint(train) # This is a small train example!
+>>> theano.printing.pydotprint(train) # This is a small train example! # doctest: +SKIP
 
 .. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_train.png
    :width: 1500 px

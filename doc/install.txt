@@ -318,7 +318,7 @@ a Python (or IPython) interpreter,
 .. code-block:: python
 
     >>> import theano
-    >>> theano.test()
+    >>> theano.test() # doctest: +SKIP
 
 You can also run them in-place from the Git checkout directory by typing
 

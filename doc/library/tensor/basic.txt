@@ -6,6 +6,14 @@
 Basic Tensor Functionality
 ===========================
 
+.. testsetup::
+
+   import theano.tensor as T
+   from theano.tensor import scalar, iscalar, TensorType, dmatrix, ivector
+   from theano.tensor import set_subtensor, inc_subtensor, batched_dot
+   from theano import shared
+   import numpy
+
 Theano supports any kind of Python object, but its focus is support for
 symbolic matrix expressions.  When you type,
 
@@ -90,7 +98,7 @@ All Fully-Typed Constructors
 The following TensorType instances are provided in the theano.tensor module.
 They are all callable, and accept an optional ``name`` argument.  So for example:
 
-.. code-block:: python
+.. testcode:: constructors
 
    from theano.tensor import *
 
@@ -195,7 +203,7 @@ will return that many Variables and if strings are provided, it will
 create one Variable for each string, using the string as the Variable's
 name. For example:
 
-.. code-block:: python
+.. testcode:: constructors
 
    from theano.tensor import *
 
@@ -221,7 +229,8 @@ correctly:
 
 >>> my_dmatrix = TensorType('float64', (False,)*2)
 >>> x = my_dmatrix()       # allocate a matrix variable
->>> my_dmatrix == dmatrix  # this compares True
+>>> my_dmatrix == dmatrix
+True
 
 See :class:`TensorType` for more information about creating new types of
 Tensor.
@@ -233,7 +242,7 @@ Converting from Python Objects
 Another way of creating a TensorVariable (a TensorSharedVariable to be
 precise) is by calling :func:`shared()`
 
-.. code-block:: python
+.. testcode::
 
     x = shared(numpy.random.randn(3,4))
 
@@ -695,7 +704,8 @@ Creating Tensor
     >>> x1 = T.scalar()
     >>> x2 = T.scalar()
     >>> x = T.stack(x0, x1, x2)
-    >>> # x.ndim == 1, is a vector of length 3.
+    >>> x.ndim # x is a vector of length 3.
+    1
 
 .. function:: concatenate(tensor_list, axis=0)
 
@@ -710,7 +720,8 @@ Creating Tensor
     >>> x1 = T.ftensor3()
     >>> x2 = T.fvector()
     >>> x = T.concatenate([x0, x1[0], T.shape_padright(x2)], axis=1)
-    >>> # x.ndim == 2
+    >>> x.ndim
+    2
 
 .. function:: stacklists(tensor_list)
 
@@ -729,7 +740,8 @@ Creating Tensor
     >>> X = stacklists([[a, b], [c, d]])
     >>> f = function([a, b, c, d], X)
     >>> f(1, 2, 3, 4)
-    >>> # array([[ 1.,  2.], [ 3.,  4.]], dtype=float32)
+    array([[ 1.,  2.],
+           [ 3.,  4.]])
 
     We can also stack arbitrarily shaped tensors. Here we stack matrices into
     a 2 by 2 grid:
@@ -740,7 +752,7 @@ Creating Tensor
     >>> f = function([a, b, c, d], X)
     >>> x = ones((4, 4), 'float32')
     >>> f(x, x, x, x).shape
-    >>> # (2, 2, 4, 4)
+    (2, 2, 4, 4)
 
 Reductions
 ==========
@@ -998,19 +1010,45 @@ Theano fully supports basic indexing
 <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#integer>`_
 will be supported in 0.6rc4 (or the development version). We do not
 support boolean masks, as Theano does not have a boolean type (we use
-int8 for the output of logic operators). To imitate boolean advanced
-indexing, you can do::
+int8 for the output of logic operators).
 
-    # NumPy indexing with a mask
-    n = np.arange(9).reshape(3,3)
-    n[n > 4] # array([5, 6, 7, 8])
+.. testsetup:: indexing
 
-    # Theano indexing with a "mask" (incorrect approach)
-    t = theano.tensor.arange(9).reshape((3,3))
-    t[t > 4].eval()  # an array with shape (3, 3, 3)
+   import theano
+   import numpy as np
 
-    # getting a Theano result like NumPy
-    t[(t > 4).nonzero()].eval() # array([5, 6, 7, 8])
+NumPy with a mask:
+
+.. doctest:: indexing
+
+   >>> n = np.arange(9).reshape(3,3)
+   >>> n[n > 4]
+   array([5, 6, 7, 8])
+
+Theano indexing with a "mask" (incorrect approach):
+
+.. doctest:: indexing
+
+   >>> t = theano.tensor.arange(9).reshape((3,3))
+   >>> t[t > 4].eval()  # an array with shape (3, 3, 3)
+   array([[[0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2]],
+   <BLANKLINE>
+          [[0, 1, 2],
+           [0, 1, 2],
+           [3, 4, 5]],
+   <BLANKLINE>
+          [[3, 4, 5],
+           [3, 4, 5],
+           [3, 4, 5]]], dtype=int8)
+
+Getting a Theano result like NumPy:
+
+.. doctest:: indexing
+
+   >>> t[(t > 4).nonzero()].eval()
+   array([5, 6, 7, 8], dtype=int8)
 
 The gradient of Advanced indexing needs in many cases NumPy
 1.8. It is not released yet as of April 30th, 2013. You can use NumPy
@@ -1036,21 +1074,27 @@ Many Python operators are supported.
 Arithmetic
 --------------
 
->>> a + 3      # T.add(a, 3) -> itensor3
->>> 3 - a      # T.sub(3, a)
->>> a * 3.5    # T.mul(a, 3.5) -> ftensor3 or dtensor3 (depending on casting)
->>> 2.2 / a    # T.truediv(2.2, a)
->>> 2.2 // a   # T.intdiv(2.2, a)
->>> 2.2**a     # T.pow(2.2, a)
->>> b % a      # T.mod(b, a)
+.. doctest::
+   :options: +SKIP
+
+   >>> a + 3      # T.add(a, 3) -> itensor3
+   >>> 3 - a      # T.sub(3, a)
+   >>> a * 3.5    # T.mul(a, 3.5) -> ftensor3 or dtensor3 (depending on casting)
+   >>> 2.2 / a    # T.truediv(2.2, a)
+   >>> 2.2 // a   # T.intdiv(2.2, a)
+   >>> 2.2**a     # T.pow(2.2, a)
+   >>> b % a      # T.mod(b, a)
 
 Bitwise
 -------------
 
->>> a & b      # T.and_(a,b)    bitwise and (alias T.bitwise_and)
->>> a ^ 1      # T.xor(a,1)     bitwise xor (alias T.bitwise_xor)
->>> a | b      # T.or_(a,b)     bitwise or (alias T.bitwise_or)
->>> ~a         # T.invert(a)    bitwise invert (alias T.bitwise_not)
+.. doctest::
+   :options: +SKIP
+
+   >>> a & b      # T.and_(a,b)    bitwise and (alias T.bitwise_and)
+   >>> a ^ 1      # T.xor(a,1)     bitwise xor (alias T.bitwise_xor)
+   >>> a | b      # T.or_(a,b)     bitwise or (alias T.bitwise_or)
+   >>> ~a         # T.invert(a)    bitwise invert (alias T.bitwise_not)
 
 Inplace
 -------------
@@ -1077,12 +1121,11 @@ Casting
     This is not a reinterpret cast, but a coersion cast, similar to
     ``numpy.asarray(x, dtype=dtype)``.
 
-    .. code-block:: python
+    .. testcode:: cast
 
         import theano.tensor as T
-        x_as_float = T.matrix()
+        x = T.matrix()
         x_as_int = T.cast(x, 'int32')
-
 
     Attempting to casting a complex value to a real value is ambiguous and
     will raise an exception.  Use `real()`, `imag()`, `abs()`, or `angle()`.
@@ -1114,7 +1157,7 @@ The six usual equality and inequality operators share the same interface.
 
   Here is an example with the less-than operator.
 
-  .. code-block:: python
+  .. testcode:: oper
 
     import theano.tensor as T
     x,y = T.dmatrices('x','y')
@@ -1178,7 +1221,7 @@ Condition
       :Parameter:  *iff* - symbolic Tensor (or compatible)
       :Return type: symbolic Tensor
 
-    .. code-block:: python
+    .. testcode:: switch
 
       import theano.tensor as T
       a,b = T.dmatrices('a','b')
@@ -1188,7 +1231,6 @@ Condition
 .. function:: where(cond, ift, iff)
 
    Alias for `switch`. where is the numpy name.
-
 
 .. function:: clip(x, min, max)
 
@@ -1247,7 +1289,7 @@ The bitwise operators possess this interface:
 
 Here is an example using the bit-wise ``and_`` via the ``&`` operator:
 
-.. code-block:: python
+.. testcode:: bitwise
 
     import theano.tensor as T
     x,y = T.imatrices('x','y')
@@ -1474,7 +1516,9 @@ Linear Algebra
     are compatible. The resulting tensor will have shape (2, 5, 6) -- the
     dimensions that are not being summed:
 
-    .. code-block:: python
+    .. testcode:: tensordot
+
+        import numpy as np
 
         a = np.random.random((2,3,4))
         b = np.random.random((5,6,4,3))
@@ -1498,7 +1542,7 @@ Linear Algebra
                         for m in range(a2):
                             cloop[i,j,k] += a[i,l,m] * b[j,k,m,l]
 
-        np.allclose(c, cloop) #true
+        assert np.allclose(c, cloop)
 
     This specific implementation avoids a loop by transposing a and b such that
     the summed axes of a are last and the summed axes of b are first. The
@@ -1509,12 +1553,15 @@ Linear Algebra
     In an extreme case, no axes may be specified. The resulting tensor
     will have shape equal to the concatenation of the shapes of a and b:
 
-    .. code-block:: python
+    .. doctest:: tensordot
 
-        c = np.tensordot(a, b, 0)
-        print(a.shape) #(2,3,4)
-        print(b.shape) #(5,6,4,3)
-        print(c.shape) #(2,3,4,5,6,4,3)
+        >>> c = np.tensordot(a, b, 0)
+        >>> a.shape
+        (2, 3, 4)
+        >>> b.shape
+        (5, 6, 4, 3)
+        >>> print(c.shape)
+        (2, 3, 4, 5, 6, 4, 3)
 
     :note: See the documentation of `numpy.tensordot <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ for more examples.
 
@@ -1527,6 +1574,7 @@ Linear Algebra
     over the first dimension using scan.
     Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
     Example:
+
     >>> first = T.tensor3('first')
     >>> second = T.tensor3('second')
     >>> result = batched_dot(first, second)
@@ -1629,28 +1677,33 @@ Gradient / Differentiation
     another subgraph_grad as `start` with any other `cost` (e.g. weight decay).
 
     In an MLP, we could use subgraph_grad to iteratively backpropagate:
-    >>> x, t = theano.tensor.fvector('x'), theano.tensor.fvector('t')
-    >>> w1 = theano.shared(np.random.randn(3,4))
-    >>> w2 = theano.shared(np.random.randn(4,2))
-    >>> a1 = theano.tensor.tanh(theano.tensor.dot(x,w1))
-    >>> a2 = theano.tensor.tanh(theano.tensor.dot(a1,w2))
-    >>> cost2 = theano.tensor.sqr(a2 - t).sum()
-    >>> cost2 += theano.tensor.sqr(w2.sum())
-    >>> cost1 = theano.tensor.sqr(w1.sum())
 
-    >>> params = [[w2],[w1]]
-    >>> costs = [cost2,cost1]
-    >>> grad_ends = [[a1], [x]]
+    .. testcode:: subgraph_grad
 
-    >>> next_grad = None
-    >>> param_grads = []
-    >>> for i in xrange(2):
-    >>>     param_grad, next_grad = theano.subgraph_grad(
-    >>>         wrt=params[i], end=grad_ends[i],
-    >>>         start=next_grad, cost=costs[i]
-    >>>     )
-    >>>     next_grad = dict(zip(grad_ends[i], next_grad))
-    >>>     param_grads.extend(param_grad)
+       import theano
+       import numpy as np
+       x, t = theano.tensor.fvector('x'), theano.tensor.fvector('t')
+       w1 = theano.shared(np.random.randn(3,4))
+       w2 = theano.shared(np.random.randn(4,2))
+       a1 = theano.tensor.tanh(theano.tensor.dot(x,w1))
+       a2 = theano.tensor.tanh(theano.tensor.dot(a1,w2))
+       cost2 = theano.tensor.sqr(a2 - t).sum()
+       cost2 += theano.tensor.sqr(w2.sum())
+       cost1 = theano.tensor.sqr(w1.sum())
+
+       params = [[w2],[w1]]
+       costs = [cost2,cost1]
+       grad_ends = [[a1], [x]]
+
+       next_grad = None
+       param_grads = []
+       for i in xrange(2):
+           param_grad, next_grad = theano.subgraph_grad(
+               wrt=params[i], end=grad_ends[i],
+               start=next_grad, cost=costs[i]
+           )
+           next_grad = dict(zip(grad_ends[i], next_grad))
+           param_grads.extend(param_grad)
 
     :type wrt: list of variables
     :param wrt:
