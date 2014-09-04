@@ -1919,6 +1919,12 @@ Allocb4GradTester = makeBroadcastTester(
 )
 
 
+def test_as_tensor_variable():
+    x = tensor.TensorType(config.floatX, (True, False))()
+    x = as_tensor_variable(x, ndim=1)
+    assert(x.ndim == 1)
+
+
 class TestAlloc(unittest.TestCase):
     dtype = config.floatX
     mode = mode_opt
