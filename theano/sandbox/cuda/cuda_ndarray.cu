@@ -1140,6 +1140,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     }
 
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
+    if(CudaNdarray_HOST_DIMS(out)[0] == 0){
+        // We take 0 elements, so no need for the rest of the code.
+        // This speed up that case AND fix crash otherwise.
+        free(dims);
+        Py_DECREF(indices);
+        return (PyObject *)out;
+    }
 
     switch (self->nd) {
         case 1:
