@@ -2887,10 +2887,13 @@ class T_Tile(unittest.TestCase):
     def test_local_useless_tile(self):
         v = T.vector()
         m = T.matrix()
+        mode = None
+        if theano.config.mode == "FAST_COMPILE":
+            mode = "FAST_RUN"
         for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
             # Currently, only a repeat patter == ndim is supported.
             for ndim in [var.ndim]:  # range(1, var.ndim):
-                f = theano.function([var], T.tile(var, (1,)*ndim))
+                f = theano.function([var], T.tile(var, (1,)*ndim), mode=mode)
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
