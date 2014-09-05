@@ -42,9 +42,33 @@ if MutableSet is not None:
     ## {{{ http://code.activestate.com/recipes/576696/ (r5)
     import collections
     from weakref import proxy
+    import weakref
 
     class Link(object):
         __slots__ = 'prev', 'next', 'key', '__weakref__'
+
+        def __getstate__(self):
+            ret = [self.prev, self.next,
+                   isinstance(self.prev, weakref.ProxyType),
+                   isinstance(self.next, weakref.ProxyType),
+                   ]
+            try:
+                ret.append(self.key)
+            except AttributeError:
+                pass
+            return ret
+
+        def __setstate__(self, state):
+            if state[2]:
+                self.prev = proxy(state[0])
+            else:
+                self.prev = state[0]
+            if state[3]:
+                self.next = proxy(state[1])
+            else:
+                self.next = state[1]
+            if len(state) == 5:
+                self.key = state[4]
 
     class OrderedSet(collections.MutableSet):
         'Set the remembers the order elements were added'
