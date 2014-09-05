@@ -1928,7 +1928,10 @@ class ApplyDefaultTestOp(theano.Op):
         return theano.Apply(self, [x], [x.type()])
 
 
-class TestApplyDefaultOutput(unittest.TestCase):
+class TestAsTensorVariable(unittest.TestCase):
+    """
+    Unit test for ensuring that as_tensor_variable handles Apply objects correctly.
+    """
     def setUp(self):
         self.x = tensor.scalar('x')
 
@@ -1938,27 +1941,15 @@ class TestApplyDefaultOutput(unittest.TestCase):
 
     def test_below_zero_output(self):
         bad_apply_var = ApplyDefaultTestOp(-1).make_node(self.x)
-        try:
-            x = as_tensor_variable(bad_apply_var)
-            assert(False)  # The above call should have failed
-        except AttributeError:
-            pass
+        self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
 
     def test_above_output_len(self):
         bad_apply_var = ApplyDefaultTestOp(2).make_node(self.x)
-        try:
-            x = as_tensor_variable(bad_apply_var)
-            assert(False)  # The above call should have failed
-        except AttributeError:
-            pass
+        self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
 
     def test_list(self):
         bad_apply_var = ApplyDefaultTestOp([0, 1]).make_node(self.x)
-        try:
-            x = as_tensor_variable(bad_apply_var)
-            assert(False)  # The above call should have failed
-        except AttributeError:
-            pass
+        self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
 
 
 class TestAlloc(unittest.TestCase):
