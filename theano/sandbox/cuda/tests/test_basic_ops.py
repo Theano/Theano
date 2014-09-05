@@ -967,6 +967,8 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
         # version when we should. Users should not use it.
         for shape, idx, fast in [((70000,), range(70000), True),
                                  ((70000, 5), range(70000), True),
+                                 ((70000, 5),  numpy.zeros((0,), 'int64'),
+                                  True),
                                  ((70000, 2, 3), range(70000), True),
                                  ((1025, 1025), [5, 10], True),
                                  ((3, 1025, 1026), [1, 2], True),

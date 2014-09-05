@@ -863,7 +863,25 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             inc_slice(2, 1),
             (numpy.asarray([[0, 1], [2, 3], [4, 5.]]), numpy.asarray(9.),))
 
-    def test_advanced_inc_and_set(self):
+    def test_inc_and_set_subtensor(self):
+        """
+        Test increment and set with broadcast
+        """
+
+        X = tensor.matrix(dtype=self.dtype)
+        y = set_subtensor(X[1::, 1::],  0)
+        f = self.function([X], [y],
+                          op=self.inc_sub,
+                          N=1)
+
+        x_ = numpy.ones((9, 9))
+        out = f(x_.astype('float32'))
+
+        res = x_.copy()
+        res[1::, 1::] = 0
+        assert numpy.allclose(out, res)
+
+    def test_advanced1_inc_and_set(self):
         """
         Test advanced increment and set.
         """
