@@ -48,6 +48,10 @@ if MutableSet is not None:
         __slots__ = 'prev', 'next', 'key', '__weakref__'
 
         def __getstate__(self):
+            # The proxy aren't pickled by default.
+            # We want to restore them.
+            # The way we restore the proxy we create more
+            # proxy, but we do not care.
             ret = [self.prev, self.next,
                    isinstance(self.prev, weakref.ProxyType),
                    isinstance(self.next, weakref.ProxyType),
