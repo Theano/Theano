@@ -28,7 +28,7 @@ def test_profiling():
 
         p = theano.ProfileStats(False)
 
-        if theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+        if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
             m = "FAST_RUN"
         else:
             m = None

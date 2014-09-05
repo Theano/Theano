@@ -132,16 +132,20 @@ class TestOp:
     def test_op_struct(self):
         sop = StructOp()
         c = sop(theano.tensor.constant(0))
-        f = theano.function([], c)
+        mode = None
+        if theano.config.mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        f = theano.function([], c, mode=mode)
         rval = f()
         assert rval == 0
         rval = f()
         assert rval == 1
 
         c2 = sop(theano.tensor.constant(1))
-        f2 = theano.function([], [c, c2])
+        f2 = theano.function([], [c, c2], mode=mode)
         rval = f2()
         assert rval == [0, 0]
+
 
 class TestMakeThunk(unittest.TestCase):
     def test_no_c_code(self):
