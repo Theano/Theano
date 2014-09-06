@@ -3345,6 +3345,13 @@ class GpuContiguous(GpuOp):
         input = as_cuda_ndarray_variable(input)
         return Apply(self, [input], [input.type()])
 
+    def perform(self, node, inp, out):
+        i = inp[0]
+        if not i.is_c_contiguous():
+            i = i.copy()
+        assert i.is_c_contiguous()
+        out[0][0] = i
+
     def c_code(self, node, name, inp, out, sub):
         input, = inp
         z, = out
