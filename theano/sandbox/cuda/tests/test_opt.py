@@ -41,6 +41,17 @@ def test_no_shared_var_graph():
     assert numpy.any(isinstance(x.op,cuda.GpuFromHost) for x in l)
     assert numpy.any(isinstance(x.op,cuda.HostFromGpu) for x in l)
 
+
+def test_local_assert():
+    x = theano.tensor.fmatrix()
+    a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
+    f = theano.function([x], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+    assert isinstance(a_op[0].inputs[0].type, CudaNdarrayType)
+
+
 def test_int_pow():
     a = CudaNdarrayType([False])()
 
