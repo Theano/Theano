@@ -485,7 +485,7 @@ class ConvOp(OpenMPOp):
                 _logger.warn(warnstr, self.unroll_kern, self.nkern, new)
                 self.unroll_kern = new
 
-        enough_shape = self.imshp_logical is not None and all([sh is not None for sh in imshp_logical[1:]])
+        enough_shape = self.imshp_logical is not None and all([sh is not None for sh in self.imshp_logical[1:]])
         if enough_shape or all_shape:
             self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:],
                                                 self.kshp_logical, (dx, dy),
