@@ -485,7 +485,8 @@ class ConvOp(OpenMPOp):
                 _logger.warn(warnstr, self.unroll_kern, self.nkern, new)
                 self.unroll_kern = new
 
-        if True or all_shape:
+        enough_shape = self.imshp_logical is not None and all([sh is not None for sh in imshp_logical[1:]])
+        if enough_shape or all_shape:
             self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:],
                                                 self.kshp_logical, (dx, dy),
                                                 output_mode)
@@ -854,8 +855,8 @@ class ConvOp(OpenMPOp):
             kshp_logical = self.fulloutshp
             kshp_logical_top_aligned = False
             if True or all_shape:
-                (bsize, nkern) = (self.imshp[0], self.nkern)
-                imshp = (self.bsize, self.imshp[1], self.imshp[2])
+                (bsize, nkern) = (self.imshp[0] if self.imshp is not None else None, self.nkern)
+                imshp = (self.bsize, self.imshp[1] if self.imshp is not None else None, self.imshp[2] if self.imshp is not None else None)
             kshp = self.outshp
             un_b = self.unroll_batch
             un_k = self.unroll_kern
@@ -867,8 +868,8 @@ class ConvOp(OpenMPOp):
                 imshp_logical = (self.bsize,
                                  self.fulloutshp[0],
                                  self.fulloutshp[1])
-                (bsize, nkern) = (self.nkern, self.imshp[0])
-                imshp = (self.bsize, self.outshp[0], self.outshp[1])
+                (bsize, nkern) = (self.nkern, self.imshp[0] if self.imshp is not None else None)
+                imshp = (self.bsize, self.outshp[0] if self.outshp is not None else None, self.outshp[1] if self.outshp is not None else None)
                 kshp = self.imshp[1:]
             un_b = self.unroll_kern
             un_k = self.unroll_batch
