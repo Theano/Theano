@@ -663,7 +663,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
             if len(self.__props__) == 0:
                 return "%s" % (self.__class__.__name__,)
             else:
-                return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%r" % (p, getattr(self, p)) for p in self.__props__))
+                return "%s{%s}" % (
+                    self.__class__.__name__,
+                    ", ".join("%s=%r" % (p, getattr(self, p))
+                              for p in self.__props__))
         else:
             return super(Op, self).__str__()
 
