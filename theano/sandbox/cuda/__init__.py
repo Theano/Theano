@@ -33,6 +33,10 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
+AddConfigVar('cudnn.lib',
+             """Name of the cuda dnn library for the linker.""",
+             StrParam('cudnn'))
+
 #is_nvcc_available called here to initialize global vars in
 #nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
@@ -155,7 +159,8 @@ if compile_cuda_ndarray and cuda_available:
                             'cuda_ndarray',
                             code,
                             location=cuda_ndarray_loc,
-                            include_dirs=[cuda_path], libs=[config.cublas.lib],
+                            include_dirs=[cuda_path],
+                            libs=[config.cublas.lib, config.cudnn.lib],
                             preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
             except Exception, e:

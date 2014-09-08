@@ -42,6 +42,7 @@
 #endif
 
 cublasHandle_t handle = NULL;
+cudnnHandle_t dnn_handle = NULL;
 
 /////////////////////////
 // Alloc and Free
@@ -3051,6 +3052,8 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 
 static int cublas_init();
 static void cublas_shutdown();
+static int cudnn_init();
+static void cudnn_shutdown();
 // Initialize the gpu.
 // Takes one optional parameter, the device number.
 // If provided, it sets that device to be the active device.
@@ -3117,6 +3120,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         }
         if (cublas_init() == -1)
             return NULL;
+        if (cudnn_init() == -1)
+            return NULL;
     }
 
     Py_INCREF(Py_None);
@@ -3147,6 +3152,7 @@ CudaNdarray_active_device_name(PyObject* _unused, PyObject* _unused_args) {
 PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     // Don't handle errors here
+    cudnn_shutdown();
     cublas_shutdown();
     cudaThreadExit();
     g_gpu_context_active = 0; // context has now been closed down
@@ -3604,6 +3610,28 @@ cublas_shutdown()
     if (handle != NULL)
         cublasDestroy(handle);
     // No point in handling any errors here
+    handle = NULL;
+}
+
+static int
+cudnn_init()
+{
+    cudnnStatus_t err;
+    err = cudnnCreate(&dnn_handle);
+    if (err != CUDNN_STATUS_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "Error initializing cudnn %d", err);
+        return -1;
+    }
+    cudnnSetStream(dnn_handle, NULL);
+    return 0;
+}
+
+static void
+cudnn_shutdown()
+{
+    if (dnn_handle != NULL)
+        cudnnDestroy(dnn_handle);
     handle = NULL;
 }
 
