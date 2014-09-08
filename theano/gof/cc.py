@@ -1466,7 +1466,7 @@ class _CThunk(object):
         # note that the failure code is distributed in two lists
         if failure_code < 2 * n:
             return [self.init_tasks, self.tasks][
-                failure_code % 2][failure_code / 2]
+                failure_code % 2][failure_code // 2]
         else:
             return self.tasks[failure_code - n]
 
