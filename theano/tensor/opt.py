@@ -799,7 +799,21 @@ class ShapeFeature(object):
             #
             # worst case, we loop over shape_of and replace things
             raise NotImplementedError(s_i)
-        elif s_i.type.dtype[:3] in ('int', 'uint'):
+
+        # s_i is x.shape[i], we change it to Shape_i.
+        if (s_i.owner and
+            isinstance(s_i.owner.op, Subtensor) and
+            s_i.owner.inputs[0].owner and
+            isinstance(s_i.owner.inputs[0].owner.op, T.Shape)):
+            assert s_i.ndim == 0
+            assert len(s_i.owner.inputs) == 2
+            try:
+                i = get_scalar_constant_value(s_i.owner.inputs[1])
+                s_i = Shape_i(i)(s_i.owner.inputs[0].owner.inputs[0])
+            except NotScalarConstantError:
+                pass
+
+        if s_i.type.dtype[:3] in ('int', 'uint'):
             if getattr(s_i.type, 'ndim', 0):
                 raise TypeError('Shape element must be scalar', s_i)
             return s_i
@@ -1130,6 +1144,40 @@ class ShapeFeature(object):
                 if svi == r:
                     self.set_shape_i(v, ii, new_r)
         self.shape_of_reverse_index[r] = set()
+
+    def same_shape(self, x, y):
+        """Return True if we are able to assert that x and y have the
+        same shape
+        """
+        sx = self.shape_of[x]
+        sy = self.shape_of[y]
+        if sx is None or sy is None:
+            return False
+        assert len(sx) == len(sy)
+
+        for dx, dy in zip(sx, sy):
+            if dx is dy:
+                continue
+            # Need to try to find that they are the same shape. We
+            # need to compare the full graph. It could be slow. So I
+            # just implement for now the case of Shape_i.
+            if not dx.owner or not dy.owner:
+                return False
+            if (not isinstance(dx.owner.op, Shape_i) or
+                not isinstance(dy.owner.op, Shape_i)):
+                return False
+            opx = dx.owner.op
+            opy = dy.owner.op
+            if not (opx.i == opy.i):
+                return False
+            # FB I'm not sure is this handle correctly constants.
+            if dx.owner.inputs[0] == dy.owner.inputs[0]:
+                return True
+            # To be sure to cover all case, call equal_computation.
+            # Can't use theano.gof.graph.is_same_graph(dx, dy)
+            # As it currently expect that dx and dy aren't in a FunctionGraph
+            from theano.scan_module.scan_utils import equal_computations
+            return equal_computations([dx], [dy])
 
 
 class ShapeOptimizer(Optimizer):
@@ -1638,6 +1686,54 @@ def local_upcast_elemwise_constant_inputs(node):
 ##################
 # Subtensor opts #
 ##################
+
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([IncSubtensor])
+def local_useless_inc_subtensor(node):
+    """Remove IncSubtensor, when we overwrite the full inputs with the
+    new value.
+
+    """
+    if not isinstance(node.op, IncSubtensor):
+        return
+    if node.op.set_instead_of_inc is False:
+        # This is an IncSubtensor, so the init value must be zeros
+        try:
+            c = get_scalar_constant_value(node.inputs[0])
+            if c != 0:
+                return
+        except NotScalarConstantError:
+            return
+    if (node.inputs[0].ndim != node.inputs[1].ndim or
+        node.inputs[0].broadcastable != node.inputs[1].broadcastable):
+        # FB: I didn't check if this case can happen, but this opt
+        # don't support it.
+        return
+    # We have a SetSubtensor or an IncSubtensor on zeros
+    # If is this IncSubtensor useful?
+
+    # Check that we keep all the original data.
+    # Put the constant inputs in the slice.
+    idx_cst = theano.tensor.subtensor.get_idx_list(node.inputs[1:],
+                                                   node.op.idx_list)
+    if all(isinstance(e, slice) and e.start is None and
+           e.stop is None and (e.step is None or T.extract_constant(e.step) == -1)
+           for e in idx_cst):
+        # IncSubtensor broadcast node.inputs[1] on node.inputs[0]
+        # based on run time shapes, so we must check they are the same.
+        if not hasattr(node.fgraph, 'shape_feature'):
+            return
+        if not node.fgraph.shape_feature.same_shape(node.inputs[0],
+                                                    node.inputs[1]):
+            return
+        # There is no reverse, so we don't need a replacement.
+        if all(e.step is None
+               for e in node.op.idx_list):
+            # They are the same shape, so we can remore this IncSubtensor
+            return [node.inputs[1]]
+        return [Subtensor(node.op.idx_list)(*node.inputs[1:])]
 
 
 @register_canonicalize
@@ -3366,11 +3462,17 @@ ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.Sum, T.elemwise.Prod,
               T.elemwise.ProdWithoutZeros]
 
+
 @register_canonicalize
 @register_uncanonicalize  # Needed for MaxAndArgmax -> CAReduce
 @gof.local_optimizer(ALL_REDUCE)
 def local_reduce_join(node):
-    """Max(Join(a,b), axis=0) -> Maximum(a,b)  """
+    """Reduce{scalar.op}(Join(a, b), axis=0) -> Elemwise{scalar.op}(a, b)
+
+    :note: supported scalar.op are Maximum, Mimimum in some cases and
+    Add and Mul in all cases.
+
+    """
     if (isinstance(node.op, T.CAReduce) and
         node.inputs[0].owner and
         isinstance(node.inputs[0].owner.op, T.Join)):
@@ -3384,6 +3486,9 @@ def local_reduce_join(node):
             if len(join.inputs) != 3:
                 return
         elif not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul)):
+            return
+        elif len(join.inputs) <= 2:
+            # This is a useless join, that will get removed by another opt.
             return
 
         new_inp = []
