@@ -485,7 +485,7 @@ class ConvOp(OpenMPOp):
                 _logger.warn(warnstr, self.unroll_kern, self.nkern, new)
                 self.unroll_kern = new
 
-        if all_shape:
+        if True or all_shape:
             self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:],
                                                 self.kshp_logical, (dx, dy),
                                                 output_mode)
@@ -853,7 +853,7 @@ class ConvOp(OpenMPOp):
             (img, filters) = (newin, newgz)
             kshp_logical = self.fulloutshp
             kshp_logical_top_aligned = False
-            if all_shape:
+            if True or all_shape:
                 (bsize, nkern) = (self.imshp[0], self.nkern)
                 imshp = (self.bsize, self.imshp[1], self.imshp[2])
             kshp = self.outshp
@@ -863,7 +863,7 @@ class ConvOp(OpenMPOp):
             (img, filters) = (newgz, newin)
             kshp_logical = None
             kshp_logical_top_aligned = True
-            if all_shape:
+            if True or all_shape:
                 imshp_logical = (self.bsize,
                                  self.fulloutshp[0],
                                  self.fulloutshp[1])
@@ -938,11 +938,11 @@ class ConvOp(OpenMPOp):
         imshp_logical = None
         kshp = None
 
-        if all_shape:
+        if True or all_shape:
             nkern = self.imshp[0]
-            imshp = (self.nkern, self.outshp[0], self.outshp[1])
-            imshp_logical = (self.nkern, self.fulloutshp[0],
-                             self.fulloutshp[1])
+            imshp = (self.nkern, self.outshp[0] if self.outshp is not None else None, self.outshp[1] if self.outshp is not None else None)
+            imshp_logical = (self.nkern, self.fulloutshp[0] if self.fulloutshp is not None else None,
+                             self.fulloutshp[1] if self.fulloutshp is not None else None)
 
         if 0:  # hard-code c generation parameters
             din = ConvOp(imshp, self.kshp, nkern, self.bsize,
