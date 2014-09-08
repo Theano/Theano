@@ -43,7 +43,6 @@
 
 
 #include <cublas_v2.h>
-#include <cudnn.h>
 
 #ifdef _WIN32
 #ifdef _CUDA_NDARRAY_C
@@ -86,8 +85,6 @@ typedef float real;
 
 /* Use this handle to make cublas calls */
 extern DllExport cublasHandle_t handle;
-/* and this for cudnn calls */
-extern DllExport cudnnHandle_t dnn_handle;
 
 /**
  * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.

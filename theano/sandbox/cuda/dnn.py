@@ -29,8 +29,15 @@ class GpuDnnConv(GpuOp):
 
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
+    def c_headers(self):
+        return ['cudnn.h']
+
+    def c_libraries(self):
+        return ['cudnn']
+
     def c_support_code_struct(self, node, struct_id):
         return """
+cudnnHandle_t handle%(id)d;
 cudnnTensor4dDescriptor_t input%(id)d;
 cudnnTensor4dDescriptor_t output%(id)d;
 cudnnFilterDescriptor_t kerns%(id)d;
@@ -39,6 +46,10 @@ cudnnConvolutionDescriptor_t op%(id)d;
 
     def c_init_code_struct(self, node, struct_id, sub):
         return """
+if (cudnnCreate(&handle%(id)d) != CUDNN_STATUS_SUCCESS) {
+  PyErr_SetString(PyExc_RuntimeError, "could not create cudnn handle");
+  %(fail)s
+}
 if (cudnnCreateTensor4dDescriptor(&input%(id)d) != CUDNN_STATUS_SUCCESS) {
   PyErr_SetString(PyExc_MemoryError, "could not allocate tensor4d descriptor (inp)");
   %(fail)s
@@ -60,13 +71,10 @@ if (cudnnCreateConvolutionDescriptor(&op%(id)d) != CUDNN_STATUS_SUCCESS) {
     def c_cleanup_code_struct(self, node, struct_id):
         return """
 cudnnDestroyTensor4dDescriptor(input%(id)d);
-input%(id)d = NULL;
 cudnnDestroyTensor4dDescriptor(output%(id)d);
-output%(id)d = NULL;
 cudnnDestroyFilterDescriptor(kerns%(id)d);
-kerns%(id)d = NULL;
 cudnnDestroyConvolutionDescriptor(op%(id)d);
-op%(id)d = NULL;
+cudnnDestroy(handle%(id)d);
 """ % dict(id=struct_id)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -162,7 +170,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   %(fail)s
 }
 err%(name)s = cudnnConvolutionForward(
-dnn_handle,
+handle%(id)d,
 input%(id)d, CudaNdarray_DEV_DATA(%(img)s),
 kerns%(id)d, CudaNdarray_DEV_DATA(%(kerns)s),
 op%(id)d,
@@ -176,9 +184,13 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 """ % dict(img=img, kerns=kern, out=out, bmode=bmode,
            fail=sub['fail'], id=sub['struct_id'], name=name)
 
-from theano.sandbox.cuda.opt import local_optimizer, gpu_contiguous, register_opt
+    def c_code_cache_version(self):
+        return (0,)
 
-@register_opt()
+
+from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
+                                     gpu_optimizer)
+
 @local_optimizer([GpuConv])
 def local_conv_dnn(node):
     if isinstance(node.op, GpuConv):
@@ -189,3 +201,5 @@ def local_conv_dnn(node):
         border_mode = node.op.border_mode
         return [GpuDnnConv(border_mode)(gpu_contiguous(img),
                                         gpu_contiguous(kern))]
+
+gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
