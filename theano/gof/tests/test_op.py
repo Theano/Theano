@@ -89,7 +89,7 @@ class StructOp(Op):
     def c_support_code_struct(self, node, struct_id):
         return "npy_uint64 counter%d;" % (struct_id,)
 
-    def c_init_code_struct(self, node, struct_id):
+    def c_init_code_struct(self, node, struct_id, sub):
         return "counter%d = 0;" % (struct_id,)
 
     def c_code(self, node, name, input_names, outputs_names, sub):

@@ -31,10 +31,10 @@ class GpuDnnConv(GpuOp):
 
     def c_support_code_struct(self, node, struct_id):
         return """
-cudnnTensor4dDescriptior_t input%(id)d = NULL;
-cudnnTensor4dDescriptior_t output%(id)d = NULL;
-cudnnFilterDescriptor_t kerns%(id)d = NULL;
-cudnnConvolutionDescriptor_t op%(id)d = NULL;
+cudnnTensor4dDescriptor_t input%(id)d;
+cudnnTensor4dDescriptor_t output%(id)d;
+cudnnFilterDescriptor_t kerns%(id)d;
+cudnnConvolutionDescriptor_t op%(id)d;
 """ % dict(id=struct_id)
 
     def c_init_code_struct(self, node, struct_id, sub):
@@ -146,7 +146,7 @@ if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
   %(fail)s
 }
 }
-err%(name)s = cudnnSetTensor4DescriptorEx(
+err%(name)s = cudnnSetTensor4dDescriptorEx(
 output%(id)d, CUDNN_DATA_FLOAT,
 CudaNdarray_HOST_DIMS(%(out)s)[0],
 CudaNdarray_HOST_DIMS(%(out)s)[1],
@@ -166,14 +166,14 @@ dnn_handle,
 input%(id)d, CudaNdarray_DEV_DATA(%(img)s),
 kerns%(id)d, CudaNdarray_DEV_DATA(%(kerns)s),
 op%(id)d,
-out%(id)d, CudaNdarray_DEV_DATA(%(out)s),
+output%(id)d, CudaNdarray_DEV_DATA(%(out)s),
 CUDNN_RESULT_NO_ACCUMULATE
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_SetString(PyExc_RuntimeError, "error doing operation");
   %(fail)s
 }
-""" % dict(img=img, kerns=kerns, out=out, bmode=bmode,
+""" % dict(img=img, kerns=kern, out=out, bmode=bmode,
            fail=sub['fail'], id=sub['struct_id'], name=name)
 
 from theano.sandbox.cuda.opt import local_optimizer, gpu_contiguous, register_opt
@@ -181,9 +181,9 @@ from theano.sandbox.cuda.opt import local_optimizer, gpu_contiguous, register_op
 @register_opt()
 @local_optimizer([GpuConv])
 def local_conv_dnn(node):
-    if (isinstance(node.op, GpuConv) and
-        node.op.border_mode in ['full', 'valid']):
-        if node.op.subsample != (1, 1):
+    if isinstance(node.op, GpuConv):
+        if (node.op.subsample != (1, 1) or
+            node.op.border_mode not in ['full', 'valid']):
             return
         img, kern = node.inputs
         border_mode = node.op.border_mode

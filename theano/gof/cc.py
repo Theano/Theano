@@ -333,7 +333,7 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in 
+    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
             r.clients]):
 
         c_extract = r.type.c_extract(name, sub, True)
@@ -634,6 +634,10 @@ class CLinker(link.Linker):
             sub['struct_id'] = id + 1
             sub['fail'] = failure_code(sub)
 
+            sub_struct = dict(failure_var=failure_var)
+            sub_struct['id'] = id + 1
+            sub_struct['fail'] = failure_code(sub_struct)
+
             struct_support = ""
             struct_init = ""
             struct_cleanup = ""
@@ -661,7 +665,7 @@ class CLinker(link.Linker):
                     " didn't return a string for c_init_code_apply")
 
             try:
-                struct_init = op.c_init_code_struct(node, id + 1)
+                struct_init = op.c_init_code_struct(node, id + 1, sub_struct)
                 assert isinstance(struct_init, basestring), (
                     str(node.op) +
                     " didn't return a string for c_init_code_struct")
