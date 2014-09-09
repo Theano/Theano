@@ -319,11 +319,16 @@ def register_canonicalize(lopt, *tags, **kwargs):
         compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
         return lopt
 
-                    
+
 def register_stabilize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_stabilize(inner_lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_specialize(lopt, *tags, **kwargs):
@@ -4161,6 +4166,8 @@ def attempt_distribution(factor, num, denum, out_type):
                                    neg_pairs))), num, denum
 
 
+@register_canonicalize
+@register_stabilize
 @gof.local_optimizer([T.mul, T.true_div, T.inv])
 def local_greedy_distributor(node):
     """
@@ -4225,10 +4232,10 @@ def local_greedy_distributor(node):
 
     return [rval]
 
-register_canonicalize(local_greedy_distributor)
-register_stabilize(local_greedy_distributor)
 
-
+@register_canonicalize('fast_compile')
+@register_stabilize('fast_compile')
+@register_specialize('fast_compile')
 @gof.local_optimizer(None)
 def constant_folding(node):
     for input in node.inputs:
@@ -4261,10 +4268,6 @@ def constant_folding(node):
             constant = Constant
         rval.append(constant(output.type, storage_map[output][0]))
     return rval
-
-register_canonicalize(constant_folding, 'fast_compile')
-register_stabilize(constant_folding, 'fast_compile')
-register_specialize(constant_folding, 'fast_compile')
 
 
 def _is_1(expr):

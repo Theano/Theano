@@ -1330,6 +1330,7 @@ class CrossentropyCategorical1Hot(gof.Op):
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 
 
+@opt.register_stabilize('gpu')
 @opt.register_specialize('gpu')
 @gof.optimizer
 def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
@@ -1358,8 +1359,6 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
     while search_make_one_sub():
         pass
     return
-opt.register_stabilize(crossentropy_to_crossentropy_with_softmax_with_bias,
-                       'gpu')
 
 
 @gof.optimizer
