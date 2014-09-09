@@ -7,6 +7,7 @@ except ImportError:
 from theano.gof.python25 import OrderedDict
 import types
 
+
 def check_deterministic(iterable):
     # Most places where OrderedSet is used, theano interprets any exception
     # whatsoever as a problem that an optimization introduced into the graph.
@@ -40,10 +41,27 @@ if MutableSet is not None:
     # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     ## {{{ http://code.activestate.com/recipes/576696/ (r5)
     import collections
-    from weakref import proxy
+    import weakref
 
     class Link(object):
         __slots__ = 'prev', 'next', 'key', '__weakref__'
+
+        def __getstate__(self):
+            # weakref.proxy don't pickle well, so we use weakref.ref
+            # manually and don't pickle the weakref.
+            # We restore the weakref when we unpickle.
+            ret = [self.prev(), self.next()]
+            try:
+                ret.append(self.key)
+            except AttributeError:
+                pass
+            return ret
+
+        def __setstate__(self, state):
+            self.prev = weakref.ref(state[0])
+            self.next = weakref.ref(state[1])
+            if len(state) == 3:
+                self.key = state[2]
 
     class OrderedSet(collections.MutableSet):
         'Set the remembers the order elements were added'
@@ -65,7 +83,7 @@ if MutableSet is not None:
             # Checks added by IG
             check_deterministic(iterable)
             self.__root = root = Link()         # sentinel node for doubly linked list
-            root.prev = root.next = root
+            root.prev = root.next = weakref.ref(root)
             self.__map = {}                     # key --> link
             if iterable is not None:
                 self |= iterable
@@ -82,32 +100,61 @@ if MutableSet is not None:
                 self.__map[key] = link = Link()
                 root = self.__root
                 last = root.prev
-                link.prev, link.next, link.key = last, root, key
-                last.next = root.prev = proxy(link)
+                link.prev, link.next, link.key = last, weakref.ref(root), key
+                last().next = root.prev = weakref.ref(link)
+
+        def union(self, s):
+            check_deterministic(s)
+            n = self.copy()
+            for elem in s:
+                if elem not in n:
+                    n.add(elem)
+            return n
+
+        def intersection_update(self, s):
+            l = []
+            for elem in self:
+                if elem not in s:
+                    l.append(elem)
+            for elem in l:
+                self.remove(elem)
+            return self
+
+        def difference_update(self, s):
+            check_deterministic(s)
+            for elem in s:
+                if elem in self:
+                    self.remove(elem)
+            return self
+
+        def copy(self):
+            n = OrderedSet()
+            n.update(self)
+            return n
 
         def discard(self, key):
             # Remove an existing item using self.__map to find the link which is
             # then removed by updating the links in the predecessor and successors.
             if key in self.__map:
                 link = self.__map.pop(key)
-                link.prev.next = link.next
-                link.next.prev = link.prev
+                link.prev().next = link.next
+                link.next().prev = link.prev
 
         def __iter__(self):
             # Traverse the linked list in order.
             root = self.__root
-            curr = root.next
+            curr = root.next()
             while curr is not root:
                 yield curr.key
-                curr = curr.next
+                curr = curr.next()
 
         def __reversed__(self):
             # Traverse the linked list in reverse order.
             root = self.__root
-            curr = root.prev
+            curr = root.prev()
             while curr is not root:
                 yield curr.key
-                curr = curr.prev
+                curr = curr.prev()
 
         def pop(self, last=True):
             if not self:

@@ -1,8 +1,9 @@
 import sys
 
-from theano.gof.python25 import DefaultOrderedDict
-
 import numpy
+
+from theano.gof.python25 import DefaultOrderedDict
+from theano.misc.ordered_set import OrderedSet
 from theano.compat.six import StringIO
 from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
@@ -26,7 +27,7 @@ class DB(object):
         return self._optimizer_idx
 
     def __init__(self):
-        self.__db__ = DefaultOrderedDict(set)
+        self.__db__ = DefaultOrderedDict(OrderedSet)
         self._names = set()
         self.name = None  # will be reset by register
         #(via obj.name by the thing doing the registering)
@@ -51,7 +52,7 @@ class DB(object):
             raise ValueError('''You can\'t register the same optimization
 multiple time in a DB. Tryed to register "%s" again under the new name "%s".
  Use theano.gof.ProxyDB to work around that''' % (obj.name, name))
-        self.__db__[name] = set([obj])
+        self.__db__[name] = OrderedSet([obj])
         self._names.add(name)
         self.__db__[obj.__class__.__name__].add(obj)
         self.add_tags(name, *tags)
@@ -79,15 +80,16 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
     def __query__(self, q):
         if not isinstance(q, Query):
             raise TypeError('Expected a Query.', q)
-        variables = set()
+        # The ordered set is needed for deterministic optimization.
+        variables = OrderedSet()
         for tag in q.include:
             variables.update(self.__db__[tag])
         for tag in q.require:
             variables.intersection_update(self.__db__[tag])
         for tag in q.exclude:
             variables.difference_update(self.__db__[tag])
-        remove = set()
-        add = set()
+        remove = OrderedSet()
+        add = OrderedSet()
         for obj in variables:
             if isinstance(obj, DB):
                 sq = q.subquery.get(obj.name, q)
@@ -143,15 +145,15 @@ class Query(object):
         :param position_cutoff: Used by SequenceDB to keep only optimizer that
                                 are positioned before the cut_off point.
         """
-        self.include = set(include)
-        self.require = require or set()
-        self.exclude = exclude or set()
+        self.include = OrderedSet(include)
+        self.require = require or OrderedSet()
+        self.exclude = exclude or OrderedSet()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
         if isinstance(self.require, (list, tuple)):
-            self.require = set(self.require)
+            self.require = OrderedSet(self.require)
         if isinstance(self.exclude, (list, tuple)):
-            self.exclude = set(self.exclude)
+            self.exclude = OrderedSet(self.exclude)
 
     #add all opt with this tag
     def including(self, *tags):
