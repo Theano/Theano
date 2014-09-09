@@ -1958,11 +1958,7 @@ class TestAsTensorVariable(unittest.TestCase):
         assert(x.ndim == 1)
 
         x = tensor.matrix('x', dtype=config.floatX)
-        try:
-            x = as_tensor_variable(x, ndim=1)
-            assert(False)  # The call above should have failed
-        except ValueError:
-            pass
+        self.assertRaises(ValueError, as_tensor_variable, x, ndim=1)
 
 
 class TestAlloc(unittest.TestCase):
