@@ -43,9 +43,9 @@ Faster Theano Function Compilation
 ----------------------------------
 
 Theano function compilation can be time consuming. It can be sped up by setting
-the flag ``mode=FAST_COMPILE`` which disables a number of time consuming
-optimizations and disables the generation of any c/cuda code. This is
-useful for quickly testing a simple idea.
+the flag ``mode=FAST_COMPILE`` which instructs Theano to skip most
+optimizations and disables the generation of any c/cuda code. This is useful
+for quickly testing a simple idea.
 
 If c/cuda code is necessary, as when using a GPU, the flag
 ``optimizer=fast_compile`` can be used instead. It instructs Theano to skip time
@@ -56,11 +56,11 @@ release (0.6).
 Similarly using the flag ``optimizer_excluding=inplace`` will speed up
 compilation by preventing optimizations that replace operations with a version
 that reuses memory where it will not negatively impact the integrity of the
-operation. Such operations can be time consuming. However using this flag will
+operation. Such optimizations can be time consuming. However using this flag will
 result in greater memory usage because space must be allocated for the results
 which would be unnecessary otherwise. In short, using this flag will speed up
 compilation but it will also use more memory because
-``optimizer_excluding=fast_compile`` excludes inplace optimizations resulting
+``optimizer_excluding=inplace`` excludes inplace optimizations resulting
 in a trade off between speed of compilation and memory usage.
 
 Faster Theano function
