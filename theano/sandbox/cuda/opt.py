@@ -1681,6 +1681,16 @@ def local_gpualloc(node):
 
 
 @register_opt()
+@local_optimizer([theano.tensor.opt.Assert])
+def local_assert(node):
+    if (isinstance(node.op, theano.tensor.opt.Assert) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op,
+                   HostFromGpu)):
+        return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0]))]
+
+
+@register_opt()
 @local_optimizer([GpuAlloc])
 def local_gpualloc_memset_0(node):
     if isinstance(node.op, GpuAlloc) and not node.op.memset_0:

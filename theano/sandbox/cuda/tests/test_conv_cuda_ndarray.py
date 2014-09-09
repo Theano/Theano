@@ -641,7 +641,8 @@ def test_valid(conv_gemm=False):
         shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
         shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
     else:
-        mode = cls = None
+        mode = theano_mode
+        cls = None
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5,
               theano_mode=mode, cls=cls)
@@ -717,7 +718,8 @@ def test_full(conv_gemm=False):
         # dummy version; not used by GpuCorrMM so one version is enough
         version = [-1]
     else:
-        mode = cls = None
+        mode = theano_mode
+        cls = None
     exec_conv(version, shapes, verbose, random, 'full',
               theano_mode=mode, cls=cls)
 
@@ -757,7 +759,8 @@ def test_subsample(conv_gemm=False):
         # dummy version; not used by GpuCorrMM so one version is enough
         version_valid = version_full = [-1]
     else:
-        mode = cls = None
+        mode = theano_mode
+        cls = None
 
     exec_conv(version_valid, shapes, verbose, random, 'valid',
               print_=print_, ones=ones,

@@ -1930,7 +1930,8 @@ class ApplyDefaultTestOp(theano.Op):
 
 class TestAsTensorVariable(unittest.TestCase):
     """
-    Unit test for ensuring that as_tensor_variable handles Apply objects correctly.
+    Unit test for ensuring that as_tensor_variable handles Apply objects
+    correctly and removes leading broadcastable dimensions when possible.
     """
     def setUp(self):
         self.x = tensor.scalar('x')
@@ -1950,6 +1951,18 @@ class TestAsTensorVariable(unittest.TestCase):
     def test_list(self):
         bad_apply_var = ApplyDefaultTestOp([0, 1]).make_node(self.x)
         self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
+
+    def test_strip_leading_broadcastable(self):
+        x = tensor.TensorType(config.floatX, (True, False))('x')
+        x = as_tensor_variable(x, ndim=1)
+        assert(x.ndim == 1)
+
+        x = tensor.matrix('x', dtype=config.floatX)
+        try:
+            x = as_tensor_variable(x, ndim=1)
+            assert(False)  # The call above should have failed
+        except ValueError:
+            pass
 
 
 class TestAlloc(unittest.TestCase):

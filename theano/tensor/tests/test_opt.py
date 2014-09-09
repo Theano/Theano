@@ -1571,6 +1571,53 @@ def test_log_add():
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 
+def test_local_useless_inc_subtensor():
+    x = tensor.matrix('x')
+    y = tensor.matrix('y')
+    for sub in [slice(None), slice(None, None, -1)]:
+        o = tensor.set_subtensor(x[::, sub], y)
+        f = theano.function([x, y], o)
+        o_shape = tensor.set_subtensor(x[::, sub],
+                                       tensor.specify_shape(y, x.shape))
+        f_shape = theano.function([x, y], o_shape)
+
+        # Test with shape info
+        topo = f_shape.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
+        out = f_shape([[2, 3]], [[3, 4]])
+        assert (out == numpy.asarray([[3, 4]])[::, sub]).all()
+
+        # Test that without shape info, we don't apply the opt.
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, tensor.IncSubtensor)
+        out = f([[2, 3]], [[3, 4]])
+        assert (out == numpy.asarray([[3, 4]])[::, sub]).all()
+
+        # Test that we don't remove shape error
+        try:
+            f([[2, 3]], [[3, 4], [4, 5]])
+            assert False
+        except (ValueError, AssertionError):
+            pass
+
+        # Test that we don't remove broadcastability
+        out = f([[2, 3], [3, 4]], [[5, 6]])
+        assert (out == numpy.asarray([[5, 6], [5, 6]])[::, sub]).all()
+
+    # Test that we do not optimize others strides even when sub and y
+    # have same shapes
+    sub = x[::, ::2]
+    o_shape = tensor.set_subtensor(sub,
+                                   tensor.specify_shape(y, sub.shape))
+    f_shape = theano.function([x, y], o_shape)
+    topo = f_shape.maker.fgraph.toposort()
+    theano.printing.debugprint(f_shape)
+    assert any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
+    out = f_shape([[2, 3, 6, 7]], [[8, 9]])
+    assert (out == numpy.asarray([[8, 3, 9, 7]])).all()
+
+
 def test_local_useless_subtensor():
     x = tensor.matrix('x')
 
@@ -2887,10 +2934,13 @@ class T_Tile(unittest.TestCase):
     def test_local_useless_tile(self):
         v = T.vector()
         m = T.matrix()
+        mode = None
+        if theano.config.mode == "FAST_COMPILE":
+            mode = "FAST_RUN"
         for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
             # Currently, only a repeat patter == ndim is supported.
             for ndim in [var.ndim]:  # range(1, var.ndim):
-                f = theano.function([var], T.tile(var, (1,)*ndim))
+                f = theano.function([var], T.tile(var, (1,)*ndim), mode=mode)
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
