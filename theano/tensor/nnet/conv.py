@@ -940,7 +940,7 @@ class ConvOp(OpenMPOp):
         kshp = None
 
         if True or all_shape:
-            nkern = self.imshp[0]
+            nkern = self.imshp[0] if self.imshp is not None else None
             imshp = (self.nkern, self.outshp[0] if self.outshp is not None else None, self.outshp[1] if self.outshp is not None else None)
             imshp_logical = (self.nkern, self.fulloutshp[0] if self.fulloutshp is not None else None,
                              self.fulloutshp[1] if self.fulloutshp is not None else None)
