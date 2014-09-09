@@ -1919,17 +1919,46 @@ Allocb4GradTester = makeBroadcastTester(
 )
 
 
-def test_as_tensor_variable():
-    x = tensor.TensorType(config.floatX, (True, False))('x')
-    x = as_tensor_variable(x, ndim=1)
-    assert(x.ndim == 1)
+class ApplyDefaultTestOp(theano.Op):
+    def __init__(self, id):
+        self.default_output = id
 
-    x = tensor.matrix('x', dtype=config.floatX)
-    try:
+    def make_node(self, x):
+        x = theano.tensor.as_tensor_variable(x)
+        return theano.Apply(self, [x], [x.type()])
+
+
+class TestAsTensorVariable(unittest.TestCase):
+    """
+    Unit test for ensuring that as_tensor_variable handles Apply objects
+    correctly and removes leading broadcastable dimensions when possible.
+    """
+    def setUp(self):
+        self.x = tensor.scalar('x')
+
+    def test_one_output(self):
+        good_apply_var = ApplyDefaultTestOp(0).make_node(self.x)
+        x = as_tensor_variable(good_apply_var)
+
+    def test_below_zero_output(self):
+        bad_apply_var = ApplyDefaultTestOp(-1).make_node(self.x)
+        self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
+
+    def test_above_output_len(self):
+        bad_apply_var = ApplyDefaultTestOp(2).make_node(self.x)
+        self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
+
+    def test_list(self):
+        bad_apply_var = ApplyDefaultTestOp([0, 1]).make_node(self.x)
+        self.assertRaises(AttributeError, as_tensor_variable, bad_apply_var)
+
+    def test_strip_leading_broadcastable(self):
+        x = tensor.TensorType(config.floatX, (True, False))('x')
         x = as_tensor_variable(x, ndim=1)
-        assert(False)  # The call above should have failed
-    except ValueError:
-        pass
+        assert(x.ndim == 1)
+
+        x = tensor.matrix('x', dtype=config.floatX)
+        self.assertRaises(ValueError, as_tensor_variable, x, ndim=1)
 
 
 class TestAlloc(unittest.TestCase):
