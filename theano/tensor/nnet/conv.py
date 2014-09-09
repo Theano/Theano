@@ -504,7 +504,7 @@ class ConvOp(OpenMPOp):
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented" % self.out_mode)
 
-        if self.outshp is not None and not (self.outshp > 0).all():
+        if self.outshp[0] is not None and self.outshp[1] is not None and not (self.outshp > 0).all():
             raise Exception("Bad size for the output shape. Verify that [post-"
                             "supersampling] input shape (%s) and kern"
                             " shape(%s) are ok. (Hint: kerns must fit inside"
