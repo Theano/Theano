@@ -403,6 +403,9 @@ class ConvOp(OpenMPOp):
             # Only this version is parallelized
             unroll_patch = True
 
+        if imshp is None:
+            imshp = (None, None)
+
         if imshp is not None:
             imshp = tuple(imshp)
 
@@ -504,7 +507,7 @@ class ConvOp(OpenMPOp):
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented" % self.out_mode)
 
-        if self.outshp[0] is not None and self.outshp[1] is not None and not (self.outshp > 0).all():
+        if self.outshp != (None, None) and not (self.outshp > 0).all():
             raise Exception("Bad size for the output shape. Verify that [post-"
                             "supersampling] input shape (%s) and kern"
                             " shape(%s) are ok. (Hint: kerns must fit inside"
@@ -968,8 +971,8 @@ class ConvOp(OpenMPOp):
 
         din = din(gz, filters)
 
-        assert (din.owner.op.outshp is None and self.imshp is None) or \
-               (din.owner.op.outshp is None) or \
+        assert (din.owner.op.outshp == (None, None) and self.imshp[-2:] == (None, None)) or \
+               (din.owner.op.outshp == (None, None)) or \
                (din.owner.op.outshp == self.imshp[1:]).all()
 
         # din and dw should have the same broadcasting pattern as the
