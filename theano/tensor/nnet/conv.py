@@ -140,7 +140,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         bsize = image_shape[0]
         imshp = image_shape[1:]
     else:
-        bsize, imshp = None, None
+        bsize, imshp = None, (None, None)
 
     op = ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
                 imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize, **kargs)
@@ -271,7 +271,8 @@ class ConvOp(OpenMPOp):
         return  numpy.int64(numpy.ceil((inshp + s * kshp - s * 1) /
                                        numpy.array([dx, dy], dtype='float')))
 
-    def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None,
+    def __init__(self, imshp=(None, None),
+                 kshp=None, nkern=None, bsize=None,
                  dx=1, dy=1,
                  output_mode='valid',
 
@@ -495,8 +496,8 @@ class ConvOp(OpenMPOp):
                                                     self.kshp_logical, (1, 1),
                                                     output_mode)
         else:
-            self.outshp = None
-            self.fulloutshp = None
+            self.outshp = (None, None)
+            self.fulloutshp = (None, None)
 
         self.out_mode = output_mode
 
@@ -846,7 +847,7 @@ class ConvOp(OpenMPOp):
         newgz = gz.dimshuffle((1, 0, 2, 3))
 
         (bsize, nkern) = None, None
-        imshp = None
+        imshp = (None, None)
         kshp = None
         un_p = self.unroll_patch
         imshp_logical = None
@@ -856,8 +857,8 @@ class ConvOp(OpenMPOp):
             kshp_logical = self.fulloutshp
             kshp_logical_top_aligned = False
             if True or all_shape:
-                (bsize, nkern) = (self.imshp[0] if self.imshp is not None else None, self.nkern)
-                imshp = (self.bsize, self.imshp[1] if self.imshp is not None else None, self.imshp[2] if self.imshp is not None else None)
+                (bsize, nkern) = (self.imshp[0], self.nkern)
+                imshp = (self.bsize, self.imshp[1], self.imshp[2])
             kshp = self.outshp
             un_b = self.unroll_batch
             un_k = self.unroll_kern
@@ -869,8 +870,8 @@ class ConvOp(OpenMPOp):
                 imshp_logical = (self.bsize,
                                  self.fulloutshp[0],
                                  self.fulloutshp[1])
-                (bsize, nkern) = (self.nkern, self.imshp[0] if self.imshp is not None else None)
-                imshp = (self.bsize, self.outshp[0] if self.outshp is not None else None, self.outshp[1] if self.outshp is not None else None)
+                (bsize, nkern) = (self.nkern, self.imshp[0])
+                imshp = (self.bsize, self.outshp[0], self.outshp[1])
                 kshp = self.imshp[1:]
             un_b = self.unroll_kern
             un_k = self.unroll_batch
@@ -936,15 +937,15 @@ class ConvOp(OpenMPOp):
         filters = kerns.dimshuffle((1, 0, 2, 3))
         filters = filters[:, :, ::-1, ::-1]
         nkern = None
-        imshp = None
+        imshp = (None, None)
         imshp_logical = None
         kshp = None
 
         if True or all_shape:
-            nkern = self.imshp[0] if self.imshp is not None else None
-            imshp = (self.nkern, self.outshp[0] if self.outshp is not None else None, self.outshp[1] if self.outshp is not None else None)
-            imshp_logical = (self.nkern, self.fulloutshp[0] if self.fulloutshp is not None else None,
-                             self.fulloutshp[1] if self.fulloutshp is not None else None)
+            nkern = self.imshp[0]
+            imshp = (self.nkern, self.outshp[0], self.outshp[1])
+            imshp_logical = (self.nkern, self.fulloutshp[0],
+                             self.fulloutshp[1])
 
         if 0:  # hard-code c generation parameters
             din = ConvOp(imshp, self.kshp, nkern, self.bsize,
