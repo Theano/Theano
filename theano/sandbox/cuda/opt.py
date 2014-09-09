@@ -1201,7 +1201,6 @@ def local_gpu_conv(node):
 
 
 def _gpu_conv_to_fftconv(node):
-    #print "_gpu_conv_to_fftconv", node.op.imshp
     # shared helper function for local_conv_fft_valid and local_conv_fft_full.
     # we import conv2d_fft locally to avoid pycuda warnings
     from theano.sandbox.cuda.fftconv import conv2d_fft
