@@ -584,7 +584,7 @@ class Function(object):
                 # done by raise_with_op is not implemented in C.
                 if hasattr(self.fn, 'thunks'):
                     # For the CVM
-                    gof.vm.raise_with_op(
+                    gof.link.raise_with_op(
                         self.fn.nodes[self.fn.position_of_error],
                         self.fn.thunks[self.fn.position_of_error])
                 else:

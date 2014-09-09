@@ -1427,6 +1427,8 @@ class Assert(T.Op):
             self.msg = "Theano Assert failed!"
 
     def make_node(self, value, *conds):
+        if not isinstance(value, Variable):
+            value = T.as_tensor_variable(value)
         cond = [T.as_tensor_variable(c) for c in conds]
         assert numpy.all([c.type.ndim == 0 for c in cond])
         return gof.Apply(self, [value] + cond, [value.type()])
