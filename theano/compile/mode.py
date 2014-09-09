@@ -89,19 +89,23 @@ def register_linker(name, linker):
 exclude = []
 if not theano.config.cxx:
     exclude = ['cxx_only']
+OPT_NONE = gof.Query(include=[], exclude=exclude)
+OPT_MERGE = gof.Query(include=['merge'], exclude=exclude)
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
 OPT_FAST_COMPILE = gof.Query(include=['fast_compile'], exclude=exclude)
 OPT_STABILIZE = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_STABILIZE.position_cutoff = 1.5000001
+OPT_NONE.name = 'OPT_NONE'
+OPT_MERGE.name = 'OPT_MERGE'
 OPT_FAST_RUN.name = 'OPT_FAST_RUN'
 OPT_FAST_RUN_STABLE.name = 'OPT_FAST_RUN_STABLE'
 OPT_FAST_COMPILE.name = 'OPT_FAST_COMPILE'
 OPT_STABILIZE.name = 'OPT_STABILIZE'
 
 predefined_optimizers = {
-    None: (lambda fgraph: None),
-    'None': (lambda fgraph: None),
+    None: OPT_NONE,
+    'None': OPT_NONE,
     'merge': gof.MergeOptimizer(),
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
@@ -166,14 +170,14 @@ class PrintCurrentFunctionGraph(gof.Optimizer):
 
 optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(),
-        0, 'fast_run', 'fast_compile')
+        0, 'fast_run', 'fast_compile', 'merge')
 
 # rearranges elemwise expressions
 optdb.register('canonicalize', gof.EquilibriumDB(),
         1, 'fast_run', 'fast_compile')
 
 optdb.register('merge1.2', gof.MergeOptimizer(),
-        1.2, 'fast_run', 'fast_compile')
+        1.2, 'fast_run', 'fast_compile', 'merge')
 
 optdb.register('Print1.21', PrintCurrentFunctionGraph('Post-canonicalize'),
         1.21,)  # 'fast_run', 'fast_compile')
@@ -199,14 +203,14 @@ optdb.register('specialize_device', gof.EquilibriumDB(),
 
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),
-        49, 'fast_run')
+        49, 'fast_run', 'merge')
 
 optdb.register('add_destroy_handler', AddDestroyHandler(),
         49.5, 'fast_run', 'inplace')
 
 # final pass just to make sure
 optdb.register('merge3', gof.MergeOptimizer(),
-        100, 'fast_run')
+        100, 'fast_run', 'merge')
 
 
 class Mode(object):
