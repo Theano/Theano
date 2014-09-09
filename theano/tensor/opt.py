@@ -327,9 +327,14 @@ def register_stabilize(lopt, *tags, **kwargs):
 
 
 def register_specialize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_specialize(inner_lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_uncanonicalize(lopt, *tags, **kwargs):
