@@ -1767,7 +1767,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     if labels.ndim == 1 and x_var.ndim == 2:
         return [crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)]
     else:
-        retur
+        return
 
 
 @opt.register_specialize('gpu')
