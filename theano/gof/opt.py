@@ -708,18 +708,6 @@ def is_same_graph_with_merge(var1, var2, givens=None):
         return o1 is o2
 
 
-def MergeOptMerge(opt):
-    """WRITEME
-    Returns an Optimizer that merges the graph then applies the
-    optimizer in opt and then merges the graph again in case the
-    opt introduced additional similarities.
-    """
-    merger = merge_optimizer
-    opt = SeqOptimizer([merger, opt, merger])
-    opt.name = "MergeOptMerge"
-    return opt
-
-
 def pre_constant_merge(vars):
     """
     Merge constants in the subgraph used to compute nodes in `vars`.
