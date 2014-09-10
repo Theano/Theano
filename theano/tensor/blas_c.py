@@ -694,14 +694,13 @@ def use_c_gemv(node):
         introduce NaNs.
 
         GEMV is not always implemented consistenly across BLAS libraries.
-        Sometimes, when beta is 0, they still perform the multiplication with
-        beta. As such, what was in newly allocated memory does not matter as
-        the multiplication will make all the values 0. Other implmentations do
-        not perform the multiplication. This can cause problems for the inplace
-        GEMV implementation. When the multiplication is done we don't need to
-        initialize the output memory resulting in a speed up. Otherwise we must
-        initialize the memory to avoid introducing NaN's in the output that
-        weren't in the original graph.
+        Sometimes, when beta is 0, they do not perform the multiplication with
+        beta. Other implmentations do. This can cause problems for the inplace
+        GEMV implementation if NaNs happen to be in the newly allocated but
+        uninitalized memory. When the multiplication is not done we do not need
+        to initialize the output memory resulting in a speed up. Otherwise we
+        must initialize the memory to avoid introducing NaN's in the output
+        that weren't in the original graph.
 
         The following check determines whether the output memory needs to be
         initiliazed. It is done here, as opposed to in global scope, because
