@@ -314,14 +314,10 @@ class Shape_i(gof.Op):
 
     check_input = False
 
+    __props__ = ("i",)
+
     def __init__(self, i):
         self.i = i
-
-    def __hash__(self):
-        return hash(type(self)) ^ self.i
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.i == other.i
 
     def __str__(self):
         return '%s{%i}' % (self.__class__.__name__, self.i)

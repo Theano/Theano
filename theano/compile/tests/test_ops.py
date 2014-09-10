@@ -19,6 +19,7 @@ import pickle
 def mul(a, b):
     return a*b
 
+
 class OpDecoratorTests(utt.InferShapeTester):
     def test_1arg(self):
         x = dmatrix('x')
@@ -77,3 +78,8 @@ class OpDecoratorTests(utt.InferShapeTester):
         m2 = pickle.loads(s)
 
         assert m2.owner.op == m.owner.op
+
+
+def test_shape_i_hash():
+    assert isinstance(theano.tensor.opt.Shape_i(np.int64(1)).__hash__(),
+                      int)
