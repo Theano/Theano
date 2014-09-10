@@ -46,6 +46,11 @@ cudnnConvolutionDescriptor_t op%(id)d;
 
     def c_init_code_struct(self, node, struct_id, sub):
         return """
+handle%(id)d = NULL;
+input%(id)d = NULL;
+output%(id)d = NULL;
+kerns%(id)d = NULL;
+op%(id)d = NULL;
 if (cudnnCreate(&handle%(id)d) != CUDNN_STATUS_SUCCESS) {
   PyErr_SetString(PyExc_RuntimeError, "could not create cudnn handle");
   %(fail)s
@@ -185,7 +190,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            fail=sub['fail'], id=sub['struct_id'], name=name)
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
