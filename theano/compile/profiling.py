@@ -50,6 +50,11 @@ AddConfigVar('profiling.n_ops',
              IntParam(20, lambda i: i > 0),
              in_c_key=False)
 
+AddConfigVar('profiling.output_line_width',
+             "Max line width for the profiling output",
+             IntParam(512, lambda i: i > 0),
+             in_c_key=False)
+
 AddConfigVar('profiling.min_memory_size',
              """For the memory profile, do not print Apply nodes if the size
              of their outputs (in bytes) is lower than this threshold""",
@@ -175,7 +180,7 @@ class ProfileStats(object):
     linker_time = 0.0
     # time spent linking graph (FunctionMaker.create)
 
-    line_width = 140
+    line_width = config.profiling.output_line_width
 
     optimizer_profile = None
     # None or tuple (the optimizer, the profile it returned)
@@ -360,7 +365,7 @@ class ProfileStats(object):
         es += [' %4d  ']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
-        maxlen = self.line_width - upto_length
+        maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Class name>']
         es += ['%s']
         header_str = ' '.join(hs)
@@ -443,7 +448,7 @@ class ProfileStats(object):
         es += ['  %4d  ']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
-        maxlen = self.line_width - upto_length
+        maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Op name>']
         es += ['%s']
         header_str = ' '.join(hs)
@@ -510,7 +515,7 @@ class ProfileStats(object):
             hs += ['<Mflops>', '<Gflops/s>']
 
         upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
-        maxlen = self.line_width - upto_length
+        maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Apply name>']
         es += ['%s']
 
