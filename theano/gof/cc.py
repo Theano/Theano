@@ -205,8 +205,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         #     be executed if any step in the constructor fails and the
         #     latter only at destruction time.
         struct_decl += block.declare
-        struct_init_head = struct_init_head + ("\n{\n%s" % block.behavior)
-        struct_init_tail = ("%s\n}\n" % block.cleanup) + struct_init_tail
+        struct_init_head = struct_init_head + ("\n%s" % block.behavior)
         struct_cleanup += block.cleanup
 
     behavior = code_gen(blocks)
@@ -258,6 +257,7 @@ def struct_gen(args, struct_builders, blocks, sub):
 
     # TODO: add some error checking to make sure storage_<x> are
     # 1-element lists and __ERROR is a 3-elements list.
+
     struct_code = """
     namespace {
     struct %(name)s {
@@ -274,13 +274,9 @@ def struct_gen(args, struct_builders, blocks, sub):
         int init(PyObject* __ERROR, %(args_decl)s) {
             %(storage_incref)s
             %(storage_set)s
-            int %(failure_var)s = 0;
             %(struct_init_head)s
             this->__ERROR = __ERROR;
             return 0;
-            %(struct_init_tail)s
-            %(storage_decref)s
-            %(do_return)s
         }
         void cleanup(void) {
             %(struct_cleanup)s
@@ -634,9 +630,16 @@ class CLinker(link.Linker):
             sub['struct_id'] = id + 1
             sub['fail'] = failure_code(sub)
 
-            sub_struct = dict(failure_var=failure_var)
+            sub_struct = dict()
             sub_struct['id'] = id + 1
-            sub_struct['fail'] = failure_code(sub_struct)
+            sub_struct['fail'] = """{
+if (!PyErr_Occurred()) {
+  PyErr_SetString(PyExc_RuntimeError,
+                  "Unexpected error in an Op's struct init. "
+                  "No Python exception was set.");
+}
+return %d;
+}""" % (id + 1,)
 
             struct_support = ""
             struct_init = ""
@@ -1422,7 +1425,10 @@ class CLinker(link.Linker):
         print >> code, '     return NULL;'
         print >> code, '  }'
         print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals()
-        print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ');'
+        print >> code, '  if (struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ') != 0) {'
+        print >> code, '    delete struct_ptr;'
+        print >> code, '    return NULL;'
+        print >> code, '  }'
         if PY3:
             print >> code, """\
     PyObject* thunk = PyCapsule_New((void*)(&{struct_name}_executor), NULL, {struct_name}_destructor);
