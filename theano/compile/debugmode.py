@@ -495,7 +495,8 @@ def char_from_number(number):
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False,
                print_view_map=False, order=None, ids='CHAR',
-               stop_on_name=False, prefix_child=None):
+               stop_on_name=False, prefix_child=None,
+               stop_on_scan=False):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -515,6 +516,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 "" - don't print an identifier
     :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
+    :param stop_on_scan: When True, if a node in the graph corresponds
+                         to a scan Op, we don't print anything below it.
 
     """
     if depth == 0:
@@ -594,9 +597,14 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                                             destroy_map_str,
                                                             view_map_str,
                                                             o)
+
         if not already_printed:
-            if (not stop_on_name or
-                not (hasattr(r, 'name') and r.name is not None)):
+            stop_because_scan = (stop_on_scan and 
+                isinstance(a.op, theano.scan_module.scan_op.Scan))
+            stop_because_name = (stop_on_name and
+                (hasattr(r, 'name') and r.name is not None))
+
+            if not (stop_because_name or stop_because_scan):
                 new_prefix = prefix_child + ' |'
                 new_prefix_child = prefix_child + ' |'
                 for idx, i in enumerate(a.inputs):
@@ -606,7 +614,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                     debugprint(i, new_prefix, depth=depth - 1, done=done,
                                print_type=print_type, file=file, order=order,
                                ids=ids, stop_on_name=stop_on_name,
-                               prefix_child=new_prefix_child)
+                               prefix_child=new_prefix_child,
+                               stop_on_scan=stop_on_scan)
     else:
         #this is an input variable
         id_str = get_id_str(r)
