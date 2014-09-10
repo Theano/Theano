@@ -98,3 +98,6 @@ inside a function would provide float64 as output.
 
 Since the GPU can't compute this kind of output, it would be
 preferable not to use those dtypes together.
+
+To help you find where float64 are created, see the
+:attr:`warn_float64` Theano flag.
