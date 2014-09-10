@@ -350,7 +350,7 @@ def local_gpu_specifyShape_0(node):
 
 
 @register_opt()
-@local_optimizer([GpuFromHost, tensor.basic.Dot])
+@local_optimizer([gpu_from_host, tensor.basic.Dot])
 def local_gpu_dot_to_dot22(node):
     """
     gpu_from_host(dot) -> gpudot(gpu_from_host)
