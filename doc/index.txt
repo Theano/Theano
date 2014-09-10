@@ -21,6 +21,8 @@ Montreal).
 News
 ====
 
+* Open Machine Learning Workshop 2014 `presentation <omlw2014/omlw_presentation.pdf>`_.
+
 * Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
 
 * Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
