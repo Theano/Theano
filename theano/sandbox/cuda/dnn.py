@@ -30,7 +30,10 @@ class GpuDnnConv(GpuOp):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def c_headers(self):
-        return ['cudnn.h']
+        return ['cudnn.h', 'cudnn_helper.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
 
     def c_libraries(self):
         return ['cudnn']
@@ -46,29 +49,30 @@ cudnnConvolutionDescriptor_t op%(id)d;
 
     def c_init_code_struct(self, node, struct_id, sub):
         return """
-handle%(id)d = NULL;
-input%(id)d = NULL;
-output%(id)d = NULL;
-kerns%(id)d = NULL;
-op%(id)d = NULL;
-if (cudnnCreate(&handle%(id)d) != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "could not create cudnn handle");
+cudnnStatus_t err%(id)d;
+if ((err%(id)d = cudnnCreate(&handle%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "could not create cudnn handle: %%s",
+               cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
-if (cudnnCreateTensor4dDescriptor(&input%(id)d) != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_MemoryError, "could not allocate tensor4d descriptor (inp)");
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&input%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(inp): %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
-if (cudnnCreateTensor4dDescriptor(&output%(id)d) != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_MemoryError, "could not allocate tensor4d descriptor (out)");
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(out): %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
-if (cudnnCreateFilterDescriptor(&kerns%(id)d) != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_MemoryError, "could not allocate filter descriptor");
+if ((err%(id)d = cudnnCreateFilterDescriptor(&kerns%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate filter descriptor: %%s",
+               cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
-if (cudnnCreateConvolutionDescriptor(&op%(id)d) != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_MemoryError, "could not allocate convolution descriptor");
+if ((err%(id)d = cudnnCreateConvolutionDescriptor(&op%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate convolution "
+               "descriptor: %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
 """ % dict(id=struct_id, fail=sub['fail'])
@@ -108,10 +112,10 @@ CudaNdarray_HOST_STRIDES(%(img)s)[2],
 CudaNdarray_HOST_STRIDES(%(img)s)[3]
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "could not set tensor4d descriptor");
+  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-// TODO: make sure the kernels are contiguous or ... BOOM!
 err%(name)s = cudnnSetFilterDescriptor(
 kerns%(id)d, CUDNN_DATA_FLOAT,
 CudaNdarray_HOST_DIMS(%(kerns)s)[0],
@@ -120,7 +124,8 @@ CudaNdarray_HOST_DIMS(%(kerns)s)[2],
 CudaNdarray_HOST_DIMS(%(kerns)s)[3]
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "could not set filter descriptor");
+  PyErr_Format(PyExc_RuntimeError, "could not set filter descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 if (%(bmode)d == 1) {
@@ -141,7 +146,8 @@ pad_w%(name)s,
 CUDNN_CONVOLUTION
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "could not set op descriptor");
+  PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 {
@@ -152,7 +158,8 @@ op%(id)d, CUDNN_CONVOLUTION_FWD,
 &out_dims[2], &out_dims[3]
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "could not set op descriptor");
+  PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
@@ -171,7 +178,8 @@ CudaNdarray_HOST_STRIDES(%(out)s)[2],
 CudaNdarray_HOST_STRIDES(%(out)s)[3]
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "could not set out descriptor");
+  PyErr_Format(PyExc_RuntimeError, "could not set out descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 err%(name)s = cudnnConvolutionForward(
@@ -183,14 +191,15 @@ output%(id)d, CudaNdarray_DEV_DATA(%(out)s),
 CUDNN_RESULT_NO_ACCUMULATE
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_SetString(PyExc_RuntimeError, "error doing operation");
+  PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 """ % dict(img=img, kerns=kern, out=out, bmode=bmode,
            fail=sub['fail'], id=sub['struct_id'], name=name)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
