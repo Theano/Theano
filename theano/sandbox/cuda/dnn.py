@@ -100,6 +100,17 @@ cudnnDestroy(handle%(id)d);
 cudnnStatus_t err%(name)s;
 int pad_w%(name)s;
 int pad_h%(name)s;
+
+if (!CudaNdarray_is_c_contiguous(%(img)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
+  %(fail)s
+}
+
+if (!CudaNdarray_is_c_contiguous(%(kerns)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous filters are supported.");
+  %(fail)s
+}
+
 err%(name)s = cudnnSetTensor4dDescriptorEx(
 input%(id)d, CUDNN_DATA_FLOAT,
 CudaNdarray_HOST_DIMS(%(img)s)[0],
@@ -199,7 +210,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            fail=sub['fail'], id=sub['struct_id'], name=name)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
