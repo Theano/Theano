@@ -143,6 +143,18 @@ def failure_code(sub):
         goto __label_%(id)i;}''' % sub
 
 
+def failure_code_init(sub):
+    "Code for failure in the struct init."
+    return '''{
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError,
+                "Unexpected error in an Op's C code. "
+                "No Python exception was set.");
+            }
+        return %(id)d;
+}''' % sub
+
+
 def code_gen(blocks):
     """WRITEME From a list of L{CodeBlock} instances, returns a string
     that executes them all in sequence. eg for C{(decl1, task1,
@@ -415,7 +427,7 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     sub = dict(sub)
 #    sub['name'] = name
     sub['id'] = id
-    sub['fail'] = failure_code(sub)
+    sub['fail'] = failure_code_init(sub)
     sub['py_ptr'] = "py_%s" % name
     sub['stor_ptr'] = "storage_%s" % name
     # struct_declare, struct_behavior, struct_cleanup, sub)
@@ -526,9 +538,8 @@ class CLinker(link.Linker):
         failure_var = "__failure"
         id = 1
 
-        sub = dict(failure_var=failure_var)
-
         for variable in self.variables:
+            sub = dict(failure_var=failure_var)
 
             # it might be possible to inline constant variables as C literals
             # policy = [[what to declare in the struct,
@@ -632,14 +643,7 @@ class CLinker(link.Linker):
 
             sub_struct = dict()
             sub_struct['id'] = id + 1
-            sub_struct['fail'] = """{
-if (!PyErr_Occurred()) {
-  PyErr_SetString(PyExc_RuntimeError,
-                  "Unexpected error in an Op's struct init. "
-                  "No Python exception was set.");
-}
-return %d;
-}""" % (id + 1,)
+            sub_struct['fail'] = failure_code_init(sub)
 
             struct_support = ""
             struct_init = ""
