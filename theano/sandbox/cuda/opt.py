@@ -1699,6 +1699,10 @@ def local_gpualloc_memset_0(node):
             inp.data.size == 1 and
             (numpy.asarray(inp.data) == 0).all()):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
+            if new_out.type.broadcastable != node.outputs[0].type.broadcastable:
+                # force old broadcasting pattern; we must not change it here
+                new_out = tensor.patternbroadcast(new_out,
+                        node.outputs[0].broadcastable)
             return [new_out]
 
 
