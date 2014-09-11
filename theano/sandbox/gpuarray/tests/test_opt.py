@@ -4,7 +4,8 @@ import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
 import theano.sandbox.gpuarray
-from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.type import (
+    GpuArrayType, gpuarray_shared_constructor)
 from theano.sandbox.gpuarray.basic_ops import (
     GpuAlloc, GpuReshape, gpu_alloc, gpu_from_host, host_from_gpu)
 from theano.sandbox.gpuarray.elemwise import (

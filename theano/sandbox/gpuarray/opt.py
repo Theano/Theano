@@ -290,6 +290,16 @@ def local_gpua_specifyShape(node):
     return tensor.specify_shape(*inp)
 
 
+@register_opt('fast_compile')
+@op_lifter([theano.compile.ops.Shape])
+def local_gpua_shape(node):
+    # op_lifter will call this opt too frequently as the output is
+    # always on the CPU.
+    if isinstance(node.inputs[0].type, GpuArrayType):
+        return
+    return [gpu_from_host(node.inputs[0]).shape]
+
+
 def gpu_print_wrapper(op, cnda):
     op.old_op.global_fn(op.old_op, numpy.asarray(cnda))
 
