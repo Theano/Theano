@@ -119,14 +119,14 @@
     :note: this insert a particular op. But this op don't yet
        implement the Rop for hessian free. If you want that, implement
        this equivalent code that have the Rop implemented
-       ``exp(x)/exp(x).sum(1, keep_dims=True)``. Theano should
+       ``exp(x)/exp(x).sum(1, keepdims=True)``. Theano should
        optimize this by inserting the softmax op itself.  The code of
        the softmax op is more numeriacaly stable by using this code:
 
        .. code-block:: python
 
-           e_x = exp(x - x.max(axis=1, keep_dims=True))
-           out = e_x / e_x.sum(axis=1, keep_dims=True)
+           e_x = exp(x - x.max(axis=1, keepdims=True))
+           out = e_x / e_x.sum(axis=1, keepdims=True)
 
    Example of use:
 
