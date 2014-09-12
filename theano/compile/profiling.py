@@ -895,15 +895,11 @@ class ProfileStats(object):
                                 new_exec_nodes.add(c)
 
                     if not new_exec_nodes:
-                        yield [node]
                         # Check and Update mem_bound
                         if max_mem_count < mem_bound:
                             mem_bound = max_mem_count
                     else:
-                        for p in min_memory_generator(new_exec_nodes,
-                                                      viewed_by_temp,
-                                                      view_of_temp):
-                            yield [node]+p
+                        min_memory_generator(new_exec_nodes, viewed_by_temp, view_of_temp)
 
                     # Reset track variables
                     mem_count -= mem_created
@@ -921,11 +917,7 @@ class ProfileStats(object):
             view_of = {}  # {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
-            # Loop all valid orders and find min peak(store in mem_bound)
-            for order in min_memory_generator(executable_nodes,
-                                              viewed_by,
-                                              view_of):
-                continue
+            min_memory_generator(executable_nodes, viewed_by, view_of)
 
             return mem_bound
 
