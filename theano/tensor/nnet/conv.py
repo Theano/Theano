@@ -140,7 +140,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         bsize = image_shape[0]
         imshp = image_shape[1:]
     else:
-        bsize, imshp = None, None
+        bsize, imshp = None, (None, None)
 
     op = ConvOp(output_mode=border_mode, dx=subsample[0], dy=subsample[1],
                 imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize, **kargs)
@@ -271,7 +271,8 @@ class ConvOp(OpenMPOp):
         return  numpy.int64(numpy.ceil((inshp + s * kshp - s * 1) /
                                        numpy.array([dx, dy], dtype='float')))
 
-    def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None,
+    def __init__(self, imshp=(None, None),
+                 kshp=None, nkern=None, bsize=None,
                  dx=1, dy=1,
                  output_mode='valid',
 
@@ -402,6 +403,9 @@ class ConvOp(OpenMPOp):
             # Only this version is parallelized
             unroll_patch = True
 
+        if imshp is None:
+            imshp = (None, None)
+
         if imshp is not None:
             imshp = tuple(imshp)
 
@@ -485,7 +489,9 @@ class ConvOp(OpenMPOp):
                 _logger.warn(warnstr, self.unroll_kern, self.nkern, new)
                 self.unroll_kern = new
 
-        if all_shape:
+        enough_shape = self.imshp_logical is not None and all([sh is not None for sh in self.imshp_logical[1:]])
+        enough_shape = enough_shape and self.kshp_logical is not None and all([sh is not None for sh in self.kshp_logical])
+        if enough_shape or all_shape:
             self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:],
                                                 self.kshp_logical, (dx, dy),
                                                 output_mode)
@@ -493,15 +499,15 @@ class ConvOp(OpenMPOp):
                                                     self.kshp_logical, (1, 1),
                                                     output_mode)
         else:
-            self.outshp = None
-            self.fulloutshp = None
+            self.outshp = (None, None)
+            self.fulloutshp = (None, None)
 
         self.out_mode = output_mode
 
         if not self.out_mode in ["valid", "full"]:
             raise Exception("Mode %s not implemented" % self.out_mode)
 
-        if self.outshp is not None and not (self.outshp > 0).all():
+        if tuple(self.outshp) != (None, None) and not (self.outshp > 0).all():
             raise Exception("Bad size for the output shape. Verify that [post-"
                             "supersampling] input shape (%s) and kern"
                             " shape(%s) are ok. (Hint: kerns must fit inside"
@@ -844,7 +850,7 @@ class ConvOp(OpenMPOp):
         newgz = gz.dimshuffle((1, 0, 2, 3))
 
         (bsize, nkern) = None, None
-        imshp = None
+        imshp = (None, None)
         kshp = None
         un_p = self.unroll_patch
         imshp_logical = None
@@ -853,7 +859,7 @@ class ConvOp(OpenMPOp):
             (img, filters) = (newin, newgz)
             kshp_logical = self.fulloutshp
             kshp_logical_top_aligned = False
-            if all_shape:
+            if True or all_shape:
                 (bsize, nkern) = (self.imshp[0], self.nkern)
                 imshp = (self.bsize, self.imshp[1], self.imshp[2])
             kshp = self.outshp
@@ -863,7 +869,7 @@ class ConvOp(OpenMPOp):
             (img, filters) = (newgz, newin)
             kshp_logical = None
             kshp_logical_top_aligned = True
-            if all_shape:
+            if True or all_shape:
                 imshp_logical = (self.bsize,
                                  self.fulloutshp[0],
                                  self.fulloutshp[1])
@@ -934,11 +940,11 @@ class ConvOp(OpenMPOp):
         filters = kerns.dimshuffle((1, 0, 2, 3))
         filters = filters[:, :, ::-1, ::-1]
         nkern = None
-        imshp = None
+        imshp = (None, None)
         imshp_logical = None
         kshp = None
 
-        if all_shape:
+        if True or all_shape:
             nkern = self.imshp[0]
             imshp = (self.nkern, self.outshp[0], self.outshp[1])
             imshp_logical = (self.nkern, self.fulloutshp[0],
@@ -965,8 +971,8 @@ class ConvOp(OpenMPOp):
 
         din = din(gz, filters)
 
-        assert (din.owner.op.outshp is None and self.imshp is None) or \
-               (din.owner.op.outshp is None) or \
+        assert (tuple(din.owner.op.outshp) == (None, None) and tuple(self.imshp[-2:]) == (None, None)) or \
+               (tuple(din.owner.op.outshp) == (None, None)) or \
                (din.owner.op.outshp == self.imshp[1:]).all()
 
         # din and dw should have the same broadcasting pattern as the
