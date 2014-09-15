@@ -632,13 +632,16 @@ class ConvOp(OpenMPOp):
         bsize, imshp = imshp[0], list(imshp[1:])
         nkern, kshp = kshp[0], list(kshp[2:])
         # replace symbolic shapes with known shapes
-        if self.bsize: bsize = self.bsize
-        if self.imshp_logical[0]: imshp[0] = self.imshp_logical[0]
-        if self.imshp_logical[1]: imshp[1] = self.imshp_logical[1]
-        if self.imshp_logical[2]: imshp[2] = self.imshp_logical[2]
-        if self.nkern: nkern = self.nkern
-        if self.kshp_logical[0]: kshp[0] = self.kshp_logical[0]
-        if self.kshp_logical[1]: kshp[1] = self.kshp_logical[1]
+        if self.bsize is not None:
+            bsize = self.bsize
+        for i in [0, 1, 2]:
+            if self.imshp_logical[i] is not None:
+                imshp[i] = self.imshp_logical[i]
+        if self.nkern is not None:
+            nkern = self.nkern
+        for i in [0, 1]:
+            if self.kshp_logical[i] is not None:
+                kshp[i] = self.kshp_logical[i]
         # infer output shape from what we have
         outshp = ConvOp.getOutputShape(imshp[1:], kshp, (self.dx, self.dy),
                                        self.out_mode)
