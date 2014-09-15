@@ -779,24 +779,14 @@ class ProfileStats(object):
                     if isinstance(val, graph.Constant):
                         compute_map[val][0] = 1
 
-            def check_node_state(node):
-                """
-                Check if an Apply node is valid(has inputs).
-
-                :param node: Apply Node
-                """
-                inputs = node.inputs
-                outputs = node.outputs
-                deps = inputs + node.destroy_dependencies
-                computed_ins = all(compute_map[v][0] for v in deps)
-                return computed_ins
-
             # Initial executable_nodes
             executable_nodes = set()
             for var in fgraph.inputs:
                 for c, _ in var.clients:
-                    if c != "output" and check_node_state(c):
-                        executable_nodes.add(c)
+                    if c != "output":
+                        deps = c.inputs + c.destroy_dependencies
+                        if all(compute_map[v][0] for v in deps):
+                            executable_nodes.add(c)
 
             def min_memory_generator(executable_nodes, viewed_by, view_of):
                 """
@@ -893,8 +883,10 @@ class ProfileStats(object):
 
                     for var in node.outputs:
                         for c, _ in var.clients:
-                            if c != "output" and check_node_state(c):
-                                new_exec_nodes.add(c)
+                            if c != "output":
+                                deps = c.inputs + c.destroy_dependencies
+                                if all(compute_map[v][0] for v in deps):
+                                    new_exec_nodes.add(c)
 
                     if not new_exec_nodes:
                         # Check and Update mem_bound
