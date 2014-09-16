@@ -3858,7 +3858,7 @@ class T_local_reduce(unittest.TestCase):
         x = numpy.asarray([[1, 0], [3, 4]], dtype=config.floatX)
         y = numpy.asarray([[4, 0], [2, 1]], dtype=config.floatX)
         z = numpy.asarray([[5, 0], [1, 2]], dtype=config.floatX)
-
+        # Test different reduction scalar operation
         for out, res in [
             (T.max((vx, vy), 0), numpy.max((x, y), 0)),
             (T.min((vx, vy), 0), numpy.min((x, y), 0)),
@@ -3872,6 +3872,41 @@ class T_local_reduce(unittest.TestCase):
             topo = f.maker.fgraph.toposort()
             assert len(topo) <= 2, out
             assert isinstance(topo[-1].op, T.Elemwise), out
+
+        # Test different axis for the join and the reduction
+        A = theano.shared(numpy.array([1, 2, 3, 4, 5]))
+
+        f = theano.function([], T.sum(T.stack(A, A), axis=0), mode=self.mode)
+        assert numpy.allclose(f(), [2, 4, 6, 8, 10])
+        topo = f.maker.fgraph.toposort()
+        assert isinstance(topo[-1].op, T.Elemwise)
+
+        # Test a case that was bugged in a old Theano bug
+        try:
+            old = theano.config.warn.reduce_join
+            theano.config.warn.reduce_join = False
+            f = theano.function([], T.sum(T.stack(A, A), axis=1),
+                                mode=self.mode)
+        finally:
+            theano.config.warn.reduce_join = old
+        assert numpy.allclose(f(), [15, 15])
+        topo = f.maker.fgraph.toposort()
+        assert not isinstance(topo[-1].op, T.Elemwise)
+
+        # This case could be optimized
+        A = theano.shared(numpy.array([1, 2, 3, 4, 5]).reshape(5, 1))
+        f = theano.function([], T.sum(T.concatenate((A, A), axis=1), axis=1),
+                            mode=self.mode)
+        assert numpy.allclose(f(), [2, 4, 6, 8, 10])
+        topo = f.maker.fgraph.toposort()
+        assert not isinstance(topo[-1].op, T.Elemwise)
+
+        A = theano.shared(numpy.array([1, 2, 3, 4, 5]).reshape(5, 1))
+        f = theano.function([], T.sum(T.concatenate((A, A), axis=1), axis=0),
+                            mode=self.mode)
+        assert numpy.allclose(f(), [15, 15])
+        topo = f.maker.fgraph.toposort()
+        assert not isinstance(topo[-1].op, T.Elemwise)
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):
