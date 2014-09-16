@@ -75,6 +75,11 @@ class RandomStateType(gof.Type):
             else:
                 raise NotImplementedError()
         return size
+
+    @staticmethod
+    def may_share_memory(a, b):
+        return a is b
+
 # Register RandomStateType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
         RandomStateType,
