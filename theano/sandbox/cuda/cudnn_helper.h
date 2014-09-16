@@ -8,7 +8,7 @@ static inline const char *cudnnGetErrorString(cudnnStatus_t err) {
   case CUDNN_STATUS_SUCCESS:
     return "The operation completed successfully.";
   case CUDNN_STATUS_NOT_INITIALIZED:
-    return "The handle was not initialized.";
+    return "The handle was not initialized(Is your driver recent enought?).";
   case CUDNN_STATUS_ALLOC_FAILED:
     return "Ressource allocation failed inside the library.";
   case CUDNN_STATUS_BAD_PARAM:
