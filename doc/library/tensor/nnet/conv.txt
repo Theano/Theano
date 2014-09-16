@@ -94,6 +94,13 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
           f = theano.function(..., mode=mode)
 
+    - :func:`GpuDnnConv <theano.sandbox.cuda.dnn.GpuDnnConv>` GPU-only
+      convolution using NVIDIA's cuDNN library.  To enable it (and
+      other cudnn-acclerated ops), set
+      ``THEANO_FLAGS=optimizer_including=cudnn`` in your environment.
+      This requires that you have cuDNN installed and available.  It
+      also requires a GPU with compute capability 3.0 or more.
+
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
       3D Convolution applying multi-channel 3D filters to batches of
       multi-channel 3D images.

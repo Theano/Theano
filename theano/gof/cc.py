@@ -143,6 +143,18 @@ def failure_code(sub):
         goto __label_%(id)i;}''' % sub
 
 
+def failure_code_init(sub):
+    "Code for failure in the struct init."
+    return '''{
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError,
+                "Unexpected error in an Op's C code. "
+                "No Python exception was set.");
+            }
+        return %(id)d;
+}''' % sub
+
+
 def code_gen(blocks):
     """WRITEME From a list of L{CodeBlock} instances, returns a string
     that executes them all in sequence. eg for C{(decl1, task1,
@@ -205,8 +217,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         #     be executed if any step in the constructor fails and the
         #     latter only at destruction time.
         struct_decl += block.declare
-        struct_init_head = struct_init_head + ("\n{\n%s" % block.behavior)
-        struct_init_tail = ("%s\n}\n" % block.cleanup) + struct_init_tail
+        struct_init_head = struct_init_head + ("\n%s" % block.behavior)
         struct_cleanup += block.cleanup
 
     behavior = code_gen(blocks)
@@ -258,6 +269,7 @@ def struct_gen(args, struct_builders, blocks, sub):
 
     # TODO: add some error checking to make sure storage_<x> are
     # 1-element lists and __ERROR is a 3-elements list.
+
     struct_code = """
     namespace {
     struct %(name)s {
@@ -274,13 +286,9 @@ def struct_gen(args, struct_builders, blocks, sub):
         int init(PyObject* __ERROR, %(args_decl)s) {
             %(storage_incref)s
             %(storage_set)s
-            int %(failure_var)s = 0;
             %(struct_init_head)s
             this->__ERROR = __ERROR;
             return 0;
-            %(struct_init_tail)s
-            %(storage_decref)s
-            %(do_return)s
         }
         void cleanup(void) {
             %(struct_cleanup)s
@@ -333,7 +341,7 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in 
+    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
             r.clients]):
 
         c_extract = r.type.c_extract(name, sub, True)
@@ -419,7 +427,7 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     sub = dict(sub)
 #    sub['name'] = name
     sub['id'] = id
-    sub['fail'] = failure_code(sub)
+    sub['fail'] = failure_code_init(sub)
     sub['py_ptr'] = "py_%s" % name
     sub['stor_ptr'] = "storage_%s" % name
     # struct_declare, struct_behavior, struct_cleanup, sub)
@@ -530,9 +538,8 @@ class CLinker(link.Linker):
         failure_var = "__failure"
         id = 1
 
-        sub = dict(failure_var=failure_var)
-
         for variable in self.variables:
+            sub = dict(failure_var=failure_var)
 
             # it might be possible to inline constant variables as C literals
             # policy = [[what to declare in the struct,
@@ -634,6 +641,10 @@ class CLinker(link.Linker):
             sub['struct_id'] = id + 1
             sub['fail'] = failure_code(sub)
 
+            sub_struct = dict()
+            sub_struct['id'] = id + 1
+            sub_struct['fail'] = failure_code_init(sub)
+
             struct_support = ""
             struct_init = ""
             struct_cleanup = ""
@@ -661,7 +672,7 @@ class CLinker(link.Linker):
                     " didn't return a string for c_init_code_apply")
 
             try:
-                struct_init = op.c_init_code_struct(node, id + 1)
+                struct_init = op.c_init_code_struct(node, id + 1, sub_struct)
                 assert isinstance(struct_init, basestring), (
                     str(node.op) +
                     " didn't return a string for c_init_code_struct")
@@ -1418,7 +1429,10 @@ class CLinker(link.Linker):
         print >> code, '     return NULL;'
         print >> code, '  }'
         print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals()
-        print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ');'
+        print >> code, '  if (struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ') != 0) {'
+        print >> code, '    delete struct_ptr;'
+        print >> code, '    return NULL;'
+        print >> code, '  }'
         if PY3:
             print >> code, """\
     PyObject* thunk = PyCapsule_New((void*)(&{struct_name}_executor), NULL, {struct_name}_destructor);

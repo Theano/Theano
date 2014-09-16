@@ -99,7 +99,7 @@ There are less methods to define for an Op than for a Type:
        module is initialized, before anything else is executed and is
        specialized for a particular apply of an :ref:`op`.
 
-    .. method:: c_init_code_struct(node, struct_id)
+    .. method:: c_init_code_struct(node, struct_id, sub)
 
        Allows you to specify code that will be inserted in the struct
        constructor of the Op.  This is for code which should be
@@ -107,6 +107,16 @@ There are less methods to define for an Op than for a Type:
 
        `struct_id` is an integer guaranteed to be unique inside the
        struct.
+
+       `sub` is a dictionary of extras parameters to the
+       c_code_init_code_struct method. It contains the following
+       values:
+
+       ``sub['fail']``
+
+          A string of code that you should execute (after ensuring
+          that a python exception is set) if your C code needs to
+          raise an exception.
 
     .. method:: c_support_code()
 
