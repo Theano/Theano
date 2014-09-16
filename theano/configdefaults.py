@@ -422,6 +422,15 @@ AddConfigVar('warn.signal_conv2d_interface',
              BoolParam(warn_default('0.7')),
              in_c_key=False)
 
+AddConfigVar('warn.reduce_join',
+             ('Your current code is fine, but Theano versions '
+              'prior to 0.7 (or this development version) '
+              'might have given an incorrect result. '
+              'To disable this warning, set the Theano flag '
+              'warn.reduce_join to False.'),
+             BoolParam(warn_default('0.7')),
+             in_c_key=False)
+
 AddConfigVar('compute_test_value',
         ("If 'True', Theano will run each op at graph build time, using "
          "Constants, SharedVariables and the tag 'test_value' as inputs "
