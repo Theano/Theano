@@ -3488,7 +3488,7 @@ def local_reduce_join(node):
             return
 
         if isinstance(node.op.scalar_op, (scalar.Maximum, scalar.Minimum)):
-            #Support only 2 inputs for now
+            # Support only 2 inputs for now
             if len(join.inputs) != 3:
                 return
         elif not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul)):

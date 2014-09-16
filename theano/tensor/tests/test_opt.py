@@ -3882,7 +3882,13 @@ class T_local_reduce(unittest.TestCase):
         assert isinstance(topo[-1].op, T.Elemwise)
 
         # Test a case that was bugged in a old Theano bug
-        f = theano.function([], T.sum(T.stack(A, A), axis=1), mode=self.mode)
+        try:
+            old = theano.config.warn.reduce_join
+            theano.config.warn.reduce_join = False
+            f = theano.function([], T.sum(T.stack(A, A), axis=1),
+                                mode=self.mode)
+        finally:
+            theano.config.warn.reduce_join = old
         assert numpy.allclose(f(), [15, 15])
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
