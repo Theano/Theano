@@ -259,6 +259,26 @@ class GpuDnnConv(GpuDnnConvBase):
     path_flag = 'CUDNN_CONVOLUTION_FWD'
     conv_op ='cudnnConvolutionForward'
 
+    def grad(self, inp, grads):
+        img, kerns = inp
+        top, = grads
+
+        d_img = GpuDnnConvGradI(self.border_mode, self.conv_mode)(kerns, top)
+        d_kerns = GpuDnnConvGradW(self.border_mode, self.conv_mode)(img, top)
+
+        return d_img, d_kerns
+
+
+class GpuDnnConvGradW(GpuDnnConvBase):
+    descriptors = ('tensor4d', 'tensor4d', 'filter')
+    path_flag = 'CUDNN_CONVOLUTION_WEIGHT_GRAD'
+    conv_op = 'cudnnConvolutionBackwardFilter'
+
+
+class GpuDnnConvGradI(GpuDnnConvBase):
+    descriptors = ('filter', 'tensor4d', 'tensor4d')
+    path_flag = 'CUDNN_CONVOLUTION_DATA_GRAD'
+    conv_op = 'cudnnConvolutionBackwardData'
 
 
 from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
