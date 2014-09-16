@@ -805,8 +805,8 @@ class ProfileStats(object):
                     if max_mem_count > mem_bound:
                         continue
 
-                    # view_of_temp = view_of.copy()
                     viewof_change = []
+                    # Use to track view_of changes
 
                     viewedby_add = defaultdict(lambda: [])
                     viewedby_remove = defaultdict(lambda: [])
