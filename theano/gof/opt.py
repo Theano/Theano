@@ -1837,8 +1837,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     process_count[process] += count
                 else:
                     process_count[process] = count
-        for i in range(len(loop_process_count), len(prof2[2])):
-            loop_process_count.append(list(prof2[2]))
+        loop_process_count.extend(prof2[2][len(loop_process_count):])
 
         max_nb_nodes = max(prof1[3], prof2[3])
 

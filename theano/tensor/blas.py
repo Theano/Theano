@@ -1815,13 +1815,14 @@ def local_dot22_to_ger_or_gemv(node):
 blas_optdb = SequenceDB()
 
 # run after numerical stability optimizations (1.5)
-optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run')
+optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run', 'fast_compile')
 # run before specialize (2.0) because specialize is basically a
 # free-for-all that makes the graph crazy.
 
+#fast_compile is needed to have GpuDot22 created.
 blas_optdb.register('local_dot_to_dot22',
                     in2out(local_dot_to_dot22),
-                    0, 'fast_run')
+                    0, 'fast_run', 'fast_compile')
 blas_optdb.register('gemm_optimizer',
         GemmOptimizer(),
         10, 'fast_run')
