@@ -427,7 +427,11 @@ AddConfigVar('warn.reduce_join',
               'prior to 0.7 (or this development version) '
               'might have given an incorrect result. '
               'To disable this warning, set the Theano flag '
-              'warn.reduce_join to False.'),
+              'warn.reduce_join to False. The problem was an '
+              'optimization that modify the pattern '
+              '"Reduce{scalar.op}(Join(axis=0, a, b), axis=0)", '
+              'did not checked the reduction axis. So if the '
+              'reduction axis is not 0, you got wrong answer.'),
              BoolParam(warn_default('0.7')),
              in_c_key=False)
 

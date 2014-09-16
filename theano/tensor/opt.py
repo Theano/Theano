@@ -3518,9 +3518,14 @@ def local_reduce_join(node):
                 _logger.warn((
                     'Your current code is fine, but Theano versions '
                     'prior to 0.7 (or this development version Sept 2014) '
-                    'might have given an incorrect result. '
+                    'might have given an incorrect result for this code. '
                     'To disable this warning, set the Theano flag '
-                    'warn.reduce_join to False.'))
+                    'warn.reduce_join to False. The problem was an '
+                    'optimization that modify the pattern '
+                    '"Reduce{scalar.op}(Join(axis=0, a, b), axis=0)", '
+                    'did not checked the reduction axis. So if the '
+                    'reduction axis is not 0, you got wrong answer.'
+                    ))
             return
 
         # We add the new check late to don't add extra warning.
