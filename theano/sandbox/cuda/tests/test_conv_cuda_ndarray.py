@@ -4,7 +4,7 @@ Tests for GPU convolution
 import sys
 import time
 import unittest
-
+import traceback
 
 import numpy
 
@@ -286,7 +286,7 @@ def exec_conv(version, shapes, verbose, random, mode,
                         cls=cls)
             except Exception, e:
                 print ver, id, (ishape, kshape, subshape, istride, kstride)
-                print "Exception", type(e), e
+                print traceback.format_exc()
                 pass
             if not ret:
                 failed_version.add(ver)
