@@ -208,42 +208,65 @@ def test_softmax_with_bias():
     cmp(128, 64 * 1024)
 
 
-def test_softmax():
+def _test_softmax(x, x_gpu, f_z, f_gpu_z, cpu_type, gpu_type, cmp, topo_idx):
     """
-    This is basic test for GpuSoftmax
+    This is basic test for GpuSoftmax and GpuDnnSoftmax
 
     We check that we loop when their is too much block
     We use slower code when there isn't enough shared memory
     """
-    x = T.fmatrix('x')
+    f_z_out = f_z(x)
+    f_gpu_z_out = f_gpu_z(x_gpu)
+    f = theano.function([x], f_z_out, mode=mode_without_gpu)
+    f_gpu = theano.function([x_gpu], f_gpu_z_out, mode=mode_with_gpu)
+    assert isinstance(f.maker.fgraph.toposort()[-1].op, cpu_type)
+    assert isinstance(f_gpu.maker.fgraph.toposort()[topo_idx].op, gpu_type)
 
-    z = T.nnet.softmax(x)
-    f = theano.function([x], z, mode=mode_without_gpu)
-    f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax
-    assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
-                      cuda.nnet.GpuSoftmax)
+    #we need to test n>32*1024 to check that we make the block loop.
+    cmp(2, 5, f, f_gpu)
+    cmp(2 << 15, 5, f, f_gpu)
+    cmp(4074, 400, f, f_gpu)
+    cmp(0, 10, f, f_gpu)
+    cmp(784, 784, f, f_gpu)
+    cmp(4, 1000, f, f_gpu)
+    cmp(4, 1024, f, f_gpu)
+    cmp(4, 2000, f, f_gpu)
+    cmp(4, 2024, f, f_gpu)
+    # The GTX285 don't have enough shared memory.
+    cmp(4, 4074, f, f_gpu)
+    # The GTX580, 680 and kepler don't have enough shared memory.
+    cmp(2, 10000, f, f_gpu)
+    cmp(128, 16 * 1024, f, f_gpu)
+    cmp(128, 64 * 1024, f, f_gpu)
 
-    def cmp(n, m):
+
+def test_softmax():
+    def cmp(n, m, f, f_gpu):
         #print "test_softmax",n,m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
         assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
-    #we need to test n>32*1024 to check that we make the block loop.
-    cmp(2, 5)
-    cmp(2 << 15, 5)
-    cmp(4074, 400)
-    cmp(0, 10)
-    cmp(784, 784)
-    cmp(4, 1000)
-    cmp(4, 1024)
-    cmp(4, 2000)
-    cmp(4, 2024)
-    # The GTX285 don't have enough shared memory.
-    cmp(4, 4074)
-    # The GTX580, 680 and kepler don't have enough shared memory.
-    cmp(2, 10000)
-    cmp(128, 16 * 1024)
-    cmp(128, 64 * 1024)
+    x = T.fmatrix('x')
+    z = T.nnet.softmax
+    _test_softmax(x, x, z, z, type(z), cuda.nnet.GpuSoftmax, cmp, -2)
+
+
+def test_cudnn_softmax():
+    def cmp(n, m, f, f_gpu):
+        #print "test_softmax",n,m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data.reshape(1, 1, n, m)).reshape((n, m))
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+
+    x = T.matrix('x')
+    x_gpu = T.tensor4('x_gpu')
+    f_z = T.nnet.softmax
+    f_gpu = theano.sandbox.cuda.dnn.GpuDnnSoftmax(
+        'bc01',
+        'accurate',
+        'instance'
+    )
+    _test_softmax(x, x_gpu, f_z, f_gpu, type(f_z), type(f_gpu), cmp, -1)
