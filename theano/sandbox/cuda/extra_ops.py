@@ -15,21 +15,7 @@ if cuda_available:
 
 class GpuCumsum(CumsumOp, GpuOp):
     SUPPORTED_NDIMS = 2
-
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and self.axis == other.axis \
-            and self.max_threads_dim0 == other.max_threads_dim0 \
-            and self.max_grid_size1 == other.max_grid_size1
-
-    def __hash__(self):
-        return hash(type(self)) \
-            ^ hash(self.axis) \
-            ^ hash(self.max_threads_dim0) \
-            ^ hash(self.max_grid_size1)
-
-    def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
+    __props__ = ('axis', 'max_threads_dim0', 'max_grid_size1')
 
     def __init__(self, axis):
         """
@@ -78,7 +64,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                                                      compute_map, no_recycling)
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_support_code_apply(self, node, nodename):
         return """
