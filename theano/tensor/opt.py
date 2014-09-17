@@ -310,21 +310,36 @@ compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
 
 
 def register_canonicalize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_canonicalize(inner_lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_stabilize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_stabilize(inner_lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_specialize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_specialize(inner_lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_uncanonicalize(lopt, *tags, **kwargs):
@@ -799,7 +814,21 @@ class ShapeFeature(object):
             #
             # worst case, we loop over shape_of and replace things
             raise NotImplementedError(s_i)
-        elif s_i.type.dtype[:3] in ('int', 'uint'):
+
+        # s_i is x.shape[i], we change it to Shape_i.
+        if (s_i.owner and
+            isinstance(s_i.owner.op, Subtensor) and
+            s_i.owner.inputs[0].owner and
+            isinstance(s_i.owner.inputs[0].owner.op, T.Shape)):
+            assert s_i.ndim == 0
+            assert len(s_i.owner.inputs) == 2
+            try:
+                i = get_scalar_constant_value(s_i.owner.inputs[1])
+                s_i = Shape_i(i)(s_i.owner.inputs[0].owner.inputs[0])
+            except NotScalarConstantError:
+                pass
+
+        if s_i.type.dtype[:3] in ('int', 'uint'):
             if getattr(s_i.type, 'ndim', 0):
                 raise TypeError('Shape element must be scalar', s_i)
             return s_i
@@ -1131,6 +1160,40 @@ class ShapeFeature(object):
                     self.set_shape_i(v, ii, new_r)
         self.shape_of_reverse_index[r] = set()
 
+    def same_shape(self, x, y):
+        """Return True if we are able to assert that x and y have the
+        same shape
+        """
+        sx = self.shape_of[x]
+        sy = self.shape_of[y]
+        if sx is None or sy is None:
+            return False
+        assert len(sx) == len(sy)
+
+        for dx, dy in zip(sx, sy):
+            if dx is dy:
+                continue
+            # Need to try to find that they are the same shape. We
+            # need to compare the full graph. It could be slow. So I
+            # just implement for now the case of Shape_i.
+            if not dx.owner or not dy.owner:
+                return False
+            if (not isinstance(dx.owner.op, Shape_i) or
+                not isinstance(dy.owner.op, Shape_i)):
+                return False
+            opx = dx.owner.op
+            opy = dy.owner.op
+            if not (opx.i == opy.i):
+                return False
+            # FB I'm not sure is this handle correctly constants.
+            if dx.owner.inputs[0] == dy.owner.inputs[0]:
+                return True
+            # To be sure to cover all case, call equal_computation.
+            # Can't use theano.gof.graph.is_same_graph(dx, dy)
+            # As it currently expect that dx and dy aren't in a FunctionGraph
+            from theano.scan_module.scan_utils import equal_computations
+            return equal_computations([dx], [dy])
+
 
 class ShapeOptimizer(Optimizer):
     """Optimizer that serves to add ShapeFeature as an fgraph feature.
@@ -1256,7 +1319,7 @@ def local_track_shape_i(node):
 
 
 @register_specialize
-@register_canonicalize
+@register_canonicalize('gpu')
 @gof.local_optimizer([Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
@@ -1306,8 +1369,7 @@ def local_subtensor_make_vector(node):
 
 #TODO: the other optimization for and, or, xor, le and ge see ticket #496.
 
-
-@register_canonicalize
+@register_canonicalize('fast_compile')
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
 def local_useless_elemwise(node):
@@ -1379,6 +1441,8 @@ class Assert(T.Op):
             self.msg = "Theano Assert failed!"
 
     def make_node(self, value, *conds):
+        if not isinstance(value, Variable):
+            value = T.as_tensor_variable(value)
         cond = [T.as_tensor_variable(c) for c in conds]
         assert numpy.all([c.type.ndim == 0 for c in cond])
         return gof.Apply(self, [value] + cond, [value.type()])
@@ -1638,6 +1702,54 @@ def local_upcast_elemwise_constant_inputs(node):
 ##################
 # Subtensor opts #
 ##################
+
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([IncSubtensor])
+def local_useless_inc_subtensor(node):
+    """Remove IncSubtensor, when we overwrite the full inputs with the
+    new value.
+
+    """
+    if not isinstance(node.op, IncSubtensor):
+        return
+    if node.op.set_instead_of_inc is False:
+        # This is an IncSubtensor, so the init value must be zeros
+        try:
+            c = get_scalar_constant_value(node.inputs[0])
+            if c != 0:
+                return
+        except NotScalarConstantError:
+            return
+    if (node.inputs[0].ndim != node.inputs[1].ndim or
+        node.inputs[0].broadcastable != node.inputs[1].broadcastable):
+        # FB: I didn't check if this case can happen, but this opt
+        # don't support it.
+        return
+    # We have a SetSubtensor or an IncSubtensor on zeros
+    # If is this IncSubtensor useful?
+
+    # Check that we keep all the original data.
+    # Put the constant inputs in the slice.
+    idx_cst = theano.tensor.subtensor.get_idx_list(node.inputs[1:],
+                                                   node.op.idx_list)
+    if all(isinstance(e, slice) and e.start is None and
+           e.stop is None and (e.step is None or T.extract_constant(e.step) == -1)
+           for e in idx_cst):
+        # IncSubtensor broadcast node.inputs[1] on node.inputs[0]
+        # based on run time shapes, so we must check they are the same.
+        if not hasattr(node.fgraph, 'shape_feature'):
+            return
+        if not node.fgraph.shape_feature.same_shape(node.inputs[0],
+                                                    node.inputs[1]):
+            return
+        # There is no reverse, so we don't need a replacement.
+        if all(e.step is None
+               for e in node.op.idx_list):
+            # They are the same shape, so we can remore this IncSubtensor
+            return [node.inputs[1]]
+        return [Subtensor(node.op.idx_list)(*node.inputs[1:])]
 
 
 @register_canonicalize
@@ -3366,11 +3478,21 @@ ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.Sum, T.elemwise.Prod,
               T.elemwise.ProdWithoutZeros]
 
+
 @register_canonicalize
 @register_uncanonicalize  # Needed for MaxAndArgmax -> CAReduce
 @gof.local_optimizer(ALL_REDUCE)
 def local_reduce_join(node):
-    """Max(Join(a,b), axis=0) -> Maximum(a,b)  """
+    """Reduce{scalar.op}(Join(axis=0, a, b), axis=0) -> Elemwise{scalar.op}(a, b)
+
+    :note: supported scalar.op are Maximum, Mimimum in some cases and
+        Add and Mul in all cases.
+
+    :note: Currently we must reduce on axis 0. It is probably
+        extensible to the case where we join and reduce on the same
+        set of axis.
+
+    """
     if (isinstance(node.op, T.CAReduce) and
         node.inputs[0].owner and
         isinstance(node.inputs[0].owner.op, T.Join)):
@@ -3380,10 +3502,13 @@ def local_reduce_join(node):
             return
 
         if isinstance(node.op.scalar_op, (scalar.Maximum, scalar.Minimum)):
-            #Support only 2 inputs for now
+            # Support only 2 inputs for now
             if len(join.inputs) != 3:
                 return
         elif not isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul)):
+            return
+        elif len(join.inputs) <= 2:
+            # This is a useless join, that will get removed by another opt.
             return
 
         new_inp = []
@@ -3396,12 +3521,39 @@ def local_reduce_join(node):
                 return
             new_inp.append(inp.inputs[0])
         ret = Elemwise(node.op.scalar_op)(*new_inp)
-        if ret.dtype == node.outputs[0].dtype:
-            return [ret]
-        #else the reduction do something about the dtype.
+
+        if ret.dtype != node.outputs[0].dtype:
+            # The reduction do something about the dtype.
+            return
+
+        # I put this warning late to don't add extra warning.
+        if len(node.op.axis) != 1 or 0 not in node.op.axis:
+            if theano.config.warn.reduce_join:
+                _logger.warn((
+                    'Your current code is fine, but Theano versions '
+                    'prior to 0.7 (or this development version Sept 2014) '
+                    'might have given an incorrect result for this code. '
+                    'To disable this warning, set the Theano flag '
+                    'warn.reduce_join to False. The problem was an '
+                    'optimization that modify the pattern '
+                    '"Reduce{scalar.op}(Join(axis=0, a, b), axis=0)", '
+                    'did not checked the reduction axis. So if the '
+                    'reduction axis is not 0, you got wrong answer.'
+                    ))
+            return
+
+        # We add the new check late to don't add extra warning.
+        try:
+            join_axis = get_scalar_constant_value(join.inputs[0])
+            if join_axis != node.op.axis[0]:
+                return
+        except NotScalarConstantError:
+            return
+
+        return [ret]
 
 
-@register_canonicalize
+@register_canonicalize('fast_compile')
 @gof.local_optimizer(ALL_REDUCE)
 def local_cut_useless_reduce(node):
     """Sum(a, axis=[]) -> a  """
@@ -4045,6 +4197,8 @@ def attempt_distribution(factor, num, denum, out_type):
                                    neg_pairs))), num, denum
 
 
+@register_canonicalize
+@register_stabilize
 @gof.local_optimizer([T.mul, T.true_div, T.inv])
 def local_greedy_distributor(node):
     """
@@ -4109,10 +4263,10 @@ def local_greedy_distributor(node):
 
     return [rval]
 
-register_canonicalize(local_greedy_distributor)
-register_stabilize(local_greedy_distributor)
 
-
+@register_canonicalize('fast_compile')
+@register_stabilize('fast_compile')
+@register_specialize('fast_compile')
 @gof.local_optimizer(None)
 def constant_folding(node):
     for input in node.inputs:
@@ -4145,10 +4299,6 @@ def constant_folding(node):
             constant = Constant
         rval.append(constant(output.type, storage_map[output][0]))
     return rval
-
-register_canonicalize(constant_folding, 'fast_compile')
-register_stabilize(constant_folding, 'fast_compile')
-register_specialize(constant_folding, 'fast_compile')
 
 
 def _is_1(expr):
@@ -5038,4 +5188,4 @@ else:
 # Although the op just returns its input, it should be removed from
 # the graph to make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
-    'fast_compile', name='remove_consider_constant')
+    'fast_compile', 'fast_run', name='remove_consider_constant')

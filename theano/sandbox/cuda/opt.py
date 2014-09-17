@@ -55,10 +55,10 @@ gpu_optimizer = EquilibriumDB(ignore_newtrees=False)
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
-        'fast_run', 'inplace', 'gpu')
+        'fast_run', 'fast_compile', 'inplace', 'gpu')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
-        'fast_run', 'gpu')
-# DO NOT PUT fast_run in gpu_opt! This will ALWAYS enable the GPU!
+        'fast_run', 'fast_compile', 'gpu')
+# DO NOT PUT fast_run or fast_compile in gpu_opt! This will ALWAYS enable the GPU!
 optdb.register('gpu_opt',
                gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
@@ -72,13 +72,15 @@ optdb.register('gpu_after_fusion',
                'gpu')
 
 ## Register merge_optimizer as a global opt
-gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer, 'fast_run')
+gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer,
+                       'fast_run', 'fast_compile')
 
 
 def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        gpu_optimizer.register(name, local_opt, 'fast_run', 'gpu', *tags)
+        gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
+                               'gpu', *tags)
         return local_opt
     return f
 
@@ -163,14 +165,15 @@ def local_cut_gpu_host_gpu(node):
         return [node.inputs[0].owner.inputs[0]]
     return False
 gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
-        'fast_run', 'gpu')
+                        'fast_run', 'fast_compile', 'gpu')
 gpu_cut_copies.register('cut_gpu_constant_transfers',
                         tensor.opt.constant_folding,
-                        'fast_run', 'gpu')
+                        'fast_run', 'fast_compile', 'gpu')
 #register it into canonicalize to allow other optimization to work without
 #botering with this useless pattern.
 optdb['canonicalize'].register('local_cut_gpu_host_gpu',
-                               local_cut_gpu_host_gpu, 'fast_run', 'gpu')
+                               local_cut_gpu_host_gpu,
+                               'fast_run', 'fast_compile', 'gpu')
 
 # 'float64', 'complex128' and 'complex64' are not supported in elemwise
 # on the gpu.
@@ -347,7 +350,7 @@ def local_gpu_specifyShape_0(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host]) # XXX: broken: tensor.basic.dot is not an op
+@local_optimizer([gpu_from_host, tensor.basic.Dot])
 def local_gpu_dot_to_dot22(node):
     """
     gpu_from_host(dot) -> gpudot(gpu_from_host)
@@ -358,6 +361,8 @@ def local_gpu_dot_to_dot22(node):
     the output.
 
     A more suitable solution would be to use the right cublas call
+
+    This is needed in fast_compile
     """
 
     # In case the got do input upcast, we much check that we can
@@ -366,17 +371,18 @@ def local_gpu_dot_to_dot22(node):
         if node.outputs[0].type.dtype != 'float32':
             return False
         host_input = node.inputs[0]
-        if host_input.owner and host_input.owner.op == tensor.basic.dot:
+        if host_input.owner and isinstance(host_input.owner.op,
+                                           tensor.basic.Dot):
             x, y = host_input.owner.inputs
             # case one: vector X matrix
             if _is_real_vector(x) and _is_real_matrix(y):
-                new_op = GpuDimShuffle((False,), ['x', 0])
+                new_op = GpuDimShuffle((False,), ('x', 0))
                 shape_out = y.shape[1].dimshuffle(['x'])
                 gpu_x = new_op(gpu_from_host(x))
                 gpu_y = gpu_from_host(y)
             # case two: matrix X vector
             elif _is_real_matrix(x) and _is_real_vector(y):
-                new_op = GpuDimShuffle((False,), [0, 'x'])
+                new_op = GpuDimShuffle((False,), (0, 'x'))
                 shape_out = x.shape[0].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
@@ -384,20 +390,20 @@ def local_gpu_dot_to_dot22(node):
                 return False
 
             return [GpuReshape(1)(gpu_dot22(gpu_x, gpu_y), shape_out)]
-    if node.op == tensor.basic.dot:
+    if isinstance(node.op, tensor.basic.Dot):
         if node.outputs[0].type.dtype != 'float32':
             return False
         if any([i.owner and isinstance(i.owner.op, HostFromGpu)
                 for i in node.inputs]):
             x, y = node.inputs
             if _is_real_vector(x) and _is_real_matrix(y):
-                new_op = GpuDimShuffle((False,), ['x', 0])
+                new_op = GpuDimShuffle((False,), ('x', 0))
                 shape_out = y.shape[1].dimshuffle(['x'])
                 gpu_x = new_op(gpu_from_host(x))
                 gpu_y = gpu_from_host(y)
 
             elif _is_real_matrix(x) and _is_real_vector(y):
-                new_op = GpuDimShuffle((False,), [0, 'x'])
+                new_op = GpuDimShuffle((False,), (0, 'x'))
                 shape_out = x.shape[0].dimshuffle(['x'])
                 gpu_x = gpu_from_host(x)
                 gpu_y = new_op(gpu_from_host(y))
@@ -1629,8 +1635,10 @@ else:
 #GpuElemwise inplace
 gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
         GpuElemwise)
+# DO NOT PLACE add a 'gpu' tag here! This would enable it in fast_compile.
+# It still will be run in fast_run with device=gpu with the current tag.
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
-               'fast_run', 'inplace', 'gpu_inplace', 'gpu')
+               'fast_run', 'inplace', 'gpu_inplace')
 
 
 @register_opt()
@@ -1681,6 +1689,16 @@ def local_gpualloc(node):
 
 
 @register_opt()
+@local_optimizer([theano.tensor.opt.Assert])
+def local_assert(node):
+    if (isinstance(node.op, theano.tensor.opt.Assert) and
+        node.inputs[0].owner and
+        isinstance(node.inputs[0].owner.op,
+                   HostFromGpu)):
+        return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0]))]
+
+
+@register_opt()
 @local_optimizer([GpuAlloc])
 def local_gpualloc_memset_0(node):
     if isinstance(node.op, GpuAlloc) and not node.op.memset_0:
@@ -1689,6 +1707,13 @@ def local_gpualloc_memset_0(node):
             inp.data.size == 1 and
             (numpy.asarray(inp.data) == 0).all()):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
+            old_bcast = node.outputs[0].type.broadcastable
+            if new_out.type.broadcastable != old_bcast:
+                # check that we did not try discarding a broadcastable dimension
+                assert not any(b_old and not b_new for b_old, b_new in zip(
+                        old_bcast, new_out.type.broadcastable))
+                # force old broadcasting pattern; we must not change it here
+                new_out = tensor.patternbroadcast(new_out, old_bcast)
             return [new_out]
 
 

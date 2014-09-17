@@ -4,7 +4,8 @@ import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
 import theano.sandbox.gpuarray
-from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.type import (
+    GpuArrayType, gpuarray_shared_constructor)
 from theano.sandbox.gpuarray.basic_ops import (
     GpuAlloc, GpuReshape, gpu_alloc, gpu_from_host, host_from_gpu)
 from theano.sandbox.gpuarray.elemwise import (
@@ -14,6 +15,16 @@ from theano.sandbox.gpuarray.tests.test_basic_ops import (
     )
 from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_basic import TestSpecifyShape
+
+
+def test_local_assert():
+    x = theano.tensor.fmatrix()
+    a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
+    f = theano.function([x], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+    assert isinstance(a_op[0].inputs[0].type, GpuArrayType)
 
 
 def test_flatten():

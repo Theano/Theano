@@ -708,18 +708,6 @@ def is_same_graph_with_merge(var1, var2, givens=None):
         return o1 is o2
 
 
-def MergeOptMerge(opt):
-    """WRITEME
-    Returns an Optimizer that merges the graph then applies the
-    optimizer in opt and then merges the graph again in case the
-    opt introduced additional similarities.
-    """
-    merger = merge_optimizer
-    opt = SeqOptimizer([merger, opt, merger])
-    opt.name = "MergeOptMerge"
-    return opt
-
-
 def pre_constant_merge(vars):
     """
     Merge constants in the subgraph used to compute nodes in `vars`.
@@ -1849,8 +1837,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     process_count[process] += count
                 else:
                     process_count[process] = count
-        for i in range(len(loop_process_count), len(prof2[2])):
-            loop_process_count.append(list(prof2[2]))
+        loop_process_count.extend(prof2[2][len(loop_process_count):])
 
         max_nb_nodes = max(prof1[3], prof2[3])
 

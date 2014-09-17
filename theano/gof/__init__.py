@@ -61,7 +61,7 @@ from theano.gof.opt import (
     Optimizer,
     optimizer, inplace_optimizer,
     SeqOptimizer,
-    MergeOptimizer, MergeOptMerge,
+    MergeOptimizer,
     LocalOptimizer, local_optimizer, LocalOptGroup,
     OpSub, OpRemove, PatternSub,
     NavigatorOptimizer, TopoOptimizer, EquilibriumOptimizer,

@@ -2888,7 +2888,9 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
             returns a C code expression to copy source into view, and
             return 0 on success
         """
-        return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s)""" % locals()
+        # On the CPU it unbroadcast based on the run time shapes. We
+        # need the same behavior on the GPU.
+        return """CudaNdarray_CopyFromCudaNdarray(%(view)s, %(source)s, 1)""" % locals()
 
     def add_to_zview(self, name, x, fail):
 
@@ -2910,7 +2912,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     def c_code_cache_version(self):
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if parent_version:
-            return parent_version + (0,)
+            return parent_version + (1,)
         return ()
 
 
@@ -3342,6 +3344,13 @@ class GpuContiguous(GpuOp):
     def make_node(self, input):
         input = as_cuda_ndarray_variable(input)
         return Apply(self, [input], [input.type()])
+
+    def perform(self, node, inp, out):
+        i = inp[0]
+        if not i.is_c_contiguous():
+            i = i.copy()
+        assert i.is_c_contiguous()
+        out[0][0] = i
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp

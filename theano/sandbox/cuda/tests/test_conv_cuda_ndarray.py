@@ -26,6 +26,8 @@ from theano.sandbox import cuda
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
+from theano.sandbox.cuda.dnn import GpuDnnConv
+
 #needed as the gpu conv don't have a perform implementation.
 if theano.config.mode == 'FAST_COMPILE':
     theano_mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -615,14 +617,13 @@ def test_valid_9_10():
               print_=print_, ones=ones, rtol=1.1e-5)
 
 
-def test_valid(conv_gemm=False):
+def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
     seed_rng()
     shapes = get_valid_shapes()
 
     #shapes=shapes[400:426]
     # I put -1 in case we forget to add version in the test to.
     # I put -2 to test the reference version.
-    version = [-2, -1, 6]
     verbose = 0
 
     random = True
@@ -631,27 +632,31 @@ def test_valid(conv_gemm=False):
     if ones:
         random = False
 
-    if conv_gemm:
-        # Test the GpuCorrMM version
-        mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.BaseGpuCorrMM
-        # dummy version; not used by GpuCorrMM so one version is enough
-        version = [-1]
-        # Add tests with strided inputs by still square images and filters.
-        shapes += get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
-        shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
-    else:
-        mode = cls = None
+    shapes += extra_shapes
+
     exec_conv(version, shapes, verbose, random, 'valid',
               print_=print_, ones=ones, rtol=1.1e-5,
               theano_mode=mode, cls=cls)
 
 
+def test_valid():
+    _test_valid(None, version=[-2, -1, 6])
+
+
 def test_gemm_valid():
-    test_valid(conv_gemm=True)
+    extra_shapes = get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
+    extra_shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
+
+    _test_valid(cuda.blas.BaseGpuCorrMM,
+                mode=theano_mode.including("conv_gemm"),
+                extra_shapes=extra_shapes)
 
 
-def test_full(conv_gemm=False):
+def test_dnn_valid():
+    _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn"))
+
+
+def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
     seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
@@ -706,24 +711,26 @@ def test_full(conv_gemm=False):
             ]
 
 #    shapes=shapes[:277]
-    version = [-2, -1, 0, 1, 2, 3, 4, 5]
     verbose = 0
     random = True
 
-    if conv_gemm:
-        # Test the GpuCorrMM version
-        mode = theano_mode.including("conv_gemm")
-        cls = cuda.blas.BaseGpuCorrMM
-        # dummy version; not used by GpuCorrMM so one version is enough
-        version = [-1]
-    else:
-        mode = cls = None
+    shapes += extra_shapes
+
     exec_conv(version, shapes, verbose, random, 'full',
               theano_mode=mode, cls=cls)
 
 
+def test_full():
+    _test_full(None, version=[-2, -1, 0, 1, 2, 3, 4, 5])
+
+
 def test_gemm_full():
-    test_full(conv_gemm=True)
+    _test_full(cuda.blas.BaseGpuCorrMM,
+               mode=theano_mode.including("conv_gemm"))
+
+
+def test_dnn_full():
+    _test_full(GpuDnnConv, mode=theano_mode.including("cudnn"))
 
 
 def test_subsample(conv_gemm=False):
@@ -757,7 +764,8 @@ def test_subsample(conv_gemm=False):
         # dummy version; not used by GpuCorrMM so one version is enough
         version_valid = version_full = [-1]
     else:
-        mode = cls = None
+        mode = theano_mode
+        cls = None
 
     exec_conv(version_valid, shapes, verbose, random, 'valid',
               print_=print_, ones=ones,

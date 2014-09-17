@@ -319,7 +319,7 @@ class CLinkerOp(CLinkerObject):
         raise utils.MethodNotDefined("c_init_code_apply", type(self),
                                      self.__class__.__name__)
 
-    def c_init_code_struct(self, node, struct_id):
+    def c_init_code_struct(self, node, struct_id, sub):
         """
         Optional: return a code string specific to the apply
         to be inserted in the struct initialization code.
@@ -330,6 +330,11 @@ class CLinkerOp(CLinkerObject):
                           this code.  The c_code will receive another
                           sub parameter named struct_id that will
                           contain this name.
+
+        :param sub: a dictionary of values to substitute in the code.
+                    Most notably it contains a 'fail' entry that you
+                    should place in your code after setting a python
+                    exception to indicate an error.
 
         :Exceptions:
          - `MethodNotDefined`: the subclass does not override this method
@@ -663,7 +668,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
             if len(self.__props__) == 0:
                 return "%s" % (self.__class__.__name__,)
             else:
-                return "%s{%s}" % (self.__class__.__name__, ", ".join("%s=%r" % (p, getattr(self, p)) for p in self.__props__))
+                return "%s{%s}" % (
+                    self.__class__.__name__,
+                    ", ".join("%s=%r" % (p, getattr(self, p))
+                              for p in self.__props__))
         else:
             return super(Op, self).__str__()
 

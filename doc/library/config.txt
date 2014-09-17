@@ -188,7 +188,7 @@ import theano and print the config variable, as in:
 
     String value: either 'ignore', 'warn', 'raise' or 'pdb'
 
-    Default: 'float64'
+    Default: 'ignore'
 
     When creating a TensorVariable with dtype float64, what should be done?
     This is useful to help find upcast to float64 in user code.

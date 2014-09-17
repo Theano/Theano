@@ -155,7 +155,8 @@ if compile_cuda_ndarray and cuda_available:
                             'cuda_ndarray',
                             code,
                             location=cuda_ndarray_loc,
-                            include_dirs=[cuda_path], libs=[config.cublas.lib],
+                            include_dirs=[cuda_path],
+                            libs=[config.cublas.lib],
                             preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
             except Exception, e:
@@ -262,8 +263,8 @@ if cuda_available:
 
     shared_constructor = float32_shared_constructor
 
-    import basic_ops
-    from basic_ops import (
+    from . import basic_ops
+    from .basic_ops import (
             GpuFromHost, HostFromGpu, GpuElemwise,
             GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
             GpuSubtensor, GpuIncSubtensor,
@@ -273,11 +274,11 @@ if cuda_available:
             ftensor3, ftensor4,
             scalar, vector, matrix, row, col,
             tensor3, tensor4)
-    from basic_ops import (host_from_gpu, gpu_from_host,
+    from .basic_ops import (host_from_gpu, gpu_from_host,
             as_cuda_array, as_cuda_ndarray_variable)
-    import opt
     import cuda_ndarray
-    from rng_curand import CURAND_RandomStreams
+    from . import opt, dnn
+    from .rng_curand import CURAND_RandomStreams
 
 
 def use(device,
@@ -414,6 +415,7 @@ def use(device,
 
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu_opt',
+                       'fast_compile',
                        'fast_run',
                        'inplace')
         optdb.add_tags('gpu_after_fusion',

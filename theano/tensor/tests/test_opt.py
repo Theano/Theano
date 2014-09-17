@@ -1571,6 +1571,53 @@ def test_log_add():
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 
+def test_local_useless_inc_subtensor():
+    x = tensor.matrix('x')
+    y = tensor.matrix('y')
+    for sub in [slice(None), slice(None, None, -1)]:
+        o = tensor.set_subtensor(x[::, sub], y)
+        f = theano.function([x, y], o)
+        o_shape = tensor.set_subtensor(x[::, sub],
+                                       tensor.specify_shape(y, x.shape))
+        f_shape = theano.function([x, y], o_shape)
+
+        # Test with shape info
+        topo = f_shape.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
+        out = f_shape([[2, 3]], [[3, 4]])
+        assert (out == numpy.asarray([[3, 4]])[::, sub]).all()
+
+        # Test that without shape info, we don't apply the opt.
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, tensor.IncSubtensor)
+        out = f([[2, 3]], [[3, 4]])
+        assert (out == numpy.asarray([[3, 4]])[::, sub]).all()
+
+        # Test that we don't remove shape error
+        try:
+            f([[2, 3]], [[3, 4], [4, 5]])
+            assert False
+        except (ValueError, AssertionError):
+            pass
+
+        # Test that we don't remove broadcastability
+        out = f([[2, 3], [3, 4]], [[5, 6]])
+        assert (out == numpy.asarray([[5, 6], [5, 6]])[::, sub]).all()
+
+    # Test that we do not optimize others strides even when sub and y
+    # have same shapes
+    sub = x[::, ::2]
+    o_shape = tensor.set_subtensor(sub,
+                                   tensor.specify_shape(y, sub.shape))
+    f_shape = theano.function([x, y], o_shape)
+    topo = f_shape.maker.fgraph.toposort()
+    theano.printing.debugprint(f_shape)
+    assert any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
+    out = f_shape([[2, 3, 6, 7]], [[8, 9]])
+    assert (out == numpy.asarray([[8, 3, 9, 7]])).all()
+
+
 def test_local_useless_subtensor():
     x = tensor.matrix('x')
 
@@ -2887,10 +2934,13 @@ class T_Tile(unittest.TestCase):
     def test_local_useless_tile(self):
         v = T.vector()
         m = T.matrix()
+        mode = None
+        if theano.config.mode == "FAST_COMPILE":
+            mode = "FAST_RUN"
         for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
             # Currently, only a repeat patter == ndim is supported.
             for ndim in [var.ndim]:  # range(1, var.ndim):
-                f = theano.function([var], T.tile(var, (1,)*ndim))
+                f = theano.function([var], T.tile(var, (1,)*ndim), mode=mode)
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
@@ -3808,7 +3858,7 @@ class T_local_reduce(unittest.TestCase):
         x = numpy.asarray([[1, 0], [3, 4]], dtype=config.floatX)
         y = numpy.asarray([[4, 0], [2, 1]], dtype=config.floatX)
         z = numpy.asarray([[5, 0], [1, 2]], dtype=config.floatX)
-
+        # Test different reduction scalar operation
         for out, res in [
             (T.max((vx, vy), 0), numpy.max((x, y), 0)),
             (T.min((vx, vy), 0), numpy.min((x, y), 0)),
@@ -3822,6 +3872,41 @@ class T_local_reduce(unittest.TestCase):
             topo = f.maker.fgraph.toposort()
             assert len(topo) <= 2, out
             assert isinstance(topo[-1].op, T.Elemwise), out
+
+        # Test different axis for the join and the reduction
+        A = theano.shared(numpy.array([1, 2, 3, 4, 5]))
+
+        f = theano.function([], T.sum(T.stack(A, A), axis=0), mode=self.mode)
+        assert numpy.allclose(f(), [2, 4, 6, 8, 10])
+        topo = f.maker.fgraph.toposort()
+        assert isinstance(topo[-1].op, T.Elemwise)
+
+        # Test a case that was bugged in a old Theano bug
+        try:
+            old = theano.config.warn.reduce_join
+            theano.config.warn.reduce_join = False
+            f = theano.function([], T.sum(T.stack(A, A), axis=1),
+                                mode=self.mode)
+        finally:
+            theano.config.warn.reduce_join = old
+        assert numpy.allclose(f(), [15, 15])
+        topo = f.maker.fgraph.toposort()
+        assert not isinstance(topo[-1].op, T.Elemwise)
+
+        # This case could be optimized
+        A = theano.shared(numpy.array([1, 2, 3, 4, 5]).reshape(5, 1))
+        f = theano.function([], T.sum(T.concatenate((A, A), axis=1), axis=1),
+                            mode=self.mode)
+        assert numpy.allclose(f(), [2, 4, 6, 8, 10])
+        topo = f.maker.fgraph.toposort()
+        assert not isinstance(topo[-1].op, T.Elemwise)
+
+        A = theano.shared(numpy.array([1, 2, 3, 4, 5]).reshape(5, 1))
+        f = theano.function([], T.sum(T.concatenate((A, A), axis=1), axis=0),
+                            mode=self.mode)
+        assert numpy.allclose(f(), [15, 15])
+        topo = f.maker.fgraph.toposort()
+        assert not isinstance(topo[-1].op, T.Elemwise)
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):

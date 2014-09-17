@@ -155,7 +155,7 @@ class Solve(Op):
         self.overwrite_b = overwrite_b
 
     def __repr__(self):
-        return 'Solve{%s}' % str(self.props())
+        return 'Solve{%s}' % str(self._props())
 
     def make_node(self, A, b):
         assert imported_scipy, (
