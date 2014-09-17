@@ -12,6 +12,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import GpuConv
 from theano.compat import PY3
 
+
 class DnnBase(GpuOp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
@@ -46,11 +47,12 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnConvBase(DnnBase):
-    __props__ = ('border_mode', 'conv_mode')
+    __props__ = ('border_mode', 'subsample', 'conv_mode')
 
-    def __init__(self, border_mode, conv_mode='conv'):
+    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
         assert border_mode in ('valid', 'full')
         self.border_mode = border_mode
+        self.subsample = subsample
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
 
@@ -58,6 +60,8 @@ class GpuDnnConvBase(DnnBase):
         self.__dict__.update(props)
         if not hasattr(self, 'conv_mode'):
             self.conv_mode = 'conv'
+        if not hasattr(self, 'subsample'):
+            self.subsample = (1, 1)
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:
@@ -209,7 +213,7 @@ err%(name)s = cudnnSetConvolutionDescriptor(
 op%(id)d, param0_%(id)d, param1_%(id)d,
 pad_h%(name)s,
 pad_w%(name)s,
-1, 1, 1, 1,
+%(subsx)d, %(subsy)d, 1, 1,
 %(conv_flag)s
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
@@ -252,10 +256,11 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 """ % dict(param0=param0, param1=param1, out=out, bmode=bmode,
            conv_flag=conv_flag, fail=sub['fail'], id=sub['struct_id'],
            name=name, checks='\n'.join(checks), sets='\n'.join(sets),
+           subsx=self.subsample[0], subsy=self.subsample[1],
            set_out=set_out, method=self.conv_op, path=self.path_flag)
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
 
 class GpuDnnConv(GpuDnnConvBase):
@@ -291,12 +296,12 @@ from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
 @local_optimizer([GpuConv])
 def local_conv_dnn(node):
     if isinstance(node.op, GpuConv):
-        if (node.op.subsample != (1, 1) or
-            node.op.border_mode not in ['full', 'valid']):
+        if node.op.border_mode not in ['full', 'valid']:
             return
         img, kern = node.inputs
         border_mode = node.op.border_mode
-        return [GpuDnnConv(border_mode)(gpu_contiguous(img),
-                                        gpu_contiguous(kern))]
+        subsample = node.op.subsample
+        return [GpuDnnConv(border_mode, subsample)(gpu_contiguous(img),
+                                                   gpu_contiguous(kern))]
 
 gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
