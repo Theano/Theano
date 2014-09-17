@@ -291,7 +291,6 @@ class GpuCumsum(CumsumOp, GpuOp):
         axis = self.axis if self.axis is not None else 0
         fail = sub['fail']
 
-        sub = sub.copy()
         max_threads_dim0 = self.max_threads_dim0
         max_grid_size1 = self.max_grid_size1
         if max_threads_dim0 is None or max_grid_size1 is None:
@@ -299,7 +298,6 @@ class GpuCumsum(CumsumOp, GpuOp):
                                       "directly. It should be called by "
                                       "make_thunk() that add some information "
                                       "related to the selected GPU.")
-        sub.update(locals())
 
         code = """
             const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
