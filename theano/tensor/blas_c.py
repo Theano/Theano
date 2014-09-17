@@ -613,8 +613,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail,
 class CGemv(BaseBLAS, Gemv):
     def __init__(self, inplace, force_init_beta=False):
         super(CGemv, self).__init__(inplace)
-
-	self.force_init_beta = force_init_beta
+        self.force_init_beta = force_init_beta
 
     def c_code(self, node, name, inp, out, sub):
         aa, alpha, xx, yy, beta = inp
