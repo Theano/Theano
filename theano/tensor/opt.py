@@ -312,7 +312,7 @@ compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
 def register_canonicalize(lopt, *tags, **kwargs):
     if type(lopt) == str:
         def register(inner_lopt):
-            return register_canonicalize(inner_lopt, *tags, **kwargs)
+            return register_canonicalize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
@@ -323,7 +323,7 @@ def register_canonicalize(lopt, *tags, **kwargs):
 def register_stabilize(lopt, *tags, **kwargs):
     if type(lopt) == str:
         def register(inner_lopt):
-            return register_stabilize(inner_lopt, *tags, **kwargs)
+            return register_stabilize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
@@ -334,7 +334,7 @@ def register_stabilize(lopt, *tags, **kwargs):
 def register_specialize(lopt, *tags, **kwargs):
     if type(lopt) == str:
         def register(inner_lopt):
-            return register_specialize(inner_lopt, *tags, **kwargs)
+            return register_specialize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
