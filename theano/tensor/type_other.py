@@ -58,6 +58,11 @@ class SliceType(Type):
     def __hash__(self):
         return hashtype(self)
 
+    @staticmethod
+    def may_share_memory(a, b):
+        # Slices never shared memory between object
+        return isinstance(a, slice) and a is b
+
 slicetype = SliceType()
 
 
@@ -71,6 +76,12 @@ class NoneTypeT(Generic):
             return x
         else:
             raise TypeError('Expected None!')
+
+    @staticmethod
+    def may_share_memory(a, b):
+        # None never share memory between object, in the sence of DebugMode.
+        # Python None are singleton
+        return False
 
 none_type_t = NoneTypeT()
 
