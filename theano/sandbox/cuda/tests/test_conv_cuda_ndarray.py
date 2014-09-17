@@ -19,7 +19,7 @@ except ImportError:
 import theano
 from theano import tensor
 from theano.gof.python25 import any
-from theano.tests.unittest_tools import seed_rng
+from theano.tests.unittest_tools import seed_rng, assert_allclose
 
 # Skip test if cuda is not available.
 from theano.sandbox import cuda
@@ -48,7 +48,7 @@ if device_id is None:
              enable_cuda=False,
              test_driver=True)
     device_id = theano.sandbox.cuda.use.device_number
-    
+
 cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
 device_prop = cuda_ndarray.device_properties(device_id)
 
@@ -173,40 +173,30 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         npy_kern = npy_kern[:, :, ::kern_stride[0], ::kern_stride[1]]
 
     t2 = None
-    rval = True
-    try:
-        t0 = time.time()
-        cpuval = py_conv(npy_img, npy_kern, mode, subsample)
-        t1 = time.time()
-        i = cuda_tensor4()
-        k = cuda_tensor4()
-        op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
-                                              subsample=subsample,
-                                              version=version,
-                                              verbose=verbose,
-                                              kshp=compile_kshp)(i, k)
-        f = theano.function([i, k], op, mode=theano_mode)
-        if cls is not None:
-            assert any([isinstance(node.op, cls)
-                        for node in f.maker.fgraph.toposort()]), "Cannot find class %r in %r" % (cls, f.maker.fgraph.toposort())
-        gpuval = f(img, kern)
-        t2 = time.time()
-        for i in range(nb_iter):
-            gpuval2 = f(img, kern)
-            assert numpy.allclose(numpy.asarray(gpuval),
-                                  numpy.asarray(gpuval2))
-            assert (numpy.asarray(gpuval) == numpy.asarray(gpuval2)).all()
-        gpuval = numpy.asarray(gpuval)
-        if gpuval.shape != cpuval.shape:
-            print >> sys.stdout, "ERROR: shape mismatch",
-            print >> sys.stdout, gpuval.shape, cpuval.shape
-            rval = False
-        if rval:
-            rval = numpy.allclose(cpuval, gpuval, rtol=rtol)
-            assert numpy.all(numpy.isfinite(gpuval)), gpuval
-    except NotImplementedError, e:
-        print >> sys.stdout, '_params_allgood Failed allclose', e
-        rval = False
+
+    t0 = time.time()
+    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
+    t1 = time.time()
+    i = cuda_tensor4()
+    k = cuda_tensor4()
+    op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
+                                          subsample=subsample,
+                                          version=version,
+                                          verbose=verbose,
+                                          kshp=compile_kshp)(i, k)
+    f = theano.function([i, k], op, mode=theano_mode)
+    if cls is not None:
+        assert any([isinstance(node.op, cls)
+                    for node in f.maker.fgraph.toposort()]), "Cannot find class %r in %r" % (cls, f.maker.fgraph.toposort())
+    gpuval = f(img, kern)
+    t2 = time.time()
+    for i in range(nb_iter):
+        gpuval2 = f(img, kern)
+        assert (numpy.asarray(gpuval) == numpy.asarray(gpuval2)).all()
+    gpuval = numpy.asarray(gpuval)
+    assert gpuval.shape == cpuval.shape, ("shape mismatch", gpuval.shape, cpuval.shape)
+    assert_allclose(cpuval, gpuval, rtol=rtol)
+    assert numpy.all(numpy.isfinite(gpuval)), gpuval
 
     if (t2 is not None):
         if mode == 'valid':
@@ -221,37 +211,6 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
             print >> sys.stdout, '%15s' % str(ishape), '%15s' % str(kshape),
             print >> sys.stdout, '%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
                     cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1))
-    if not rval:
-        print >> sys.stdout, ('test_' + mode + ' id=' + str(id) +
-                              ' FAILED for ishape, kshape, mode, subsample,' +
-                              ' img_stride, kern_stride, version', ishape,
-                              kshape, mode, subsample, img_stride, kern_stride,
-                              version)
-        diff = cpuval - gpuval
-        diffabs = numpy.absolute(diff)
-        pr_diff = diffabs / numpy.absolute(cpuval)
-        nb_close = (diffabs <= (atol + rtol * numpy.absolute(gpuval))).sum()
-        print "max absolute diff:", (diffabs.max(), "avg abs diff:",
-                                     numpy.average(diffabs))
-        print "median abs diff:", (numpy.median(diffabs), "nb close:",
-                                   nb_close, "/", diff.size)
-        print "max relatif diff:", (pr_diff.max(), "avg rel diff:",
-                                    numpy.average(pr_diff))
-    if not rval and print_ != False:
-        if npy_img.shape[0] > 5:
-            print "img", npy_img[0]
-            print "kern", npy_kern[0]
-            print "gpu", gpuval[0][0]
-            print "cpu", cpuval[0][0]
-            print "diff", diff[0][0]
-        else:
-            print "img", npy_img
-            print "kern", npy_kern
-            print "gpu", gpuval
-            print "cpu", cpuval
-            print "diff", diff
-
-    return rval
 
 
 def exec_conv(version, shapes, verbose, random, mode,
@@ -259,46 +218,13 @@ def exec_conv(version, shapes, verbose, random, mode,
               theano_mode=theano_mode, cls=None):
     if verbose > 0:
         _params_allgood_header()
-    nb_failed = 0
-    nb_tests = 0
 
-    failed_version = set()
-    failed_id = []
     for ver in version:
         for id, (ishape, kshape, subshape,
                  istride, kstride) in enumerate(shapes):
-            ret = False
-            try:
-                ret = _params_allgood(ishape,
-                        kshape,
-                        mode,
-                        subsample=subshape,
-                        img_stride=istride,
-                        kern_stride=kstride,
-                        version=ver,
-                        verbose=verbose,
-                        random=random,
-                        id=id,
-                        print_=print_,
-                        rtol=rtol,
-                        ones=ones,
-                        theano_mode=theano_mode,
-                        cls=cls)
-            except Exception, e:
-                print ver, id, (ishape, kshape, subshape, istride, kstride)
-                print traceback.format_exc()
-                pass
-            if not ret:
-                failed_version.add(ver)
-                failed_id.append(id)
-                nb_failed += 1
-            nb_tests += 1
-    if nb_failed > 0:
-        print "nb_failed", nb_failed, "on", nb_tests,
-        print "failed_version", failed_version, "failed_id", failed_id
-        assert nb_failed == 0, nb_failed
-    else:
-        print 'Executed', nb_tests, 'different shapes'
+            yield (_params_allgood, ishape, kshape, mode, subshape,
+                   istride, kstride, ver, verbose, random, print_, id,
+                   rtol, 1e-8, 0, ones, None, theano_mode, cls)
 
 
 def get_basic_shapes():
@@ -453,8 +379,9 @@ def test_valid_0_2():
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+    for t in exec_conv(version, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones, rtol=1.1e-5):
+        yield t
 
 
 def test_valid_1_3_11_12():
@@ -483,8 +410,9 @@ def test_valid_1_3_11_12():
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+    for t in exec_conv(version, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones, rtol=1.1e-5):
+        yield t
 
 
 def test_valid_4():
@@ -515,8 +443,9 @@ def test_valid_4():
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+    for t in exec_conv(version, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones, rtol=1.1e-5):
+        yield t
 
 
 def test_valid_5():
@@ -532,7 +461,6 @@ def test_valid_5():
         random = False
     shapes2 = []
 
-#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -545,10 +473,10 @@ def test_valid_5():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-#    print len(shapes2)
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+    for t in exec_conv(version, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones, rtol=1.1e-5):
+        yield t
 
 
 def test_valid_7_8_13():
@@ -567,7 +495,6 @@ def test_valid_7_8_13():
         random = False
     shapes2 = []
 
-#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -580,10 +507,10 @@ def test_valid_7_8_13():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-#    print len(shapes2)
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+    for t in exec_conv(version, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones, rtol=1.1e-5):
+        yield t
 
 
 def test_valid_9_10():
@@ -599,7 +526,6 @@ def test_valid_9_10():
         random = False
     shapes2 = []
 
-#    print len(shapes)
     for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
@@ -611,19 +537,16 @@ def test_valid_9_10():
         if subshape == (1, 1):
             shapes2.append((ishape, kshape, subshape, istride, kstride))
     shapes = shapes2
-#    print len(shapes2)
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5)
+    for t in exec_conv(version, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones, rtol=1.1e-5):
+        yield t
 
 
 def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
     seed_rng()
     shapes = get_valid_shapes()
 
-    #shapes=shapes[400:426]
-    # I put -1 in case we forget to add version in the test to.
-    # I put -2 to test the reference version.
     verbose = 0
 
     random = True
@@ -634,26 +557,30 @@ def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
 
     shapes += extra_shapes
 
-    exec_conv(version, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones, rtol=1.1e-5,
-              theano_mode=mode, cls=cls)
+    return exec_conv(version, shapes, verbose, random, 'valid',
+                     print_=print_, ones=ones, rtol=1.1e-5,
+                     theano_mode=mode, cls=cls)
 
 
 def test_valid():
-    _test_valid(None, version=[-2, -1, 6])
+    for t in _test_valid(None, version=[-2, -1, 6]):
+        yield t
 
 
 def test_gemm_valid():
     extra_shapes = get_shapes2(scales_img=(2, 2), img_stride=(2, 2))
     extra_shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
 
-    _test_valid(cuda.blas.BaseGpuCorrMM,
-                mode=theano_mode.including("conv_gemm"),
-                extra_shapes=extra_shapes)
+    for t in _test_valid(cuda.blas.BaseGpuCorrMM,
+                         mode=theano_mode.including("conv_gemm"),
+                         extra_shapes=extra_shapes):
+        yield t
+
 
 
 def test_dnn_valid():
-    _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn"))
+    for t in _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn")):
+        yield t
 
 
 def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
@@ -710,27 +637,29 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
             , ((1,1,44800,1), (6,1,1,1), (1, 1), (1, 1), (1, 1))#This caused crash
             ]
 
-#    shapes=shapes[:277]
     verbose = 0
     random = True
 
     shapes += extra_shapes
 
-    exec_conv(version, shapes, verbose, random, 'full',
-              theano_mode=mode, cls=cls)
+    return exec_conv(version, shapes, verbose, random, 'full',
+                     theano_mode=mode, cls=cls)
 
 
 def test_full():
-    _test_full(None, version=[-2, -1, 0, 1, 2, 3, 4, 5])
+    for t in _test_full(None, version=[-2, -1, 0, 1, 2, 3, 4, 5]):
+        yield t
 
 
 def test_gemm_full():
-    _test_full(cuda.blas.BaseGpuCorrMM,
-               mode=theano_mode.including("conv_gemm"))
+    for t in _test_full(cuda.blas.BaseGpuCorrMM,
+                        mode=theano_mode.including("conv_gemm")):
+        yield t
 
 
 def test_dnn_full():
-    _test_full(GpuDnnConv, mode=theano_mode.including("cudnn"))
+    for t in _test_full(GpuDnnConv, mode=theano_mode.including("cudnn")):
+        yield t
 
 
 def test_subsample(conv_gemm=False):
@@ -767,16 +696,19 @@ def test_subsample(conv_gemm=False):
         mode = theano_mode
         cls = None
 
-    exec_conv(version_valid, shapes, verbose, random, 'valid',
-              print_=print_, ones=ones,
-              theano_mode=mode, cls=cls)
-    exec_conv(version_full, shapes, verbose, random, 'full',
-              print_=print_, ones=ones,
-              theano_mode=mode, cls=cls)
+    for t in exec_conv(version_valid, shapes, verbose, random, 'valid',
+                       print_=print_, ones=ones,
+                       theano_mode=mode, cls=cls):
+        yield t
+    for t in exec_conv(version_full, shapes, verbose, random, 'full',
+                       print_=print_, ones=ones,
+                       theano_mode=mode, cls=cls):
+        yield t
 
 
 def test_gemm_subsample():
-    test_subsample(conv_gemm=True)
+    for t in test_subsample(conv_gemm=True):
+        yield t
 
 
 class TestConv2DGPU(unittest.TestCase):
@@ -1017,15 +949,15 @@ def benchmark():
          ,((2, 30,116,116), (20, 30, 9,9), (1, 1), (1, 1), (1, 1))#full conv_reference_full
             ]
 
-#    shapes_valid=shapes_valid[-1:]
-#    shapes_full=shapes_full[-1:]
     version = [-1]
     verbose = 1
     random = True
 
-    exec_conv(version, shapes_valid, verbose, random, 'valid',
-              print_=None, rtol=1e-3)
-    exec_conv(version, shapes_full, verbose, random, 'full')
+    for t in exec_conv(version, shapes_valid, verbose, random, 'valid',
+                       print_=None, rtol=1e-3):
+        t[0](*t[1:])
+    for t in exec_conv(version, shapes_full, verbose, random, 'full'):
+        t[0](*t[1:])
 
 
 def test_stack_rows_segfault_070312():
