@@ -1347,9 +1347,9 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
         top, = grads
         top = gpu_contiguous(top)
         d_bottom = GpuCorr3dMM_gradInputs(self.border_mode, self.subsample, self.pad)(
-                weights, top, bottom.shape[-2:])
+                weights, top, bottom.shape[-3:])
         d_weights = GpuCorr3dMM_gradWeights(self.border_mode, self.subsample, self.pad)(
-                bottom, top, weights.shape[-2:])
+                bottom, top, weights.shape[-3:])
         return d_bottom, d_weights
 
 
@@ -1394,7 +1394,7 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
         bottom, top = inp[:2]
         weights, = grads
         weights = gpu_contiguous(weights)
-        d_bottom = GpuCorr3dMM_gradInputs(self.border_mode, self.subsample, self.pad)(weights, top, bottom.shape[-2:])
+        d_bottom = GpuCorr3dMM_gradInputs(self.border_mode, self.subsample, self.pad)(weights, top, bottom.shape[-3:])
         d_top = GpuCorr3dMM(self.border_mode, self.subsample, self.pad)(
             bottom, weights)
         d_height_width_depth = (theano.gradient.DisconnectedType()(),) * 3 if len(inp) == 5 else ()
@@ -1404,7 +1404,7 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
         if node.nin == 2:
             return [[1], [1]]
         else:
-            return [[1], [1], [0], [0], [0]]  # no connection to height, width
+            return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
 class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
     """Gradient wrt. inputs for `GpuCorr3dMM`.
@@ -1444,7 +1444,7 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
         bottom, = grads
         bottom = gpu_contiguous(bottom)
         d_weights = GpuCorr3dMM_gradWeights(self.border_mode, self.subsample, self.pad)(
-            bottom, top, weights.shape[-2:])
+            bottom, top, weights.shape[-3:])
         d_top = GpuCorr3dMM(self.border_mode, self.subsample, self.pad)(
                 bottom, weights)
         d_height_width_depth = (theano.gradient.DisconnectedType()(),) * 3 if len(inp) == 5 else ()
@@ -1454,7 +1454,7 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
         if node.nin == 2:
             return [[1], [1], [1]]
         else:
-            return [[1], [1], [0], [0], [0]]  # no connection to height, width
+            return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
 
 ##
