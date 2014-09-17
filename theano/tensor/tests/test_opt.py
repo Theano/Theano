@@ -3198,6 +3198,18 @@ class T_useless_elemwise(unittest.TestCase):
         assert topo[0].op == deep_copy_op
 
 
+def test_constant_folding():
+    """ Test that constant folding get registered at fast_compile
+
+    An error removed that registration during the registration.
+    """
+    x = tensor.dvector()
+    mode = theano.compile.get_mode("FAST_COMPILE").excluding("fusion")
+    f = theano.function([x], [x * 2, x + x], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+
+
 def test_constant_get_stabilized():
     """
     Currently Theano enable the constant_folding optimization before stabilization optimization.
