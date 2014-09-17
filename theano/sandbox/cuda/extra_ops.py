@@ -63,8 +63,11 @@ class GpuCumsum(CumsumOp, GpuOp):
         return super(GpuCumsum, node_.op).make_thunk(node_, storage_map,
                                                      compute_map, no_recycling)
 
+    def __str__(self):
+        return "%s{%s}" % (self.__class__.__name__, self.axis)
+
     def c_code_cache_version(self):
-        return (6,)
+        return (5,)
 
     def c_support_code_apply(self, node, nodename):
         return """
