@@ -904,6 +904,8 @@ class ScanSaveMem(gof.Optimizer):
                                 nw_inputs[offset + idx].owner.op.idx_list[0],
                                 slice)):
 
+                            assert isinstance(nw_inputs[offset + idx].owner.op,
+                                              tensor.IncSubtensor)
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             cval = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
