@@ -112,6 +112,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`introduction` -- What is Theano?
 * :ref:`tutorial` -- Learn the basics.
 * :ref:`libdoc` -- Theano's functionality, module by module.
+* :ref:`faq` -- A set of commonly asked questions.
 * :ref:`optimizations` -- Guide to Theano's graph optimizations.
 * :ref:`extending` -- Learn to add a Type, Op, or graph optimization.
 * :ref:`dev_start_guide` -- How to contribute code to Theano.
