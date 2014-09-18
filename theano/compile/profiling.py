@@ -785,29 +785,19 @@ class ProfileStats(object):
             compute_map = defaultdict(lambda: [0])
             for var in fgraph.inputs:
                 compute_map[var][0] = 1
-
-            def check_node_state(node):
-                """
-                Check if an Apply node is valid(has inputs).
-
-                :param node: Apply Node
-                """
-                inputs = node.inputs
-                outputs = node.outputs
-                deps = inputs + node.destroy_dependencies
-                # TODO: Move at compute_map creation to speed things up.
-                for node in inputs:
-                    if isinstance(node, graph.Constant):
-                        compute_map[node][0] = 1
-                computed_ins = all(compute_map[v][0] for v in deps)
-                return computed_ins
+            for var in node_list:
+                for val in var.inputs:
+                    if isinstance(val, graph.Constant):
+                        compute_map[val][0] = 1
 
             # Initial executable_nodes
             executable_nodes = set()
             for var in fgraph.inputs:
                 for c, _ in var.clients:
-                    if c != "output" and check_node_state(c):
-                        executable_nodes.add(c)
+                    if c != "output":
+                        deps = c.inputs + c.destroy_dependencies
+                        if all(compute_map[v][0] for v in deps):
+                            executable_nodes.add(c)
 
             def min_memory_generator(executable_nodes, viewed_by, view_of):
                 """
@@ -826,13 +816,12 @@ class ProfileStats(object):
                     if max_mem_count > mem_bound:
                         continue
 
-                    view_of_temp = view_of.copy()
-                    # We don't want a shallow copy, but we don't want
-                    # a deep copy. So this do a "middle" copy, where
-                    # we copy the dict and the list, but not the var
-                    viewed_by_temp = {}
-                    for k, v in viewed_by.iteritems():
-                        viewed_by_temp[k] = list(v)
+                    viewof_change = []
+                    # Use to track view_of changes
+
+                    viewedby_add = defaultdict(lambda: [])
+                    viewedby_remove = defaultdict(lambda: [])
+                    # Use to track viewed_by changes
 
                     for var in node.outputs:
                         compute_map[var][0] = 1
@@ -865,9 +854,11 @@ class ProfileStats(object):
                             # input.
                             assert isinstance(ins, theano.Variable)
                             # We keep trac of view only again the original
-                            origin = view_of_temp.get(ins, ins)
-                            view_of_temp[out] = origin
-                            viewed_by_temp[origin].append(out)
+                            origin = view_of.get(ins, ins)
+                            view_of[out] = origin
+                            viewof_change.append(out)
+                            viewed_by[origin].append(out)
+                            viewedby_add[origin].append(out)
                         else:
                             mem_created += var_mem[out]
                         idx += 1
@@ -877,19 +868,20 @@ class ProfileStats(object):
 
                     # Mimic the combination of Theano and Python gc.
                     for ins in node.inputs:
-                        assert not (ins in view_of_temp and
-                                    viewed_by_temp[ins])
+                        assert not (ins in view_of and
+                                    viewed_by[ins])
                         # We track of the original var, so this shouldn't happen
                         if (dependencies[ins] and
                             ins not in fgraph.outputs and
                             ins.owner and
                             all([compute_map[v][0] for v in dependencies[ins]])):
-                            if ins not in view_of_temp and not viewed_by_temp.get(ins, []):
+                            if ins not in view_of and not viewed_by.get(ins, []):
                                 mem_freed += var_mem[ins]
-                            elif ins in view_of_temp:
-                                origin = view_of_temp[ins]
-                                viewed_by_temp[origin].remove(ins)
-                                if (not viewed_by_temp[origin] and
+                            elif ins in view_of:
+                                origin = view_of[ins]
+                                viewed_by[origin].remove(ins)
+                                viewedby_remove[origin].append(ins)
+                                if (not viewed_by[origin] and
                                     origin not in fgraph.inputs and
                                     not isinstance(origin, theano.Constant)):
                                     mem_freed += var_mem[origin]
@@ -902,19 +894,17 @@ class ProfileStats(object):
 
                     for var in node.outputs:
                         for c, _ in var.clients:
-                            if c != "output" and check_node_state(c):
-                                new_exec_nodes.add(c)
+                            if c != "output":
+                                deps = c.inputs + c.destroy_dependencies
+                                if all(compute_map[v][0] for v in deps):
+                                    new_exec_nodes.add(c)
 
                     if not new_exec_nodes:
-                        yield [node]
                         # Check and Update mem_bound
                         if max_mem_count < mem_bound:
                             mem_bound = max_mem_count
                     else:
-                        for p in min_memory_generator(new_exec_nodes,
-                                                      viewed_by_temp,
-                                                      view_of_temp):
-                            yield [node]+p
+                        min_memory_generator(new_exec_nodes, viewed_by, view_of)
 
                     # Reset track variables
                     mem_count -= mem_created
@@ -922,6 +912,18 @@ class ProfileStats(object):
                     mem_count += mem_freed
                     for var in node.outputs:
                         compute_map[var][0] = 0
+
+                    for k_remove, v_remove in viewedby_remove.iteritems():
+                        for i in v_remove:
+                            viewed_by[k_remove].append(i)
+
+                    for k_add, v_add in viewedby_add.iteritems():
+                        for i in v_add:
+                            viewed_by[k_add].remove(i)
+
+                    for k in viewof_change:
+                        del view_of[k]
+
 
             # two data structure used to mimic Python gc
             viewed_by = {}  # {var1: [vars that view var1]}
@@ -932,11 +934,7 @@ class ProfileStats(object):
             view_of = {}  # {var1: original var viewed by var1}
             # The orignal mean that we don't keep trac of all the intermediate relationship in the view.
 
-            # Loop all valid orders and find min peak(store in mem_bound)
-            for order in min_memory_generator(executable_nodes,
-                                              viewed_by,
-                                              view_of):
-                continue
+            min_memory_generator(executable_nodes, viewed_by, view_of)
 
             return mem_bound
 
