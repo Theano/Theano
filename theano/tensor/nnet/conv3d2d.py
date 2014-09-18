@@ -163,7 +163,6 @@ def conv3d(signals, filters,
            signals_shape=None, filters_shape=None,
            stride=None, border_mode='valid'):
     """Convolve spatio-temporal filters with a movie.
-    "this version enables to perform spatial strided convolution using conv2d op"
 
     It flips the filters.
 
@@ -173,7 +172,6 @@ def conv3d(signals, filters,
             shape: [Nf, Tf, C, Hf, Wf]
     :param signals_shape: None or a tuple/list with the shape of signals
     :param filters_shape: None or a tuple/list with the shape of filters
-    :param stride:None or 2d shape stride such as (2,2)
     :param border_mode: The only one tested is 'valid'.
 
     :note: Work on the GPU.
@@ -231,8 +229,7 @@ def conv3d(signals, filters,
         filters.reshape(_filters_shape_4d),
         image_shape=conv2d_signal_shape,
         filter_shape=conv2d_filter_shape,
-        border_mode = border_mode[1],
-        subsample=_sride)  # ignoring border_mode[2]
+        border_mode = border_mode[1])  # ignoring border_mode[2]
 
     # reshape the output to restore its original size
     # shape = Ns, Ts, Nf, Tf, W-Wf+1, H-Hf+1
@@ -243,7 +240,7 @@ def conv3d(signals, filters,
             _filters_shape_5d[0],  # Nf
             _filters_shape_5d[1],  # Tf
             (theano.tensor.cast(((_signals_shape_5d[3] - _filters_shape_5d[3])/float(_stride[0])),'int64') + 1),
-            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[1])),'int64') + 1),
+            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[0])),'int64') + 1),
             ))
     elif border_mode[1] == 'full':
         out_tmp = out_4d.reshape((
