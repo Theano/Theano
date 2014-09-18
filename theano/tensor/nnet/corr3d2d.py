@@ -4,8 +4,8 @@ from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply, TopoOptimizer
 from theano import tensor
 import theano.sandbox.cuda as cuda
-
-
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
+from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
 def get_diagonal_subtensor_view(x, i0, i1):
     """Helper function for DiagonalSubtensor and
     IncDiagonalSubtensor
@@ -159,11 +159,15 @@ class IncDiagonalSubtensor(Op):
 inc_diagonal_subtensor = IncDiagonalSubtensor(False)
 
 
-def conv3d(signals, filters,
+def corr3d(signals, filters,
            signals_shape=None, filters_shape=None,
-           stride=None, border_mode='valid'):
-    """Convolve spatio-temporal filters with a movie.
-    "this version enables to perform spatial strided convolution using conv2d op"
+           stride=None,border_mode='valid'):
+    """correlation spatio-temporal filters with a movie.
+    "" This correlation op is so similar to conv3d2d with slight
+    "" difference that perform correlation instead of convolution
+    "" through GpuCorrMM op. in order to do the convolution you just
+    "" need to flip the filter. corr3d also enables spatial strided 
+    "" correlation.   	
 
     It flips the filters.
 
@@ -200,9 +204,9 @@ def conv3d(signals, filters,
         _filters_shape_5d = filters_shape
 		
     if stride is None:
-        _stride = (1,1)
+        _stride =(1,1)
     else:  
-        _stride= stride
+        _stride = stride
 
     _signals_shape_4d = (
         _signals_shape_5d[0] * _signals_shape_5d[1],
@@ -225,15 +229,8 @@ def conv3d(signals, filters,
         conv2d_signal_shape = None
     if filters_shape is None:
         conv2d_filter_shape = None
-
-    out_4d = tensor.nnet.conv2d(
-        signals.reshape(_signals_shape_4d),
-        filters.reshape(_filters_shape_4d),
-        image_shape=conv2d_signal_shape,
-        filter_shape=conv2d_filter_shape,
-        border_mode = border_mode[1],
-        subsample=_sride)  # ignoring border_mode[2]
-
+    # correlation
+    out_4d = cuda.blas.GpuCorrMM(border_mode= border_mode[1], subsample = _stride)(signals.reshape(_signals_shape_4d),filters.reshape(_filters_shape_4d)) # ignoring border_mode[2]
     # reshape the output to restore its original size
     # shape = Ns, Ts, Nf, Tf, W-Wf+1, H-Hf+1
     if border_mode[1] == 'valid':
@@ -243,7 +240,7 @@ def conv3d(signals, filters,
             _filters_shape_5d[0],  # Nf
             _filters_shape_5d[1],  # Tf
             (theano.tensor.cast(((_signals_shape_5d[3] - _filters_shape_5d[3])/float(_stride[0])),'int64') + 1),
-            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[1])),'int64') + 1),
+            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[1])), 'int64') + 1),
             ))
     elif border_mode[1] == 'full':
         out_tmp = out_4d.reshape((
@@ -334,3 +331,4 @@ theano.compile.optdb.register(
         local_inplace_DiagonalSubtensor,
         failure_callback=TopoOptimizer.warn_inplace),
     60, 'fast_run', 'inplace')
+
