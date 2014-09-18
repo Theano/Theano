@@ -272,8 +272,10 @@ class GpuDnnConv(GpuDnnConvBase):
         img, kerns = inp
         top, = grads
 
-        d_img = GpuDnnConvGradI(self.border_mode, self.conv_mode)(kerns, top)
-        d_kerns = GpuDnnConvGradW(self.border_mode, self.conv_mode)(img, top)
+        d_img = GpuDnnConvGradI(self.border_mode, self.subsample,
+                                self.conv_mode)(kerns, top)
+        d_kerns = GpuDnnConvGradW(self.border_mode, self.subsample,
+                                  self.conv_mode)(img, top)
 
         return d_img, d_kerns
 
