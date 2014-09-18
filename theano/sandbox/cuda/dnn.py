@@ -480,7 +480,7 @@ if(softmax_handle_%(id)d != NULL)
         else:
             tensor_format = 0
 
-        if self.mode == 'channel':
+        if self.mode == 'instance':
             mode = 1
         else:
             mode = 0
@@ -500,9 +500,9 @@ cudnnSoftmaxAlgorithm_t algo%(id)d = CUDNN_SOFTMAX_ACCURATE;
 if (%(algo)d == 1)
   algo%(id)d = CUDNN_SOFTMAX_FAST;
 
-cudnnSoftmaxMode_t mode%(id)d = CUDNN_SOFTMAX_MODE_INSTANCE;
+cudnnSoftmaxMode_t mode%(id)d = CUDNN_SOFTMAX_MODE_CHANNEL;
 if (%(mode)d == 1)
-  mode%(id)d = CUDNN_SOFTMAX_MODE_CHANNEL;
+  mode%(id)d = CUDNN_SOFTMAX_MODE_INSTANCE;
 
 err%(name)s = cudnnSetTensor4dDescriptor(
   softmax_input_%(id)d,

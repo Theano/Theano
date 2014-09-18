@@ -223,10 +223,13 @@ def _test_softmax(x, x_gpu, f_z, f_gpu_z, cpu_type, gpu_type, cmp, topo_idx):
     assert isinstance(f_gpu.maker.fgraph.toposort()[topo_idx].op, gpu_type)
 
     #we need to test n>32*1024 to check that we make the block loop.
+    cmp(1, 5, f, f_gpu)
     cmp(2, 5, f, f_gpu)
-    cmp(2 << 15, 5, f, f_gpu)
+    cmp(10, 5, f, f_gpu)
+    cmp(100, 5, f, f_gpu)
+    cmp(1000, 5, f, f_gpu)
+    cmp(10000, 5, f, f_gpu)
     cmp(4074, 400, f, f_gpu)
-    cmp(0, 10, f, f_gpu)
     cmp(784, 784, f, f_gpu)
     cmp(4, 1000, f, f_gpu)
     cmp(4, 1024, f, f_gpu)
@@ -238,6 +241,9 @@ def _test_softmax(x, x_gpu, f_z, f_gpu_z, cpu_type, gpu_type, cmp, topo_idx):
     cmp(2, 10000, f, f_gpu)
     cmp(128, 16 * 1024, f, f_gpu)
     cmp(128, 64 * 1024, f, f_gpu)
+    cmp((2 << 15) - 1, 5, f, f_gpu) # cudnn permits no more than 2^15 - 1 rows
+    cmp(2 << 15, 5, f, f_gpu)
+    cmp(0, 10, f, f_gpu)
 
 
 def test_softmax():
@@ -257,8 +263,9 @@ def test_cudnn_softmax():
     def cmp(n, m, f, f_gpu):
         #print "test_softmax",n,m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        gdata = numpy.asarray(data).transpose()[None,:,:,None]
         out = f(data)
-        gout = f_gpu(data.reshape(1, 1, n, m)).reshape((n, m))
+        gout = numpy.asarray(f_gpu(gdata))[0,:,:,0].transpose()
         assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
     x = T.matrix('x')
@@ -267,6 +274,6 @@ def test_cudnn_softmax():
     f_gpu = theano.sandbox.cuda.dnn.GpuDnnSoftmax(
         'bc01',
         'accurate',
-        'instance'
+        'channel'
     )
     _test_softmax(x, x_gpu, f_z, f_gpu, type(f_z), type(f_gpu), cmp, -1)
