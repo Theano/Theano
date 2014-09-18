@@ -391,12 +391,16 @@ class GpuDnnSoftmax(GpuOp):
     Op for the cuDNN Softmax.
 
     Parameters''
-    -tensor_format: Whether the data has shape 'bc01' or 'b01c'
+    -tensor_format: Whether the data format is 'bc01' or 'b01c'
     -algo: 'fast' or 'accurate' indicating whether computations should be
     optimized for speed or accuracy respectively.
-    -mode: 'instance' or 'channel' indicating whether the data format is
-    'bc01' or 'b01c' respectively.
+    -mode: 'instance' or 'channel' indicating whether the softmax should be
+    computed per image across 'c01' or per spationali location '01' per image
+    across 'c'.
     """
+
+    __props__ = ('tensor_format', 'mode', 'algo')
+
     def __init__(self, tensor_format, algo, mode):
         assert(tensor_format in ('bc01', 'b01c'))
         self.tensor_format = tensor_format
@@ -406,12 +410,6 @@ class GpuDnnSoftmax(GpuOp):
 
         assert(mode in ('instance', 'channel'))
         self.mode = mode
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def __str__(self):
         return self.__class__.__name__
@@ -521,22 +519,22 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   %(fail)s
 }
 
+CudaNdarray_prep_output(&(%(outs)s), 4, CudaNdarray_HOST_DIMS(%(ins)s));
+
 err%(name)s = cudnnSetTensor4dDescriptor(
   softmax_output_%(id)d,
   format%(id)d,
   CUDNN_DATA_FLOAT,
-  CudaNdarray_HOST_DIMS(%(ins)s)[0],
-  CudaNdarray_HOST_DIMS(%(ins)s)[1],
-  CudaNdarray_HOST_DIMS(%(ins)s)[2],
-  CudaNdarray_HOST_DIMS(%(ins)s)[3]
+  CudaNdarray_HOST_DIMS(%(outs)s)[0],
+  CudaNdarray_HOST_DIMS(%(outs)s)[1],
+  CudaNdarray_HOST_DIMS(%(outs)s)[2],
+  CudaNdarray_HOST_DIMS(%(outs)s)[3]
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError, "could not set out descriptor: %%s",
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-
-CudaNdarray_prep_output(&(%(outs)s), 4, CudaNdarray_HOST_DIMS(%(ins)s));
 
 err%(name)s = cudnnSoftmaxForward(
   softmax_handle_%(id)d,
