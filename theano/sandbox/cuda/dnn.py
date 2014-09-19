@@ -523,7 +523,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
 if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
 {
-  $(fail)s
+  %(fail)s
 }
 
 err%(name)s = cudnnSetTensor4dDescriptor(
@@ -554,7 +554,7 @@ err%(name)s = cudnnSoftmaxForward(
            algo=algo, fail=sub['fail'], id=sub['struct_id'], name=name)
 
     def c_code_cache_version(self):
-        return (0, )
+        return (0, 1)
 
 
 @local_optimizer([GpuSoftmax])
