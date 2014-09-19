@@ -1890,7 +1890,7 @@ class AdvancedSubtensor(Op):
                 else:
                     return [ind1shp]
         # Default case, we don't know
-        return node.fgraph.shape_feature.default_infer_shape(node, ishapes)
+        raise theano.tensor.basic.ShapeError("case not implemented")
 
     def perform(self, node, inputs, out_):
         out, = out_

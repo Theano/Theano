@@ -10,9 +10,10 @@ http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 import sys
 
 import numpy
-import theano
+from numpy.lib.stride_tricks import as_strided
 import scipy.sparse
 
+import theano
 from theano import gof, tensor, compile, scalar, config
 from theano.gof.python25 import all
 from theano.gradient import DisconnectedType
@@ -20,7 +21,6 @@ from theano.sparse.utils import hash_from_sparse
 import theano.tests.unittest_tools as utt
 from theano.gradient import grad_not_implemented, grad_undefined
 from theano.sparse.type import SparseType, _is_sparse
-from numpy.lib.stride_tricks import as_strided
 
 sparse_formats = ['csc', 'csr']
 
@@ -689,7 +689,7 @@ class CSM(gof.Op):
             # node.inputs[3] is of lenght as we only support sparse matrix.
             return [(node.inputs[3][0], node.inputs[3][1])]
         else:
-            return node.fgraph.shape_feature.default_infer_shape(node, shapes)
+            raise theano.tensor.basic.ShapeError("case not implemented")
 
 
 CSC = CSM('csc')
