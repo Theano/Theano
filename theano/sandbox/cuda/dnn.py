@@ -411,9 +411,6 @@ class GpuDnnSoftmax(GpuOp):
         assert(mode in ('instance', 'channel'))
         self.mode = mode
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def make_node(self, x):
         x = as_cuda_ndarray_variable(x)
         assert x.ndim == 4
@@ -504,6 +501,11 @@ cudnnSoftmaxMode_t mode%(id)d = CUDNN_SOFTMAX_MODE_CHANNEL;
 if (%(mode)d == 1)
   mode%(id)d = CUDNN_SOFTMAX_MODE_INSTANCE;
 
+if (!CudaNdarray_is_c_contiguous(%(ins)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
+  %(fail)s
+}
+
 err%(name)s = cudnnSetTensor4dDescriptor(
   softmax_input_%(id)d,
   format%(id)d,
@@ -519,7 +521,10 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   %(fail)s
 }
 
-CudaNdarray_prep_output(&(%(outs)s), 4, CudaNdarray_HOST_DIMS(%(ins)s));
+if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
+{
+  $(fail)s
+}
 
 err%(name)s = cudnnSetTensor4dDescriptor(
   softmax_output_%(id)d,
@@ -556,7 +561,7 @@ err%(name)s = cudnnSoftmaxForward(
 def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
         ins = node.inputs[0].dimshuffle('x', 'x', 0, 1)
-        out = GpuDnnSoftmax('bc01', 'accurate', 'instance')(ins)
+        out = GpuDnnSoftmax('bc01', 'accurate', 'instance')(gpu_contiguous(ins))
         out = as_cuda_ndarray_variable(out.dimshuffle(2, 3))
         return [out]
 

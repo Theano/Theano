@@ -242,9 +242,9 @@ def _test_softmax(x, x_gpu, f_z, f_gpu_z, cpu_type, gpu_type, cmp, topo_idx):
     cmp(128, 16 * 1024, f, f_gpu)
     cmp(128, 64 * 1024, f, f_gpu)
     cmp((2 << 15) - 1, 5, f, f_gpu) # cudnn permits no more than 2^15 - 1 rows
-    cmp(2 << 15, 5, f, f_gpu)
-    cmp(0, 10, f, f_gpu)
+    cmp(5, 2 << 15, f, f_gpu)
 
+    return f, f_gpu
 
 def test_softmax():
     def cmp(n, m, f, f_gpu):
@@ -256,8 +256,10 @@ def test_softmax():
 
     x = T.fmatrix('x')
     z = T.nnet.softmax
-    _test_softmax(x, x, z, z, type(z), cuda.nnet.GpuSoftmax, cmp, -2)
+    f, f_gpu = _test_softmax(x, x, z, z, type(z), cuda.nnet.GpuSoftmax, cmp, -2)
 
+    cmp(2 << 15, 5, f, f_gpu)
+    cmp(0, 10, f, f_gpu)
 
 def test_cudnn_softmax():
     def cmp(n, m, f, f_gpu):
