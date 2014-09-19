@@ -26,7 +26,7 @@ from theano.sandbox import cuda
 if cuda.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-from theano.sandbox.cuda.dnn import GpuDnnConv, GpuDnnConvBase
+from theano.sandbox.cuda.dnn import GpuDnnConv, GpuDnnConvBase, dnn_conv
 
 #needed as the gpu conv don't have a perform implementation.
 if theano.config.mode == 'FAST_COMPILE':
@@ -845,6 +845,13 @@ def gemm_op(mode, subsample):
     return theano.sandbox.cuda.blas.GpuCorrMM('valid', subsample, pad)
 
 
+def dnn_op(mode, subsample):
+    def f(img, kern):
+        return dnn_conv(img, kern, border_mode=mode, conv_mode='cross',
+                        subsample=subsample)
+    return f
+
+
 def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy, op):
     ishape = (bs, ch, rImg1, rImg2)
     kshape = (nf, ch, rFlt1, rFlt2)
@@ -869,33 +876,32 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy, op):
         # compile with shape information only when needed
         conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
                                      ishape, kshape, mode, subsample)
-        conv_op_di = theano.grad(conv_op.sum(), i)
-        conv_op_dk = theano.grad(conv_op.sum(), k)
-        corr_op_di = theano.grad(corr_op.sum(), i)
-        corr_op_dk = theano.grad(corr_op.sum(), k)
-        outputs = [corr_op, conv_op,
-                   corr_op_di, conv_op_di,
-                   corr_op_dk, conv_op_dk]
-        try:
-            conv_op_dik = theano.grad(conv_op_di.sum(), k)
-            conv_op_dki = theano.grad(conv_op_dk.sum(), i)
-        except Exception:
-            # skip if the reference implementation can't do it
-            return
-
+    conv_op_di = theano.grad(conv_op.sum(), i)
+    conv_op_dk = theano.grad(conv_op.sum(), k)
+    corr_op_di = theano.grad(corr_op.sum(), i)
+    corr_op_dk = theano.grad(corr_op.sum(), k)
+    outputs = [corr_op, conv_op,
+               corr_op_di, conv_op_di,
+               corr_op_dk, conv_op_dk]
+    try:
+        conv_op_dik = theano.grad(conv_op_di.sum(), k)
+        conv_op_dki = theano.grad(conv_op_dk.sum(), i)
         corr_op_dik = theano.grad(corr_op_di.sum(), k)
         corr_op_dki = theano.grad(corr_op_dk.sum(), i)
         outputs.extend([corr_op_dik, conv_op_dik,
                         corr_op_dki, conv_op_dki])
+    except Exception:
+        # skip if the reference implementation can't do it
+        pass
 
-        f = theano.function([i, k], outputs, mode=theano_mode)
+    f = theano.function([i, k], outputs, mode=theano_mode)
 
-        allvals = f(npy_img, npy_kern)
+    allvals = f(npy_img, npy_kern)
 
-        for a, b, p in zip(allvals[::2], allvals[1::2],
-                           ('top', 'dtop/dbottom', 'dtop/dweight',
-                            'dtop/dbottom/dweight', 'dtop/dweight/dbottom')):
-            assert_allclose(a, b, rtol=1e-4)
+    for a, b, p in zip(allvals[::2], allvals[1::2],
+                       ('top', 'dtop/dbottom', 'dtop/dweight',
+                        'dtop/dbottom/dweight', 'dtop/dweight/dbottom')):
+        assert_allclose(a, b, rtol=1e-4)
 
 
 def test_conv_grads():
@@ -907,7 +913,7 @@ def test_conv_grads():
                         for rImg2 in [2, 8]:
                             for rFlt1 in [1, 2]:
                                 for rFlt2 in [1, 2]:
-                                    for op in [gemm_op, GpuDnnConv]:
+                                    for op in [gemm_op, dnn_op]:
                                         yield (conv_grad, mode, bs, ch, nf,
                                                rImg1, rImg2, rFlt1, rFlt2,
                                                1, 1, op)
