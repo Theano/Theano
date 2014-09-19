@@ -84,7 +84,9 @@ def _atexit_print_fn():
     if len(to_sum) > 1:
     # Make a global profile
         cum = copy.copy(to_sum[0])
-        cum.message = "Sum of all printed profiles at exit excluding Scan op profile."
+        msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
+               " profile." % len(to_sum))
+        cum.message = msg
         for ps in to_sum[1:]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time",
