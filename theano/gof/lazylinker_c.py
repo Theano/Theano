@@ -10,7 +10,7 @@ from theano.gof import cmodule
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
 force_compile = False
-version = 0.20  # must match constant returned in function get_version()
+version = 21  # must match constant returned in function get_version()
 
 def try_import():
     global lazylinker_ext
@@ -87,6 +87,7 @@ except ImportError:
                     assert os.path.exists(loc)
 
             args = cmodule.GCC_compiler.compile_args()
+            args.extend(['-I', os.path.join(theano.__path__[0], 'gof')])
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
                                              preargs=args)
             # Save version into the __init__.py file.

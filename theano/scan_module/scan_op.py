@@ -77,6 +77,8 @@ class Scan(PureOp):
         # adding properties into self
         self.inputs = inputs
         self.outputs = outputs
+        if not 'destroy_map' in info:
+            info['destroy_map'] = OrderedDict()
         self.__dict__.update(info)
         # I keep a version of info in self, to use in __eq__ and __hash__,
         # since info contains all tunable parameters of the op, so for two
@@ -492,8 +494,6 @@ class Scan(PureOp):
         else:
             name = 'for'
         aux_txt = '%s'
-        if getattr(self, 'destroy_map', None) is None:
-            self.destroy_map = OrderedDict()
         if len(self.destroy_map.keys()) > 0:
             # Check if all outputs are inplace
             if (sorted(self.destroy_map.keys()) == \
@@ -612,11 +612,8 @@ class Scan(PureOp):
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
 
-            if hasattr(self, 'destroy_map'):
-                cython_destroy_map = [x in self.destroy_map
+            cython_destroy_map = [x in self.destroy_map
                                   for x in xrange(len(node.outputs))]
-            else:
-                cython_destroy_map = [0 for x in xrange(len(node.outputs))]
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
             import scan_perform_ext
@@ -832,27 +829,21 @@ class Scan(PureOp):
         # negative flip sequences around, and make n_steps positive
         t0_call = time.time()
         t_fn = 0
-        n_steps = args[0]
+        n_steps = int(args[0])
         seqs = []
         if n_steps < 0:
             n_steps = abs(n_steps)
-            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
-                if seq.shape[0] < n_steps:
-                    raise ValueError(('Sequence is shorter then the required '
-                                     'number of steps : (n_steps, seq, '
-                                      'seq.shape):'), n_steps,
-                                      node.inputs[1 + idx],
-                                      seq.shape)
-                seqs.append(seq[::-1])
+            seqs = [seq[::-1] for seq in args[1:self.seqs_arg_offset]]
         else:
-            for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
-                if seq.shape[0] < n_steps:
-                    raise ValueError(('Sequence is shorter then the required '
-                                     'number of steps : (n_steps, seq, '
-                                      'seq.shape):'), n_steps,
-                                      node.inputs[1 + idx],
-                                      seq.shape)
-                seqs.append(seq)
+            seqs = args[1:self.seqs_arg_offset]
+
+        for idx, seq in enumerate(seqs):
+            if seq.shape[0] < n_steps:
+                raise ValueError(('Sequence is shorter then the required '
+                                  'number of steps : (n_steps, seq, '
+                                  'seq.shape):'), n_steps,
+                                 node.inputs[1 + idx],
+                                 seq.shape)
 
         # 2. Allocate memory for the outputs. Construct the list:
         #       store_steps  -- map containting the length of each output
@@ -860,17 +851,13 @@ class Scan(PureOp):
         #                       output
 
         store_steps = [arg.shape[0] for arg
-                               in args[self.seqs_arg_offset:
-                                       self.shared_arg_offset]]
-        store_steps += [arg for arg in
-                            args[self.nit_sot_arg_offset:
-                                   self.nit_sot_arg_offset + self.n_nit_sot]
-                       ]
+                       in args[self.seqs_arg_offset:
+                                   self.shared_arg_offset]]
+        store_steps += args[self.nit_sot_arg_offset:
+                                self.nit_sot_arg_offset + self.n_nit_sot]
 
         pos = [(-self.mintaps[idx]) % store_steps[idx] for idx
-                         in xrange(self.n_outs + self.n_nit_sot)]
-        if not getattr(self, 'destroy_map', None):
-            self.destroy_map = OrderedDict()
+               in xrange(self.n_outs + self.n_nit_sot)]
         # 2.1 Create storage space for outputs
         for idx in xrange(self.n_outs):
             if idx in self.destroy_map:
@@ -1129,6 +1116,209 @@ class Scan(PureOp):
         # Old Profile Mode */
         self.t_call = t_call
         self.t_fn = t_fn
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        args = zip(node.inputs, inputs)
+        # extract the stuff we will need later
+        cvm, inpst, outst = args[:3]
+        args = args[3:]
+        n_steps = args[0]
+        seqs = args[1:self.seqs_arg_offset]
+        outs = zip(node.outputs, outputs)
+        def chk_sz(res, arg):
+            res.append("if (" + self._get_shape(arg, 0) + " < n_steps) {")
+            res.append('PyErr_Format(PyExc_ValueError, "Scan arg sequence is shorter "')
+            res.append('"than the required number of steps");')
+            res.append(sub['fail'])
+            res.append("}")
+
+        def set_input(res, idx, val):
+            if val is None:
+                val = "Py_None"
+                res.append("Py_INCREF(Py_None);")
+            res.append("PyObject *o = (PyObject *)" + val + ";")
+            res.append("if (PyList_SetItem(PyList_GET_ITEM(%(inpst)s, " +
+                       str(idx) + "), 0, o) == -1) {")
+            res.append("Py_DECREF(o);")
+            res.append(sub['fail'])
+            res.append("}")
+
+        def set_output(res, idx, val):
+            if val is None:
+                val = "Py_None"
+                res.append("Py_INCREF(Py_None);")
+            res.append("PyObject *o = (PyObject *)" + val + ";")
+            res.append("if (PyList_SetItem(PyList_GET_ITEM(%(outst)s, " +
+                       str(idx) + "), 0, o) == -1) {")
+            res.append("Py_DECREF(o);")
+            res.append(sub['fail'])
+            res.append("}")
+
+        n_steps = inputs[0]
+        res = []
+        res.append("Py_ssize_t store_steps[%d];" %
+                   (self.n_mit_mot + self.n_mit_sot + self.n_sit_sot +
+                    self.n_nit_sot,))
+        res.append("Py_ssize_t pos[%d];" % (self.n_outs + self.n_nit_sot,))
+        res.append("double t0_call = pytime(NULL);")
+        res.append("double t_call = 0.0;")
+        res.append("double t_fn = 0.0;")
+        res.append("double t0_fn;")
+        res.append("Py_ssize_t n_steps = %s;" % (n_steps[1],))
+        res.append("PyObject *et = PyTuple_New(0);")
+        res.append("int cond = 1;")
+        res.append("if (et == NULL) { %s }" % (sub['fail'],))
+        res.append("if (n_steps < 0) {")
+        res.append("n_steps = -n_steps;")
+        for arg in seqs:
+            chk_sz(res, arg)
+            res.append("PyObject *tmp = " + self._reverse(arg) + ";")
+            res.append("Py_DECREF(" + arg[1] + ");")
+            res.append(arg[1] + "= tmp;")
+        res.append("} else {")
+        for arg in seqs:
+            chk_sz(res, arg)
+        res.append('}')
+        for i, arg in enumerate(args[self.seqs_arg_offset:
+                                         self.shared_arg_offset]):
+            res.append("store_steps[" + str(i) + "] = " +
+                       self._get_shape(arg, 0) + ";")
+        for i, arg in enumerate(args[self.nit_sot_arg_offset:
+                                         self.nit_sot_arg_offset +
+                                     self.n_nit_sot]):
+            res.append("store_steps[" + str(i + self.n_mit_mot +
+                                            self.n_mit_sot + self.n_sit_sot) +
+                       "] = " + arg[1] + ";")
+        for idx in range(self.n_outs + self.n_nit_sot):
+            res.append("pos[%(idx)s] = -" + str(self.mintaps[idx]) +
+                       " % store_steps[%(idx)s];" % dict(idx=idx))
+        for idx in range(self.n_outs):
+            if idx in self.destroy_map:
+                res.append("Py_XDECREF(%s);" % (outputs[idx],))
+                res.append("%s = %s;" % (outputs[idx],
+                                         args[self.seqs_arg_offset + idx][1]))
+                res.append("Py_INCREF(%s);" % (outputs[idx],))
+            else:
+                res.append("if (%s != NULL &&" % outputs[idx])
+                res.append("%s == %s &&" % (self._get_nd(outs[idx]),
+                                            self._get_nd(
+                            args[s.seqs_arg_offset + idx])))
+                for d in range(1, node.outputs[idx].ndim):
+                    res.append("%s == %s &&" % (self._get_shape(outs[idx], d),
+                                                self._get_shape(args[s.seqs_arg_offset + idx], d)))
+                res.append("%s >= store_steps[%d]) {" % (self._get_shape(outs[idx], 0), idx))
+
+                res.append("%s = %s;" % (outputs[idx],
+                                         self._truncate(outs[idx], 'store_steps[%d]' % idx)))
+                if idx > s.n_mit_mot:
+                    res.extend(self._set_partial(outs[idx], -self.mintaps[idx],
+                                                 self._truncate(args[self.seqs_arg_offset + idx], -self.mintaps[idx])))
+                res.append("} else {")
+                res.append("Py_XDECREF(%s);" % (outputs[idx],))
+                res.append("%s = %s;" (outputs[idx], self._copy(args[self.seqs_arg_offset + idx])))
+                res.append("}")
+            other_args = args[self.nit_sot_arg_offset + self.n_nit_sot]
+            offset = (self.n_seqs +
+                      sum(map(len, self.tap_array[:self.n_outs])) +
+                      self.n_shared_outs)
+            for idx in xrange(len(other_args)):
+                # TODO: maybe use the py_* version to set into the list?
+                set_input(res, idx + offset, other_args[idx][1])
+
+            #### THE MAIN LOOP ###
+            res.append("for (Py_ssize_t i = 0; i < n_steps && cond; i++) {")
+            for idx in range(self.n_seqs):
+                set_input(res, idx, self._index(seqs[idx], "i"))
+            offset = self.n_seqs
+            for idx in range(self.n_outs):
+                for tap in self.tap_array[idx]:
+                    set_input(res, offset, self._index(
+                            outs[idx],
+                            "(pos[%d] + %d) %% store_steps[idx]" % (idx, tap)))
+                    offset += 1
+
+            a_offset = self.shared_arg_offset
+            o_offset = self.n_outs + self.n_nit_sot
+            res.append("if (i == 0) {")
+            for j in xrange(self.n_shared_outs):
+                set_input(res, offset, args[a_offset + j][1])
+                offset += 1
+            res.append("} else {")
+            for j in xrange(self.n_shared_outs):
+                set_input(res, offset, self._index(outs[o_offset + j], 0))
+                offset += 1
+            res.append("}")
+
+            for idx in range(self.n_mit_mot_outs):
+                set_output(res, idx, None)
+
+            offset = self.n_mit_mot_outs
+            if self.n_nit_sot > 0:
+                res.append("if (i != 0) {")
+                for idx in xrange(self.n_outs + self.n_nit_sot -
+                                  self.n_mit_mot):
+                    res.append("if (store_steps[" + str(idx + self.n_mit_mot)
+                               + "] == 1) {")
+                    if (isinstance(outs[0].type, TensorVariable) and
+                        outs[0].ndim == 1):
+                        set_output(res, idx + offset, None)
+                    else:
+                        pos0 = idx + self.n_mit_mot
+                        set_output(res, idx + offset,
+                                   self._index(outs[pos0],
+                                               "pos[%d]" % (pos0,)))
+                    res.append("}")
+                res.append("} else {")
+                for idx in xrange(self.n_outs + self.n_nit_sot -
+                                  self.n_mit_mot):
+                    set_output(res, idx + offset, None)
+                res.append("}")
+            else:
+                for idx in xrange(self.n_outs + self.n_nit_sot -
+                                  self.n_mit_mot):
+                    set_output(res, idx + offset, None)
+            offset += self.n_outs + self.n_nit_sot - self.n_mit_mot
+            for idx in xrange(self.n_shared_outs):
+                set_output(res, idx + offset, None)
+            if self.as_while:
+                pdx = offset + self.n_shared_outs
+                set_output(res, pdx, None)
+            res.append("t0_fn = pytime();")
+            res.append("{")
+            res.append("PyObject *r = CLazyLinker_call(%(cvm)s, et, (PyObject *)NULL);")
+            res.append("if (r == NULL) { %s }" % (sub['fail'],))
+            res.append("Py_DECREF(r);")
+            res.append("}")
+            res.append("t_fn += pytime() - t0_fn;")
+            if self.as_while:
+                pdx = offset + self.n_shared_outs
+                res.append("cond = PyInt_AsLong(PyList_GET_ITEM(PyList_GET_ITEM(%(outst)s, "
+                           + str(pdx) +"), 0)) == 0")
+            offset_out = 0
+            for j in xrange(self.n_mit_mot):
+                for k in self.mit_mot_out_slices[j]:
+                    self._set_idx(outs[j], "%d + pos[%d]" % (k, j),
+                                  "PyList_GET_ITEM(%(outst)s, " + str(offset_out) + ")")
+                    offset_out += 1
+            begin = self.n_mit_mot
+            end = self.n_outs
+            offset_out -= self.n_mit_mot
+
+            for j in xrange(begin, end):
+                self.set_idx(outs[j], "pos[%d]",
+                             "PyList_GET_ITEM(%(outst)s, " + str(offset_out + j) + ")")
+            begin = end
+            end += self.n_nit_sot
+
+            for j in xrange(begin, end):
+                res.append("if (i == 0) {")
+                jout = j + offset_out
+                res.append("if (%s == NULL ||" % outs[j][1])
+                res.append(self._get_shape(outs[j], 0) +
+                           " < store_steps[%d] ||" % (j,))
+                res.append("}")
+
+            res.append("}")
 
     ### Infer Shape
     def infer_shape(self, node, input_shapes):
