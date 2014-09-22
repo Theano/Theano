@@ -476,10 +476,23 @@ generic = Generic()
 
 class CDataType(Type):
     """
-    Represents opaque C data to be passed around.
+    Represents opaque C data to be passed around. The intent is to
+    ease passing arbitrary data between ops C code.
     """
     def __init__(self, ctype, freefunc=None):
+        """
+        Build a type made to represent a C pointer in theano.
+
+        :param ctype: The type of the pointer (complete with the `*`)
+
+        :param freefunc: a function to call to free the pointer.  This
+                         function must have a `void` return and take a
+                         single pointer argument.
+        """
+        assert isinstance(ctype, basestring)
         self.ctype = ctype
+        if freefunc is not None:
+            assert isinstance(freefunc, basestring)
         self.freefunc = freefunc
 
     def __eq__(self, other):
@@ -553,4 +566,4 @@ if (py_%(name)s != NULL) { %(name)s = NULL; }
         return (0,)
 
     def __str__(self):
-        return self.__class__.__name__
+        return "%s{%s}" % (self.__class__.__name__, self.ctype)
