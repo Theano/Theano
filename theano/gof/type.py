@@ -530,13 +530,6 @@ class CDataType(Type):
 """
         return s % dict(name=name, ctype=self.ctype, fail=sub['fail'])
 
-    def c_cleanup(self, name, sub):
-        if self.freefunc is not None:
-            return "%(freefunc)s(%(name)s);" % dict(freefunc=self.freefunc,
-                                                    name=name)
-        else:
-            return ""
-
     def c_sync(self, name, sub):
         freefunc = self.freefunc
         if freefunc is None:
@@ -554,16 +547,20 @@ if (%(name)s == NULL) {
 }"""
         else:
             s += """{
-py_%(name)s = PyCObject_FromVoidPtr((void *)%(name)s,
-                                    (void (*)(void *))%(freefunc)s);
+  py_%(name)s = PyCObject_FromVoidPtr((void *)%(name)s,
+                                      (void (*)(void *))%(freefunc)s);
 }"""
-        s += """
-if (py_%(name)s != NULL) { %(name)s = NULL; }
+        if self.freefunc is not None:
+            s += """
+if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
 """
         return s % dict(name=name, freefunc=freefunc)
 
+    def c_cleanup(self, name, sub):
+        return ""
+
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)

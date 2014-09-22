@@ -1,4 +1,70 @@
+import numpy
+import theano
 
-from theano.gof.type import *
+from theano import Op, Apply
+from theano.tensor import TensorType
+
+from theano.gof.type import CDataType
 
 # todo: test generic
+
+class ProdOp(Op):
+    __props__ = ()
+
+    def make_node(self, i):
+        return Apply(self, [i], [CDataType('void *', 'py_decref')()])
+
+    def c_support_code(self):
+        return """
+void py_decref(void *p) {
+  Py_XDECREF((PyObject *)p);
+}
+"""
+
+    def c_code(self, node, name, inps, outs, sub):
+        return """
+Py_XDECREF(%(out)s);
+%(out)s = (void *)%(inp)s;
+Py_INCREF(%(inp)s);
+""" % dict(out=outs[0], inp=inps[0])
+
+    def c_code_cache_version(self):
+        return (0,)
+
+
+class GetOp(Op):
+    __props__ = ()
+
+    def make_node(self, c):
+        return Apply(self, [c], [TensorType('float32', (False,))()])
+
+    def c_support_code(self):
+        return """
+void py_decref(void *p) {
+  Py_XDECREF((PyObject *)p);
+}
+"""
+
+    def c_code(self, node, name, inps, outs, sub):
+        return """
+Py_XDECREF(%(out)s);
+%(out)s = (PyArrayObject *)%(inp)s;
+Py_INCREF(%(out)s);
+""" % dict(out=outs[0], inp=inps[0])
+
+    def c_code_cache_version(self):
+        return (0,)
+
+
+def test_cdata():
+    i = TensorType('float32', (False,))()
+    c = ProdOp()(i)
+    i2 = GetOp()(c)
+
+    # This should be a passthrough function for vectors
+    f = theano.function([i], i2)
+
+    v = numpy.random.randn(9).astype('float32')
+
+    v2 = f(v)
+    assert (v2 == v).all()
