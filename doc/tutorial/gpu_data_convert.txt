@@ -115,6 +115,7 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
                 grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
                 pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
                            block=(512, 1, 1), grid=grid)
+            thunk.lazy = False
             return thunk
     
 CUDAMat
