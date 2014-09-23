@@ -356,6 +356,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                        "This could be a known bug in CUDA, please see the "
                        "GpuCorr3dMM() documentation.\n",
                        cudaGetErrorString(err));
+          Py_DECREF(col);
           return 0;
         }
         // Second, gemm
@@ -374,6 +375,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                        "This could be a known bug in CUDA, please see the "
                        "GpuCorr3dMM() documentation.\n",
                        cublasGetErrorString(status));
+          Py_DECREF(col);
           return 0;
         }
       }
@@ -401,6 +403,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                       "This could be a known bug in CUDA, please see the "
                       "GpuCorr3dMM() documentation.\n",
                       cudaGetErrorString(err));
+         Py_DECREF(col);
          return 0;
        }
         // Second, gemm
@@ -422,6 +425,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                        "This could be a known bug in CUDA, please see the "
                        "GpuCorr3dMM() documentation.\n",
                        cublasGetErrorString(status));
+          Py_DECREF(col);
           return 0;
         }
       }
@@ -450,6 +454,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                        "This could be a known bug in CUDA, please see the "
                        "GpuCorr3dMM() documentation.\n",
                        cublasGetErrorString(status));
+          Py_DECREF(col);
           return 0;
         }
         // col2im3d back to the data
@@ -466,6 +471,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                        "This could be a known bug in CUDA, please see the "
                        "GpuCorr3dMM() documentation.\n",
                        cudaGetErrorString(err));
+          Py_DECREF(col);
           return 0;
         }
       }
