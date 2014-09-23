@@ -5468,7 +5468,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  *             cdef list stack
  *             cdef int offset
  */
-  __pyx_t_4 = ((PyObject *)__pyx_v_self->descr);
+  __pyx_t_4 = ((PyObject *)PyArray_DESCR(__pyx_v_self));
   __Pyx_INCREF(__pyx_t_4);
   __pyx_v_descr = ((PyArray_Descr *)__pyx_t_4);
   __pyx_t_4 = 0;
@@ -7028,7 +7028,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  *      arr.base = baseptr
  * 
  */
-  Py_XDECREF(__pyx_v_arr->base);
+  Py_XDECREF(PyArray_BASE(__pyx_v_arr));
 
   /* "numpy.pxd":972
  *          baseptr = <PyObject*>base
@@ -7037,7 +7037,11 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  * 
  * cdef inline object get_array_base(ndarray arr):
  */
-  __pyx_v_arr->base = __pyx_v_baseptr;
+#if NPY_API_VERSION < 0x00000007
+PyArray_BASE(__pyx_v_arr) = __pyx_v_baseptr;
+#else
+PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
+#endif
 
   /* "numpy.pxd":964
  * 
@@ -7072,7 +7076,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
  *         return None
  *     else:
  */
-  __pyx_t_1 = ((__pyx_v_arr->base == NULL) != 0);
+  __pyx_t_1 = ((PyArray_BASE(__pyx_v_arr) == NULL) != 0);
   if (__pyx_t_1) {
 
     /* "numpy.pxd":976
@@ -7095,8 +7099,8 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
  *         return <object>arr.base             # <<<<<<<<<<<<<<
  */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_INCREF(((PyObject *)__pyx_v_arr->base));
-    __pyx_r = ((PyObject *)__pyx_v_arr->base);
+    __Pyx_INCREF(((PyObject *)(PyArray_BASE(__pyx_v_arr))));
+    __pyx_r = ((PyObject *)PyArray_BASE(__pyx_v_arr));
     goto __pyx_L0;
   }
 
