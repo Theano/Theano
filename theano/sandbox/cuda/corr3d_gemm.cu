@@ -53,16 +53,11 @@ inline int GET_BLOCKS(const int N) {
 // (Adapted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/util/im2col.cu)
 // Kernels for fast unfold + copy
 __global__ void im3d2col_kernel(const int n, const float* data_im,
-                                const int height, const int width,
-                                const int depth,
-                                const int kernel_h, const int kernel_w,
-                                const int kernel_d,
-                                const int pad_h, const int pad_w,
-                                const int pad_d,
-                                const int stride_h, const int stride_w,
-                                const int stride_d,
-                                const int height_col, const int width_col,
-                                const int depth_col,
+                                const int height, const int width, const int depth,
+                                const int kernel_h, const int kernel_w, const int kernel_d,
+                                const int pad_h, const int pad_w, const int pad_d,
+                                const int stride_h, const int stride_w, const int stride_d,
+                                const int height_col, const int width_col, const int depth_col,
                                 float* data_col)
 {
   CUDA_KERNEL_LOOP(index, n)
@@ -134,14 +129,12 @@ void im3d2col(const float* data_im, const int channels,
 
 
 __global__ void col2im3d_kernel(const int n, const float* data_col,
-                                const int height, const int width,
-                                const int depth, const int channels,
-                                const int patch_h, const int patch_w,
-                                const int patch_d, const int pad_h,
-                                const int pad_w, const int pad_d,
-                                const int stride_h, const int stride_w,
-                                const int stride_d, const int height_col,
-                                const int width_col, const int depth_col,
+                                const int height, const int width, const int depth,
+                                const int channels,
+                                const int patch_h, const int patch_w, const int patch_d,
+                                const int pad_h, const int pad_w, const int pad_d,
+                                const int stride_h, const int stride_w, const int stride_d,
+                                const int height_col, const int width_col, const int depth_col,
                                 float* data_im)
 {
   CUDA_KERNEL_LOOP(index, n)
@@ -219,7 +212,7 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
                       const int dD = 1,
                       const int padH = 0,
                       const int padW = 0,
-                      const int padD = 1)
+                      const int padD = 0)
 {
     if (bottom->nd != 5)
     {

@@ -1018,7 +1018,7 @@ class BaseGpuCorr3dMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 1)
+        return None #(0, 1)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -1063,6 +1063,12 @@ class BaseGpuCorr3dMM(GpuOp):
             of the filters for direction="backprop weights" or the width of the
             input images for direction="backprop inputs".
             If self.pad == 'half', a variable giving the width of the filters
+            for direction="backprop weights".
+            Ignored otherwise.
+        :param depth: If self.subsample[2] != 1, a variable giving the depth
+            of the filters for direction="backprop weights" or the depth of the
+            input images for direction="backprop inputs".
+            If self.pad == 'half', a variable giving the depth of the filters
             for direction="backprop weights".
             Ignored otherwise.
         """
@@ -1212,11 +1218,11 @@ class BaseGpuCorr3dMM(GpuOp):
     }
     else if (padD == -2)
     { // horizontal full padding
-      padW = kW - 1;
+      padD = kD - 1;
     }
-    else if (padW < 0)
+    else if (padD < 0)
     {
-      PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: padW must be >= -2");
+      PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: padD must be >= -2");
       %(fail)s
     }
 
@@ -1254,6 +1260,8 @@ class BaseGpuCorr3dMM(GpuOp):
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: direction must be 0, 1, or 2\\n");
         %(fail)s
     }
+
+
 
     // Prepare output array
     if (!(%(out)s
@@ -1380,7 +1388,6 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False, False]
-        print [img, topgrad] + height_width_depth
         return Apply(self, [img, topgrad] + height_width_depth, [CudaNdarrayType(broadcastable)()])
 
     def c_code(self, node, nodename, inp, out_, sub):

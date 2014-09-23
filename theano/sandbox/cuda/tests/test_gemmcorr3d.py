@@ -22,7 +22,7 @@ else:
 class TestCorr3DMM(unittest.TestCase):
 
     def run_conv_valid(self, inputs_shape, filters_shape,
-                       subsample = ( 1, 1, 1)):
+                       subsample=(1, 1, 1)):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
 
@@ -66,7 +66,7 @@ class TestCorr3DMM(unittest.TestCase):
                             subsample=(1, 2, 3))
 
     def run_gradweight(self, inputs_shape, filters_shape, dCdH_shape,
-                        subsample = (1, 1, 1)):
+                        subsample=(1, 1, 1)):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
@@ -96,25 +96,25 @@ class TestCorr3DMM(unittest.TestCase):
         utt.assert_allclose(res_ref, res,  rtol=1e-04, atol=1e-04)
 
     def test_gradweight(self):
-        self.run_gradweight(inputs_shape = (16, 20, 32, 16, 1),
-                            filters_shape = (10, 6, 12, 4, 1),
-                            dCdH_shape = (16, 15, 21, 13, 10),
-                            subsample = (1, 1, 1))
-        self.run_gradweight(inputs_shape = (16, 20, 32, 16, 1),
-                            filters_shape = (10, 6, 12, 4, 1),
-                            dCdH_shape = (16, 8, 11, 7, 10),
-                            subsample = (2, 2, 2))
-        self.run_gradweight(inputs_shape = (16, 20, 32, 16, 1),
-                            filters_shape = (10, 6, 12, 4, 1),
-                            dCdH_shape = (16, 5, 7, 5, 10),
-                            subsample = (3, 3, 3))
-        self.run_gradweight(inputs_shape = (16, 20, 32, 16, 1),
-                            filters_shape = (10, 6, 12, 4, 1),
-                            dCdH_shape = (16, 8, 21, 5, 10),
-                            subsample = (2, 1, 3))
+        self.run_gradweight(inputs_shape=(16, 20, 32, 16, 1),
+                            filters_shape=(10, 6, 12, 4, 1),
+                            dCdH_shape=(16, 15, 21, 13, 10),
+                            subsample=(1, 1, 1))
+        self.run_gradweight(inputs_shape=(16, 20, 32, 16, 1),
+                            filters_shape=(10, 6, 12, 4, 1),
+                            dCdH_shape=(16, 8, 11, 7, 10),
+                            subsample=(2, 2, 2))
+        self.run_gradweight(inputs_shape=(16, 20, 32, 16, 1),
+                            filters_shape=(10, 6, 12, 4, 1),
+                            dCdH_shape=(16, 5, 7, 5, 10),
+                            subsample=(3, 3, 3))
+        self.run_gradweight(inputs_shape=(16, 20, 32, 16, 1),
+                            filters_shape=(10, 6, 12, 4, 1),
+                            dCdH_shape=(16, 8, 21, 5, 10),
+                            subsample=(2, 1, 3))
 
     def run_gradinput(self, inputs_shape, filters_shape,
-                      subsample = (1, 1, 1)):
+                      subsample=(1, 1, 1)):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -138,7 +138,7 @@ class TestCorr3DMM(unittest.TestCase):
             conv_gemm = GpuCorr3dMM_gradInputs(subsample=subsample)(kern=weight, topgrad=top)
         else:
             conv_gemm = GpuCorr3dMM_gradInputs(subsample=subsample)(kern=weight, topgrad=top,
-                                                                    shape = bottom.shape[1:4])
+                                                                    shape=bottom.shape[1:4])
         conv_gemm = conv_gemm.dimshuffle(0, 2, 3, 4, 1)
         f = theano.function([], conv_gemm)
 
@@ -146,15 +146,15 @@ class TestCorr3DMM(unittest.TestCase):
         utt.assert_allclose(res_ref, res,  rtol=1e-04, atol=1e-04)
 
     def test_gradinput(self):
-        self.run_gradinput(inputs_shape = (16, 15, 21, 12, 10),
-                           filters_shape = (10, 6, 12, 4, 1))
-        self.run_gradinput(inputs_shape = (16, 15, 21, 12, 10),
-                           filters_shape = (10, 6, 12, 4, 1),
+        self.run_gradinput(inputs_shape=(16, 15, 21, 12, 10),
+                           filters_shape=(10, 6, 12, 4, 1))
+        self.run_gradinput(inputs_shape=(16, 15, 21, 12, 10),
+                           filters_shape=(10, 6, 12, 4, 1),
                            subsample=(2,2,2))
-        self.run_gradinput(inputs_shape = (16, 15, 21, 12, 10),
-                           filters_shape = (10, 6, 12, 4, 1),
+        self.run_gradinput(inputs_shape=(16, 15, 21, 12, 10),
+                           filters_shape=(10, 6, 12, 4, 1),
                            subsample=(3,3,3))
-        self.run_gradinput(inputs_shape = (16, 15, 21, 12, 10),
-                           filters_shape = (10, 6, 12, 4, 1),
+        self.run_gradinput(inputs_shape=(16, 15, 21, 12, 10),
+                           filters_shape=(10, 6, 12, 4, 1),
                            subsample=(3,1,2))
 
