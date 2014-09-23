@@ -858,6 +858,20 @@ class ScanSaveMem(gof.Optimizer):
                         if store_steps[i] != -1:
                             pval = select_max(pval, store_steps[i])
 
+                        # TODO: Simplify the number of steps needed.
+                        # FB: This need good testing, left to later.
+                        #     call get_scalar_constant_value()? it can
+                        # return python/numpy scalar or numpy.ndarray currently.
+                        #pval = pre_greedy_local_optimizer(list_opt_slice,
+                        #                                  pval)
+                        #pval = pre_constant_merge([pval])[0]
+                        #if (isinstance(pval, theano.tensor.TensorConstant) and
+                        #    pval.dtype.startswith('int')):
+                        #    try:
+                        #        pval = int(pval.data)
+                        #    except Exception:
+                        #        pass
+
                         store_steps[i] = pval
                         flag_store = True
 
