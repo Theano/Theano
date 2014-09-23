@@ -949,7 +949,6 @@ class ScanSaveMem(gof.Optimizer):
                     if val == 0:
                         if idx < op.n_mit_sot + op.n_sit_sot:
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
-                            odx = op.n_mit_mot + idx
                             nw_input = scan_utils.expand(_nw_input, nw_steps)
                             nw_inputs[offset + idx] = nw_input
                         elif idx < (op.n_mit_sot + op.n_sit_sot +
@@ -957,7 +956,6 @@ class ScanSaveMem(gof.Optimizer):
                             in_idx = offset + idx + op.n_shared_outs
                             if nw_inputs[in_idx] == node.inputs[0]:
                                 nw_inputs[in_idx] = nw_steps
-                            odx = op.n_mit_mot + idx
 
             # 3.5 Remove unwanted orphane outputs
             (inps, outs, info, node_ins, compress_map) = \
@@ -972,6 +970,9 @@ class ScanSaveMem(gof.Optimizer):
             # 3.6 Compose the new scan
             # I need to make sure I'm not reapplying the same optimization
             # twice since bad things usually happen if I do that
+            # TODO: why not check if save mem was done on any of merged nodes?
+            #       That way, if none of them had save mem applied, it would
+            #       be applied later.
             info['_scan_savemem_visited'] = True
 
             # TODO: currently we don't support scan with 0 step. So
