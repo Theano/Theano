@@ -1,5 +1,50 @@
 """
 This module provides optimizations for scan
+The Optimization provided in this file:
+
+local opt: remove_constants_and_unused_inputs_scan,
+           constant_folding_for_scan2,
+           scan_merge_inouts
+           They are wrapped in in2out to create global opt.
+global opt: ScanInplaceOptimizer,
+            PushOutNonSeqScan,
+            PushOutSeqScan,
+            PushOutDot1,
+            ScanMerge,
+            ScanSaveMem
+
+How the are registered:
+
+optdb: scan_eqopt1 (.1), scan_eqopt2(1.6), scan_inplace(75)
+scan_eqopt1 -> scan_seqopt1
+scan_seqopt1 -> in2out(remove_constants_and_unused_inputs_scan)(1),
+                PushOutNonSeqScan(2),
+                PushOutSeqScan(3), PushOutDot1(4)
+scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
+               This is important, as the order is important and all global
+               optimizer run before local optimizer in the order they where
+               registered. (So don't change the order we register them!)
+               If we convert to local optimizer, we must convert all of them
+               to local optimizer. But:
+               1) can ScanMerge be made local? Can we keep only this one global?
+               2) ScanSaveMem assert that we remove all nodes outputs,
+                  we need to keep this.
+               3) It is ScanSaveMem suppose the the others ran before.
+                  I added an assert at one place, but didn't looked for other place.
+               4) Moving this to local opt could speed up significant this opt,
+                  as we pass frequently on all nodes in the graph for no good reason.
+               5) We register remove_constant_*  many places, as some
+                  opt create them and let this one clean up the mess.
+                  Doing it that way, make things simpler for those already
+                  complex opt.
+
+               in2out(constant_folding),
+               in2out(remove_constants_and_unused_inputs_scan1),
+               ScanMerge,
+               in2out(remove_constants_and_unused_inputs_scan2),
+               in2out(scan_merge_inouts),
+               ScanSaveMem,
+               in2out(remove_constants_and_unused_inputs_scan3)
 """
 
 
