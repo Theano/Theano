@@ -267,13 +267,13 @@ def test_cudnn_softmax():
     def cmp(n, m, f, f_gpu):
         #print "test_softmax",n,m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-        gdata = numpy.asarray(data).transpose()[None,:,:,None]
+        gdata = numpy.asarray(data).transpose()[None, :, :, None]
         out = f(data)
-        gout = numpy.asarray(f_gpu(gdata))[0,:,:,0].transpose()
+        gout = numpy.asarray(f_gpu(gdata))[0, :, :, 0].transpose()
         assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
-    x = T.matrix('x')
-    x_gpu = T.tensor4('x_gpu')
+    x = T.matrix('x', 'float32')
+    x_gpu = T.tensor4('x_gpu', 'float32')
     f_z = T.nnet.softmax
     f_gpu = theano.sandbox.cuda.dnn.GpuDnnSoftmax(
         'bc01',
