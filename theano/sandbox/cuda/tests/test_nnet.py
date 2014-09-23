@@ -258,6 +258,8 @@ def test_softmax():
     z = T.nnet.softmax
     f, f_gpu = _test_softmax(x, x, z, z, type(z), cuda.nnet.GpuSoftmax, cmp, -2)
 
+    # cuDNN cannot handle these test cases but the Theano softmax can so we
+    # test them only for the Theano softmax.
     cmp(2 << 15, 5, f, f_gpu)
     cmp(0, 10, f, f_gpu)
 
