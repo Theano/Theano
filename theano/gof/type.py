@@ -557,6 +557,8 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
         return s % dict(name=name, freefunc=freefunc)
 
     def c_cleanup(self, name, sub):
+        # No need to do anything here since the CObject/Capsule will
+        # free the data for us when released.
         return ""
 
     def c_code_cache_version(self):
