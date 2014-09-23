@@ -1006,9 +1006,9 @@ class BaseGpuCorr3dMM(GpuOp):
         outputs, = outp
         assert inputs[1] == filters[1]
         # nb mul and add by output pixel
-        flops = filters[2] * filters[3] * 2
+        flops = filters[2] * filters[3] * filters[4] * 2
         # nb flops by output image
-        flops *= outputs[2] * outputs[3]
+        flops *= outputs[2] * outputs[3] * outputs[4]
         # nb patch multiplied
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
