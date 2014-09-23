@@ -160,7 +160,7 @@ class CLinkerType(CLinkerObject):
                 c_extract_code=self.c_extract(name, sub, check_input))
 
     def c_cleanup(self, name, sub):
-        """Optional: Return c code to clean up after `c_extract`.
+        """Return c code to clean up after `c_extract`.
 
         This returns C code that should deallocate whatever `c_extract`
         allocated or decrease the reference counts. Do not decrease
