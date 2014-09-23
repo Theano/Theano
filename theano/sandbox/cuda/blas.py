@@ -564,7 +564,7 @@ class BaseGpuCorrMM(GpuOp):
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
-        files = ['conv_gemm.cu']
+        files = ['corr_gemm.cu']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                 for f in files]
         return reduce(str.__add__, codes)
