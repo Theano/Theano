@@ -1459,7 +1459,7 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
 
     def connection_pattern(self, node):
         if node.nin == 2:
-            return [[1], [1], [1]]
+            return [[1], [1]]
         else:
             return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
