@@ -386,7 +386,7 @@ def local_conv_dnn(node):
 gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
 
 
-class GpuDnnSoftmax(GpuOp):
+class GpuDnnSoftmax(DnnBase):
     """
     Op for the cuDNN Softmax.
 
@@ -416,30 +416,19 @@ class GpuDnnSoftmax(GpuOp):
         assert x.ndim == 4
         return Apply(self, [x], [x.type()])
 
-    def c_headers(self):
-        return ['cudnn.h', 'cudnn_helper.h']
-
-    def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
-
-    def c_libraries(self):
-        return ['cudnn']
-
     def c_support_code_struct(self, node, struct_id):
         return """
-cudnnHandle_t softmax_handle_%(id)d;
 cudnnTensor4dDescriptor_t softmax_input_%(id)d;
 cudnnTensor4dDescriptor_t softmax_output_%(id)d;
 """ % dict(id=struct_id)
 
     def c_init_code_struct(self, node, struct_id, sub):
         return """
-softmax_handle_%(id)d = NULL;
 softmax_input_%(id)d = NULL;
 softmax_output_%(id)d = NULL;
 
 cudnnStatus_t err%(id)d;
-if ((err%(id)d = cudnnCreate(&softmax_handle_%(id)d)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(id)d = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError, "could not create cudnn handle: %%s",
                cudnnGetErrorString(err%(id)d));
   %(fail)s
@@ -463,9 +452,6 @@ if(softmax_input_%(id)d != NULL)
 
 if(softmax_output_%(id)d != NULL)
   cudnnDestroyTensor4dDescriptor(softmax_output_%(id)d);
-
-if(softmax_handle_%(id)d != NULL)
-  cudnnDestroy(softmax_handle_%(id)d);
 """ % dict(id=struct_id)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -542,7 +528,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 }
 
 err%(name)s = cudnnSoftmaxForward(
-  softmax_handle_%(id)d,
+  _handle,
   algo%(id)d,
   mode%(id)d,
   softmax_input_%(id)d,
@@ -561,7 +547,7 @@ err%(name)s = cudnnSoftmaxForward(
 def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
         ins = node.inputs[0].dimshuffle('x', 'x', 0, 1)
-        out = GpuDnnSoftmax('bc01', 'accurate', 'instance')(gpu_contiguous(ins))
+        out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
         out = as_cuda_ndarray_variable(out.dimshuffle(2, 3))
         return [out]
 
