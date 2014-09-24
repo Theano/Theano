@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.281
+    return 0.282
 
 @cython.boundscheck(False)
 def perform(
@@ -455,6 +455,13 @@ def perform(
 	    # the directive.
                 sh0 = outs[idx][0].shape[0]
                 outs[idx][0] = outs[idx][0][:sh0-(n_steps - i)]
+
+    # Make sure to release storage if allow_gc is True
+    if getattr(fn, 'allow_gc', False):
+        for i in input_storage:
+            i.storage[0] = None
+        for o in output_storage:
+            o.storage[0] = None
 
     t_call = time.time() - t0_call
 
