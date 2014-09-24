@@ -546,9 +546,9 @@ err%(name)s = cudnnSoftmaxForward(
 @local_optimizer([GpuSoftmax])
 def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
-        ins = node.inputs[0].dimshuffle('x', 'x', 0, 1)
+        ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
         out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
-        out = as_cuda_ndarray_variable(out.dimshuffle(2, 3))
+        out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
         return [out]
 
 gpu_optimizer.register("softmax_cudnn", local_softmax_dnn, 'cudnn')
