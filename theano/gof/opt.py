@@ -380,23 +380,29 @@ class _metadict:
             self.l.append((item, value))
 
     def __delitem__(self, item):
-        if item in self.d:
-            del self.d[item]
-        else:
-            for i, (key, val) in enumerate(self.l):
-                if key == item:
-                    del self.l[i]
-                    return
+        try:
+            if item in self.d:
+                del self.d[item]
+                return
+        except TypeError, e:
+            assert "unhashable type" in str(e)
+        for i, (key, val) in enumerate(self.l):
+            if key == item:
+                del self.l[i]
+                return
             raise KeyError(item)
 
     def discard(self, item):
-        if item in self.d:
-            del self.d[item]
-        else:
-            for i, (key, val) in enumerate(self.l):
-                if key == item:
-                    del self.l[i]
-                    return
+        try:
+            if item in self.d:
+                del self.d[item]
+                return
+        except TypeError, e:
+            assert "unhashable type" in str(e)
+        for i, (key, val) in enumerate(self.l):
+            if key == item:
+                del self.l[i]
+                return
 
     def get(self, item, default):
         try:
@@ -736,9 +742,14 @@ def pre_constant_merge(vars):
         seen_var.add(var)
         if isinstance(var, graph.Constant):
             sig = var.signature()
-            if sig in const_sig_inv:
-                return const_sig_inv[sig]
-            const_sig_inv[sig] = var
+            try:
+                if sig in const_sig_inv:
+                    return const_sig_inv[sig]
+                const_sig_inv[sig] = var
+            except TypeError:  # unhashable type
+                # Some python object like slice aren't hashable. So
+                # don't merge them here.
+                pass
             return var
         if var.owner:
             for idx, inp in enumerate(var.owner.inputs):

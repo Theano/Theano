@@ -532,12 +532,13 @@ def numpy_scalar(data):
             'v.data is non-numeric, non-scalar, or has more than one'
             ' unique value', data)
 
+
 get_scalar_constant_value_elemwises = (
     scal.Cast, scal.Switch,
     scal.NEQ, scal.EQ,
     scal.LT, scal.GT, scal.LE, scal.GE,
     scal.Sub, scal.Add, scal.Mod, scal.Mul,
-    scal.IntDiv, scal.TrueDiv)
+    scal.IntDiv, scal.TrueDiv, scal.Minimum, scal.Maximum)
 def get_scalar_constant_value(orig_v, elemwise=True):
     """return the constant scalar(0-D) value underlying variable `v`
 
@@ -682,6 +683,14 @@ def get_scalar_constant_value(orig_v, elemwise=True):
                     grandparent = leftmost_parent.owner.inputs[0]
                     gp_broadcastable = grandparent.type.broadcastable
                     ndim = grandparent.type.ndim
+                    if grandparent.owner and isinstance(grandparent.owner.op,
+                                                        Rebroadcast):
+                        l = []
+                        for idx, (b1, b2) in enumerate(
+                                zip(grandparent.owner.inputs[0].broadcastable,
+                                    gp_broadcastable)):
+                            l.append(b1 or b2)
+                        gp_broadcastable = tuple(l)
 
                     assert ndim == len(gp_broadcastable)
 

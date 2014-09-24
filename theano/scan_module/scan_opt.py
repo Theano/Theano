@@ -1,5 +1,50 @@
 """
 This module provides optimizations for scan
+The Optimization provided in this file:
+
+local opt: remove_constants_and_unused_inputs_scan,
+           constant_folding_for_scan2,
+           scan_merge_inouts
+           They are wrapped in in2out to create global opt.
+global opt: ScanInplaceOptimizer,
+            PushOutNonSeqScan,
+            PushOutSeqScan,
+            PushOutDot1,
+            ScanMerge,
+            ScanSaveMem
+
+How the are registered:
+
+optdb: scan_eqopt1 (.1), scan_eqopt2(1.6), scan_inplace(75)
+scan_eqopt1 -> scan_seqopt1
+scan_seqopt1 -> in2out(remove_constants_and_unused_inputs_scan)(1),
+                PushOutNonSeqScan(2),
+                PushOutSeqScan(3), PushOutDot1(4)
+scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
+               This is important, as the order is important and all global
+               optimizer run before local optimizer in the order they where
+               registered. (So don't change the order we register them!)
+               If we convert to local optimizer, we must convert all of them
+               to local optimizer. But:
+               1) can ScanMerge be made local? Can we keep only this one global?
+               2) ScanSaveMem assert that we remove all nodes outputs,
+                  we need to keep this.
+               3) It is ScanSaveMem suppose the the others ran before.
+                  I added an assert at one place, but didn't looked for other place.
+               4) Moving this to local opt could speed up significant this opt,
+                  as we pass frequently on all nodes in the graph for no good reason.
+               5) We register remove_constant_*  many places, as some
+                  opt create them and let this one clean up the mess.
+                  Doing it that way, make things simpler for those already
+                  complex opt.
+
+               in2out(constant_folding),
+               in2out(remove_constants_and_unused_inputs_scan1),
+               ScanMerge,
+               in2out(remove_constants_and_unused_inputs_scan2),
+               in2out(scan_merge_inouts),
+               ScanSaveMem,
+               in2out(remove_constants_and_unused_inputs_scan3)
 """
 
 
@@ -858,6 +903,20 @@ class ScanSaveMem(gof.Optimizer):
                         if store_steps[i] != -1:
                             pval = select_max(pval, store_steps[i])
 
+                        # TODO: Simplify the number of steps needed.
+                        # FB: This need good testing, left to later.
+                        #     call get_scalar_constant_value()? it can
+                        # return python/numpy scalar or numpy.ndarray currently.
+                        #pval = pre_greedy_local_optimizer(list_opt_slice,
+                        #                                  pval)
+                        #pval = pre_constant_merge([pval])[0]
+                        #if (isinstance(pval, theano.tensor.TensorConstant) and
+                        #    pval.dtype.startswith('int')):
+                        #    try:
+                        #        pval = int(pval.data)
+                        #    except Exception:
+                        #        pass
+
                         store_steps[i] = pval
                         flag_store = True
 
@@ -904,6 +963,8 @@ class ScanSaveMem(gof.Optimizer):
                                 nw_inputs[offset + idx].owner.op.idx_list[0],
                                 slice)):
 
+                            assert isinstance(nw_inputs[offset + idx].owner.op,
+                                              tensor.IncSubtensor)
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             cval = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
@@ -947,7 +1008,6 @@ class ScanSaveMem(gof.Optimizer):
                     if val == 0:
                         if idx < op.n_mit_sot + op.n_sit_sot:
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
-                            odx = op.n_mit_mot + idx
                             nw_input = scan_utils.expand(_nw_input, nw_steps)
                             nw_inputs[offset + idx] = nw_input
                         elif idx < (op.n_mit_sot + op.n_sit_sot +
@@ -955,7 +1015,6 @@ class ScanSaveMem(gof.Optimizer):
                             in_idx = offset + idx + op.n_shared_outs
                             if nw_inputs[in_idx] == node.inputs[0]:
                                 nw_inputs[in_idx] = nw_steps
-                            odx = op.n_mit_mot + idx
 
             # 3.5 Remove unwanted orphane outputs
             (inps, outs, info, node_ins, compress_map) = \
@@ -970,7 +1029,15 @@ class ScanSaveMem(gof.Optimizer):
             # 3.6 Compose the new scan
             # I need to make sure I'm not reapplying the same optimization
             # twice since bad things usually happen if I do that
+            # TODO: why not check if save mem was done on any of merged nodes?
+            #       That way, if none of them had save mem applied, it would
+            #       be applied later.
             info['_scan_savemem_visited'] = True
+
+            # TODO: currently we don't support scan with 0 step. So
+            # don't create one.
+            if theano.tensor.extract_constant(node_ins[0]) == 0:
+                return
 
             # Do not call make_node for test_value
             new_outs = scan_op.Scan(inps, outs, info)(*node_ins,
