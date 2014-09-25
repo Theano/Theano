@@ -1,9 +1,9 @@
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
-
 import theano.gof.op as op
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
@@ -130,6 +130,8 @@ class TestOp:
         assert rval == 'test Op no input'
 
     def test_op_struct(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         sop = StructOp()
         c = sop(theano.tensor.constant(0))
         mode = None

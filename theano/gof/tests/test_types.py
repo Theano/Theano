@@ -1,12 +1,14 @@
 import numpy
-import theano
 
+import theano
 from theano import Op, Apply
 from theano.tensor import TensorType
-
 from theano.gof.type import CDataType
 
+from nose.plugins.skip import SkipTest
+
 # todo: test generic
+
 
 class ProdOp(Op):
     __props__ = ()
@@ -57,6 +59,8 @@ Py_INCREF(%(out)s);
 
 
 def test_cdata():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     i = TensorType('float32', (False,))()
     c = ProdOp()(i)
     i2 = GetOp()(c)

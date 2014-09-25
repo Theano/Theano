@@ -160,7 +160,7 @@ else:
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode(deprecated)"),
-                 EnumStr('py', 'vm', 'vm_nogc'),
+                 EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
     _logger.warning('g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
