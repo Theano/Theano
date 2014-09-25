@@ -1104,7 +1104,8 @@ class Scan(PureOp):
                     # little trick that I used
                     outs[idx][0] = outs[idx][0][:-(n_steps - i)]
 
-        # Make sure to release storage if allow_gc is True
+        # Make sure to release storage if allow_gc is True, like
+        # Function.__call__ does.
         if getattr(fn, 'allow_gc', False):
             for i in input_storage:
                 i.storage[0] = None
