@@ -165,7 +165,8 @@ else:
     _logger.warning('g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
-            'degraded.')
+            'degraded. To remove this warning, set Theano flags cxx to an '
+            'empty string.')
 
 
 #Keep the default value the same as the one for the mode FAST_RUN
