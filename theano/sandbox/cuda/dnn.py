@@ -4,15 +4,17 @@ import os
 import theano
 from theano import Apply, tensor
 from theano.gof.type import CDataType
+from theano.compat import PY3
 from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.blas import GpuConv
-from theano.compat import PY3
+from theano.sandbox.cuda.nnet import GpuSoftmax
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+
 
 class DnnBase(GpuOp):
     """
@@ -360,6 +362,7 @@ class GpuDnnConvGradI(GpuDnnConvBase):
 from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
                                      gpu_optimizer)
 
+
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
              conv_mode='conv'):
     img = gpu_contiguous(img)
@@ -367,6 +370,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
     return GpuDnnConv()(img, kerns, desc)
+
 
 @local_optimizer([GpuConv])
 def local_conv_dnn(node):
@@ -380,3 +384,166 @@ def local_conv_dnn(node):
                          border_mode=border_mode, subsample=subsample)]
 
 gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
+
+
+class GpuDnnSoftmax(DnnBase):
+    """
+    Op for the cuDNN Softmax.
+
+    Parameters''
+    -tensor_format: Whether the data format is 'bc01' or 'b01c'
+    -algo: 'fast' or 'accurate' indicating whether computations should be
+    optimized for speed or accuracy respectively.
+    -mode: 'instance' or 'channel' indicating whether the softmax should be
+    computed per image across 'c01' or per spationali location '01' per image
+    across 'c'.
+    """
+
+    __props__ = ('tensor_format', 'mode', 'algo')
+
+    def __init__(self, tensor_format, algo, mode):
+        assert(tensor_format in ('bc01', 'b01c'))
+        self.tensor_format = tensor_format
+
+        assert(algo in ('fast', 'accurate'))
+        self.algo = algo
+
+        assert(mode in ('instance', 'channel'))
+        self.mode = mode
+
+    def make_node(self, x):
+        x = as_cuda_ndarray_variable(x)
+        assert x.ndim == 4
+        return Apply(self, [x], [x.type()])
+
+    def c_support_code_struct(self, node, struct_id):
+        return """
+cudnnTensor4dDescriptor_t softmax_input_%(id)d;
+cudnnTensor4dDescriptor_t softmax_output_%(id)d;
+""" % dict(id=struct_id)
+
+    def c_init_code_struct(self, node, struct_id, sub):
+        return """
+softmax_input_%(id)d = NULL;
+softmax_output_%(id)d = NULL;
+
+cudnnStatus_t err%(id)d;
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&softmax_input_%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(inp): %%s", cudnnGetErrorString(err%(id)d));
+  %(fail)s
+}
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&softmax_output_%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(out): %%s", cudnnGetErrorString(err%(id)d));
+  %(fail)s
+}
+""" % dict(id=struct_id, fail=sub['fail'])
+
+    def c_cleanup_code_struct(self, node, struct_id):
+        return """
+if(softmax_input_%(id)d != NULL)
+  cudnnDestroyTensor4dDescriptor(softmax_input_%(id)d);
+
+if(softmax_output_%(id)d != NULL)
+  cudnnDestroyTensor4dDescriptor(softmax_output_%(id)d);
+""" % dict(id=struct_id)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        ins, = inputs
+        outs, = outputs
+
+        if self.tensor_format == 'b01c':
+            tensor_format = 1
+        else:
+            tensor_format = 0
+
+        if self.mode == 'instance':
+            mode = 1
+        else:
+            mode = 0
+
+        if self.algo == 'fast':
+            algo = 1
+        else:
+            algo = 0
+
+        return """
+cudnnStatus_t err%(name)s;
+cudnnTensorFormat_t format%(id)d = CUDNN_TENSOR_NCHW;
+if (%(tensor_format)d == 1)
+  format%(id)d = CUDNN_TENSOR_NHWC;
+
+cudnnSoftmaxAlgorithm_t algo%(id)d = CUDNN_SOFTMAX_ACCURATE;
+if (%(algo)d == 1)
+  algo%(id)d = CUDNN_SOFTMAX_FAST;
+
+cudnnSoftmaxMode_t mode%(id)d = CUDNN_SOFTMAX_MODE_CHANNEL;
+if (%(mode)d == 1)
+  mode%(id)d = CUDNN_SOFTMAX_MODE_INSTANCE;
+
+if (!CudaNdarray_is_c_contiguous(%(ins)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
+  %(fail)s
+}
+
+err%(name)s = cudnnSetTensor4dDescriptor(
+  softmax_input_%(id)d,
+  format%(id)d,
+  CUDNN_DATA_FLOAT,
+  CudaNdarray_HOST_DIMS(%(ins)s)[0],
+  CudaNdarray_HOST_DIMS(%(ins)s)[1],
+  CudaNdarray_HOST_DIMS(%(ins)s)[2],
+  CudaNdarray_HOST_DIMS(%(ins)s)[3]
+);
+if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
+
+if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
+{
+  %(fail)s
+}
+
+err%(name)s = cudnnSetTensor4dDescriptor(
+  softmax_output_%(id)d,
+  format%(id)d,
+  CUDNN_DATA_FLOAT,
+  CudaNdarray_HOST_DIMS(%(outs)s)[0],
+  CudaNdarray_HOST_DIMS(%(outs)s)[1],
+  CudaNdarray_HOST_DIMS(%(outs)s)[2],
+  CudaNdarray_HOST_DIMS(%(outs)s)[3]
+);
+if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "could not set out descriptor: %%s",
+               cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
+
+err%(name)s = cudnnSoftmaxForward(
+  _handle,
+  algo%(id)d,
+  mode%(id)d,
+  softmax_input_%(id)d,
+  CudaNdarray_DEV_DATA(%(ins)s),
+  softmax_output_%(id)d,
+  CudaNdarray_DEV_DATA(%(outs)s)
+);
+""" % dict(ins=ins, outs=outs, tensor_format=tensor_format, mode=mode,
+           algo=algo, fail=sub['fail'], id=sub['struct_id'], name=name)
+
+    def c_code_cache_version(self):
+        return (0, 3)
+
+
+@local_optimizer([GpuSoftmax])
+def local_softmax_dnn(node):
+    if isinstance(node.op, GpuSoftmax):
+        ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
+        out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
+        out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
+        return [out]
+
+gpu_optimizer.register("softmax_cudnn", local_softmax_dnn, 'cudnn')
