@@ -83,7 +83,9 @@ class GpuDnnConvDesc(GpuOp):
         img_shape, kern_shape = inputs
         desc, = outputs
 
-        if self.border_mode == "valid":
+        if self.border_mode == "half":
+            bmode = 2
+        elif self.border_mode == "valid":
             bmode = 1
         else:
             assert self.border_mode == "full"
@@ -106,7 +108,10 @@ class GpuDnnConvDesc(GpuOp):
     %(fail)s
   }
 
-  if (%(bmode)d == 1) {
+  if (%(bmode)d == 2) {
+    pad_h%(name)s = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2) / 2;
+    pad_w%(name)s = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3) / 2;
+  } else if (%(bmode)d == 1) {
     pad_h%(name)s = 0;
     pad_w%(name)s = 0;
   } else if (%(bmode)d == 0) {
@@ -142,7 +147,7 @@ class GpuDnnConvDesc(GpuOp):
            subsx=self.subsample[0], subsy=self.subsample[1])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class GpuDnnConvBase(DnnBase):
