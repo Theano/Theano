@@ -295,8 +295,8 @@ class test_SoftMax(unittest.TestCase):
             check_types
         )
 
-        # cuDNN cannot handle these test cases but the Theano softmax can so we
-        # test them only for the Theano softmax.
+        # cuDNN R1 cannot handle these test cases but the Theano softmax can so
+        # we test them only for the Theano softmax.
         self._cmp(2 << 15, 5, f, f_gpu)
         self._cmp(0, 10, f, f_gpu)
 

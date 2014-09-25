@@ -540,7 +540,7 @@ err%(name)s = cudnnSoftmaxForward(
            algo=algo, fail=sub['fail'], id=sub['struct_id'], name=name)
 
     def c_code_cache_version(self):
-        return (0, 1)
+        return (0, 2)
 
 
 @local_optimizer([GpuSoftmax])
