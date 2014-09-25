@@ -530,6 +530,19 @@ class CDataType(Type):
 """
         return s % dict(name=name, ctype=self.ctype, fail=sub['fail'])
 
+    def c_support_code(self):
+        if PY3:
+            return """
+void _py3_destructor(PyObject *o) {
+    void *d = PyCapsule_GetContext(o);
+    void *p = PyCapsule_GetPointer(o, NULL);
+    void (*f)(void *) = (void (*)(void *))d;
+    if (f != NULL) f(p);
+}
+"""
+        else:
+            return ""
+
     def c_sync(self, name, sub):
         freefunc = self.freefunc
         if freefunc is None:
@@ -543,7 +556,16 @@ if (%(name)s == NULL) {
         if PY3:
             s += """{
   py_%(name)s = PyCapsule_New((void *)%(name)s, NULL,
-                              (void (*)(void *))%(freefunc)s);
+                              _py3_destructor);
+  if (py_%(name)s != NULL) {
+    if (PyCaspule_SetContext(py_%(name)s, (void *)%(freefunc)s) != 0) {
+      /* This won't trigger a call to freefunc since it could not be
+         set. The error case below will do it. */
+      Py_DECREF(py_%(name)s);
+      /* Signal the error */
+      py_%(name)s = NULL;
+    }
+  }
 }"""
         else:
             s += """{
@@ -562,7 +584,7 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
         return ""
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)
