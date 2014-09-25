@@ -1,0 +1,96 @@
+\documentclass[utf8x,xcolor=pdftex,dvipsnames,table]{beamer}
+\usetheme{Malmoe}  % Now it's a beamer presentation with the lisa theme!
+\setbeamertemplate{footline}[page number]
+\usecolortheme{beaver}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage[utf8x]{inputenc}
+%\logo{\includegraphics[width=.8in]{UdeM_NoirBleu_logo_Marie_crop}}
+\usepackage{listings}
+
+\newcommand{\superscript}[1]{\ensuremath{^{\textrm{#1}}}}
+
+\mode<presentation>
+
+\title{Theano, Pylearn2, libgpuarray: Sharing and Future}
+
+\author{%
+\footnotesize
+Frédéric Bastien, Bart van Merriënboer \newline
+Département d'Informatique et de Recherche Opérationnelle \newline
+Université de Montréal \newline
+Montréal, Canada \newline
+\texttt{\{bastienf, vanmerb\}@iro.umontreal.ca} \newline \newline
+}
+
+\date{OML Workshop 2014}
+
+\setbeamertemplate{navigation symbols}{}
+
+\begin{document}
+
+\begin{frame}[plain]
+ \titlepage
+ \vspace{-5em}
+ \includegraphics[width=1in]{../hpcs2011_tutorial/pics/lisabook_logo_text_3.png}
+ \hfill
+ \includegraphics[width=.8in]{../hpcs2011_tutorial/pics/UdeM_NoirBleu_logo_Marie_crop}
+\end{frame}
+
+\section{Future}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{Theano}\setcounter{page}{1}
+\begin{itemize}
+\item Easier C code development and better documentation of that
+\item Faster compilation
+\item Multi-GPU
+\item Better looping (update to scan)
+\item Allow checkpoint with GPU to reload without GPU
+\item Less memory allocation(lower Theano overhead)
+\item Faster convolution
+\end{itemize}
+\end{frame}
+
+\begin{frame}{libgpuarray}
+\begin{itemize}
+\item Find other projects to use it?
+\item More functionality as NumPy
+\item Move some of the functionality from Python/Theano to the C level
+\item Optimize the kernel selection and parametrization based on the GPU
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Pylearn2}
+\begin{itemize}
+\item RNN
+\item Better hyperparameter search support, using e.g. Hyperopt
+\item Documentation
+\item Checkpoint
+\item Better support for sparse dataset
+\item Machine translation examples
+\item Gated activations for conditional computation
+\item Variational Auto-Encoders
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\end{frame}
+
+\begin{frame}{Simplifying code sharing between}
+\begin{enumerate}
+  \item<1-> License: \begin{bf}Suggest BSD\end{bf} as it is used by many software in our field.
+    \begin{itemize}
+    \item Common license help share code.
+    \item When reusing code, don't forget to keep the license and the copyright notice
+    \end{itemize}
+  \item<2-> Common base object! \begin{bf}libgpuarray\end{bf}
+  \item<3-> Otherwise: put important implementation(e.g. convolution) in \begin{bf}separate file\end{bf} and \begin{bf}use raw ptr/shape/strides\end{bf} as inputs. Document that interface.
+  \item<4-> Acknowledge reuse \begin{bf}in section on web site\end{bf} AND \begin{bf}in papers\end{bf} about the software we reuse! (and use too)
+\end{enumerate}
+\end{frame}
+
+
+\end{document}

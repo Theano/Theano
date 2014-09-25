@@ -60,6 +60,10 @@ def test_careduce():
     1110,1101,1011
 
     TODO: test with broadcast
+
+    We test with the pre_scalar_op sqr in all cases. This cover all
+    code, with and without it the pre_scalar_op.
+
     """
     for scalar_op, careduce_op in [
             (theano.scalar.mul, tensor.elemwise.CAReduceDtype),
@@ -132,7 +136,7 @@ def test_careduce():
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
-            b = op(a)
+            b = op(a*a)
             val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
     #        val = numpy.ones(shape)
     #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
@@ -142,6 +146,10 @@ def test_careduce():
             assert tcn.GpuCAReduce in [x.op.__class__
                                        for x in f.maker.fgraph.toposort()], (
                                            scalar_op, shape, pattern)
+            if tcn.GpuElemwise in [x.op.__class__
+                                   for x in f.maker.fgraph.toposort()]:
+                assert tcn.GpuReshape in [x.op.__class__
+                                          for x in f.maker.fgraph.toposort()]
             assert op.__class__ in [x.op.__class__
                                     for x in f2.maker.fgraph.toposort()], (
                                            scalar_op, shape, pattern)
@@ -210,7 +218,7 @@ def test_careduce():
             dim_pattern[0] = 1
             dim_pattern[1] = 0
             a = a.dimshuffle(dim_pattern)
-            b = op(a)
+            b = op(a*a)
             val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
     #        val = numpy.ones(shape)
     #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
@@ -220,6 +228,8 @@ def test_careduce():
             assert tcn.GpuCAReduce in [x.op.__class__
                                        for x in f.maker.fgraph.toposort()], (
                                            scalar_op, shape, pattern)
+            assert tcn.GpuElemwise not in [x.op.__class__
+                                           for x in f.maker.fgraph.toposort()]
             assert op.__class__ in [x.op.__class__
                                     for x in f2.maker.fgraph.toposort()], (
                                            scalar_op, shape, pattern)
@@ -242,8 +252,8 @@ def test_careduce():
             shape = numpy.asarray(shape) * 2
             a = tensor.TensorType('float32', (False,) * len(shape))()
             a2 = tcn.CudaNdarrayType((False,) * len(shape))()
-            b = op(a)
-            b2 = op(a2)
+            b = op(a*a)
+            b2 = op(a2*a2)
             val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
     #        val = numpy.ones(shape)
     #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
@@ -266,6 +276,8 @@ def test_careduce():
             assert tcn.GpuCAReduce in [x.op.__class__
                                        for x in f2.maker.fgraph.toposort()], (
                                            scalar_op, shape, pattern)
+            assert tcn.GpuElemwise not in [x.op.__class__
+                                           for x in f.maker.fgraph.toposort()]
             assert op.__class__ in [x.op.__class__
                                     for x in f.maker.fgraph.toposort()], (
                                            scalar_op, shape, pattern)
@@ -955,6 +967,8 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
         # version when we should. Users should not use it.
         for shape, idx, fast in [((70000,), range(70000), True),
                                  ((70000, 5), range(70000), True),
+                                 ((70000, 5),  numpy.zeros((0,), 'int64'),
+                                  True),
                                  ((70000, 2, 3), range(70000), True),
                                  ((1025, 1025), [5, 10], True),
                                  ((3, 1025, 1026), [1, 2], True),
@@ -974,6 +988,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
                                  # optimized for that case.
                                  ((4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
                                                  -1, -2, -3, -4], False),
+                                 ((1, 10), [0, 0], True),
                              ]:
             # If there is not enough memory on the GPU, skip the test
             size_needed = numpy.prod(shape) * (4 + 1)
@@ -1256,6 +1271,15 @@ def speed_adv_sub1():
             f(idx)
         print "ProfileMode with batch size", batch_size
         mode_with_gpu.print_summary()
+
+
+def speed_reduce10():
+    data = numpy.random.rand(1000, 1000).astype("float32")
+    m = theano.tensor.fmatrix()
+    f = theano.function([m], [m.sum(axis=0), m.T.sum(axis=0)],
+                        mode=mode_with_gpu)
+    f(data)
+
 
 if __name__ == '__main__':
     test_many_arg_elemwise()

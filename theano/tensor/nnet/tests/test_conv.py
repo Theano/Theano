@@ -12,9 +12,11 @@ from theano.tensor.basic import _allclose, NotScalarConstantError
 
 
 class TestConv2D(utt.InferShapeTester):
+    mode = None
+    dtype = 'float64'
 
     def setUp(self):
-        super (TestConv2D, self).setUp()
+        super(TestConv2D, self).setUp()
         self.input = T.dtensor4('input')
         self.input.name = 'default_V'
         self.filters = T.dtensor4('filters')
@@ -67,11 +69,11 @@ class TestConv2D(utt.InferShapeTester):
 
         output = sym_conv2d(input, filters)
         output.name = 'conv2d(%s,%s)' % (input.name, filters.name)
-        theano_conv = theano.function([input, filters], output)
+        theano_conv = theano.function([input, filters], output, mode=self.mode)
 
         # initialize input and compute result
-        image_data = numpy.random.random(N_image_shape)
-        filter_data = numpy.random.random(N_filter_shape)
+        image_data = numpy.random.random(N_image_shape).astype(self.dtype)
+        filter_data = numpy.random.random(N_filter_shape).astype(self.dtype)
         try:
             theano_output = theano_conv(image_data, filter_data)
         except ValueError:
@@ -355,6 +357,12 @@ class TestConv2D(utt.InferShapeTester):
                       N_image_shape=(3, 2, 8, 8),
                       N_filter_shape=(4, 2, 5, 5))
         self.validate((None, 2, None, None), (None, 2, 5, 5),
+                      N_image_shape=(3, 2, 8, 8),
+                      N_filter_shape=(4, 2, 5, 5))
+        self.validate((3, 2, 8, 8), (4, 2, None, 5),
+                      N_image_shape=(3, 2, 8, 8),
+                      N_filter_shape=(4, 2, 5, 5))
+        self.validate((3, 2, 8, 8), (4, 2, 5, None),
                       N_image_shape=(3, 2, 8, 8),
                       N_filter_shape=(4, 2, 5, 5))
 

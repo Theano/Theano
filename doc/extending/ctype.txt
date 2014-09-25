@@ -50,7 +50,7 @@ the most important ones:
 
 .. class:: CLinkerType
 
-    .. method:: c_declare(name, sub)
+    .. method:: c_declare(name, sub, check_input=True)
 
         This must return C code which declares variables. These variables
         will be available to operations defined in C. You may also write
@@ -61,7 +61,7 @@ the most important ones:
         This must return C code which initializes the variables declared in
         ``c_declare``. Either this or ``c_extract`` will be called.
 
-    .. method:: c_extract(name, sub)
+    .. method:: c_extract(name, sub, check_input=True)
 
         This must return C code which takes a reference to a Python object
         and initializes the variables declared in ``c_declare`` to match the
@@ -129,6 +129,11 @@ associated to the Variable is ``py_<name>``.
 ``sub``, on the other hand, is a dictionary containing bits of C code
 suitable for use in certain situations. For instance, ``sub['fail']``
 contains code that should be inserted wherever an error is identified.
+
+``c_declare`` and ``c_extract`` also accept a third ``check_input`` 
+optional argument. If you want your type to validate its inputs, it must
+only do it when ``check_input`` is True.
+
 The example code below should help you understand how everything plays
 out:
 
@@ -558,15 +563,18 @@ default, it will recompile the c code for each process.
 Shape and Shape_i
 =================
 
-We have 2 generic Ops Shape and Shape_i that return the shape of any
-Theano Variable that have a shape attribute and Shape_i return only of
-the element of the shape.
+We have 2 generic Ops, Shape and Shape_i, that return the shape of any
+Theano Variable that has a shape attribute (Shape_i returns only one of
+the elements of the shape).
 
 
 .. code-block:: python
 
    theano.compile.ops.register_shape_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
-   theano.compile.ops.register_shape_i_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
+   theano.compile.ops.register_shape_i_c_code(YOUR_TYPE_CLASS, THE_C_CODE, CHECK_INPUT, version=())
 
-The c code work as the ViewOp. Shape_i have the additional i parameter
-that you can use with %(i)s.
+The C code works as the ViewOp. Shape_i has the additional ``i`` parameter
+that you can use with ``%(i)s``.
+
+In your CHECK_INPUT, you must check that the input have enough ndim to
+be able to get the ith shapes.

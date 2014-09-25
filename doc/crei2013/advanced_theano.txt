@@ -15,7 +15,7 @@ Profiling
 
 Theano output:
 
-.. literalinclude:: logreg_profile.txt
+.. literalinclude:: logreg_profile.prof
 
 Compilation pipeline
 --------------------

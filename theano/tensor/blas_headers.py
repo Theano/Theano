@@ -6,6 +6,7 @@ ourselves into the C code
 import logging
 import textwrap
 import sys
+import os
 
 from theano import config
 from theano.gof.cmodule import GCC_compiler
@@ -49,8 +50,17 @@ def detect_macos_sdot_bug():
         # Library directories should also be added as rpath,
         # so that they can be loaded even if the environment
         # variable LD_LIBRARY_PATH does not contain them
+        lib_path = os.environ.get('DYLD_FALLBACK_LIBRARY_PATH', '').split(':')
         if f.startswith('-L'):
             flags.append('-Wl,-rpath,' + f[2:])
+            # also append those paths to DYLD_FALLBACK_LIBRARY_PATH to
+            # support libraries that have the wrong install_name
+            # (such as MKL on canopy installs)
+            if (f[2:] not in lib_path):
+                lib_path.append(f[2:])
+        # this goes into the python process environment that is
+        # inherited by subprocesses/used by dyld when loading new objects
+        os.environ['DYLD_FALLBACK_LIBRARY_PATH'] = ':'.join(lib_path)
 
     test_code = textwrap.dedent("""\
         extern "C" float sdot_(int*, float*, int*, float*, int*);

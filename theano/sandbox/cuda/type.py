@@ -274,13 +274,13 @@ class CudaNdarrayType(Type):
         return str(self)
         #"CudaNdarrayType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """ CudaNdarray * %(name)s;""" % locals()
 
     def c_init(self, name, sub):
         return "%(name)s = NULL;" % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         sio = StringIO()
         fail = sub['fail']
         nd = self.ndim
@@ -293,61 +293,70 @@ class CudaNdarrayType(Type):
             //fprintf(stderr, "c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
             %(name)s = (CudaNdarray*)py_%(name)s;
             //std::cerr << "c_extract " << %(name)s << '\\n';
-            if (%(name)s->nd != %(nd)s)
-            {
-                PyErr_Format(PyExc_RuntimeError,
-                             "c_extract: Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s",
-                             %(name)s->nd);
-                %(name)s = NULL;
-                %(fail)s;
-            }
-            //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
         """ % locals()
-        for i, b in enumerate(self.broadcastable):
-            if b:
-                print >> sio, """
-            if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
+        if(check_input):
+            print >> sio, """
+                if (%(name)s->nd != %(nd)s)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "c_extract: Some CudaNdarray has rank %%i, it was supposed to have rank %(nd)s",
+                                 %(name)s->nd);
+                    %(name)s = NULL;
+                    %(fail)s;
+                }
+                //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
+            """ % locals()
+            for i, b in enumerate(self.broadcastable):
+                if b:
+                    print >> sio, """
+                if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "c_extract: Some CudaNdarray has dim %%i on broadcastable dimension %%i",
+                                 CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                    %(name)s = NULL;
+                    %(fail)s;
+                }
+                //std::cerr << "c_extract " << %(name)s << "dim check %(i)s passed\\n";
+                //std::cerr << "c_extract " << %(name)s << "checking bcast %(i)s <" << %(name)s->str<< ">\\n";
+                //std::cerr << "c_extract " << %(name)s->str[%(i)s] << "\\n";
+                if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
+                {
+                    //std::cerr << "c_extract bad stride detected...\\n";
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "c_extract: Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i",
+                                 CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                    %(name)s = NULL;
+                    %(fail)s;
+                }
+                //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
+                    """ % locals()
+            print >> sio, """
+                assert(%(name)s);
+                Py_INCREF(py_%(name)s);
+            }
+            else if (py_%(name)s == Py_None)
             {
-                PyErr_Format(PyExc_RuntimeError,
-                             "c_extract: Some CudaNdarray has dim %%i on broadcastable dimension %%i",
-                             CudaNdarray_HOST_DIMS(%(name)s)[%(i)s], %(i)s);
+                PyErr_SetString(PyExc_TypeError,
+                                "expected a CudaNdarray, not None");
                 %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << %(name)s << "dim check %(i)s passed\\n";
-            //std::cerr << "c_extract " << %(name)s << "checking bcast %(i)s <" << %(name)s->str<< ">\\n";
-            //std::cerr << "c_extract " << %(name)s->str[%(i)s] << "\\n";
-            if (CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s])
+            else
             {
-                //std::cerr << "c_extract bad stride detected...\\n";
-                PyErr_Format(PyExc_RuntimeError,
-                             "c_extract: Some CudaNdarray has a nonzero stride %%i on a broadcastable dimension %%i",
-                             CudaNdarray_HOST_STRIDES(%(name)s)[%(i)s], %(i)s);
+                //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
+                PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
                 %(name)s = NULL;
                 %(fail)s;
             }
-            //std::cerr << "c_extract " << %(name)s << "bcast check %(i)s passed\\n";
-                """ % locals()
-        print >> sio, """
-            assert(%(name)s);
-            Py_INCREF(py_%(name)s);
-        }
-        else if (py_%(name)s == Py_None)
-        {
-            PyErr_SetString(PyExc_TypeError,
-                            "expected a CudaNdarray, not None");
-            %(name)s = NULL;
-            %(fail)s;
-        }
-        else
-        {
-            //fprintf(stderr, "FAILING c_extract CNDA object w refcnt %%p %%i\\n", py_%(name)s, (py_%(name)s->ob_refcnt));
-            PyErr_SetString(PyExc_TypeError, "Argument not a CudaNdarray");
-            %(name)s = NULL;
-            %(fail)s;
-        }
-        //std::cerr << "c_extract done " << %(name)s << '\\n';
-        """ % locals()
+            //std::cerr << "c_extract done " << %(name)s << '\\n';
+            """ % locals()
+        else:
+            print >> sio, """
+                assert(%(name)s);
+                Py_INCREF(py_%(name)s);
+            }
+            """ % locals()
         #print sio.getvalue()
         return sio.getvalue()
 
@@ -399,9 +408,6 @@ class CudaNdarrayType(Type):
 
     def c_lib_dirs(self):
         ret = [os.path.dirname(cuda_ndarray.__file__)]
-        cuda_root = config.cuda.root
-        if cuda_root:
-            ret.append(os.path.join(cuda_root, 'lib'))
         return ret
 
     def c_libraries(self):
@@ -416,7 +422,7 @@ class CudaNdarrayType(Type):
         #return ()
         #no need to put nvcc.fastmath in the tuple as the
         #c_compile_args is put in the key.
-        return (2,)  # with assertion about refcounts
+        return (3,)  # cublas v2 changes
 
     def c_compiler(self):
         return NVCC_compiler
@@ -445,12 +451,22 @@ theano.compile.register_view_op_c_code(
         """,
         version=1)
 
-theano.compile.register_shape_i_c_code(CudaNdarrayType, """
+theano.compile.register_shape_i_c_code(
+    CudaNdarrayType,
+    """
     if(!%(oname)s)
         %(oname)s=(PyArrayObject*)PyArray_ZEROS(0, NULL, NPY_INT64, 0);
     ((npy_int64*)PyArray_DATA(%(oname)s))[0] =
                               CudaNdarray_HOST_DIMS(%(iname)s)[%(i)s];
-""", version=(0,))
+    """,
+    """
+    if (%(i)s>=CudaNdarray_NDIM(%(iname)s)){
+        PyErr_SetString(PyExc_TypeError,
+            "Number of dimensions lower than expected");
+        %(fail)s
+    }
+    """,
+    version=(1,))
 
 # Register CudaNdarrayType to the DeepCopyOp list of types with c code.
 theano.compile.register_deep_copy_op_c_code(

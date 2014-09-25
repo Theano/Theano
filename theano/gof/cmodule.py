@@ -62,6 +62,11 @@ AddConfigVar('cmodule.compilation_warning',
              BoolParam(False))
 
 
+AddConfigVar('cmodule.preload_cache',
+             "If set to True, will preload the C module cache at import time",
+             BoolParam(False, allow_override=False),
+             in_c_key=False)
+
 _logger = logging.getLogger("theano.gof.cmodule")
 _logger.setLevel(logging.WARNING)
 
@@ -471,8 +476,8 @@ class KeyData(object):
         """
         # Note that writing in binary mode is important under Windows.
         try:
-            cPickle.dump(self, open(self.key_pkl, 'wb'),
-                         protocol=cPickle.HIGHEST_PROTOCOL)
+            with open(self.key_pkl, 'wb') as f:
+                cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
         except cPickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
                             self.keys)
@@ -676,7 +681,8 @@ class ModuleCache(object):
                                          "unpickle cache file %s", key_pkl)
 
                         try:
-                            key_data = cPickle.load(open(key_pkl, 'rb'))
+                            with open(key_pkl, 'rb') as f:
+                                key_data = cPickle.load(f)
                         except EOFError:
                             # Happened once... not sure why (would be worth
                             # investigating if it ever happens again).
@@ -1121,7 +1127,9 @@ class ModuleCache(object):
         # Verify that when we reload the KeyData from the pickled file, the
         # same key can be found in it, and is not equal to more than one
         # other key.
-        key_data = cPickle.load(open(key_pkl, 'rb'))
+        with open(key_pkl, 'rb') as f:
+            key_data = cPickle.load(f)
+
         found = sum(key == other_key for other_key in key_data.keys)
         msg = ''
         if found == 0:
@@ -1514,8 +1522,6 @@ def gcc_llvm():
     It don't support all g++ parameters even if it support many of them.
     """
     if gcc_llvm.is_llvm is None:
-        pass
-        p = None
         try:
             p_out = output_subprocess_Popen(['g++', '--version'])
             output = p_out[0] + p_out[1]
@@ -1527,9 +1533,9 @@ def gcc_llvm():
             # compile when g++ is not available. If this happen, it
             # will crash later so supposing it is not llvm is "safe".
             output = b('')
-        del p
         gcc_llvm.is_llvm = b("llvm") in output
     return gcc_llvm.is_llvm
+
 gcc_llvm.is_llvm = None
 
 
@@ -1760,7 +1766,7 @@ class GCC_compiler(object):
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
         # Pi.
-        if any([not 'arm' in flag for flag in cxxflags]):
+        if not any(['arm' in flag for flag in cxxflags]):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
@@ -1808,7 +1814,7 @@ class GCC_compiler(object):
                 # Python3 compatibility: try to cast Py3 strings as Py2 strings
                 try:
                     src_code = b(src_code)
-                except:
+                except Exception:
                     pass
                 os.write(fd, src_code)
                 os.close(fd)

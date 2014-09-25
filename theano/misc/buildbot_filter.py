@@ -12,7 +12,8 @@ def filter_output(fd_in):
             elif toks[0].startswith("ImportError"):
                 s += line
             elif toks[0] in ["KnownFailureTest:", "Exception:", "Failure:",
-                           "AssertionError", "AssertionError:"]:
+                             "AssertionError", "AssertionError:",
+                             "GradientError:"]:
                 s += line
             elif toks[0] == "Executing" and toks[1] in ["tests", 'nosetests']:
                 s += line

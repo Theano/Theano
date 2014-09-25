@@ -2,6 +2,8 @@
 
 __docformat__ = "restructuredtext en"
 
+from theano.compat import PY3
+
 from theano.gof import utils
 from theano.gof.utils import MethodNotDefined, object2
 from theano.gof import graph
@@ -44,7 +46,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_literal", type(self), self.__class__.__name__)
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         """Required: Return c code to declare variables that will be
         instantiated by `c_extract`.
 
@@ -96,7 +98,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_init", type(self), self.__class__.__name__)
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         """Required: Return c code to extract a PyObject * instance.
 
         The code returned from this function must be templated using
@@ -137,7 +139,7 @@ class CLinkerType(CLinkerObject):
         """
         raise MethodNotDefined("c_extract", type(self), self.__class__.__name__)
 
-    def c_extract_out(self, name, sub):
+    def c_extract_out(self, name, sub, check_input=True):
         """Optional: C code to extract a PyObject * instance.
 
         Unlike c_extract, c_extract_out has to accept Py_None,
@@ -155,10 +157,10 @@ class CLinkerType(CLinkerObject):
         """ % dict(
                 name=name,
                 c_init_code=self.c_init(name, sub),
-                c_extract_code=self.c_extract(name, sub))
+                c_extract_code=self.c_extract(name, sub, check_input))
 
     def c_cleanup(self, name, sub):
-        """Optional: Return c code to clean up after `c_extract`.
+        """Return c code to clean up after `c_extract`.
 
         This returns C code that should deallocate whatever `c_extract`
         allocated or decrease the reference counts. Do not decrease
@@ -250,7 +252,7 @@ class PureType(object):
     # If filter_inplace is defined, it will be called instead of
     # filter() This is to allow reusing the old allocated memory. As
     # of this writing this is used only when we transfer new data to a
-    # shared variable on the gpu.  
+    # shared variable on the gpu.
 
     #def filter_inplace(value, storage, strict=False, allow_downcast=None)
 
@@ -401,10 +403,17 @@ class SingletonType(Type):
     It saves having to implement __eq__ and __hash__
     """
     __instance = None
+
     def __new__(cls):
-        if cls.__instance is None:
+        # If sub-subclass of SingletonType don't redeclare __instance
+        # when we look for it, we will find it in the subclass.  We
+        # don't want that, so we check the class.  When we add one, we
+        # add one only to the current class, so all is working
+        # correctly.
+        if cls.__instance is None or not isinstance(cls.__instance, cls):
             cls.__instance = Type.__new__(cls)
         return cls.__instance
+
     def __str__(self):
         return self.__class__.__name__
 
@@ -427,7 +436,7 @@ class Generic(SingletonType):
     def is_valid_value(self, a):
         return True
 
-    def c_declare(self, name, sub):
+    def c_declare(self, name, sub, check_input=True):
         return """
         PyObject* %(name)s;
         """ % locals()
@@ -437,7 +446,7 @@ class Generic(SingletonType):
         %(name)s = NULL;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         return """
         Py_INCREF(py_%(name)s);
         %(name)s = py_%(name)s;
@@ -463,3 +472,97 @@ class Generic(SingletonType):
         return self.__class__.__name__
 
 generic = Generic()
+
+
+class CDataType(Type):
+    """
+    Represents opaque C data to be passed around. The intent is to
+    ease passing arbitrary data between ops C code.
+    """
+    def __init__(self, ctype, freefunc=None):
+        """
+        Build a type made to represent a C pointer in theano.
+
+        :param ctype: The type of the pointer (complete with the `*`)
+
+        :param freefunc: a function to call to free the pointer.  This
+                         function must have a `void` return and take a
+                         single pointer argument.
+        """
+        assert isinstance(ctype, basestring)
+        self.ctype = ctype
+        if freefunc is not None:
+            assert isinstance(freefunc, basestring)
+        self.freefunc = freefunc
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.ctype == other.ctype,
+                self.freefunc == other.freefunc)
+
+    def __hash__(self):
+        return hash((type(self), self.ctype, self.freefunc))
+
+    def filter(self, data, strict=False, allow_downcast=None):
+        if data is not None:
+            raise TypeError("only None is valid")
+
+    def is_valid_value(self, a):
+        return a is None
+
+    def c_declare(self, name, sub, check_input=True):
+        return """
+        %(ctype)s %(name)s;
+        """ % dict(ctype=self.ctype, name=name)
+
+    def c_init(self, name, sub):
+        return "%(name)s = NULL;" % dict(name=name)
+
+    def c_extract(self, name, sub, check_input=True):
+        if PY3:
+            s = """
+  %(name)s = (%(ctype)s)PyCapsule_GetPointer(py_%(name)s, NULL);
+  if (%(name)s == NULL) %(fail)s
+"""
+        else:
+            s = """
+  %(name)s = (%(ctype)s)PyCObject_AsVoidPtr(py_%(name)s);
+"""
+        return s % dict(name=name, ctype=self.ctype, fail=sub['fail'])
+
+    def c_sync(self, name, sub):
+        freefunc = self.freefunc
+        if freefunc is None:
+            freefunc = "NULL"
+        s = """
+Py_XDECREF(py_%(name)s);
+if (%(name)s == NULL) {
+  py_%(name)s = Py_None;
+  Py_INCREF(py_%(name)s);
+} else """
+        if PY3:
+            s += """{
+  py_%(name)s = PyCapsule_New((void *)%(name)s, NULL,
+                              (void (*)(void *))%(freefunc)s);
+}"""
+        else:
+            s += """{
+  py_%(name)s = PyCObject_FromVoidPtr((void *)%(name)s,
+                                      (void (*)(void *))%(freefunc)s);
+}"""
+        if self.freefunc is not None:
+            s += """
+if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
+"""
+        return s % dict(name=name, freefunc=freefunc)
+
+    def c_cleanup(self, name, sub):
+        # No need to do anything here since the CObject/Capsule will
+        # free the data for us when released.
+        return ""
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def __str__(self):
+        return "%s{%s}" % (self.__class__.__name__, self.ctype)

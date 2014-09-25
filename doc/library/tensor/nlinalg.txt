@@ -1,0 +1,18 @@
+..  ../../../../theano/sandbox/nlinalg.py
+
+.. _libdoc_linalg:
+
+===================================================================
+:mod:`tensor.nlinalg` --  Linear Algebra Ops Using Numpy
+===================================================================
+
+.. module:: tensor.nlinalg
+   :platform: Unix, Windows
+   :synopsis: Linear Algebra Ops Using Numpy
+.. moduleauthor:: LISA
+
+API
+===
+
+.. automodule:: theano.tensor.nlinalg
+    :members:

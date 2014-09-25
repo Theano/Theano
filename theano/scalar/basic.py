@@ -71,9 +71,9 @@ def upcast(dtype, *dtypes):
 
 def get_scalar_type(dtype):
     """
-    Return an Scalar(dtype) object.
+    Return a Scalar(dtype) object.
 
-    This cache objects to save allocation and run time.
+    This caches objects to save allocation and run time.
     """
     if dtype not in get_scalar_type.cache:
         get_scalar_type.cache[dtype] = Scalar(dtype=dtype)
@@ -144,6 +144,13 @@ class Scalar(Type):
             dtype = config.floatX
         self.dtype = dtype
         self.dtype_specs()  # error checking
+
+    @staticmethod
+    def may_share_memory(a, b):
+        # This class represent basic c type, represented in python
+        # with numpy.scalar. They are read only. So from python, they
+        # can never share memory.
+        return False
 
     def filter(self, data, strict=False, allow_downcast=None):
         py_type = self.dtype_specs()[0]
@@ -254,11 +261,16 @@ class Scalar(Type):
             raise NotImplementedError("No literal for complex values.")
         return str(data)
 
-    def c_declare(self, name, sub):
-        return """
+    def c_declare(self, name, sub, check_input=True):
+        if(check_input):
+            pre = """
+                typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
+                typedef %(dtype)s dtype_%(name)s;
+            """ % dict(name=name, dtype=self.dtype_specs()[1])
+        else:
+            pre = ""
+        return pre + """
         %(dtype)s %(name)s;
-        typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
-        typedef %(dtype)s dtype_%(name)s;
         """ % dict(name=name, dtype=self.dtype_specs()[1])
 
     def c_init(self, name, sub):
@@ -266,20 +278,25 @@ class Scalar(Type):
         %(name)s = 0;
         """ % locals()
 
-    def c_extract(self, name, sub):
+    def c_extract(self, name, sub, check_input=True):
         specs = self.dtype_specs()
-        return """
-        if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
-        {
-            PyErr_Format(PyExc_ValueError,
-                "Scalar check failed (%(dtype)s)");
-            %(fail)s
-        }
+        if(check_input):
+            pre = """
+            if (!PyObject_TypeCheck(py_%(name)s, &%(pyarr_type)s))
+            {
+                PyErr_Format(PyExc_ValueError,
+                    "Scalar check failed (%(dtype)s)");
+                %(fail)s
+            }
+            """ % dict(sub,
+                       name=name,
+                       dtype=specs[1],
+                       pyarr_type='Py%sArrType_Type' % specs[2])
+        else:
+            pre = ""
+        return pre + """
         PyArray_ScalarAsCtype(py_%(name)s, &%(name)s);
-        """ % dict(sub,
-                   name=name,
-                   dtype=specs[1],
-                   pyarr_type='Py%sArrType_Type' % specs[2])
+        """ % dict(sub, name=name)
 
     def c_sync(self, name, sub):
         specs = self.dtype_specs()
@@ -452,7 +469,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (12, numpy.__version__)
+        return (13, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize
@@ -1712,6 +1729,7 @@ class Pow(BinaryScalarOp):
         first_part = gz * y * x ** (y - 1)
 
         second_part = gz * log(x) * x ** y
+        second_part = switch(eq(x, 0), 0, second_part)
 
         return (first_part, second_part)
 
@@ -2335,7 +2353,10 @@ class Expm1(UnaryScalarOp):
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
-        return "%(z)s = exp(%(x)s) - 1;" % locals()
+        return "%(z)s = expm1(%(x)s);" % locals()
+
+    def c_code_cache_version(self):
+        return (5,)
 expm1 = Expm1(upgrade_to_float, name='expm1')
 
 

@@ -184,6 +184,15 @@ import theano and print the config variable, as in:
     and similar functions.  It also sets the default theano bit width for
     arguments passed as Python floating-point numbers.
 
+.. attribute:: warn_float64
+
+    String value: either 'ignore', 'warn', 'raise' or 'pdb'
+
+    Default: 'ignore'
+
+    When creating a TensorVariable with dtype float64, what should be done?
+    This is useful to help find upcast to float64 in user code.
+
 .. attribute:: allow_gc
 
     Bool value: either ``True`` or ``False``
@@ -216,7 +225,7 @@ import theano and print the config variable, as in:
    Positive int value, default: 200000.
 
    This specifies the vectors minimum size for which elemwise ops
-   use openmp, if openmp is enable.
+   use openmp, if openmp is enabled.
 
 .. attribute:: cast_policy
 
@@ -319,6 +328,15 @@ import theano and print the config variable, as in:
 
     For the memory profile, do not print Apply nodes if the size
     of their outputs (in bytes) is lower than this.
+
+.. attribute:: profiling.min_peak_memory
+
+    Bool value: either True or False
+
+    Default False
+
+    Do the memory profile print the min peak memory usage?
+    It only works when profile=True, profile_memory=True
 
 .. attribute:: config.lib.amdlibm
 
@@ -699,3 +717,9 @@ import theano and print the config variable, as in:
     Bool value, default: False
 
     If True, will print compilation warnings.
+
+.. attribute:: cmodule.preload_cache'
+
+    Bool value, default: False
+
+    If set to True, will preload the C module cache at import time

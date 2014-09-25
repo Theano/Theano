@@ -74,11 +74,11 @@ VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
 
 def find_packages(where='.', exclude=()):
     out = []
-    stack=[(convert_path(where), '')]
+    stack = [(convert_path(where), '')]
     while stack:
         where, prefix = stack.pop(0)
         for name in os.listdir(where):
-            fn = os.path.join(where,name)
+            fn = os.path.join(where, name)
             if ('.' not in name and os.path.isdir(fn) and
                 os.path.isfile(os.path.join(fn, '__init__.py'))
             ):
@@ -123,7 +123,7 @@ def git_version():
     return git_revision
 
 # Python 2.4 compatibility: Python versions 2.6 and later support new
-# exception syntax, but for now we have to resort to exec. 
+# exception syntax, but for now we have to resort to exec.
 if sys.hexversion >= 0x2070000:
     exec("""\
 def write_text(filename, text):
@@ -145,6 +145,7 @@ def write_text(filename, text):
     finally:
         a.close()
 """)
+
 
 def write_version_py(filename=os.path.join('theano', 'generated_version.py')):
     cnt = """
@@ -175,6 +176,7 @@ if not release:
                   'isrelease': str(ISRELEASED)}
     write_text(filename, text)
 
+
 def do_setup():
     write_version_py()
     setup(name=NAME,
@@ -191,16 +193,16 @@ def do_setup():
           install_requires=['numpy>=1.5.0', 'scipy>=0.7.2'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
-                   'ChangeLog'],
+                   '*.h', 'ChangeLog'],
               'theano.misc': ['*.sh']
           },
           scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
           keywords=' '.join([
-            'theano', 'math', 'numerical', 'symbolic', 'blas',
-            'numpy', 'gpu', 'autodiff', 'differentiation'
+              'theano', 'math', 'numerical', 'symbolic', 'blas',
+              'numpy', 'gpu', 'autodiff', 'differentiation'
           ]),
-          cmdclass = {'build_py': build_py,
-                      'build_scripts': build_scripts}
+          cmdclass={'build_py': build_py,
+                    'build_scripts': build_scripts}
     )
 if __name__ == "__main__":
     do_setup()

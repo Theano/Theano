@@ -33,7 +33,6 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
-
 #is_nvcc_available called here to initialize global vars in
 #nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
@@ -156,7 +155,8 @@ if compile_cuda_ndarray and cuda_available:
                             'cuda_ndarray',
                             code,
                             location=cuda_ndarray_loc,
-                            include_dirs=[cuda_path], libs=[config.cublas.lib],
+                            include_dirs=[cuda_path],
+                            libs=[config.cublas.lib],
                             preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
             except Exception, e:
@@ -237,7 +237,7 @@ class GpuOp(theano.gof.Op):
                                              compute_map, no_recycling)
 
 theano.compile.debugmode.default_make_thunk.append(
-                                        get_unbound_function(GpuOp.make_thunk))
+    get_unbound_function(GpuOp.make_thunk))
 
 # We must do those import to be able to create the full doc when
 # nvcc is not available
@@ -263,8 +263,8 @@ if cuda_available:
 
     shared_constructor = float32_shared_constructor
 
-    import basic_ops
-    from basic_ops import (
+    from . import basic_ops
+    from .basic_ops import (
             GpuFromHost, HostFromGpu, GpuElemwise,
             GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
             GpuSubtensor, GpuIncSubtensor,
@@ -274,11 +274,11 @@ if cuda_available:
             ftensor3, ftensor4,
             scalar, vector, matrix, row, col,
             tensor3, tensor4)
-    from basic_ops import (host_from_gpu, gpu_from_host,
+    from .basic_ops import (host_from_gpu, gpu_from_host,
             as_cuda_array, as_cuda_ndarray_variable)
-    import opt
     import cuda_ndarray
-    from rng_curand import CURAND_RandomStreams
+    from . import opt, dnn
+    from .rng_curand import CURAND_RandomStreams
 
 
 def use(device,
@@ -366,6 +366,8 @@ def use(device,
                 # event if another device is selected later.
                 cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
                 use.device_number = active_device_number()
+                # This is needed to initialize the cublas handle.
+                gpu_init(use.device_number)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
@@ -413,6 +415,7 @@ def use(device,
 
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpu_opt',
+                       'fast_compile',
                        'fast_run',
                        'inplace')
         optdb.add_tags('gpu_after_fusion',

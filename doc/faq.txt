@@ -39,6 +39,30 @@ CPUs. In fact, Theano asks g++ what are the equivalent flags it uses, and re-use
 them directly.
 
 
+Faster Theano Function Compilation
+----------------------------------
+
+Theano function compilation can be time consuming. It can be sped up by setting
+the flag ``mode=FAST_COMPILE`` which instructs Theano to skip most
+optimizations and disables the generation of any c/cuda code. This is useful
+for quickly testing a simple idea.
+
+If c/cuda code is necessary, as when using a GPU, the flag
+``optimizer=fast_compile`` can be used instead. It instructs Theano to skip time
+consuming optimizations but still generate c/cuda code. To get the most out of
+this flag requires using a development version of Theano instead of the latest
+release (0.6).
+
+Similarly using the flag ``optimizer_excluding=inplace`` will speed up
+compilation by preventing optimizations that replace operations with a version
+that reuses memory where it will not negatively impact the integrity of the
+operation. Such optimizations can be time consuming. However using this flag will
+result in greater memory usage because space must be allocated for the results
+which would be unnecessary otherwise. In short, using this flag will speed up
+compilation but it will also use more memory because
+``optimizer_excluding=inplace`` excludes inplace optimizations resulting
+in a trade off between speed of compilation and memory usage.
+
 Faster Theano function
 ----------------------
 
@@ -62,11 +86,55 @@ can disable it by setting ``f.trust_input`` to True.
 Make sure the types of arguments you provide match those defined when
 the function was compiled.
 
+For example, replace the following
+
+.. code-block:: python
+
+    x = theano.tensor.scalar('x')
+    f = function([x], x + 1.)
+    f(10.)
+
+with
+
+.. code-block:: python
+
+    x = theano.tensor.scalar('x')
+    f = function([x], x + 1.)
+    f.trust_input = True
+    f(numpy.array([10.], dtype=theano.config.floatX))
+
 Also, for small Theano functions, you can remove more Python overhead by
 making a Theano function that does not take any input. You can use shared
 variables to achieve this. Then you can call it like this: ``f.fn()`` or
 ``f.fn(n_calls=N)`` to speed it up. In the last case, only the last
 function output (out of N calls) is returned.
+
+Out of memory... but not really
+-------------------------------
+
+Occasionally Theano may fail to allocate memory when there appears to be more
+than enough reporting:
+
+    Error allocating X bytes of device memory (out of memory). Driver report Y
+    bytes free and Z total.
+
+where X is far less than Y and Z (i.e. X << Y < Z).
+
+This scenario arises when an operation requires allocation of a large contiguous
+block of memory but no blocks of sufficient size are available.
+
+GPUs do not have virtual memory and as such all allocations must be assigned to
+a continuous memory region. CPUs do not have this limitation because or their
+support for virtual memory. Multiple allocations on a GPU can result in memory
+fragmentation which can makes it more difficult to find contiguous regions
+of memory of sufficient size during subsequent memory allocations.
+
+A known example is related to writing data to shared variables. When updating a
+shared variable Theano will allocate new space if the size of the data does not
+match the size of the space already assigned to the variable. This can lead to
+memory fragmentation which means that a continugous block of memory of
+sufficient capacity may not be available even if the free memory overall is
+large enough.
 
 Related Projects
 ----------------
@@ -88,3 +156,16 @@ Here is a list of some of the known limitations:
   interact with the rest of the graph).
 
 - Neither *goto* nor *recursion* is supported or planned within expression graphs.
+
+
+"float32 / int{32, 64} gives float64"
+-------------------------------------
+
+It should be noted that using float32 and int{32, 64} together
+inside a function would provide float64 as output.
+
+Since the GPU can't compute this kind of output, it would be
+preferable not to use those dtypes together.
+
+To help you find where float64 are created, see the
+:attr:`warn_float64` Theano flag.

@@ -721,9 +721,9 @@ class GemmRelated(Op):
         /*
         encode the stride structure of _x,_y,_zout into a single integer
         */
-        unit |= ((Sx[1] == type_size) ? 0x0 : (Sx[0] == type_size) ? 0x1 : 0x2) << 8;
-        unit |= ((Sy[1] == type_size) ? 0x0 : (Sy[0] == type_size) ? 0x1 : 0x2) << 4;
-        unit |= ((Sz[1] == type_size) ? 0x0 : (Sz[0] == type_size) ? 0x1 : 0x2) << 0;
+        unit |= ((Sx[1] == type_size || Nx[1]==1) ? 0x0 : (Sx[0] == type_size || Nx[0]==1) ? 0x1 : 0x2) << 8;
+        unit |= ((Sy[1] == type_size || Ny[1]==1) ? 0x0 : (Sy[0] == type_size || Ny[0]==1) ? 0x1 : 0x2) << 4;
+        unit |= ((Sz[1] == type_size || Nz[1]==1) ? 0x0 : (Sz[0] == type_size || Nz[0]==1) ? 0x1 : 0x2) << 0;
         """
 
     compute_strides = """
@@ -856,7 +856,7 @@ class GemmRelated(Op):
             self.end_switch_typenum), '')
 
     def build_gemm_version(self):
-        return (12, blas_header_version())
+        return (13, blas_header_version())
 
 
 class Gemm(GemmRelated):
@@ -1026,7 +1026,7 @@ class Gemm(GemmRelated):
             dims[0] = PyArray_DIMS(%(_z)s)[0];
             dims[1] = PyArray_DIMS(%(_z)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
-                                                          type_num_%(_z)s);
+                                                          PyArray_TYPE((PyArrayObject*) py_%(_z)s));
             //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError,
@@ -1581,10 +1581,11 @@ class GemmOptimizer(Optimizer):
         print >> stream, blanc, " time_toposort", prof[9]
         print >> stream, blanc, " validate_time", prof[10]
         print >> stream, blanc, " callback_time", prof[11]
-        print >> stream, blanc, " callbacks_time"
-        for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
-            if i[1] > 0:
-                print i
+        if prof[11] > 1:
+            print >> stream, blanc, " callbacks_time"
+            for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
+                if i[1] > 0:
+                    print i
 
 
 class Dot22(GemmRelated):
@@ -1627,7 +1628,7 @@ class Dot22(GemmRelated):
             dims[0] = PyArray_DIMS(%(_x)s)[0];
             dims[1] = PyArray_DIMS(%(_y)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
-                            type_num_%(_x)s);
+                            PyArray_TYPE((PyArrayObject*) py_%(_x)s));
             //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError,
@@ -1814,13 +1815,14 @@ def local_dot22_to_ger_or_gemv(node):
 blas_optdb = SequenceDB()
 
 # run after numerical stability optimizations (1.5)
-optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run')
+optdb.register('BlasOpt', blas_optdb, 1.7, 'fast_run', 'fast_compile')
 # run before specialize (2.0) because specialize is basically a
 # free-for-all that makes the graph crazy.
 
+#fast_compile is needed to have GpuDot22 created.
 blas_optdb.register('local_dot_to_dot22',
                     in2out(local_dot_to_dot22),
-                    0, 'fast_run')
+                    0, 'fast_run', 'fast_compile')
 blas_optdb.register('gemm_optimizer',
         GemmOptimizer(),
         10, 'fast_run')

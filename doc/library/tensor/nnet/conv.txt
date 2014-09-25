@@ -22,27 +22,113 @@
 .. moduleauthor:: LISA
 
 
-TODO: Give examples for how to use these things! They are pretty complicated.
+TODO: Give examples on how to use these things! They are pretty complicated.
 
-- Conv implemented
-    - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`.
+- Convolution operators implemented:
+    - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`. See note above.
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
-    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`.
+      This is the standard operator for convolutional neural networks working
+      with batches of multi-channel 2D images, available for CPU and GPU.
+      Most of the more efficient GPU implementations listed below can be used
+      as an automatic replacement for nnet.conv2d by enabling specific graph
+      optimizations.
+    - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>` This
+      is a GPU-only version of nnet.conv2d that uses an FFT transform
+      to perform the work. conv2d_fft should not be used directly as
+      it does not provide a gradient. Instead, use nnet.conv2d and
+      allow Theano's graph optimizer to replace it by the FFT version
+      by setting
+      'THEANO_FLAGS=optimizer_including=conv_fft_valid:conv_fft_full'
+      in your environement.  This is not enabled by default because it
+      has some restrictions on input and uses a lot more memory.  Also
+      note that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and
+      PyCUDA to run.  To deactivate the FFT optimization on a specific
+      nnet.conv2d while the optimization flags are active, you can set
+      its ``version`` parameter to ``'no_fft'``. To enable it for just
+      one Theano function:
+
+      .. code-block:: python
+
+          mode = theano.compile.get_default_mode()
+          mode = mode.including('conv_fft_valid', 'conv_fft_full')
+
+          f = theano.function(..., mode=mode)
+
+    - `cuda-convnet wrapper for 2d correlation <http://deeplearning.net/software/pylearn2/library/alex.html>`_
+
+      Wrapper for an open-source GPU-only implementation of conv2d by Alex
+      Krizhevsky, very fast, but with several restrictions on input and kernel
+      shapes, and with a different memory layout for the input.
+
+      This is in Pylearn2, where it is normally called from the `linear transform
+      <http://deeplearning.net/software/pylearn2/library/linear.html>`_
+      implementation, but it can also be used `directly from within Theano
+      <http://benanne.github.io/2014/04/03/faster-convolutions-in-theano.html>`_
+      as a manual replacement for nnet.conv2d.
+    - :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`
+      This is a GPU-only 2d correlation implementation taken from
+      `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu>`_
+      and also used by Torch.
+
+      For each element in a batch, it first creates a
+      `Toeplitz <http://en.wikipedia.org/wiki/Toeplitz_matrix>`_ matrix in a CUDA kernel.
+      Then, it performs a ``gemm`` call to multiply this Toeplitz matrix and the filters
+      (hence the name: MM is for matrix multiplication).
+      It needs extra memory for the Toeplitz matrix, which is a 2D matrix of shape
+      ``(no of channels * filter width * filter height, output width * output height)``.
+
+      As it provides a gradient, you can use it as a replacement for nnet.conv2d.
+      Alternatively, you can use nnet.conv2d and allow Theano's graph optimizer
+      to replace it by the GEMM version by setting
+      ``THEANO_FLAGS=optimizer_including=conv_gemm`` in your environment.
+      This is not enabled by default because it uses some extra memory, but the
+      overhead is small compared to conv2d_fft, there are no restrictions on
+      input or kernel shapes and it is sometimes still faster than cuda-convnet.
+      If using it, please see the warning about a bug in CUDA 5.0 to 6.0 below.
+      To enable it for just one Theano function:
+
+      .. code-block:: python
+
+          mode = theano.compile.get_default_mode()
+          mode = mode.including('conv_gemm')
+
+          f = theano.function(..., mode=mode)
+
+    - :func:`GpuDnnConv <theano.sandbox.cuda.dnn.GpuDnnConv>` GPU-only
+      convolution using NVIDIA's cuDNN library.  To enable it (and
+      other cudnn-acclerated ops), set
+      ``THEANO_FLAGS=optimizer_including=cudnn`` in your environment.
+      This requires that you have cuDNN installed and available.  It
+      also requires a GPU with compute capability 3.0 or more.
+
+    - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
+      3D Convolution applying multi-channel 3D filters to batches of
+      multi-channel 3D images.
+    - :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`
+      GPU-only version of conv3D using FFT transform. conv3d_fft should
+      not be called directly as it does not provide a gradient.
+      Instead, use conv3D and allow Theano's graph optimizer to replace it by
+      the FFT version by setting
+      ``THEANO_FLAGS=optimizer_including=conv3d_fft:convgrad3d_fft:convtransp3d_fft``
+      in your environment. This is not enabled by default because it does not
+      support strides and uses more memory. Also note that it requires
+      CUDA >= 5.0, scikits.cuda >= 0.5.0 and PyCUDA to run.
+      To enable for just one Theano function:
+
+      .. code-block:: python
+
+          mode = theano.compile.get_default_mode()
+          mode = mode.including('conv3d_fft', 'convgrad3d_fft', 'convtransp3d_fft')
+
+          f = theano.function(..., mode=mode)
+
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
       It is faster in some cases than conv3d, specifically on the GPU.
-    - `Faster conv2d <http://deeplearning.net/software/pylearn2/library/alex.html>`_
-
-      This is in Pylearn2, not very documented and uses a different
-      memory layout for the input. It is important to have the input
-      in the native memory layout, and not use dimshuffle on the
-      inputs, otherwise you lose most of the speed up. So this is not
-      a drop in replacement of conv2d.
-
-      Normally those are called from the `linear transform
-      <http://deeplearning.net/software/pylearn2/library/linear.html>`_
-      implementation.
 
 .. autofunction:: theano.tensor.nnet.conv.conv2d
+.. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
+.. autofunction:: theano.sandbox.cuda.blas.GpuCorrMM
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
+.. autofunction:: theano.sandbox.cuda.fftconv.conv3d_fft
 .. autofunction:: theano.tensor.nnet.conv3d2d.conv3d

@@ -1,5 +1,50 @@
 """
 This module provides optimizations for scan
+The Optimization provided in this file:
+
+local opt: remove_constants_and_unused_inputs_scan,
+           constant_folding_for_scan2,
+           scan_merge_inouts
+           They are wrapped in in2out to create global opt.
+global opt: ScanInplaceOptimizer,
+            PushOutNonSeqScan,
+            PushOutSeqScan,
+            PushOutDot1,
+            ScanMerge,
+            ScanSaveMem
+
+How the are registered:
+
+optdb: scan_eqopt1 (.1), scan_eqopt2(1.6), scan_inplace(75)
+scan_eqopt1 -> scan_seqopt1
+scan_seqopt1 -> in2out(remove_constants_and_unused_inputs_scan)(1),
+                PushOutNonSeqScan(2),
+                PushOutSeqScan(3), PushOutDot1(4)
+scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
+               This is important, as the order is important and all global
+               optimizer run before local optimizer in the order they where
+               registered. (So don't change the order we register them!)
+               If we convert to local optimizer, we must convert all of them
+               to local optimizer. But:
+               1) can ScanMerge be made local? Can we keep only this one global?
+               2) ScanSaveMem assert that we remove all nodes outputs,
+                  we need to keep this.
+               3) It is ScanSaveMem suppose the the others ran before.
+                  I added an assert at one place, but didn't looked for other place.
+               4) Moving this to local opt could speed up significant this opt,
+                  as we pass frequently on all nodes in the graph for no good reason.
+               5) We register remove_constant_*  many places, as some
+                  opt create them and let this one clean up the mess.
+                  Doing it that way, make things simpler for those already
+                  complex opt.
+
+               in2out(constant_folding),
+               in2out(remove_constants_and_unused_inputs_scan1),
+               ScanMerge,
+               in2out(remove_constants_and_unused_inputs_scan2),
+               in2out(scan_merge_inouts),
+               ScanSaveMem,
+               in2out(remove_constants_and_unused_inputs_scan3)
 """
 
 
@@ -69,7 +114,9 @@ def remove_constants_and_unused_inputs_scan(node):
                          op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
     st += op.n_sit_sot
     st += op.n_shared_outs
-    op_ins, op_outs = scan_utils.reconstruct_graph(op.inputs, op.outputs)
+
+    op_ins = op.inputs
+    op_outs = op.outputs
 
     # Corresponds to the initial states, which should stay untouched.
     # We put those variables aside, and put them back at the end.
@@ -94,25 +141,26 @@ def remove_constants_and_unused_inputs_scan(node):
 
     all_ins = gof.graph.inputs(op_outs)
     for idx in xrange(op.n_seqs):
-        if (isinstance(node.inputs[idx + 1], tensor.TensorConstant) and
-            node.inputs[idx + 1].tag.unique_value is not None):
+        node_inp = node.inputs[idx + 1]
+        if (isinstance(node_inp, tensor.TensorConstant) and
+            node_inp.tag.unique_value is not None):
             try:
                 # This works if input is a constant that has all entries
                 # equal
-                givens[op_ins[idx]] = node.inputs[idx + 1].clone()[0]
+                givens[op_ins[idx]] = node_inp.clone()[0]
             except TypeError:
                 pass
         elif op_ins[idx] in all_ins:
             # Check for identical other sequence
             identical_seqs = [x for x in nw_outer
                               if scan_utils.equal_computations(
-                                  [x], [node.inputs[idx + 1]])]
+                                  [x], [node_inp])]
             if identical_seqs:
                 index = node.inputs.index(identical_seqs[0]) - 1
                 givens[op_ins[idx]] = op_ins[index]
             else:
                 nw_inner += [op_ins[idx]]
-                nw_outer += [node.inputs[idx + 1]]
+                nw_outer += [node_inp]
 
     nw_n_seqs = len(nw_inner)
     # Add outputs stuff
@@ -537,10 +585,11 @@ class PushOutSeqScan(gof.Optimizer):
 
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
-    def __init__(self, typeConstructor=None, gpu_flag=False):
+    def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):
         Optimizer.__init__(self)
         self.typeConstructor = typeConstructor
         self.gpu_flag = gpu_flag
+        self.gpua_flag = gpua_flag
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -551,7 +600,8 @@ class ScanInplaceOptimizer(Optimizer):
         nodes = fgraph.toposort()
         scan_nodes = [x for x in nodes
                       if (isinstance(x.op, scan_op.Scan) and
-                          x.op.info['gpu'] == self.gpu_flag)]
+                          x.op.info['gpu'] == self.gpu_flag and
+                          x.op.info['gpua'] == self.gpua_flag)]
         for scan_idx in xrange(len(scan_nodes)):
             node = scan_nodes[scan_idx]
             op = node.op
@@ -853,6 +903,20 @@ class ScanSaveMem(gof.Optimizer):
                         if store_steps[i] != -1:
                             pval = select_max(pval, store_steps[i])
 
+                        # TODO: Simplify the number of steps needed.
+                        # FB: This need good testing, left to later.
+                        #     call get_scalar_constant_value()? it can
+                        # return python/numpy scalar or numpy.ndarray currently.
+                        #pval = pre_greedy_local_optimizer(list_opt_slice,
+                        #                                  pval)
+                        #pval = pre_constant_merge([pval])[0]
+                        #if (isinstance(pval, theano.tensor.TensorConstant) and
+                        #    pval.dtype.startswith('int')):
+                        #    try:
+                        #        pval = int(pval.data)
+                        #    except Exception:
+                        #        pass
+
                         store_steps[i] = pval
                         flag_store = True
 
@@ -899,6 +963,8 @@ class ScanSaveMem(gof.Optimizer):
                                 nw_inputs[offset + idx].owner.op.idx_list[0],
                                 slice)):
 
+                            assert isinstance(nw_inputs[offset + idx].owner.op,
+                                              tensor.IncSubtensor)
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
                             cval = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
@@ -942,7 +1008,6 @@ class ScanSaveMem(gof.Optimizer):
                     if val == 0:
                         if idx < op.n_mit_sot + op.n_sit_sot:
                             _nw_input = nw_inputs[offset + idx].owner.inputs[1]
-                            odx = op.n_mit_mot + idx
                             nw_input = scan_utils.expand(_nw_input, nw_steps)
                             nw_inputs[offset + idx] = nw_input
                         elif idx < (op.n_mit_sot + op.n_sit_sot +
@@ -950,7 +1015,6 @@ class ScanSaveMem(gof.Optimizer):
                             in_idx = offset + idx + op.n_shared_outs
                             if nw_inputs[in_idx] == node.inputs[0]:
                                 nw_inputs[in_idx] = nw_steps
-                            odx = op.n_mit_mot + idx
 
             # 3.5 Remove unwanted orphane outputs
             (inps, outs, info, node_ins, compress_map) = \
@@ -965,7 +1029,15 @@ class ScanSaveMem(gof.Optimizer):
             # 3.6 Compose the new scan
             # I need to make sure I'm not reapplying the same optimization
             # twice since bad things usually happen if I do that
+            # TODO: why not check if save mem was done on any of merged nodes?
+            #       That way, if none of them had save mem applied, it would
+            #       be applied later.
             info['_scan_savemem_visited'] = True
+
+            # TODO: currently we don't support scan with 0 step. So
+            # don't create one.
+            if theano.tensor.extract_constant(node_ins[0]) == 0:
+                return
 
             # Do not call make_node for test_value
             new_outs = scan_op.Scan(inps, outs, info)(*node_ins,
@@ -1681,7 +1753,6 @@ scan_eqopt1 = theano.gof.EquilibriumDB()
 scan_seqopt1 = theano.gof.SequenceDB()
 
 scan_eqopt2 = theano.gof.EquilibriumDB()
-scan_seqopt2 = theano.gof.EquilibriumDB()
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
 optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
@@ -1694,8 +1765,6 @@ optdb.register('scanOp_make_inplace',
                'inplace',
                'scan')
 
-scan_eqopt2.register(
-    'all_scan_opts', scan_seqopt2, 1, 'fast_run', 'scan')
 scan_eqopt1.register(
     'all_pushout_opt', scan_seqopt1, 1, 'fast_run', 'scan')
 
@@ -1731,7 +1800,7 @@ scan_seqopt1.register('scan_pushout_dot1',
                       'scan')
 
 
-scan_seqopt2.register('constant_folding_for_scan2',
+scan_eqopt2.register('constant_folding_for_scan2',
                       opt.in2out(tensor.opt.constant_folding,
                                  ignore_newtrees=True),
                       1,
@@ -1739,7 +1808,7 @@ scan_seqopt2.register('constant_folding_for_scan2',
                       'scan')
 
 
-scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs1',
+scan_eqopt2.register('scanOp_remove_constants_and_unused_inputs1',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       2,
@@ -1751,14 +1820,14 @@ scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs1',
 # after const merge but before stabilize so that we can have identity
 # for equivalent nodes but we still have the chance to hoist stuff out
 # of the scan later.
-scan_seqopt2.register('scanOp_merge',
+scan_eqopt2.register('scanOp_merge',
                       ScanMerge(),
                       4,
                       'fast_run',
                       'scan')
 
 # After Merge optimization
-scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
+scan_eqopt2.register('scanop_remove_constants_and_unused_inputs2',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       5,
@@ -1766,7 +1835,7 @@ scan_seqopt2.register('scanop_remove_constants_and_unused_inputs2',
                       'fast_run',
                       'scan')
 
-scan_seqopt2.register('scanOp_merge_inouts',
+scan_eqopt2.register('scanOp_merge_inouts',
                       opt.in2out(scan_merge_inouts, ignore_newtrees=True),
                       6,
                       'scan_merge_inouts',
@@ -1776,14 +1845,14 @@ scan_seqopt2.register('scanOp_merge_inouts',
 # Just before specialize to have the other optimization
 # like constant folding being applied
 # This don't introduce inplace.
-scan_seqopt2.register('scanOp_save_mem',
+scan_eqopt2.register('scanOp_save_mem',
                       ScanSaveMem(),
                       7,
                       'fast_run',
                       'scan')
 
 # After everything else
-scan_seqopt2.register('scanOp_remove_constants_and_unused_inputs3',
+scan_eqopt2.register('scanOp_remove_constants_and_unused_inputs3',
                       opt.in2out(remove_constants_and_unused_inputs_scan,
                                  ignore_newtrees=True),
                       8,

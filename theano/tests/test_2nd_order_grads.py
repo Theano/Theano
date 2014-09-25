@@ -142,3 +142,25 @@ def test004_hessian():
     f = theano.function([x], Hx)
     vx = numpy.arange(10).astype(theano.config.floatX)
     assert numpy.allclose(f(vx), numpy.eye(10) * 2)
+
+
+def test_jacobian_disconnected_inputs():
+    """
+    Test that disconnected inputs are properly handled by jacobian.
+    """
+    v1 = tensor.vector()
+    v2 = tensor.vector()
+    jacobian_v = theano.gradient.jacobian(1 + v1, v2,
+        disconnected_inputs='ignore')
+    func_v = theano.function([v1, v2], jacobian_v)
+    val = numpy.arange(4.0).astype(theano.config.floatX)
+    assert numpy.allclose(func_v(val, val), numpy.zeros((4, 4)))
+
+    s1 = tensor.scalar()
+    s2 = tensor.scalar()
+    jacobian_s = theano.gradient.jacobian(1 + s1, s2,
+        disconnected_inputs='ignore')
+    func_s = theano.function([s2], jacobian_s)
+    val = numpy.array(1.0).astype(theano.config.floatX)
+    assert numpy.allclose(func_s(val), numpy.zeros(1))
+

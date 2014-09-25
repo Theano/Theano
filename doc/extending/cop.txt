@@ -31,76 +31,158 @@ There are less methods to define for an Op than for a Type:
 
     .. method:: c_code(node, name, input_names, output_names, sub)
 
-      This must return C code that carries the computation we want to do.
+       This must return C code that carries the computation we want to
+       do.
 
-      sub is a dictionary of strings for you to substitute into your code.
-      It's not clear if it ever contains anything other than 'fail'.
-      sub['fail'] is a string of code that you should execute (after calling
-      PyErr_Format) if your C code needs to raise an exception.
+       `sub` is a dictionary of extras parameters to the c_code
+       method. It contains the following values:
+
+       ``sub['fail']``
+
+          A string of code that you should execute (after ensuring
+          that a python exception is set) if your C code needs to
+          raise an exception.
+
+       ``sub['struct_id']``
+
+          The integer id passed to the various _struct methods.
 
     .. method:: c_code_cleanup(node, name, input_names, output_names, sub)
 
-      This must return C code that cleans up whatever c_code allocated and
-      that we must free.
+       This must return C code that cleans up whatever c_code
+       allocated and that we must free.
 
-      *Default:* The default behavior is to do nothing.
+       *Default:* The default behavior is to do nothing.
 
     .. method:: c_headers()
+
+       Returns a list of headers to include in the file. 'Python.h' is
+       included by default so you don't need to specify it.  Also all
+       of the header required by the Types involved (inputs and
+       outputs) will also be included.
+
     .. method:: c_header_dirs()
+
+       Returns a list of directories to search for headers (arguments
+       to -I).
+
     .. method:: c_libraries()
+
+       Returns a list of library names that your op needs to link to.
+       All ops are automatically linked with 'python' and the
+       libraries their types require. (arguments to -l)
+
     .. method:: c_lib_dirs()
 
-      Allows you to specify headers, libraries, and their directories,
+       Returns a list of directory to search for libraries (arguments
+       to -L).
 
     .. method:: c_compile_args()
+
+       Allows to specify additional arbitrary arguments to g++.  This
+       is not usually required.
+
     .. method:: c_no_compile_args()
 
-      Allows you to specify special g++ arguments to add/exclude
+       Returns a list of g++ arguments that are forbidden when
+       compiling this Op.
 
     .. method:: c_init_code()
 
-      Allows you to specify code that will be executed once when the
-      module is initialized, before anything else is executed.
+       Allows you to specify code that will be executed once when the
+       module is initialized, before anything else is executed.  This
+       is for code that will be executed once per Op.
 
-    .. method:: c_init_code_apply(self, node, name)
+    .. method:: c_init_code_apply(node, name)
 
-      Allows you to specify code that will be executed once when the
-      module is initialized, before anything else is executed and is
-      specialized for a particular apply of an :ref:`op`. Use
-      `c_init_code` if the code is the same for each apply of an op.
+       Allows you to specify code that will be executed once when the
+       module is initialized, before anything else is executed and is
+       specialized for a particular apply of an :ref:`op`.
+
+    .. method:: c_init_code_struct(node, struct_id, sub)
+
+       Allows you to specify code that will be inserted in the struct
+       constructor of the Op.  This is for code which should be
+       executed once per thunk (Apply node, more or less).
+
+       `struct_id` is an integer guaranteed to be unique inside the
+       struct.
+
+       `sub` is a dictionary of extras parameters to the
+       c_code_init_code_struct method. It contains the following
+       values:
+
+       ``sub['fail']``
+
+          A string of code that you should execute (after ensuring
+          that a python exception is set) if your C code needs to
+          raise an exception.
 
     .. method:: c_support_code()
 
-      Allows you to specify helper functions/structs that the
-      :ref:`op` needs.  That code will be reused for each apply of
-      this op. It will be inserted at global scope.
+       Allows you to specify helper functions/structs that the
+       :ref:`op` needs.  That code will be reused for each apply of
+       this op. It will be inserted at global scope.
 
     .. method:: c_support_code_apply(node, name)
 
-      Allows you to specify helper functions/structs specialized for a
-      particular apply of an :ref:`op`. Use `c_support_code` if the
-      code is the same for each apply of an op.
-      It will be inserted at global scope.
+       Allows you to specify helper functions/structs specialized for
+       a particular apply of an :ref:`op`. Use :meth:`c_support_code`
+       if the code is the same for each apply of an op.  It will be
+       inserted at global scope.
+
+    .. method:: c_support_code_struct(node, struct_id)
+
+       Allows you to specify helper functions of variables that will
+       be specific to one particular thunk.  These are inserted at
+       struct scope.
+
+       `struct_id` is an integer guaranteed to be unique inside the
+       struct.
+
+       :note:
+         You cannot specify kernels in the code returned by this since
+         that isn't supported by CUDA.  You should place your kernels
+         in :meth:`c_support_code()` or :meth:`c_support_code_apply()`
+         and call them from this code.
+
+    .. method:: c_cleanup_code_struct(node, struct_id)
+
+       Allows you to specify code that will be inserted in the struct
+       destructor of the Op.  This is for cleaninp up allocations and
+       stuff like this when the thunk is released (when you "free" a
+       compiled function using this op).
+
+       `struct_id` is an integer guaranteed to be unique inside the
+       struct.
 
     .. method:: infer_shape(node, (i0_shapes,i1_shapes,...))
 
-      Allow optimizations to lift the Shape op over this op.
-      An example of why this is good is when we only need the shape of a
-      variable: we will be able to obtain it without computing the variable
-      itself.
-      Must return a list where each element is a tuple representing the shape
-      of one output.
-      For example, for the matrix-matrix product ``infer_shape`` will have as
-      inputs (node, ((x0,x1), (y0,y1))) and should return [(x0, y1)]. Both the
-      inputs and the return value may be Theano variables.
+       Allow optimizations to lift the Shape op over this op.  An
+       example of why this is good is when we only need the shape of a
+       variable: we will be able to obtain it without computing the
+       variable itself.
+
+       Must return a list where each element is a tuple representing
+       the shape of one output.
+
+       For example, for the matrix-matrix product ``infer_shape`` will
+       have as inputs (node, ((x0,x1), (y0,y1))) and should return
+       [(x0, y1)]. Both the inputs and the return value may be Theano
+       variables.
 
     .. method:: c_code_cache_version()
 
-       Should return a tuple of hashable objects like integers. This
+       Must return a tuple of hashable objects like integers. This
        specifies the version of the code. It is used to cache the
        compiled code. You MUST change the returned tuple for each
-       change in the code. If you don't want to cache the compiled code
-       return an empty tuple or don't implement it.
+       change in the code. If you don't want to cache the compiled
+       code return an empty tuple or don't implement it.
+
+    .. method:: c_code_cache_version_apply(node)
+
+       Overrides :meth:`c_code_cache_version` if defined, but
+       otherwise has the same contract.
 
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides
@@ -211,18 +293,18 @@ version that it produces in the code I gave above.
            return self.ccode % locals()
 
 
-   add = BinaryDoubleOp(name = 'add',
-                        fn = lambda x, y: x + y,
-                        ccode = "%(z)s = %(x)s + %(y)s;")
+   add = BinaryDoubleOp(name='add',
+                        fn=lambda x, y: x + y,
+                        ccode="%(z)s = %(x)s + %(y)s;")
 
-   sub = BinaryDoubleOp(name = 'sub',
-                        fn = lambda x, y: x - y,
-                        ccode = "%(z)s = %(x)s - %(y)s;")
+   sub = BinaryDoubleOp(name='sub',
+                        fn=lambda x, y: x - y,
+                        ccode="%(z)s = %(x)s - %(y)s;")
 
-   mul = BinaryDoubleOp(name = 'mul',
-                        fn = lambda x, y: x * y,
-                        ccode = "%(z)s = %(x)s * %(y)s;")
+   mul = BinaryDoubleOp(name='mul',
+                        fn=lambda x, y: x * y,
+                        ccode="%(z)s = %(x)s * %(y)s;")
 
-   div = BinaryDoubleOp(name = 'div',
-                        fn = lambda x, y: x / y,
-                        ccode = "%(z)s = %(x)s / %(y)s;")
+   div = BinaryDoubleOp(name='div',
+                        fn=lambda x, y: x / y,
+                        ccode="%(z)s = %(x)s / %(y)s;")

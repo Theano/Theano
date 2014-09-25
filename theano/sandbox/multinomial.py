@@ -59,7 +59,14 @@ class MultinomialFromUniform(Op):
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
         (z,) = outs
-
+        if self.odtype == 'auto':
+            t = "PyArray_TYPE((PyArrayObject*) py_%(pvals)s)" % locals()
+        else:
+            t = theano.scalar.Scalar(self.odtype).dtype_specs()[1]
+            if t.startswith('theano_complex'):
+                t = t.replace('theano_complex', 'NPY_COMPLEX')
+            else:
+                t = t.upper()
         fail = sub['fail']
         return """
         if (PyArray_NDIM(%(pvals)s) != 2)
@@ -87,7 +94,7 @@ class MultinomialFromUniform(Op):
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject*) PyArray_ZEROS(2,
                 PyArray_DIMS(%(pvals)s),
-                type_num_%(z)s,
+                %(t)s,
                 0);
             if (!%(z)s)
             {
@@ -242,12 +249,12 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
         fail = sub['fail']
         return """
-        if (PyArray_NDIM(%(pvals)s) != 2)
+        if (CudaNdarray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
             %(fail)s;
         }
-        if (PyArray_NDIM(%(unis)s) != 1)
+        if (CudaNdarray_NDIM(%(unis)s) != 1)
         {
             PyErr_Format(PyExc_TypeError, "unis wrong rank");
             %(fail)s;

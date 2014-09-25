@@ -208,6 +208,7 @@ class GammaLn(UnaryScalarOp):
             return GammaLn.st_impl(x)
         else:
             super(GammaLn, self).impl(x)
+
     def grad(self, inp, grads):
         x, = inp
         gz, = grads

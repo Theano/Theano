@@ -2,11 +2,13 @@ import numpy as np
 import numpy
 
 import theano
-from theano.tensor import basic
-from theano import gof, scalar
-tensor = basic
-from theano.gradient import DisconnectedType
 
+from theano.tensor import basic
+from theano.tensor import nlinalg
+
+from theano import gof, scalar
+from theano.gradient import DisconnectedType
+tensor = basic
 
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
@@ -26,6 +28,8 @@ class CumsumOp(theano.Op):
 
         if self.axis is None:
             out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
+        elif self.axis >= x.ndim:
+            raise ValueError('axis(={0}) out of bounds'.format(self.axis))
 
         return theano.Apply(self, [x], [out_type])
 
@@ -42,8 +46,8 @@ class CumsumOp(theano.Op):
 
         # We need to reverse the gradients along ``self.axis``,
         #  compute cumsum, then reverse again
-        reverse_slicing = [slice(None,None,None)] * gi.ndim
-        reverse_slicing[self.axis] = slice(None,None,-1)
+        reverse_slicing = [slice(None, None, None)] * gi.ndim
+        reverse_slicing[self.axis] = slice(None, None, -1)
         reverse_slicing = tuple(reverse_slicing)
         return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
 
@@ -65,36 +69,49 @@ class CumsumOp(theano.Op):
                 if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumSum(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    PyObject * t = PyArray_CumSum(
+                        %(x)s, NPY_MAXDIMS,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
+                    // Because PyArray_CumSum returns a newly created reference on t.
+                    Py_XDECREF(t);
                 }
             """ % locals()
         else:
             code = """
-                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
+                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s))))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumSum(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+
+                    PyObject * t = PyArray_CumSum(
+                        %(x)s, %(axis)s,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
+                    // Because PyArray_CumSum returns a newly created reference on t.
+                    Py_XDECREF(t);
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (6,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -133,6 +150,8 @@ class CumprodOp(theano.Op):
 
         if self.axis is None:
             out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
+        elif self.axis >= x.ndim:
+            raise ValueError('axis(={0}) out of bounds'.format(self.axis))
 
         return theano.Apply(self, [x], [out_type])
 
@@ -174,14 +193,20 @@ class CumprodOp(theano.Op):
                 if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumProd(%(x)s, NPY_MAXDIMS, type_num_%(x)s, %(z)s);
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    PyObject * t = PyArray_CumProd(
+                        %(x)s, NPY_MAXDIMS,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
+                    // Because PyArray_CumSum returns a newly created reference on t.
+                    Py_XDECREF(t);
                 }
             """ % locals()
         else:
@@ -189,21 +214,27 @@ class CumprodOp(theano.Op):
                 if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
                 {
                     Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), type_num_%(x)s);
+                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
                 }
 
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyArray_CumProd(%(x)s, %(axis)s, type_num_%(x)s, %(z)s);
-                    Py_XDECREF(%(z)s);  // Because PyArray_CumSum returns a newly created reference on %(z)s.
+                    PyObject * t = PyArray_CumProd(
+                        %(x)s, %(axis)s,
+                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
+                    if (!t){
+                       %(fail)s;
+                    }
+                    // Because PyArray_CumSum returns a newly created reference on t.
+                    Py_XDECREF(t);
                 }
             """ % locals()
 
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (4,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -316,7 +347,7 @@ class BinCountOp(theano.Op):
 
     def __eq__(self, other):
         return (type(self) == type(other) and
-               self.minlength == other.minlength)
+                self.minlength == other.minlength)
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.minlength)
@@ -343,8 +374,8 @@ class BinCountOp(theano.Op):
 
         if x.dtype in numpy_unsupported_dtypes:
             raise TypeError(
-                    ("Input dtypes %s are not supported by numpy.bincount, "
-                    % numpy_unsupported_dtypes), x.dtype)
+                ("Input dtypes %s are not supported by numpy.bincount, "
+                 % numpy_unsupported_dtypes), x.dtype)
 
         if x.ndim != 1:
             raise TypeError("Inputs must be of dimension 1.")
@@ -470,9 +501,9 @@ class RepeatOp(theano.Op):
 
         if repeats.dtype in numpy_unsupported_dtypes:
             raise TypeError(
-                    ("dtypes %s are not supported by numpy.repeat "
-                     "for the 'repeats' parameter, "
-                     % str(numpy_unsupported_dtypes)), repeats.dtype)
+                ("dtypes %s are not supported by numpy.repeat "
+                 "for the 'repeats' parameter, "
+                 % str(numpy_unsupported_dtypes)), repeats.dtype)
 
         if self.axis is None:
             broadcastable = [False]
@@ -529,7 +560,7 @@ class RepeatOp(theano.Op):
         repeats = node.inputs[1]
         out_shape = list(i0_shapes)
 
-        #uint64 shape are not supported.
+        # uint64 shape are not supported.
         dtype = None
         if repeats.dtype in ['uint8', 'uint16', 'uint32']:
             dtype = 'int64'
@@ -594,9 +625,9 @@ class Bartlett(gof.Op):
         if M.ndim != 0:
             raise TypeError('%s only works on scalar input'
                             % self.__class__.__name__)
-        elif (not M.dtype.startswith('int')) and \
-              (not M.dtype.startswith('uint')):
-        # dtype is a theano attribute here
+        elif (not M.dtype.startswith('int') and
+              not M.dtype.startswith('uint')):
+            # dtype is a theano attribute here
             raise TypeError('%s only works on integer input'
                             % self.__class__.__name__)
         return gof.Apply(self, [M], [tensor.dvector()])
@@ -609,7 +640,8 @@ class Bartlett(gof.Op):
     def infer_shape(self, node, in_shapes):
         temp = node.inputs[0]
         M = tensor.switch(tensor.lt(temp, 0),
-            tensor.cast(0, temp.dtype), temp)
+                          tensor.cast(0, temp.dtype),
+                          temp)
         return [[M]]
 
     def grad(self, inputs, output_grads):
@@ -617,7 +649,7 @@ class Bartlett(gof.Op):
 bartlett_ = Bartlett()
 
 
-#I create a function only to have the doc show well.
+# I create a function only to have the doc show well.
 def bartlett(M):
     """An instance of this class returns the Bartlett spectral window in the
     time-domain. The Bartlett window is very similar to a triangular window,
@@ -664,8 +696,8 @@ class FillDiagonal(gof.Op):
                             % self.__class__.__name__)
         val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
         if val.dtype != a.dtype:
-            raise TypeError('%s: type of second parameter must be compatible'
-                          ' with first\'s' % self.__class__.__name__)
+            raise TypeError('%s: type of second parameter must be the same as'
+                            ' the first\'s' % self.__class__.__name__)
         return gof.Apply(self, [a, val], [a.type()])
 
     def perform(self, node, inputs, output_storage):
@@ -695,16 +727,16 @@ class FillDiagonal(gof.Op):
             return [None, None]
         elif a.ndim > 2:
             raise NotImplementedError('%s: gradient is currently implemented'
-                            ' for matrices only' % self.__class__.__name__)
+                                      ' for matrices only' %
+                                      self.__class__.__name__)
         wr_a = fill_diagonal(grad, 0)  # valid for any number of dimensions
         # diag is only valid for matrices
-        import theano.sandbox.linalg
-        wr_val = theano.sandbox.linalg.ops.diag(grad).sum()
+        wr_val = theano.tensor.nlinalg.diag(grad).sum()
         return [wr_a, wr_val]
 fill_diagonal_ = FillDiagonal()
 
 
-#I create a function only to have the doc show well.
+# I create a function only to have the doc show well.
 def fill_diagonal(a, val):
     """ Returns a copy of an array with all
     elements of the main diagonal set to a specified scalar value.
@@ -725,3 +757,131 @@ def fill_diagonal(a, val):
     .. versionadded:: 0.6
     """
     return fill_diagonal_(a, val)
+
+
+class FillDiagonalOffset(gof.Op):
+    # See function fill_diagonal_offset for docstring
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def make_node(self, a, val, offset):
+        a = tensor.as_tensor_variable(a)
+        val = tensor.as_tensor_variable(val)
+        offset = tensor.as_tensor_variable(offset)
+        if a.ndim != 2:
+            raise TypeError('%s: first parameter must have exactly'
+                            ' two dimensions' % self.__class__.__name__)
+        elif val.ndim != 0:
+            raise TypeError('%s: second parameter must be a scalar'
+                            % self.__class__.__name__)
+        elif offset.ndim != 0:
+            raise TypeError('%s: third parameter must be a scalar'
+                            % self.__class__.__name__)
+        val = tensor.cast(val, dtype=scalar.upcast(a.dtype, val.dtype))
+        if val.dtype != a.dtype:
+            raise TypeError('%s: type of second parameter must be the same'
+                            ' as the first\'s' % self.__class__.__name__)
+        elif offset.dtype[:3] != 'int':
+            raise TypeError('%s: type of third parameter must be as integer'
+                            ' use theano.tensor.cast( input, \'int32/int64\')'
+                            % self.__class__.__name__)
+
+        return gof.Apply(self, [a, val, offset], [a.type()])
+
+    def perform(self, node, inputs, output_storage):
+        a = inputs[0].copy()
+        val = inputs[1]
+        offset = inputs[2]
+        height, width = a.shape
+
+        """
+        Note: The fill_diagonal only support rectangular matrix. The output
+        of tall matrix is "wrapped", which is an option in numpy 1.9.0
+        but was regarded as a bug in numpy 1.6.2. Here I implement the
+        fill_diagonal_offset with unwrapped output, so fill_diagonal_offset
+        supports tall matrix.(This make a little difference between the output
+        of fill_diagonal and fill_diagonal_offset only in the case of tall
+        matrix)
+        """
+        if offset >= 0:
+            start = offset
+            num_of_step = min(min(width, height), width - offset)
+        else:
+            start = - offset * a.shape[1]
+            num_of_step = min(min(width, height), height + offset)
+        step = a.shape[1] + 1
+        end = start + step * num_of_step
+        # Write the value out into the diagonal.
+        a.flat[start:end:step] = val
+
+        output_storage[0][0] = a
+
+    def grad(self, inp, cost_grad):
+        """
+        Note: The gradient is currently implemented for matrices
+        only.
+        """
+        a, val, offset = inp
+        grad = cost_grad[0]
+        height, width = grad.shape
+
+        if (a.dtype.startswith('complex')):
+            return [None, None]
+
+        # only valid for matrices
+        wr_a = fill_diagonal_offset(grad, 0, offset)
+
+        offset_abs = basic.abs_(offset)
+        pos_offset_flag = basic.ge(offset, 0)
+        neg_offset_flag = basic.lt(offset, 0)
+        min_wh = basic.minimum(width, height)
+
+        start = offset * pos_offset_flag + offset_abs * width \
+                 * neg_offset_flag
+        num_of_step = basic.minimum( min_wh, width * pos_offset_flag
+                    + height * neg_offset_flag - offset_abs )   
+
+        step = a.shape[1] + 1
+        end = start + step * num_of_step
+
+        # input of slice should be integer
+        start = basic.cast(start,'int32')
+        step = basic.cast(step,'int32')
+        end = basic.cast(end,'int32')
+
+        wr_val = grad.flatten()[start:end:step].sum()
+
+        wr_offset = theano.gradient.grad_undefined(
+            self, 2, offset,
+            "offset is not defined for non-integer offset so"
+            " fill_diagonal_offset(a,val,offset+eps) is undefined")
+
+        return [wr_a, wr_val,wr_offset]
+
+fill_diagonal_offset_ = FillDiagonalOffset()
+
+def fill_diagonal_offset(a, val, offset):
+    """
+    Returns a copy of an array with all
+    elements of the main diagonal set to a specified scalar value.
+
+      :param a: Rectangular array of two dimensions.
+      :param val: Scalar value to fill the diagonal whose type must be
+          compatible with that of array 'a' (i.e. 'val' cannot be viewed
+          as an upcast of 'a').
+      :param offset: Scalar value Offset of the diagonal from the main
+          diagonal. Can be positive or negative integer.
+      :return: An array identical to 'a' except that its offset diagonal
+          is filled with scalar 'val'. The output is unwrapped.
+    """
+    return fill_diagonal_offset_(a, val, offset)
+

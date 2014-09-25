@@ -29,7 +29,11 @@ elif sys.version_info[:2] >= (2, 5):
     import hashlib
 
     def hash_from_code(msg):
-        return hashlib.md5(msg).hexdigest()
+        try:
+            return hashlib.md5(msg).hexdigest()
+        except TypeError:
+            assert isinstance(msg, numpy.ndarray)
+            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
 else:
     import md5
 
@@ -139,6 +143,18 @@ def failure_code(sub):
         goto __label_%(id)i;}''' % sub
 
 
+def failure_code_init(sub):
+    "Code for failure in the struct init."
+    return '''{
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError,
+                "Unexpected error in an Op's C code. "
+                "No Python exception was set.");
+            }
+        return %(id)d;
+}''' % sub
+
+
 def code_gen(blocks):
     """WRITEME From a list of L{CodeBlock} instances, returns a string
     that executes them all in sequence. eg for C{(decl1, task1,
@@ -201,8 +217,7 @@ def struct_gen(args, struct_builders, blocks, sub):
         #     be executed if any step in the constructor fails and the
         #     latter only at destruction time.
         struct_decl += block.declare
-        struct_init_head = struct_init_head + ("\n{\n%s" % block.behavior)
-        struct_init_tail = ("%s\n}\n" % block.cleanup) + struct_init_tail
+        struct_init_head = struct_init_head + ("\n%s" % block.behavior)
         struct_cleanup += block.cleanup
 
     behavior = code_gen(blocks)
@@ -254,6 +269,7 @@ def struct_gen(args, struct_builders, blocks, sub):
 
     # TODO: add some error checking to make sure storage_<x> are
     # 1-element lists and __ERROR is a 3-elements list.
+
     struct_code = """
     namespace {
     struct %(name)s {
@@ -270,13 +286,9 @@ def struct_gen(args, struct_builders, blocks, sub):
         int init(PyObject* __ERROR, %(args_decl)s) {
             %(storage_incref)s
             %(storage_set)s
-            int %(failure_var)s = 0;
             %(struct_init_head)s
             this->__ERROR = __ERROR;
             return 0;
-            %(struct_init_tail)s
-            %(storage_decref)s
-            %(do_return)s
         }
         void cleanup(void) {
             %(struct_cleanup)s
@@ -304,10 +316,18 @@ def get_nothing(r, name, sub):
 
 def get_c_declare(r, name, sub):
     """Wrapper around c_declare that declares py_name"""
+
+    if any([c != "output" and getattr(c.op, 'check_input',
+        config.check_input) for (c, _) in r.clients]) or (r.owner
+        and getattr(r.owner.op, 'check_input', True)):
+
+        c_declare = r.type.c_declare(name, sub, True)
+    else:
+        c_declare = r.type.c_declare(name, sub, False)
     pre = """
     PyObject* py_%(name)s;
     """ % locals()
-    return pre + r.type.c_declare(name, sub)
+    return pre + c_declare
 
 
 def get_c_init(r, name, sub):
@@ -321,20 +341,30 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
+    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
+            r.clients]):
+
+        c_extract = r.type.c_extract(name, sub, True)
+    else:
+        c_extract = r.type.c_extract(name, sub, False)
+
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
     """ % locals()
-    return pre + r.type.c_extract(name, sub)
+    return pre + c_extract
 
 
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
+    c_extract = r.type.c_extract_out(name, sub,
+                    getattr(r.owner.op, 'check_input', config.check_input))
+
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);
     {Py_XINCREF(py_%(name)s);}
     """ % locals()
-    return pre + r.type.c_extract_out(name, sub)
+    return pre + c_extract
 
 
 def get_c_cleanup(r, name, sub):
@@ -397,7 +427,7 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     sub = dict(sub)
 #    sub['name'] = name
     sub['id'] = id
-    sub['fail'] = failure_code(sub)
+    sub['fail'] = failure_code_init(sub)
     sub['py_ptr'] = "py_%s" % name
     sub['stor_ptr'] = "storage_%s" % name
     # struct_declare, struct_behavior, struct_cleanup, sub)
@@ -508,12 +538,10 @@ class CLinker(link.Linker):
         failure_var = "__failure"
         id = 1
 
-        sub = dict(failure_var=failure_var)
-
         for variable in self.variables:
+            sub = dict(failure_var=failure_var)
 
             # it might be possible to inline constant variables as C literals
-##            if getattr(variable, 'constant', False):
             # policy = [[what to declare in the struct,
             #            what to do at construction,
             #            what to do at destruction],
@@ -523,9 +551,6 @@ class CLinker(link.Linker):
             if variable in self.inputs:
                 # we need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync
-#                 if isinstance(variable, Constant):
-#                     raise TypeError("Inputs to CLinker cannot be Constant.",
-#                                     variable)
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
@@ -597,15 +622,8 @@ class CLinker(link.Linker):
             id += 2
 
         for node_num, node in enumerate(self.node_order):
-
-            # We populate sub with a mapping from the variable names
-            # specified by the op's c_var_names method to the actual
-            # variable names that we will use.
-##            ivnames, ovnames = op.c_var_names()
+            # Why is this here?
             sub = dict(failure_var=failure_var)
-##            for variable, vname in zip(op.inputs + op.outputs,
-##                                       ivnames + ovnames):
-##                sub[vname] = symbol[variable]
 
             # The placeholder will be replaced by a hash of the entire
             # code (module + support code) in DynamicModule.code.
@@ -618,14 +636,18 @@ class CLinker(link.Linker):
             isyms = [symbol[r] for r in node.inputs]
             osyms = [symbol[r] for r in node.outputs]
 
-            # c_validate_update is deprecated
-            if hasattr(node.op, 'c_validate_update'):
-                raise Exception("c_validate_update is deprecated,"
-                                " move contents to c_code", node.op)
-
             # Make the CodeBlock for c_code
             sub['id'] = id
+            sub['struct_id'] = id + 1
             sub['fail'] = failure_code(sub)
+
+            sub_struct = dict()
+            sub_struct['id'] = id + 1
+            sub_struct['fail'] = failure_code_init(sub)
+
+            struct_support = ""
+            struct_init = ""
+            struct_cleanup = ""
 
             op = node.op
             # type-specific support code
@@ -639,6 +661,7 @@ class CLinker(link.Linker):
                 assert isinstance(c_support_code_apply[-1], basestring), (
                     str(node.op) +
                     " didn't return a string for c_support_code_apply")
+
             try:
                 c_init_code_apply.append(op.c_init_code_apply(node, name))
             except utils.MethodNotDefined:
@@ -648,6 +671,30 @@ class CLinker(link.Linker):
                     str(node.op) +
                     " didn't return a string for c_init_code_apply")
 
+            try:
+                struct_init = op.c_init_code_struct(node, id + 1, sub_struct)
+                assert isinstance(struct_init, basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_init_code_struct")
+            except utils.MethodNotDefined:
+                pass
+
+            try:
+                struct_support = op.c_support_code_struct(node, id + 1)
+                assert isinstance(struct_support, basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_support_code_struct")
+            except utils.MethodNotDefined:
+                pass
+
+            try:
+                struct_cleanup = op.c_cleanup_code_struct(node, id + 1)
+                assert isinstance(struct_cleanup, basestring), (
+                    str(node.op) +
+                    " didn't return a string for c_cleanup_code_struct")
+            except utils.MethodNotDefined:
+                pass
+
             # emit c_code
             try:
                 behavior = op.c_code(node, name, isyms, osyms, sub)
@@ -655,6 +702,11 @@ class CLinker(link.Linker):
                 raise NotImplementedError("%s cannot produce C code" % op)
             assert isinstance(behavior, basestring), (
                 str(node.op) + " didn't return a string for c_code")
+            # To help understand what is following. It help read the c code.
+            # This prevent different op that generate the same c code
+            # to be merged, I suppose this won't happen...
+            behavior = ("// Op class " + node.op.__class__.__name__ + "\n" +
+                        behavior)
 
             try:
                 cleanup = op.c_code_cleanup(node, name, isyms, osyms, sub)
@@ -666,6 +718,12 @@ class CLinker(link.Linker):
             blocks.append(CodeBlock("", behavior, cleanup, sub))
             tasks.append((node, 'code', id))
             id += 1
+
+            init_blocks.append(CodeBlock(struct_support, struct_init,
+                                         struct_cleanup, {'id': id}))
+            init_tasks.append((node, 'init', id))
+            id += 1
+
 
         # List of arg names for use in struct_gen. Note the call to
         # uniq: duplicate inputs must only be passed once because they
@@ -932,7 +990,8 @@ class CLinker(link.Linker):
             id += 2
         for node in self.node_order:
             tasks.append((node, 'code', id))
-            id += 1
+            init_tasks.append((node, 'init', id + 1))
+            id += 2
         return init_tasks, tasks
 
     def make_thunk(self, input_storage=None, output_storage=None,
@@ -1370,7 +1429,10 @@ class CLinker(link.Linker):
         print >> code, '     return NULL;'
         print >> code, '  }'
         print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals()
-        print >> code, '  struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ');'
+        print >> code, '  if (struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ') != 0) {'
+        print >> code, '    delete struct_ptr;'
+        print >> code, '    return NULL;'
+        print >> code, '  }'
         if PY3:
             print >> code, """\
     PyObject* thunk = PyCapsule_New((void*)(&{struct_name}_executor), NULL, {struct_name}_destructor);
@@ -1418,7 +1480,7 @@ class _CThunk(object):
         # note that the failure code is distributed in two lists
         if failure_code < 2 * n:
             return [self.init_tasks, self.tasks][
-                failure_code % 2][failure_code / 2]
+                failure_code % 2][failure_code // 2]
         else:
             return self.tasks[failure_code - n]
 

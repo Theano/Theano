@@ -2,8 +2,12 @@
 """
 __docformat__ = "restructuredtext en"
 
+import cPickle
 import logging
 _logger = logging.getLogger('theano.compile.function')
+
+import traceback as tb
+import re
 
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
@@ -11,6 +15,27 @@ from theano.compile.pfunc import pfunc
 from numpy import any  # to work in python 2.4
 import warnings
 from theano import gof
+
+
+def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
+                  givens=None,
+                  no_default_updates=False, accept_inplace=False, name=None,
+                  rebuild_strict=True, allow_input_downcast=None, profile=None,
+                  on_unused_input=None):
+    """This is helpful to make a reproducable case for problem during
+    Theano compilation.
+
+    """
+    assert isinstance(filename, basestring)
+    d = dict(inputs=inputs, outputs=outputs, mode=mode, updates=updates,
+             givens=givens, no_default_updates=no_default_updates,
+             accept_inplace=accept_inplace, name=name,
+             rebuild_strict=rebuild_strict,
+             allow_input_downcast=allow_input_downcast, profile=profile,
+             on_unused_input=on_unused_input)
+    with open(filename, 'wb') as f:
+        cPickle.dump(d, f, -1)
+
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -159,6 +184,23 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
+    if name is None:
+        # Determine possible file names
+        source_file = re.sub('\.pyc?', '.py', __file__)
+        compiled_file = source_file + 'c'
+
+        stack = tb.extract_stack()
+        idx = len(stack) - 1
+
+        last_frame = stack[idx]
+        if (last_frame[0] == source_file or last_frame[0] == compiled_file):
+            func_frame = stack[idx - 1]
+            while "theano/gof" in func_frame[0] and idx > 0:
+                idx -= 1
+                # This can hapen if we call var.eval()
+                func_frame = stack[idx - 1]
+            name = func_frame[0] + ':' + str(func_frame[1])
+
     if updates is None:
         updates = []
 

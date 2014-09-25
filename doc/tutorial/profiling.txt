@@ -72,4 +72,4 @@ to run the example:
 
 The output:
 
-.. literalinclude:: profiling_example_out.txt
+.. literalinclude:: profiling_example_out.prof

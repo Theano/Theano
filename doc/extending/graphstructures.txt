@@ -371,3 +371,59 @@ A constant does not need to be specified in a :func:`function
 <function.function>`'s list
 of inputs.  In fact, doing so will raise an exception.
 
+
+
+Graph Structures Extension
+==========================
+
+When we start the compilation of a Theano function, we compute some
+extra information. This section describes a portion of the information
+that is made available. Not everything is described, so email
+theano-dev if you need something that is missing.
+
+
+The graph gets cloned at the start of compilation, so modifications done
+during compilation won't affect the user graph.
+
+Each variable receives a new field called clients. It is a list with
+references to every place in the graph where this variable is used. If
+its length is 0, it means the variable isn't used. Each place where it
+is used is described by a tuple of 2 elements. There are two types of
+pairs:
+
+- The first element is an Apply node.
+- The first element is the string "output". It means the
+  function outputs this variable.
+
+In both types of pairs, the second element of the tuple is an index,
+such that: ``var.clients[*][0].inputs[index]`` or
+``fgraph.outputs[index]`` is that variable.
+
+.. code-block:: python
+
+    import theano
+    v = theano.tensor.vector()
+    f = theano.function([v], (v+1).sum())
+    theano.printing.debugprint(f)
+    # Sorted list of all nodes in the compiled graph.
+    topo = f.maker.fgraph.toposort()
+    topo[0].outputs[0].clients
+    # [(Sum(Elemwise{add,no_inplace}.0), 0)]
+    topo[1].outputs[0].clients
+    # [('output', 0)]
+
+    # An internal variable
+    var = topo[0].outputs[0]
+    client = var.clients[0]
+    client
+    # (Sum(Elemwise{add,no_inplace}.0), 0)
+    type(clients[0][0])
+    # <class 'theano.gof.graph.Apply'>
+    assert client[0].inputs[client[1]] is var
+
+    # An output of the graph
+    var = topo[1].outputs[0]
+    client = var.clients[0]
+    client
+    # ('output', 0)
+    assert f.maker.fgraph.outputs[client[1]] is var

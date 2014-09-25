@@ -8,7 +8,7 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
-import theano.sandbox.linalg.tests.test_linalg
+import theano.tensor.tests.test_nlinalg
 
 from theano.tests import unittest_tools as utt
 
@@ -40,6 +40,17 @@ def test_no_shared_var_graph():
     assert numpy.any(isinstance(x.op,cuda.GpuElemwise) for x in l)
     assert numpy.any(isinstance(x.op,cuda.GpuFromHost) for x in l)
     assert numpy.any(isinstance(x.op,cuda.HostFromGpu) for x in l)
+
+
+def test_local_assert():
+    x = theano.tensor.fmatrix()
+    a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
+    f = theano.function([x], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+    assert isinstance(a_op[0].inputs[0].type, CudaNdarrayType)
+
 
 def test_int_pow():
     a = CudaNdarrayType([False])()
@@ -393,14 +404,40 @@ def test_erfinvgpu():
     assert numpy.allclose(f(xv),f2(xv))
 
 
-class test_diag(theano.sandbox.linalg.tests.test_linalg.test_diag):
+def test_local_gpu_dot_to_dot22dot():
+    def cmp(a_shp, b_shp):
+        a0 = numpy.random.rand(*a_shp).astype('float32')
+        a = cuda.shared_constructor(a0, 'a')
+        b0 = numpy.random.rand(*b_shp).astype('float32')
+        b = cuda.shared_constructor(b0, 'a')
+
+        f = pfunc([], tensor.dot(a, b), mode=mode_with_gpu)
+        assert cuda.opt.local_gpu_dot_to_dot22.transform(
+            tensor.dot(a, b).owner)
+        out = f()
+
+        assert numpy.allclose(numpy.dot(a0, b0), out)
+
+        # Try with a matrix equal to a0, but with strides in both dims
+        a.set_value(a0)
+        a.set_value(
+            a.get_value(borrow=True,
+                        return_internal_type=True)[::-1],
+            borrow=True)
+        f()
+
+    cmp((4,), (4, 5))
+    cmp((3, 4), (4,))
+
+
+class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
     mode = mode_with_gpu
     shared = staticmethod(cuda.shared_constructor)
     floatX = 'float32'
     type = CudaNdarrayType
 
     def __init__(self, name):
-        super(theano.sandbox.linalg.tests.test_linalg.test_diag,
+        super(theano.tensor.tests.test_nlinalg.test_diag,
               self).__init__(name)
 
 

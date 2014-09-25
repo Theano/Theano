@@ -244,6 +244,11 @@ except NameError:
 
 if PY3:
     def get_unbound_function(unbound):
+        # Op.make_thunk isn't bound, so don't have a __func__ attr.
+        # But bound method, have a __func__ method that point to the
+        # not bound method. That is what we want.
+        if hasattr(unbound, '__func__'):
+            return unbound.__func__
         return unbound
 
     Iterator = object

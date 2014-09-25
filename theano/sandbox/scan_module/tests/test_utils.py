@@ -178,7 +178,7 @@ class TestScanUtils(unittest.TestCase):
         f2 = scan_module.scan_utils.clone(f1,
                                           replace=None,
                                           strict=True,
-                                          copy_inputs=True)
+                                          share_inputs=True)
         f2_inp = theano.gof.graph.inputs([f2])
 
         assert z in f2_inp
@@ -197,7 +197,7 @@ class TestScanUtils(unittest.TestCase):
         f2 = scan_module.scan_utils.clone(f1,
                                           replace=None,
                                           strict=True,
-                                          copy_inputs=False)
+                                          share_inputs=False)
         f2_inp = theano.gof.graph.inputs([f2])
 
         assert not z in f2_inp
@@ -217,7 +217,7 @@ class TestScanUtils(unittest.TestCase):
         f2 = scan_module.scan_utils.clone(f1,
                                           replace={y: y2},
                                           strict=True,
-                                          copy_inputs=True)
+                                          share_inputs=True)
         f2_inp = theano.gof.graph.inputs([f2])
         assert z in f2_inp
         assert x in f2_inp
@@ -236,7 +236,7 @@ class TestScanUtils(unittest.TestCase):
         f2 = scan_module.scan_utils.clone(f1,
                                           replace={y: y2},
                                           strict=False,
-                                          copy_inputs=True)
+                                          share_inputs=True)
         f2_inp = theano.gof.graph.inputs([f2])
         assert z in f2_inp
         assert x in f2_inp
@@ -255,7 +255,7 @@ class TestScanUtils(unittest.TestCase):
         f2 = scan_module.scan_utils.clone(f1,
                                           replace={y: y2},
                                           strict=True,
-                                          copy_inputs=False)
+                                          share_inputs=False)
         f2_inp = theano.gof.graph.inputs([f2])
         assert not z in f2_inp
         assert not x in f2_inp
@@ -274,7 +274,7 @@ class TestScanUtils(unittest.TestCase):
         f2 = scan_module.scan_utils.clone(f1,
                                           replace={y: y2},
                                           strict=False,
-                                          copy_inputs=False)
+                                          share_inputs=False)
         f2_inp = theano.gof.graph.inputs([f2])
         assert not z in f2_inp
         assert not x in f2_inp

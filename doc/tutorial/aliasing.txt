@@ -40,11 +40,11 @@ changes to values in that pool.
 
 * The default behaviour of a function is to return user-space values for
   outputs, and to expect user-space values for inputs.
-    
+
 The distinction between Theano-managed memory and user-managed memory can be
 broken down by some Theano functions (e.g. ``shared``, ``get_value`` and the
-constructors for ``In`` and ``Out``) by using a ``borrow=True`` flag. 
-This can make those methods faster (by avoiding copy operations) at the expense 
+constructors for ``In`` and ``Out``) by using a ``borrow=True`` flag.
+This can make those methods faster (by avoiding copy operations) at the expense
 of risking subtle bugs in the overall program (by aliasing memory).
 
 The rest of this section is aimed at helping you to understand when it is safe
@@ -91,7 +91,7 @@ and may occur only temporarily even if it occurs at all.
 It is not guaranteed to occur because if Theano is using a GPU device, then the
 ``borrow`` flag has no effect. It may occur only temporarily because
 if we call a Theano function that updates the value of *s_true* the aliasing
-relationship *may* or *may not* be broken (the function is allowed to 
+relationship *may* or *may not* be broken (the function is allowed to
 update the ``shared`` variable by modifying its buffer, which will preserve
 the aliasing, or by changing which buffer the variable points to, which
 will terminate the aliasing).
@@ -113,7 +113,7 @@ Borrowing when Accessing Value of Shared Variables
 Retrieving
 ----------
 
-A ``borrow`` argument can also be used to control how a ``shared`` variable's value is 
+A ``borrow`` argument can also be used to control how a ``shared`` variable's value is
 retrieved.
 
 
@@ -138,8 +138,8 @@ The reason that ``borrow=True`` might still make a copy is that the internal
 representation of a ``shared`` variable might not be what you expect.  When you
 create a ``shared`` variable by passing a NumPy array for example, then ``get_value()``
 must return a NumPy array too.  That's how Theano can make the GPU use
-transparent.  But when you are using a GPU (or in the future perhaps a remote machine), 
-then the numpy.ndarray is not the internal representation of your data. 
+transparent.  But when you are using a GPU (or in the future perhaps a remote machine),
+then the numpy.ndarray is not the internal representation of your data.
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
 ``get_value``.  It will never cast the internal object (always return in
@@ -171,8 +171,8 @@ Assigning
 ---------
 
 ``Shared`` variables also have a ``set_value`` method that can accept an optional
-``borrow=True`` argument. The semantics are similar to those of creating a new 
-``shared`` variable - ``borrow=False`` is the default and ``borrow=True`` means 
+``borrow=True`` argument. The semantics are similar to those of creating a new
+``shared`` variable - ``borrow=False`` is the default and ``borrow=True`` means
 that Theano *may* reuse the buffer you provide as the internal storage for the variable.
 
 A standard pattern for manually updating the value of a ``shared`` variable is as
@@ -216,12 +216,13 @@ be costly.  Here are a few tips to ensure fast and efficient use of GPU memory a
 (Further information on the current implementation of the GPU version of ``set_value()`` can be found
 here: :ref:`libdoc_cuda_var`)
 
+.. _borrowfunction:
 
 Borrowing when Constructing Function Objects
 ============================================
 
 A ``borrow`` argument can also be provided to the ``In`` and ``Out`` objects
-that control how ``theano.function`` handles its argument[s] and return value[s]. 
+that control how ``theano.function`` handles its argument[s] and return value[s].
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_3
@@ -237,7 +238,7 @@ that control how ``theano.function`` handles its argument[s] and return value[s]
 Borrowing an input means that Theano will treat the argument you provide as if
 it were part of Theano's pool of temporaries.  Consequently, your input
 may be reused as a buffer (and overwritten!) during the computation of other variables in the
-course of evaluating that function (e.g. ``f``). 
+course of evaluating that function (e.g. ``f``).
 
 
 Borrowing an output means that Theano will not insist on allocating a fresh
@@ -258,13 +259,58 @@ combination of ``return_internal_type=True`` and ``borrow=True`` arguments to
 hints that give more flexibility to the compilation and optimization of the
 graph.
 
+For GPU graphs, this borrowing can have a major speed impact.  See the following code:
+
+.. code-block:: python
+
+  from theano import function, config, shared, sandbox, tensor, Out
+  import numpy
+  import time
+
+  vlen = 10 * 30 * 768  # 10 x # cores x # threads per core
+  iters = 1000
+
+  rng = numpy.random.RandomState(22)
+  x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+  f1 = function([], sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)))
+  f2 = function([],
+                Out(sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)),
+                    borrow=True))
+  t0 = time.time()
+  for i in xrange(iters):
+      r = f1()
+  t1 = time.time()
+  no_borrow = t1 - t0
+  t0 = time.time()
+  for i in xrange(iters):
+      r = f2()
+  t1 = time.time()
+  print 'Looping', iters, 'times took', no_borrow, 'seconds without borrow',
+  print 'and', t1 - t0, 'seconds with borrow.'
+  if numpy.any([isinstance(x.op, tensor.Elemwise) and
+                ('Gpu' not in type(x.op).__name__)
+                for x in f1.maker.fgraph.toposort()]):
+      print 'Used the cpu'
+  else:
+      print 'Used the gpu'
+
+Which produces this output:
+
+.. code-block:: text
+
+   $ THEANO_FLAGS=device=gpu0,floatX=float32 python test1.py
+   Using gpu device 0: GeForce GTX 275
+   Looping 1000 times took 0.368273973465 seconds without borrow and 0.0240728855133 seconds with borrow.
+   Used the gpu
+
 *Take home message:*
 
-When an input *x* to a function is not needed after the function returns and you
-would like to make it available to Theano as additional workspace, then consider
-marking it with ``In(x, borrow=True)``.  It may make the function faster and
-reduce its memory requirement.
-When a return value *y* is large (in terms of memory footprint), and you only need to read from it once, right
-away when it's returned, then consider marking it with an ``Out(y,
+When an input *x* to a function is not needed after the function
+returns and you would like to make it available to Theano as
+additional workspace, then consider marking it with ``In(x,
+borrow=True)``.  It may make the function faster and reduce its memory
+requirement.  When a return value *y* is large (in terms of memory
+footprint), and you only need to read from it once, right away when
+it's returned, then consider marking it with an ``Out(y,
 borrow=True)``.
 

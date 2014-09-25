@@ -1,5 +1,5 @@
 """WRITEME"""
-from copy import copy
+from copy import copy, deepcopy
 import StringIO
 import sys
 import traceback
@@ -13,7 +13,7 @@ __excepthook = sys.excepthook
 
 
 def log_thunk_trace(value, f=sys.stderr):
-    """Log theano's diagnostic stack trace for an exception
+    """Log Theano's diagnostic stack trace for an exception
     raised by raise_with_op.
     """
     # in future, consider accepting `write` as arg rather than file
@@ -149,7 +149,7 @@ def raise_with_op(node, thunk=None, exc_info=None):
         sio = StringIO.StringIO()
         traceback.print_list(tr, sio)
         tr = sio.getvalue()
-        detailed_err_msg += "\nBacktrace when the node is created:"
+        detailed_err_msg += "\nBacktrace when the node is created:\n"
         detailed_err_msg += str(tr)
     else:
         hints.append(
@@ -258,7 +258,7 @@ class Container(object):
         """WRITEME
 
         :Parameters:
-         `r`: a variable
+         `r`: a Variable or a Type
          `storage`: a list of length 1, whose element is the value for `r`
          `readonly`: True indicates that this should not be setable by Function[r] = val
          `strict`: if True, we don't allow type casting.
@@ -277,6 +277,8 @@ class Container(object):
             self.type = r.type
         if name is None:
             self.name = r.name
+        else:
+            self.name = name
 
         self.storage = storage
         self.readonly = readonly
@@ -317,6 +319,30 @@ class Container(object):
 
     def __repr__(self):
         return "<" + repr(self.storage[0]) + ">"
+
+    def __deepcopy__(self, memo):
+        data_was_in_memo = id(self.storage[0]) in memo
+        r = type(self)(
+            deepcopy(self.type, memo=memo),
+            deepcopy(self.storage, memo=memo),
+            deepcopy(self.readonly, memo=memo),
+            deepcopy(self.strict, memo=memo),
+            deepcopy(self.allow_downcast, memo=memo),
+            deepcopy(self.name, memo=memo),
+            )
+        # Work around NumPy deepcopy of ndarray with 0 dimention that
+        # don't return an ndarray.
+        if (r.storage[0] is not None and
+            not self.type.is_valid_value(r.storage[0])):
+
+            assert not data_was_in_memo
+            assert self.type.is_valid_value(self.storage[0])
+            # This should also work for read only container.
+            r.storage[0] = self.type.filter(r.storage[0],
+                                            strict=False,
+                                            allow_downcast=False)
+            memo[id(self.storage[0])] = r.storage[0]
+        return r
 
 
 def map_storage(fgraph, order, input_storage, output_storage):

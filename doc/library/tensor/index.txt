@@ -25,3 +25,5 @@ They are grouped into the following sections:
     utils
     extra_ops
     io
+    slinalg
+    nlinalg

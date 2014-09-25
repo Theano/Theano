@@ -95,6 +95,8 @@ class DimShuffle(Op):
     Adding, subtracting dimensions can be done with reshape.
     """
 
+    check_input = False
+
     def __init__(self, input_broadcastable, new_order, inplace=False):
         """
         Usage: DimShuffle(input_broadcastable, new_order, inplace = False)
@@ -369,7 +371,7 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
         return full_code % dict(locals(), **sub)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def grad(self, inp, grads):
         x, = inp
@@ -874,9 +876,15 @@ class Elemwise(OpenMPOp):
                 odat[...] = variable
                 storage[0] = odat
             # Sometimes NumPy return a Python type.
-            elif not isinstance(variable, numpy.ndarray):
+            # Some Theano op return a different dtype like floor, ceil,
+            # trunc, eq, ...
+            elif (not isinstance(variable, numpy.ndarray) or
+                  variable.dtype != nout.dtype):
                 variable = numpy.asarray(variable, nout.dtype)
                 storage[0] = variable
+            # numpy.real return a view!
+            elif not variable.flags.owndata:
+                storage[0] = variable.copy()
             else:
                 storage[0] = variable
             i += 1
@@ -1828,6 +1836,20 @@ class CAReduceDtype(CAReduce):
         assert op.acc_dtype is not None
         return CAReduce.make_node(op, input)
 
+    def __str__(self):
+        name = self.__class__.__name__
+        if self.__class__.__name__ == "CAReduceDtype":
+            name = "ReduceDtype{%s}" % self.scalar_op,
+        axis = ""
+        if self.axis is not None:
+            axis = ", ".join(str(x) for x in self.axis)
+            axis = "axis=[%s], " % axis
+        return "%s{%sacc_dtype=%s}" % (
+            name,
+            axis,
+            str(self.acc_dtype)
+        )
+
 
 class Sum(CAReduceDtype):
     """
@@ -1899,12 +1921,6 @@ class Sum(CAReduceDtype):
         if None in eval_points:
             return [None]
         return self(*eval_points, **dict(return_list=True))
-
-    def __str__(self):
-        if self.axis is None:
-            return "Sum"
-        else:
-            return "Sum{%s}" % ", ".join(map(str, self.axis))
 
 
 class Prod(CAReduceDtype):
@@ -2059,12 +2075,6 @@ class Prod(CAReduceDtype):
 
             return [final_grad]
 
-    def __str__(self):
-        if self.axis is None:
-            return "Prod"
-        else:
-            return "Prod{%s}" % ", ".join(map(str, self.axis))
-
     def c_code_cache_version(self):
         return (1,)
 
@@ -2104,10 +2114,4 @@ mul_without_zeros = MulWithoutZeros(scalar.upcast_out,
 class ProdWithoutZeros(CAReduceDtype):
     def __init__(self, axis=None, dtype=None, acc_dtype=None):
         CAReduceDtype.__init__(self, mul_without_zeros, axis=axis,
-                dtype=dtype, acc_dtype=acc_dtype)
-
-    def __str__(self):
-        if self.axis is None:
-            return "ProdWithoutZeros"
-        else:
-            return "ProdWithoutZeros{%s}" % ", ".join(map(str, self.axis))
+                               dtype=dtype, acc_dtype=acc_dtype)
