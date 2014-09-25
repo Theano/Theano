@@ -428,11 +428,6 @@ softmax_input_%(id)d = NULL;
 softmax_output_%(id)d = NULL;
 
 cudnnStatus_t err%(id)d;
-if ((err%(id)d = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not create cudnn handle: %%s",
-               cudnnGetErrorString(err%(id)d));
-  %(fail)s
-}
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&softmax_input_%(id)d)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
                "(inp): %%s", cudnnGetErrorString(err%(id)d));
@@ -540,7 +535,7 @@ err%(name)s = cudnnSoftmaxForward(
            algo=algo, fail=sub['fail'], id=sub['struct_id'], name=name)
 
     def c_code_cache_version(self):
-        return (0, 2)
+        return (0, 3)
 
 
 @local_optimizer([GpuSoftmax])
