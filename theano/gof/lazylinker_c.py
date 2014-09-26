@@ -89,11 +89,11 @@ except ImportError:
             if not os.path.exists(cfile):
                 # This can happen in not normal case. We just
                 # disable the c clinker. If we are here the user
-                # didn't disable the compiler, so print a warning.
+                # didn't disabled the compiler, so print a warning.
                 warnings.warn(
                     "The file lazylinker_c.c is not available. This do"
                     "not happen normally. You are probably in a strange"
-                    "setup. This mean Theano ca not use the cvm:"
+                    "setup. This mean Theano can not use the cvm:"
                     "our c execution engine for Theano function. If you"
                     "want to remove this warning, use the Theano flag"
                     "'cxx=' (set to an empty string) to disable all c"
