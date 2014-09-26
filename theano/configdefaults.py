@@ -1,6 +1,5 @@
 import os
 import logging
-import subprocess
 
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  IntParam, StrParam, TheanoConfigParser)
