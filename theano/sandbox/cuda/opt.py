@@ -1371,21 +1371,19 @@ def local_convgrad3d_gemm(node):
     except tensor.NotScalarConstantError:
         return False
     if isinstance(node.op, ConvGrad3D):
-
         # Shuffle inputs signal from (b, 0, 1, t, c) to (b, c, 0, 1, t)
         x = node.inputs[0]
         x = gpu_contiguous(x.dimshuffle(0, 4, 1, 2, 3))
 
         # Shuffle dCdH from (b, 0, 1, t, oc) to (oc, b, 0, 1, t)
-        f = node.input[3]
+        f = node.inputs[3]
         f = gpu_contiguous(f.dimshuffle(0, 4, 1, 2, 3))
 
-        f = node.inputs[3]
-        f = f.dimshuffle(4, 0, 1, 2, 3)
-        rval = Gpucorr3dMM_gradWeights(subsample=(sx, sy, sz))(x, f,
+        rval = GpuCorr3dMM_gradWeights(subsample=(sx, sy, sz))(x, f,
                                                                shape=node.inputs[2])
         # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
         return [rval.dimshuffle(0, 2, 3, 4, 1)]
+
 gpu_optimizer.register("convgrad3d_gemm", local_convgrad3d_gemm)
 
 @local_optimizer([ConvTransp3D])
@@ -1403,8 +1401,7 @@ def local_convtransp3d_gemm(node):
         # Shuffle dCdH from (b, 0, 1, t, oc) to (b, oc, 0, 1, t)
         f = node.inputs[3]
         f = gpu_contiguous(f.dimshuffle(0, 4, 1, 2, 3))
-        # filter flip
-        rval = GpuCorr3DMM(border_mode='full', subsample=(sx, sy, sz))(f, x)
+        rval = GpuCorr3dMM_gradInputs(subsample=(sx, sy, sz))(kern=x, topgrad=f)
         # Shuffle from (ic, b, 0, 1, t) to (b, 0, 1, t, ic)
         return [rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[1]]
 

@@ -10,7 +10,7 @@ import theano.sandbox.cuda as cuda_ndarray
 if not cuda_ndarray.cuda_available:
     raise SkipTest('Optional package cuda not available')
 from theano.sandbox.cuda import float32_shared_constructor as shared
-from  theano.sandbox.cuda.blas import GpuCorr3dMM, GpuCorr3dMM_gradWeights, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradInputs
+from  theano.sandbox.cuda.blas import GpuCorr3dMM, GpuCorr3dMM_gradWeights, GpuCorr3dMM_gradInputs
 from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 if theano.config.mode == 'FAST_COMPILE':
@@ -156,4 +156,85 @@ class TestCorr3DMM(unittest.TestCase):
         self.run_gradinput(inputs_shape=(16, 15, 21, 12, 10),
                            filters_shape=(10, 6, 12, 4, 1),
                            subsample=(3,1,2))
+
+
+    def test_opt_conv3d_gemm(self):
+        inputs_shape = (16, 20, 32, 16, 1)
+        filters_shape = (10, 6, 12, 4, 1)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+
+        conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
+                                         b=bias, d=(1,1,1))
+        mode = mode_with_gpu.including('conv3d_gemm')
+
+        f_ref = theano.function([], conv)
+        f_gemm = theano.function([], conv, mode=mode)
+
+        # make sure we inserted the gemm trickery
+        topo = f_gemm.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, GpuCorr3dMM) for n in topo) > 0
+
+        res_ref = f_ref()
+        res_gemm = f_gemm()
+        utt.assert_allclose(res_ref, res_gemm)
+
+    def test_opt_convgrad3d_gemm(self):
+        inputs_shape = (16, 20, 32, 16, 1)
+        filters_shape = (10, 6, 12, 4, 1)
+        dCdH_shape = (16, 15, 21, 13, 10)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        dCdH = shared(dCdH_val)
+
+        conv = theano.tensor.nnet.convGrad3D(V=inputs, dCdH=dCdH,
+                                             WShape=filters_shape,
+                                             d=(1,1,1))
+        mode = mode_with_gpu.including('convgrad3d_gemm')
+
+        f_ref = theano.function([], conv)
+        f_gemm = theano.function([], conv, mode=mode)
+
+        # make sure we inserted the gemm trickery
+        topo = f_gemm.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, GpuCorr3dMM_gradWeights) for n in topo) > 0
+
+        res_ref = f_ref()
+        res_gemm = f_gemm()
+        utt.assert_allclose(res_ref, res_gemm,  rtol=1e-04, atol=1e-04)
+
+
+    def test_opt_convtransp3d_gemm(self):
+        inputs_shape = (16, 15, 21, 12, 10)
+        filters_shape = (10, 6, 12, 4, 1)
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+        bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+
+        conv = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1,1,1),
+                                               H=inputs)
+        mode = mode_with_gpu.including('convtransp3d_gemm')
+
+        f_ref = theano.function([], conv)
+        f_gemm = theano.function([], conv, mode=mode)
+
+        # make sure we inserted the gemm trickery
+        topo = f_gemm.maker.fgraph.toposort()
+        assert sum(isinstance(n.op, GpuCorr3dMM_gradInputs) for n in topo) > 0
+
+        res_ref = f_ref()
+        res_gemm = f_gemm()
+        utt.assert_allclose(res_ref, res_gemm, rtol=1e-04, atol=1e-04)
 
