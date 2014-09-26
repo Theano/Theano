@@ -577,8 +577,9 @@ def test_gemm_valid():
         yield t
 
 
-
 def test_dnn_valid():
+    if cuda.device_properties(cuda.active_device_number())['major'] < 3:
+        raise SkipTest('Current GPU too old')
     for t in _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn")):
         yield t
 
@@ -658,6 +659,8 @@ def test_gemm_full():
 
 
 def test_dnn_full():
+    if cuda.device_properties(cuda.active_device_number())['major'] < 3:
+        raise SkipTest('Current GPU too old')
     for t in _test_full(GpuDnnConv, mode=theano_mode.including("cudnn")):
         yield t
 
@@ -708,6 +711,8 @@ def test_gemm_subsample():
 
 
 def test_dnn_subsample():
+    if cuda.device_properties(cuda.active_device_number())['major'] < 3:
+        raise SkipTest('Current GPU too old')
     for t in _test_subsample(GpuDnnConv, theano_mode.including('cudnn')):
         yield t
 
