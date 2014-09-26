@@ -89,7 +89,7 @@ except ImportError:
             if not os.path.exists(cfile):
                 # This can happen in not normal case. We just
                 # disable the c clinker. If we are here the user
-                # didn't disabled the compiler, so print a warning.
+                # didn't disable the compiler, so print a warning.
                 warnings.warn(
                     "The file lazylinker_c.c is not available. This do"
                     "not happen normally. You are probably in a strange"
