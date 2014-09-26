@@ -5059,10 +5059,10 @@ your code will run correctly, but may be slower.""")
 
 
 def elemwise_max_input_fct(node):
-    # The Elemwise.perform use numpy ufunc and they are limited to 32
+    # The Elemwise.perform use numpy ufunc and they are limited to 31
     # inputs.
     if not theano.config.cxx:
-        return 32
+        return 31
     return 1024
 
 
