@@ -78,7 +78,7 @@ borrowed reference, you do not have the burden of properly disposing of that
 reference. You should **not** call Py_XDECREF() on a borrowed reference.
 
 Correctly managing the reference counts is important as failing to do so can
-lead to issues ranging from memory leaks to segmentation fauls.
+lead to issues ranging from memory leaks to segmentation faults.
 
 
 NumPy C-API
@@ -229,8 +229,8 @@ The following functions allow the creation and copy of NumPy arrays :
 .. method:: PyArrayObject* PyArray_GETCONTIGUOUS(PyObject* op):
 
     Returns a C-contiguous and well-behaved copy of the array op. If op is
-    already C-congiguous and well-behaved, this function simply returns a
-    reference new reference to op.
+    already C-contiguous and well-behaved, this function simply returns a
+    new reference to op.
 
 
 
