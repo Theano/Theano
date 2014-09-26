@@ -25,12 +25,11 @@ vector by a scalar.
 Python C-API
 ============
 
-Python provides a C-API to allow the manipulation of Python objects from
-C code. In this API, all classes that represent Python objects are descendants
-of the class PyObject. This class is essentially a wrapper; an instance of
-PyObject contains a pointer to another object as well as a reference count
-for that object. Thus, an instance of PyObject allows to treat a pointer to an
-object as an object itself.
+Python provides a C-API to allows the manipulation of python objects from C
+code. In this API, all variables that represent Python objects are of type
+`PyObject *`. All objects have a pointer to their type object and a reference
+count field (that is shared with the python side). Most python methods have
+an equivalent C function that can be called on the `PyObject *` pointer.
 
 As such, manipulating a PyObject instance is often straight-forward but it
 is important to properly manage its reference count. Failing to do so can
