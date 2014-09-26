@@ -74,6 +74,11 @@ except ImportError:
             if version != getattr(lazylinker_ext, '_version', None):
                 raise ImportError()
         except ImportError:
+            # It is useless to try to compile if there isn't any
+            # compiler!  But we still want to try to load it, in case
+            # the cache was copied from another computer.
+            if not theano.config.cxx:
+                raise
             _logger.info("Compiling new CVM")
             dirname = 'lazylinker_ext'
             cfile = os.path.join(theano.__path__[0], 'gof', 'lazylinker_c.c')
