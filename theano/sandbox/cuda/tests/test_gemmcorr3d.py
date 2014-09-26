@@ -33,7 +33,7 @@ class TestCorr3DMM(unittest.TestCase):
                                              b=bias, d=subsample)
         conv = GpuCorr3dMM(border_mode = "valid",
                            subsample=subsample)(inputs.dimshuffle(0, 4, 1, 2, 3),
-                                                  filters.dimshuffle(0, 4, 1, 2, 3))
+                                                filters.dimshuffle(0, 4, 1, 2, 3))
         conv = conv.dimshuffle(0, 2, 3, 4, 1)
 
         f_ref = theano.function([], conv_ref)
@@ -67,7 +67,6 @@ class TestCorr3DMM(unittest.TestCase):
 
     def run_gradweight(self, inputs_shape, filters_shape, dCdH_shape,
                         subsample=(1, 1, 1)):
-
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
