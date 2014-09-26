@@ -9,7 +9,7 @@ This tutorial covers how to extend Theano with an op that offers a C
 implementation. It does not cover ops that run on a GPU but it does introduce
 many elements and concepts which are relevant for GPU ops. This tutorial is
 aimed at individuals who already know how to extend Theano (see tutorial
-:ref:`extending_theano`) by adding a new op with a python implementation
+:ref:`extending_theano`) by adding a new op with a Python implementation
 and will only cover the additional knowledge required to also produce ops
 with C implementations.
 
@@ -25,7 +25,7 @@ vector by a scalar.
 Python C-API
 ============
 
-Python provides a C-API to allow the manipulation of python objects from
+Python provides a C-API to allow the manipulation of Python objects from
 C code. In this API, all classes that represent Python objects are descendants
 of the class PyObject. This class is essentially a wrapper; an instance of
 PyObject contains a pointer to another object as well as a reference count
@@ -44,12 +44,12 @@ Reference counting is a mechanism for keeping track, for an object, of
 the number of references to it held by other entities. This mechanism is often
 used for purposes of garbage collecting because it allows to easily see if
 an object is still being used by other entities. When the reference count
-for an object drops to 0, it means it is not used by any anyone and can
+for an object drops to 0, it means it is not used by anyone any longer and can
 be safely deleted.
 
 PyObjects implement reference counting and the Python C-API defines a number
 of macros to help manage those reference counts. The definition of these
-macros can be found here : `Python C-API Reference Counting 
+macros can be found here : `Python C-API Reference Counting
 <https://docs.python.org/2/c-api/refcounting.html>`_. Listed below are the
 two macros most often used in Theano C ops.
 
@@ -66,12 +66,12 @@ two macros most often used in Theano C ops.
     effect if the object is NULL.
 
 The general principle, in the reference counting paradigm, is that the owner
-of a reference to an object is responsible for disposing properly of it. 
+of a reference to an object is responsible for disposing properly of it.
 This can be done by decrementing the reference count once the reference is no
 longer used or by transfering ownership; passing on the reference to a new
 owner which becomes responsible for it.
 
-Some functions return "borrowed references"; this means that they return a 
+Some functions return "borrowed references"; this means that they return a
 reference to an object **without** transfering ownership of the reference to the
 caller of the function. This means that if you call a function which returns a
 borrowed reference, you do not have the burden of properly disposing of that
@@ -86,7 +86,7 @@ NumPy C-API
 
 The NumPy library provides a C-API to allow users to create, access and
 manipulate NumPy arrays from within their own C routines. NumPy's ndarrays
-are used extensively inside theano and so extending Theano with a C op will
+are used extensively inside Theano and so extending Theano with a C op will
 require interaction with the NumPy C-API.
 
 This sections covers the API's elements that are often required to write code
@@ -97,7 +97,7 @@ for a Theano C op. The full documentation for the API can be found here :
 NumPy ndarrays
 --------------
 
-In the NumPy C-API, NumPy arrays are represented as instances of the 
+In the NumPy C-API, NumPy arrays are represented as instances of the
 PyArrayObject class which is a descendant of the PyObject class. This means
 that, as for any other Python object that you manipulate from C code, you
 need to appropriatedly manage the reference counts of PyArrayObject instances.
@@ -116,10 +116,10 @@ following array x
 
 is C-contiguous, it means that, in memory, the six values contained in the
 array x are stored in the order [1, 2, 3, 4, 5, 6] (the first value is x[0,0],
-the second value is x[0,1], the third value is x[0,2], the fourth value is 
+the second value is x[0,1], the third value is x[0,2], the fourth value is
 x[1,0], etc). F-contiguous (or Fortran Contiguous) also means that the data is
 contiguous but that it is organized such that the index of the latest
-dimension changes the slowest. If the array x is F-contiguous, it means that, 
+dimension changes the slowest. If the array x is F-contiguous, it means that,
 in memory, the values appear in the order [1, 4, 2, 5, 3, 6] (the first
 value is x[0,0], the second value is x[1,0], the third value is x[0,1], etc).
 
@@ -130,7 +130,7 @@ of the array is constant over all valid values of i and j, just as the
 distance between the element x[i,j] and the element x[i,j+1] of the array
 is constant over all valid values of i and j. This distance between
 consecutive elements of an array over a given dimension, is called the
-stride of that dimension.  
+stride of that dimension.
 
 
 Accessing NumPy ndarrays' data and properties
@@ -190,7 +190,7 @@ The following macros serve to access various attributes of NumPy ndarrays.
     should either be a NumPy array flag or an integer obtained by applying
     bitwise or to an ensemble of flags.
 
-    The flags that can be used in with this macro are : 
+    The flags that can be used in with this macro are :
     NPY_ARRAY_C_CONTIGUOUS, NPY_ARRAY_F_CONTIGUOUS, NPY_ARRAY_OWNDATA,
     NPY_ARRAY_ALIGNED, NPY_ARRAY_WRITEABLE, NPY_ARRAY_UPDATEIFCOPY.
 
@@ -224,7 +224,7 @@ The following functions allow the creation and copy of NumPy arrays :
 
     The macro PyArray_ZEROS() performs the same function as the function
     PyArray_Zeros() but the data type is given as a typenum instead of a
-    pointer to a PyArray_Descr object.  
+    pointer to a PyArray_Descr object.
 
 .. method:: PyArrayObject* PyArray_GETCONTIGUOUS(PyObject* op):
 
@@ -234,18 +234,18 @@ The following functions allow the creation and copy of NumPy arrays :
 
 
 
-Functions the C Op needs to define
-==================================
+Methods the C Op needs to define
+================================
 
-There is a key difference between and op defining a Python implementation for
+There is a key difference between an op defining a Python implementation for
 its computation and defining a C implementation. In the case of a Python
 implementation, the op defines a function perform() which executes the
-required python code to realize the op. In the case of a C implementation,
+required Python code to realize the op. In the case of a C implementation,
 however, the op does **not** define a function that will execute the C code; it
 instead defines functions that will **return** the C code to the caller.
 
 This is because calling C code from Python code comes with a significant
-overhead. If every op was responsible for executing it's own C code, every
+overhead. If every op was responsible for executing its own C code, every
 time a Theano function was called, this overhead would occur as many times
 as the number of ops with C implementations in the function's computational
 graph.
@@ -254,13 +254,12 @@ To maximize performance, Theano instead requires the C ops to simply return
 the code needed for their execution and takes upon itself the task of
 organizing, linking and compiling the code from the various ops. Through this,
 Theano is able to minimize the number of times C code is called from Python
-code by maximizing the amount of computation that is done every time C code
-is called from Python.
+code.
 
-The following is a very crude example to illustrate how it's possible to
+The following is a very simple example to illustrate how it's possible to
 obtain performance gains with this process. Suppose you need to execute,
 from Python code, 10 different ops, each one having a C implementation. If
-each op was responsible for executing it's own C code, the overhead of
+each op was responsible for executing its own C code, the overhead of
 calling C code from Python code would occur 10 times. Consider now the case
 where the ops instead return the C code for their execution. You could get
 the C code from each op and then define your own C module that would call
@@ -274,20 +273,20 @@ code. This allows for faster compilation times.
 See :ref:`cop` for the full documentation of the various methods of the
 class Op that are related to the C implementation. Of particular interest are:
 
-*       The functions c_libraries() and c_lib_dirs() to allow your op to use 
+*       The methods c_libraries() and c_lib_dirs() to allow your op to use
         external libraries.
 
-*       The function c_code_cleanup() to specify how the op should clean up
+*       The method c_code_cleanup() to specify how the op should clean up
         what it has allocated during its execution.
 
-*       The functions c_init_code() and c_init_code_apply() to specify code
+*       The methods c_init_code() and c_init_code_apply() to specify code
         that should be executed once when the module is initialized, before
         anything else is executed.
 
-*       The functions c_compile_args() and c_no_compile_args() to specify
+*       The methods c_compile_args() and c_no_compile_args() to specify
         requirements regarding how the op's C code should be compiled.
 
-This sections describes the functions c_code(), c_support_code() and 
+This section describes the methods c_code(), c_support_code() and
 c_code_cache_version() because they are the ones that are most commonly
 used.
 
@@ -304,19 +303,19 @@ used.
     as the op has inputs. Each string contains the name of the C variable
     to which the corresponding input has been assigned. For example, the name
     of the C variable representing the first input of the op is given by
-    ``input_names[0]``. You should therefore use this name to interact in your
+    ``input_names[0]``. You should therefore use this name in your
     C code to interact with that variable. ``output_names`` is used
     identically to ``input_names``, but for the ops' outputs.
 
     Finally, `sub` is a dictionary of extras parameters to the c_code
     method. Among other things, it contains ``sub['fail']`` which is a string
-    of C code that you should execute (after ensuring that a python exception
-    is set) if your C code needs to raise an exception.  
+    of C code that you should execute (after ensuring that a Python exception
+    is set) if your C code needs to raise an exception.
 
-    :note: 
+    :note:
         Your C code should not return the output of the computation but
         rather put the results in the C variables whose names are contained in
-        the `output_names``. 
+        the `output_names``.
 
 .. method:: c_support_code()
 
@@ -329,9 +328,9 @@ used.
     Returns a tuple of integers representing the version of the C code in this
     op. Ex : (1, 4, 0) for version 1.4.0
 
-    This tuple is used by theano to cache the compiled C code for this op. As
-    such, the return value **MUST be CHANGED** everytime the C code is altered or
-    else Theano will disregard the change in the code and simply load a
+    This tuple is used by Theano to cache the compiled C code for this op. As
+    such, the return value **MUST BE CHANGED** every time the C code is altered
+    or else Theano will disregard the change in the code and simply load a
     previous version of the op from the cache. If you want to avoid caching of
     the C code of this op, return an empty tuple or do not implement this
     method.
@@ -371,7 +370,7 @@ shape as our vector input. If it is not the case, we allocate a new output
 storage with the right shape and number of dimensions.
 
 :note:
-    Given the simple nature of this op, there was no need to use the 
+    Given the simple nature of this op, there was no need to use the
     c_support_code() function.
 
 .. code-block:: python
@@ -399,9 +398,6 @@ storage with the right shape and number of dimensions.
 
             return gof.Apply(self, [x, y], [output_var])
 
-        def __str__(self):
-            return self.__class__.__name__
-            
         def c_code_cache_version(self):
             return (1, 0)
 
@@ -419,22 +415,10 @@ storage with the right shape and number of dimensions.
             fail = sub['fail']
 
             c_code = """
-            // Validate the inputs
-            if (PyArray_NDIM(%(x)s) != 1)
-            {
-                PyErr_SetString(PyExc_ValueError, "x is not a 1d tensor");
-                %(fail)s;
-            }
-            if (PyArray_NDIM(%(y)s) != 0)
-            {
-                PyErr_SetString(PyExc_ValueError, "y is not a scalar");
-                %(fail)s;
-            }
-
             // Validate that the output storage exists and has the same
             // dimension as x.
-            if ((NULL == %(z)s) || PyArray_NDIM(%(z)s) != 1 ||
-                (PyArray_DIMS(%(x)s)[0] != PyArray_DIMS(%(z)s)[0]))
+            if (NULL == %(z)s ||
+                PyArray_DIMS(%(x)s)[0] != PyArray_DIMS(%(z)s)[0])
             {
                 /* Reference received to invalid output variable.
                 Decrease received reference's ref count and allocate new
@@ -454,11 +438,11 @@ storage with the right shape and number of dimensions.
             {
                 /* The declaration of the following variables is done in a new
                 scope to prevent cross initialization errors */
-                npy_%(dtype_x)s* x_data_ptr = 
+                npy_%(dtype_x)s* x_data_ptr =
                                 (npy_%(dtype_x)s*)PyArray_DATA(%(x)s);
-                npy_%(dtype_z)s* z_data_ptr = 
+                npy_%(dtype_z)s* z_data_ptr =
                                 (npy_%(dtype_z)s*)PyArray_DATA(%(z)s);
-                npy_%(dtype_y)s y_value = 
+                npy_%(dtype_y)s y_value =
                                 ((npy_%(dtype_y)s*)PyArray_DATA(%(y)s))[0];
                 int x_stride = PyArray_STRIDES(%(x)s)[0] / %(itemsize_x)s;
                 int z_stride = PyArray_STRIDES(%(z)s)[0] / %(itemsize_z)s;
@@ -466,7 +450,7 @@ storage with the right shape and number of dimensions.
 
                 for(int i=0; i < x_dim; i++)
                 {
-                    z_data_ptr[i * z_stride] = (x_data_ptr[i * x_stride] * 
+                    z_data_ptr[i * z_stride] = (x_data_ptr[i * x_stride] *
                                                 y_value);
                 }
             }
