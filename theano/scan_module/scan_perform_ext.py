@@ -75,7 +75,7 @@ except ImportError:
                 )
                 raise ImportError("The file lazylinker_c.c is not available.")
 
-                code = open(cfile).read()
+            code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
                 try:
