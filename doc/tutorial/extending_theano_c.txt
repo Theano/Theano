@@ -348,11 +348,27 @@ Complete C Op example
 
 In this section, we put together every concept that was covered in this
 tutorial to generate an op which multiplies every element in a vector
-by a scalar. 
+by a scalar and returns the resulting vector.
 
-Notice how the reference count on the output variable is
+In the C code below notice how the reference count on the output variable is
 managed. Also take note of how the new variables required for the op's
 computation are declared in a new scope to avoid cross-initialization errors.
+
+Also, in the C code, it is very important to properly validate the inputs
+and outputs storage. Theano guarantees that the inputs exist and have the
+right number of dimensions but it does not guarantee their exact shape. For
+instance, if an op computes the sum of two vectors, it needs to validate that
+its two inputs have the same shape. In our case, we do not need to validate
+the exact shapes of the inputs because we don't have a need that they match
+in any way.
+
+For the outputs, things are a little bit more subtle. Theano does not
+guarantee that they have been allocated but it does guarantee that, if they
+have been allocated, they have the right number of dimension. Again, Theano
+offers no guarantee on the exact shapes. This means that, in our example, we
+need to validate that the output storage has been allocated and has the same
+shape as our vector input. If it is not the case, we allocate a new output
+storage with the right shape and number of dimensions.
 
 :note:
     Given the simple nature of this op, there was no need to use the 
