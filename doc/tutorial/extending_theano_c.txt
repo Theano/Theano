@@ -393,7 +393,7 @@ storage with the right shape and number of dimensions.
                 raise TypeError('y must be a scalar')
 
             # Create an output variable of the same type as x
-            output_var = x.type.make_variable()
+            output_var = x.type()
 
             return gof.Apply(self, [x, y], [output_var])
 
