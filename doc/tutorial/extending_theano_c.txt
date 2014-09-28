@@ -199,8 +199,8 @@ Creating NumPy ndarrays
 
 The following functions allow the creation and copy of NumPy arrays :
 
-.. method:: PyObject* PyArray_Empty(int nd, npy_intp* dims, PyArray_Descr*
-                                    dtype, int fortran)
+.. method:: PyObject* PyArray_EMPTY(int nd, npy_intp* dims, typenum dtype,
+                                    int fortran)
 
     Constructs a new ndarray with the number of dimensions specified by nd,
     shape specified by dims and data type specified by dtype. If fortran is
@@ -208,12 +208,12 @@ The following functions allow the creation and copy of NumPy arrays :
     is organized in a F-contiguous layout. The array elements are not
     initialized in any way.
 
-    The macro PyArray_EMPTY() performs the same function as the function
-    PyArray_Empty() but the data type is given as a typenum instead of a
-    pointer to a PyArray_Descr object.
+    The function PyArray_Empty() performs the same function as the macro
+    PyArray_EMPTY() but the data type is given as a pointer to a
+    PyArray_Descr object instead of a typenum.
 
-.. method:: PyObject* PyArray_Zeros(int nd, npy_intp* dims, PyArray_Descr*
-                                    dtype, int fortran)
+.. method:: PyObject* PyArray_ZEROS(int nd, npy_intp* dims, typenum dtype,
+                                    int fortran)
 
     Constructs a new ndarray with the number of dimensions specified by nd,
     shape specified by dims and data type specified by dtype. If fortran is
@@ -221,9 +221,9 @@ The following functions allow the creation and copy of NumPy arrays :
     is organized in a F-contiguous layout. Every element in the array is
     initialized to 0.
 
-    The macro PyArray_ZEROS() performs the same function as the function
-    PyArray_Zeros() but the data type is given as a typenum instead of a
-    pointer to a PyArray_Descr object.
+    The function PyArray_Zeros() performs the same function as the macro
+    PyArray_ZEROS() but the data type is given as a pointer to a
+    PyArray_Descr object instead of a typenum.    
 
 .. method:: PyArrayObject* PyArray_GETCONTIGUOUS(PyObject* op):
 
@@ -423,9 +423,9 @@ storage with the right shape and number of dimensions.
                 Decrease received reference's ref count and allocate new
                 output variable */
                 Py_XDECREF(%(z)s);
-                %(z)s = (PyArrayObject*)PyArray_Empty(1,
+                %(z)s = (PyArrayObject*)PyArray_EMPTY(1,
                                                     PyArray_DIMS(%(x)s),
-                                                    PyArray_DESCR(%(x)s),
+                                                    PyArray_TYPE(%(x)s),
                                                     0);
 
                 if (!%(z)s) {
