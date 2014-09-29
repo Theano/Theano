@@ -7,10 +7,13 @@ import cPickle
 floatX = 'float32'
 
 def test_pickle_unpickle():
+    # Test if pick and unpickling a theano function with
+    # shared variables work
     x1 = T.fmatrix('x1')
     x2 = T.fmatrix('x2')
     x3 = theano.shared(numpy.ones((10,10),dtype=floatX))
-    y = T.sum(T.sum(x1**2+x2) + x3)
+    x4 = theano.shared(numpy.ones((10,10),dtype=floatX))
+    y = T.sum(T.sum(T.sum(x1**2+x2) + x3) + x4)
     
     f = theano.function([x1,x2],y)
 

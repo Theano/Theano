@@ -1243,7 +1243,7 @@ class FunctionMaker(object):
                 optimizer_profile = optimizer(fgraph)
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
-            print 'opt took %s' % opt_time
+            #print 'opt took %s' % opt_time
             if profile:
                 profile.optimizer_time += opt_time
                 if theano.config.profile_optimizer:
