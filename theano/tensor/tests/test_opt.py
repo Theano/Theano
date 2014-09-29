@@ -1211,6 +1211,8 @@ class test_fusion(unittest.TestCase):
         generate C code in that case.
 
         """
+        if not theano.config.cxx:
+            raise SkipTest("no c compiler, so can't use big elemwise!")
         factors = []
         sd = tensor.dscalar()
         means = tensor.dvector()

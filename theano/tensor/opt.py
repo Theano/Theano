@@ -5057,7 +5057,17 @@ your code will run correctly, but may be slower.""")
         return n.outputs
     return local_fuse
 
-local_elemwise_fusion = local_elemwise_fusion_op(T.Elemwise)
+
+def elemwise_max_input_fct(node):
+    # The Elemwise.perform use numpy ufunc and they are limited to 31
+    # inputs.
+    if not theano.config.cxx:
+        return 31
+    return 1024
+
+
+local_elemwise_fusion = local_elemwise_fusion_op(T.Elemwise,
+                                                 elemwise_max_input_fct)
 
 
 class FusionOptimizer(Optimizer):

@@ -371,7 +371,12 @@ class T_function(unittest.TestCase):
         four = f(o)
         assert numpy.all(four==4)
         f(o+.1) #should clobber the memory used to store four
-        assert not numpy.all(four==4)
+        if theano.config.cxx:
+            assert not numpy.all(four==4)
+        else:
+            # The Elemwise.perform method don't reuse memory
+            # as some numpy version don't support that correctly.
+            assert numpy.all(four==4)
 
     def test_disconnected_input(self):
         a = T.scalar('a')
