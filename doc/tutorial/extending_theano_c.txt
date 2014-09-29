@@ -226,7 +226,7 @@ The following functions allow the creation and copy of NumPy arrays :
     ``PyArray_ZEROS()`` but the data type is given as a pointer to a
     ``PyArray_Descr`` object instead of a ``typenum``.
 
-.. method:: PyArrayObject* PyArray_GETCONTIGUOUS(PyObject* op):
+.. method:: PyArrayObject* PyArray_GETCONTIGUOUS(PyObject* op)
 
     Returns a C-contiguous and well-behaved copy of the array op. If op is
     already C-contiguous and well-behaved, this function simply returns a
@@ -316,7 +316,7 @@ used.
     :note:
         Your C code should not return the output of the computation but
         rather put the results in the C variables whose names are contained in
-        the `output_names``.
+        the ``output_names``.
 
 .. method:: c_support_code()
 
