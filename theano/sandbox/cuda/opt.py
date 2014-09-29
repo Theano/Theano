@@ -1380,7 +1380,7 @@ def local_convgrad3d_gemm(node):
         f = gpu_contiguous(f.dimshuffle(0, 4, 1, 2, 3))
 
         rval = GpuCorr3dMM_gradWeights(subsample=(sx, sy, sz))(x, f,
-                                                               shape=node.inputs[2])
+                                                               shape=node.inputs[2][1:4])
         # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
         return [rval.dimshuffle(0, 2, 3, 4, 1)]
 

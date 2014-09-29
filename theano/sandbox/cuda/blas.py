@@ -9,6 +9,7 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
+from theano.tensor import as_tensor_variable
 
 
 class GpuDot22(GpuOp):
@@ -1307,8 +1308,8 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
         batchsize or number of filters) may also work around the CUBLAS bug.
     """
     def __init__(self, border_mode="valid",
-            subsample=(1, 1, 1),
-            pad=(0, 0, 0)):
+                 subsample=(1, 1, 1),
+                 pad=(0, 0, 0)):
         """
         :param border_mode: currently supports "valid" only; "full" can be
             simulated by setting `pad="full"` (at the cost of performance), or
@@ -1375,6 +1376,9 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
     def make_node(self, img, topgrad, shape=None):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
+        if shape is not None:
+            shape = as_tensor_variable(shape)
+
         if img.type.ndim != 5:
             raise TypeError('img must be 5D tensor')
         if topgrad.type.ndim != 5:

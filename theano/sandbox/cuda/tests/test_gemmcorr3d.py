@@ -69,10 +69,8 @@ class TestCorr3DMM(unittest.TestCase):
                         subsample=(1, 1, 1)):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
         inputs = shared(inputs_val)
         dCdH = shared(dCdH_val)
-        filters = shared(filters_val)
 
         conv = theano.tensor.nnet.convGrad3D(V=inputs, dCdH=dCdH,
                                               WShape=filters_shape,
@@ -85,7 +83,7 @@ class TestCorr3DMM(unittest.TestCase):
         else:
             conv_gemm = GpuCorr3dMM_gradWeights(subsample=subsample)(img,
                                                                      topgrad,
-                                                                     shape=filters.shape[1:4])
+                                                                     shape=filters_shape[1:4])
         conv_gemm = conv_gemm.dimshuffle(0, 2, 3, 4, 1)
         f_ref = theano.function([], conv)
         f = theano.function([], conv_gemm)
