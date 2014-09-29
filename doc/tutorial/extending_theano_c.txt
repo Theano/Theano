@@ -27,9 +27,9 @@ Python C-API
 
 Python provides a C-API to allows the manipulation of python objects from C
 code. In this API, all variables that represent Python objects are of type
-`PyObject *`. All objects have a pointer to their type object and a reference
+``PyObject *``. All objects have a pointer to their type object and a reference
 count field (that is shared with the python side). Most python methods have
-an equivalent C function that can be called on the `PyObject *` pointer.
+an equivalent C function that can be called on the ``PyObject *`` pointer.
 
 As such, manipulating a PyObject instance is often straight-forward but it
 is important to properly manage its reference count. Failing to do so can
@@ -55,14 +55,14 @@ two macros most often used in Theano C ops.
 
 .. method:: void Py_XINCREF(PyObject *o)
 
-    Increments the reference count of object o. Without effect if the object
-    is NULL.
+    Increments the reference count of object ``o``. Without effect if the
+    object is NULL.
 
 .. method:: void Py_XDECREF(PyObject *o)
 
-    Decrements the reference count of object o. If the reference count reaches
-    0, it will trigger a call of the object's deallocation function. Without
-    effect if the object is NULL.
+    Decrements the reference count of object ``o``. If the reference count
+    reaches 0, it will trigger a call of the object's deallocation function.
+    Without effect if the object is NULL.
 
 The general principle, in the reference counting paradigm, is that the owner
 of a reference to an object is responsible for disposing properly of it.
@@ -106,7 +106,7 @@ representation does not have to occupy a continuous region in memory. In fact,
 it can be C-contiguous, F-contiguous or non-contiguous. C-contiguous means
 that the data is not only contiguous in memory but also that it is organized
 such that the index of the latest dimension changes the fastest. If the
-following array x
+following array
 
 .. code-block:: python
 
@@ -114,22 +114,23 @@ following array x
          [4, 5, 6]]
 
 is C-contiguous, it means that, in memory, the six values contained in the
-array x are stored in the order [1, 2, 3, 4, 5, 6] (the first value is x[0,0],
-the second value is x[0,1], the third value is x[0,2], the fourth value is
-x[1,0], etc). F-contiguous (or Fortran Contiguous) also means that the data is
-contiguous but that it is organized such that the index of the latest
-dimension changes the slowest. If the array x is F-contiguous, it means that,
-in memory, the values appear in the order [1, 4, 2, 5, 3, 6] (the first
-value is x[0,0], the second value is x[1,0], the third value is x[0,1], etc).
+array ``x`` are stored in the order ``[1, 2, 3, 4, 5, 6]`` (the first value is
+``x[0,0]``, the second value is ``x[0,1]``, the third value is ``x[0,2]``, the,
+fourth value is ``x[1,0]``, etc). F-contiguous (or Fortran Contiguous) also
+means that the data is contiguous but that it is organized such that the index
+of the latest dimension changes the slowest. If the array ``x`` is
+F-contiguous, it means that, in memory, the values appear in the order
+``[1, 4, 2, 5, 3, 6]`` (the first value is ``x[0,0]``, the second value is
+``x[1,0]``, the third value is ``x[0,1]``, etc).
 
 Finally, the internal data can be non-contiguous. In this case, it occupies
 a non-contiguous region in memory but it is still stored in an organized
-fashion : the distance between the element x[i,j] and the element x[i+1,j]
-of the array is constant over all valid values of i and j, just as the
-distance between the element x[i,j] and the element x[i,j+1] of the array
-is constant over all valid values of i and j. This distance between
-consecutive elements of an array over a given dimension, is called the
-stride of that dimension.
+fashion : the distance between the element ``x[i,j]`` and the element
+``x[i+1,j]`` of the array is constant over all valid values of ``i`` and
+``j``, just as the distance between the element ``x[i,j]`` and the element
+``x[i,j+1]`` of the array is constant over all valid values of ``i`` and ``j``.
+This distance between consecutive elements of an array over a given dimension,
+is called the stride of that dimension.
 
 
 Accessing NumPy ndarrays' data and properties
@@ -143,30 +144,30 @@ The following macros serve to access various attributes of NumPy ndarrays.
 
 .. method:: int PyArray_NDIM(PyArrayObject* arr)
 
-    Returns the number of dimensions in the the array pointed by arr
+    Returns the number of dimensions in the the array pointed by ``arr``
 
 .. method:: npy_intp* PyArray_DIMS(PyArrayObject* arr)
 
-    Returns a pointer on the first element of arr's internal array describing
-    its dimensions. This internal array contains as many elements as the
-    array arr has dimensions.
+    Returns a pointer on the first element of ``arr``'s internal array
+    describing its dimensions. This internal array contains as many elements
+    as the array ``arr`` has dimensions.
 
-    The macro PyArray_SHAPE is a synonym of PyArray_DIMS : it has the same
-    effect and is used in an identical way.
+    The macro ``PyArray_SHAPE()`` is a synonym of ``PyArray_DIMS()`` : it has
+    the same effect and is used in an identical way.
 
 .. method:: npy_intp* PyArray_STRIDES(PyArrayObject* arr)
 
-    Returns a pointer on the first element of arr's internal array describing
-    the stride for each of its dimension. This array has as many elements as
-    the number of dimensions in arr. In this array, the strides are expressed
-    in number of bytes.
+    Returns a pointer on the first element of ``arr``'s internal array
+    describing the stride for each of its dimension. This array has as many
+    elements as the number of dimensions in ``arr``. In this array, the
+    strides are expressed in number of bytes.
 
 .. method:: PyArray_Descr* PyArray_DESCR(PyArrayObject* arr)
 
     Returns a reference to the object representing the dtype of the array.
 
-    The macro PyArray_DTYPE is a synonym of the PyArray_DESCR() : it has the
-    same effect and is used in an identical way.
+    The macro ``PyArray_DTYPE()`` is a synonym of the ``PyArray_DESCR()`` : it
+    has the same effect and is used in an identical way.
 
     :note:
         This is a borrowed reference so you do not need to decrement its
@@ -202,28 +203,28 @@ The following functions allow the creation and copy of NumPy arrays :
 .. method:: PyObject* PyArray_EMPTY(int nd, npy_intp* dims, typenum dtype,
                                     int fortran)
 
-    Constructs a new ndarray with the number of dimensions specified by nd,
-    shape specified by dims and data type specified by dtype. If fortran is
-    equal to 0, the data is organized in a C-contiguous layout, otherwise it
-    is organized in a F-contiguous layout. The array elements are not
-    initialized in any way.
+    Constructs a new ndarray with the number of dimensions specified by
+    ``nd``, shape specified by ``dims`` and data type specified by ``dtype``.
+    If ``fortran`` is equal to 0, the data is organized in a C-contiguous
+    layout, otherwise it is organized in a F-contiguous layout. The array
+    elements are not initialized in any way.
 
-    The function PyArray_Empty() performs the same function as the macro
-    PyArray_EMPTY() but the data type is given as a pointer to a
-    PyArray_Descr object instead of a typenum.
+    The function ``PyArray_Empty()`` performs the same function as the macro
+    ``PyArray_EMPTY()`` but the data type is given as a pointer to a
+    ``PyArray_Descr`` object instead of a ``typenum``.
 
 .. method:: PyObject* PyArray_ZEROS(int nd, npy_intp* dims, typenum dtype,
                                     int fortran)
 
-    Constructs a new ndarray with the number of dimensions specified by nd,
-    shape specified by dims and data type specified by dtype. If fortran is
-    equal to 0, the data is organized in a C-contiguous layout, otherwise it
-    is organized in a F-contiguous layout. Every element in the array is
-    initialized to 0.
+    Constructs a new ndarray with the number of dimensions specified by
+    ``nd``, shape specified by ``dims`` and data type specified by ``dtype``.
+    If ``fortran`` is equal to 0, the data is organized in a C-contiguous
+    layout, otherwise it is organized in a F-contiguous layout. Every element
+    in the array is initialized to 0.
 
-    The function PyArray_Zeros() performs the same function as the macro
-    PyArray_ZEROS() but the data type is given as a pointer to a
-    PyArray_Descr object instead of a typenum.    
+    The function ``PyArray_Zeros()`` performs the same function as the macro
+    ``PyArray_ZEROS()`` but the data type is given as a pointer to a
+    ``PyArray_Descr`` object instead of a ``typenum``.
 
 .. method:: PyArrayObject* PyArray_GETCONTIGUOUS(PyObject* op):
 
@@ -238,7 +239,7 @@ Methods the C Op needs to define
 
 There is a key difference between an op defining a Python implementation for
 its computation and defining a C implementation. In the case of a Python
-implementation, the op defines a function perform() which executes the
+implementation, the op defines a function ``perform()`` which executes the
 required Python code to realize the op. In the case of a C implementation,
 however, the op does **not** define a function that will execute the C code; it
 instead defines functions that will **return** the C code to the caller.
@@ -305,9 +306,9 @@ used.
     of the C variable representing the first input of the op is given by
     ``input_names[0]``. You should therefore use this name in your
     C code to interact with that variable. ``output_names`` is used
-    identically to ``input_names``, but for the ops' outputs.
+    identically to ``input_names``, but for the op's outputs.
 
-    Finally, `sub` is a dictionary of extras parameters to the c_code
+    Finally, ``sub`` is a dictionary of extras parameters to the c_code
     method. Among other things, it contains ``sub['fail']`` which is a string
     of C code that you should execute (after ensuring that a Python exception
     is set) if your C code needs to raise an exception.
@@ -342,7 +343,7 @@ used.
         described.
 
 
-Complete C Op example
+Simple C Op example
 =====================
 
 In this section, we put together every concept that was covered in this
@@ -371,7 +372,7 @@ storage with the right shape and number of dimensions.
 
 :note:
     Given the simple nature of this op, there was no need to use the
-    c_support_code() function.
+    ``c_support_code()`` function.
 
 .. code-block:: python
 
