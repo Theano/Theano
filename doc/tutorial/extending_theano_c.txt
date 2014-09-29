@@ -272,21 +272,22 @@ code. This allows for faster compilation times.
 See :ref:`cop` for the full documentation of the various methods of the
 class Op that are related to the C implementation. Of particular interest are:
 
-*       The methods c_libraries() and c_lib_dirs() to allow your op to use
-        external libraries.
+*       The methods :meth:`Op.c_libraries` and :meth:`Op.c_lib_dirs` to allow
+        your op to use external libraries.
 
-*       The method c_code_cleanup() to specify how the op should clean up
-        what it has allocated during its execution.
+*       The method :meth:`Op.c_code_cleanup` to specify how the op should
+        clean up what it has allocated during its execution.
 
-*       The methods c_init_code() and c_init_code_apply() to specify code
-        that should be executed once when the module is initialized, before
-        anything else is executed.
+*       The methods :meth:`Op.c_init_code` and :meth:`Op.c_init_code_apply`
+        to specify code that should be executed once when the module is
+        initialized, before anything else is executed.
 
-*       The methods c_compile_args() and c_no_compile_args() to specify
-        requirements regarding how the op's C code should be compiled.
+*       The methods :meth:`Op.c_compile_args` and
+        :meth:`Op.c_no_compile_args` to specify requirements regarding how
+        the op's C code should be compiled.
 
-This section describes the methods c_code(), c_support_code() and
-c_code_cache_version() because they are the ones that are most commonly
+This section describes the methods :meth:`Op.c_code`, :meth:`Op.c_support_code` and
+:meth:`Op.c_code_cache_version` because they are the ones that are most commonly
 used.
 
 .. method:: c_code(node, name, input_names, output_names, sub)
