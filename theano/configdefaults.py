@@ -1,6 +1,7 @@
 import os
 import logging
 
+import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  IntParam, StrParam, TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
@@ -155,13 +156,19 @@ if rc == 0 and config.cxx != "":
                      'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 else:
-    # g++ is not present, linker should default to python only
+    # g++ is not present or the user disabled it,
+    # linker should default to python only.
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode(deprecated)"),
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
-    _logger.warning('g++ not detected ! Theano will be unable to execute '
+    try:
+        # If the user provided an empty value for cxx, do not warn.
+        theano.configparser.fetch_val_for_key('cxx')
+    except KeyError:
+        _logger.warning(
+            'g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
             'degraded. To remove this warning, set Theano flags cxx to an '
