@@ -694,7 +694,7 @@ class VM_Linker(link.LocalLinker):
             if k.owner and k.clients:
                 ls = []
                 for cl in k.clients:
-                    if cl[0] is not 'output':
+                    if cl[0] != 'output':
                         ls += cl[0].outputs
                 dependencies[k] += ls
         return dependencies
