@@ -1807,6 +1807,8 @@ def as_index_variable(idx):
         return NoneConst.clone()
     if isinstance(idx, slice):
         return make_slice(idx)
+    if isinstance(idx, gof.Variable) and isinstance(idx.type, SliceType):
+        return idx
     idx = theano.tensor.as_tensor_variable(idx)
     if idx.type.dtype[:3] not in ('int', 'uin'):
         raise TypeError('index must be integers')
