@@ -122,6 +122,19 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
           f = theano.function(..., mode=mode)
 
+    - :func:`GpuCorr3dMM <theano.sandbox.cuda.blas.GpuCorr3dMM>`
+     This is a GPU-only 3d correlation relying on a Toeplitz matrix
+     and gemm implementation (see sandbox.cuda.blas.GpuCorrMM)
+     It needs extra memory for the Toeplitz matrix, which is a 3D matrix of shape
+      ``(no of channels * filter width * filter height * filter depth, output width * output height * output depth)``.
+      As it provides a gradient, you can use it as a replacement for nnet.conv3d.
+      Alternatively, you can use nnet.conv3d and allow Theano's graph optimizer
+      to replace it by the GEMM version by setting
+      ``THEANO_FLAGS=optimizer_including=conv3d_gemm:convgrad3d_gemm:convtransp3d_gemm`` in your environment.
+      This is not enabled by default because it uses some extra memory, but the
+      overhead is small compared to conv3d_fft, there are no restrictions on
+      input or kernel shapes.
+
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
       It is faster in some cases than conv3d, specifically on the GPU.
