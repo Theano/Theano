@@ -104,7 +104,7 @@ class Bookkeeper(Feature):
             self.on_prune(fgraph, node, 'Bookkeeper.detach')
 
 
-class getCheckpoint:
+class GetCheckpoint:
 
     def __init__(self, history, fgraph):
         self.h = history
@@ -114,7 +114,7 @@ class getCheckpoint:
         return len(self.h.history[self.fgraph])
 
 
-class lambdextract:
+class LambdExtract:
 
     def __init__(self, fgraph, node, i, r, reason=None):
         self.fgraph = fgraph
@@ -142,11 +142,11 @@ class History(Feature):
         # Don't call unpickle here, as ReplaceValidate.on_attach()
         # call to History.on_attach() will call the
         # ReplaceValidate.unpickle and not History.unpickle
-        fgraph.checkpoint = getCheckpoint(self, fgraph)
+        fgraph.checkpoint = GetCheckpoint(self, fgraph)
         fgraph.revert = partial(self.revert, fgraph)
 
     def unpickle(self, fgraph):
-        fgraph.checkpoint = getCheckpoint(self, fgraph)
+        fgraph.checkpoint = GetCheckpoint(self, fgraph)
         fgraph.revert = partial(self.revert, fgraph)
 
     def on_detach(self, fgraph):
@@ -158,7 +158,7 @@ class History(Feature):
         if self.history[fgraph] is None:
             return
         h = self.history[fgraph]
-        h.append(lambdextract(fgraph, node, i, r, reason))
+        h.append(LambdExtract(fgraph, node, i, r, reason))
 
     def revert(self, fgraph, checkpoint):
         """
