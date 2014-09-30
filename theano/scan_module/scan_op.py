@@ -1104,13 +1104,12 @@ class Scan(PureOp):
                     # little trick that I used
                     outs[idx][0] = outs[idx][0][:-(n_steps - i)]
 
-        # Make sure to release storage if allow_gc is True, like
-        # Function.__call__ does.
-        if getattr(fn, 'allow_gc', False):
-            for i in input_storage:
-                i.storage[0] = None
-            for o in output_storage:
-                o.storage[0] = None
+        # We never reuse the input or output storage of the
+        # inner function so we clear it.
+        for i_s in input_storage:
+            i_s.storage[0] = None
+        for o_s in output_storage:
+            o_s.storage[0] = None
 
         t_call = time.time() - t0_call
         # NOTE: make this match what's in function_module.Function
