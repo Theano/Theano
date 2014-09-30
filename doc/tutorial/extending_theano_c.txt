@@ -90,7 +90,28 @@ require interaction with the NumPy C-API.
 
 This sections covers the API's elements that are often required to write code
 for a Theano C op. The full documentation for the API can be found here :
-`NumPy C-API <http://docs.scipy.org/doc/numpy/reference/c-api.html>`_
+`NumPy C-API <http://docs.scipy.org/doc/numpy/reference/c-api.html>`_.
+
+
+NumPy data types
+----------------
+
+To allow portability between platforms, the NumPy C-API defines its own data
+types which should be used whenever you are manipulating a NumPy array's
+internal data. The data types most commonly used to implement C ops are the
+following : ``npy_int{8,16,32,64}``, ``npy_uint{8,16,32,64}`` and
+``npy_float{32,64}``.
+
+You should use these data types when manipulating a NumPy array's internal
+data instead of C primitives because the size of the memory representation
+for C primitives can vary between platforms. For instance, a C ``long`` can be
+represented in memory with 4 bytes but it can also be represented with 8.
+On the other hand, the in-memory size of NumPy data types remains constant
+across platforms. Using them will make your code simpler and more portable.
+
+The full list of defined data types can be found here :
+`NumPy C-API data types
+<http://docs.scipy.org/doc/numpy/reference/c-api.dtype.html#c-type-names>`_.
 
 
 NumPy ndarrays
@@ -140,7 +161,9 @@ The following macros serve to access various attributes of NumPy ndarrays.
 
 .. method:: void* PyArray_DATA(PyArrayObject* arr)
 
-    Returns a pointer to the first element of the array's data.
+    Returns a pointer to the first element of the array's data. The returned
+    pointer must be cast to a pointer of the proper Numpy C-API data type
+    before use.
 
 .. method:: int PyArray_NDIM(PyArrayObject* arr)
 
