@@ -600,6 +600,7 @@ class TensorVariable(_tensor_py_operators, Variable):
                             x = x[:-1]
                             nb_rm += 1
                             rm = True
+                            break
                     if not rm:
                         break
                 warnings.warn(msg, stacklevel=1 + nb_rm)

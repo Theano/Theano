@@ -409,3 +409,20 @@ class TestEquilibrium(object):
             _logger.setLevel(oldlevel)
         #print 'after', g
         assert str(g) == '[Op1(x, y)]'
+
+
+def test_pre_constant_merge_slice():
+    ms = theano.tensor.type_other.MakeSlice()(1)
+    pre_constant_merge([ms])
+    const_slice = theano.tensor.type_other.SliceConstant(
+        type=theano.tensor.type_other.slicetype,
+        data=slice(1, None, 2))
+    adv = theano.tensor.subtensor.AdvancedSubtensor()(theano.tensor.matrix(),
+                                                      [2, 3], const_slice)
+    pre_constant_merge(adv)
+
+    cst = pre_greedy_local_optimizer([theano.tensor.opt.constant_folding], ms)
+    assert isinstance(cst, theano.tensor.type_other.SliceConstant)
+
+    # Make sure constant of slice signature is hashable.
+    hash(cst.signature())

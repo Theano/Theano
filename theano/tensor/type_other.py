@@ -1,6 +1,9 @@
 #
 # Slice type and Op. None Type and NoneConst.
 #
+
+import numpy
+
 import theano
 from theano.gof import Apply, Constant, Generic, Op, Type, hashtype
 from theano.gradient import DisconnectedType
@@ -74,6 +77,35 @@ class SliceType(Type):
         return isinstance(a, slice) and a is b
 
 slicetype = SliceType()
+
+
+class SliceConstant(Constant):
+    def __init__(self, type, data, name=None):
+        assert isinstance(data, slice)
+        # Numpy ndarray aren't hashable, so get rid of them.
+        if isinstance(data.start, numpy.ndarray):
+            assert data.start.ndim == 0
+            assert "int" in str(data.start.dtype)
+            data = slice(int(data.start), data.stop, data.step)
+        elif isinstance(data.stop, numpy.ndarray):
+            assert data.stop.ndim == 0
+            assert "int" in str(data.stop.dtype)
+            data = slice(data.start, int(data.stop), data.step)
+        elif isinstance(data.step, numpy.ndarray):
+            assert data.step.ndim == 0
+            assert "int" in str(data.step.dtype)
+            data = slice(data.start, int(data.stop), data.step)
+        Constant.__init__(self, type, data, name)
+
+    def signature(self):
+        return (SliceConstant, self.data.start, self.data.stop, self.data.step)
+
+    def __str__(self):
+        return "%s{%s, %s, %s}" % (self.__class__.__name__,
+                                   self.data.start,
+                                   self.data.stop,
+                                   self.data.step)
+SliceType.Constant = SliceConstant
 
 
 class NoneTypeT(Generic):
