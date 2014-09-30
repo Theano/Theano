@@ -4,12 +4,7 @@
 
 
 # 1. Raw results
-#
-# same code as in mode_solution_1 but run with following command lines:
-# THEANO_FLAGS=mode=FAST_RUN,device=gpu time python program_name.py
-# THEANO_FLAGS=mode=FAST_RUN,device=cpu time python program_name.py
-# for GPU and CPU respectively
-# typical time: 20 sec (CPU), 10 sec (GPU)
+
 
 import numpy
 import theano
@@ -94,7 +89,7 @@ print predict()
 # 2.1 Profiling for CPU computations
 
 # In your terminal, type:
-$ CUDA_LAUNCH_BLOCKING=1 THEANO_FLAGS=profile=True,device=cpu python using_gpu_solution_1.py
+$ THEANO_FLAGS=profile=True,device=cpu python using_gpu_solution_1.py
 
 # You'll see first the output of the script:
 Used the cpu
