@@ -338,7 +338,8 @@ def register_specialize(lopt, *tags, **kwargs):
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
-        compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+        compile.optdb['specialize'].register(name, lopt, 'fast_run',
+                                             'fast_compile_gpu', *tags)
         return lopt
 
 
@@ -1319,7 +1320,7 @@ def local_track_shape_i(node):
 
 
 @register_specialize
-@register_canonicalize('gpu')
+@register_canonicalize('fast_compile_gpu')
 @gof.local_optimizer([Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
