@@ -5,14 +5,6 @@ from theano.gof.graph import is_same_graph
 from theano.gof import FunctionGraph
 from theano.scan_module.scan_utils import equal_computations
 
-def graphs_equal(x, y):
-    # check if two graphs are equal
-    # x: outputs list of graph A
-    # y: outputs list of graph B
-
-    pass
-
-
 def test_graph_equivalence():
     # Test if equivalent graphs are in fact equivalent
     # by using some functions in Theano
@@ -44,14 +36,5 @@ def test_graph_equivalence():
     #assert graphs_equal(g1_y, g3_y) == True
     #assert graphs_equal(g1_y, g2_y) == False
 
-
-def test_graph_optimization_caching():
-    # 
-    x = T.fmatrix('inputs')
-    y = x.sum()
-    f = theano.function(inputs=[x], outputs=y)
-
-
 if __name__ == '__main__':
-    test_graph_optimization_caching()
-    #test_graph_equivalence()
+    test_graph_equivalence()
