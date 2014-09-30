@@ -18,6 +18,18 @@ def add_tag_trace(thing):
     # rid of it.  We also want to get rid of the add_tag_trace call.
     if tr and "add_tag_trace" in tr[-1][-1]:
         tr = tr[:-1]
+    while tr:
+        file_path = tr[-1][0]
+        rm = False
+        for p in ["theano/tensor/",
+                  "theano/gof/"]:
+            if p in file_path:
+                tr = tr[:-1]
+                rm = True
+                break
+        if not rm:
+            break
+
     thing.tag.trace = tr
     return thing
 
