@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 import sys
+import warnings
 
 import numpy
 

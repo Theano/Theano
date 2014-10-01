@@ -9,6 +9,7 @@ import theano
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
+from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 
 scal = scalar # somewhere scalar gets reassigned to be a function

@@ -1,8 +1,6 @@
-import commands
 import distutils
 import logging
 import os
-import re
 import subprocess
 import sys
 import warnings
@@ -245,7 +243,6 @@ class NVCC_compiler(object):
             preargs = list(preargs)
         if sys.platform != 'win32':
             preargs.append('-fPIC')
-        no_opt = False
         cuda_root = config.cuda.root
 
         #The include dirs gived by the user should have precedence over

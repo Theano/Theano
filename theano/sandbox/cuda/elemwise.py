@@ -7,15 +7,15 @@ that ndim is 0 as with all scalar type.
 """
 
 
-import copy, logging, sys
+import logging
 
 import numpy
 
 from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 from theano.scalar.basic_scipy import Erfinv
 from theano.compat.six import StringIO
-from theano import Apply, Constant, Op, Type, Variable
-from theano import gof, scalar, tensor
+from theano import Apply
+from theano import gof, scalar
 
 
 _logger_name = 'theano.sandbox.cuda.elemwise'
@@ -430,7 +430,6 @@ class NaiveAlgo(object):
         return sio.getvalue()
 
     def c_src_kernel_Ccontiguous(self, node, nodename):
-        nd = node.outputs[0].type.ndim
         sio = StringIO()
         #print 'C_SRC_KERNEL', sio.getvalue()
 
