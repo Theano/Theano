@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.281
+    return 0.283
 
 @cython.boundscheck(False)
 def perform(
@@ -455,6 +455,13 @@ def perform(
 	    # the directive.
                 sh0 = outs[idx][0].shape[0]
                 outs[idx][0] = outs[idx][0][:sh0-(n_steps - i)]
+
+    # We never reuse the input or output storage of the
+    # inner function so we clear it.
+    for i_s in input_storage:
+        i_s.storage[0] = None
+    for o_s in output_storage:
+        o_s.storage[0] = None
 
     t_call = time.time() - t0_call
 
