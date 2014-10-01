@@ -25,7 +25,7 @@ index aaebb43..2d06b29 100644
   * cdef inline object get_array_base(ndarray arr):
   */
 -  __pyx_v_arr->base = __pyx_v_baseptr;
-+#if NPY_API < 0x00000007
++#if NPY_API_VERSION < 0x00000007
 +  PyArray_BASE(__pyx_v_arr) = __pyx_v_baseptr;
 +#else
 +  PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);

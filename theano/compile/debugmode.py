@@ -97,7 +97,6 @@ AddConfigVar('DebugMode.check_preallocated_output_ndim',
 
 import logging
 _logger = logging.getLogger("theano.compile.debugmode")
-_logger.setLevel(logging.WARNING)
 
 
 # Filter to avoid duplicating optimization warnings
@@ -757,7 +756,6 @@ def _check_viewmap(node, storage_map):
 
         good_alias, bad_alias = {}, {}
         outstorage = storage_map[onode][0]
-        instorage_id = [id(storage_map[i][0]) for i in node.inputs]
 
         # first find out which input it aliases
         view_map = getattr(node.op, 'view_map', {})
@@ -869,8 +867,6 @@ def _find_bad_optimizations0(order, reasons, r_vals):
     for i, node in enumerate(order):
         for new_r in node.outputs:
             for reason, r, old_graph_str, new_graph_str in reasons[new_r]:
-                problem = False
-
                 #check if the value for new_r doesn't match the value for r
                 new_r_val = r_vals[new_r]
                 r_val = r_vals[r]
@@ -1553,7 +1549,6 @@ class _Linker(gof.link.LocalLinker):
             # don't do this ugly hacky way of setting the
             # filter_checks_isfinite
             from theano.tensor import TensorType  # to set filter_check_isfinite
-            from theano import tests  # for config.unittests.rseed
         fgraph = self.fgraph
         input_storage_ = input_storage
         output_storage_ = output_storage
@@ -1707,8 +1702,6 @@ class _Linker(gof.link.LocalLinker):
                                          if r.owner is None]
 
             try:
-                equiv_vals = {}
-                problematic = set()
                 # r_vals are the true values associated with each
                 # variable in the graph they should not change during
                 # the evaluation of this function, even when the graph
@@ -2266,7 +2259,6 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                                     "default for a SymbolicInputKit.")
                 input_storage.append(default.storage)
                 default = None
-                required = False
             elif isinstance(input, SymbolicInputKit):
                 # If the input is a SymbolicInputKit, it represents more than
                 # one storage unit. The indices and subinputs lists represent

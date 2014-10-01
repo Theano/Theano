@@ -68,7 +68,6 @@ AddConfigVar('cmodule.preload_cache',
              in_c_key=False)
 
 _logger = logging.getLogger("theano.gof.cmodule")
-_logger.setLevel(logging.WARNING)
 
 METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"

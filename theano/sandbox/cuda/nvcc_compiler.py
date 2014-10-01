@@ -1,8 +1,6 @@
-import commands
 import distutils
 import logging
 import os
-import re
 import subprocess
 import sys
 import warnings
@@ -19,7 +17,6 @@ from theano.gof.python25 import any
 from theano.misc.windows import output_subprocess_Popen
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
-_logger.setLevel(logging.WARN)
 
 from theano.configparser import (config, AddConfigVar, StrParam,
                                  BoolParam, ConfigParam)
@@ -246,7 +243,6 @@ class NVCC_compiler(object):
             preargs = list(preargs)
         if sys.platform != 'win32':
             preargs.append('-fPIC')
-        no_opt = False
         cuda_root = config.cuda.root
 
         #The include dirs gived by the user should have precedence over

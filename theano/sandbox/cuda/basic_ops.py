@@ -9,6 +9,7 @@ import theano
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
+from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 
 scal = scalar # somewhere scalar gets reassigned to be a function
@@ -31,8 +32,6 @@ from theano.sandbox.cuda.elemwise import NaiveAlgo
 
 _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.INFO)
-_logger.addHandler(logging.StreamHandler())  # TO REMOVE
 
 
 def as_cuda_ndarray_variable(x):

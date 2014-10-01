@@ -7,7 +7,6 @@ from theano.compile import optdb
 
 _logger_name = 'theano.sandbox.gpuarray'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.WARNING)
 
 error = _logger.error
 info = _logger.info

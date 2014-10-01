@@ -8,7 +8,6 @@ from theano import config
 from theano.gof.cc import get_module_cache
 
 _logger = logging.getLogger('theano.bin.theano-cache')
-_logger.setLevel(logging.WARN)
 
 
 def print_help(exit_status):
