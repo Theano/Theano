@@ -357,7 +357,7 @@ commonly used.
     will be included at the global scope level and can be used to define
     functions and structs that will be used by every apply of this op.
 
-.. method:: c_support_code_apply()
+.. method:: c_support_code_apply(node, name)
 
     Returns a string containing some support C code for this op. This code
     will be included at the global scope level and can be used to define
