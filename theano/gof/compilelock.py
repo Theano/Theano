@@ -11,8 +11,6 @@ import logging
 from theano import config
 
 _logger = logging.getLogger("theano.gof.compilelock")
-# INFO will show the the messages "Refreshing lock" message
-_logger.setLevel(logging.INFO)
 
 # In seconds, time that a process will wait before deciding to override an
 # existing lock. An override only happens when the existing lock is held by

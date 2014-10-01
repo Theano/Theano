@@ -20,8 +20,6 @@ from theano import gof, scalar, tensor
 
 _logger_name = 'theano.sandbox.cuda.elemwise'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.INFO)
-_logger.addHandler(logging.StreamHandler()) #TO REMOVE
 
 
 def _logical_scalar(x):

@@ -13,7 +13,6 @@ from theano.gof import cmodule
 
 
 _logger = logging.getLogger('theano.scan_module.scan_perform')
-_logger.setLevel(logging.WARN)
 
 
 version = 0.283  # must match constant returned in function get_version()

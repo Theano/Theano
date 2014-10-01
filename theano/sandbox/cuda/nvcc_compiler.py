@@ -19,7 +19,6 @@ from theano.gof.python25 import any
 from theano.misc.windows import output_subprocess_Popen
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
-_logger.setLevel(logging.WARN)
 
 from theano.configparser import (config, AddConfigVar, StrParam,
                                  BoolParam, ConfigParam)

@@ -31,8 +31,6 @@ from theano.sandbox.cuda.elemwise import NaiveAlgo
 
 _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.INFO)
-_logger.addHandler(logging.StreamHandler())  # TO REMOVE
 
 
 def as_cuda_ndarray_variable(x):

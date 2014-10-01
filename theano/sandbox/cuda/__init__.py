@@ -16,7 +16,6 @@ import nvcc_compiler
 
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.WARNING)
 
 AddConfigVar('pycuda.init',
         """If True, always initialize PyCUDA when Theano want to

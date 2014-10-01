@@ -97,7 +97,6 @@ AddConfigVar('DebugMode.check_preallocated_output_ndim',
 
 import logging
 _logger = logging.getLogger("theano.compile.debugmode")
-_logger.setLevel(logging.WARNING)
 
 
 # Filter to avoid duplicating optimization warnings
