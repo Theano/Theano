@@ -35,7 +35,8 @@ _logger = logging.getLogger("theano.printing")
 
 
 def debugprint(obj, depth=-1, print_type=False,
-               file=None, ids='CHAR', stop_on_name=False):
+               file=None, ids='CHAR', stop_on_name=False,
+               scan_graphs=True):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -54,6 +55,8 @@ def debugprint(obj, depth=-1, print_type=False,
                 "" - don't print an identifier
     :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
+    :param scan_graphs: When True, will print the inner graphs of scan ops.
+                When false, the inner graphs of scan ops will not be printed.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -79,6 +82,7 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = sys.stdout
     else:
         _file = file
+    stop_on_scan = not scan_graphs
     done = dict()
     results_to_print = []
     order = []
@@ -105,7 +109,8 @@ def debugprint(obj, depth=-1, print_type=False,
     for r in results_to_print:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
-                             stop_on_name=stop_on_name)
+                             stop_on_name=stop_on_name,
+                             stop_on_scan=stop_on_scan)
     if file is _file:
         return file
     elif file == 'str':
