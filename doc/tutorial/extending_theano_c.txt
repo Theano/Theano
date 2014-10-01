@@ -425,9 +425,6 @@ storage with the right shape and number of dimensions.
     class VectorTimesScalar(gof.Op):
         __props__ = ()
 
-        def __init__(self, **kwargs):
-            gof.Op.__init__(self, **kwargs)
-
         def make_node(self, x, y):
             # Validate the inputs' type
             if x.type.ndim != 1:
