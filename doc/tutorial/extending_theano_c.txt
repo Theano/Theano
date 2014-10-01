@@ -545,9 +545,6 @@ C code.
     class VectorTimesVector(gof.Op):
         __props__ = ()
 
-        def __init__(self, **kwargs):
-            gof.Op.__init__(self, **kwargs)
-
         def make_node(self, x, y):
             # Validate the inputs' type
             if x.type.ndim != 1:
