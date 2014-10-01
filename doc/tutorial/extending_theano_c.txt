@@ -559,10 +559,6 @@ C code.
                 raise TypeError('y must be a 1-d vector')
 
             # Create an output variable of the same type as x
-            print x.dtype
-            print y.dtype
-            print theano.scalar.upcast(x.dtype, y.dtype)
-            print "----"
             output_var = theano.tensor.TensorType(
                             dtype=theano.scalar.upcast(x.dtype, y.dtype),
                             broadcastable=[False])()
