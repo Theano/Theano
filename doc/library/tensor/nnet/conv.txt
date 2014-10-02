@@ -96,13 +96,15 @@ TODO: Give examples on how to use these things! They are pretty complicated.
           f = theano.function(..., mode=mode)
 
     - :func:`dnn_conv <theano.sandbox.cuda.dnn.dnn_conv>` GPU-only
-      convolution using NVIDIA's cuDNN library.  To enable it (and
-      other cudnn-accelerated ops), set
+      convolution using NVIDIA's cuDNN library.  To have conv2d()
+      automatically converted set
       ``THEANO_FLAGS=optimizer_including=cudnn`` in your environment.
-      This requires that you have cuDNN installed and available.  It
-      also requires a GPU with compute capability 3.0 or more.
+      This will also replace other operations by their a
+      cuDNN-accelerated equivalent.  This requires that you have cuDNN
+      installed and available.  It requires a GPU with compute
+      capability 3.0 or more.
 
-      Since it has a gradient defined it can be used manually.
+      Since it has a gradient defined it can also be used manually.
 
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
       3D Convolution applying multi-channel 3D filters to batches of
