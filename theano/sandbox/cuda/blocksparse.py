@@ -18,6 +18,13 @@ class SparseBlockGemvSS(GpuOp):
     This op computes the dot product of specified pieces of vectors
     and matrices, returning pieces of vectors.
 
+    It computes something like this for each j:
+
+      o[j] = sum_over_i(dot(W[i, j], h[i])) + o[j]
+
+    The i and j are taken from the inputIdx and outputIdx lists
+    respectively.
+
     This should not be directly called since the interface is subject
     to change without notice.  Use the sparse_block_dot_SS() function
     for a stable interface.
@@ -342,6 +349,12 @@ class SparseBlockOuterSS(GpuOp):
     """
     This computes the outer product of two sets of pieces of vectors
     updating a full matrix with the results.
+
+    It computes something like this:
+
+      o[i, j] = (alpha * outer(x[i], y[j])) + o[i, j]
+
+    The i and j are taken from the xIdx and yIdx lists respectively.
 
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
