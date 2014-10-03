@@ -822,9 +822,15 @@ class ShapeFeature(object):
             s_i.owner.inputs[0].owner and
             isinstance(s_i.owner.inputs[0].owner.op, T.Shape)):
             assert s_i.ndim == 0
-            assert len(s_i.owner.inputs) == 2
+            assert len(s_i.owner.op.idx_list) == 1
+
+            # The current Subtensor always put constant index in the graph.
+            # This was not True in the past. So call the Subtensor function
+            # that will return the right index.
+            idx = theano.tensor.subtensor.get_idx_list(s_i.owner.inputs,
+                                                       s_i.owner.op.idx_list)
             try:
-                i = get_scalar_constant_value(s_i.owner.inputs[1])
+                i = get_scalar_constant_value(idx)
                 s_i = Shape_i(i)(s_i.owner.inputs[0].owner.inputs[0])
             except NotScalarConstantError:
                 pass
