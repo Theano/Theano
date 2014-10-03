@@ -40,7 +40,10 @@ def alias_root(v):
     outpos = v.owner.outputs.index(v)
     v_views = vmap.get(outpos, []) + dmap.get(outpos, [])
     if len(v_views) > 1:
-        raise NotImplementedError()
+        raise NotImplementedError(
+            str(v) + " is a view/destroyed version of more then one inputs. "
+            "Currently, we only support the case where an output is a view or "
+            "a destroyed version of one input.")
     elif v_views:
         return alias_root(v.owner.inputs[v_views[0]])
     else:
