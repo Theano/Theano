@@ -829,6 +829,8 @@ class ShapeFeature(object):
             # that will return the right index.
             idx = theano.tensor.subtensor.get_idx_list(s_i.owner.inputs,
                                                        s_i.owner.op.idx_list)
+            assert len(idx) == 1
+            idx = idx[0]
             try:
                 i = get_scalar_constant_value(idx)
                 s_i = Shape_i(i)(s_i.owner.inputs[0].owner.inputs[0])
@@ -1750,6 +1752,8 @@ def local_useless_inc_subtensor(node):
             return
         if not node.fgraph.shape_feature.same_shape(node.inputs[0],
                                                     node.inputs[1]):
+            node.fgraph.shape_feature.same_shape(node.inputs[0],
+                                                 node.inputs[1])
             return
         # There is no reverse, so we don't need a replacement.
         if all(e.step is None
