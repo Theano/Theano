@@ -1752,8 +1752,6 @@ def local_useless_inc_subtensor(node):
             return
         if not node.fgraph.shape_feature.same_shape(node.inputs[0],
                                                     node.inputs[1]):
-            node.fgraph.shape_feature.same_shape(node.inputs[0],
-                                                 node.inputs[1])
             return
         # There is no reverse, so we don't need a replacement.
         if all(e.step is None
