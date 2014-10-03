@@ -36,7 +36,7 @@ class _typed_list_py_operators:
     def count(self, elem):
         return count(self, elem)
 
-    #name "index" is already used by an attribute
+    # name "index" is already used by an attribute
     def ind(self, elem):
         return index_(self, elem)
 
@@ -423,7 +423,7 @@ class Reverse(Op):
         return self.__class__.__name__
 
     def c_code(self, node, name, inp, out, sub):
-        x_name = inp[0] 
+        x_name = inp[0]
         output_name = out[0]
         fail = sub['fail']
         if not self.inplace:
