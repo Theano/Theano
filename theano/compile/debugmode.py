@@ -666,14 +666,26 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
     return fgraph, map(SymbolicOutput, updates), equivalence_tracker
 
 
+class DataDestroyed():
+    # this is a singleton class We put it in the storage_map when the
+    # variable value was destroyed to prevent reusing bad value for
+    # it.
+    pass
+
+data_destroyed = DataDestroyed()
+
+
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                   clobber_dr_vals=True,
                   perform=None, warn_input_not_reused=True):
-    """
-    Raise BadDestroyMap if necessary, update dr_vals
+    """Raise BadDestroyMap if necessary, update dr_vals
 
     Returns a list of output variables that actually worked inplace
     (their value is aliased to the value of at least one input).
+
+    It modify the storage_map to remove node.inputs variable that have
+    been destroyed.
+
     """
     destroyed_idx_list = []
     destroy_map = getattr(node.op, 'destroy_map', {})
@@ -736,7 +748,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                         raise Exception('failure in topological ordering')
                     if clobber_dr_vals:
                         dr_vals[r] = (storage_map[r][0], node) #no copy, this is the last use of this variable
-                    storage_map[r][0] = None #make sure that dr_vals[r] doens't get used again
+                    # make sure that dr_vals[r] doens't get used again
+                    storage_map[r][0] = data_destroyed
             else:
                 raise BadDestroyMap(node, r_idx, r_vals[r],
                                     storage_map[r][0], perform)
@@ -766,8 +779,15 @@ def _check_viewmap(node, storage_map):
         # case...
 
         for ii, inode in enumerate(node.inputs):
+            in_storage = storage_map[inode][0]
+            if in_storage is data_destroyed:
+                # If the input have been destroyed, it can't be a
+                # view. So no need to check. Also, we don't have the
+                # original value, we we wouldn't be able to do this
+                # useless check.
+                continue
             if hasattr(inode.type, 'may_share_memory') and\
-               inode.type.may_share_memory(outstorage, storage_map[inode][0]):
+               inode.type.may_share_memory(outstorage, in_storage):
 
                 nodeid = id(inode)
                 bad_alias[nodeid] = ii
