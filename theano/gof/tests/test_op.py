@@ -44,6 +44,14 @@ class MyType(Type):
             raise ValueError("Invalid value")
         return x
 
+    # Added to make those tests pass in DebugMode
+    @staticmethod
+    def may_share_memory(a, b):
+        # As this represent a string and string are immutable, they
+        # never share memory in the DebugMode sence. This is needed as
+        # Python reuse string internally.
+        return False
+
 
 class MyOp(Op):
 
