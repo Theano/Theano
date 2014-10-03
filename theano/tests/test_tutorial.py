@@ -64,6 +64,11 @@ class T_extending(unittest.TestCase):
             def values_eq_approx(self, x, y, tolerance=1e-4):
                 return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
+            # Added to make those tests pass in DebugMode
+            @staticmethod
+            def may_share_memory(a, b):
+                return a is b
+
         double = Double()
 
 
@@ -86,6 +91,11 @@ class T_extending(unittest.TestCase):
 
             def __str__(self):
                 return "double"
+
+            # Added to make those tests pass in DebugMode
+            @staticmethod
+            def may_share_memory(a, b):
+                return a is b
 
         double = Double()
 
@@ -193,6 +203,11 @@ class T_extending(unittest.TestCase):
 
             def __str__(self):
                 return "double"
+
+            # Added to make those tests pass in DebugMode
+            @staticmethod
+            def may_share_memory(a, b):
+                return a is b
 
         double = Double()
 
@@ -340,6 +355,11 @@ class T_extending(unittest.TestCase):
 
             def c_cleanup(self, name, sub):
                 return ""
+
+            # Added to make those tests pass in DebugMode
+            @staticmethod
+            def may_share_memory(a, b):
+                return a is b
 
         double = Double()
 

@@ -7,13 +7,30 @@ from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import GpuOp, active_device_number, device_properties
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.blas import GpuConv
 from theano.sandbox.cuda.nnet import GpuSoftmax
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+
+
+def dnn_available():
+    if dnn_available.avail is None:
+        dev = active_device_number()
+        if device_properties(dev)['major'] < 3:
+            dnn_available.msg = "Device not supported by cuDNN"
+            dnn_available.avail = False
+        else:
+            dnn_available.msg = "Can not find the cuDNN library"
+            dnn_available.avail = theano.gof.cmodule.GCC_compiler.try_flags(
+                ["-l", "cudnn"])
+    return dnn_available.avail
+
+
+dnn_available.avail = None
+dnn_available.msg = None
 
 
 class DnnBase(GpuOp):

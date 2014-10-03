@@ -2516,10 +2516,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
 
-        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
-        return Apply(self, [x_, y_, ilist_],
-                     [CudaNdarrayType(dtype=x_.dtype,
-                                      broadcastable=bcast)()])
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     # CudaNdarray_Subscript() doesn't support Advanced slicing.
     # But we can't use the parent version that loops on each index
@@ -2685,10 +2682,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
 
-        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
-        return Apply(self, [x_, y_, ilist_],
-                     [CudaNdarrayType(dtype=x_.dtype,
-                                      broadcastable=bcast)()])
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
         return (2,)

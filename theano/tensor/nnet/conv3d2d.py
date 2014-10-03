@@ -174,9 +174,9 @@ def conv3d(signals, filters,
     :param filters_shape: None or a tuple/list with the shape of filters
     :param border_mode: The only one tested is 'valid'.
 
-    :note: Work on the GPU.
-           Another way to define signals: (batch,  time, in channel, row, column)
+    :note: Another way to define signals: (batch,  time, in channel, row, column)
            Another way to define filters: (out channel,time,in channel, row, column)
+    :note: See the `conv3d_fft`_ or `conv3d2d`_ for GPU implementations.
 
     :see: Someone made a script that shows how to swap the axes between
           both 3d convolution implementations in Theano. See the last

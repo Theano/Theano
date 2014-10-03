@@ -31,10 +31,11 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       with batches of multi-channel 2D images, available for CPU and GPU.
       Most of the more efficient GPU implementations listed below can be used
       as an automatic replacement for nnet.conv2d by enabling specific graph
-      optimizations.
+      optimizations. It flip the kernel.
     - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>` This
       is a GPU-only version of nnet.conv2d that uses an FFT transform
-      to perform the work. conv2d_fft should not be used directly as
+      to perform the work.  It flip the kernel as ``conv2d``.
+      conv2d_fft should not be used directly as
       it does not provide a gradient. Instead, use nnet.conv2d and
       allow Theano's graph optimizer to replace it by the FFT version
       by setting
@@ -64,7 +65,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       <http://deeplearning.net/software/pylearn2/library/linear.html>`_
       implementation, but it can also be used `directly from within Theano
       <http://benanne.github.io/2014/04/03/faster-convolutions-in-theano.html>`_
-      as a manual replacement for nnet.conv2d.
+      as a manual replacement for nnet.conv2d. It does not flip the kernel.
     - :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`
       This is a GPU-only 2d correlation implementation taken from
       `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu>`_
@@ -103,7 +104,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
       3D Convolution applying multi-channel 3D filters to batches of
-      multi-channel 3D images.
+      multi-channel 3D images. It do not flip the kernel.
     - :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`
       GPU-only version of conv3D using FFT transform. conv3d_fft should
       not be called directly as it does not provide a gradient.
@@ -124,7 +125,8 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
-      It is faster in some cases than conv3d, specifically on the GPU.
+      It is faster in some cases than conv3d, and work on the GPU.
+      It flip the kernel.
 
 .. autofunction:: theano.tensor.nnet.conv.conv2d
 .. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
