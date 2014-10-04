@@ -2313,6 +2313,30 @@ class GpuReshape(tensor.Reshape, GpuOp):
             raise ValueError('shape argument to Reshape.perform'
                              ' has incorrect length %i'
                              ', should be %i' % (len(shp), self.ndim), shp)
+
+        m1_idx = -1
+        if shp.prod() != x.size:
+            # We need to do check here to raise the same error as NumPy.
+            # We should make pygpu do the same.
+            ss = 1
+            nb_m1 = 0
+            for idx, i in enumerate(shp):
+                if i == -1:
+                    nb_m1 += 1
+                    m1_idx = idx
+                else:
+                    ss *= i
+            if nb_m1 > 1:
+                raise ValueError("Only one -1 is accepted in the new shape")
+            elif nb_m1 == 1:
+                if (x.size % ss) != 0:
+                    raise ValueError("When using -1 in new shape, the computed new shape must be an multiple of the original shape.")
+            else:
+                raise ValueError("total size of new array must be unchanged")
+
+        if m1_idx != -1:
+            shp[m1_idx] = x.size/(-1*shp.prod())
+
         out[0] = x.reshape(tuple(shp))
 
 

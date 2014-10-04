@@ -10,6 +10,7 @@ import theano.tensor as T
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -335,6 +336,22 @@ def test_reshape():
     def just_vals(v):
         return T.Reshape(2)(v, theano._asarray([2, 3], dtype='int32'))
     utt.verify_grad(just_vals, [a_val])
+
+    # Test for appropriate handling of -1 indices
+    x = T.tensor3('x')
+    f_reshp = theano.function([x], x.reshape((-1, 1, 1)), mode=mode_with_gpu)
+    y = f_reshp(
+        numpy.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]]], dtype='float32')
+    )
+    assert y.shape == (8, 1, 1)
+
+    assert_raises(ValueError,
+                  f_reshp=theano.function(
+                      [x],
+                      x.reshape((-1, -1, 1)),
+                      mode=mode_with_gpu
+                  )
+    )
 
 
 def test_elemwise_empty():
