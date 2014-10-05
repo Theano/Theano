@@ -444,8 +444,8 @@ signature:
 
 .. note::
 
-    Not providing the `infer_shape` method cause shapes-related
-    optimization to not work with that op. For example
+    Not providing the `infer_shape` method prevents shape-related
+    optimizations from working with this op. For example
     `your_op(inputs, ...).shape` will need the op to be executed just
     to get the shape.
 
@@ -456,7 +456,7 @@ signature:
 
 .. note::
 
-    It converts the python function to a callable object that takes as
+    It converts the Python function to a callable object that takes as
     inputs Theano variables that were declared.
 
 
