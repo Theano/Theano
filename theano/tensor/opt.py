@@ -2176,6 +2176,34 @@ def local_subtensor_of_alloc(node):
 
 
 @register_canonicalize
+@register_stabilize
+@register_specialize
+@gof.local_optimizer([Subtensor])
+def local_subtensor_of_dot(node):
+    """
+    T.dot(A,B)[i] -> T.dot(A[i],B)
+
+    """
+    if not isinstance(node.op, Subtensor):
+        return
+    if (not node.inputs[0].owner or
+        not isinstance(node.inputs[0].owner.op, T.Dot)):
+        return
+    # If there is other node that use the outputs of the dot
+    # We don't want to compute twice the sub part.
+    if len(node.inputs[0].clients) > 1:
+        return
+    # Do we index/slice on the outer dimensions only?
+    if node.inputs[0].ndim >= 1 and len(node.op.idx_list) == 1:
+        a = node.inputs[0].owner.inputs[0]
+        b = node.inputs[0].owner.inputs[1]
+        a_sub = node.op.make_node(a, *node.inputs[1:]).outputs[0]
+        pad_dim = a.ndim - a_sub.ndim
+        return [T.dot(a_sub, b)]
+    return
+
+
+@register_canonicalize
 @gof.local_optimizer([T.add])
 def local_IncSubtensor_serialize(node):
     """
