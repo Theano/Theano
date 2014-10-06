@@ -563,7 +563,9 @@ def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
 
 
 def test_valid():
-    for t in _test_valid(None, version=[-2, -1, 6]):
+    for t in _test_valid(None,
+                         mode=theano_mode,
+                         version=[-2, -1, 6]):
         yield t
 
 
@@ -648,7 +650,9 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
 
 
 def test_full():
-    for t in _test_full(None, version=[-2, -1, 0, 1, 2, 3, 4, 5]):
+    for t in _test_full(None,
+                        mode=theano_mode,
+                        version=[-2, -1, 0, 1, 2, 3, 4, 5]):
         yield t
 
 
