@@ -100,6 +100,8 @@ prediction on D
 # in the script, followed by a summary for all functions.
 # We'll show here only the summary:
 
+Results were produced using Intel(R) Core(TM) i7-4820K CPU @ 3.70GHz
+
 Function profiling
 ==================
   Message: Sum of all(3) printed profiles at exit excluding Scan op profile.
@@ -173,7 +175,7 @@ Apply
 
 
 
-# 2.1 Profiling for CPU computations
+# 2.2 Profiling for GPU computations
 
 # In your terminal, type:
 $ CUDA_LAUNCH_BLOCKING=1 THEANO_FLAGS=profile=True,device=gpu python using_gpu_solution_1.py
@@ -182,6 +184,8 @@ $ CUDA_LAUNCH_BLOCKING=1 THEANO_FLAGS=profile=True,device=gpu python using_gpu_s
 Used the gpu
 target values for D
 prediction on D
+
+Results were produced using GeForce GTX TITAN
 
 # Profiling summary for all functions:
 
@@ -265,8 +269,6 @@ Apply
 
 # 3. Conclusions
 
-
-Facts:
 Examine and compare 'Ops' summaries for CPU and GPU. Usually GPU ops 'GpuFromHost' and 'HostFromGpu' by themselves
 consume a large amount of extra time, but by making as few as possible data transfers between GPU and CPU, you can minimize their overhead.
 Notice that each of the GPU ops consumes more time than its CPU counterpart. This is because the ops operate on small inputs;
