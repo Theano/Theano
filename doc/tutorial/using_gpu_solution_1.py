@@ -100,7 +100,7 @@ prediction on D
 # in the script, followed by a summary for all functions.
 # We'll show here only the summary:
 
-Results were produced using Intel(R) Core(TM) i7-4820K CPU @ 3.70GHz
+Results were produced using an Intel(R) Core(TM) i7-4820K CPU @ 3.70GHz
 
 Function profiling
 ==================
@@ -185,7 +185,7 @@ Used the gpu
 target values for D
 prediction on D
 
-Results were produced using GeForce GTX TITAN
+Results were produced using a GeForce GTX TITAN
 
 # Profiling summary for all functions:
 
