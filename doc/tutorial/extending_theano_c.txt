@@ -345,6 +345,22 @@ commonly used.
         """ % {'fail' : sub['fail']}
 
     to raise a ValueError Python exception with the specified message.
+    The function ``PyErr_Format()`` supports string formatting so it is
+    possible to tailor the error message to the specifics of the error
+    that occured. If ``PyErr_Format()`` is called with more than two
+    arguments, the subsequent arguments are used to format the error message
+    with the same behavior as the function `PyString_FromFormat()
+    <https://docs.python.org/2/c-api/string.html#c.PyString_FromFormat>`_. The
+    ``%`` characters in the format characters need to be escaped since the C
+    code itself is defined in a string which undergoes string formatting.
+
+    .. code-block:: python
+
+        c_code = """
+            PyErr_Format(PyExc_ValueError,
+                         "X==%%i but it should be greater than 0", X);
+            %(fail)s;
+        """ % {'fail' : sub['fail']}
 
     :note:
         Your C code should not return the output of the computation but
