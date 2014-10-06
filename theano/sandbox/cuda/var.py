@@ -52,7 +52,7 @@ class CudaNdarrayConstant(_operators, Constant):
         try:
             data = str(numpy.asarray(self.data))
         except Exception, e:
-            data = "error while transfering the value:" + str(e)
+            data = "error while transferring the value: " + str(e)
         return "CudaNdarrayConstant{"+data+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
 

@@ -576,5 +576,5 @@ the elements of the shape).
 The C code works as the ViewOp. Shape_i has the additional ``i`` parameter
 that you can use with ``%(i)s``.
 
-In your CHECK_INPUT, you must check that the input have enough ndim to
-be able to get the ith shapes.
+In your CHECK_INPUT, you must check that the input has enough dimensions to
+be able to access the i-th one.

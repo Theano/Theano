@@ -97,7 +97,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
     - :func:`GpuDnnConv <theano.sandbox.cuda.dnn.GpuDnnConv>` GPU-only
       convolution using NVIDIA's cuDNN library.  To enable it (and
-      other cudnn-acclerated ops), set
+      other cudnn-accelerated ops), set
       ``THEANO_FLAGS=optimizer_including=cudnn`` in your environment.
       This requires that you have cuDNN installed and available.  It
       also requires a GPU with compute capability 3.0 or more.
