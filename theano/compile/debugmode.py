@@ -553,7 +553,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         done[obj] = id_str
         return id_str
 
-    if hasattr(r, 'owner') and hasattr(r.owner, 'op'):
+    if hasattr(r.owner, 'op'):
         # this variable is the output of computation,
         # so just print out the apply
         a = r.owner
@@ -610,9 +610,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                         new_prefix_child = prefix_child + '  '
 
                     if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
-                        if i.owner.op is not None:
-                            if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
-                                scan_ops.append(i)
+                        if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
+                            scan_ops.append(i)
 
                     debugprint(i, new_prefix, depth=depth - 1, done=done,
                                print_type=print_type, file=file, order=order,
