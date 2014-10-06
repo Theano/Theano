@@ -526,8 +526,6 @@ class BaseGpuCorrMM(GpuOp):
             and self.pad == other.pad
 
     def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and
-        # hash(-2)==-2 in python!
         return hash(type(self)) \
             ^ hash(self.border_mode) \
             ^ hash(self.subsample) \
@@ -985,8 +983,6 @@ class BaseGpuCorr3dMM(GpuOp):
             and self.pad == other.pad
 
     def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and
-        # hash(-2)==-2 in python!
         return hash(type(self)) \
             ^ hash(self.border_mode) \
             ^ hash(self.subsample) \
