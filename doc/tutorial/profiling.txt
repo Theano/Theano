@@ -65,6 +65,20 @@ Here is an example output when we disable some Theano optimizations to
 give you a better idea of the difference between sections. With all
 optimizations enabled, there would be only one op left in the graph.
 
+.. note::
+
+    To profile the peak memory usage on the GPU you need to do::
+
+        * In the file theano/sandbox/cuda/cuda_ndarray.cu, set the macro
+          COMPUTE_GPU_MEM_USED to 1.
+        * Then call theano.sandbox.cuda.theano_allocated()
+          It return a tuple with two ints. The first is the current GPU
+          memory allocated by Theano. The second is the peak  GPU memory
+          that was allocated by Theano.
+
+    Do not always enable this, as this slowdown memory allocation and
+    free. As this slowdown the computation, this will affect speed
+    profiling. So don't use both at the same time.
 
 to run the example:
 
