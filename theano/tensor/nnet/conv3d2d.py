@@ -176,7 +176,8 @@ def conv3d(signals, filters,
 
     :note: Another way to define signals: (batch,  time, in channel, row, column)
            Another way to define filters: (out channel,time,in channel, row, column)
-    :note: See the `conv3d_fft`_ or `conv3d2d`_ for GPU implementations.
+    :note: For the GPU, you can use this implementation or
+           :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`.
 
     :see: Someone made a script that shows how to swap the axes between
           both 3d convolution implementations in Theano. See the last

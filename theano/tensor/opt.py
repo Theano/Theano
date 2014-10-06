@@ -339,7 +339,7 @@ def register_specialize(lopt, *tags, **kwargs):
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
         compile.optdb['specialize'].register(name, lopt, 'fast_run',
-                                             'fast_compile_gpu', *tags)
+                                             *tags)
         return lopt
 
 
