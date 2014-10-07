@@ -382,7 +382,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     """
     GPU convolution using cuDNN from NVIDIA.
 
-    The memory layout to use is 'bc01'.
+    The memory layout to use is 'bc01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
 
     :param img: images to do the convolution over
     :param kerns: convolution filters
