@@ -339,19 +339,22 @@ def test_reshape():
 
     # Test for appropriate handling of -1 indices
     x = T.tensor3('x')
-    f_reshp = theano.function([x], x.reshape((-1, 1, 1)), mode=mode_with_gpu)
-    y = f_reshp(
-        numpy.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]]], dtype='float32')
-    )
+    dim = T.scalar('dim_val', dtype='int32')
+    reshp_val = numpy.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]]], dtype='float32')
+    f_reshp = theano.function([x, dim], x.reshape((dim, 1, 1)), mode=mode_with_gpu)
+    y = f_reshp(reshp_val, -1)
     assert y.shape == (8, 1, 1)
 
-    assert_raises(ValueError,
-                  f_reshp=theano.function(
-                      [x],
-                      x.reshape((-1, -1, 1)),
-                      mode=mode_with_gpu
-                  )
+    f_reshp=theano.function(
+        [x, dim],
+        x.reshape((dim, dim, 1)),
+        mode=mode_with_gpu
     )
+    try:
+        f_reshp(reshp_val, 4)
+        raise('Only one -1 is accepted in the new shape')
+    except ValueError:
+        pass
 
 
 def test_elemwise_empty():
