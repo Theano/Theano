@@ -768,7 +768,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return ()
+        return (9,)
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
