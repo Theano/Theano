@@ -339,12 +339,12 @@ def test_reshape():
 
     # Test for appropriate handling of -1 indices
     x = T.tensor3('x')
-    dim = T.scalar('dim_val', dtype='int32')
     reshp_val = numpy.array([[[1, 0], [0, 1]], [[0, 1], [1, 0]]], dtype='float32')
-    f_reshp = theano.function([x, dim], x.reshape((dim, 1, 1)), mode=mode_with_gpu)
-    y = f_reshp(reshp_val, -1)
+    f_reshp = theano.function([x], x.reshape((-1, 1, 1)), mode=mode_with_gpu)
+    y = f_reshp(reshp_val)
     assert y.shape == (8, 1, 1)
 
+    dim = T.scalar('dim_val', dtype='int32')
     f_reshp=theano.function(
         [x, dim],
         x.reshape((dim, dim, 1)),
