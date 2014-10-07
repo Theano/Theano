@@ -9,6 +9,7 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
+from theano.tensor import as_tensor_variable
 
 
 class GpuDot22(GpuOp):
@@ -525,8 +526,6 @@ class BaseGpuCorrMM(GpuOp):
             and self.pad == other.pad
 
     def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and
-        # hash(-2)==-2 in python!
         return hash(type(self)) \
             ^ hash(self.border_mode) \
             ^ hash(self.subsample) \
@@ -564,7 +563,7 @@ class BaseGpuCorrMM(GpuOp):
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
-        files = ['conv_gemm.cu']
+        files = ['corr_gemm.cu']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                 for f in files]
         return reduce(str.__add__, codes)
@@ -958,6 +957,511 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             return [[1], [1]]
         else:
             return [[1], [1], [0], [0]]  # no connection to height, width
+
+
+class BaseGpuCorr3dMM(GpuOp):
+    """Base class for `GpuCorr3dMM`, `GpuCorr3dMM_gradWeights` and
+    `GpuCorr3dMM_gradInputs`. Cannot be used directly."""
+
+    def __init__(self, border_mode="valid",
+                 subsample=(1, 1, 1),
+                 pad=(0, 0, 0)):
+        if border_mode != "valid":
+            raise ValueError("border_mode must be 'valid'")
+        self.border_mode = border_mode
+        if len(subsample) != 3:
+            raise ValueError("subsample must have three elements")
+        self.subsample = subsample
+        if (pad not in ("half", "full")) and (len(pad) != 3):
+            raise ValueError("pad must be 'half', 'full', or have three elements")
+        self.pad = pad
+
+    def __eq__(self, other):
+        return type(self) == type(other) \
+            and self.border_mode == other.border_mode \
+            and self.subsample == other.subsample \
+            and self.pad == other.pad
+
+    def __hash__(self):
+        return hash(type(self)) \
+            ^ hash(self.border_mode) \
+            ^ hash(self.subsample) \
+            ^ hash(self.pad)
+
+    def __str__(self):
+        return '%s{%s, %s, pad=%r}' % (
+            self.__class__.__name__,
+            self.border_mode,
+            str(self.subsample),
+            self.pad)
+
+    def flops(self, inp, outp):
+        """ Useful with the hack in profilemode to print the MFlops"""
+        # if the output shape is correct, then this gives the correct
+        # flops for any direction, sampling, padding, and border mode
+        inputs, filters = inp
+        outputs, = outp
+        assert inputs[1] == filters[1]
+        # nb mul and add by output pixel
+        flops = filters[2] * filters[3] * filters[4] * 2
+        # nb flops by output image
+        flops *= outputs[2] * outputs[3] * outputs[4]
+        # nb patch multiplied
+        flops *= inputs[1] * filters[0] * inputs[0]
+        return flops
+
+    def c_headers(self):
+        return ['cuda_ndarray.cuh', '<stdio.h>']
+
+    def c_code_cache_version(self):
+        # raise this whenever modifying any of the support_code_files
+        return (0, 23)
+
+    def c_support_code_apply(self, node, nodename):
+        # REMEMBER TO RAISE c_code_cache_version when changing any of
+        # these files
+        files = ['corr3d_gemm.cu']
+        codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
+                for f in files]
+        return reduce(str.__add__, codes)
+
+    def c_code_helper(self, bottom, weights,
+                      top, direction,
+                      sub,
+                      height=None, width=None, depth=None):
+        """
+        This generates the C code for GpuCorrMM (direction="forward"),
+        GpuCorrMM_gradWeights (direction="backprop weights"), and
+        GpuCorrMM_gradInputs (direction="backprop inputs").
+        Depending on the direction, one of bottom, weights, top will
+        receive the output, while the other two serve as inputs.
+
+        :param bottom: Variable name of the input images in the forward pass,
+            or the gradient of the input images in backprop wrt. inputs
+        :param weights: Variable name of the filters in the forward pass,
+            or the gradient of the filters in backprop wrt. weights
+        :param top: Variable name of the output images / feature maps in the
+            forward pass, or the gradient of the outputs in the backprop passes
+        :param direction: "forward" to correlate bottom with weights and store
+            results in top,
+            "backprop weights" to do a valid convolution of bottom with top
+            (swapping the first two dimensions) and store results in weights,
+            and "backprop inputs" to do a full convolution of top with weights
+            (swapping the first two dimensions) and store results in bottom.
+        :param sub: Dictionary of substitutions useable to help generating the
+            C code.
+        :param height: If self.subsample[0] != 1, a variable giving the height
+            of the filters for direction="backprop weights" or the height of the
+            input images for direction="backprop inputs".
+            If self.pad == 'half', a variable giving the height of the filters
+            for direction="backprop weights".
+            Ignored otherwise.
+        :param width: If self.subsample[1] != 1, a variable giving the width
+            of the filters for direction="backprop weights" or the width of the
+            input images for direction="backprop inputs".
+            If self.pad == 'half', a variable giving the width of the filters
+            for direction="backprop weights".
+            Ignored otherwise.
+        :param depth: If self.subsample[2] != 1, a variable giving the depth
+            of the filters for direction="backprop weights" or the depth of the
+            input images for direction="backprop inputs".
+            If self.pad == 'half', a variable giving the depth of the filters
+            for direction="backprop weights".
+            Ignored otherwise.
+        """
+        if self.border_mode != "valid":
+            raise ValueError("mode must be 'valid'")
+        dH, dW, dD = self.subsample
+        if self.pad == "half":
+            padH = padW = padD = -1
+        elif self.pad == "full":
+            padH = padW = padD =-2
+        else:
+            padH, padW, padD = self.pad
+        if direction == "forward":
+            direction = 0
+            out = top
+        elif direction == "backprop weights":
+            direction = 1
+            out = weights
+        elif direction == "backprop inputs":
+            direction = 2
+            out = bottom
+        else:
+            raise ValueError("direction must be one of 'forward', "
+                    "'backprop weights', 'backprop inputs'")
+        # When subsampling, we cannot unambiguously infer the height and width
+        # of bottom and weights from top, so we require them to be given.
+        # Similarly, when pad="half", we cannot infer the weight size.
+        if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+            if not height:
+                raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
+            height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
+        else:
+            height = 'NULL'
+        if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+            if not width:
+                raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
+            width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
+        else:
+            width = 'NULL'
+        if ((direction != 0) and (dD != 1)) or ((direction == 1) and (padD == -1)):
+            if not depth:
+                raise ValueError("depth must be given for backprop with horizontal sampling or pad='half'")
+            depth = '(*(npy_int*)(PyArray_DATA(%s)))' % depth
+        else:
+            depth = 'NULL'
+        sub = sub.copy()
+        sub.update(locals())
+
+        return """
+    // Mandatory args
+    int direction = %(direction)s;  // forward, bprop weights, bprop inputs
+
+    // Optional args
+    int dH = %(dH)s;
+    int dW = %(dW)s;
+    int dD = %(dD)s;
+    int padH = %(padH)s;
+    int padW = %(padW)s;
+    int padD = %(padD)s;
+
+    CudaNdarray * bottom = %(bottom)s;
+    CudaNdarray * weights = %(weights)s;
+    CudaNdarray * top = %(top)s;
+    CudaNdarray * out2 = NULL;
+
+    // Obtain or infer kernel width and height
+    // (we need to know it early to be able to handle auto-padding)
+    int kH, kW, kD;
+    if (direction != 1)
+    {
+      // weight is an input variable, we can just read its shape
+      kH = CudaNdarray_HOST_DIMS(weights)[2];
+      kW = CudaNdarray_HOST_DIMS(weights)[3];
+      kD = CudaNdarray_HOST_DIMS(weights)[4];
+    }
+    else
+    {
+      if ((dH != 1) || (padH == -1))
+      {
+         // vertical subsampling or half padding, kernel height is specified
+         kH = %(height)s;
+      }
+      else if (padH == -2)
+      {
+        // vertical full padding, we can infer the kernel height
+        kH = 2 - CudaNdarray_HOST_DIMS(bottom)[2] + (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
+      }
+      else
+      {
+        // explicit padding, we can infer the kernel height
+        kH = CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
+      }
+      if ((dW != 1) || (padW == -1))
+      {
+        kW = %(width)s;
+      }
+      else if (padW == -2)
+      {
+         kW = 2 - CudaNdarray_HOST_DIMS(bottom)[3] + (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+      }
+      else
+      {
+        kW = CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+      }
+      if ((dD != 1) || (padD == -1))
+      {
+        kD = %(depth)s;
+      }
+      else if (padD == -2)
+      {
+         kD = 2 - CudaNdarray_HOST_DIMS(bottom)[4] + (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD;
+      }
+      else
+      {
+        kD = CudaNdarray_HOST_DIMS(bottom)[4] + 2*padD - (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD;
+      }
+    }
+
+    // Auto-padding if requested
+    if (padH == -1)
+    { // vertical half padding
+      padH = kH / 2;
+    }
+    else if (padH == -2)
+    { // vertical full padding
+      padH = kH - 1;
+    }
+    else if (padH < 0)
+    {
+      PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: padH must be >= -2");
+      %(fail)s
+    }
+    if (padW == -1) {  // horizontal half padding
+      padW = kW / 2;
+    }
+    else if (padW == -2) {  // horizontal full padding
+      padW = kW - 1;
+    }
+    else if (padW < 0)
+    {
+      PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: padW must be >= -2");
+      %(fail)s
+    }
+    if (padD == -1)
+    { // horizontal half padding
+      padD = kD / 2;
+    }
+    else if (padD == -2)
+    { // horizontal full padding
+      padD = kD - 1;
+    }
+    else if (padD < 0)
+    {
+      PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: padD must be >= -2");
+      %(fail)s
+    }
+
+    // Infer output shape
+    int out_dim[5];
+    switch(direction) {
+    case 0:  // forward pass
+        // output is top: (batchsize, num_filters, height, width, depth)
+        // height and width: top = (bottom + 2*pad - weight) / sample + 1
+        out_dim[0] = CudaNdarray_HOST_DIMS(bottom)[0];
+        out_dim[1] = CudaNdarray_HOST_DIMS(weights)[0];
+        out_dim[2] = (CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - CudaNdarray_HOST_DIMS(weights)[2]) / dH + 1;
+        out_dim[3] = (CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - CudaNdarray_HOST_DIMS(weights)[3]) / dW + 1;
+        out_dim[4] = (CudaNdarray_HOST_DIMS(bottom)[4] + 2*padD - CudaNdarray_HOST_DIMS(weights)[4]) / dD + 1;
+        break;
+    case 1:  // backprop wrt. weights
+        // output is weights: (num_filters, num_channels, height, width, depth)
+        // height, width and depth: weights = bottom + 2*pad - (top-1) * sample
+        out_dim[0] = CudaNdarray_HOST_DIMS(top)[1];
+        out_dim[1] = CudaNdarray_HOST_DIMS(bottom)[1];
+        out_dim[2] = kH;  // already inferred further above
+        out_dim[3] = kW;  // how convenient
+        out_dim[4] = kD;
+        break;
+    case 2:  // backprop wrt. inputs
+        // output is bottom: (batchsize, num_channels, height, width, depth)
+        // height, width and depth: bottom = (top-1) * sample + weights - 2*pad
+        out_dim[0] = CudaNdarray_HOST_DIMS(top)[0];
+        out_dim[1] = CudaNdarray_HOST_DIMS(weights)[1];
+        out_dim[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + CudaNdarray_HOST_DIMS(weights)[2] - 2*padH;
+        out_dim[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + CudaNdarray_HOST_DIMS(weights)[3] - 2*padW;
+        out_dim[4] = (dD != 1) ? %(depth)s : (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD + CudaNdarray_HOST_DIMS(weights)[4] - 2*padD;
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: direction must be 0, 1, or 2\\n");
+        %(fail)s
+    }
+
+
+
+    // Prepare output array
+    if (!(%(out)s
+          && %(out)s->nd == 5
+          && CudaNdarray_is_c_contiguous(%(out)s)
+          && CudaNdarray_HOST_DIMS(%(out)s)[0] == out_dim[0]
+          && CudaNdarray_HOST_DIMS(%(out)s)[1] == out_dim[1]
+          && CudaNdarray_HOST_DIMS(%(out)s)[2] == out_dim[2]
+          && CudaNdarray_HOST_DIMS(%(out)s)[3] == out_dim[3]
+          && CudaNdarray_HOST_DIMS(%(out)s)[4] == out_dim[4]))
+    {
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray*)CudaNdarray_NewDims(5, out_dim);
+        if (NULL == %(out)s)
+        {
+          PyErr_Format(PyExc_RuntimeError,
+                       "BaseGpuCorr3dM: Failed to allocate output of %%d x %%d x %%d x %%d x %%d",
+                    out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4]);
+            %(fail)s
+        }
+    }
+
+    // Call CUDA code
+    out2 = corr3dMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dD, padH, padW, padD);
+    if (out2==NULL){
+       %(fail)s
+    }
+    assert (out2 == %(out)s);
+
+""" % sub
+
+
+class GpuCorr3dMM(BaseGpuCorr3dMM):
+    """GPU correlation implementation using Matrix Multiplication.
+
+    :warning: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
+        to 6.0, there is a bug in CUBLAS' matrix multiplication function that
+        can make GpuCorrMM or its gradients crash for some input and filter
+        shapes. So if you have a Tesla K20, Tesla K40, Quadro K6000, GeForce GT
+        640 (DDR5), GeForce GTX 780 (or Ti), GeForce GTX TITAN (or Black or Z)
+        and experience a crash, switching to CUDA 6.5 or CUDA 4.2 should fix it.
+        If this is not possible, changing the input or filter shapes (e.g., the
+        batchsize or number of filters) may also work around the CUBLAS bug.
+    """
+    def __init__(self, border_mode="valid",
+                 subsample=(1, 1, 1),
+                 pad=(0, 0, 0)):
+        """
+        :param border_mode: currently supports "valid" only; "full" can be
+            simulated by setting `pad="full"` (at the cost of performance), or
+            by using `GpuCorrMM_gradInputs`
+        :param subsample: the subsample operation applied to each output image.
+            Should be a tuple with 3 elements.
+            `(sv, sh, sl)` is equivalent to `GpuCorrMM(...)(...)[:,:,::sv, ::sh, ::sl]`,
+            but faster.
+            Set to `(1, 1, 1)` to disable subsampling.
+        :param pad: the width of a border of implicit zeros to pad the input
+            image with. Should be a tuple with 3 elements giving the numbers of
+            rows and columns to pad on each side, or "half" to set the padding
+            to `(kernel_rows // 2, kernel_columns // 2, kernel_depth // 2)`, or "full" to set the
+            padding to `(kernel_rows - 1, kernel_columns - 1, kernel_depth - 1)` at runtime.
+            Set to `(0, 0, 0)` to disable padding.
+
+        :note: Currently, the Op requires the inputs, filters and outputs to be
+            C-contiguous. Use :func:`gpu_contiguous
+            <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
+            if needed.
+        """
+        super(GpuCorr3dMM, self).__init__(border_mode, subsample, pad)
+
+    def make_node(self, img, kern):
+        img = as_cuda_ndarray_variable(img)
+        kern = as_cuda_ndarray_variable(kern)
+        if img.type.ndim != 5:
+            raise TypeError('img must be 5D tensor')
+        if kern.type.ndim != 5:
+            raise TypeError('kern must be 5D tensor')
+
+        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
+                         False, False, False]
+        return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+
+    def c_code(self, node, nodename, inp, out_, sub):
+        bottom, weights = inp
+        top, = out_
+        direction = "forward"
+        return super(GpuCorr3dMM, self).c_code_helper(bottom, weights, top, direction, sub)
+
+    def grad(self, inp, grads):
+        bottom, weights = inp
+        top, = grads
+        top = gpu_contiguous(top)
+        d_bottom = GpuCorr3dMM_gradInputs(self.border_mode, self.subsample, self.pad)(
+                weights, top, bottom.shape[-3:])
+        d_weights = GpuCorr3dMM_gradWeights(self.border_mode, self.subsample, self.pad)(
+                bottom, top, weights.shape[-3:])
+        return d_bottom, d_weights
+
+
+class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
+    """Gradient wrt. filters for `GpuCorr3dMM`.
+
+    :note: You will not want to use this directly, but rely on Theano's
+    automatic differentiation or graph optimization to use it as needed."""
+
+    def __init__(self, border_mode="valid",
+                 subsample=(1, 1, 1),
+                 pad=(0, 0, 0)):
+        super(GpuCorr3dMM_gradWeights, self).__init__(border_mode, subsample, pad)
+
+    def make_node(self, img, topgrad, shape=None):
+        img = as_cuda_ndarray_variable(img)
+        topgrad = as_cuda_ndarray_variable(topgrad)
+        if shape is not None:
+            shape = as_tensor_variable(shape)
+
+        if img.type.ndim != 5:
+            raise TypeError('img must be 5D tensor')
+        if topgrad.type.ndim != 5:
+            raise TypeError('topgrad must be 5D tensor')
+        if self.subsample != (1, 1, 1) or self.pad == "half":
+            if shape is None:
+                raise ValueError('shape must be given if subsample != (1, 1, 1), or pad == "half"')
+            height_width_depth = [shape[0], shape[1], shape[2]]
+        else:
+            height_width_depth = []
+
+        broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
+                         False, False, False]
+        return Apply(self, [img, topgrad] + height_width_depth, [CudaNdarrayType(broadcastable)()])
+
+    def c_code(self, node, nodename, inp, out_, sub):
+        bottom, top = inp[:2]
+        height, width, depth = inp[2:] or (None, None, None)
+        weights, = out_
+        direction = "backprop weights"
+        return super(GpuCorr3dMM_gradWeights, self).c_code_helper(bottom, weights, top, direction, sub, height, width, depth)
+
+    def grad(self, inp, grads):
+        bottom, top = inp[:2]
+        weights, = grads
+        weights = gpu_contiguous(weights)
+        d_bottom = GpuCorr3dMM_gradInputs(self.border_mode, self.subsample, self.pad)(weights, top, bottom.shape[-3:])
+        d_top = GpuCorr3dMM(self.border_mode, self.subsample, self.pad)(
+            bottom, weights)
+        d_height_width_depth = (theano.gradient.DisconnectedType()(),) * 3 if len(inp) == 5 else ()
+        return (d_bottom, d_top) + d_height_width_depth
+
+    def connection_pattern(self, node):
+        if node.nin == 2:
+            return [[1], [1]]
+        else:
+            return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
+
+class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
+    """Gradient wrt. inputs for `GpuCorr3dMM`.
+
+    :note: You will not want to use this directly, but rely on Theano's
+    automatic differentiation or graph optimization to use it as needed."""
+
+    def __init__(self, border_mode="valid",
+                 subsample=(1, 1, 1),
+                 pad=(0, 0, 0)):
+        super(GpuCorr3dMM_gradInputs, self).__init__(border_mode, subsample, pad)
+
+    def make_node(self, kern, topgrad, shape=None):
+        kern = as_cuda_ndarray_variable(kern)
+        topgrad = as_cuda_ndarray_variable(topgrad)
+        if kern.type.ndim != 5:
+            raise TypeError('kern must be 5D tensor')
+        if topgrad.type.ndim != 5:
+            raise TypeError('topgrad must be 5D tensor')
+        if self.subsample != (1, 1, 1) and shape is None:
+            raise ValueError('shape must be given if subsample != (1, 1, 1)')
+        height_width_depth = [shape[0], shape[1], shape[2]] if self.subsample != (1, 1, 1) else []
+
+        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+                         False, False, False]
+        return Apply(self, [kern, topgrad] + height_width_depth, [CudaNdarrayType(broadcastable)()])
+
+    def c_code(self, node, nodename, inp, out_, sub):
+        weights, top = inp[:2]
+        height, width, depth = inp[2:] or (None, None, None)
+        bottom, = out_
+        direction = "backprop inputs"
+        return super(GpuCorr3dMM_gradInputs, self).c_code_helper(bottom, weights, top, direction, sub, height, width, depth)
+
+    def grad(self, inp, grads):
+        weights, top = inp[:2]
+        bottom, = grads
+        bottom = gpu_contiguous(bottom)
+        d_weights = GpuCorr3dMM_gradWeights(self.border_mode, self.subsample, self.pad)(
+            bottom, top, weights.shape[-3:])
+        d_top = GpuCorr3dMM(self.border_mode, self.subsample, self.pad)(
+                bottom, weights)
+        d_height_width_depth = (theano.gradient.DisconnectedType()(),) * 3 if len(inp) == 5 else ()
+        return (d_weights, d_top) + d_height_width_depth
+
+    def connection_pattern(self, node):
+        if node.nin == 2:
+            return [[1], [1]]
+        else:
+            return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
 
 ##

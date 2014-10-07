@@ -294,6 +294,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                              "This could be a known bug in CUDA, please see the "
                              "GpuCorrMM() documentation.\n",
                              cudaGetErrorString(err));
+                Py_DECREF(col);
                 return NULL;
             }
             // Second, gemm
@@ -311,6 +312,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                         "This could be a known bug in CUDA, please see the "
                         "GpuCorrMM() documentation.\n",
                         cublasGetErrorString(status));
+                Py_DECREF(col);
                 return NULL;
             }
         }
@@ -359,6 +361,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                              "This could be a known bug in CUDA, please see the "
                              "GpuCorrMM() documentation.\n",
                              cudaGetErrorString(err));
+                Py_DECREF(col);
                 return NULL;
             }
             // Second, gemm
@@ -379,6 +382,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                         "This could be a known bug in CUDA, please see the "
                         "GpuCorrMM() documentation.\n",
                         cublasGetErrorString(status));
+                Py_DECREF(col);
                 return NULL;
             }
         }
@@ -429,6 +433,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                         "This could be a known bug in CUDA, please see the "
                         "GpuCorrMM() documentation.\n",
                         cublasGetErrorString(status));
+                Py_DECREF(col);
                 return NULL;
             }
             // col2im back to the data
@@ -441,6 +446,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                              "This could be a known bug in CUDA, please see the "
                              "GpuCorrMM() documentation.\n",
                              cudaGetErrorString(err));
+                Py_DECREF(col);
                 return NULL;
             }
         }
