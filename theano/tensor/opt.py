@@ -2198,7 +2198,6 @@ def local_subtensor_of_dot(node):
         a = node.inputs[0].owner.inputs[0]
         b = node.inputs[0].owner.inputs[1]
         a_sub = node.op.make_node(a, *node.inputs[1:]).outputs[0]
-        pad_dim = a.ndim - a_sub.ndim
         return [T.dot(a_sub, b)]
     return
 
