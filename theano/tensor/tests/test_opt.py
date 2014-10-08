@@ -3108,6 +3108,22 @@ def test_local_fill_useless():
     f(m_, x_)
 
 
+def test_local_useless_elemwise_comparison():
+    # TODO: test each case individually.
+    # The following case is what made me discover those cases.
+    X = T.matrix('X')
+    Y = T.vector('Y')
+    X_sum, updates = theano.scan(fn=lambda x: x.sum(),
+                                 outputs_info=None,
+                                 sequences=[X],
+                                 non_sequences=None)
+    Z = X_sum + Y
+    theano.printing.debugprint(Z)
+    mode = theano.compile.get_default_mode().excluding('fusion')
+    f = theano.function([X, Y], Z, mode=mode)
+    theano.printing.debugprint(f, print_type=True)
+
+
 class Test_local_useless_alloc(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
