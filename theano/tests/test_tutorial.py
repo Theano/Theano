@@ -912,7 +912,7 @@ class T_loading_and_saving(unittest.TestCase):
 
 
 class T_modes(unittest.TestCase):
-    # All tests here belog to
+    # All tests here belong to
     # http://deeplearning.net/software/theano/tutorial/modes.html
     # Theano/doc/tutorial/modes.txt
     # Any change you do here also add it to the tutorial !

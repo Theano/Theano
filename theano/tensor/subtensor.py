@@ -967,6 +967,7 @@ def set_subtensor(x, y, inplace=False,
 
     Example: To replicate the numpy expression "r[10:] = 5", type
 
+    >>> r = ivector()
     >>> new_r = set_subtensor(r[10:], 5)
 
     :param x: symbolic variable for the lvalue of = operation
@@ -991,6 +992,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
     Example: To replicate the numpy expression "r[10:] += 5", type
 
+    >>> r = ivector()
     >>> new_r = inc_subtensor(r[10:], 5)
     """
     # First of all, y cannot have a higher dimension than x,
