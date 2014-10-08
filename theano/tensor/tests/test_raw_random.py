@@ -230,7 +230,7 @@ class T_random_function(utt.InferShapeTester):
         rng_R = random_state_type()
 
         # No shape, no args -> TypeError
-        self.assertRaises(TypeError, permutation, rng_R, size=None, ndim=2)
+        self.assertRaises(TypeError, poisson, rng_R, size=None, ndim=2)
 
     def test_random_function_ndim_added(self):
         """Test that random_function helper function accepts ndim_added as
@@ -560,6 +560,19 @@ class T_random_function(utt.InferShapeTester):
         print numpy_val1
         self.assertTrue(numpy.all(val0 == numpy_val0))
         self.assertTrue(numpy.all(val1 == numpy_val1))
+
+        # Test that we can generate a list: have size=None or ().
+        for ndim in [1, None]:
+            post_r, out = permutation(rng_R, n=10, size=None, ndim=ndim)
+            inp = compile.In(rng_R,
+                             value=numpy.random.RandomState(utt.fetch_seed()),
+                             update=post_r, mutable=True)
+            f = theano.function([inp], out)
+            o = f()
+            assert o.shape == (10,)
+            assert (numpy.sort(o) == numpy.arange(10)).all()
+        # Wrong number of dimensions asked
+        self.assertRaises(TypeError, permutation, rng_R, size=None, ndim=2)
 
     def test_multinomial(self):
         """Test that raw_random.multinomial generates the same
