@@ -64,9 +64,12 @@ def test_cdata():
     i = TensorType('float32', (False,))()
     c = ProdOp()(i)
     i2 = GetOp()(c)
+    mode = None
+    if theano.config.mode == "FAST_COMPILE":
+        mode = "FAST_RUN"
 
     # This should be a passthrough function for vectors
-    f = theano.function([i], i2)
+    f = theano.function([i], i2, mode=mode)
 
     v = numpy.random.randn(9).astype('float32')
 
