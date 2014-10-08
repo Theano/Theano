@@ -1576,12 +1576,13 @@ def test_log_add():
 def test_local_useless_inc_subtensor():
     x = tensor.matrix('x')
     y = tensor.matrix('y')
+    mode = compile.get_default_mode().including("local_useless_inc_subtensor")
     for sub in [slice(None), slice(None, None, -1)]:
         o = tensor.set_subtensor(x[::, sub], y)
-        f = theano.function([x, y], o)
+        f = theano.function([x, y], o, mode=mode)
         o_shape = tensor.set_subtensor(x[::, sub],
                                        tensor.specify_shape(y, x.shape))
-        f_shape = theano.function([x, y], o_shape)
+        f_shape = theano.function([x, y], o_shape, mode=mode)
 
         # Test with shape info
         topo = f_shape.maker.fgraph.toposort()
@@ -1614,7 +1615,7 @@ def test_local_useless_inc_subtensor():
                                    tensor.specify_shape(y, sub.shape))
     f_shape = theano.function([x, y], o_shape)
     topo = f_shape.maker.fgraph.toposort()
-    theano.printing.debugprint(f_shape)
+    # theano.printing.debugprint(f_shape)
     assert any(isinstance(n.op, tensor.IncSubtensor) for n in topo)
     out = f_shape([[2, 3, 6, 7]], [[8, 9]])
     assert (out == numpy.asarray([[8, 3, 9, 7]])).all()
