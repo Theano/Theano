@@ -3,11 +3,8 @@ import numpy as np
 from theano import shared
 from theano.sandbox import cuda
 from pylearn2.utils import sharedX
-#from pylearn2.space import Conv3DSpace
-from theano.tensor.nnet.corr3d2d import corr3d
+from theano.tensor.nnet.conv3d2d import corr3d
 from theano.tensor.nnet.conv3d2d import conv3d
-#from HumanActivityRecognition.model.corr3d2d import conv3d
-#from theano.tensor.nnet.conv3d2d import conv3d
 from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 rng = np.random.RandomState([2013, 1, 29, 45])

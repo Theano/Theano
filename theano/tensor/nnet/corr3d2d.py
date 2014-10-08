@@ -5,7 +5,7 @@ from theano.gof import Op, Apply, TopoOptimizer
 from theano import tensor
 import theano.sandbox.cuda as cuda
 from theano.sandbox.cuda.basic_ops import gpu_contiguous
-from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
+
 def get_diagonal_subtensor_view(x, i0, i1):
     """Helper function for DiagonalSubtensor and
     IncDiagonalSubtensor
@@ -163,11 +163,11 @@ def corr3d(signals, filters,
            signals_shape=None, filters_shape=None,
            stride=None,border_mode='valid'):
     """correlation spatio-temporal filters with a movie.
-    "" This correlation op is so similar to conv3d2d with slight
-    "" difference that perform correlation instead of convolution
-    "" through GpuCorrMM op. in order to do the convolution you just
-    "" need to flip the filter. corr3d also enables spatial strided 
-    "" correlation.   	
+     This correlation op is so similar to conv3d2d with slight
+     difference that perform correlation instead of convolution
+     through GpuCorrMM op. in order to do the convolution you just
+     need to flip the filter. corr3d also enables spatial strided 
+     correlation.   	
 
     It flips the filters.
 
@@ -177,7 +177,7 @@ def corr3d(signals, filters,
             shape: [Nf, Tf, C, Hf, Wf]
     :param signals_shape: None or a tuple/list with the shape of signals
     :param filters_shape: None or a tuple/list with the shape of filters
-    :param stride:None or 2d shape stride such as (2,2)
+    :param stride:None or 2d spatial stride (x,y) such as (2,2)
     :param border_mode: The only one tested is 'valid'.
 
     :note: Work on the GPU.
