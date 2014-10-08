@@ -2193,13 +2193,25 @@ def local_subtensor_of_dot(node):
     # We don't want to compute twice the sub part.
     if len(node.inputs[0].clients) > 1:
         return
-    # Do we index/slice on the outer dimensions only?
-    if node.inputs[0].ndim >= 1 and len(node.op.idx_list) == 1:
-        a = node.inputs[0].owner.inputs[0]
-        b = node.inputs[0].owner.inputs[1]
-        a_sub = node.op.make_node(a, *node.inputs[1:]).outputs[0]
-        return [T.dot(a_sub, b)]
-    return
+    a = node.inputs[0].owner.inputs[0]
+    b = node.inputs[0].owner.inputs[1]
+
+    num_a_indices = min(a.ndim - 1, len(node.op.idx_list))
+    a_indices = node.op.idx_list[:num_a_indices]
+    b_indices = (slice(None, None, None),) + node.op.idx_list[num_a_indices:]
+
+    num_a_inputs = theano.tensor.subtensor.get_idx_list(node.inputs,
+                                                        a_indices,
+                                                        get_count=True)
+    a_inputs = node.inputs[1:1+num_a_inputs]
+    b_inputs = node.inputs[1+num_a_inputs:]
+
+    import pdb; pdb.set_trace()
+
+    a_sub = Subtensor(a_indices).make_node(a, *a_inputs)
+    b_sub = Subtensor(b_indices).make_node(b, *b_inputs)
+
+    return [T.dot(a_sub, b_sub)]
 
 
 @register_canonicalize
