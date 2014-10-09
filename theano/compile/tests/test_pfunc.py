@@ -145,7 +145,7 @@ class Test_pfunc(unittest.TestCase):
 
     def test_shared_mutable(self):
         bval = numpy.arange(5)
-        b = shared(bval)
+        b = shared(bval, name='b')
         b_out = b * 2
 
         # shared vars copy args.
@@ -163,7 +163,8 @@ class Test_pfunc(unittest.TestCase):
         assert (f() == (numpy.arange(5) * 2)).all()
         # because of the update
         assert (b.get_value(borrow=True) == (numpy.arange(5) * 2)).all()
-        assert (bval == (numpy.arange(5) * 2)).all()  # because of mutable=True
+        # because of mutable=True
+        assert (bval == (numpy.arange(5) * 2)).all(), bval
 
         # do not depend on updates being in-place though!
         bval = numpy.arange(5)
@@ -603,15 +604,21 @@ class Test_pfunc(unittest.TestCase):
 
         assert len(f.maker.fgraph.inputs) == 1
         assert len(f.maker.fgraph.outputs) == 1
+        v1 = f(2.)
+        v2 = f(3.)
+        assert v1 == 12, v1
+        assert v2 == 13, v2
+        assert a.get_value() == 1
 
     def test_givens_replaces_shared_variable2(self):
         a = shared(1., 'a')
         a.default_update = a + 3
         c = a + 10
         f = pfunc([], c, givens={a: (a + 10)})
-
-        assert f() == 21
-        assert f() == 34
+        v1 = f()
+        v2 = f()
+        assert v1 == 21, v1
+        assert v2 == 34, v2
 
     def test_duplicate_inputs(self):
         x = theano.tensor.lscalar('x')
@@ -686,8 +693,8 @@ class Test_aliasing_rules(unittest.TestCase):
     library code.
     """
 
-    def shared(self, x):
-        return tensor._shared(x)
+    def shared(self, x, name=None):
+        return tensor._shared(x, name)
 
     def test_shared_constructor_copies(self):
         # shared constructor makes copy
@@ -890,8 +897,8 @@ class Test_aliasing_rules(unittest.TestCase):
     def test_no_aliasing_0(self):
         # B is a shared variable, A is updated with B's contents
         # we need A to be copied to avoid aliasing
-        A = self.shared(numpy.zeros((2, 2)) + .5)
-        B = self.shared(numpy.zeros((2, 2)) - .5)
+        A = self.shared(numpy.zeros((2, 2)) + .5, name='A')
+        B = self.shared(numpy.zeros((2, 2)) - .5, name='B')
         f = pfunc([], [], updates=[(A, B)])
         f()
         assert not numpy.may_share_memory(data_of(A), data_of(B))

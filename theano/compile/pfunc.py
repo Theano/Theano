@@ -3,6 +3,7 @@
 __docformat__ = 'restructuredtext en'
 
 
+import theano
 from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
@@ -63,9 +64,6 @@ def rebuild_collect_shared(outputs,
 
     """
 
-    if isinstance(outputs, tuple):
-        outputs = list(outputs)
-
     ## This function implements similar functionality as graph.clone
     ## and it should be merged with that
     clone_d = {}
@@ -103,14 +101,14 @@ def rebuild_collect_shared(outputs,
                     # Do not use default_update if a "real" update was
                     # provided
                     if v not in update_d:
-                        v_update = v.type.filter_variable(v.default_update)
-                        if v_update.type != v.type:
+                        update_v = v.type.filter_variable(v.default_update)
+                        if update_v.type != v.type:
                             raise TypeError(
                                 'an update must have the same type as '
                                 'the original shared variable',
-                                (v, v.type, v_update, v_update.type))
-                        update_d[v] = v_update
-                        update_expr.append((v, v_update))
+                                (v, v.type, update_v, update_v.type))
+                        update_d[v] = update_v
+                        update_expr.append((v, update_v))
         if not copy_inputs_over or (isinstance(v, Constant) and
                                     hasattr(v, 'fgraph')):
             ### Cloning shared variables implies copying their underlying
@@ -221,7 +219,7 @@ def rebuild_collect_shared(outputs,
         update_expr.append((store_into, update_val))
 
     # Elements of "outputs" are here cloned to "cloned_outputs"
-    if isinstance(outputs, list):
+    if isinstance(outputs, (list, tuple)):
         cloned_outputs = []
         for v in outputs:
             if isinstance(v, Variable):
@@ -235,17 +233,14 @@ def rebuild_collect_shared(outputs,
                 raise TypeError('Outputs must be theano Variable or '
                                 'Out instances. Received ' + str(v)
                                 + ' of type ' + str(type(v)))
-            #computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
             cloned_v = clone_v_get_shared_updates(outputs, copy_inputs_over)
             cloned_outputs = cloned_v
-            #computed_list.append(cloned_v)
         elif isinstance(outputs, Out):
             cloned_v = clone_v_get_shared_updates(outputs.variable,
                                                   copy_inputs_over)
             cloned_outputs = Out(cloned_v, borrow=outputs.borrow)
-            #computed_list.append(cloned_v)
         elif outputs is None:
             cloned_outputs = []  # TODO: get Function.__call__ to return None
         else:
@@ -262,12 +257,18 @@ def rebuild_collect_shared(outputs,
 
     i = 0
     while i < len(update_expr):
-        v, v_update = update_expr[i]
-        cloned_v_update = clone_v_get_shared_updates(v_update,
+        v, update_v = update_expr[i]
+        cloned_v = clone_v_get_shared_updates(v,
+                                              copy_inputs_over)
+        # TODO: explain! If we clone v, we fix some bug, but introduces new one.
+        if v in shared_inputs:
+            cloned_v = v
+        cloned_update_v = clone_v_get_shared_updates(update_v,
                                                      copy_inputs_over)
-        update_d[v] = cloned_v_update
-        if isinstance(v, SharedVariable) and v not in shared_inputs:
-            shared_inputs.append(v)
+        update_d[cloned_v] = cloned_update_v
+        if (isinstance(cloned_v, SharedVariable) and
+            cloned_v not in shared_inputs):
+            shared_inputs.append(cloned_v)
         i += 1
 
     return (input_variables, cloned_outputs,
@@ -479,6 +480,56 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                 '`theano.function([x], '
                 'theano.clone(f(x), replace={x: g(x)}))`.'
                 % x)
+    mode = theano.compile.mode.get_mode(mode)
+
+    # Extract TensorSharedVariables
+    if not isinstance(givens, dict):
+        givens = dict(givens)
+    if outputs is None:
+        o = []
+    elif isinstance(outputs, (theano.gof.Variable, Out)):
+        o = [outputs]
+    else:
+        o = list(outputs)
+    for oo in (
+               #Check in the updates keys or values have inputs
+               [x for x, y in iter_over_pairs(updates)] +
+               [y for x, y in iter_over_pairs(updates)]):
+        if isinstance(oo, Out):
+            oo = oo.variable
+        elif not isinstance(oo, Variable):
+            oo = shared(oo)
+        o.append(oo)
+    inp = theano.gof.graph.inputs(o,
+                                  blockers=[i.variable for i in inputs])
+    shared_inputs = [v for v in inp
+                     if isinstance(v, theano.tensor.sharedvar.TensorSharedVariable) and
+                     (not v.force_type) and isinstance(v.type, theano.tensor.TensorType)]
+
+    # Do we want to make the inner type of TensorSharedVariable
+    # resize on GPU.
+    gpu = (isinstance(mode.provided_optimizer, theano.gof.Query) and
+           "gpu" in mode.provided_optimizer.include)
+    #TODO check for collision with givens
+    for sv in shared_inputs:
+        # clone is a FunctionTensorSharedVariable pointing to
+        # original. It is transfered to GPU or CPU if gpu is True or
+        # false, respectively.
+        clone = sv.functionClone(gpu)
+        # clone should have same type as original
+        if sv._isCudaType(sv.type):
+            clone = clone._as_CudaNdarrayVariable()
+        else:
+            clone = clone._as_TensorVariable()
+
+        if sv in givens:
+            import pdb;pdb.set_trace()
+        else:
+            givens[sv] = clone
+        if sv in updates:
+            repl = updates[sv]
+            del updates[sv]
+            updates[clone] = repl
 
     output_vars = rebuild_collect_shared(outputs,
                                          in_variables,

@@ -242,7 +242,6 @@ theano.compile.debugmode.default_make_thunk.append(
 # nvcc is not available
 from theano.sandbox.cuda.var import (CudaNdarrayVariable,
                                      CudaNdarrayConstant,
-                                     CudaNdarraySharedVariable,
                                      float32_shared_constructor)
 from theano.sandbox.cuda.type import CudaNdarrayType
 
@@ -401,13 +400,14 @@ def use(device,
                             " No fallback to the cpu or other gpu device."),)
                 raise
 
-    elif use.device_number != device and device != 'gpu':
+    elif use.device_number != device and device not in ['gpu', -1]:
+        # device -1 mean the cpu
         _logger.warning(("Ignoring call to use(%s), GPU number %i "
             "is already in use."),
             str(device), use.device_number)
 
-    if move_shared_float32_to_gpu:
-        handle_shared_float32(True)
+#    if move_shared_float32_to_gpu:
+#        handle_shared_float32(True)
 
     if enable_cuda:
         cuda_enabled = True
@@ -447,7 +447,7 @@ def unuse():
     """
     global cuda_enabled
     cuda_enabled = False
-    handle_shared_float32(False)
+#    handle_shared_float32(False)
     optdb.remove_tags('gpu_opt',
                    'fast_run',
                    'inplace')

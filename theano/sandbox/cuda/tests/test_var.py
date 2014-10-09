@@ -7,7 +7,9 @@ from theano import tensor
 
 from theano.sandbox.cuda.var import float32_shared_constructor as f32sc
 from theano.sandbox.cuda import CudaNdarrayType, cuda_available
+from theano.sandbox.cuda.tests.test_basic_ops import mode_with_gpu
 import theano.sandbox.cuda as cuda
+
 # Skip test if cuda_ndarray is not available.
 if cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
@@ -50,6 +52,10 @@ def test_givens():
     y = x ** 2
     f = theano.function([], y, givens={x: x + 1})
     f()
+    assert isinstance(f.maker.fgraph.toposort()[-1].op, tensor.Elemwise)
+    f = theano.function([], y, givens={x: x + 1}, mode=mode_with_gpu)
+    f()
+    assert isinstance(f.maker.fgraph.toposort()[-2].op, cuda.GpuElemwise)
 
 
 class T_updates(unittest.TestCase):
@@ -119,3 +125,20 @@ class T_updates(unittest.TestCase):
         output_func = theano.function(inputs=[], outputs=[],
                                       updates=[(output_var, up)])
         output_func()
+
+
+def test_shared():
+    """
+    Test that shared variable outside type is TensorType,
+    but that we don't input insert transfer in the graph
+    """
+    data = numpy.random.rand(4, 5).astype('float32')
+    data = theano.shared(data)
+    assert isinstance(data.type, tensor.TensorType)
+    f = theano.function([], [data + 1], mode=mode_with_gpu)
+    theano.printing.debugprint(f)
+    f()
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0], cuda.GpuElemwise)
+    assert isinstance(data.type, tensor.TensorType)

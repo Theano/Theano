@@ -103,6 +103,8 @@ def debugprint(obj, depth=-1, print_type=False,
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
     for r in results_to_print:
+        if isinstance(r, (theano.In, theano.Out)):
+            r = r.variable
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
                              stop_on_name=stop_on_name)
