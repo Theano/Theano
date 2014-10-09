@@ -86,7 +86,7 @@ class TestCorr3DMM(unittest.TestCase):
                                                                      shape=filters_shape[1:4])
         conv_gemm = conv_gemm.dimshuffle(0, 2, 3, 4, 1)
         f_ref = theano.function([], conv)
-        f = theano.function([], conv_gemm)
+        f = theano.function([], conv_gemm, mode=mode_with_gpu)
 
         res_ref = f_ref()
         res = f()
@@ -137,7 +137,7 @@ class TestCorr3DMM(unittest.TestCase):
             conv_gemm = GpuCorr3dMM_gradInputs(subsample=subsample)(kern=weight, topgrad=top,
                                                                     shape=bottom.shape[1:4])
         conv_gemm = conv_gemm.dimshuffle(0, 2, 3, 4, 1)
-        f = theano.function([], conv_gemm)
+        f = theano.function([], conv_gemm, mode=mode_with_gpu)
 
         res = f()
         utt.assert_allclose(res_ref, res)
