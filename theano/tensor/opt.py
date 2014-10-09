@@ -2181,8 +2181,10 @@ def local_subtensor_of_alloc(node):
 @gof.local_optimizer([Subtensor])
 def local_subtensor_of_dot(node):
     """
-    This optimization translates T.dot(A, B)[xs+ys] into T.dot(A[xs,:], B[:,ys]).
-
+    This optimization translates T.dot(A, B)[idxs] into T.dot(A[idxs_a], B[idxs_b]).
+    idxs_a is the first A.ndim-1 entries of idxs
+    idxs_b is the remaining entries of idxs (if any), 
+    but with : inserted in the second-to-last dimension (because dot sums over this dimension)
     """
     if not isinstance(node.op, Subtensor):
         return
@@ -2199,18 +2201,26 @@ def local_subtensor_of_dot(node):
 
     num_a_indices = min(a.ndim - 1, len(node.op.idx_list))
     a_indices = node.op.idx_list[:num_a_indices]
-    b_indices = (slice(None, None, None),) + node.op.idx_list[num_a_indices:]
+    b_indices = node.op.idx_list[num_a_indices:]
 
+    # This is necessary because np.dot sums the last index of a with the second to last of b
+    # so we want to skip the second-to-last index into b.
+    # This wasn't necessary for a, because we just ommitted the last index.
+    # We skip this if b.ndim = 1, since then we just want b_sub = b, not b_sub = b[:]
+    # (dot also handles b.ndim < 2 as a special case)
+    if b.ndim > 1 and len(b_indices) >= b.ndim - 1:
+        b_indices = b_indices[:b.ndim-2] + (slice(None, None, None),) + b_indices[b.ndim-2:]
+
+    # This determines how many of the inputs need to be used to index into a.
+    # The remaining inputs are used to index into b.
     num_a_inputs = theano.tensor.subtensor.get_idx_list(node.inputs,
                                                         a_indices,
                                                         get_count=True)
     a_inputs = node.inputs[1:1+num_a_inputs]
     b_inputs = node.inputs[1+num_a_inputs:]
 
-    import pdb; pdb.set_trace()
-
     a_sub = Subtensor(a_indices).make_node(a, *a_inputs)
-    b_sub = b if len(b_indices) == 1 else Subtensor(b_indices).make_node(b, *b_inputs)
+    b_sub = Subtensor(b_indices).make_node(b, *b_inputs) if b_indices else b
 
     return [T.dot(a_sub, b_sub)]
 
