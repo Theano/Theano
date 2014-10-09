@@ -2213,17 +2213,6 @@ def local_subtensor_of_dot(node):
     if b.ndim > 1 and len(b_indices) >= b.ndim - 1:
         b_indices = b_indices[:b.ndim-2] + (slice(None, None, None),) + b_indices[b.ndim-2:]
 
-    # This determines how many of the inputs need to be used to index into a.
-    # The remaining inputs are used to index into b.
-    #num_a_inputs = theano.tensor.subtensor.get_idx_list(node.inputs,
-    #                                                    a_indices,
-    #                                                    get_count=True)
-    #a_inputs = node.inputs[1:1+num_a_inputs]
-    #b_inputs = node.inputs[1+num_a_inputs:]
-
-    #a_sub = Subtensor(a_indices).make_node(a, *a_inputs)
-    #b_sub = Subtensor(b_indices).make_node(b, *b_inputs) if b_indices else b
-
     a_sub = a.__getitem__(tuple(a_indices))
     b_sub = b.__getitem__(tuple(b_indices)) if b_indices else b
 
