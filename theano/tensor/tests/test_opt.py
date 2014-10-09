@@ -2476,6 +2476,29 @@ class Test_alloc_zero(unittest.TestCase):
                                       _e1[2], _e2[1])
 
 
+def test_local_subtensor_of_dot():
+    m1 = theano.tensor.matrix()
+    m2 = theano.tensor.matrix()
+    d1 = numpy.arange(6).reshape((3, 2)).astype(config.floatX)
+    d2 = numpy.arange(8).reshape((2, 4)).astype(config.floatX) + 10
+    mode = compile.get_default_mode().including("local_subtensor_of_dot")
+
+    # [cst]
+    f = theano.function([m1, m2], theano.dot(m1, m2)[1], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert numpy.allclose(f(d1, d2), numpy.dot(d1, d2)[1])
+    # DimShuffle happen in FAST_COMPILE
+    assert isinstance(topo[-1].op, (T.blas_c.CGemv, T.blas.Gemv, T.DimShuffle))
+
+    # slice
+    f = theano.function([m1, m2], theano.dot(m1, m2)[1:2], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert numpy.allclose(f(d1, d2), numpy.dot(d1, d2)[1:2])
+    assert isinstance(topo[-1].op, (T.blas.Dot22))
+    # TODO: tests with vector and tensor3d.
+    # TODO: new opt for AdvancedSubtensor1
+
+
 def test_local_subtensor_of_alloc():
 
     # DebugMode should detect if something goes wrong.
