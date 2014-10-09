@@ -2506,8 +2506,10 @@ def test_local_subtensor_of_dot():
     d2 = numpy.arange(72).reshape(4,3,6).astype(config.floatX) + 100
 
     f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx,1:4,:,idx:], mode=mode)
-    
     assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1,1:4,:,1:])
+
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4,:,idx:,idx], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4,:,1:,1])
 
 def test_local_subtensor_of_alloc():
 

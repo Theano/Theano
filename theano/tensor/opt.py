@@ -2199,9 +2199,11 @@ def local_subtensor_of_dot(node):
     a = node.inputs[0].owner.inputs[0]
     b = node.inputs[0].owner.inputs[1]
 
-    num_a_indices = min(a.ndim - 1, len(node.op.idx_list))
-    a_indices = node.op.idx_list[:num_a_indices]
-    b_indices = node.op.idx_list[num_a_indices:]
+    idx_list = theano.tensor.subtensor.get_idx_list(node.inputs, node.op.idx_list)
+
+    num_a_indices = min(a.ndim - 1, len(idx_list))
+    a_indices = idx_list[:num_a_indices]
+    b_indices = idx_list[num_a_indices:]
 
     # This is necessary because np.dot sums the last index of a with the second to last of b
     # so we want to skip the second-to-last index into b.
@@ -2213,14 +2215,17 @@ def local_subtensor_of_dot(node):
 
     # This determines how many of the inputs need to be used to index into a.
     # The remaining inputs are used to index into b.
-    num_a_inputs = theano.tensor.subtensor.get_idx_list(node.inputs,
-                                                        a_indices,
-                                                        get_count=True)
-    a_inputs = node.inputs[1:1+num_a_inputs]
-    b_inputs = node.inputs[1+num_a_inputs:]
+    #num_a_inputs = theano.tensor.subtensor.get_idx_list(node.inputs,
+    #                                                    a_indices,
+    #                                                    get_count=True)
+    #a_inputs = node.inputs[1:1+num_a_inputs]
+    #b_inputs = node.inputs[1+num_a_inputs:]
 
-    a_sub = Subtensor(a_indices).make_node(a, *a_inputs)
-    b_sub = Subtensor(b_indices).make_node(b, *b_inputs) if b_indices else b
+    #a_sub = Subtensor(a_indices).make_node(a, *a_inputs)
+    #b_sub = Subtensor(b_indices).make_node(b, *b_inputs) if b_indices else b
+
+    a_sub = a.__getitem__(tuple(a_indices))
+    b_sub = b.__getitem__(tuple(b_indices)) if b_indices else b
 
     return [T.dot(a_sub, b_sub)]
 
