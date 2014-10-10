@@ -380,8 +380,8 @@ class _tensor_py_operators:
 
         if advanced:
             if (axis is not None
-                and all(self.equal_slices(a, slice(None)) for a in args[:axis])
-                and all(self.equal_slices(a, slice(None)) for a in args[axis + 1:])
+                and all(isinstance(a, slice) and self.equal_slices(a, slice(None)) for a in args[:axis])
+                and all(isinstance(a, slice) and self.equal_slices(a, slice(None)) for a in args[axis + 1:])
                 and isinstance(args[axis], (
                     numpy.ndarray,
                     list,
