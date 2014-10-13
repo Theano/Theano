@@ -678,6 +678,11 @@ class Function(object):
         None,  # this property itself is not settable
         doc="""dictionary-like access to the containers associated with Variables""")
 
+
+    def free(self):
+        if getattr(self.fn, 'allow_gc', False):
+            pass
+
 # pickling/deepcopy support for Function
 
 
