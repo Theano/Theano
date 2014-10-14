@@ -22,7 +22,6 @@ install:
 # So we test with 0.11. Our internal buildbot have 0.7.2.
   - conda create --yes -q -n py26 python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pip
   - source activate py26
-  - pip install nose-timelimit --use-mirrors
   - pip install . --no-deps --use-mirrors
 
 # command to run tests
@@ -40,7 +39,7 @@ script:
   - df -h
   - ulimit -a
   - echo "$PART"
-  - theano-nose --with-timelimit -v $PART
+  - theano-nose -v $PART
   - theano-cache list
 
 #after_script:
