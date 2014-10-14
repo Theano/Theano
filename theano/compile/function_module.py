@@ -19,6 +19,8 @@ import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
 from theano.compile.ops import deep_copy_op, view_op
+from theano.gof.op import ops_with_inner_function
+
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -680,8 +682,16 @@ class Function(object):
 
 
     def free(self):
-        if getattr(self.fn, 'allow_gc', False):
-            pass
+        # check the allow_gc
+        # 1.no allow_gc return False 2.has allow_gc, if allow_gc is False, return True
+        if not getattr(self.fn, 'allow_gc', True):
+            for key in self.fn.storage_map.keys():
+                storage_map[key] = None
+            
+            for node in self.input_storage:
+                if node.op in ops_with_inner_function.keys():
+                    for fn in ops_with_inner_function[node.op]:
+                        fn.free()
 
 # pickling/deepcopy support for Function
 
