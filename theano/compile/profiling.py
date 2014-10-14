@@ -69,7 +69,7 @@ AddConfigVar('profiling.destination',
              """
              File destination of the profiling output
              """,
-             StrParam(''),
+             StrParam('stderr'),
              in_c_key=False)
 
 
@@ -77,8 +77,8 @@ def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
     """
     to_sum = []
-
-    if config.profiling.destination in ['', 'stderr']:
+    
+    if config.profiling.destination == 'stderr':
         destination_file = sys.stderr
     elif config.profiling.destination == 'stdout':
         destination_file = sys.stdout

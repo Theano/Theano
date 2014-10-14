@@ -340,16 +340,14 @@ import theano and print the config variable, as in:
 
 .. attribute:: profiling.destination
 
-    String value: '', 'stderr', 'stdout', or a name of a
+    String value: 'stderr', 'stdout', or a name of a
     file to be created
 
-    Default ''
+    Default 'stderr'
 
     Name of the destination file for the profiling output.
-    The profiling output can be either directed to stdout,
-    or stderr or an arbitrary file.
-    If string is empty then profiling output is directed
-    to stderr.
+    The profiling output can be either directed to stderr
+    (default), or stdout or an arbitrary file.
 
 .. attribute:: config.lib.amdlibm
 
