@@ -340,13 +340,14 @@ import theano and print the config variable, as in:
 
 .. attribute:: profiling.destination
 
-    String value: '', 'stderr', 'stdout', or any string
+    String value: '', 'stderr', 'stdout', or a name of a
+    file to be created
 
     Default ''
 
     Name of the destination file for the profiling output.
     The profiling output can be either directed to stdout,
-    or stderr or any aribtrary file.
+    or stderr or an arbitrary file.
     If string is empty then profiling output is directed
     to stderr.
 
