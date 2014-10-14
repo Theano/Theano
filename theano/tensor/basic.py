@@ -2051,6 +2051,8 @@ class Nonzero(gof.Op):
         flattened input array.
 
     """
+    __props__ = ()
+
     def make_node(self, a):
         a = as_tensor_variable(a)
         if a.ndim == 0:
