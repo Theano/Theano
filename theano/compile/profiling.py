@@ -78,11 +78,13 @@ def _atexit_print_fn():
     """
     to_sum = []
 
-    if config.profiling.destination == '':
+    if config.profiling.destination in ['', 'stderr']:
         destination_file = sys.stderr
+    elif config.profiling.destination == 'stdout':
+        destination_file = sys.stdout
     else:
         destination_file = open(config.profiling.destination, 'w')
-        
+
     for ps in _atexit_print_list:
         if ps.fct_callcount or ps.compile_time > 0:
             ps.summary(file=destination_file,
