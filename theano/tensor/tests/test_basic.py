@@ -45,9 +45,9 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         dtensor3, SpecifyShape, Mean,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
-        stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes
-        )
+        stacklists, DimShuffle, hessian, ptp, power, pad, 
+        swapaxes)
+
 
 from theano.tests import unittest_tools as utt
 
@@ -7010,16 +7010,47 @@ class T_Power():
         f = function([x], z)
         self.assertRaise(ValueError, f, [1, 2, 3, 4])
 
-    def test_numpy_compare(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        A = tensor.matrix("A", dtype=theano.config.floatX)
-        Q = power(A, 2)
-        fn = function([A], [Q])
-        a = rng.rand(4, 4).astype(theano.config.floatX)
 
-        n_p = numpy.power(a, 2)
-        t_p = fn(a)
-        assert numpy.allclose(n_s, t_s)
+class T_Pad():
+    def test_numpy_compare(self):
+        a = tensor.vector()
+        b = tensor.matrix()
+
+        A = numpy.random.rand(5)
+        B = numpy.random.rand(5, 6)
+
+        modes = ['constant', 'edge', 'linear_ramp', 'maximum',
+            'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
+        vas = [a, b]
+        vs = [A, B]
+
+        for m in modes:
+            fa = function([a], pad(a, (3, 4), m))
+            fb = function([b], pad(b, (3, 4), m))
+            t_pa = fa(A)
+            t_pb = fb(B)
+            n_pa = numpy.pad(A, (3, 4), m)
+            n_pb = numpy.pad(B, (3, 4), m)
+            assert numpy.allclose(t_pa, n_pa)
+            assert numpy.allclose(t_pb, n_pb)
+
+        for var, v in zip(vas, vs):
+            for mode, k, t in [('constant', 'constant_values', (3, 4)), ('linear_ramp', 'end_values', (3, 4)), ('reflect', 'reflect_type', 'odd'), ('symmetric', 'reflect_type', 'even')]:
+                fc = function([var], pad(var, (3, 4), mode, **{k: t}))
+                t_pc = fc(v)
+                n_pc = numpy.pad(v, (3, 4), mode, **{k: t})
+
+                assert numpy.allclose(t_pc, n_pc)
+
+                if var.ndim == 2:
+                    fd = function([var], pad(var, [(3, 4), (5, 6)], mode, **{k: t}))
+                    t_pd = fd(v)
+                    n_pd = numpy.pad(v, [(3, 4), (5, 6)], mode, **{k: t})
+
+                    assert numpy.allclose(t_pd, n_pd)
+
+
+
 
 """
 

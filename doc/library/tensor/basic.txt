@@ -998,6 +998,48 @@ Reductions
 
     :Returns: A new array holding the result.
 
+.. function:: pad(array, pad_width, mode=None, **kwargs)
+
+    Pads an array.
+
+    :Parameter: *array* Input array.
+
+    :Parameter: *pad_width* Number of values padded to the edges of each axis. ((before_1, after_1), ... (before_N, after_N)) unique pad widths for each axis.((before, after),) yields same before and after pad for each axis. (pad,) or int is a shortcut for before = after = pad width for all axes.
+
+    :Parameter: *mode* One of the following string values or a user supplied function.
+
+        ‘constant’ Pads with a constant value. 
+        ‘edge’ Pads with the edge values of array. 
+        ‘linear_ramp’ Pads with the linear ramp between end_value and the array edge value.
+        ‘maximum’ Pads with the maximum value of all or part of the
+        vector along each axis.
+        ‘mean’ Pads with the mean value of all or part of the
+        vector along each axis.
+        ‘median’ Pads with the median value of all or part of the
+        vector along each axis.
+        ‘minimum’ Pads with the minimum value of all or part of the
+        vector along each axis.
+        ‘reflect’ Pads with the reflection of the vector mirrored on
+        the first and last values of the vector along each axis.
+        ‘symmetric’ Pads with the reflection of the vector mirrored
+        along the edge of the array.
+        ‘wrap’ Pads with the wrap of the vector along the axis.
+        The first values are used to pad the end and the end values are used to pad the beginning.
+
+    :Parameter: *kwargs* Any keyword arguments the function requires.
+
+        constant_values : {sequence, int}, optional
+        Used in ‘constant’. The values to set the padded values for each axis.
+        ((before_1, after_1), ... (before_N, after_N)) unique pad constants for each axis. ((before, after),) yields same before and after constants for each axis. (constant,) or int is a shortcut for before = after = constant for all axes. Default is 0.
+
+        end_values : {sequence, int}, optional
+        Used in ‘linear_ramp’. The values used for the ending value of the linear_ramp and that will form the edge of the padded array.
+        ((before_1, after_1), ... (before_N, after_N)) unique end values for each axis. ((before, after),) yields same before and after end values for each axis. (constant,) or int is a shortcut for before = after = end value for all axes. Default is 0.
+
+        reflect_type : str {‘even’, ‘odd’}, optional
+        Used in ‘reflect’, and ‘symmetric’. The ‘even’ style is the default with an unaltered reflection around the edge value. For the ‘odd’ style, the extented part of the array is created by subtracting the reflected values from two times the edge value.
+
+    :Returns: Padded array of rank equal to array with shape increased according to pad_width.
 
 Indexing
 ========
