@@ -102,10 +102,18 @@ def debugprint(obj, depth=-1, print_type=False,
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
+
+    scan_ops = []
     for r in results_to_print:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
-                             stop_on_name=stop_on_name)
+                             scan_ops=scan_ops, stop_on_name=stop_on_name)
+
+    for s in scan_ops:
+        debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
+                             file=_file, order=order, ids=ids,
+                             scan_ops=scan_ops, stop_on_name=stop_on_name)
+
     if file is _file:
         return file
     elif file == 'str':
