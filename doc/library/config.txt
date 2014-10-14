@@ -346,7 +346,7 @@ import theano and print the config variable, as in:
 
     Name of the destination file for the profiling output.
     The profiling output can be either directed to stdout,
-    or stderr and any aribtrary file.
+    or stderr or any aribtrary file.
     If string is empty then profiling output is directed
     to stderr.
 
