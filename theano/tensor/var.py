@@ -16,6 +16,12 @@ from theano.tensor.type import TensorType
 from theano.configparser import config
 
 
+def equal_slices(s1, s2):
+    return (s1.start == s2.start and
+            s1.stop == s2.stop and
+            s1.step == s2.step)
+
+
 class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a
     TensorVariable.
@@ -350,11 +356,6 @@ class _tensor_py_operators:
     # argument slice(1, None, None), which is much more desirable.
     # __getslice__ is deprecated in python 2.6 anyway.
 
-    def equal_slices(self, s1, s2):
-        return (s1.start == s2.start and
-                    s1.stop == s2.stop and
-                    s1.step == s2.step)
-
     def __getitem__(self, args):
         if not isinstance(args, tuple):
             args = args,
@@ -380,8 +381,10 @@ class _tensor_py_operators:
 
         if advanced:
             if (axis is not None
-                and all(isinstance(a, slice) and self.equal_slices(a, slice(None)) for a in args[:axis])
-                and all(isinstance(a, slice) and self.equal_slices(a, slice(None)) for a in args[axis + 1:])
+                and all(isinstance(a, slice) and
+                        equal_slices(a, slice(None)) for a in args[:axis])
+                and all(isinstance(a, slice) and
+                        equal_slices(a, slice(None)) for a in args[axis + 1:])
                 and isinstance(args[axis], (
                     numpy.ndarray,
                     list,
