@@ -840,8 +840,8 @@ main C function must respect the following constraints :
         Before returning a non-zero integer, the main function should call the
         function ``PyErr_Format()`` to setup a Python exception.
 
-*       It must receive one parameter of type ``void*`` for each input to the
-        op, and one input of type ``void**`` for each output of the op.
+*       It must receive one pointer for each input to the op followed by one
+        pointer to a pointer for each output of the op.
 
 For example, the main C function of an op that takes two scalars as inputs and
 returns both their sum and the difference between them would have four
@@ -850,7 +850,8 @@ signature would look something like this :
 
 .. code-block:: c
 
-    int sumAndDiffOfScalars(void* in0, void* in1, void** out0, void** out1)
+    int sumAndDiffOfScalars(PyArrayObject* in0, PyArrayObject* in1,
+                            PyArrayObject** out0, PyArrayObject** out1)
 
 Macros
 ------
