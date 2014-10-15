@@ -845,7 +845,7 @@ main C function must respect the following constraints :
 
 *       It must return an int. The value of that int indicates whether the
         op could perform its task or not. A value of 0 indicates success while
-        any non-zero value will interupt the execution of the Theano function.
+        any non-zero value will interrupt the execution of the Theano function.
         Before returning a non-zero integer, the main function should call the
         function ``PyErr_Format()`` to setup a Python exception.
 
