@@ -689,7 +689,7 @@ C ops by doing the following :
         implementation.
 
 To illustrate how much simpler the class ``COp`` makes the process of defining
-a new op with a C implementation, let's revisit the second example this
+a new op with a C implementation, let's revisit the second example of this
 tutorial, the ``VectorTimesVector`` op. In that example, we implemented an op
 to perform the task of element-wise vector-vector multiplication. The two
 following blocks of code illustrate what the op would look like if it was
