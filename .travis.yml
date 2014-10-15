@@ -6,40 +6,41 @@ python:
   - "2.6"
 #  - "2.7"
 #  - "3.2"
+
 # command to install dependencies
 before_install:
   - sudo apt-get install -q libatlas3gf-base libatlas-dev liblapack-dev gfortran
-#  - sudo apt-get install -q libopenblas-dev
+# Install miniconda to avoid compiling scipy
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b
+  - export PATH=/home/travis/miniconda/bin:$PATH
+  - conda update --yes conda
+
 install:
-# If we don't install numpy before SciPy 0.10.1, the SciPy installations fails.
-  - "pip install -q numpy==1.5 --use-mirrors"
-# We support scipy 0.7.2, but it is not available on pypi anymore.
-# So we test with 0.8. Our internal buildbot have 0.7.2.
-# We install it later only for the PART that need it.
-#  - "pip install -q scipy==0.8 --use-mirrors"
-  - "pip install nose-timelimit --use-mirrors"
-  - "pip install . --no-deps --use-mirrors"
+# We support scipy 0.7.2, but it is not available on conda.
+# So we test with 0.11. Our internal buildbot have 0.7.2.
+  - conda create --yes -q -n py26 python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pip
+  - source activate py26
+  - pip install . --no-deps --use-mirrors
+
 # command to run tests
 env:
   - PART="theano/scan_module/"
-# This part is select such that all scipy code is there.
-# We install scipy only for this part to make the test time faster.
   - PART="theano/sandbox theano/sparse theano/scalar/ theano/tensor/nnet/"
   - PART="theano/tensor/tests/test_basic.py theano/tensor/signal/ theano/compile/ theano/gof/ theano/misc/ theano/tests/ theano/compat"
   - PART="-e test_basic.py theano/tensor/tests"
+
 script:
-  - "if [ `expr \"$PART\" : '.*sparse'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
-  - "if [ `expr \"$PART\" : '.*nnet'` -gt \"0\" ]; then pip install scipy==0.8 --use-mirrors; fi"
-  - export THEANO_FLAGS=warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
+  - export THEANO_FLAGS=blas.ldflags="-lblas -lgfortran",warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
   - python --version
   - uname -a
   - free -m
   - df -h
   - ulimit -a
-  - echo $PART
-  - theano-nose --with-timelimit -v $PART
+  - echo "$PART"
+  - theano-nose -v $PART
   - theano-cache list
-
 
 #after_script:
 after_failure:
