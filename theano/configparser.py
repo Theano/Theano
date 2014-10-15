@@ -4,6 +4,7 @@
 
 import logging
 import os
+import shlex
 import sys
 import warnings
 
@@ -39,7 +40,10 @@ def parse_config_string(config_string, issue_warnings=True):
     Parses a config string (comma-separated key=value components) into a dict.
     """
     config_dict = {}
-    for kv_pair in config_string.split(','):
+    my_splitter = shlex.shlex(config_string, posix=True)
+    my_splitter.whitespace = ','
+    my_splitter.whitespace_split = True
+    for kv_pair in my_splitter:
         kv_pair = kv_pair.strip()
         if not kv_pair:
             continue

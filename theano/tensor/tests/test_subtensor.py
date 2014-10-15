@@ -27,7 +27,7 @@ from theano.tensor.subtensor import (inc_subtensor, set_subtensor,
 from theano.tensor import (as_tensor_variable, _shared,
                            NotScalarConstantError,
                            fscalar, iscalar, dscalar, cscalar,
-                           vector, dvector, fvector, lvector,
+                           vector, dvector, fvector, lvector, lrow,
                            fmatrix, dmatrix, lmatrix, matrix,
                            ctensor3, dtensor4)
 from theano.tensor.tests.test_basic import rand, randint_ranged, inplace_func
@@ -1140,6 +1140,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         self.ix1 = lvector()  # advanced 1d query
         self.ix12 = lvector()
         self.ix2 = lmatrix()
+        self.ixr = lrow()
 
     def eval_output_and_check(self, t):
         f = inplace_func([], t, mode=self.mode)
@@ -1163,6 +1164,11 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert a.dtype == self.v.dtype, (a.dtype, self.v.dtype)
         assert a.broadcastable == self.ix2.broadcastable, (
                 a.broadcastable, self.ix2.broadcastable)
+
+    def test_index_into_mat_w_row(self):
+        a = self.m[self.ixr]
+        assert a.dtype == self.m.dtype, (a.dtype, self.m.dtype)
+        assert a.broadcastable == (True, False, False)
 
     def test_index_w_int_and_vec(self):
         # like test_ok_list, but with a single index on the first one

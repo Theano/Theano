@@ -558,7 +558,7 @@ if (%(name)s == NULL) {
   py_%(name)s = PyCapsule_New((void *)%(name)s, NULL,
                               _py3_destructor);
   if (py_%(name)s != NULL) {
-    if (PyCaspule_SetContext(py_%(name)s, (void *)%(freefunc)s) != 0) {
+    if (PyCapsule_SetContext(py_%(name)s, (void *)%(freefunc)s) != 0) {
       /* This won't trigger a call to freefunc since it could not be
          set. The error case below will do it. */
       Py_DECREF(py_%(name)s);
