@@ -399,6 +399,15 @@ class T_function(unittest.TestCase):
         y = x * 2
         self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
 
+    def test_free(self):
+        """
+        Make test on free() function
+        """
+        x = T.scalar('x')
+        y = x * 3
+        fn = function([x], y)
+        fn.free()
+
 
 class T_picklefunction(unittest.TestCase):
 
@@ -673,7 +682,7 @@ class T_picklefunction(unittest.TestCase):
         assert blah.f1[blah.s] == blah2.f1[blah2.s]
 
         blah.f2(5)
-        assert blah.f1[blah.s] != blah2.f1[blah2.s]
+        assert blah.f1[blah.s] != blah2.f1[blah2.s] 
 
 
 class SomethingToPickle(object):
