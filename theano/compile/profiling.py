@@ -77,7 +77,7 @@ def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
     """
     to_sum = []
-    
+
     if config.profiling.destination == 'stderr':
         destination_file = sys.stderr
     elif config.profiling.destination == 'stdout':
