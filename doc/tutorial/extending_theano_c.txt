@@ -927,6 +927,11 @@ variables apply-specific. The function
 ``vector_elemwise_mult_<<<<NODE_NAME_PLACEHOLDER>>>>()`` is an example of how to
 do this.
 
+:note:
+
+    The macro ``<<<<NODE_NAME_PLACEHOLDER>>>>`` should only ever be used for
+    apply-specific code. It should not be used for apply-agnostic code.
+
 The rules for knowing if a piece of code should be treated as apply-specific
 or not are simple; if it uses any of the macros defined by the class ``COp``
 then it is apply-specific, if it calls any apply-specific code then it is
