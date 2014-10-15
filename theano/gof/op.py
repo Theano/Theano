@@ -13,6 +13,8 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 import logging
+import numpy
+import os
 import sys
 import warnings
 
@@ -1013,7 +1015,7 @@ class COp(Op):
         # function. The argstring will be of format :
         # "input0, input1, input2, (void**)&output0, (void**)&output1"
         input_arg_str = ", ".join(inp)
-        output_arg_str = ", ".join(["(void**)&%s"] * len(out)) % tuple(out)
+        output_arg_str = ", ".join(["&%s"] * len(out)) % tuple(out)
         return input_arg_str + ", " + output_arg_str
 
     def get_c_macros(self, node, name):

@@ -741,22 +741,19 @@ C file named vectorTimesVector.c :
     #endif
 
     void vector_elemwise_mult_<<<<NODE_NAME_PLACEHOLDER>>>>(
-        npy_%(dtype_x)s* x_ptr, int x_str,
-        npy_%(dtype_y)s* y_ptr, int y_str,
-        npy_%(dtype_z)s* z_ptr, int z_str, int nbElements)
+        DTYPE_INPUT_0* x_ptr, int x_str,
+        DTYPE_INPUT_1* y_ptr, int y_str,
+        DTYPE_OUTPUT_0* z_ptr, int z_str, int nbElements)
     {
         for (int i=0; i < nbElements; i++){
             z_ptr[i * z_str] = x_ptr[i * x_str] * y_ptr[i * y_str];
         }
     }
 
-    int myFunc_<<<<NODE_NAME_PLACEHOLDER>>>>(void* in0, void* in1,
-                                             void** out0)
+    int vector_times_vector_<<<<NODE_NAME_PLACEHOLDER>>>>(PyArrayObject* input0,
+                                                          PyArrayObject* input1,
+                                                          PyArrayObject** output0)
     {
-        PyArrayObject* input0 = (PyArrayObject*)in0;
-        PyArrayObject* input1 = (PyArrayObject*)in1;
-        PyArrayObject** output0 = (PyArrayObject**)out0;
-
         // Validate that the inputs have the same shape
         if ( !vector_same_shape(input0, input1))
         {
@@ -798,7 +795,7 @@ C file named vectorTimesVector.c :
                                 PyArray_STRIDES(*output0)[0] / ITEMSIZE_OUTPUT_0,
                                 PyArray_DIMS(input0)[0]);
 
-        return 0
+        return 0;
     }
 
 As you can see from this example, the Python and C implementations are nicely
