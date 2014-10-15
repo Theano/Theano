@@ -383,6 +383,15 @@ commonly used.
     while ``c_support_code()`` is for support code that is not specific to
     each apply.
 
+    Both ``c_support_code()`` and ``c_support_code_apply ()`` are necessary
+    because a Theano op can be used more than once in a given Theano
+    function. For example, an op that adds two matrices could be used at some
+    point in the Theano function to add matrices of integers and, at another
+    point, to add matrices of doubles. Because the dtype of the inputs and
+    outputs can change between different applies of the op, any support code
+    that relies on a certain dtype is specific to a given apply of the op and
+    should therefore be defined in ``c_support_code_apply()``.
+
 .. method:: c_code_cache_version()
 
     Returns a tuple of integers representing the version of the C code in this
