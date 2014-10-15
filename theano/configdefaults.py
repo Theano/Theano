@@ -468,7 +468,7 @@ AddConfigVar('unpickle_function',
 
 AddConfigVar('reoptimize_unpickled_function',
         "Re-optimize the graph when a theano function is unpickled from the disk.",
-        BoolParam(False, allow_override=False),
+        BoolParam(True, allow_override=True),
         in_c_key=False)
 
 

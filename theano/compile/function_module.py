@@ -703,7 +703,6 @@ class Function(object):
 # pickling/deepcopy support for Function
 
 def _pickle_Function(f):
-    print 'pickling Function..'
     #copy of the input storage list
     ins = list(f.input_storage)
     input_storage = []
@@ -741,7 +740,6 @@ def _pickle_Function(f):
     return rval
 
 def _constructor_Function(maker, input_storage, inputs_data):
-    print 'unpickling Function...'
     if not theano.config.unpickle_function:
         return None
     f = maker.create(input_storage, trustme = True)
@@ -1245,7 +1243,6 @@ class FunctionMaker(object):
         
         if need_opt:
             # optimize the fgraph
-            print 'fgraph is optimized'
             try:
                 theano.config.compute_test_value = theano.config.compute_test_value_opt
                 gof.Op.add_stack_trace_on_call = False
@@ -1267,7 +1264,6 @@ class FunctionMaker(object):
                 
         else:
             # fgraph is already optimized
-            print 'fgraph is not optimized'
             theano.config.compute_test_value = compute_test_value_orig
             gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
         
@@ -1430,7 +1426,6 @@ class FunctionMaker(object):
 
 
 def _pickle_FunctionMaker(self):
-    'picking FunctionMaker'
     kwargs = dict(
                 inputs=self.inputs,
                 outputs=self.orig_outputs,
@@ -1445,7 +1440,6 @@ def _pickle_FunctionMaker(self):
 
 
 def _constructor_FunctionMaker(kwargs):
-    print 'unpickling FunctionMaker...'
     if theano.config.unpickle_function:
         if theano.config.reoptimize_unpickled_function:
             del kwargs['fgraph']
