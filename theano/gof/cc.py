@@ -503,11 +503,31 @@ class CLinker(link.Linker):
         self.inputs = fgraph.inputs
         self.outputs = fgraph.outputs
 
+        self.node_order = self.schedule(fgraph)
+
         # list(fgraph.variables)
-        # We need to include the not used inputs in our variables,
+        # We need to include the unused inputs in our variables,
         # otherwise we can't pass them to the module.
         self.variables = [var for var in self.inputs if not len(var.clients)]
         self.variables += graph.variables(self.inputs, self.outputs)
+
+        # This adds a hidden input which is the context for each node
+        # that needs it
+        self.contexts = dict()
+        for node in self.node_order:
+            ctx = node.run_context()
+            if ctx is not None:
+                # try to avoid creating more than one variable for the
+                # same context.
+                if ctx in self.contexts:
+                    var = self.contexts[ctx]
+                    assert var.type == node.context_type
+                    var.clients.append((node, 'context'))
+                else:
+                    var = graph.Constant(node.context_type, ctx)
+                    var.clients = [(node, 'context')]
+                    self.contexts[ctx] = var
+                    self.variables.append(var)
 
         # The orphans field is listified to ensure a consistent order.
         #list(fgraph.orphans.difference(self.outputs))
@@ -517,7 +537,6 @@ class CLinker(link.Linker):
         self.temps = list(set(self.variables).difference(
                 self.inputs).difference(self.outputs).difference(self.orphans))
         self.consts = []
-        self.node_order = self.schedule(fgraph)
 
     def code_gen(self):
         """WRITEME
@@ -642,8 +661,12 @@ class CLinker(link.Linker):
             id += 2
 
         for node_num, node in enumerate(self.node_order):
-            # Why is this here?
+
             sub = dict(failure_var=failure_var)
+
+            ctx = node.run_context()
+            if ctx is not None:
+                context_var = symbol[self.contexts[ctx]]
 
             # The placeholder will be replaced by a hash of the entire
             # code (module + support code) in DynamicModule.code.
@@ -659,10 +682,16 @@ class CLinker(link.Linker):
             # Make the CodeBlock for c_code
             sub['id'] = id
             sub['fail'] = failure_code(sub)
+            if ctx is not None:
+                sub['context'] = context_var
 
             sub_struct = dict()
             sub_struct['id'] = id + 1
             sub_struct['fail'] = failure_code_init(sub)
+            if ctx is not None:
+                # Since context inputs are always constants they are
+                # guarenteed to be available in the struct init code.
+                sub_struct['context'] = context_var
 
             struct_support = ""
             struct_init = ""
@@ -1433,8 +1462,8 @@ class CLinker(link.Linker):
         in_storage = [x for i, x in enumerate(in_storage) if i not in dupidx]
         orphd = [[orphan.data] for orphan in self.orphans]
 
-        ret = module.instantiate(error_storage, *(in_storage + out_storage +
-                                                  orphd))
+        ret = module.instantiate(error_storage,
+                                 *(in_storage + out_storage + orphd))
 
         return ret
 

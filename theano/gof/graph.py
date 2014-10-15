@@ -115,6 +115,13 @@ class Apply(Node):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
+    def run_context(self):
+        """Returns the context for the node, or None if no context is set.
+        """
+        if hasattr(self.op, 'get_context'):
+            return self.op.get_context(self)
+        return None
+
     def default_output(self):
         """Returns the default output for this node.
 
@@ -236,6 +243,8 @@ class Apply(Node):
 
     nout = property(lambda self: len(self.outputs), doc='same as len(self.outputs)')
     """property: Number of outputs"""
+
+    context_type = property(lambda self: self.op.context_type, doc='type to use for the context')
 
 
 class Variable(Node):
