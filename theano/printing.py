@@ -105,6 +105,10 @@ def debugprint(obj, depth=-1, print_type=False,
 
     scan_ops = []
     for r in results_to_print:
+        #Add the parent scan op to the list as well
+        if hasattr(r.owner, 'op') and isinstance(r.owner.op, theano.scan_module.scan_op.Scan):
+            scan_ops.append(r)
+
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name)
