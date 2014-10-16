@@ -7,6 +7,7 @@
 import os
 import sys
 import subprocess
+import codecs
 from fnmatch import fnmatchcase
 from distutils.util import convert_path
 try:
@@ -54,8 +55,8 @@ MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
-LONG_DESCRIPTION    = (open("DESCRIPTION.txt").read() + "\n\n" +
-                       open("NEWS.txt").read())
+LONG_DESCRIPTION    = (codecs.open("DESCRIPTION.txt",encoding='utf-8').read() + "\n\n" +
+                       codecs.open("NEWS.txt",encoding='utf-8').read())
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
 LICENSE             = 'BSD'
