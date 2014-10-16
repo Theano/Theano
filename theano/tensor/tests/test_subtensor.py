@@ -1271,6 +1271,26 @@ class TestAdvancedSubtensor(unittest.TestCase):
                   [5, 6, 7],
                   [.5, .3 + 2.1, .15 + 2.1]]), aval
 
+    def test_advanced_indexing(self):
+        # tests advanced indexing in Theano for 2D and 3D tensors
+        rng = numpy.random.RandomState(utt.seed_rng())
+        a = rng.uniform(size=(3, 3))
+        b = theano.shared(a)
+        i = tensor.iscalar()
+        j = tensor.iscalar()
+        z = b[[i, j], :]
+        f1 = theano.function([i, j], z)
+        cmd = f1(0, 1) == a[[0, 1], :]
+        self.assertTrue(numpy.all(cmp))
+
+        aa = rng.uniform(size=(4, 2, 3))
+        bb = theano.shared(aa)
+        k = tensor.iscalar()
+        z = bb[[i, j, k], :, i:k]
+        f2 = theano.function([i, j, k], z)
+        cmd = f2(0, 1, 2) == aa[[0, 1, 2], :, 0:2]
+        self.assertTrue(numpy.all(cmp))
+
 
 class TestInferShape(utt.InferShapeTester):
     def test_infer_shape(self):
