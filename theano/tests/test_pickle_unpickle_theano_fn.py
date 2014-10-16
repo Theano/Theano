@@ -33,19 +33,19 @@ def test_pickle_unpickle_with_reoptimization():
     f = theano.function([x1,x2],y, updates=updates)
 
     # now pickle the compiled theano fn
-    pkl_path = open('thean_fn.pkl','wb')
-    cPickle.dump(f, pkl_path, -1)
+    string_pkl = cPickle.dumps(f, -1)
     
     in1 = numpy.ones((10, 10), dtype=floatX)
     in2 = numpy.ones((10, 10), dtype=floatX)
-    print 'the desired value is ',f(in1, in2)
     
     # test unpickle with optimization
-    theano.config.reoptimize_unpickled_function=True # the default is True
-    pkl_path = open('thean_fn.pkl','r')
-    f_ = cPickle.load(pkl_path)
-    print 'got value ', f_(in1, in2)
-    assert f(in1, in2) == f_(in1, in2)
+    default = theano.config.reoptimize_unpickled_function
+    try:
+        theano.config.reoptimize_unpickled_function=True # the default is True
+        f_ = cPickle.loads(string_pkl)
+        assert f(in1, in2) == f_(in1, in2)
+    finally:
+        theano.config.reoptimize_unpickled_function = default
     
 def test_pickle_unpickle_without_reoptimization():
     x1 = T.fmatrix('x1')
@@ -60,20 +60,20 @@ def test_pickle_unpickle_without_reoptimization():
     f = theano.function([x1,x2],y, updates=updates)
 
     # now pickle the compiled theano fn
-    pkl_path = open('thean_fn.pkl','wb')
-    cPickle.dump(f, pkl_path, -1)
+    string_pkl = cPickle.dumps(f, -1)
 
     # compute f value
     in1 = numpy.ones((10, 10), dtype=floatX)
     in2 = numpy.ones((10, 10), dtype=floatX)
-    print 'the desired value is ',f(in1, in2)
     
     # test unpickle without optimization
-    theano.config.reoptimize_unpickled_function=False # the default is True
-    pkl_path = open('thean_fn.pkl','r')
-    f_ = cPickle.load(pkl_path)
-    print 'got value ', f_(in1, in2)
-    assert f(in1, in2) == f_(in1, in2)
+    default = theano.config.reoptimize_unpickled_function
+    try:
+        theano.config.reoptimize_unpickled_function=False # the default is True
+        f_ = cPickle.loads(string_pkl)
+        assert f(in1, in2) == f_(in1, in2)
+    finally:
+        theano.config.reoptimize_unpickled_function = default
     
 if __name__ == '__main__':
     test_pickle_unpickle_with_reoptimization()

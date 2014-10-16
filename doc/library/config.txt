@@ -683,6 +683,16 @@ import theano and print the config variable, as in:
    optimization phase. Theano user's do not need to use this. This is
    to help debug shape error in Theano optimization.
 
+.. attribute:: config.reoptimize_unpickled_function
+
+    Bool value, default: True
+
+    Theano users can use the standard python pickle tools to save a compiled 
+    theano function. When pickling, both graph before and after the optimization 
+    are saved, including shared variables. When set to True, the graph is 
+    reoptimized when being unpickled. Otherwise, skip the graph optimization and 
+    use directly the optimized graph. 
+
 .. attribute:: config.exception_verbosity
 
     String Value: ``'low'``, ``'high'``.
