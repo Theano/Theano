@@ -587,24 +587,26 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         if len(a.outputs) == 1:
             print >> file, '%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                             id_str,
-                                                             type_str, r_name,
+                                                          id_str,
+                                                          type_str,
+                                                          r_name,
+                                                          destroy_map_str,
+                                                          view_map_str,
+                                                          o)
+        else:
+            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
+                                                             a.outputs.index(r),
+                                                             id_str, type_str,
+                                                             r_name,
                                                              destroy_map_str,
                                                              view_map_str,
                                                              o)
-        else:
-            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                            a.outputs.index(r),
-                                                            id_str, type_str,
-                                                            r_name,
-                                                            destroy_map_str,
-                                                            view_map_str,
-                                                            o)
         if not already_printed:
             if (not stop_on_name or
                 not (hasattr(r, 'name') and r.name is not None)):
                 new_prefix = prefix_child + ' |'
                 new_prefix_child = prefix_child + ' |'
+
                 for idx, i in enumerate(a.inputs):
                     if idx == len(a.inputs) - 1:
                         new_prefix_child = prefix_child + '  '

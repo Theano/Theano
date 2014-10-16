@@ -109,10 +109,25 @@ def debugprint(obj, depth=-1, print_type=False,
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name)
 
+    new_prefix = ' >'
+    new_prefix_child = ' >'
+    print >> file, "\nInner of the scan. "
+
     for s in scan_ops:
         debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name)
+
+        if hasattr(s.owner, 'op') and isinstance(s.owner.op, theano.scan_module.scan_op.Scan):
+            for idx, i in enumerate(s.owner.op.outputs):
+                if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
+                    if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
+                        scan_ops.append(i)
+                debugmode.debugprint(r=i, prefix=new_prefix, depth=depth, done=done,
+                           print_type=print_type, file=file, order=order,
+                           ids=ids, stop_on_name=stop_on_name,
+                           prefix_child=new_prefix_child, scan_ops=scan_ops)
+
 
     if file is _file:
         return file
