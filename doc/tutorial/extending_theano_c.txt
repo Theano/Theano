@@ -741,6 +741,7 @@ C file named vectorTimesVector.c :
 
 .. code-block:: c
 
+    // Support code
     #ifndef VECTOR_TIMES_VECTOR_SUPPORT_CODE
     #define VECTOR_TIMES_VECTOR_SUPPORT_CODE
     bool vector_same_shape(PyArrayObject* arr1, PyArrayObject* arr2)
@@ -749,6 +750,7 @@ C file named vectorTimesVector.c :
     }
     #endif
 
+    // Apply-specific support code
     void vector_elemwise_mult_<<<<NODE_NAME_PLACEHOLDER>>>>(
         DTYPE_INPUT_0* x_ptr, int x_str,
         DTYPE_INPUT_1* y_ptr, int y_str,
@@ -759,6 +761,7 @@ C file named vectorTimesVector.c :
         }
     }
 
+    // Main function
     int vector_times_vector_<<<<NODE_NAME_PLACEHOLDER>>>>(PyArrayObject* input0,
                                                           PyArrayObject* input1,
                                                           PyArrayObject** output0)
