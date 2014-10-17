@@ -2,8 +2,8 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.compat.six import StringIO
-from theano.sandbox.gpuarray.comp import NVCC_compiler
 
+from .comp import NVCC_compiler
 
 try:
     import pygpu
@@ -11,12 +11,11 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.kernel_codegen import (nvcc_kernel,
-                                                   inline_softmax,
-                                                   inline_softmax_fixed_shared)
-
+from .basic_ops import as_gpuarray_variable
+from .type import GpuArrayType, gpu_context_type
+from .kernel_codegen import (nvcc_kernel,
+                             inline_softmax,
+                             inline_softmax_fixed_shared)
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
@@ -26,14 +25,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     nin = 3
     nout = 3
 
-    def __eq__(self, other):
-        return type(self) == type(other)
+    __props__ = ()
 
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    context_type = gpu_context_type
 
     def make_node(self, x, b, y_idx):
         #N.B. won't work when we don't cast y_idx to float anymore
@@ -41,10 +35,14 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         b = as_gpuarray_variable(b)
         y_idx = as_gpuarray_variable(y_idx)
         nll = GpuArrayType(x.type.dtype,
-                           y_idx.type.broadcastable)()
+                           y_idx.type.broadcastable,
+                           context=x.type.context)()
         sm = x.type()
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -133,6 +131,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         dtype_am = node.outputs[2].dtype
         classname = self.__class__.__name__
         fail = sub['fail']
+        ctx = sub['context']
         sio = StringIO()
         print >> sio, """
         if (PyGpuArray_NDIM(%(y_idx)s) != 1)
@@ -171,7 +170,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             %(nll)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
                                 %(typecode_x)s,
                                 GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(ctx)s, Py_None);
             if (!%(nll)s) {
                 %(fail)s
             }
@@ -186,7 +185,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             %(sm)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
                                 %(typecode_b)s,
                                 GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(ctx)s, Py_None);
             if(!%(sm)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -203,7 +202,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             %(am)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
                                 %(typecode_y_idx)s,
                                 GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(ctx)s, Py_None);
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -260,8 +259,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        #return ()
-        return (5,)
+        return (6,)
 
     def c_compiler(self):
         return NVCC_compiler
@@ -276,18 +274,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     """
     nin = 3
     nout = 1
-    """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
-    def __init__(self, **kwargs):
-        Op.__init__(self, **kwargs)
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
+    context_type = gpu_context_type
 
     def make_node(self, dnll, sm, y_idx):
         dnll = as_gpuarray_variable(dnll)
@@ -295,9 +284,11 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         y_idx = as_gpuarray_variable(y_idx)
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
+    def get_context(self, node):
+        return node.inputs[0].type.context
+
     def c_code_cache_version(self):
-        #return ()
-        return (6,)
+        return (7,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -318,6 +309,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         dnll, sm, y_idx = inp
         dx, = out
         fail = sub['fail']
+        ctx = sub['context']
         return """
         if ((PyGpuArray_NDIM(%(dnll)s) != 1)
             || (PyGpuArray_NDIM(%(sm)s) != 2)
@@ -352,7 +344,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
             %(dx)s = pygpu_empty(2, PyGpuArray_DIMS(%(sm)s),
                                  %(typecode_dx)s,
                                  GA_C_ORDER,
-                                 pygpu_default_context(), Py_None);
+                                 %(ctx)s, Py_None);
             if (!%(dx)s) {
                 %(fail)s
             }
@@ -449,24 +441,21 @@ class GpuSoftmax (Op):
     """
     Implement Softmax on the gpu.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
+    context_type = gpu_context_type
 
     def make_node(self, x):
         x = as_gpuarray_variable(x)
         return Apply(self, [x], [x.type()])
 
+    def get_context(self, node):
+        return node.inputs[0].type.context
+
     def infer_shape(self, node, shape):
         return shape
 
     def c_code_cache_version(self):
-        return (12,) + inline_softmax.code_version
+        return (13,) + inline_softmax.code_version
         
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -487,6 +476,7 @@ class GpuSoftmax (Op):
         x, = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
@@ -507,7 +497,7 @@ class GpuSoftmax (Op):
             %(z)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
                                 %(typecode)s,
                                 GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(ctx)s, Py_None);
             if (!%(z)s) {
                 %(fail)s
             } 
@@ -642,25 +632,22 @@ class GpuSoftmaxWithBias (Op):
     nin = 2
     nout = 1
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
+    context_type = gpu_context_type
 
     def make_node(self, x, b):
         x = as_gpuarray_variable(x)
         b = as_gpuarray_variable(b)
         return Apply(self, [x, b], [x.type()])
 
+    def get_context(self, node):
+        return node.inputs[0].type.context
+
     def infer_shape(self, node, shape):
         return  [shape[0]]
         
     def c_code_cache_version(self):
-        return (11,) + inline_softmax.code_version
+        return (12,) + inline_softmax.code_version
         
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -683,6 +670,7 @@ class GpuSoftmaxWithBias (Op):
         x, b = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
@@ -718,7 +706,7 @@ class GpuSoftmaxWithBias (Op):
             %(z)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
                                 %(typecode)s,
                                 GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(ctx)s, Py_None);
             if (!%(z)s) {
                 %(fail)s
             } 

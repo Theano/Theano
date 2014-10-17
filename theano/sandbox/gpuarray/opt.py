@@ -373,17 +373,23 @@ def local_gpua_incsubtensor(node):
 @op_lifter([tensor.AdvancedIncSubtensor1])
 def local_gpua_advanced_incsubtensor(node):
 
-    # This optimization is disabled if cuda is not active
-    if pygpu.get_default_context().kind != "cuda":
-        return None
-
     x, y = node.inputs[0:2]
     coords = node.inputs[2:]
-    set_instead_of_inc = node.op.set_instead_of_inc
-    active_device_no = theano.sandbox.cuda.active_device_number()
-    device_properties = theano.sandbox.cuda.device_properties
 
-    compute_capability = device_properties(active_device_no)['major']
+    x_gpu = as_gpuarray_variable(x)
+    ctx = get_context(x_gpu.type.context)
+
+    # This optimization is disabled if cuda is not active
+    if ctx.kind != "cuda":
+        return None
+
+    set_instead_of_inc = node.op.set_instead_of_inc
+
+    # HACK ALERT: currently the bin_id for cuda contexts is sm_<major><minor>
+    # this is not set in stone and may change later
+    cc = ctx.bin_id
+    assert cc.startswith('sm_')
+    compute_capability = int(cc[3])
 
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
         return GpuAdvancedIncSubtensor1(

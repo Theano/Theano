@@ -319,11 +319,11 @@ class GpuFromHost(Op):
     def get_context(self, node):
         return self.context
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, ctx):
         x, = inp
         z, = out
         type = node.outputs[0].type
-        z[0] = gpuarray.array(x, get_context(self.context))
+        z[0] = gpuarray.array(x, context=ctx)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -385,10 +385,10 @@ class GpuFromCuda(Op):
     def get_context(self, node):
         return self.context
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, ctx):
         x, = inp
         z, = out
-        z[0] = gpuarray.array(numpy.asarray(x), get_context(self.context))
+        z[0] = gpuarray.array(numpy.asarray(x), context=ctx)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -609,6 +609,8 @@ cuda_from_gpu = CudaFromGpu()
 class GpuAlloc(HideC, Alloc):
     __props__ = ('memset_0', 'context')
 
+    context_type = gpu_context_type
+
     def __init__(self, context, memset_0=False):
         """memset_0 is only an optimized version. True, it mean the
         value is always 0, so the c code call memset as it is faster.
@@ -633,18 +635,21 @@ class GpuAlloc(HideC, Alloc):
                              context=self.context)
         return Apply(self, [value] + res.inputs[1:], [otype()])
 
+    def get_context(self, node):
+        return self.context
+
     def c_headers(self):
         return ['<numpy_compat.h>']
 
-    def perform(self, node, inputs, outs):
+    def perform(self, node, inputs, outs, ctx):
         out, = outs
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
             if v.size == 1 and numpy.asarray(v)[0].item() == 0:
-                out[0] = gpuarray.zeros(sh, dtype=v.dtype)
+                out[0] = gpuarray.zeros(sh, dtype=v.dtype, context=ctx)
             else:
-                out[0] = gpuarray.empty(sh, dtype=v.dtype)
+                out[0] = gpuarray.empty(sh, dtype=v.dtype, context=ctx)
                 out[0][...] = v
         else:
             out[0][...] = v
@@ -679,7 +684,7 @@ class GpuAlloc(HideC, Alloc):
             Py_XDECREF(%(zz)s);
             %(zz)s = pygpu_zeros(%(ndim)s, %(name)s_shape,
                                  %(vv)s->ga.typecode, GA_C_ORDER,
-                                 pygpu_default_context(), Py_None);
+                                 %(ctx)s, Py_None);
             if (!%(zz)s) {
                 %(fail)s
             }
@@ -688,7 +693,7 @@ class GpuAlloc(HideC, Alloc):
                 Py_XDECREF(%(zz)s);
                 %(zz)s = pygpu_empty(%(ndim)s, %(name)s_shape,
                                      %(vv)s->ga.typecode, GA_C_ORDER,
-                                     pygpu_default_context(), Py_None);
+                                     %(ctx)s, Py_None);
                 if (!%(zz)s) {
                     %(fail)s
                 }
@@ -711,8 +716,8 @@ class GpuAlloc(HideC, Alloc):
                 %(fail)s
             }
         }
-        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv,
-                   fail=sub['fail'], memset_0=memset_0)
+        """ % dict(name=name, ndim=ndim, zz=zz, vv=vv, fail=sub['fail'],
+                   memset_0=memset_0, ctx=sub['context'])
 
         if config.gpuarray.sync:
             code += "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
@@ -864,20 +869,31 @@ class GpuReshape(HideC, tensor.Reshape):
 
 
 class GpuJoin(HideC, Join):
+    __props__ = ('context',)
+
+    context_type = gpu_context_type
+
+    def __init__(self, context):
+        self.context = context
+
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
         return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
                                                   tensors),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
-                                   dtype=node.outputs[0].dtype)()])
+                                   dtype=node.outputs[0].dtype,
+                                   context=self.context)()])
 
-    def perform(self, node, axis_and_tensors, out_):
+    def get_context(self, node):
+        return self.context
+
+    def perform(self, node, axis_and_tensors, out_, ctx):
         out, = out_
         axis = int(axis_and_tensors[0])
         tensors = axis_and_tensors[1:]
         out[0] = pygpu.concatenate(tensors, axis=axis).astype(
-            node.outputs[0].dtype)
+            node.outputs[0].dtype, context=ctx)
 
     def c_code_cache_version(self):
         return (1,)
@@ -897,13 +913,13 @@ if (als == NULL) {
 Py_XDECREF(%(out)s);
 %(out)s = pygpu_concatenate(als, %(n)s, PyInt_AsLong((PyObject *)%(axis)s),
                             %(restype)s, (PyObject *)&PyGpuArrayType,
-                            pygpu_default_context());
+                            %(ctx)s);
 PyMem_Free(als);
 if (%(out)s == NULL)
   %(fail)s
         """ % dict(n=len(inputs[1:]), fail=sub['fail'], out=out_[0],
                    axis=inputs[0], copy_inputs_to_list='\n'.join(copy_to_list),
-                   restype=restype)
+                   restype=restype, ctx=sub['context'])
 
 
 gpu_join = GpuJoin()

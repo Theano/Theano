@@ -19,7 +19,9 @@ from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.comp import NVCC_compiler
 
 
-class GpuImages2Neibs(Images2Neibs, Op):
+class GpuImages2Neibs(HideC, Images2Neibs):
+    context_type = gpu_context_type
+
     def __init__(self, mode='valid'):
         if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
@@ -41,10 +43,14 @@ class GpuImages2Neibs(Images2Neibs, Op):
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),
-                                   dtype=ten4.type.dtype)()])
+                                   dtype=ten4.type.dtype,
+                                   context=ten4.type.context)()])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def c_code_cache_version(self):
-        return (9,1)
+        return (9,2)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -220,6 +226,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
         ten4, neib_shape, neib_step = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         mode = self.mode
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(z)s->ga);" % dict(z=z)
@@ -340,7 +347,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 dims[0] = z_dim0;
                 dims[1] = z_dim1;
                 %(z)s = pygpu_empty(2, dims, %(typecode_z)s,
-                                    GA_C_ORDER, pygpu_default_context(),
+                                    GA_C_ORDER, %(ctx)s,
                                     Py_None);
                 if (!%(z)s)
                 {

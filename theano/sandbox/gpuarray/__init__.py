@@ -35,7 +35,6 @@ import opt
 def init_dev(dev, name=None):
     global pygpu_activated
     context = pygpu.init(dev)
-    #pygpu.set_default_context(context)
     reg_context(name, context, dev)
     pygpu_activated = True
     if config.print_active_device:

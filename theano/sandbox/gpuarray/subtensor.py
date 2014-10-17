@@ -287,7 +287,7 @@ class GpuIncSubtensor(IncSubtensor):
                                   %(view_ndim)s,
                                   dims,
                                   xview_strides,
-                                  pygpu_default_context(),
+                                  %(x)s->context,
                                   1,
                                   (PyObject *)%(x)s,
                                   (PyObject *)&PyGpuArrayType);
@@ -351,7 +351,7 @@ class GpuIncSubtensor(IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (0,)
+        return parent_version + elemwise_version + (1,)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
