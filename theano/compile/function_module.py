@@ -22,6 +22,7 @@ from theano.compile.ops import deep_copy_op, view_op
 from theano.gof.op import ops_with_inner_function
 
 
+
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
@@ -687,17 +688,20 @@ class Function(object):
 
 
     def free(self):
-        # check the allow_gc
+        """
+        When allow_gc = False, clear the Variables in storage_map
+        """
         # 1.no allow_gc return False 2.has allow_gc, if allow_gc is False, return True
         if not getattr(self.fn, 'allow_gc', True):
-            for val in self.fn.storage_map.values():
-                val[0] = None
+            for key in self.fn.storage_map.keys():
+                if isinstance(key, theano.tensor.TensorVariable):
+                    self.fn.storage_map[key][0] = None
             
             for node in self.node_op_list:
                 ops_with_inner_function[node.op].free()
 
-# pickling/deepcopy support for Function
 
+# pickling/deepcopy support for Function
 
 def _pickle_Function(f):
     #copy of the input storage list
