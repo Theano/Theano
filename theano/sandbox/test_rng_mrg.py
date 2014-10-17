@@ -318,7 +318,7 @@ def test_GPU_nstreams_limit():
     R = MRG_RandomStreams(seed=seed, use_cuda=True)
     
     def eval_uniform(size, nstreams):
-        return R.uniform(size=size, nstreams=nstreams).eval()
+        return R.uniform(size=size, nstreams=nstreams, dtype='float32').eval()
     
     eval_uniform((10,), 2**20)
     assert_raises(ValueError, eval_uniform, (10,), 2**20 + 1)
