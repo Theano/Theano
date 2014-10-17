@@ -116,7 +116,7 @@ def debugprint(obj, depth=-1, print_type=False,
         print >> file, "\n"
         new_prefix = ' >'
         new_prefix_child = ' >'
-        print >> file, "Inner of the scan."
+        print >> file, "Inner graphs of the scan ops:"
 
         for s in scan_ops:
             debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
