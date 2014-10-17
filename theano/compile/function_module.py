@@ -685,7 +685,7 @@ class Function(object):
         # check the allow_gc
         # 1.no allow_gc return False 2.has allow_gc, if allow_gc is False, return True
         if not getattr(self.fn, 'allow_gc', True):
-            for _, val in self.fn.storage_map.iteritems():
+            for val in self.fn.storage_map.values():
                 val[0] = None
             
             for node in self.fn.fgraph.apply_nodes:
