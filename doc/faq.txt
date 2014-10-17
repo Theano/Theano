@@ -4,7 +4,6 @@
 ==========================
 Frequently Asked Questions
 ==========================
-3B
 TypeError: object of type 'TensorVariable' has no len()
 -------------------------------------------------------
 

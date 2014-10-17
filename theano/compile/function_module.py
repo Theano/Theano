@@ -1210,24 +1210,25 @@ class FunctionMaker(object):
         add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
         
         if need_opt:
-            # optimize the fgraph
-            theano.config.compute_test_value = theano.config.compute_test_value_opt
-            gof.Op.add_stack_trace_on_call = False
-            start_optimizer = time.time()
-            optimizer_profile = optimizer(fgraph)
-            end_optimizer = time.time()
-            opt_time = end_optimizer - start_optimizer
-            if profile:
-                profile.optimizer_time += opt_time
-                if theano.config.profile_optimizer:
-                    profile.optimizer_profile = (optimizer, optimizer_profile)
-            _logger.debug('Optimizing took %f seconds', opt_time)
+            try:
+                # optimize the fgraph
+                theano.config.compute_test_value = theano.config.compute_test_value_opt
+                gof.Op.add_stack_trace_on_call = False
+                start_optimizer = time.time()
+                optimizer_profile = optimizer(fgraph)
+                end_optimizer = time.time()
+                opt_time = end_optimizer - start_optimizer
+                if profile:
+                    profile.optimizer_time += opt_time
+                    if theano.config.profile_optimizer:
+                        profile.optimizer_profile = (optimizer, optimizer_profile)
+                _logger.debug('Optimizing took %f seconds', opt_time)
 
-            #Add deep copy to respect the memory interface
-            insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
-        # fgraph is already optimized
-        theano.config.compute_test_value = compute_test_value_orig
-        gof.Op.add_stack_trace_on_call = add_stack_trace_on_call_orig
+                #Add deep copy to respect the memory interface
+                insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
+            finally:
+                theano.config.compute_test_value = compute_test_value_orig
+                gof.Op.add_stack_trace_on_call = add_stack_trace_on_call_orig
         
         # initialize the linker
         if not hasattr(linker, 'accept'):
