@@ -297,6 +297,7 @@ class Function(object):
         self.profile = None  # reassigned in FunctionMaker.create
         self.trust_input = False  # If True, we don't check the input parameter
         self.name = None
+        self.node_op_list = []
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -452,6 +453,10 @@ class Function(object):
         for input in self.maker.expanded_inputs:
             if input.update is not None:
                 self.n_returned_outputs -= 1
+
+        for node in self.maker.fgraph.apply_nodes:
+            if node.op in ops_with_inner_function.keys():
+                self.node_op_list.append(node.op)
 
     def __contains__(self, item):
         return self.value.__contains__(item)
@@ -688,10 +693,8 @@ class Function(object):
             for val in self.fn.storage_map.values():
                 val[0] = None
             
-            for node in self.fn.fgraph.apply_nodes:
-                if node.op in ops_with_inner_function.keys():
-                    for fn in ops_with_inner_function[node.op]:
-                        fn.free()
+            for node in self.node_op_list:
+                ops_with_inner_function[node.op].free()
 
 # pickling/deepcopy support for Function
 
