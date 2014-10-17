@@ -10,7 +10,7 @@ from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
 from theano.typed_list.basic import (GetItem, Insert,
                                      Append, Extend, Remove, Reverse,
-                                     Index, Count, Length, make_list, Make_List)
+                                     Index, Count, Length, make_list, MakeList)
 from theano import sparse
 from theano.tests import unittest_tools as utt
 # TODO, handle the case where scipy isn't installed.
@@ -555,13 +555,13 @@ class test_length(unittest.TestCase):
         self.assertTrue(f([x, x]) == 2)
 
 
-class T_Make_List(unittest.TestCase):
+class T_MakeList(unittest.TestCase):
 
     def test_wrong_shape(self):
         a = T.vector()
         b = T.matrix()
 
-        self.assertRaises(AssertionError, make_list, (a,b))
+        self.assertRaises(TypeError, make_list, (a,b))
 
     def correct_answer(self):
         a = T.matrix()
