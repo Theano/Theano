@@ -403,16 +403,25 @@ class T_function(unittest.TestCase):
         """
         Make test on free() function
         """
-        origin_config = theano.config.allow_gc
-        try:
-            theano.config.allow_gc = False
-            x = T.scalar('x')
-            y = x * 3
-            func = function([x], y)
-            assert (var == [None] for var in func.fn.stoage_map)
-            func.free()
-        finally:
-            theano.config.allow_gc = origin_config
+        x = T.vector('x')
+        func = function([x], x+1)
+        func([1])
+        
+        sm_list_1 = []
+        for key in func.fn.storage_map.keys():
+            if isinstance(key, theano.tensor.TensorVariable):
+                sm_list_1.append(func.fn.storage_map[key][0])
+        assert (var != [None] for var in sm_list_1)
+        
+        func.fn.allow_gc = False
+        func.free()
+
+        sm_list_2 = []
+        for key in func.fn.storage_map.keys():
+            if isinstance(key, theano.tensor.TensorVariable):
+                sm_list_2.append(func.fn.storage_map[key][0])
+        assert (var == [None] for var in sm_list_2)
+
 
 class T_picklefunction(unittest.TestCase):
 
