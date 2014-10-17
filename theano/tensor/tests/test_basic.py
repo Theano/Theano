@@ -6985,7 +6985,7 @@ class T_swapaxes(unittest.TestCase):
         assert numpy.allclose(n_s, t_s)
 
 
-class T_Power():
+class T_Power(unittest.TestCase):
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = tensor.matrix("A", dtype=theano.config.floatX)
@@ -6998,18 +6998,18 @@ class T_Power():
         assert numpy.allclose(n_p, t_p)
 
     def test_multiple_power(self):
-        x = tensor.matrix()
+        x = tensor.vector()
         y = [1, 2, 3]
         z = power(x, y)
         f = function([x], z)
-        assert allclose(f([1, 2, 3]), [1, 4, 27])
+        assert numpy.allclose(f([1, 2, 3]), [1, 4, 27])
 
     def test_wrong_shape(self):
-        x = tensor.matrix()
+        x = tensor.vector()
         y = [1, 2, 3]
         z = power(x, y)
         f = function([x], z)
-        self.assertRaise(ValueError, f, [1, 2, 3, 4])
+        self.assertRaises(ValueError, f, [1, 2, 3, 4])
 
 
 class T_Choose(utt.InferShapeTester):
