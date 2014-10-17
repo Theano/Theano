@@ -5103,14 +5103,23 @@ def choose(a, choices, out=None, mode='raise'):
 class Choose(Op):
     __props__ = ('mode',)
 
+    def __init__(self, mode):
+        assert mode in ("raise", "wrap", "clip")
+        self.mode = mode
+
     def infer_shape(self, node, shapes):
-        if isinstance(node.inputs[1], tuple):
+
+        if isinstance(node.inputs[1], TensorVariable):
+            return[(shapes[0])]
+        else:
+            import theano.typed_list
+            assert isinstance(node.inputs[1], theano.typed_list.TypedListVariable)
+            #import pdb;pdb.set_trace()
+            raise ShapeError("")
             shape = shapes[0]
             for i in range(len(shapes[0])-1):
                 shape[i] = shapes[1][i]
             return [(shape)]
-        else:
-            return[(shapes[0])]
 
     def make_node(self, a, choices):
         from theano import typed_list
@@ -5124,4 +5133,5 @@ class Choose(Op):
     def perform(self, node, inputs, (z, )):
         a = inputs[0]
         choice = inputs[1]
+        # TODO reuse out?
         z[0] = numpy.choose(a, choice, mode=self.mode)
