@@ -682,7 +682,7 @@ class T_picklefunction(unittest.TestCase):
         assert blah.f1[blah.s] == blah2.f1[blah2.s]
 
         blah.f2(5)
-        assert blah.f1[blah.s] != blah2.f1[blah2.s] 
+        assert blah.f1[blah.s] != blah2.f1[blah2.s]
 
 
 class SomethingToPickle(object):
