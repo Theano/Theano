@@ -403,11 +403,16 @@ class T_function(unittest.TestCase):
         """
         Make test on free() function
         """
-        x = T.scalar('x')
-        y = x * 3
-        fn = function([x], y)
-        fn.free()
-
+        origin_config = theano.config.allow_gc
+        try:
+            theano.config.allow_gc = False
+            x = T.scalar('x')
+            y = x * 3
+            func = function([x], y)
+            assert (var == [None] for var in func.fn.stoage_map)
+            func.free()
+        finally:
+            theano.config.allow_gc = origin_config
 
 class T_picklefunction(unittest.TestCase):
 
