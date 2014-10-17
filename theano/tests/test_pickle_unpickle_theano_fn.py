@@ -15,7 +15,7 @@ This note is written by Li Yao.
 import unittest
 import numpy
 import cPickle
-from collections import OrderedDict
+from theano.compat.python2x import DictMixin, OrderedDict
 floatX = 'float32'
 import theano
 import theano.tensor as T

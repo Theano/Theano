@@ -1221,15 +1221,12 @@ class FunctionMaker(object):
 
         if fgraph is None:
             need_opt = True
-        else:
-            need_opt = False
-            
-        if fgraph is None:
             # make the fgraph (copies the graph, creates NEW INPUT AND OUTPUT VARIABLES)
             fgraph, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
             fgraph.profile = profile
         else:
             # fgraph is already an optimized one
+            need_opt = False
             _, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
             pass
         
@@ -1239,33 +1236,27 @@ class FunctionMaker(object):
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
 
         compute_test_value_orig = theano.config.compute_test_value
-        add_stack_trace_on_call = gof.Op.add_stack_trace_on_call
+        add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
         
         if need_opt:
             # optimize the fgraph
-            try:
-                theano.config.compute_test_value = theano.config.compute_test_value_opt
-                gof.Op.add_stack_trace_on_call = False
-                start_optimizer = time.time()
-                optimizer_profile = optimizer(fgraph)
-                end_optimizer = time.time()
-                opt_time = end_optimizer - start_optimizer
-                if profile:
-                    profile.optimizer_time += opt_time
-                    if theano.config.profile_optimizer:
-                        profile.optimizer_profile = (optimizer, optimizer_profile)
-                _logger.debug('Optimizing took %f seconds', opt_time)
+            theano.config.compute_test_value = theano.config.compute_test_value_opt
+            gof.Op.add_stack_trace_on_call = False
+            start_optimizer = time.time()
+            optimizer_profile = optimizer(fgraph)
+            end_optimizer = time.time()
+            opt_time = end_optimizer - start_optimizer
+            if profile:
+                profile.optimizer_time += opt_time
+                if theano.config.profile_optimizer:
+                    profile.optimizer_profile = (optimizer, optimizer_profile)
+            _logger.debug('Optimizing took %f seconds', opt_time)
 
-                #Add deep copy to respect the memory interface
-                insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
-            finally:
-                theano.config.compute_test_value = compute_test_value_orig
-                gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
-                
-        else:
-            # fgraph is already optimized
-            theano.config.compute_test_value = compute_test_value_orig
-            gof.Op.add_stack_trace_on_call = add_stack_trace_on_call
+            #Add deep copy to respect the memory interface
+            insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
+        # fgraph is already optimized
+        theano.config.compute_test_value = compute_test_value_orig
+        gof.Op.add_stack_trace_on_call = add_stack_trace_on_call_orig
         
         # initialize the linker
         if not hasattr(linker, 'accept'):
