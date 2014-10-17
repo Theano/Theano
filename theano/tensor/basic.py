@@ -5095,19 +5095,13 @@ def swapaxes(y, axis1, axis2):
 
 
 def choose(a, choices, out=None, mode='raise'):
+    # This is done to keep the same function signature then NumPy.
     assert out is None
     return Choose(mode)(a, choices)
 
+
 class Choose(Op):
-
-    def __init__(self, mode):
-        self.mode = mode
-
-    def __hash__(self):
-        return hash((type(self), self.props()))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.props() == other.props())
+    __props__ = ('mode',)
 
     def infer_shape(self, node, shapes):
         if isinstance(node.inputs[1], tuple):
@@ -5117,9 +5111,6 @@ class Choose(Op):
             return [(shape)]
         else:
             return[(shapes[0])]
-
-    def props(self):
-        return self.mode
 
     def make_node(self, a, choices):
         from theano import typed_list
@@ -5133,26 +5124,4 @@ class Choose(Op):
     def perform(self, node, inputs, (z, )):
         a = inputs[0]
         choice = inputs[1]
-        z[0] = numpy.choose(a, choice, mode=self.mode)      
-
-"""
-import theano
-from theano import tensor as T
-from theano import function
-from theano.tensor.basic import choose
-import numpy as np
-x = T.tensor4(dtype='int64')
-y = T.tensor4(dtype='int64')
-z = T.tensor4(dtype='int64')
-p = T.tensor4(dtype='int64')
-w = choose(x,(y,z,p))
-f = function([x,y,z,p], w)
-a = np.array([0, 1, 2]).reshape((3,1,1,1))
-c1 = np.array([1, 2, 3]).reshape((1,3,1,1))
-c2 = np.array([-1, -2, -3, -4, -5]).reshape((1,1,5,1))
-c3 = np.array([1, 2, 4]).reshape((1,1,1,3))
-"""
-
-
-
-
+        z[0] = numpy.choose(a, choice, mode=self.mode)

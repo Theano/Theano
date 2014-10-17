@@ -770,7 +770,7 @@ Creating Tensor
     if mode=wrap, values in a (and thus Ba) may be any (signed) integer; modular arithmetic is used to map integers outside the range [0, n-1] back into that range; and then the new array is constructed as above;
     if mode=clip, values in a (and thus Ba) may be any (signed) integer; negative integers are mapped to 0; values greater than n-1 are mapped to n-1; and then the new array is constructed as above.
 
-    Parameters :    
+    Parameters : 
     a : int array
         This array must contain integers in [0, n-1], where n is the number of choices, unless mode=wrap or mode=clip, in which cases any integers are permissible. 
     choices : sequence of arrays
@@ -782,10 +782,10 @@ Creating Tensor
         ‘raise’ : an exception is raised
         ‘wrap’ : value becomes value mod n
         ‘clip’ : values < 0 are mapped to 0, values > n-1 are mapped to n-1
-    Returns :   
+    Returns :
     merged_array : array
         The merged result.
-    Raises :    
+    Raises :
         ValueError: shape mismatch
         If a and each choice array are not all broadcastable to the same shape.
 
