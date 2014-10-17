@@ -1234,11 +1234,9 @@ class FunctionMaker(object):
 
         # Fetch the optimizer and linker
         optimizer, linker = mode.optimizer, copy.copy(mode.linker)
-
-        compute_test_value_orig = theano.config.compute_test_value
-        add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
-        
         if need_opt:
+            compute_test_value_orig = theano.config.compute_test_value
+            add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
             try:
                 # optimize the fgraph
                 theano.config.compute_test_value = theano.config.compute_test_value_opt
