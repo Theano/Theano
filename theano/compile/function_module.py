@@ -694,7 +694,7 @@ class Function(object):
         # 1.no allow_gc return False 2.has allow_gc, if allow_gc is False, return True
         if not getattr(self.fn, 'allow_gc', True):
             for key in self.fn.storage_map.keys():
-                if isinstance(key, theano.tensor.TensorVariable):
+                if not isinstance(key, theano.gof.Constant):
                     self.fn.storage_map[key][0] = None
             
             for node in self.node_op_list:
