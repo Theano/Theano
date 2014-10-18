@@ -114,9 +114,9 @@ def debugprint(obj, depth=-1, print_type=False,
                              scan_ops=scan_ops, stop_on_name=stop_on_name)
     if len(scan_ops) > 0:
         print >> file, "\n"
-        new_prefix = ' >'
-        new_prefix_child = ' >'
-        print >> file, "Inner graphs of the scan ops:"
+        new_prefix = '\n >'
+        new_prefix_child = '\n >'
+        print >> file, "Inner graphs of the scan ops:\n"
 
         for s in scan_ops:
             debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
