@@ -405,23 +405,20 @@ class T_function(unittest.TestCase):
         """
         x = T.vector('x')
         func = function([x], x+1)
+        func.fn.allow_gc = False
         func([1])
         
-        sm_list_1 = []
-        for key in func.fn.storage_map.keys():
-            if isinstance(key, theano.tensor.TensorVariable):
-                sm_list_1.append(func.fn.storage_map[key][0])
-        assert (var != [None] for var in sm_list_1)
-        
-        func.fn.allow_gc = False
+        check_list = []
+        for key, val in func.fn.storage_map.iteritems():
+            if not isinstance(key, theano.gof.Constant):
+                check_list.append(val)
+        assert any([val[0] for val in check_list])
+
         func.free()
 
-        sm_list_2 = []
-        for key in func.fn.storage_map.keys():
-            if isinstance(key, theano.tensor.TensorVariable):
-                sm_list_2.append(func.fn.storage_map[key][0])
-        assert (var == [None] for var in sm_list_2)
-
+        for key, val in func.fn.storage_map.iteritems():
+            if not isinstance(key, theano.gof.Constant):
+                assert (val[0] == None)
 
 class T_picklefunction(unittest.TestCase):
 
