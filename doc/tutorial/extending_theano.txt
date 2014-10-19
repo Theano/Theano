@@ -5,34 +5,26 @@
 Extending Theano
 ================
 
-Theano Graphs
-=============
+This tutorial covers how to extend Theano. It mainly focuses on Ops that offer a Python implementation, refers to  :ref:`extending_theano_c` for C-based Op.
 
-- Theano works with symbolic graphs.
-- Those graphs are bi-partite graphs (graphs with 2 types of nodes).
-- The two types of nodes are ``Apply`` and ``Variable`` nodes.
-- Each ``Apply`` node has a link to the op that it executes.
-
-Inputs and Outputs are lists of Theano variables.
-
-.. image:: ../hpcs2011_tutorial/pics/apply_node.png
-    :width: 500 px
+Providing a novel Theano Op requires an understanting of the Theano Graphs,
+which is introduced in the next section of this tutorial. This tutorial then propose an overview of the most important methods that the Op needs to implement.Finally, it shows how to combine these elements to write a simple Python-based Op that performs operation on Double. It also shows how to tests for ensuring the proper working of an Op.
 
 .. note::
 
-    This tutorial does not cover how to make an op that returns a view or
-    modifies the values in its inputs. Thus, all ops created with the 
+    This tutorial does not cover how to make an Op that returns a view or
+    modifies the values in its inputs. Thus, all Ops created with the
     instructions described here MUST return newly allocated
     memory or reuse the memory provided in the parameter
     ``output_storage`` of the :func:`perform` function. See :ref:`views_and_inplace`
     for an explanation on how to do this.
 
-    If your op returns a view or changes the value of its inputs
+    If your Op returns a view or changes the value of its inputs
     without doing as prescribed in that page, Theano will run, but will
     return correct results for some graphs and wrong results for others.
 
     It is recommended that you run your tests in DebugMode (Theano *flag*
-    ``mode=DebugMode``) since it verifies if your op behaves correctly in this
+    ``mode=DebugMode``) since it verifies if your Op behaves correctly in this
     regard.
 
 .. note::
@@ -42,13 +34,22 @@ Inputs and Outputs are lists of Theano variables.
    how to make a quality contribution.
 
 
+Theano Graphs
+=============
+
+
+.. image:: ../hpcs2011_tutorial/pics/apply_node.png
+    :width: 500 px
+
+Theano represents symbolic mathematical computations as graphs. Those graphs are bi-partite graphs (graphs with 2 types of nodes), they are composed of interconnected :ref:`apply` and :ref:`variable` nodes which associated to *function application* and *data*, respectively. Inputs and Outputs of a graph are lists of Theano :ref:`variable`. Each :ref:`apply` node, corresponding to a *function application*, has a link to the operation that it which is represented by :ref:`Op` instance. This tutorial details how to write such Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
+
+
+
+
 Op Structure
 ============
 
-This an overview of the methods you typically have to implement to
-make a new op.  It does not provide extensive coverage of all the
-possibilities you may encounter or need.  For that refer to
-:ref:`op_contract`.
+An Op is any Python object which inherits from :class:`gof.Op`.
 
 .. code-block:: python
 
@@ -64,11 +65,11 @@ possibilities you may encounter or need.  For that refer to
         def perform(self, node, inputs_storage, output_storage):
             pass
 
+        # alternative to Python implementation
         # C implementation: [see theano web site for other functions]
         def c_code(...):
             # ...
             pass
-
         # Other implementations (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
             pass
@@ -90,58 +91,139 @@ possibilities you may encounter or need.  For that refer to
 
 .. ../extending/op.txt
 
-There are two mandatory methods that one needs to implement.  The
-first one is :func:`make_node`. The second one would describe the
-computations that are required to be done at run time. Currently there
-are 2 different possibilites: implement the :func:`perform` and/or
-:func:`c_code <Op.c_code>` methods (and other related :ref:`c methods
-<cop>`), or the :func:`make_thunk` method. ``perform`` allows to
-easily wrap an existing Python function into Theano. ``c_code`` and
-the related methods allow the op to generate C code that will be
-compiled and linked by Theano. On the other hand, ``make_thunk`` will
-be called only once during compilation and should generate a
-``thunk``: a standalone function that when called will do the wanted
-computations.  This is useful if you want to generate code and compile
-it yourself. For example, this allows you to use PyCUDA to compile GPU
-code.
+As such, it has to implement some methods defined in the the interface
+of :class:`gof.Op`. More specifically, it is mandatory for an Op to define the  methods :func:`make_node` and :func:`perform`.
 
-The :attr:`__props__` attribute serves to make Op generate an
-appropriate :func:`__eq__` and :func:`__hash__` for your Op.  It must
-be a tuple that lists the properties that influence how the
-computation is performed (Ususally these are those that you set in
-:func:`__init__`). If you don't have any properties, then you should
-set this attribute to the emtpy tuple `()`. It will also generate a
-suitable :func:`__str__` for your op. This requires development
-version after September 1st, 2014 or version 0.7.
+  :func:`make_node`  method is responsible for creating output Variables of a
+  suitable symbolic Type to serve as the outputs of this Op's
+  application.  The Variables found in ``*inputs`` must be operated on
+  using Theano's symbolic language to compute the symbolic output
+  Variables. This method should put these outputs into an Apply
+  instance, and return the Apply instance.
+  :func:`make_node`  method creates an Apply node representing the application of
+  the Op on the inputs provided. If the Op cannot be applied to these
+  inputs, it must raise an appropriate exception.
 
-:func:`__eq__` and :func:`__hash__` will be used by the optimization
-phase to merge nodes that are doing a equivalent compuation (same
-inputs, same operation).  It is especially important that two Ops that
-compare equal (have the same values for all the properties listed in
-__props__ and the same type) compute the same thing when presented
-with the same inputs.
 
-Also note that this attribute will also generate a suitable
-:func:`__str__` method for your Op.  You may override this default
-with a custom one if you want another format for the output.
+  :func:`perform` method computes the function associated to this Op.
+  It takes several arguments:
+    - ``node``: This is a reference to an Apply node which was previously
+      obtained via the ``Op``'s ``make_node`` method. It is typically not
+      used in simple Ops, but it contains symbolic information that
+      could be required for complex Ops.
+    - ``inputs``: This is a list of references to data to operate on using
+      non-symbolic statements, (i.e., statements in Python, Numpy).
+    - ``output_storage``: This is a list of storage cells where the output
+      is to be stored. There is one storage cell for each output of the Op.
+      The data put in ``output_storage`` must match the type of the
+      symbolic output. It is forbidden to change the length of the list(s)
+      contained in ``output_storage``.
+      A function Mode may allow ``output_storage`` elements to persist
+      between evaluations, or it may reset ``output_storage`` cells to
+      hold a value of ``None``.  It can also pre-allocate some memory
+      for the Op to use.  This feature can allow ``perform`` to reuse
+      memory between calls, for example. If there is something
+      preallocated in the ``output_storage``, it will be of the good
+      dtype, but can have the wrong shape and have any stride pattern.
 
-The :func:`infer_shape` method allows to infer the shape of some variable, somewhere in the
-middle of the computational graph without actually computing the outputs (when possible).
-This could be helpful if one only needs the shape of the output instead of the actual outputs.
+  :func:`perform` method must be determined by the inputs. That is to say, if
+  it is evaluated once on inputs A and returned B, then if ever
+  inputs C, equal to A, are presented again, then outputs equal to
+  B must be returned again.
 
-The :func:`grad` method is required if you want to differentiate some cost whose expression
-includes your op.
+:class:`gof.Op` allows some alternatives to the :func:`perform`.
+For instance, it is possible to define :meth:`Op.c_code` gto provide a
+C-implementation to the Op. Please refers to tutorial
+:ref:`extending_theano_c` for a description of :meth:`Op.c_code` and other
+related c_methods
 
-The :func:`__str__` method is useful in order to provide a more meaningful
-string representation of your op.
+  :func:`make_thunk` method is another alternative to the :func:`perform`.
+  It returns a thunk, that is a zero-arguments
+  function that encapsulates the computation to be performed by this
+  op on the arguments of the node. It takes several parameters:
+    - ``node`` is the Apply instance for which a thunk is requested,
+    - ``storage_map`` is a dict of lists which  maps variables to a one-element
+      lists holding the variabe's current value. The one-element list acts as
+      pointer to the value and allows sharing that "pointer" with other nodes
+      and instances.
+    - ``compute_map`` is also a  dict of lists.
+      It maps variables to one-element lists holding booleans.  If
+      the value is 0 then the variable has not been computed and the
+      value should not be considered valid.  If the value is 1 the
+      variable has been computed and the value is valid.  If the value
+      is 2 the variable has been garbage-collected and is no longer
+      valid, but shouldn't be required anymore for this call.
+      The returned function must ensure that is sets the computed
+      variables as computed in the `compute_map`.
 
-The :func:`R_op` method is needed if you want ``theano.tensor.Rop`` to
-work with your op.
 
-The optional boolean :attr:`check_input` attribute is used to specify
-if you want the types used in your op to check their inputs in their
-c_code. It can be used to speed up compilation, reduce overhead
-(particularly for scalars) and reduce the number of generated C files.
+  :func:`make_thunk` is useful if you want to generate code and compile
+  it yourself. For example, this allows you to use PyCUDA to compile GPU
+  code.
+
+Other methods can be optionally defined by the Op.
+
+  The :func:`__str__` method is useful in order to provide a more meaningful
+  string representation of your op.
+
+  :func:`__eq__` and :func:`__hash__` will be used by the optimization
+  phase to merge nodes that are doing a equivalent compuation (same
+  inputs, same operation).  It is especially important that two Ops that
+  compare equal (have the same values for all the properties listed in
+  __props__ and the same type) compute the same thing when presented
+  with the same inputs.
+  Also note that this attribute will also generate a suitable
+  :func:`__str__` method for your Op.  You may override this default
+  with a custom one if you want another format for the output.
+
+  The :attr:`__props__` attribute serves to make Op generate an
+  appropriate :func:`__eq__` and :func:`__hash__` for your Op.  It must
+  be a tuple that lists the properties that influence how the
+  computation is performed (Ususally these are those that you set in
+  :func:`__init__`). If you don't have any properties, then you should
+  set this attribute to the emtpy tuple `()`. It will also generate a
+  suitable :func:`__str__` for your op. This requires development
+  version after September 1st, 2014 or version 0.7.
+
+
+  The :func:`infer_shape` method allows to infer the shape of some variable, somewhere in the
+  middle of the computational graph without actually computing the outputs (when possible).
+  This could be helpful if one only needs the shape of the output instead of the actual outputs.
+
+  The :func:`grad` method is required if you want to differentiate some cost whose expression includes your op. The gradient may be
+  specified symbolically in this method. It takes two arguments ``inputs`` and
+  ``output_gradients`` which are both lists of symbolic Theano Variables and
+  those must be operated on using Theano's symbolic language. The grad
+  method must return a list containing one Variable for each
+  input. Each returned Variable represents the gradient with respect
+  to that input computed based on the symbolic gradients with respect
+  to each output.
+  If the output is not differentiable with respect to an input then
+  this method should be defined to return a variable of type NullType
+  for that input. Likewise, if you have not implemented the grad
+  computation for some input, you may return a variable of type
+  NullType for that input. Please refer to :func:`grad` for a more detailed
+  view.
+
+
+  The :func:`R_op` method is needed if you want ``theano.tensor.Rop`` to
+  work with your op.
+  This function implements the application of the R-operator on the
+  function represented by your op. Let assume that function is :math:`f`,
+  with input :math:`x`, applying the R-operator means computing the
+  Jacobian of :math:`f` and right-multiplying it by :math:`v`, the evaluation
+  point, namely: :math:`\frac{\partial f}{\partial x} v`.
+
+  The optional boolean :attr:`check_input` attribute is used to specify
+  if you want the types used in your op to check their inputs in their
+  c_code. It can be used to speed up compilation, reduce overhead
+  (particularly for scalars) and reduce the number of generated C files.
+
+
+This an overview of the methods you typically have to implement to
+make a new op.  It does not provide extensive coverage of all the
+possibilities you may encounter or need.  For that refer to
+:ref:`op_contract`.
 
 Op Example
 ==========
