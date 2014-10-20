@@ -125,10 +125,6 @@ def debugprint(obj, depth=-1, print_type=False,
                                  scan_ops=scan_ops, stop_on_name=stop_on_name)
 
             if hasattr(s.owner, 'op'):
-
-                #Apply node should be a scan op!
-                assert isinstance(s.owner.op, theano.scan_module.scan_op.Scan)
-
                 for idx, i in enumerate(s.owner.op.outputs):
                     if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
                         if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
