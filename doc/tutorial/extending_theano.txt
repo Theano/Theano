@@ -5,26 +5,24 @@
 Extending Theano
 ================
 
-This tutorial covers how to extend Theano. It mainly focuses on Ops that offer a Python implementation, refers to  :ref:`extending_theano_c` for C-based Op.
-
-Providing a novel Theano Op requires an understanting of the Theano Graphs,
-which is introduced in the next section of this tutorial. This tutorial then propose an overview of the most important methods that the Op needs to implement.Finally, it shows how to combine these elements to write a simple Python-based Op that performs operation on Double. It also shows how to tests for ensuring the proper working of an Op.
+This tutorial covers how to extend Theano. It mainly focuses on ops that offer a Python implementation, refers to  :ref:`extending_theano_c` for C-based op.
+Providing a novel Theano op requires an understanting of the Theano Graphs, which is introduced in the next section of this tutorial. This tutorial then propose an overview of the most important methods that the op needs to implement. Finally, it shows how to combine these elements to write a simple Python-based op that performs operation on Double. It also shows how to tests for ensuring the proper working of an op.
 
 .. note::
 
-    This tutorial does not cover how to make an Op that returns a view or
-    modifies the values in its inputs. Thus, all Ops created with the
+    This tutorial does not cover how to make an op that returns a view or
+    modifies the values in its inputs. Thus, all ops created with the
     instructions described here MUST return newly allocated
     memory or reuse the memory provided in the parameter
     ``output_storage`` of the :func:`perform` function. See :ref:`views_and_inplace`
     for an explanation on how to do this.
 
-    If your Op returns a view or changes the value of its inputs
+    If your op returns a view or changes the value of its inputs
     without doing as prescribed in that page, Theano will run, but will
     return correct results for some graphs and wrong results for others.
 
     It is recommended that you run your tests in DebugMode (Theano *flag*
-    ``mode=DebugMode``) since it verifies if your Op behaves correctly in this
+    ``mode=DebugMode``) since it verifies if your op behaves correctly in this
     regard.
 
 .. note::
@@ -41,7 +39,7 @@ Theano Graphs
 .. image:: ../hpcs2011_tutorial/pics/apply_node.png
     :width: 500 px
 
-Theano represents symbolic mathematical computations as graphs. Those graphs are bi-partite graphs (graphs with 2 types of nodes), they are composed of interconnected :ref:`apply` and :ref:`variable` nodes which associated to *function application* and *data*, respectively. Inputs and Outputs of a graph are lists of Theano :ref:`variable`. Each :ref:`apply` node, corresponding to a *function application*, has a link to the operation that it which is represented by :ref:`Op` instance. This tutorial details how to write such Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
+Theano represents symbolic mathematical computations as graphs. Those graphs are bi-partite graphs (graphs with 2 types of nodes), they are composed of interconnected :ref:`apply` and :ref:`variable` nodes which associated to *function application* and *data*, respectively. Inputs and Outputs of a graph are lists of Theano :ref:`variable`. Each :ref:`apply` node, corresponding to a *function application*, has a link to the operation that it which is represented by :ref:`Op` instance. This tutorial details how to write such an Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
 
 
 
@@ -49,7 +47,7 @@ Theano represents symbolic mathematical computations as graphs. Those graphs are
 Op Structure
 ============
 
-An Op is any Python object which inherits from :class:`gof.Op`.
+An op is any Python object which inherits from :class:`gof.Op`.
 
 .. code-block:: python
 
@@ -92,36 +90,36 @@ An Op is any Python object which inherits from :class:`gof.Op`.
 .. ../extending/op.txt
 
 As such, it has to implement some methods defined in the the interface
-of :class:`gof.Op`. More specifically, it is mandatory for an Op to define the  methods :func:`make_node` and :func:`perform`.
+of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  methods :func:`make_node` and :func:`perform`.
 
   :func:`make_node`  method is responsible for creating output Variables of a
-  suitable symbolic Type to serve as the outputs of this Op's
+  suitable symbolic Type to serve as the outputs of this op's
   application.  The Variables found in ``*inputs`` must be operated on
   using Theano's symbolic language to compute the symbolic output
   Variables. This method should put these outputs into an Apply
   instance, and return the Apply instance.
   :func:`make_node`  method creates an Apply node representing the application of
-  the Op on the inputs provided. If the Op cannot be applied to these
+  the op on the inputs provided. If the op cannot be applied to these
   inputs, it must raise an appropriate exception.
 
 
-  :func:`perform` method computes the function associated to this Op.
+  :func:`perform` method computes the function associated to this op.
   It takes several arguments:
     - ``node``: This is a reference to an Apply node which was previously
       obtained via the ``Op``'s ``make_node`` method. It is typically not
-      used in simple Ops, but it contains symbolic information that
-      could be required for complex Ops.
+      used in simple ops, but it contains symbolic information that
+      could be required for complex ops.
     - ``inputs``: This is a list of references to data to operate on using
       non-symbolic statements, (i.e., statements in Python, Numpy).
     - ``output_storage``: This is a list of storage cells where the output
-      is to be stored. There is one storage cell for each output of the Op.
+      is to be stored. There is one storage cell for each output of the op.
       The data put in ``output_storage`` must match the type of the
       symbolic output. It is forbidden to change the length of the list(s)
       contained in ``output_storage``.
       A function Mode may allow ``output_storage`` elements to persist
       between evaluations, or it may reset ``output_storage`` cells to
       hold a value of ``None``.  It can also pre-allocate some memory
-      for the Op to use.  This feature can allow ``perform`` to reuse
+      for the op to use.  This feature can allow ``perform`` to reuse
       memory between calls, for example. If there is something
       preallocated in the ``output_storage``, it will be of the good
       dtype, but can have the wrong shape and have any stride pattern.
@@ -133,7 +131,7 @@ of :class:`gof.Op`. More specifically, it is mandatory for an Op to define the  
 
 :class:`gof.Op` allows some alternatives to the :func:`perform`.
 For instance, it is possible to define :meth:`Op.c_code` gto provide a
-C-implementation to the Op. Please refers to tutorial
+C-implementation to the op. Please refers to tutorial
 :ref:`extending_theano_c` for a description of :meth:`Op.c_code` and other
 related c_methods
 
@@ -161,23 +159,23 @@ related c_methods
   it yourself. For example, this allows you to use PyCUDA to compile GPU
   code.
 
-Other methods can be optionally defined by the Op.
+Other methods can be optionally defined by the op.
 
   The :func:`__str__` method is useful in order to provide a more meaningful
   string representation of your op.
 
   :func:`__eq__` and :func:`__hash__` will be used by the optimization
   phase to merge nodes that are doing a equivalent compuation (same
-  inputs, same operation).  It is especially important that two Ops that
+  inputs, same operation).  It is especially important that two ops that
   compare equal (have the same values for all the properties listed in
   __props__ and the same type) compute the same thing when presented
   with the same inputs.
   Also note that this attribute will also generate a suitable
-  :func:`__str__` method for your Op.  You may override this default
+  :func:`__str__` method for your op.  You may override this default
   with a custom one if you want another format for the output.
 
-  The :attr:`__props__` attribute serves to make Op generate an
-  appropriate :func:`__eq__` and :func:`__hash__` for your Op.  It must
+  The :attr:`__props__` attribute serves to make op generate an
+  appropriate :func:`__eq__` and :func:`__hash__` for your op.  It must
   be a tuple that lists the properties that influence how the
   computation is performed (Ususally these are those that you set in
   :func:`__init__`). If you don't have any properties, then you should
