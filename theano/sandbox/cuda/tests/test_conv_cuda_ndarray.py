@@ -588,7 +588,7 @@ def test_dnn_valid():
 
 def test_default_conv():
     """Just test that we introduce the right GPU convolution
-    versoin.
+    version.
 
     """
     img = theano.tensor.ftensor4()

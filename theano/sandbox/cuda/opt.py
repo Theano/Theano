@@ -1109,14 +1109,11 @@ def local_gpu_softmax_with_bias(node):
 from theano.tensor.nnet import conv
 
 
-# Need to be registered before local_gpu_conv_legacy. Otherwise, it
+# Needs to be registered before local_gpu_conv_legacy. Otherwise, it
 # will have priority over this optimization.  We want, if cudnn is
-# available and the GPU support it, use it.  Otherwise, the gemm
-# version should be used.  If the user want the legacy convolution,
-# they should use the Theano flag:
-# optimizer_excluding=local_conv_gemm.
-# If cudnn is available, this flag should be added:
-# optimizer_excluding=local_gpu_conv
+# available and the GPU supports it, to use it.  Otherwise, the gemm
+# version should be used.  If the users want the legacy convolution,
+# they should use the Theano flag to disable the dnn and/or gemm version.
 @register_opt("dnn")
 @local_optimizer([gpu_from_host, conv.ConvOp])
 def local_gpu_conv(node):
