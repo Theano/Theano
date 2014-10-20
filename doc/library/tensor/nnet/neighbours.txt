@@ -14,9 +14,9 @@
 
     - Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
       allows to apply a sliding window operation to a tensor containing images 
-      or other two-dimensional objects. The imput is a 4-dimensional array which
+      or other two-dimensional objects. The input is a 4-dimensional array which
       represents a list of lists of images. The first two dimensions can be 
-      usefull to store different channels and batches.
+      useful to store different channels and batches.
 
         Example:
 
@@ -32,7 +32,7 @@
 
     - Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
       performs the inverse operation of 
-      :func `images2neibs <theano.sandbox.neigbours.neibs2images>`.
+      :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`.
 
 
         Example:
