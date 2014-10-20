@@ -18,21 +18,33 @@
       represents a list of lists of images. The first two dimensions can be 
       useful to store different channels and batches.
 
+      The second input of the function `neib_shape` is a tuple of two values: 
+      height and width of the neighbourhood.
+
+      It is possible to assign a step of selecting patches (parameter 
+      `neib_step`). By default it is equal to `neib_shape` in other words, the 
+      patches are disjoint.
+
         Example:
 
         .. code-block:: python
 
             images = T.tensor4('images')
-            neibs = images2neibs(images, (5, 5))
+            neibs = images2neibs(images, neib_shape=(5, 5))
             im_val = np.arange(100.).reshape((1, 1, 10, 10))
             neibs_val = theano.function([images], neibs)(im_val)
 
-        .. note:: The underlying code will construct a 2D tensor of patches 5x5 
+        .. note:: The underlying code will construct a 2D tensor of disjoint 
+           patches 5x5. The output has shape 4x25. 
 
 
     - Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
       performs the inverse operation of 
       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`.
+
+        .. note:: Currently, the function doesn't support tensors created with
+           `neib_step` different from default value. This means that it may be
+           impossible to compute the gradient in this case.
 
 
         Example:
@@ -42,4 +54,4 @@
             im_new = neibs2images(neibs, (5, 5), im_val.shape)
             im_new_val = theano.function([neibs], im_new)(neibs_val)
 
-        .. note:: The code will output an initial image array
+        .. note:: The code will output the initial image array.
