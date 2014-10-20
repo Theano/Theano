@@ -184,6 +184,25 @@ def test_speed_lazy():
         time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False,
                                                         use_cloop=True))
 
+
+def test_allow_gc_cvm():
+    v = theano.tensor.vector()
+    f = theano.function([v], v + 1)
+    f([1])
+    n = list(f.maker.fgraph.apply_nodes)[0].outputs[0]
+    assert f.fn.storage_map[n][0] is None
+    assert f.fn.allow_gc is True
+
+    f.fn.allow_gc = False
+    assert f.fn.allow_gc is False
+    f([1])
+    assert f.fn.storage_map[n][0] is not None
+    f.fn.allow_gc = True
+    assert f.fn.allow_gc is True
+    f([1])
+    assert f.fn.storage_map[n][0] is None
+
+
 run_memory_usage_tests = False
 if run_memory_usage_tests:
     # these are not normal unit tests, do not run them as part of standard

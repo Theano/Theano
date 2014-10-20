@@ -20,10 +20,10 @@ The most frequent way to control the number of threads used is via the
 threads you want to use before starting the Python process. Some BLAS
 implementations support other environment variables.
 
-To test if you BLAS support OpenMP/Multiple cores, you can use the theano/misc/check_blas.py scripts from the command line like this::
+To test if you BLAS supports OpenMP/Multiple cores, you can use the theano/misc/check_blas.py script from the command line like this::
 
-    OMP_NUM_THREAD=1 python theano/misc/check_blas.py -q
-    OMP_NUM_THREAD=2 python theano/misc/check_blas.py -q
+    OMP_NUM_THREADS=1 python theano/misc/check_blas.py -q
+    OMP_NUM_THREADS=2 python theano/misc/check_blas.py -q
 
 
 
@@ -57,7 +57,7 @@ threads you want to use before starting the Python process. You can
 test this with this command::
 
 
-    $OMP_NUM_THREADS=2 python theano/misc/elemwise_openmp_speedup.py
+    OMP_NUM_THREADS=2 python theano/misc/elemwise_openmp_speedup.py
     #The output
 
     Fast op time without openmp 0.000533s with openmp 0.000474s speedup 1.12

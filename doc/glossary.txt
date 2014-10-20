@@ -3,6 +3,11 @@
 Glossary
 ========
 
+..
+    # This is for the doctests in the file
+    >>> import theano
+    >>> from theano import tensor
+
 .. glossary::
 
     Apply
@@ -25,8 +30,10 @@ Glossary
     Constant
         A variable with an immutable value.
         For example, when you type
+
         >>> x = tensor.ivector()
         >>> y = x + 3
+
         Then a `constant` is created to represent the ``3`` in the graph.
 
         See also: :class:`gof.Constant`

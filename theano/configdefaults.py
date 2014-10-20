@@ -1,7 +1,7 @@
 import os
 import logging
-import subprocess
 
+import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  IntParam, StrParam, TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
@@ -156,16 +156,23 @@ if rc == 0 and config.cxx != "":
                      'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 else:
-    # g++ is not present, linker should default to python only
+    # g++ is not present or the user disabled it,
+    # linker should default to python only.
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode(deprecated)"),
-                 EnumStr('py', 'vm', 'vm_nogc'),
+                 EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
-    _logger.warning('g++ not detected ! Theano will be unable to execute '
+    try:
+        # If the user provided an empty value for cxx, do not warn.
+        theano.configparser.fetch_val_for_key('cxx')
+    except KeyError:
+        _logger.warning(
+            'g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
             'default to Python implementations. Performance will be severely '
-            'degraded.')
+            'degraded. To remove this warning, set Theano flags cxx to an '
+            'empty string.')
 
 
 #Keep the default value the same as the one for the mode FAST_RUN
@@ -428,10 +435,10 @@ AddConfigVar('warn.reduce_join',
               'might have given an incorrect result. '
               'To disable this warning, set the Theano flag '
               'warn.reduce_join to False. The problem was an '
-              'optimization that modify the pattern '
+              'optimization, that modified the pattern '
               '"Reduce{scalar.op}(Join(axis=0, a, b), axis=0)", '
-              'did not checked the reduction axis. So if the '
-              'reduction axis is not 0, you got wrong answer.'),
+              'did not check the reduction axis. So if the '
+              'reduction axis was not 0, you got a wrong answer.'),
              BoolParam(warn_default('0.7')),
              in_c_key=False)
 
@@ -527,7 +534,7 @@ AddConfigVar('openmp_elemwise_minsize',
 
 AddConfigVar('check_input',
              "Specify if types should check their input in their C code. "
-             "It can be used to speed up compilation, reduce overhead"
-              "(particularly for scalars) and reduce the number of generated C"
+             "It can be used to speed up compilation, reduce overhead "
+              "(particularly for scalars) and reduce the number of generated C "
               "files.",
              BoolParam(True))

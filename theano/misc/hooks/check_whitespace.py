@@ -10,7 +10,14 @@ import sys
 import tabnanny
 import tokenize
 
-import argparse
+try:
+    import argparse
+except ImportError:
+    raise ImportError(
+        "check_whitespace.py need Python module argparse introduced in"
+        " Python 2.7. It is available in pypi for compatibility."
+        " You can install it with this command 'pip install argparse'")
+
 import reindent
 from theano.compat.six import StringIO
 

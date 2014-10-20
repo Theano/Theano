@@ -6430,7 +6430,8 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([advec, bdvec],
                                 [Dot()(advec, bdvec)],
                                 [advec_val, bdvec_val],
-                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+                                (Dot, tensor.blas.Dot22,
+                                 tensor.blas.Gemv, tensor.blas_c.CGemv))
 
         #mat/mat
         admat = dmatrix()
@@ -6447,14 +6448,16 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([advec, bdmat],
                                 [Dot()(advec, bdmat)],
                                 [advec_val, bdmat_val],
-                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+                                (Dot, tensor.blas.Dot22,
+                                 tensor.blas.Gemv, tensor.blas_c.CGemv))
 
         #mat/vec
         admat_val = rand(5, 4)
         self._compile_and_check([admat, bdvec],
                                 [Dot()(admat, bdvec)],
                                 [admat_val, bdvec_val],
-                                (Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+                                (Dot, tensor.blas.Dot22,
+                                 tensor.blas.Gemv, tensor.blas_c.CGemv))
 
         # Split
         aivec = ivector()

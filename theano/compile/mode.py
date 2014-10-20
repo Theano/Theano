@@ -93,7 +93,13 @@ OPT_NONE = gof.Query(include=[], exclude=exclude)
 OPT_MERGE = gof.Query(include=['merge'], exclude=exclude)
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
-OPT_FAST_COMPILE = gof.Query(include=['fast_compile'], exclude=exclude)
+# We need fast_compile_gpu here.  As on the GPU, we don't have all
+# operation that exist in fast_compile, but have some that get
+# introduced in fast_run, we want those optimization to also run in
+# fast_compile+gpu. We can't tag them just as 'gpu', as this would
+# exclude them if we exclude 'gpu'.
+OPT_FAST_COMPILE = gof.Query(include=['fast_compile', 'fast_compile_gpu'],
+                             exclude=exclude)
 OPT_STABILIZE = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_STABILIZE.position_cutoff = 1.5000001
 OPT_NONE.name = 'OPT_NONE'
@@ -191,7 +197,7 @@ optdb.register('Print1.51', PrintCurrentFunctionGraph('Post-stabilize'),
 
 # misc special cases for speed
 optdb.register('specialize', gof.EquilibriumDB(),
-        2, 'fast_run')
+        2, 'fast_run', 'fast_compile_gpu')
 
 # misc special cases for speed that break canonicalization
 optdb.register('uncanonicalize', gof.EquilibriumDB(),

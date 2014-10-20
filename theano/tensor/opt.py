@@ -338,7 +338,8 @@ def register_specialize(lopt, *tags, **kwargs):
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
-        compile.optdb['specialize'].register(name, lopt, 'fast_run', *tags)
+        compile.optdb['specialize'].register(name, lopt, 'fast_run',
+                                             *tags)
         return lopt
 
 
@@ -821,9 +822,17 @@ class ShapeFeature(object):
             s_i.owner.inputs[0].owner and
             isinstance(s_i.owner.inputs[0].owner.op, T.Shape)):
             assert s_i.ndim == 0
-            assert len(s_i.owner.inputs) == 2
+            assert len(s_i.owner.op.idx_list) == 1
+
+            # The current Subtensor always put constant index in the graph.
+            # This was not True in the past. So call the Subtensor function
+            # that will return the right index.
+            idx = theano.tensor.subtensor.get_idx_list(s_i.owner.inputs,
+                                                       s_i.owner.op.idx_list)
+            assert len(idx) == 1
+            idx = idx[0]
             try:
-                i = get_scalar_constant_value(s_i.owner.inputs[1])
+                i = get_scalar_constant_value(idx)
                 s_i = Shape_i(i)(s_i.owner.inputs[0].owner.inputs[0])
             except NotScalarConstantError:
                 pass
@@ -1319,7 +1328,7 @@ def local_track_shape_i(node):
 
 
 @register_specialize
-@register_canonicalize('gpu')
+@register_canonicalize('fast_compile_gpu')
 @gof.local_optimizer([Subtensor])
 def local_subtensor_make_vector(node):
     # replace all subtensor(make_vector) like:
@@ -2164,6 +2173,53 @@ def local_subtensor_of_alloc(node):
                                                 node.outputs[0].broadcastable))
              if b1 and not b2])
     return rval
+
+
+@register_canonicalize
+@register_stabilize
+@register_specialize
+@gof.local_optimizer([Subtensor])
+def local_subtensor_of_dot(node):
+    """
+    This optimization translates T.dot(A, B)[idxs] into T.dot(A[idxs_a], B[idxs_b]),
+    where idxs_a and idxs_b are defined appropriately.
+
+    idxs_a is the first A.ndim-1 entries of idxs,
+    and idxs_b is the remaining entries of idxs (if any),
+    modified to skip the second-to-last dimension of B
+    (because dot sums over this dimension)
+    """
+    if not isinstance(node.op, Subtensor):
+        return
+    if (not node.inputs[0].owner or
+        not isinstance(node.inputs[0].owner.op, T.Dot)):
+        return
+    # If there is other node that use the outputs of the dot
+    # We don't want to compute twice the sub part.
+    if len(node.inputs[0].clients) > 1:
+        return
+
+    a = node.inputs[0].owner.inputs[0]
+    b = node.inputs[0].owner.inputs[1]
+
+    idx_list = theano.tensor.subtensor.get_idx_list(node.inputs, node.op.idx_list)
+
+    num_a_indices = min(a.ndim - 1, len(idx_list))
+    a_indices = idx_list[:num_a_indices]
+    b_indices = idx_list[num_a_indices:]
+
+    # This is necessary because np.dot sums the last index of a with the second to last of b
+    # so we want to skip the second-to-last index into b.
+    # This wasn't necessary for a, because we just ommitted the last index.
+    # We skip this if b.ndim = 1, since then we just want b_sub = b, not b_sub = b[:]
+    # (dot also handles b.ndim < 2 as a special case)
+    if b.ndim > 1 and len(b_indices) >= b.ndim - 1:
+        b_indices = b_indices[:b.ndim-2] + (slice(None, None, None),) + b_indices[b.ndim-2:]
+
+    a_sub = a.__getitem__(tuple(a_indices))
+    b_sub = b.__getitem__(tuple(b_indices)) if b_indices else b
+
+    return [T.dot(a_sub, b_sub)]
 
 
 @register_canonicalize
@@ -3535,10 +3591,10 @@ def local_reduce_join(node):
                     'might have given an incorrect result for this code. '
                     'To disable this warning, set the Theano flag '
                     'warn.reduce_join to False. The problem was an '
-                    'optimization that modify the pattern '
+                    'optimization, that modified the pattern '
                     '"Reduce{scalar.op}(Join(axis=0, a, b), axis=0)", '
-                    'did not checked the reduction axis. So if the '
-                    'reduction axis is not 0, you got wrong answer.'
+                    'did not check the reduction axis. So if the '
+                    'reduction axis was not 0, you got a wrong answer.'
                     ))
             return
 
@@ -5057,7 +5113,17 @@ your code will run correctly, but may be slower.""")
         return n.outputs
     return local_fuse
 
-local_elemwise_fusion = local_elemwise_fusion_op(T.Elemwise)
+
+def elemwise_max_input_fct(node):
+    # The Elemwise.perform use numpy ufunc and they are limited to 31
+    # inputs.
+    if not theano.config.cxx:
+        return 31
+    return 1024
+
+
+local_elemwise_fusion = local_elemwise_fusion_op(T.Elemwise,
+                                                 elemwise_max_input_fct)
 
 
 class FusionOptimizer(Optimizer):

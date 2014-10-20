@@ -551,7 +551,8 @@ def conv3D(V, W, b, d):
            This is for optimization.
 
     :note: The GPU implementation is very slow. You should use
-           :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` for a
+           :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
+           :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
            GPU graph instead.
 
     :see: Someone made a script that shows how to swap the axes

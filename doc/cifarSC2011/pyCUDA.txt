@@ -80,7 +80,7 @@ Exercise 6
 Theano + PyCUDA
 ---------------
 
-.. code-block:: python
+.. testcode::
 
     import numpy, theano
     import theano.misc.pycuda_init
@@ -118,15 +118,20 @@ Theano + PyCUDA
                 pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
                            block=(512,1,1), grid=grid)
             return thunk
-    
+
+.. testoutput::
+   :hide:
+   :options: +SKIP
+
+   This contains GPU code so skip it
 
 Test it!
 
->>> x = theano.tensor.fmatrix()
->>> f = theano.function([x], PyCUDADoubleOp()(x))
->>> xv=numpy.ones((4,5), dtype="float32")
->>> assert numpy.allclose(f(xv), xv*2)
->>> print numpy.asarray(f(xv))
+>>> x = theano.tensor.fmatrix() # doctest: +SKIP
+>>> f = theano.function([x], PyCUDADoubleOp()(x)) # doctest: +SKIP
+>>> xv=numpy.ones((4,5), dtype="float32") # doctest: +SKIP
+>>> assert numpy.allclose(f(xv), xv*2) # doctest: +SKIP
+>>> print numpy.asarray(f(xv)) # doctest: +SKIP
 
 Exercises 7
 -----------

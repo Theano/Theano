@@ -930,6 +930,34 @@ static PyMethodDef CLazyLinker_methods[] = {
 };
 #endif
 
+
+static PyObject *
+CLazyLinker_get_allow_gc(CLazyLinker *self, void *closure)
+{
+    return PyBool_FromLong(self->allow_gc);
+}
+
+static int
+CLazyLinker_set_allow_gc(CLazyLinker *self, PyObject *value, void *closure)
+{
+  if(!PyBool_Check(value))
+    return -1;
+
+  if (value == Py_True)
+    self->allow_gc = true;
+  else
+    self->allow_gc = false;
+  return 0;
+}
+
+static PyGetSetDef CLazyLinker_getset[] = {
+    {"allow_gc",
+     (getter)CLazyLinker_get_allow_gc,
+     (setter)CLazyLinker_set_allow_gc,
+     "do this function support allow_gc",
+     NULL},
+    {NULL, NULL, NULL, NULL}  /* Sentinel */
+};
 static PyMemberDef CLazyLinker_members[] = {
     {(char*)"nodes", T_OBJECT_EX, offsetof(CLazyLinker, nodes), 0,
      (char*)"list of nodes"},
@@ -983,7 +1011,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
     0,                         /* tp_iternext */
     0,//CLazyLinker_methods,       /* tp_methods */
     CLazyLinker_members,       /* tp_members */
-    0,                         /* tp_getset */
+    CLazyLinker_getset,        /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */

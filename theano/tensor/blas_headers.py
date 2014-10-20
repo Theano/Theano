@@ -12,7 +12,6 @@ from theano import config
 from theano.gof.cmodule import GCC_compiler
 
 _logger = logging.getLogger('theano.tensor.blas')
-#_logger.setLevel(logging.INFO)
 
 
 def detect_macos_sdot_bug():

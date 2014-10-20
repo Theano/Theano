@@ -16,8 +16,12 @@ import theano
 from theano import gof
 from theano.gof.python25 import partial
 import theano.compile.mode
-from theano.compile.io import In, SymbolicInput, SymbolicInputKit, SymbolicOutput
+from theano.compile.io import (
+    In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
 from theano.compile.ops import deep_copy_op, view_op
+from theano.gof.op import ops_with_inner_function
+
+
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -29,15 +33,20 @@ class UnusedInputError(Exception):
     """
     pass
 
+
 def alias_root(v):
     """Return the variable to which v is aliased by view_maps and destroy_maps"""
-    if v.owner is None: return v
+    if v.owner is None:
+        return v
     vmap = getattr(v.owner.op, 'view_map', {})
     dmap = getattr(v.owner.op, 'destroy_map', {})
     outpos = v.owner.outputs.index(v)
     v_views = vmap.get(outpos, []) + dmap.get(outpos, [])
     if len(v_views) > 1:
-        raise NotImplementedError()
+        raise NotImplementedError(
+            str(v) + " is a view/destroyed version of more then one inputs. "
+            "Currently, we only support the case where an output is a view or "
+            "a destroyed version of one input.")
     elif v_views:
         return alias_root(v.owner.inputs[v_views[0]])
     else:
@@ -106,10 +115,11 @@ class Supervisor:
             return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
-                raise gof.InconsistencyError("Trying to destroy a protected Variable.", r)
+                raise gof.InconsistencyError(
+                    "Trying to destroy a protected Variable.", r)
 
 
-def std_fgraph(input_specs, output_specs, accept_inplace = False):
+def std_fgraph(input_specs, output_specs, accept_inplace=False):
     """
     Makes an FunctionGraph corresponding to the input specs and the output
     specs.  Any SymbolicInput in the input_specs, if its update field
@@ -134,17 +144,18 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
     for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):
             if not accept_inplace:
-                raise TypeError("Graph must not contain inplace operations", node, node.op)
+                raise TypeError("Graph must not contain inplace operations",
+                                node, node.op)
             else:
                 fgraph.attach_feature(gof.DestroyHandler())
                 break
 
     # We need to protect all immutable inputs from inplace operations.
     fgraph.attach_feature(
-            Supervisor(input
-                for spec, input in zip(input_specs, fgraph.inputs)
-                if not (spec.mutable or
-                        (hasattr(fgraph, 'destroyers') and
+        Supervisor(input
+                   for spec, input in zip(input_specs, fgraph.inputs)
+                   if not (spec.mutable or
+                           (hasattr(fgraph, 'destroyers') and
                             fgraph.destroyers(input)))))
 
     # If named nodes are replaced, keep the name
@@ -154,6 +165,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace = False):
 
 
 std_fgraph.features = [gof.toolbox.PreserveNames]
+
 
 class AliasedMemoryError(Exception):
     """Memory is aliased that should not be"""
@@ -286,6 +298,7 @@ class Function(object):
         self.profile = None  # reassigned in FunctionMaker.create
         self.trust_input = False  # If True, we don't check the input parameter
         self.name = None
+        self.node_op_list = []
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -441,6 +454,10 @@ class Function(object):
         for input in self.maker.expanded_inputs:
             if input.update is not None:
                 self.n_returned_outputs -= 1
+
+        for node in self.maker.fgraph.apply_nodes:
+            if node.op in ops_with_inner_function.keys():
+                self.node_op_list.append(node.op)
 
     def __contains__(self, item):
         return self.value.__contains__(item)
@@ -669,8 +686,22 @@ class Function(object):
         None,  # this property itself is not settable
         doc="""dictionary-like access to the containers associated with Variables""")
 
-# pickling/deepcopy support for Function
 
+    def free(self):
+        """
+        When allow_gc = False, clear the Variables in storage_map
+        """
+        # 1.no allow_gc return False 2.has allow_gc, if allow_gc is False, return True
+        if not getattr(self.fn, 'allow_gc', True):
+            for key in self.fn.storage_map.keys():
+                if not isinstance(key, theano.gof.Constant):
+                    self.fn.storage_map[key][0] = None
+            
+            for node in self.node_op_list:
+                ops_with_inner_function[node.op].free()
+
+
+# pickling/deepcopy support for Function
 
 def _pickle_Function(f):
     #copy of the input storage list

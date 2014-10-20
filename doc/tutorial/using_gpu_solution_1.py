@@ -4,12 +4,7 @@
 
 
 # 1. Raw results
-#
-# same code as in mode_solution_1 but run with following command lines:
-# THEANO_FLAGS=mode=FAST_RUN,device=gpu time python program_name.py
-# THEANO_FLAGS=mode=FAST_RUN,device=cpu time python program_name.py
-# for GPU and CPU respectively
-# typical time: 20 sec (CPU), 10 sec (GPU)
+
 
 import numpy
 import theano
@@ -28,8 +23,8 @@ rng.randint(size=N, low=0, high=2).astype(theano.config.floatX))
 training_steps = 10000
 
 # Declare Theano symbolic variables
-x = tt.matrix("x")
-y = tt.vector("y")
+x = theano.shared(D[0], name="x")
+y = theano.shared(D[1], name="y")
 w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
 b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
 x.tag.test_value = D[0]
@@ -58,11 +53,11 @@ predict = theano.function(inputs=[x], outputs=Out(theano.sandbox.cuda.basic_ops.
 
 # Compile expressions to functions
 train = theano.function(
-            inputs=[x, y],
+            inputs=[],
             outputs=[prediction, xent],
             updates={w: w - 0.01 * gw, b: b - 0.01 * gb},
             name="train")
-predict = theano.function(inputs=[x], outputs=prediction,
+predict = theano.function(inputs=[], outputs=prediction,
             name="predict")
 
 if any([x.op.__class__.__name__ in ['Gemv', 'CGemv', 'Gemm', 'CGemm'] for x in
@@ -76,7 +71,7 @@ else:
     print train.maker.fgraph.toposort()
 
 for i in range(training_steps):
-    pred, err = train(D[0], D[1])
+    pred, err = train()
 #print "Final model:"
 #print w.get_value(), b.get_value()
 
@@ -84,241 +79,199 @@ print "target values for D"
 print D[1]
 
 print "prediction on D"
-print predict(D[0])
+print predict()
 
 """
 
 # 2. Profiling
-#
-# same code as above but run with following command lines:
-# THEANO_FLAGS=mode=ProfileMode,device=gpu python program_name.py
-# THEANO_FLAGS=mode=ProfileMode,device=cpu python program_name.py
-# for GPU and CPU
 
 
-# 2.1 Profiling output for CPU computations
+# 2.1 Profiling for CPU computations
 
+# In your terminal, type:
+$ THEANO_FLAGS=profile=True,device=cpu python using_gpu_solution_1.py
 
-$ THEANO_FLAGS=mode=ProfileMode,device=cpu python program_name.py
-Used the cpu
-target values for D
-prediction on D
+# You'll see first the output of the script:
 Used the cpu
 target values for D
 prediction on D
 
-ProfileMode.print_summary()
----------------------------
+# Followed by the output of profiling.. You'll see profiling results for each function
+# in the script, followed by a summary for all functions.
+# We'll show here only the summary:
 
-Time since import 12.586s
-Theano compile time: 0.000s (0.0% since import)
-    Optimization time: 0.000s
-    Linker time: 0.000s
-Theano fct call 5.147s (40.9% since import)
-   Theano Op time 3.595s 28.6%(since import) 69.8%(of fct call)
-   Theano function overhead in ProfileMode 1.552s 12.3%(since import) 30.2%(of fct call)
-20002 Theano fct call, 0.000s per call
-Rest of the time since import 7.440s 59.1%
+Results were produced using an Intel(R) Core(TM) i7-4820K CPU @ 3.70GHz
 
-Theano fct summary:
-<% total fct time> <total time> <time per call> <nb call> <fct name>
-   49.9% 2.567s 2.57e-04s 10000 train
-    0.0% 0.000s 1.24e-04s 1 predict
-    0.0% 0.000s 1.26e-04s 1 predict
-   50.1% 2.579s 2.58e-04s 10000 train
+Function profiling
+==================
+  Message: Sum of all(3) printed profiles at exit excluding Scan op profile.
+  Time in 10002 calls to Function.__call__: 1.590916e+00s
+  Time in Function.fn.__call__: 1.492365e+00s (93.805%)
+  Time in thunks: 1.408159e+00s (88.512%)
+  Total compile time: 6.309664e+00s
+    Number of Apply nodes: 25
+    Theano Optimizer time: 4.848340e-01s
+       Theano validate time: 5.454302e-03s
+    Theano Linker time (includes C, CUDA code generation/compiling): 5.691789e+00s
 
-Single Op-wise summary:
-<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> [*] <nb_call> <nb_op> <nb_apply> <Op name>
-   59.3%   59.3%  2.133s  2.133s  5.33e-05s * 40002  1  6 <class 'theano.tensor.blas_c.CGemv'>
-   34.4%   93.8%  1.238s  3.371s  6.19e-06s * 200002 11 22 <class 'theano.tensor.elemwise.Elemwise'>
-    2.8%   96.6%  0.100s  3.471s  2.51e-06s * 40002  1  6 <class 'theano.tensor.basic.Alloc'>
-    2.1%   98.7%  0.075s  3.546s  1.26e-06s * 60002  2  8 <class 'theano.tensor.elemwise.DimShuffle'>
-    0.7%   99.3%  0.024s  3.571s  6.11e-07s * 40002  1  6 <class 'theano.tensor.opt.Shape_i'>
-    0.7%  100.0%  0.024s  3.595s  1.18e-06s * 20000  1  2 <class 'theano.tensor.elemwise.Sum'>
-   ... (remaining 0 single Op account for 0.00%(0.00s) of the runtime)
-(*) Op is running a c implementation
+Class
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
+  59.6%    59.6%       0.839s       4.19e-05s     C    20001       3   theano.tensor.blas_c.CGemv
+  30.1%    89.7%       0.424s       4.71e-06s     C    90001      10   theano.tensor.elemwise.Elemwise
+   5.5%    95.2%       0.078s       7.79e-02s     Py       1       1   theano.tensor.blas.Gemv
+   1.9%    97.1%       0.026s       1.30e-06s     C    20001       3   theano.tensor.basic.Alloc
+   1.3%    98.4%       0.018s       1.85e-06s     C    10000       1   theano.tensor.elemwise.Sum
+   1.0%    99.4%       0.014s       4.78e-07s     C    30001       4   theano.tensor.elemwise.DimShuffle
+   0.6%   100.0%       0.008s       4.23e-07s     C    20001       3   theano.compile.ops.Shape_i
+   ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
 
-Op-wise summary:
-<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> [*]  <nb_call> <nb apply> <Op name>
-   59.3%   59.3%  2.133s  2.133s  5.33e-05s * 40002  6 CGemv{inplace}
-   18.1%   77.4%  0.650s  2.783s  3.25e-05s * 20000  2 Elemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_softplus(i1), mul(i2, i3))]}(i0, i1, i2, scalar_softplus(i3))]}}
-    6.4%   83.9%  0.231s  3.014s  1.16e-05s * 20000  2 Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)]
-    4.0%   87.8%  0.142s  3.157s  7.11e-06s * 20000  2 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)]
-    2.8%   90.6%  0.100s  3.257s  2.51e-06s * 40002  6 Alloc
-    1.4%   92.1%  0.052s  3.309s  1.30e-06s * 40002  6 InplaceDimShuffle{x}
-    1.1%   93.1%  0.038s  3.347s  1.92e-06s * 20000  2 Elemwise{Cast{float32}}
-    1.1%   94.2%  0.038s  3.386s  1.91e-06s * 20000  2 Elemwise{sub,no_inplace}
-    1.0%   95.2%  0.036s  3.421s  1.79e-06s * 20000  2 Elemwise{gt,no_inplace}
-    0.8%   96.0%  0.029s  3.450s  1.44e-06s * 20000  2 Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)]
-    0.8%   96.8%  0.028s  3.479s  1.42e-06s * 20000  2 Elemwise{neg,no_inplace}
-    0.7%   97.5%  0.024s  3.503s  6.11e-07s * 40002  6 Shape_i{0}
-    0.7%   98.1%  0.024s  3.527s  1.18e-06s * 20000  2 Sum
-    0.6%   98.8%  0.023s  3.550s  1.16e-06s * 20000  2 InplaceDimShuffle{1,0}
-    0.6%   99.4%  0.023s  3.573s  1.15e-06s * 20000  2 Elemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)]
-    0.6%  100.0%  0.022s  3.595s  1.08e-06s * 20000  2 Elemwise{inv,no_inplace}
-    0.0%  100.0%  0.000s  3.595s  1.19e-05s *     2  2 Elemwise{Composite{[Composite{[Composite{[Composite{[GT(scalar_sigmoid(i0), i1)]}(neg(i0), i1)]}(sub(i0, i1), i2)]}(neg(i0), i1, i2)]}}
-   ... (remaining 0 Op account for   0.00%(0.00s) of the runtime)
-(*) Op is running a c implementation
+Ops
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
+  59.6%    59.6%       0.839s       4.19e-05s     C     20001        3   CGemv{inplace}
+  15.8%    75.4%       0.223s       2.23e-05s     C     10000        1   Elemwise{Composite{[sub(mul(i0, scalar_softplus(i1)), mul(i2, i3, scalar_softplus(i4)))]}}[(0, 4)]
+   7.7%    83.1%       0.109s       1.09e-05s     C     10000        1   Elemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(scalar_sigmoid(neg(i0)), i4), i5))]}}[(0, 0)]
+   5.5%    88.7%       0.078s       7.79e-02s     Py       1        1   Gemv{no_inplace}
+   4.3%    92.9%       0.060s       6.00e-06s     C     10000        1   Elemwise{Composite{[GT(scalar_sigmoid(i0), i1)]}}
+   1.9%    94.8%       0.026s       1.30e-06s     C     20001        3   Alloc
+   1.3%    96.1%       0.018s       1.85e-06s     C     10000        1   Sum{acc_dtype=float64}
+   0.7%    96.8%       0.009s       4.73e-07s     C     20001        3   InplaceDimShuffle{x}
+   0.6%    97.4%       0.009s       8.52e-07s     C     10000        1   Elemwise{sub,no_inplace}
+   0.6%    98.0%       0.008s       4.23e-07s     C     20001        3   Shape_i{0}
+   0.5%    98.5%       0.007s       7.06e-07s     C     10000        1   Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)]
+   0.5%    98.9%       0.007s       6.57e-07s     C     10000        1   Elemwise{neg,no_inplace}
+   0.3%    99.3%       0.005s       4.88e-07s     C     10000        1   InplaceDimShuffle{1,0}
+   0.3%    99.5%       0.004s       3.78e-07s     C     10000        1   Elemwise{inv,no_inplace}
+   0.2%    99.8%       0.003s       3.44e-07s     C     10000        1   Elemwise{Cast{float32}}
+   0.2%   100.0%       0.003s       3.01e-07s     C     10000        1   Elemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)]
+   0.0%   100.0%       0.000s       8.11e-06s     C        1        1   Elemwise{Composite{[GT(scalar_sigmoid(neg(sub(neg(i0), i1))), i2)]}}
+   ... (remaining 0 Ops account for   0.00%(0.00s) of the runtime)
 
-Apply-wise summary:
-<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>
-   14.9%   14.9%  0.536s  0.536s 5.36e-05s  * 10000   7 CGemv{inplace}(Alloc.0, TensorConstant{1.0}, x, w, TensorConstant{1.0})
-   14.9%   29.8%  0.534s  1.070s 5.34e-05s  * 10000  18 CGemv{inplace}(w, TensorConstant{-0.00999999977648}, x.T, Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)].0, TensorConstant{0.999800026417})
-   14.8%   44.6%  0.532s  1.602s 5.32e-05s  * 10000   7 CGemv{inplace}(Alloc.0, TensorConstant{1.0}, x, w, TensorConstant{1.0})
-   14.7%   59.3%  0.530s  2.132s 5.30e-05s  * 10000  18 CGemv{inplace}(w, TensorConstant{-0.00999999977648}, x.T, Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)].0, TensorConstant{0.999800026417})
-    9.1%   68.4%  0.327s  2.460s 3.27e-05s  * 10000  13 Elemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_softplus(i1), mul(i2, i3))]}(i0, i1, i2, scalar_softplus(i3))]}}(y, Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
-    9.0%   77.4%  0.323s  2.783s 3.23e-05s  * 10000  13 Elemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_softplus(i1), mul(i2, i3))]}(i0, i1, i2, scalar_softplus(i3))]}}(y, Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
-    3.2%   80.6%  0.116s  2.899s 1.16e-05s  * 10000  16 Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{Cast{float32}}.0)
-    3.2%   83.9%  0.116s  3.014s 1.16e-05s  * 10000  16 Elemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{Cast{float32}}.0)
-    2.0%   85.8%  0.071s  3.086s 7.12e-06s  * 10000  14 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{neg,no_inplace}.0)
-    2.0%   87.8%  0.071s  3.156s 7.09e-06s  * 10000  14 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{neg,no_inplace}.0)
-    0.9%   88.8%  0.034s  3.190s 3.38e-06s  * 10000  12 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
-    0.9%   89.7%  0.034s  3.224s 3.37e-06s  * 10000  12 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
-    0.5%   90.2%  0.019s  3.243s 1.93e-06s  * 10000   8 Elemwise{Cast{float32}}(InplaceDimShuffle{x}.0)
-    0.5%   90.8%  0.019s  3.262s 1.92e-06s  * 10000   4 Elemwise{sub,no_inplace}(TensorConstant{(1,) of 1.0}, y)
-    0.5%   91.3%  0.019s  3.282s 1.90e-06s  * 10000   4 Elemwise{sub,no_inplace}(TensorConstant{(1,) of 1.0}, y)
-   ... (remaining 35 Apply instances account for 8.71%(0.31s) of the runtime)
-(*) Op is running a c implementation
-
-Profile of Theano functions memory:
-(This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)
-   We skipped 4 theano function(s). Each of them used less then 1024B(theano flags ProfileMode.min_memory_size) of total intermediate memory size
-
-Here are tips to potentially make your code run faster
-(if you think of new ones, suggest them on the mailing list).
-Test them first, as they are not guaranteed to always provide a speedup.
-  Sorry, no tip for today.
+Apply
+------
+<% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
+  31.6%    31.6%       0.445s       4.45e-05s   10000     7   CGemv{inplace}(Alloc.0, TensorConstant{1.0}, x, w, TensorConstant{0.0})
+  27.9%    59.6%       0.393s       3.93e-05s   10000    17   CGemv{inplace}(w, TensorConstant{-0.00999999977648}, x.T, Elemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(scalar_sigmoid(neg(i0)), i4), i5))]}}[(0, 0)].0, TensorConstant{0.999800026417})
+  15.8%    75.4%       0.223s       2.23e-05s   10000    14   Elemwise{Composite{[sub(mul(i0, scalar_softplus(i1)), mul(i2, i3, scalar_softplus(i4)))]}}[(0, 4)](y, Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
+   7.7%    83.1%       0.109s       1.09e-05s   10000    15   Elemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(scalar_sigmoid(neg(i0)), i4), i5))]}}[(0, 0)](Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, Alloc.0, y, Elemwise{sub,no_inplace}.0, Elemwise{Cast{float32}}.0)
+   5.5%    88.7%       0.078s       7.79e-02s      1     0   Gemv{no_inplace}(aa, TensorConstant{1.0}, xx, yy, TensorConstant{0.0})
+   4.3%    92.9%       0.060s       6.00e-06s   10000    13   Elemwise{Composite{[GT(scalar_sigmoid(i0), i1)]}}(Elemwise{neg,no_inplace}.0, TensorConstant{(1,) of 0.5})
+   1.3%    94.2%       0.018s       1.85e-06s   10000    16   Sum{acc_dtype=float64}(Elemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(scalar_sigmoid(neg(i0)), i4), i5))]}}[(0, 0)].0)
+   1.0%    95.2%       0.013s       1.34e-06s   10000     5   Alloc(TensorConstant{0.0}, Shape_i{0}.0)
+   0.9%    96.1%       0.013s       1.27e-06s   10000    12   Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
+   0.6%    96.7%       0.009s       8.52e-07s   10000     4   Elemwise{sub,no_inplace}(TensorConstant{(1,) of 1.0}, y)
+   0.5%    97.2%       0.007s       7.06e-07s   10000     9   Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)](CGemv{inplace}.0, InplaceDimShuffle{x}.0)
+   0.5%    97.6%       0.007s       6.57e-07s   10000    11   Elemwise{neg,no_inplace}(Elemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0)
+   0.4%    98.1%       0.006s       6.27e-07s   10000     0   InplaceDimShuffle{x}(b)
+   0.4%    98.5%       0.006s       5.90e-07s   10000     1   Shape_i{0}(x)
+   0.3%    98.9%       0.005s       4.88e-07s   10000     2   InplaceDimShuffle{1,0}(x)
+   0.3%    99.1%       0.004s       3.78e-07s   10000    10   Elemwise{inv,no_inplace}(Elemwise{Cast{float32}}.0)
+   0.2%    99.4%       0.003s       3.44e-07s   10000     8   Elemwise{Cast{float32}}(InplaceDimShuffle{x}.0)
+   0.2%    99.6%       0.003s       3.19e-07s   10000     6   InplaceDimShuffle{x}(Shape_i{0}.0)
+   0.2%    99.8%       0.003s       3.01e-07s   10000    18   Elemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)](b, TensorConstant{0.00999999977648}, Sum{acc_dtype=float64}.0)
+   0.2%   100.0%       0.003s       2.56e-07s   10000     3   Shape_i{0}(y)
+   ... (remaining 5 Apply instances account for 0.00%(0.00s) of the runtime)
 
 
-# 2.2 Profiling output for GPU computations
 
-$ THEANO_FLAGS=mode=ProfileMode,device=gpu python program_name.py
-Using gpu device 0: GeForce GTX 580
-Used the gpu
-target values for D
-prediction on D
+# 2.2 Profiling for GPU computations
+
+# In your terminal, type:
+$ CUDA_LAUNCH_BLOCKING=1 THEANO_FLAGS=profile=True,device=gpu python using_gpu_solution_1.py
+
+# You'll see first the output of the script:
 Used the gpu
 target values for D
 prediction on D
 
-ProfileMode.print_summary()
----------------------------
+Results were produced using a GeForce GTX TITAN
 
-Time since import 25.682s
-Theano compile time: 0.000s (0.0% since import)
-    Optimization time: 0.000s
-    Linker time: 0.000s
-Theano fct call 17.052s (66.4% since import)
-   Theano Op time 14.548s 56.6%(since import) 85.3%(of fct call)
-   Theano function overhead in ProfileMode 2.505s 9.8%(since import) 14.7%(of fct call)
-20002 Theano fct call, 0.001s per call
-Rest of the time since import 8.630s 33.6%
+# Profiling summary for all functions:
 
-Theano fct summary:
-<% total fct time> <total time> <time per call> <nb call> <fct name>
-   50.0% 8.526s 8.53e-04s 10000 train
-    0.0% 0.001s 1.09e-03s 1 predict
-   50.0% 8.524s 8.52e-04s 10000 train
-    0.0% 0.001s 1.10e-03s 1 predict
+Function profiling
+==================
+  Message: Sum of all(3) printed profiles at exit excluding Scan op profile.
+  Time in 10002 calls to Function.__call__: 3.535239e+00s
+  Time in Function.fn.__call__: 3.420863e+00s (96.765%)
+  Time in thunks: 2.865905e+00s (81.067%)
+  Total compile time: 4.728150e-01s
+    Number of Apply nodes: 36
+    Theano Optimizer time: 4.283385e-01s
+       Theano validate time: 7.687330e-03s
+    Theano Linker time (includes C, CUDA code generation/compiling): 2.801418e-02s
 
-Single Op-wise summary:
-<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> [*] <nb_call> <nb_op> <nb_apply> <Op name>
-   54.8%   54.8%  7.968s  7.968s  1.33e-04s   60002  1  8 <class 'theano.sandbox.cuda.basic_ops.GpuFromHost'>
-   16.2%   71.0%  2.358s  10.325s  1.47e-05s * 160002  9 18 <class 'theano.sandbox.cuda.basic_ops.GpuElemwise'>
-   12.3%   83.3%  1.795s  12.120s  4.49e-05s * 40002  1  6 <class 'theano.sandbox.cuda.blas.GpuGemv'>
-    7.0%   90.4%  1.024s  13.144s  2.56e-05s   40002  1  6 <class 'theano.sandbox.cuda.basic_ops.HostFromGpu'>
-    5.0%   95.4%  0.728s  13.872s  1.82e-05s * 40002  1  6 <class 'theano.sandbox.cuda.basic_ops.GpuAlloc'>
-    2.1%   97.4%  0.300s  14.171s  1.50e-05s * 20000  1  2 <class 'theano.sandbox.cuda.basic_ops.GpuSum'>
-    1.3%   98.7%  0.189s  14.360s  3.15e-06s * 60002  3  8 <class 'theano.sandbox.cuda.basic_ops.GpuDimShuffle'>
-    0.6%   99.4%  0.094s  14.454s  2.35e-06s * 40002  2  6 <class 'theano.tensor.elemwise.Elemwise'>
-    0.3%   99.7%  0.048s  14.503s  1.21e-06s * 40002  1  6 <class 'theano.tensor.opt.Shape_i'>
-    0.3%  100.0%  0.045s  14.548s  2.25e-06s * 20000  1  2 <class 'theano.tensor.elemwise.DimShuffle'>
-   ... (remaining 0 single Op account for 0.00%(0.00s) of the runtime)
-(*) Op is running a c implementation
+Class
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
+  45.7%    45.7%       1.308s       1.64e-05s     C    80001       9   theano.sandbox.cuda.basic_ops.GpuElemwise
+  17.2%    62.8%       0.492s       2.46e-05s     C    20002       4   theano.sandbox.cuda.blas.GpuGemv
+  15.1%    77.9%       0.433s       2.17e-05s     C    20001       3   theano.sandbox.cuda.basic_ops.GpuAlloc
+   8.2%    86.1%       0.234s       1.17e-05s     C    20002       4   theano.sandbox.cuda.basic_ops.HostFromGpu
+   7.2%    93.3%       0.207s       2.07e-05s     C    10000       1   theano.sandbox.cuda.basic_ops.GpuCAReduce
+   4.4%    97.7%       0.127s       1.27e-05s     C    10003       4   theano.sandbox.cuda.basic_ops.GpuFromHost
+   0.9%    98.6%       0.025s       8.23e-07s     C    30001       4   theano.sandbox.cuda.basic_ops.GpuDimShuffle
+   0.7%    99.3%       0.020s       9.88e-07s     C    20001       3   theano.tensor.elemwise.Elemwise
+   0.5%    99.8%       0.014s       7.18e-07s     C    20001       3   theano.compile.ops.Shape_i
+   0.2%   100.0%       0.006s       5.78e-07s     C    10000       1   theano.tensor.elemwise.DimShuffle
+   ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
 
-Op-wise summary:
-<% of local_time spent on this kind of Op> <cumulative %> <self seconds> <cumulative seconds> <time per call> [*]  <nb_call> <nb apply> <Op name>
-   54.8%   54.8%  7.968s  7.968s  1.33e-04s   60002  8 GpuFromHost
-   12.3%   67.1%  1.795s  9.763s  4.49e-05s * 40002  6 GpuGemv{inplace}
-    7.0%   74.1%  1.024s  10.786s  2.56e-05s   40002  6 HostFromGpu
-    5.0%   79.1%  0.728s  11.514s  1.82e-05s * 40002  6 GpuAlloc
-    2.3%   81.4%  0.334s  11.848s  1.67e-05s * 20000  2 GpuElemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)]
-    2.2%   83.6%  0.319s  12.167s  1.59e-05s * 20000  2 GpuElemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_softplus(i1), mul(i2, i3))]}(i0, i1, i2, scalar_softplus(i3))]},no_inplace}
-    2.1%   85.7%  0.301s  12.468s  1.50e-05s * 20000  2 GpuElemwise{neg,no_inplace}
-    2.1%   87.8%  0.300s  12.768s  1.50e-05s * 20000  2 GpuSum{1}
-    2.0%   89.8%  0.292s  13.060s  1.46e-05s * 20000  2 GpuElemwise{inv,no_inplace}
-    1.9%   91.7%  0.283s  13.343s  1.42e-05s * 20000  2 GpuElemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)]
-    1.9%   93.7%  0.281s  13.625s  1.41e-05s * 20000  2 GpuElemwise{sub,no_inplace}
-    1.9%   95.5%  0.273s  13.898s  1.37e-05s * 20000  2 GpuElemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)]
-    1.9%   97.4%  0.273s  14.171s  1.37e-05s * 20000  2 GpuElemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)]
-    1.0%   98.4%  0.141s  14.313s  7.06e-06s * 20002  4 GpuDimShuffle{x}
-    0.4%   98.8%  0.057s  14.370s  2.87e-06s * 20002  4 Elemwise{gt,no_inplace}
-    0.3%   99.1%  0.048s  14.418s  1.21e-06s * 40002  6 Shape_i{0}
-    0.3%   99.4%  0.045s  14.463s  2.25e-06s * 20000  2 InplaceDimShuffle{x}
-    0.3%   99.7%  0.037s  14.500s  1.83e-06s * 20000  2 Elemwise{Cast{float32}}
-    0.2%   99.8%  0.025s  14.525s  1.24e-06s * 20000  2 GpuDimShuffle{0}
-    0.2%  100.0%  0.023s  14.548s  1.14e-06s * 20000  2 GpuDimShuffle{1,0}
-   ... (remaining 1 Op account for   0.00%(0.00s) of the runtime)
-(*) Op is running a c implementation
+Ops
+---
+<% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
+  17.2%    17.2%       0.492s       2.46e-05s     C     20001        3   GpuGemv{inplace}
+   8.2%    25.3%       0.234s       1.17e-05s     C     20002        4   HostFromGpu
+   8.0%    33.3%       0.228s       2.28e-05s     C     10001        2   GpuAlloc{memset_0=True}
+   7.4%    40.7%       0.211s       2.11e-05s     C     10000        1   GpuElemwise{Composite{[sub(mul(i0, scalar_softplus(i1)), mul(i2, i3, scalar_softplus(i4)))]},no_inplace}
+   7.2%    47.9%       0.207s       2.07e-05s     C     10000        1   GpuCAReduce{add}{1}
+   7.1%    55.0%       0.205s       2.05e-05s     C     10000        1   GpuAlloc
+   6.9%    62.0%       0.198s       1.98e-05s     C     10000        1   GpuElemwise{sub,no_inplace}
+   6.9%    68.9%       0.198s       1.98e-05s     C     10000        1   GpuElemwise{inv,no_inplace}
+   6.2%    75.1%       0.178s       1.78e-05s     C     10000        1   GpuElemwise{neg,no_inplace}
+   5.6%    80.6%       0.159s       1.59e-05s     C     10000        1   GpuElemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(i4, i5), i6))]}}[(0, 0)]
+   4.4%    85.1%       0.127s       1.27e-05s     C     10003        4   GpuFromHost
+   4.3%    89.4%       0.124s       1.24e-05s     C     10000        1   GpuElemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)]
+   4.2%    93.6%       0.121s       1.21e-05s     C     10000        1   GpuElemwise{ScalarSigmoid}[(0, 0)]
+   4.2%    97.7%       0.119s       1.19e-05s     C     10000        1   GpuElemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)]
+   0.5%    98.2%       0.014s       7.18e-07s     C     20001        3   Shape_i{0}
+   0.5%    98.7%       0.013s       1.33e-06s     C     10001        2   Elemwise{gt,no_inplace}
+   0.3%    99.0%       0.010s       9.81e-07s     C     10000        1   GpuDimShuffle{1,0}
+   0.3%    99.3%       0.008s       7.90e-07s     C     10000        1   GpuDimShuffle{0}
+   0.2%    99.6%       0.007s       6.97e-07s     C     10001        2   GpuDimShuffle{x}
+   0.2%    99.8%       0.006s       6.50e-07s     C     10000        1   Elemwise{Cast{float32}}
+   ... (remaining 3 Ops account for   0.20%(0.01s) of the runtime)
 
-Apply-wise summary:
-<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>
-   24.0%   24.0%  3.493s  3.493s 3.49e-04s    10000   1 GpuFromHost(x)
-   23.9%   47.9%  3.479s  6.972s 3.48e-04s    10000   1 GpuFromHost(x)
-    4.3%   52.3%  0.629s  7.602s 6.29e-05s  * 10000  24 GpuGemv{inplace}(w, TensorConstant{-0.00999999977648}, GpuDimShuffle{1,0}.0, GpuElemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)].0, TensorConstant{0.999800026417})
-    4.3%   56.6%  0.629s  8.231s 6.29e-05s  * 10000  24 GpuGemv{inplace}(w, TensorConstant{-0.00999999977648}, GpuDimShuffle{1,0}.0, GpuElemwise{Composite{[Composite{[Composite{[Composite{[mul(i0, add(i1, i2))]}(i0, neg(i1), true_div(i2, i3))]}(i0, mul(i1, i2, i3), i4, i5)]}(i0, i1, i2, exp(i3), i4, i5)]}}[(0, 0)].0, TensorConstant{0.999800026417})
-    1.8%   58.4%  0.269s  8.499s 2.69e-05s  * 10000   9 GpuGemv{inplace}(GpuAlloc.0, TensorConstant{1.0}, GpuFromHost.0, w, TensorConstant{1.0})
-    1.8%   60.3%  0.268s  8.767s 2.68e-05s  * 10000   9 GpuGemv{inplace}(GpuAlloc.0, TensorConstant{1.0}, GpuFromHost.0, w, TensorConstant{1.0})
-    1.8%   62.1%  0.266s  9.033s 2.66e-05s    10000  18 HostFromGpu(GpuElemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_softplus(i1), mul(i2, i3))]}(i0, i1, i2, scalar_softplus(i3))]},no_inplace}.0)
-    1.8%   63.9%  0.262s  9.296s 2.62e-05s    10000  18 HostFromGpu(GpuElemwise{Composite{[Composite{[Composite{[sub(mul(i0, i1), neg(i2))]}(i0, scalar_softplus(i1), mul(i2, i3))]}(i0, i1, i2, scalar_softplus(i3))]},no_inplace}.0)
-    1.8%   65.7%  0.260s  9.555s 2.60e-05s    10000   3 GpuFromHost(y)
-    1.8%   67.5%  0.258s  9.813s 2.58e-05s    10000   3 GpuFromHost(y)
-    1.7%   69.2%  0.248s  10.061s 2.48e-05s    10000  20 HostFromGpu(GpuElemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)].0)
-    1.7%   70.9%  0.247s  10.309s 2.47e-05s    10000  20 HostFromGpu(GpuElemwise{ScalarSigmoid{output_types_preference=transfer_type{0}}}[(0, 0)].0)
-    1.6%   72.5%  0.238s  10.547s 2.38e-05s    10000  12 GpuFromHost(Elemwise{Cast{float32}}.0)
-    1.6%   74.1%  0.237s  10.785s 2.37e-05s    10000  12 GpuFromHost(Elemwise{Cast{float32}}.0)
-    1.3%   75.4%  0.185s  10.969s 1.85e-05s  * 10000   6 GpuAlloc(CudaNdarrayConstant{[  1.58212732e-09]}, Shape_i{0}.0)
-   ... (remaining 53 Apply instances account for 24.60%(3.58s) of the runtime)
-(*) Op is running a c implementation
-
-Some info useful for gpu:
-
-    Spent 1.211s(8.324%) in cpu Op, 13.337s(91.676%) in gpu Op and 0.000s(0.000%) transfert Op
-
-    Theano function input that are float64
-    <fct name> <input name> <input type> <str input>
-
-    List of apply that don't have float64 as input but have float64 in outputs
-    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)
-    <Apply> <Apply position> <fct name> <inputs type> <outputs type>
-
-Profile of Theano functions memory:
-(This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)
-   We skipped 4 theano function(s). Each of them used less then 1024B(theano flags ProfileMode.min_memory_size) of total intermediate memory size
-
-Here are tips to potentially make your code run faster
-(if you think of new ones, suggest them on the mailing list).
-Test them first, as they are not guaranteed to always provide a speedup.
-  Sorry, no tip for today.
-
+Apply
+------
+<% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
+   8.8%     8.8%       0.251s       2.51e-05s   10000    22   GpuGemv{inplace}(w, TensorConstant{-0.00999999977648}, GpuDimShuffle{1,0}.0, GpuElemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(i4, i5), i6))]}}[(0, 0)].0, TensorConstant{0.999800026417})
+   8.4%    17.2%       0.241s       2.41e-05s   10000     7   GpuGemv{inplace}(GpuAlloc{memset_0=True}.0, TensorConstant{1.0}, x, w, TensorConstant{0.0})
+   8.0%    25.1%       0.228s       2.28e-05s   10000     5   GpuAlloc{memset_0=True}(CudaNdarrayConstant{[ 0.]}, Shape_i{0}.0)
+   7.4%    32.5%       0.211s       2.11e-05s   10000    13   GpuElemwise{Composite{[sub(mul(i0, scalar_softplus(i1)), mul(i2, i3, scalar_softplus(i4)))]},no_inplace}(y, GpuElemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, CudaNdarrayConstant{[-1.]}, GpuElemwise{sub,no_inplace}.0, GpuElemwise{neg,no_inplace}.0)
+   7.2%    39.7%       0.207s       2.07e-05s   10000    21   GpuCAReduce{add}{1}(GpuElemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(i4, i5), i6))]}}[(0, 0)].0)
+   7.1%    46.9%       0.205s       2.05e-05s   10000    17   GpuAlloc(GpuDimShuffle{0}.0, Shape_i{0}.0)
+   6.9%    53.8%       0.198s       1.98e-05s   10000     4   GpuElemwise{sub,no_inplace}(CudaNdarrayConstant{[ 1.]}, y)
+   6.9%    60.7%       0.198s       1.98e-05s   10000    12   GpuElemwise{inv,no_inplace}(GpuFromHost.0)
+   6.2%    66.9%       0.178s       1.78e-05s   10000    11   GpuElemwise{neg,no_inplace}(GpuElemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0)
+   5.6%    72.5%       0.159s       1.59e-05s   10000    19   GpuElemwise{Composite{[add(mul(scalar_sigmoid(i0), i1, i2, i3), true_div(mul(i4, i5), i6))]}}[(0, 0)](GpuElemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)].0, CudaNdarrayConstant{[-1.]}, GpuAlloc.0, y, GpuElemwise{ScalarSigmoid}[(0, 0)].0, GpuElemwise{sub,no_inplace}.0, GpuFromHost.0)
+   4.8%    77.3%       0.138s       1.38e-05s   10000    18   HostFromGpu(GpuElemwise{ScalarSigmoid}[(0, 0)].0)
+   4.4%    81.7%       0.126s       1.26e-05s   10000    10   GpuFromHost(Elemwise{Cast{float32}}.0)
+   4.3%    86.0%       0.124s       1.24e-05s   10000     9   GpuElemwise{Composite{[sub(neg(i0), i1)]}}[(0, 0)](GpuGemv{inplace}.0, GpuDimShuffle{x}.0)
+   4.2%    90.2%       0.121s       1.21e-05s   10000    15   GpuElemwise{ScalarSigmoid}[(0, 0)](GpuElemwise{neg,no_inplace}.0)
+   4.2%    94.4%       0.119s       1.19e-05s   10000    23   GpuElemwise{Composite{[sub(i0, mul(i1, i2))]}}[(0, 0)](b, CudaNdarrayConstant{0.00999999977648}, GpuCAReduce{add}{1}.0)
+   3.4%    97.7%       0.096s       9.61e-06s   10000    16   HostFromGpu(GpuElemwise{Composite{[sub(mul(i0, scalar_softplus(i1)), mul(i2, i3, scalar_softplus(i4)))]},no_inplace}.0)
+   0.5%    98.2%       0.013s       1.33e-06s   10000    20   Elemwise{gt,no_inplace}(HostFromGpu.0, TensorConstant{(1,) of 0.5})
+   0.3%    98.5%       0.010s       9.81e-07s   10000     2   GpuDimShuffle{1,0}(x)
+   0.3%    98.8%       0.008s       8.27e-07s   10000     1   Shape_i{0}(x)
+   0.3%    99.1%       0.008s       7.90e-07s   10000    14   GpuDimShuffle{0}(GpuElemwise{inv,no_inplace}.0)
+   ... (remaining 16 Apply instances account for 0.90%(0.03s) of the runtime)
 
 
 # 3. Conclusions
 
-
-Facts:
-Examine and compare 'Single Op-wise' summaries for CPU and GPU. GPU ops 'GpuFromHost' (and 'HostFromGpu') by themselves
-consume a large amount of extra time. Furthermore, notice that each of the GPU ops consumes more time than its CPU counterpart.
-An additional experiment also confirms that adding an 'out' instance in the GPU version only brings about a minor
-improvement in this situation.
-
-Tentative conclusion:
-The large number of external training steps (10000) generates disproportionate GPU overhead costs.
-
-Tentative solution:
-Include the training steps inside the definition of the Theano function.
-
-Implement this solution and put it to test.
-
+Examine and compare 'Ops' summaries for CPU and GPU. Usually GPU ops 'GpuFromHost' and 'HostFromGpu' by themselves
+consume a large amount of extra time, but by making as few as possible data transfers between GPU and CPU, you can minimize their overhead.
+Notice that each of the GPU ops consumes more time than its CPU counterpart. This is because the ops operate on small inputs;
+if you increase the input data size (e.g. set N = 4000), you will see a gain from using the GPU.
 
 """

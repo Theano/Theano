@@ -1,0 +1,55 @@
+diff --git a/theano/scan_module/scan_perform.c b/theano/scan_module/scan_perform.c
+index aaebb43..2d06b29 100644
+--- a/theano/scan_module/scan_perform.c
++++ b/theano/scan_module/scan_perform.c
+@@ -5595,7 +5595,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
+  *             cdef list stack
+  *             cdef int offset
+  */
+-  __pyx_t_4 = ((PyObject *)__pyx_v_self->descr);
++  __pyx_t_4 = ((PyObject *)PyArray_DESCR(__pyx_v_self));
+   __Pyx_INCREF(__pyx_t_4);
+   __pyx_v_descr = ((PyArray_Descr *)__pyx_t_4);
+   __pyx_t_4 = 0;
+@@ -7147,7 +7147,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
+  *      arr.base = baseptr
+  * 
+  */
+-  Py_XDECREF(__pyx_v_arr->base);
++  Py_XDECREF(PyArray_BASE(__pyx_v_arr));
+ 
+   /* "/home/anakha/.local/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":974
+  *          baseptr = <PyObject*>base
+@@ -7156,7 +7156,11 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
+  * 
+  * cdef inline object get_array_base(ndarray arr):
+  */
+-  __pyx_v_arr->base = __pyx_v_baseptr;
++#if NPY_API_VERSION < 0x00000007
++  PyArray_BASE(__pyx_v_arr) = __pyx_v_baseptr;
++#else
++  PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
++#endif
+ 
+   /* "/home/anakha/.local/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":966
+  * 
+@@ -7191,7 +7195,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
+  *         return None
+  *     else:
+  */
+-  __pyx_t_1 = ((__pyx_v_arr->base == NULL) != 0);
++  __pyx_t_1 = ((PyArray_BASE(__pyx_v_arr) == NULL) != 0);
+   if (__pyx_t_1) {
+ 
+     /* "/home/anakha/.local/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":978
+@@ -7214,8 +7218,8 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
+  *         return <object>arr.base             # <<<<<<<<<<<<<<
+  */
+     __Pyx_XDECREF(__pyx_r);
+-    __Pyx_INCREF(((PyObject *)__pyx_v_arr->base));
+-    __pyx_r = ((PyObject *)__pyx_v_arr->base);
++    __Pyx_INCREF(((PyObject *)PyArray_BASE(__pyx_v_arr)));
++    __pyx_r = ((PyObject *)PyArray_BASE(__pyx_v_arr));
+     goto __pyx_L0;
+   }
+ 

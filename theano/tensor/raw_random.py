@@ -183,7 +183,11 @@ class RandomFunction(gof.Op):
         draw.
 
         """
-        shape = tensor.as_tensor_variable(shape, ndim=1)
+        shape_ = tensor.as_tensor_variable(shape, ndim=1)
+        if shape == ():
+            shape = shape_.astype('int32')
+        else:
+            shape = shape_
         assert shape.type.ndim == 1
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
@@ -700,7 +704,15 @@ def permutation(random_state, size=None, n=1, ndim=None, dtype='int64'):
     :note:
         Note that the output will then be of dimension ndim+1.
     """
-    ndim, size, bcast = _infer_ndim_bcast(ndim, size)
+    if size is None or size == ():
+        if not(ndim is None or ndim == 1):
+            raise TypeError(
+                "You asked for just one permutation but asked for more then 1 dimensions.")
+        ndim = 1
+        size = ()
+        bcast = ()
+    else:
+        ndim, size, bcast = _infer_ndim_bcast(ndim, size)
     #print "NDIM", ndim, size
     op = RandomFunction(permutation_helper,
             tensor.TensorType(dtype=dtype, broadcastable=bcast + (False,)),

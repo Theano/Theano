@@ -58,7 +58,8 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                  of shape: image_shape + filter_shape - 1
 
     :type subsample: tuple of len 2
-    :param subsample: factor by which to subsample the output
+    :param subsample: factor by which to subsample the output.
+                      Also called strides elsewhere.
 
     :type image_shape: None, tuple/list of len 4 of int or Constant variable
     :param image_shape: The shape of the input parameter.

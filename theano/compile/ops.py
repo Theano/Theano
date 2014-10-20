@@ -317,6 +317,12 @@ class Shape_i(gof.Op):
     __props__ = ("i",)
 
     def __init__(self, i):
+        # As i will be used in the hash and that ndarray are not hashable,
+        # we need to convert it to an int as it is hashable.
+        if isinstance(i, numpy.ndarray):
+            assert "int" in str(i.dtype)
+        assert i == int(i)
+        i = int(i)
         self.i = i
 
     def __str__(self):

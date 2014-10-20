@@ -65,14 +65,20 @@ def make_constant(args):
     return tuple(map(conv, args))
 
 
-def get_idx_list(inputs, idx_list):
+def get_idx_list(inputs, idx_list, get_count=False):
     '''
     Given a list of inputs to the subtensor and its idx_list reorders
-    the inputs according to the idx list to get the right values
+    the inputs according to the idx list to get the right values.
+
+    If get_counts=True, instead returns the number of inputs consumed
+    during this process.
     '''
 
+    # The number of indices
+    n = len(inputs) - 1
+
     # The subtensor (or idx_list) does not depend on the inputs.
-    if len(inputs) == 1:
+    if n == 0:
         return tuple(idx_list)
     indices = list(reversed(list(inputs[1:])))
 
@@ -87,7 +93,10 @@ def get_idx_list(inputs, idx_list):
         else:
             return entry
     cdata = tuple(map(convert, idx_list))
-    return cdata
+    if get_count:
+        return n - len(indices)
+    else:
+        return cdata
 
 
 def get_canonical_form_slice(theslice, length):
@@ -967,6 +976,7 @@ def set_subtensor(x, y, inplace=False,
 
     Example: To replicate the numpy expression "r[10:] = 5", type
 
+    >>> r = ivector()
     >>> new_r = set_subtensor(r[10:], 5)
 
     :param x: symbolic variable for the lvalue of = operation
@@ -991,6 +1001,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
     Example: To replicate the numpy expression "r[10:] += 5", type
 
+    >>> r = ivector()
     >>> new_r = inc_subtensor(r[10:], 5)
     """
     # First of all, y cannot have a higher dimension than x,
@@ -1737,9 +1748,8 @@ class AdvancedIncSubtensor1(Op):
                 'cannot %s x subtensor with ndim=%s'
                 ' by y with ndim=%s to x subtensor with ndim=%s ' % (
                     opname, x_.type.ndim, y_.type.ndim))
-        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
-        return Apply(self, [x_, y_, ilist_], [TensorType(dtype=x.dtype,
-                                                     broadcastable=bcast)()])
+
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
@@ -1807,6 +1817,8 @@ def as_index_variable(idx):
         return NoneConst.clone()
     if isinstance(idx, slice):
         return make_slice(idx)
+    if isinstance(idx, gof.Variable) and isinstance(idx.type, SliceType):
+        return idx
     idx = theano.tensor.as_tensor_variable(idx)
     if idx.type.dtype[:3] not in ('int', 'uin'):
         raise TypeError('index must be integers')
@@ -2094,7 +2106,12 @@ def take(a, indices, axis=None, mode='raise'):
         shape = indices.shape
         ndim = indices.ndim
     else:
-        shape = theano.tensor.concatenate(
-            [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
+        # If axis is 0, don't generate a useless concatenation.
+        if axis == 0:
+            shape = theano.tensor.concatenate(
+                [indices.shape, a.shape[axis + 1:]])
+        else:
+            shape = theano.tensor.concatenate(
+                [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
         ndim = a.ndim + indices.ndim - 1
     return take(a, indices.flatten(), axis, mode).reshape(shape, ndim)

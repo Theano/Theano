@@ -1,9 +1,9 @@
 import unittest
 
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
-
 import theano.gof.op as op
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
@@ -43,6 +43,14 @@ class MyType(Type):
         if not x.startswith(self.thingy):
             raise ValueError("Invalid value")
         return x
+
+    # Added to make those tests pass in DebugMode
+    @staticmethod
+    def may_share_memory(a, b):
+        # As this represent a string and string are immutable, they
+        # never share memory in the DebugMode sence. This is needed as
+        # Python reuse string internally.
+        return False
 
 
 class MyOp(Op):
@@ -130,6 +138,8 @@ class TestOp:
         assert rval == 'test Op no input'
 
     def test_op_struct(self):
+        if not theano.config.cxx:
+            raise SkipTest("G++ not available, so we need to skip this test.")
         sop = StructOp()
         c = sop(theano.tensor.constant(0))
         mode = None

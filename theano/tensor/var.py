@@ -16,6 +16,12 @@ from theano.tensor.type import TensorType
 from theano.configparser import config
 
 
+def equal_slices(s1, s2):
+    return (s1.start == s2.start and
+            s1.stop == s2.stop and
+            s1.step == s2.step)
+
+
 class AsTensorError(TypeError):
     """Raised when as_tensor_variable isn't able to create a
     TensorVariable.
@@ -375,15 +381,17 @@ class _tensor_py_operators:
 
         if advanced:
             if (axis is not None
-                and all(a == slice(None) for a in args[:axis])
-                and all(a == slice(None) for a in args[axis + 1:])
+                and all(isinstance(a, slice) and
+                        equal_slices(a, slice(None)) for a in args[:axis])
+                and all(isinstance(a, slice) and
+                        equal_slices(a, slice(None)) for a in args[axis + 1:])
                 and isinstance(args[axis], (
                     numpy.ndarray,
                     list,
                     TensorVariable,
                     TensorConstant,
                     theano.tensor.sharedvar.TensorSharedVariable))):
-                return self.take(arg, axis)
+                return self.take(args[axis], axis)
             else:
                 return theano.tensor.subtensor.advanced_subtensor(self, *args)
         else:
@@ -600,6 +608,7 @@ class TensorVariable(_tensor_py_operators, Variable):
                             x = x[:-1]
                             nb_rm += 1
                             rm = True
+                            break
                     if not rm:
                         break
                 warnings.warn(msg, stacklevel=1 + nb_rm)

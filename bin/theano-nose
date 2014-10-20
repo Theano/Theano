@@ -18,7 +18,6 @@ disable that plugin.
 
 import logging
 _logger = logging.getLogger('theano.bin.theano-nose')
-_logger.setLevel(logging.WARN)
 
 import os
 import nose

@@ -7,13 +7,31 @@ from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
+                                 device_properties)
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.blas import GpuConv
 from theano.sandbox.cuda.nnet import GpuSoftmax
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+
+
+def dnn_available():
+    if dnn_available.avail is None:
+        dev = active_device_number()
+        if device_properties(dev)['major'] < 3:
+            dnn_available.msg = "Device not supported by cuDNN"
+            dnn_available.avail = False
+        else:
+            dnn_available.msg = "Can not find the cuDNN library"
+            dnn_available.avail = theano.gof.cmodule.GCC_compiler.try_flags(
+                ["-l", "cudnn"])
+    return dnn_available.avail
+
+
+dnn_available.avail = None
+dnn_available.msg = None
 
 
 class DnnBase(GpuOp):
@@ -359,31 +377,29 @@ class GpuDnnConvGradI(GpuDnnConvBase):
     conv_op = 'cudnnConvolutionBackwardData'
 
 
-from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
-                                     gpu_optimizer)
-
-
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
              conv_mode='conv'):
+    """
+    GPU convolution using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bc01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    :param img: images to do the convolution over
+    :param kerns: convolution filters
+    :param border_mode: one of 'valid', 'full' (default: 'valid')
+    :param subsample: perform subsampling of the output (default: (1, 1))
+    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.  One of 'conv', 'cross'. (default: 'conv')
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
     return GpuDnnConv()(img, kerns, desc)
-
-
-@local_optimizer([GpuConv])
-def local_conv_dnn(node):
-    if isinstance(node.op, GpuConv):
-        if node.op.border_mode not in ['full', 'valid']:
-            return
-        img, kern = node.inputs
-        border_mode = node.op.border_mode
-        subsample = node.op.subsample
-        return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
-                         border_mode=border_mode, subsample=subsample)]
-
-gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
 
 
 class GpuDnnSoftmax(DnnBase):
@@ -538,12 +554,32 @@ err%(name)s = cudnnSoftmaxForward(
         return (0, 3)
 
 
-@local_optimizer([GpuSoftmax])
-def local_softmax_dnn(node):
-    if isinstance(node.op, GpuSoftmax):
-        ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
-        out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
-        out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
-        return [out]
+# We need this since other stuff from opt is not importable.
+if cuda_available:
 
-gpu_optimizer.register("softmax_cudnn", local_softmax_dnn, 'cudnn')
+    from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
+                                         gpu_optimizer)
+
+    @local_optimizer([GpuConv])
+    def local_conv_dnn(node):
+        if isinstance(node.op, GpuConv):
+            if node.op.border_mode not in ['full', 'valid']:
+                return
+            img, kern = node.inputs
+            border_mode = node.op.border_mode
+            subsample = node.op.subsample
+            return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
+                             border_mode=border_mode, subsample=subsample)]
+
+    gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
+
+
+    @local_optimizer([GpuSoftmax])
+    def local_softmax_dnn(node):
+        if isinstance(node.op, GpuSoftmax):
+            ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
+            out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
+            out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
+            return [out]
+
+    gpu_optimizer.register("softmax_cudnn", local_softmax_dnn, 'cudnn')
