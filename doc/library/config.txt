@@ -335,7 +335,7 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Do the memory profile print the min peak memory usage?
+    Does the memory profile print the min peak memory usage?
     It only works when profile=True, profile_memory=True
 
 .. attribute:: profiling.destination
