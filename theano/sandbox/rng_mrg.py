@@ -734,6 +734,13 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
             unsigned int threads_per_block = std::min((unsigned int)n_streams_used_in_this_call, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
             unsigned int n_blocks = std::min(ceil_intdiv((unsigned int)n_streams_used_in_this_call, threads_per_block), (unsigned int)NUM_VECTOR_OP_BLOCKS);
 
+            if (n_streams > (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK * (unsigned int)NUM_VECTOR_OP_BLOCKS)
+            {
+                PyErr_Format(PyExc_ValueError, "On GPU, n_streams should be at most %%u",
+                    (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK * (unsigned int)NUM_VECTOR_OP_BLOCKS);
+                %(fail)s;
+            }
+
             if (threads_per_block * n_blocks < n_streams)
             {
                 if (! %(nodename)s_printed_warning)
@@ -761,7 +768,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
