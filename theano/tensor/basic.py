@@ -5114,14 +5114,15 @@ class Choose(Op):
         else:
             import theano.typed_list
             assert isinstance(node.inputs[1], theano.typed_list.TypedListVariable)
-            #import pdb;pdb.set_trace()
-            raise ShapeError("")
+            raise ShapeError("Case not implemented")
             shape = shapes[0]
             for i in range(len(shapes[0])-1):
                 shape[i] = shapes[1][i]
             return [(shape)]
 
     def make_node(self, a, choices):
+        # Import here as it isn't imported by default and we can't
+        # import at the top as it would cause circular import.
         from theano import typed_list
         a = as_tensor_variable(a)
         if isinstance(choices, (tuple, list)):
