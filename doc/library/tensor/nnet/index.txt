@@ -18,3 +18,4 @@ and ops which are particular to neural networks and deep learning.
 
     conv
     nnet
+    neighbours

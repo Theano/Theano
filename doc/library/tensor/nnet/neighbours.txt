@@ -1,0 +1,45 @@
+.. _libdoc_tensor_nnet_neighbours:
+
+=======================================================================
+:mod:`neighbours` -- Ops for working with images in convolutional nets
+=======================================================================
+
+.. module:: sandbox.neighbours
+   :platform: Unix, Windows
+   :synopsis: Ops for working with images in conv nets
+.. moduleauthor:: LISA
+
+
+- Functions
+
+    - Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
+      allows to apply a sliding window operation to a tensor containing images 
+      or other two-dimensional objects. The imput is a 4-dimensional array which
+      represents a list of lists of images. The first two dimensions can be 
+      usefull to store different channels and batches.
+
+        Example:
+
+        .. code-block:: python
+
+            images = T.tensor4('images')
+            neibs = images2neibs(images, (5, 5))
+            im_val = np.arange(100.).reshape((1, 1, 10, 10))
+            neibs_val = theano.function([images], neibs)(im_val)
+
+        .. note:: The underlying code will construct a 2D tensor of patches 5x5 
+
+
+    - Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
+      performs the inverse operation of 
+      :func `images2neibs <theano.sandbox.neigbours.neibs2images>`.
+
+
+        Example:
+
+        .. code-block:: python
+
+            im_new = neibs2images(neibs, (5, 5), im_val.shape)
+            im_new_val = theano.function([neibs], im_new)(neibs_val)
+
+        .. note:: The code will output an initial image array
