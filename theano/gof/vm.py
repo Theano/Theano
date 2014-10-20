@@ -924,6 +924,8 @@ class VM_Linker(link.LocalLinker):
                 self.updated_vars
                 )
 
+	vm.storage_map = storage_map
+
         return (vm,
                 [link.Container(input, storage)
                  for input, storage in zip(fgraph.inputs, input_storage)],
