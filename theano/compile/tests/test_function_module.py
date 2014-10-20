@@ -371,7 +371,12 @@ class T_function(unittest.TestCase):
         four = f(o)
         assert numpy.all(four==4)
         f(o+.1) #should clobber the memory used to store four
-        assert not numpy.all(four==4)
+        if theano.config.cxx:
+            assert not numpy.all(four==4)
+        else:
+            # The Elemwise.perform method don't reuse memory
+            # as some numpy version don't support that correctly.
+            assert numpy.all(four==4)
 
     def test_disconnected_input(self):
         a = T.scalar('a')
@@ -394,6 +399,26 @@ class T_function(unittest.TestCase):
         y = x * 2
         self.assertRaises(RuntimeError, function, [x], y, givens={x: x + 1})
 
+    def test_free(self):
+        """
+        Make test on free() function
+        """
+        x = T.vector('x')
+        func = function([x], x+1)
+        func.fn.allow_gc = False
+        func([1])
+        
+        check_list = []
+        for key, val in func.fn.storage_map.iteritems():
+            if not isinstance(key, theano.gof.Constant):
+                check_list.append(val)
+        assert any([val[0] for val in check_list])
+
+        func.free()
+
+        for key, val in func.fn.storage_map.iteritems():
+            if not isinstance(key, theano.gof.Constant):
+                assert (val[0] == None)
 
 class T_picklefunction(unittest.TestCase):
 

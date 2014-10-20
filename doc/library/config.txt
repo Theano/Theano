@@ -335,8 +335,19 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Do the memory profile print the min peak memory usage?
+    Does the memory profile print the min peak memory usage?
     It only works when profile=True, profile_memory=True
+
+.. attribute:: profiling.destination
+
+    String value: 'stderr', 'stdout', or a name of a
+    file to be created
+
+    Default 'stderr'
+
+    Name of the destination file for the profiling output.
+    The profiling output can be either directed to stderr
+    (default), or stdout or an arbitrary file.
 
 .. attribute:: config.lib.amdlibm
 

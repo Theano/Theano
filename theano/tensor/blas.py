@@ -161,7 +161,8 @@ _logger = logging.getLogger('theano.tensor.blas')
 # Otherwise, we give an optimization warning for no reason in some cases.
 def default_blas_ldflags():
     try:
-        if hasattr(numpy.distutils, '__config__'):
+        if (hasattr(numpy.distutils, '__config__') and
+            numpy.distutils.__config__):
             #If the old private interface is available use it as it
             #don't print information to the user.
             blas_info = numpy.distutils.__config__.blas_opt_info

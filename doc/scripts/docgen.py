@@ -65,7 +65,7 @@ if __name__ == '__main__':
     options.update(dict([x, y or True] for x, y in
         getopt.getopt(sys.argv[1:],
                       'o:',
-                      ['epydoc', 'rst', 'help', 'nopdf', 'cache'])[0]))
+                      ['epydoc', 'rst', 'help', 'nopdf', 'cache', 'test'])[0]))
     if options['--help']:
         print 'Usage: %s [OPTIONS]' % sys.argv[0]
         print '  -o <dir>: output the html files in the specified dir'
@@ -74,10 +74,11 @@ if __name__ == '__main__':
         print '  --nopdf: do not produce a PDF file from the doc, only HTML'
         print '  --epydoc: only compile the api documentation',
         print '(requires epydoc)'
+        print '  --test: run all the code samples in the documentaton'
         print '  --help: this help'
         sys.exit(0)
 
-    if not (options['--epydoc'] or options['--rst']):
+    if not (options['--epydoc'] or options['--rst'] or options['--test']):
         # Default is now rst
         options['--rst'] = True
 
@@ -113,17 +114,18 @@ if __name__ == '__main__':
         # Generate PDF doc
         # TODO
 
+    def call_sphinx(builder, workdir, extraopts=None):
+        import sphinx
+        if extraopts is None:
+            extraopts = []
+        if not options['--cache']:
+            extraopts.append('-E')
+        sphinx.main(['', '-b', builder] + extraopts +
+                    [os.path.join(throot, 'doc'), workdir])
+
     if options['--all'] or options['--rst']:
         mkdir("doc")
         sys.path[0:0] = [os.path.join(throot, 'doc')]
-        def call_sphinx(builder, workdir, extraopts=None):
-            import sphinx
-            if extraopts is None:
-                extraopts = []
-            if not options['--cache']:
-                extraopts.append('-E')
-            sphinx.main(['', '-b', builder] + extraopts +
-                        [os.path.join(throot, 'doc'), workdir])
         call_sphinx('html', '.')
 
         if not options['--nopdf']:
@@ -142,3 +144,8 @@ if __name__ == '__main__':
                 print 'OSError:', e
             except IOError, e:
                 print 'IOError:', e
+
+    if options['--test']:
+        mkdir("doc")
+        sys.path[0:0] = [os.path.join(throot, 'doc')]
+        call_sphinx('doctest', '.')

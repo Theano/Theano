@@ -25,14 +25,13 @@ import numpy
 
 import theano
 from theano.gof import graph
-from theano.configparser import AddConfigVar, BoolParam, IntParam
+from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
 
 import_time = time.time()
 config = theano.config
 
 _atexit_print_list = []
-_atexit_print_file = sys.stderr
 _atexit_registered = False
 
 AddConfigVar('profiling.time_thunks',
@@ -66,14 +65,29 @@ AddConfigVar('profiling.min_peak_memory',
             BoolParam(False),
             in_c_key=False)
 
+AddConfigVar('profiling.destination',
+             """
+             File destination of the profiling output
+             """,
+             StrParam('stderr'),
+             in_c_key=False)
+
 
 def _atexit_print_fn():
     """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
     """
     to_sum = []
+
+    if config.profiling.destination == 'stderr':
+        destination_file = sys.stderr
+    elif config.profiling.destination == 'stdout':
+        destination_file = sys.stdout
+    else:
+        destination_file = open(config.profiling.destination, 'w')
+
     for ps in _atexit_print_list:
         if ps.fct_callcount or ps.compile_time > 0:
-            ps.summary(file=_atexit_print_file,
+            ps.summary(file=destination_file,
                        n_ops_to_print=config.profiling.n_ops,
                        n_apply_to_print=config.profiling.n_apply)
             if not isinstance(ps, ScanProfileStats):
@@ -109,7 +123,7 @@ def _atexit_print_fn():
             else:
                 cum.optimizer_profile = None
 
-        cum.summary(file=_atexit_print_file,
+        cum.summary(file=destination_file,
                     n_ops_to_print=config.profiling.n_ops,
                     n_apply_to_print=config.profiling.n_apply)
 

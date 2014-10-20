@@ -11,6 +11,10 @@
    :synopsis: Linear Algebra Ops Using Scipy
 .. moduleauthor:: LISA
 
+.. note::
+
+   This module is not imported by default. You need to import it to use it.
+
 API
 ===
 

@@ -2,6 +2,7 @@ import errno
 import logging
 import os
 import sys
+import warnings
 
 import numpy
 
@@ -13,10 +14,9 @@ from theano.gof import cmodule
 
 
 _logger = logging.getLogger('theano.scan_module.scan_perform')
-_logger.setLevel(logging.WARN)
 
 
-version = 0.281  # must match constant returned in function get_version()
+version = 0.283  # must match constant returned in function get_version()
 
 need_reload = False
 
@@ -54,11 +54,27 @@ except ImportError:
             if version != getattr(scan_perform, '_version', None):
                 raise ImportError()
         except ImportError:
-
+            if not theano.config.cxx:
+                raise ImportError("no c compiler, can't compile cython code")
             _logger.info("Compiling C code for scan")
             dirname = 'scan_perform'
             cfile = os.path.join(theano.__path__[0], 'scan_module',
                                  'scan_perform.c')
+            if not os.path.exists(cfile):
+                # This can happen in not normal case. We just
+                # disable the cython code. If we are here the user
+                # didn't disable the compiler, so print a warning.
+                warnings.warn(
+                    "The file scan_perform.c is not available. This do"
+                    "not happen normally. You are probably in a strange"
+                    "setup. This mean Theano can not use the cython code for "
+                    "scan. If you"
+                    "want to remove this warning, use the Theano flag"
+                    "'cxx=' (set to an empty string) to disable all c"
+                    "code generation."
+                )
+                raise ImportError("The file lazylinker_c.c is not available.")
+
             code = open(cfile).read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):

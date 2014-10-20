@@ -301,6 +301,9 @@ class test_SoftMax(unittest.TestCase):
         self._cmp(0, 10, f, f_gpu)
 
     def test_cudnn_softmax(self):
+        if not cuda.dnn.dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+
         def cmp(n, m, f, f_gpu):
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)
             gdata = numpy.asarray(data)[:, :, None, None]

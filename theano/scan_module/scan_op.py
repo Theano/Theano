@@ -1104,6 +1104,13 @@ class Scan(PureOp):
                     # little trick that I used
                     outs[idx][0] = outs[idx][0][:-(n_steps - i)]
 
+        # We never reuse the input or output storage of the
+        # inner function so we clear it.
+        for i_s in input_storage:
+            i_s.storage[0] = None
+        for o_s in output_storage:
+            o_s.storage[0] = None
+
         t_call = time.time() - t0_call
         # NOTE: make this match what's in function_module.Function
         # and this little string helps us to find this spot:

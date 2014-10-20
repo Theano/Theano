@@ -1,12 +1,14 @@
 import numpy
-import theano
 
+import theano
 from theano import Op, Apply
 from theano.tensor import TensorType
-
 from theano.gof.type import CDataType
 
+from nose.plugins.skip import SkipTest
+
 # todo: test generic
+
 
 class ProdOp(Op):
     __props__ = ()
@@ -57,12 +59,17 @@ Py_INCREF(%(out)s);
 
 
 def test_cdata():
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
     i = TensorType('float32', (False,))()
     c = ProdOp()(i)
     i2 = GetOp()(c)
+    mode = None
+    if theano.config.mode == "FAST_COMPILE":
+        mode = "FAST_RUN"
 
     # This should be a passthrough function for vectors
-    f = theano.function([i], i2)
+    f = theano.function([i], i2, mode=mode)
 
     v = numpy.random.randn(9).astype('float32')
 

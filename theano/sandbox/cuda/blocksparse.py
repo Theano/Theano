@@ -18,6 +18,13 @@ class SparseBlockGemvSS(GpuOp):
     This op computes the dot product of specified pieces of vectors
     and matrices, returning pieces of vectors.
 
+    It computes something like this for each j:
+
+      o[j] = sum_over_i(dot(W[i, j], h[i])) + o[j]
+
+    The i and j are taken from the inputIdx and outputIdx lists
+    respectively.
+
     This should not be directly called since the interface is subject
     to change without notice.  Use the sparse_block_dot_SS() function
     for a stable interface.
@@ -321,7 +328,6 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
         o, W, h, inputIdx, outputIdx = inputs
         go = grads[0]
 
-        # might revise that interface to not have a huge output
         Wgrad = sparse_block_outer_ss(W.zeros_like(),
                                       h, go, inputIdx, outputIdx)
         hgrad = sparse_block_gemv_ss(h.zeros_like(),
@@ -343,6 +349,12 @@ class SparseBlockOuterSS(GpuOp):
     """
     This computes the outer product of two sets of pieces of vectors
     updating a full matrix with the results.
+
+    It computes something like this:
+
+      o[i, j] = (alpha * outer(x[i], y[j])) + o[i, j]
+
+    The i and j are taken from the xIdx and yIdx lists respectively.
 
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
@@ -682,9 +694,10 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
 
     @opt.register_opt()
     @opt.local_optimizer([GpuElemwise])
-    def local_merge_blocksparse_beta(node):
+    def local_merge_blocksparse_output(node):
         if (isinstance(node.op, GpuElemwise) and
-            node.op.scalar_op == scalar.sub and
+            (node.op.scalar_op == scalar.sub or
+             node.op.scalar_op == scalar.add) and
             node.nin == 2):
             ger = grab_ger(node.inputs[0])
             W = node.inputs[1]
@@ -693,8 +706,14 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
                 W = node.inputs[0]
             if ger is None:
                 return None
+            if node.op.scalar_op == scalar.sub:
+                alpha = -ger.inputs[5]
+                W = W - ger.inputs[0]
+            else:
+                alpha = ger.inputs[5]
+                W = W + ger.inputs[0]
             return [sparse_block_outer_ss(*([W] + ger.inputs[1:5] +
-                                            [-ger.inputs[5]]))]
+                                            [alpha]))]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):

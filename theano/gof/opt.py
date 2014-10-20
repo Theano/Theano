@@ -8,6 +8,7 @@ import logging
 import pdb
 import sys
 import time
+import warnings
 
 import numpy
 
@@ -731,7 +732,8 @@ def pre_constant_merge(vars):
     seen_var = set()
     # signature -> variable (for constants)
     const_sig_inv = {}
-
+    if isinstance(vars, graph.Variable):
+        vars = [vars]
     def recursive_merge(var):
         if var in seen_var:
             return var
@@ -747,6 +749,10 @@ def pre_constant_merge(vars):
                     return const_sig_inv[sig]
                 const_sig_inv[sig] = var
             except TypeError:  # unhashable type
+                warnings.warn(
+                    "We work around a problem, the following variable"
+                    " signature isn't hashable. Please, report this to"
+                    " theano-dev so that the better fix is done. %s" % var)
                 # Some python object like slice aren't hashable. So
                 # don't merge them here.
                 pass

@@ -632,22 +632,38 @@ def get_scalar_constant_value(orig_v, elemwise=True):
                 # test_sharedvar.py:test_shared_options.test_specify_shape_partial
                 if (v.owner.inputs[0].owner and
                     isinstance(v.owner.inputs[0].owner.op, Join) and
+                    len(v.owner.op.idx_list) == 1):
                     # Ensure the Join is joining only scalar variables (so that
                     # the constant value can be found at the same index as the one
                     # used in the sub-tensor).
-                    python_all(var.ndim == 0 for var in
-                               v.owner.inputs[0].owner.inputs) and
-                    len(v.owner.op.idx_list) == 1):
-
-                    idx = v.owner.op.idx_list[0]
-                    if isinstance(idx, gof.Type):
-                        idx = get_scalar_constant_value(v.owner.inputs[1])
-                    # Note the '+ 1' is because the first argument to Join is the
-                    # axis.
-                    ret = v.owner.inputs[0].owner.inputs[idx + 1]
-                    ret = get_scalar_constant_value(ret)
-                    # join can cast implicitly its input in some case.
-                    return theano._asarray(ret, dtype=v.type.dtype)
+                    if python_all(var.ndim == 0 for var in
+                                  v.owner.inputs[0].owner.inputs[1:]):
+                        idx = v.owner.op.idx_list[0]
+                        if isinstance(idx, gof.Type):
+                            idx = get_scalar_constant_value(v.owner.inputs[1])
+                        # Note the '+ 1' is because the first argument to Join is the
+                        # axis.
+                        ret = v.owner.inputs[0].owner.inputs[idx + 1]
+                        ret = get_scalar_constant_value(ret)
+                        # join can cast implicitly its input in some case.
+                        return theano._asarray(ret, dtype=v.type.dtype)
+                    if python_all(var.ndim == 1 for var in
+                                  v.owner.inputs[0].owner.inputs[1:]):
+                        idx = v.owner.op.idx_list[0]
+                        if isinstance(idx, gof.Type):
+                            idx = get_scalar_constant_value(v.owner.inputs[1])
+                        try:
+                            #TODO: assert joined axis is 0.
+                            length = 0
+                            for joined in v.owner.inputs[0].owner.inputs[1:]:
+                                ll = get_vector_length(joined)
+                                if idx < length + ll:
+                                    return get_scalar_constant_value(joined[idx-length])
+                                length += ll
+                        except TypeError:
+                            pass
+                        except ValueError:
+                            pass
 
                 elif (v.owner.inputs[0].owner and
                     isinstance(v.owner.inputs[0].owner.op,
@@ -2035,6 +2051,8 @@ class Nonzero(gof.Op):
         flattened input array.
 
     """
+    __props__ = ()
+
     def make_node(self, a):
         a = as_tensor_variable(a)
         if a.ndim == 0:
@@ -3663,6 +3681,15 @@ def get_vector_length(v):
         return len(v.owner.inputs)
     if v.owner and isinstance(v.owner.op, Shape):
         return v.owner.inputs[0].type.ndim
+    # If we take this slice: var[:0], we know it will have 0 elements.
+    if (v.owner and
+        isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and
+        isinstance(v.owner.op.idx_list[0], slice) and
+        v.owner.op.idx_list[0].start in [None, 0]):
+        stop = theano.tensor.subtensor.get_idx_list(
+            v.owner.inputs, v.owner.op.idx_list)[0].stop
+        if extract_constant(stop) == 0:
+            return 0
     raise ValueError("length not known")
 
 

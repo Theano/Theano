@@ -76,6 +76,21 @@ class TypedListType(gof.Type):
 
         return True
 
+    def may_share_memory(self, a, b):
+        if a is b:
+            return True
+        # As a list contain other element, if a or b isn't a list, we
+        # still need to check if that element is contained in the
+        # other list.
+        if not isinstance(a, list):
+            a = [a]
+        if not isinstance(b, list):
+            b = [b]
+        for idx1 in range(len(a)):
+            for idx2 in range(len(b)):
+                if self.ttype.may_share_memory(a[idx1], b[idx2]):
+                    return True
+
     def c_declare(self, name, sub, check_input=True):
         return """
         PyListObject* %(name)s;

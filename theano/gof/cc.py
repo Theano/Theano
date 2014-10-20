@@ -70,7 +70,6 @@ from theano.gof import cmodule
 
 import logging
 _logger = logging.getLogger("theano.gof.cc")
-_logger.setLevel(logging.WARN)
 
 from theano.gof.callcache import CallCache
 

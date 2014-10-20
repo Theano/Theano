@@ -9,6 +9,7 @@ import theano
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.compat.six import StringIO
+from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 
 scal = scalar # somewhere scalar gets reassigned to be a function
@@ -31,8 +32,6 @@ from theano.sandbox.cuda.elemwise import NaiveAlgo
 
 _logger_name = 'theano.sandbox.cuda.basic_ops'
 _logger = logging.getLogger(_logger_name)
-_logger.setLevel(logging.INFO)
-_logger.addHandler(logging.StreamHandler())  # TO REMOVE
 
 
 def as_cuda_ndarray_variable(x):
@@ -2313,6 +2312,31 @@ class GpuReshape(tensor.Reshape, GpuOp):
             raise ValueError('shape argument to Reshape.perform'
                              ' has incorrect length %i'
                              ', should be %i' % (len(shp), self.ndim), shp)
+
+        if shp.prod() != x.size:
+            # We need to do check here to raise the same error as NumPy.
+            # We should make pygpu do the same.
+            ss = 1
+            nb_m1 = 0
+            m1_idx = -1
+            for idx, i in enumerate(shp):
+                if i == -1:
+                    nb_m1 += 1
+                    m1_idx = idx
+                else:
+                    ss *= i
+            if nb_m1 > 1:
+                raise ValueError("Only one -1 is accepted in the new shape")
+            elif nb_m1 == 1:
+                if (x.size % ss) != 0:
+                    raise ValueError("When using -1 in new shape, the computed new shape must be an multiple of the original shape.")
+                shp_new = numpy.copy(shp)
+                shp_new[m1_idx] = x.size/ss
+                shp = shp_new
+
+            else:
+                raise ValueError("total size of new array must be unchanged")
+
         out[0] = x.reshape(tuple(shp))
 
 
@@ -2517,10 +2541,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
 
-        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
-        return Apply(self, [x_, y_, ilist_],
-                     [CudaNdarrayType(dtype=x_.dtype,
-                                      broadcastable=bcast)()])
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     # CudaNdarray_Subscript() doesn't support Advanced slicing.
     # But we can't use the parent version that loops on each index
@@ -2686,10 +2707,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
 
-        bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
-        return Apply(self, [x_, y_, ilist_],
-                     [CudaNdarrayType(dtype=x_.dtype,
-                                      broadcastable=bcast)()])
+        return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
         return (2,)

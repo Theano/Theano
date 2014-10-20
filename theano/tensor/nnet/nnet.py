@@ -577,7 +577,7 @@ class Softmax(gof.Op):
 softmax = Softmax()
 
 
-@opt.register_specialize('gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax])
 def local_softmax_with_bias(node):
     """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
@@ -1330,8 +1330,8 @@ class CrossentropyCategorical1Hot(gof.Op):
 crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 
 
-@opt.register_stabilize('gpu')
-@opt.register_specialize('gpu')
+@opt.register_stabilize('fast_compile_gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.optimizer
 def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
     """This is a stabilization optimization
@@ -1404,10 +1404,10 @@ def crossentropy_to_crossentropy_with_softmax(fgraph):
 
 optdb.register('crossentropy_to_crossentropy_with_softmax',
                crossentropy_to_crossentropy_with_softmax, 2.01,
-               'fast_run', 'xent', 'gpu')
+               'fast_run', 'xent', 'fast_compile_gpu')
 
 
-@opt.register_specialize('gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_grad])
 def local_crossentropy_to_crossentropy_with_softmax_grad(node):
     if node.op == softmax_grad:
@@ -1420,7 +1420,7 @@ def local_crossentropy_to_crossentropy_with_softmax_grad(node):
             return [dx]
 
 
-@opt.register_specialize('gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([tensor._max_and_argmax])
 def local_argmax_pushdown(node):
     if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
@@ -1506,7 +1506,7 @@ def _is_const(z, val, approx=False):
         return numpy.all(maybe == val)
 
 
-@opt.register_specialize('gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([subtensor.AdvancedSubtensor, tensor.log])
 def local_advanced_indexing_crossentropy_onehot(node):
     log = None
@@ -1547,7 +1547,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
                                                                     labels)[0]]
 
 
-@opt.register_specialize('gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_grad])
 def local_advanced_indexing_crossentropy_onehot_grad(node):
     if not (node.op == softmax_grad):
@@ -1770,7 +1770,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
         return
 
 
-@opt.register_specialize('gpu')
+@opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_with_bias])
 def graph_merge_softmax_with_crossentropy_softmax(node):
     if node.op == softmax_with_bias:
@@ -1976,4 +1976,4 @@ local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
 #don't do register_stabilize, this is to make local_log_softmax run
 #only after another more specific optimization that stabilizes cross entropy
 #opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
-opt.register_specialize(local_log_softmax, 'gpu', name='local_log_softmax')
+opt.register_specialize(local_log_softmax, 'fast_compile_gpu', name='local_log_softmax')

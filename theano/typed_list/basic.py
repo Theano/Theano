@@ -1,11 +1,13 @@
-from type import TypedListType
+import copy
 
+import numpy
+
+from type import TypedListType
 import theano
 from theano.gof import Apply, Constant, Op, Variable
 from theano.tensor.type_other import SliceType
 from theano import tensor as T
-
-import numpy
+from theano.compile.debugmode import _lessbroken_deepcopy
 
 
 class _typed_list_py_operators:
@@ -34,7 +36,7 @@ class _typed_list_py_operators:
     def count(self, elem):
         return count(self, elem)
 
-    #name "index" is already used by an attribute
+    # name "index" is already used by an attribute
     def ind(self, elem):
         return index_(self, elem)
 
@@ -51,6 +53,8 @@ TypedListType.Variable = TypedListVariable
 
 class GetItem(Op):
     # See doc in instance of this Op or function after this class definition.
+    view_map = {0: [0]}
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -112,6 +116,13 @@ class Append(Op):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+            # TODO: make destroy_handler support having views and
+            # destroyed version of multiple inputs.
+            # self.view_map = {0: [1]}
+        else:
+            # TODO: make destroy_handler support multiple view
+            # self.view_map = {0: [0, 1]}
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.inplace == other.inplace
@@ -129,12 +140,15 @@ class Append(Op):
             out[0] = list(x)
         else:
             out[0] = x
+        # need to copy toAppend due to destroy_handler limitation
+        toAppend = _lessbroken_deepcopy(toAppend)
         out[0].append(toAppend)
 
     def __str__(self):
         return self.__class__.__name__
 
-    def c_code(self, node, name, inp, out, sub):
+    # DISABLED AS WE NEED TO UPDATE IT TO COPY toAppend().
+    def _c_code_(self, node, name, inp, out, sub):
         x_name, toAppend = inp[0], inp[1]
         output_name = out[0]
         fail = sub['fail']
@@ -174,6 +188,13 @@ class Extend(Op):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+            # TODO: make destroy_handler support having views and
+            # destroyed version of multiple inputs.
+            # self.view_map = {0: [1]}
+        else:
+            # TODO: make destroy_handler support multiple view
+            # self.view_map = {0: [0, 1]}
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.inplace == other.inplace
@@ -191,12 +212,17 @@ class Extend(Op):
             out[0] = list(x)
         else:
             out[0] = x
-        out[0].extend(toAppend)
+        # need to copy toAppend due to destroy_handler limitation
+        if toAppend:
+            o = out[0]
+            for i in toAppend:
+                o.append(_lessbroken_deepcopy(i))
 
     def __str__(self):
         return self.__class__.__name__
 
-    def c_code(self, node, name, inp, out, sub):
+    # DISABLED AS WE NEED TO UPDATE IT TO COPY toAppend().
+    def _c_code_(self, node, name, inp, out, sub):
         x_name, toAppend = inp[0], inp[1]
         output_name = out[0]
         fail = sub['fail']
@@ -222,7 +248,7 @@ class Extend(Op):
         Py_INCREF(%(output_name)s);
         """ % locals()
 
-    def c_code_cache_version(self):
+    def c_code_cache_version_(self):
         return (1,)
 
 extend = Extend()
@@ -240,6 +266,13 @@ class Insert(Op):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+            # TODO: make destroy_handler support having views and
+            # destroyed version of multiple inputs.
+            # self.view_map = {0: [2]}
+        else:
+            # TODO: make destroy_handler support multiple view
+            # self.view_map = {0: [0, 2]}
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.inplace == other.inplace
@@ -262,12 +295,15 @@ class Insert(Op):
             out[0] = list(x)
         else:
             out[0] = x
+        # need to copy toAppend due to destroy_handler limitation
+        toInsert = _lessbroken_deepcopy(toInsert)
         out[0].insert(index, toInsert)
 
     def __str__(self):
         return self.__class__.__name__
 
-    def c_code(self, node, name, inp, out, sub):
+    # DISABLED AS WE NEED TO UPDATE IT TO COPY toAppend().
+    def _c_code_(self, node, name, inp, out, sub):
         x_name, index, toInsert = inp[0], inp[1], inp[2]
         output_name = out[0]
         fail = sub['fail']
@@ -308,6 +344,8 @@ class Remove(Op):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+        else:
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.inplace == other.inplace
@@ -360,6 +398,8 @@ class Reverse(Op):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+        else:
+            self.view_map = {0: [0]}
 
     def __eq__(self, other):
         return type(self) == type(other) and self.inplace == other.inplace
@@ -383,7 +423,7 @@ class Reverse(Op):
         return self.__class__.__name__
 
     def c_code(self, node, name, inp, out, sub):
-        x_name = inp[0] 
+        x_name = inp[0]
         output_name = out[0]
         fail = sub['fail']
         if not self.inplace:

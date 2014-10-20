@@ -563,7 +563,9 @@ def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
 
 
 def test_valid():
-    for t in _test_valid(None, version=[-2, -1, 6]):
+    for t in _test_valid(None,
+                         mode=theano_mode,
+                         version=[-2, -1, 6]):
         yield t
 
 
@@ -577,8 +579,9 @@ def test_gemm_valid():
         yield t
 
 
-
 def test_dnn_valid():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     for t in _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn")):
         yield t
 
@@ -647,7 +650,9 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
 
 
 def test_full():
-    for t in _test_full(None, version=[-2, -1, 0, 1, 2, 3, 4, 5]):
+    for t in _test_full(None,
+                        mode=theano_mode,
+                        version=[-2, -1, 0, 1, 2, 3, 4, 5]):
         yield t
 
 
@@ -658,6 +663,8 @@ def test_gemm_full():
 
 
 def test_dnn_full():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     for t in _test_full(GpuDnnConv, mode=theano_mode.including("cudnn")):
         yield t
 
@@ -708,6 +715,8 @@ def test_gemm_subsample():
 
 
 def test_dnn_subsample():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     for t in _test_subsample(GpuDnnConv, theano_mode.including('cudnn')):
         yield t
 
@@ -904,6 +913,10 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
 
 
 def test_conv_grads():
+    if cuda.device_properties(cuda.active_device_number())['major'] < 3:
+        ops = [gemm_op]
+    else:
+        ops = [gemm_op, dnn_op]
     for mode in 'valid', 'full':
         for bs in [1, 5]:
             for ch in [4]:
@@ -913,7 +926,7 @@ def test_conv_grads():
                             for rFlt1 in [1, 2]:
                                 for rFlt2 in [1, 2]:
                                     for subsample in (1, 1), (1, 2), (2, 2):
-                                        for op in [gemm_op, dnn_op]:
+                                        for op in ops:
                                             yield (conv_grad, mode, bs, ch, nf,
                                                    rImg1, rImg2, rFlt1, rFlt2,
                                                    subsample, op)
