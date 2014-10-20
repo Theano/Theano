@@ -2477,6 +2477,41 @@ class Test_alloc_zero(unittest.TestCase):
                                       _e1[2], _e2[1])
 
 
+def test_local_subtensor_of_dot():
+    m1 = theano.tensor.matrix()
+    m2 = theano.tensor.matrix()
+    d1 = numpy.arange(6).reshape((3, 2)).astype(config.floatX)
+    d2 = numpy.arange(8).reshape((2, 4)).astype(config.floatX) + 10
+    mode = compile.get_default_mode().including("local_subtensor_of_dot")
+
+    def test_equality(a, b):
+        return a.shape == b.shape and numpy.allclose(a, b)
+
+    # [cst]
+    f = theano.function([m1, m2], theano.dot(m1, m2)[1], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert test_equality(f(d1, d2), numpy.dot(d1, d2)[1])
+    # DimShuffle happen in FAST_COMPILE
+    assert isinstance(topo[-1].op, (T.blas_c.CGemv, T.blas.Gemv, T.DimShuffle))
+
+    # slice
+    f = theano.function([m1, m2], theano.dot(m1, m2)[1:2], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert test_equality(f(d1, d2), numpy.dot(d1, d2)[1:2])
+    assert isinstance(topo[-1].op, (T.blas.Dot22))
+
+    m1 = theano.tensor.tensor3()
+    m2 = theano.tensor.tensor3()
+    idx = theano.tensor.iscalar()
+    d1 = numpy.arange(30).reshape(2,5,3).astype(config.floatX)
+    d2 = numpy.arange(72).reshape(4,3,6).astype(config.floatX) + 100
+
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx,1:4,:,idx:], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1,1:4,:,1:])
+
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4,:,idx:,idx], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4,:,1:,1])
+
 def test_local_subtensor_of_alloc():
 
     # DebugMode should detect if something goes wrong.
