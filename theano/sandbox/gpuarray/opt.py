@@ -78,13 +78,17 @@ def safe_to_cpu(x):
         return x
 
 
-def op_lifter(OP):
+def op_lifter(OP, cuda_only=False):
     """
     OP(..., host_from_gpu(), ...) -> host_from_gpu(GpuOP(...))
     gpu_from_host(OP(inp0, ...)) -> GpuOP(inp0, ...)
     """
     def f(maker):
         def local_opt(node):
+            dev = theano.sandbox.gpuarray.init_dev.device
+            if cuda_only and not dev.startswith('cuda'):
+                return
+
             if type(node.op) in OP:
 
                 # Either one of our inputs is on the gpu or
@@ -484,25 +488,25 @@ def local_gpua_eye(node):
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
+@op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], cuda_only=True)
 def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
     return GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
+@op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], cuda_only=True)
 def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
     return GpuCrossentropySoftmax1HotWithBiasDx()
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.Softmax])
+@op_lifter([tensor.nnet.Softmax], cuda_only=True)
 def local_gpua_softmax(node):
     return GpuSoftmax()
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.nnet.SoftmaxWithBias])
+@op_lifter([tensor.nnet.SoftmaxWithBias], cuda_only=True)
 def local_gpua_softmaxwithbias(node):
     return GpuSoftmaxWithBias()
 
