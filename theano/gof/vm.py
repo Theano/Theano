@@ -924,7 +924,7 @@ class VM_Linker(link.LocalLinker):
                 self.updated_vars
                 )
 
-	vm.storage_map = storage_map
+        vm.storage_map = storage_map
 
         return (vm,
                 [link.Container(input, storage)
