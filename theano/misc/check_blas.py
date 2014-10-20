@@ -219,9 +219,11 @@ if __name__ == "__main__":
         GTX Titan Black                 0.05s
         GTX Titan(D15U-50)              0.06s  0.06s  don't work
         GTX 780                         0.06s
+        GTX 970           0.08s
         GTX 680                         0.11s  0.12s  0.154s               0.218s
         GTX 580                         0.16s  0.16s  0.164s               0.203s
         GTX 480                         0.19s  0.19s  0.192s               0.237s 0.27s
+        GTX 750 Ti        0.20s
         GTX 470                         0.23s  0.23s  0.238s               0.297s 0.34s
         GTX 660                         0.18s  0.20s  0.23s
         GTX 560                                       0.30s
