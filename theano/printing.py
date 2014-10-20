@@ -102,10 +102,38 @@ def debugprint(obj, depth=-1, print_type=False,
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
+
+    scan_ops = []
     for r in results_to_print:
+        #Add the parent scan op to the list as well
+        if hasattr(r.owner, 'op') and isinstance(r.owner.op, theano.scan_module.scan_op.Scan):
+            scan_ops.append(r)
+
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
-                             stop_on_name=stop_on_name)
+                             scan_ops=scan_ops, stop_on_name=stop_on_name)
+    if len(scan_ops) > 0:
+        print >> file, ""
+        new_prefix = ' >'
+        new_prefix_child = ' >'
+        print >> file, "Inner graphs of the scan ops:"
+
+        for s in scan_ops:
+            print >> file, ""
+            debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
+                                 file=_file, ids=ids,
+                                 scan_ops=scan_ops, stop_on_name=stop_on_name)
+
+            for idx, i in enumerate(s.owner.op.outputs):
+                if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
+                    if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
+                        scan_ops.append(i)
+
+                debugmode.debugprint(r=i, prefix=new_prefix, depth=depth, done=done,
+                                     print_type=print_type, file=file,
+                                     ids=ids, stop_on_name=stop_on_name,
+                                     prefix_child=new_prefix_child, scan_ops=scan_ops)
+
     if file is _file:
         return file
     elif file == 'str':
