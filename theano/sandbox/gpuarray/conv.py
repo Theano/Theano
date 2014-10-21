@@ -4,7 +4,7 @@ import os
 import theano
 from theano import config, gof
 from theano.sandbox.gpuarray.comp import NVCC_compiler
-from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.type import GpuArrayType, gpu_context_type
 from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
 
 
@@ -20,16 +20,22 @@ class GpuConv(gof.Op):
             return imshp[0] + kshp[0] - 1, imshp[1] + kshp[1] - 1
         raise ValueError(mode)
 
+    __props__ = ('border_mode', 'subsample', 'logical_img_hw',
+                 'logical_kern_hw', 'logical_kern_align_top',
+                 'version', 'verbose', 'kshp', 'imshp', 'max_threads_dim0',
+                 'context')
+
     def __init__(self, border_mode,
-            subsample=(1, 1),
-            logical_img_hw=None,
-            logical_kern_hw=None,
-            logical_kern_align_top=True,
-            version=-1,
-            verbose=0,
-            kshp=None,
-            imshp=None,
-            max_threads_dim0=None):
+                 subsample=(1, 1),
+                 logical_img_hw=None,
+                 logical_kern_hw=None,
+                 logical_kern_align_top=True,
+                 version=-1,
+                 verbose=0,
+                 kshp=None,
+                 imshp=None,
+                 max_threads_dim0=None,
+                 context=None):
         """
         :param version: each version of c_code implements many kernels for the
                         convolution. By default we try to guess the best one.
@@ -72,19 +78,7 @@ class GpuConv(gof.Op):
         self.kshp = kshp
         self.imshp = imshp
         self.max_threads_dim0 = max_threads_dim0
-
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and self.border_mode == other.border_mode \
-            and self.subsample == other.subsample \
-            and self.logical_img_hw == other.logical_img_hw \
-            and self.logical_kern_hw == other.logical_kern_hw \
-            and self.logical_kern_align_top == other.logical_kern_align_top \
-            and self.version == other.version \
-            and self.verbose == other.verbose \
-            and self.kshp == other.kshp\
-            and self.imshp == other.imshp\
-            and self.max_threads_dim0 == other.max_threads_dim0
+        self.context = context
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -92,21 +86,6 @@ class GpuConv(gof.Op):
             self.imshp = None
         if not hasattr(self, "max_threads_dim0"):
             self.max_threads_dim0 = None
-
-    def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and
-        # hash(-2)==-2 in python!
-        return hash(type(self)) \
-            ^ hash(self.border_mode) \
-            ^ hash(self.subsample) \
-            ^ hash(self.logical_img_hw) \
-            ^ hash(self.logical_kern_hw) \
-            ^ hash(self.logical_kern_align_top) \
-            ^ self.version \
-            ^ hash(self.verbose) \
-            ^ hash(self.kshp)\
-            ^ hash(self.imshp)\
-            ^ hash(self.max_threads_dim0)
 
     def __str__(self):
         return '%s{%s, %s, %s, %s, %s, %s, %s}' % (
@@ -127,11 +106,15 @@ class GpuConv(gof.Op):
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
+        if (img.type.context != self.context or
+            kern.type.context != self.context):
+            raise TypeError("Wrong context for img or kern")
         img = as_gpuarray_variable(img)
         kern = as_gpuarray_variable(kern)
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
-        out = GpuArrayType(img.dtype, broadcastable)()
+        out = GpuArrayType(img.dtype, broadcastable,
+                           context=img.type.context)()
         return gof.Apply(self, [img, kern], [out])
 
     def flops(self, inputs, outputs):
@@ -159,19 +142,7 @@ class GpuConv(gof.Op):
         if config.gpuarray.sync:
             raise NotImplementedError("GpuConv do not implement gpuarray.sync Theano flag")
         if node_.op.max_threads_dim0 is None:
-            cuda = theano.sandbox.cuda
-            device_id = cuda.use.device_number
-            if device_id is None:
-                cuda.use("gpu",
-                         force=False,
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False,
-                         test_driver=True)
-                device_id = cuda.use.device_number
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
+            node_.op.max_threads_dim0 = node_.inputs[0].type.real_context.maxlsize
         return super(GpuConv, node_.op).make_thunk(node_, storage_map,
                                                    compute_map, no_recycling)
 
@@ -204,7 +175,7 @@ class GpuConv(gof.Op):
         return reduce(str.__add__, codes)
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp

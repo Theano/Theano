@@ -22,13 +22,22 @@ from theano.sandbox.gpuarray.comp import NVCC_compiler
 class GpuImages2Neibs(HideC, Images2Neibs):
     context_type = gpu_context_type
 
-    def __init__(self, mode='valid'):
+    def __init__(self, mode='valid', context=None):
         if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
                                       " and wrap_centered"
                                       " have been implemented for the op"
                                       " GpuImages2Neibs")
         self.mode = mode
+        self.context = context
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.context = other.context and
+                Images2Neibs.__eq__(self, other))
+
+    def __hash__(self):
+        return hash((type(self), self.context)) ^ Image2Neibs.__hash__(self)
 
     def make_node(self, ten4, neib_shape, neib_step):
         ten4 = as_gpuarray_variable(ten4)
@@ -44,10 +53,10 @@ class GpuImages2Neibs(HideC, Images2Neibs):
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),
                                    dtype=ten4.type.dtype,
-                                   context=ten4.type.context)()])
+                                   context=self.context)()])
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     def c_code_cache_version(self):
         return (9,2)
@@ -57,7 +66,7 @@ class GpuImages2Neibs(HideC, Images2Neibs):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_init_code(self):
         return ['setup_ext_cuda();']

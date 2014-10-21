@@ -442,9 +442,18 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     only avail on compute capability 2.0 and more recent.
     """
 
-    def __init__(self, inplace=False, set_instead_of_inc=False):
-        # The python implementation in the parent class is not applicable here
+    def __init__(self, inplace=False, set_instead_of_inc=False, context=None):
         GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
+        self.context = None
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.context == other.context and
+                GpuAdvancedIncSubtensor1.__eq__(self, other))
+
+    def __hash__(self):
+        return (hash((type(self), self.context)) ^
+                GpuAdvancedIncSubtensor1.__hash__(self))
 
     def make_node(self, x, y, ilist):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
@@ -477,15 +486,14 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_init_code(self):
         return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
-        active_device_no = theano.sandbox.cuda.active_device_number()
-        device_properties = theano.sandbox.cuda.device_properties
-        compute_capability = device_properties(active_device_no)['major']
+        # this next line is a dirty hack
+        compute_capability = int(get_context(self.context).bin_id[3])
         if ((self.set_instead_of_inc) or
             (node.inputs[0].ndim != node.inputs[1].ndim) or
             (node.inputs[0].ndim != 2) or

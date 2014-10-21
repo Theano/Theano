@@ -64,6 +64,17 @@ class GpuElemwise(HideC, Elemwise):
 
     context_type = gpu_context_type
 
+    def __init__(self, context=None):
+        self.context = context
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                Elemwise.__eq__(self, other) and
+                self.context == other.context)
+
+    def __hash__(self):
+        return hash((type(self), self.context)) ^ Elemwise.__hash__(self)
+
     def __str__(self):
         if self.name is not None:
             return self.name
@@ -73,12 +84,11 @@ class GpuElemwise(HideC, Elemwise):
     def make_node(self, *inputs):
         res = Elemwise.make_node(self, *inputs)
         inputs = [as_gpuarray_variable(i) for i in inputs]
-        if len(inputs) == 0:
-            raise TypeError('gpuelemwise needs at least one input')
-        ctx = inputs[0].type.context
+        if any(i.type.context != self.context for i in inputs):
+            return TypeError("Mismatched contexts in GpuElemwise inputs")
         outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
                                 dtype=o.type.dtype,
-                                context=ctx)() for o in res.outputs]
+                                context=self.context)() for o in res.outputs]
         node = Apply(self, inputs, outputs)
 
         # Try to generate the kernel to catch SupportCodeErrors
@@ -106,7 +116,7 @@ class GpuElemwise(HideC, Elemwise):
         return node
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     def generate_kernel(self, node, nodename):
         inps = [make_argument(i, 'i%d' % (n,)) for n, i in
@@ -191,7 +201,7 @@ class GpuElemwise(HideC, Elemwise):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_support_code(self):
         return self.scalar_op.c_support_code()
@@ -585,12 +595,11 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
     context_type = gpu_context_type
 
     # This gets shadowed by the superclass versions
-    #__props__ = ('axis', 'reduce_mask', 'dtype', 'acc_dtype',
-    #             'scalar_op', 'pre_scalar_op')
+    #__props__ = ('reduce_mask', 'pre_scalar_op', 'context')
 
     def __init__(self, scalar_op, axis=None,
                  reduce_mask=None, dtype=None, acc_dtype=None,
-                 pre_scalar_op=None):
+                 pre_scalar_op=None, context=None):
         if reduce_mask is not None:
             reduce_mask = tuple(reduce_mask)
         self.reduce_mask = reduce_mask
@@ -603,20 +612,19 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         self.pre_scalar_op = pre_scalar_op
         if pre_scalar_op:
             assert pre_scalar_op.nin == 1
+        self.context = context
 
     def __eq__(self, other):
         return (type(self) == type(other) and
-                self.axis == other.axis and
                 self.reduce_mask == other.reduce_mask and
-                self.dtype == other.dtype and
-                self.acc_dtype == other.acc_dtype and
-                self.scalar_op == other.scalar_op and
-                self.pre_scalar_op == other.pre_scalar_op)
+                self.pre_scalar_op == other.pre_scalar_op and
+                self.context == other.context and
+                CAReduceDtype.__eq__(self, other))
 
     def __hash__(self):
-        return hash((type(self), self.axis, self.reduce_mask, self.dtype,
-                     self.acc_dtype, type(self.scalar_op),
-                     type(self.pre_scalar_op)))
+        return (hash((type(self), self.reduce_mask, self.pre_scalar_op,
+                      self.context)) ^
+                CAReduceDtype.__hash__(self))
 
     def __str__(self):
         pre = ""
@@ -662,10 +670,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             raise NotImplementedError("We don't support complex in gpu reduction")
         return Apply(self, [x], [GpuArrayType(ret.outputs[0].dtype,
                                               ret.outputs[0].type.broadcastable,
-                                              context=x.type.context)()])
+                                              context=self.context)()])
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     """
     This method must be commented, because there's no way
@@ -723,7 +731,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_init_code(self):
         return ['setup_ext_cuda();']

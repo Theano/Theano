@@ -8,9 +8,14 @@ from theano import config
 # This is a big hack to avoid creating a second context on the card.
 from theano.sandbox.cuda.nvcc_compiler import (NVCC_compiler as NVCC_base,
                                                hash_from_file)
+
+from .type import get_context
+
 class NVCC_compiler(NVCC_base):
-    @staticmethod
-    def compile_args():
+    def __init__(self, context):
+        self.context = get_context(context)
+
+    def compile_args(self):
         """
         Re-implementation of compile_args that does not create an
         additionnal context on the GPU.
@@ -36,17 +41,11 @@ class NVCC_compiler(NVCC_base):
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
-            dev = theano.sandbox.gpuarray.init_dev.device
-            if dev is None:
-                raise Exception, "Trying to compile GPU code without a context"
-            if dev.startswith("opencl"):
-                raise Exception, "Trying to call nvcc with an OpenCL context"
-            assert dev.startswith('cuda')
-            if dev == 'cuda':
-                n = theano.sandbox.cuda.use.device_number
-            else:
-                n = int(dev[4:])
-            p = theano.sandbox.cuda.device_properties(n)
-            flags.append('-arch=sm_' + str(p['major']) + str(p['minor']))
+            if self.context.kind != 'cuda':
+                raise Exception, "Trying to call nvcc with a non-cuda context"
+            assert self.context.kind == 'cuda'
+            # This is a hack because bin_id is in the form of
+            # "sm_<maj><min>" for cuda contexts
+            flags.append('-arch='+self.context.bin_id)
 
         return flags
