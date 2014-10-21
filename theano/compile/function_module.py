@@ -298,7 +298,7 @@ class Function(object):
         self.profile = None  # reassigned in FunctionMaker.create
         self.trust_input = False  # If True, we don't check the input parameter
         self.name = None
-        self.node_op_list = []
+        self.nodes_with_inner_function = []
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -457,7 +457,7 @@ class Function(object):
 
         for node in self.maker.fgraph.apply_nodes:
             if node.op in ops_with_inner_function.keys():
-                self.node_op_list.append(node.op)
+                self.nodes_with_inner_function.append(node.op)
 
     def __contains__(self, item):
         return self.value.__contains__(item)
@@ -697,7 +697,7 @@ class Function(object):
                 if not isinstance(key, theano.gof.Constant):
                     self.fn.storage_map[key][0] = None
             
-            for node in self.node_op_list:
+            for node in self.nodes_with_inner_function:
                 ops_with_inner_function[node.op].free()
 
 
