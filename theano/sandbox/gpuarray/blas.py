@@ -237,7 +237,7 @@ class GpuDot22(BlasOp, Dot22):
         dtype = node.inputs[0].dtype
         typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
         vars = dict(A=inputs[0], B=inputs[1], dtype=dtype, out=outputs[0],
-                    typecode=typecode, ctx=sub['context']
+                    typecode=typecode, ctx=sub['context'],
                     fail=sub['fail'], name=name)
         code = """
         double one = 1.;
