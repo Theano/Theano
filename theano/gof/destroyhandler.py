@@ -662,6 +662,7 @@ class DestroyHandler(toolbox.Bookkeeper):
     The following data structures remain to be converted:
         <unknown>
     """
+    pickle_rm_attr = ["destroyers"]
 
     def __init__(self, do_imports_on_attach=True):
         self.fgraph = None
@@ -720,15 +721,7 @@ class DestroyHandler(toolbox.Bookkeeper):
                 " or in conflict with another plugin.")
 
         ####### Annotate the FunctionGraph ############
-
-        def get_destroyers_of(r):
-            droot, impact, root_destroyer = self.refresh_droot_impact()
-            try:
-                return [root_destroyer[droot[r]]]
-            except Exception:
-                return []
-
-        fgraph.destroyers = get_destroyers_of
+        self.unpickle(fgraph)
         fgraph.destroy_handler = self
 
         self.fgraph = fgraph
@@ -742,6 +735,15 @@ class DestroyHandler(toolbox.Bookkeeper):
         self.debug_all_apps = OrderedSet()
         if self.do_imports_on_attach:
             toolbox.Bookkeeper.on_attach(self, fgraph)
+
+    def unpickle(self, fgraph):
+        def get_destroyers_of(r):
+            droot, impact, root_destroyer = self.refresh_droot_impact()
+            try:
+                return [root_destroyer[droot[r]]]
+            except Exception:
+                return []
+        fgraph.destroyers = get_destroyers_of
 
     def refresh_droot_impact(self):
         """

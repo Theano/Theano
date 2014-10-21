@@ -22,8 +22,6 @@ import theano
 from theano import config
 from theano.gof.python25 import any, all, deque
 
-#if sys.version_info[:2] >= (2,5):
-#  from collections import defaultdict
 
 _logger = logging.getLogger('theano.gof.opt')
 
@@ -1241,6 +1239,30 @@ class PatternSub(LocalOptimizer):
 
 # Use the following classes to apply LocalOptimizers
 
+class Updater:
+    def __init__(self, importer, pruner, chin):
+        self.importer = importer
+        self.pruner = pruner
+        self.chin = chin
+
+    def on_import(self, fgraph, node, reason):
+        if self.importer:
+            self.importer(node)
+
+    def on_prune(self, fgraph, node, reason):
+        if self.pruner:
+            self.pruner(node)
+
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
+        if self.chin:
+            self.chin(node, i, r, new_r, reason)
+
+    def on_detach(self, fgraph):
+        # To allow pickling this object
+        self.importer = None
+        self.pruner = None
+        self.chin = None
+
 
 class NavigatorOptimizer(Optimizer):
     """Abstract class
@@ -1329,18 +1351,7 @@ class NavigatorOptimizer(Optimizer):
         if importer is None and pruner is None:
             return None
 
-        class Updater:
-            if importer is not None:
-                def on_import(self, fgraph, node, reason):
-                    importer(node)
-            if pruner is not None:
-                def on_prune(self, fgraph, node, reason):
-                    pruner(node)
-            if chin is not None:
-                def on_change_input(self, fgraph, node, i, r, new_r, reason):
-                    chin(node, i, r, new_r, reason)
-
-        u = Updater()
+        u = Updater(importer, pruner, chin)
         fgraph.attach_feature(u)
         return u
 

@@ -2664,6 +2664,7 @@ def local_useless_tile(node):
         except NotScalarConstantError:
             return
 
+
 ################
 # Flatten Opts #
 ################
