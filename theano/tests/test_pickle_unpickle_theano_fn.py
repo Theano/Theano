@@ -22,6 +22,9 @@ import theano.tensor as T
 
 
 def test_pickle_unpickle_with_reoptimization():
+    mode = theano.config.mode
+    if mode in ["DEBUG_MODE", "DebugMode"]:
+        mode = "FAST_RUN"
     x1 = T.fmatrix('x1')
     x2 = T.fmatrix('x2')
     x3 = theano.shared(numpy.ones((10, 10), dtype=floatX))
@@ -31,7 +34,7 @@ def test_pickle_unpickle_with_reoptimization():
     updates = OrderedDict()
     updates[x3] = x3 + 1
     updates[x4] = x4 + 1
-    f = theano.function([x1, x2], y, updates=updates)
+    f = theano.function([x1, x2], y, updates=updates, mode=mode)
 
     # now pickle the compiled theano fn
     string_pkl = cPickle.dumps(f, -1)
@@ -51,6 +54,9 @@ def test_pickle_unpickle_with_reoptimization():
 
 
 def test_pickle_unpickle_without_reoptimization():
+    mode = theano.config.mode
+    if mode in ["DEBUG_MODE", "DebugMode"]:
+        mode = "FAST_RUN"
     x1 = T.fmatrix('x1')
     x2 = T.fmatrix('x2')
     x3 = theano.shared(numpy.ones((10, 10), dtype=floatX))
@@ -60,7 +66,7 @@ def test_pickle_unpickle_without_reoptimization():
     updates = OrderedDict()
     updates[x3] = x3 + 1
     updates[x4] = x4 + 1
-    f = theano.function([x1, x2], y, updates=updates)
+    f = theano.function([x1, x2], y, updates=updates, mode=mode)
 
     # now pickle the compiled theano fn
     string_pkl = cPickle.dumps(f, -1)
