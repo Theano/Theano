@@ -1593,9 +1593,10 @@ def local_alloc_elemwise(node):
     if assert_op_idx < 0:
         # We want to optimize as many allocs as possible. When there is more
         # than one then do all but one.
-        if len([i for i in node.inputs
-            if i.type.broadcastable == node.outputs[0].type.broadcastable]) > 1:
-            assert_op_idx = 0  # The first one is as good as any to use.
+        l = [idx for idx, i in enumerate(node.inputs)
+            if i.type.broadcastable == node.outputs[0].type.broadcastable]
+        if len(l) > 1:
+            assert_op_idx = l[0]  # The first one is as good as any to use.
         else:
             # Otherwise nothing can be done.
             return False
