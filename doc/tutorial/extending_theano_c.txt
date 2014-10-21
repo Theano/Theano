@@ -715,7 +715,7 @@ The new op is defined inside a Python file with the following code :
         __props__ = ()
 
         func_file = "./vectorTimesVector.c"
-        func_name = "vector_times_vector_<<<<NODE_NAME_PLACEHOLDER>>>>"
+        func_name = "APPLY_SPECIFIC(vector_times_vector)"
 
         def __init__(self):
             super(VectorTimesVector, self).__init__(self.func_file,
@@ -735,7 +735,6 @@ The new op is defined inside a Python file with the following code :
 
             return gof.Apply(self, [x, y], [output_var])
 
-
 And the following is the C implementation of the op, defined in an external
 C file named vectorTimesVector.c :
 
@@ -751,7 +750,7 @@ C file named vectorTimesVector.c :
     #endif
 
     // Apply-specific support code
-    void vector_elemwise_mult_<<<<NODE_NAME_PLACEHOLDER>>>>(
+    void APPLY_SPECIFIC(vector_elemwise_mult)(
         DTYPE_INPUT_0* x_ptr, int x_str,
         DTYPE_INPUT_1* y_ptr, int y_str,
         DTYPE_OUTPUT_0* z_ptr, int z_str, int nbElements)
@@ -762,9 +761,9 @@ C file named vectorTimesVector.c :
     }
 
     // Main function
-    int vector_times_vector_<<<<NODE_NAME_PLACEHOLDER>>>>(PyArrayObject* input0,
-                                                          PyArrayObject* input1,
-                                                          PyArrayObject** output0)
+    int APPLY_SPECIFIC(vector_times_vector)(PyArrayObject* input0,
+                                            PyArrayObject* input1,
+                                            PyArrayObject** output0)
     {
         // Validate that the inputs have the same shape
         if ( !vector_same_shape(input0, input1))
@@ -798,7 +797,7 @@ C file named vectorTimesVector.c :
         }
 
         // Perform the actual vector-vector multiplication
-        vector_elemwise_mult_<<<<NODE_NAME_PLACEHOLDER>>>>(
+        APPLY_SPECIFIC(vector_elemwise_mult)(
                                 (DTYPE_INPUT_0*)PyArray_DATA(input0),
                                 PyArray_STRIDES(input0)[0] / ITEMSIZE_INPUT_0,
                                 (DTYPE_INPUT_1*)PyArray_DATA(input1),
@@ -892,9 +891,9 @@ defined:
 In the same way, the macros ``DTYPE_OUTPUT_{i}``, ``ITEMSIZE_OUTPUT_{i}`` and
 ``TYPENUM_OUTPUT_{i}``  are defined for every output 'i' of the op.
 
-The ``COp`` class also defines the macro ``<<<<NODE_NAME_PLACEHOLDER>>>>``
-which will automatically be replaced by the name of the Apply node that applies
-the op.
+The ``COp`` class also defines the macro ``APPLY_SPECIFIC(str)`` which will
+automatically append the name of the :ref:`Apply node that applies the Op at
+the end of the provided ``str``. The use of this macro is discussed below.
 
 You should be aware, however, that these macros are apply-specific. As such,
 any function that uses them is considered to contain apply-specific code.
@@ -917,25 +916,33 @@ between the different versions of the apply-specific code. The code that
 wasn't apply-specific was simply defined in the ``c_support_code()`` method.
 
 When using the ``COp`` class, we still have to make the distinction between
-apply- specific and apply-agnostic support code but we express it differently
+apply-specific and apply-agnostic support code but we express it differently
 in the code since it is all defined in the same external C file.
 Apply-agnostic code should now be defined inside a ``ifndef``-``define``
 structure (like the function ``vector_same_shape()`` in the example above) to
 ensure that it is only defined once. On the other hand, apply-specific
-functions and global variables should simply include the macro
-``<<<<NODE_NAME_PLACEHOLDER>>>>`` in their names. When the Theano function is
-compiled, this macro will be automatically replaced by the name of the
-:ref:`Apply` node that applies this op, thus making those functions and
-variables apply-specific. The function
-``vector_elemwise_mult_<<<<NODE_NAME_PLACEHOLDER>>>>()`` is an example of how to
-do this.
+functions and global variables only need to include the name of the
+:ref:`Apply` node in their names. To achieve this, the macro
+``APPLY_SPECIFIC(str)`` should be used when defining those elements as well as
+when referring to them. In the above example, this macro is used when defining
+the functions ``vector_elemwise_mult()`` and ``vector_times_vector()`` as well
+as when calling function ``vector_elemwise_mult()`` from inside
+``vector_times_vector()``.
 
 :note:
 
-    The macro ``<<<<NODE_NAME_PLACEHOLDER>>>>`` should only ever be used for
+    The macro ``APPLY_SPECIFIC(str)`` should only ever be used for
     apply-specific code. It should not be used for apply-agnostic code.
 
 The rules for knowing if a piece of code should be treated as apply-specific
 or not are simple; if it uses any of the macros defined by the class ``COp``
 then it is apply-specific, if it calls any apply-specific code then it is
 apply-specific. Otherwise, it is apply-agnostic.
+
+In the above example, the ``function vector_same_shape()`` is apply-agnostic
+because it uses none of the macros defined by the class ``COp`` and it doesn't
+rely on any apply-specific code. The function ``vector_elemwise_mult()`` is
+apply-specific because it uses the macros defined by ``COp``. Finally, the
+function ``vector_times_vector()`` is apply-specific because it uses those
+same macros and also because it calls ``vector_elemwise_mult()`` which is an
+apply-specific function.

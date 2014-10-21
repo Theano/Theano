@@ -1001,14 +1001,12 @@ class COp(Op):
         return hash(self.func_code)
 
     def c_support_code_apply(self, node, name):
-        func_code = self.func_code.replace("<<<<NODE_NAME_PLACEHOLDER>>>>",
-                                            name)
-
         if hasattr(self, 'check_inputs') and self.check_inputs == False:
-            return func_code
+            return self.func_code
         else:
             define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join([define_macros, func_code, undef_macros])
+            return os.linesep.join([define_macros, self.func_code,
+                                    undef_macros])
 
     def format_c_function_args(self, inp, out):
         # Generate an string containing the arguments sent to the external C
@@ -1058,17 +1056,25 @@ class COp(Op):
             define_macros += define_template % (macro_name, macro_value)
             undef_macros += undef_template % macro_name
 
+        # Generate a macro to mark code as being apply-specific
+        define_macros += define_template % ("APPLY_SPECIFIC(str)",
+                                            "str##_%s" % name)
+        undef_macros += undef_template % "APPLY_SPECIFIC"
+
         return define_macros, undef_macros
 
     def c_code(self, node, name, inp, out, sub):
 
-        func_name = self.func_name.replace("<<<<NODE_NAME_PLACEHOLDER>>>>",
-                                           name)
+        func_name = self.func_name
         func_args = self.format_c_function_args(inp, out)
         fail = sub['fail']
 
+        # Generate the code to define/undefine the C macros
+        define_macros, undef_macros = self.get_c_macros(node, name)
+
         # Generate the C code
         c_code = """
+        %(define_macros)s
         {
             int result = %(func_name)s(%(func_args)s);
             if (result != 0)
@@ -1076,6 +1082,7 @@ class COp(Op):
                 %(fail)s;
             }
         }
+        %(undef_macros)s
         """ % locals()
 
         return c_code
