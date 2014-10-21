@@ -754,6 +754,8 @@ Creating Tensor
     >>> f(x, x, x, x).shape
     (2, 2, 4, 4)
 
+.. autofunction:: theano.tensor.basic.choose
+
 Reductions
 ==========
 

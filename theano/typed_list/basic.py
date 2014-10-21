@@ -567,3 +567,38 @@ Returns the size of a list.
 
 :param x: typed list.
 """
+
+
+class MakeList(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def make_node(self, a):
+        assert isinstance(a, (tuple, list))
+        a2 = []
+        for elem in a:
+            if not isinstance(elem, theano.gof.Variable):
+                elem = as_tensor_variable(elem)
+            a2.append(elem)
+        if not all(a2[0].type == elem.type for elem in a2):
+            raise TypeError(
+                "MakeList need all input variable to be of the same type.")
+        tl = theano.typed_list.TypedListType(a2[0].type)()
+
+        return Apply(self, a2, [tl])
+
+    def perform(self, node, inputs, (out, )):
+        out[0] = list(inputs)
+
+make_list = MakeList()
+"""
+Build a Python list from those Theano variable.
+
+:param a: tuple/list of Theano variable
+
+:note: All Theano variable must have the same type.
+"""
