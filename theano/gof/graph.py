@@ -21,6 +21,7 @@ from theano.misc.ordered_set import OrderedSet
 is_same_graph_with_merge = None
 equal_computations = None
 
+NoContext = object()
 
 class Node(utils.object2):
     """A Node in a theano graph.
@@ -120,7 +121,7 @@ class Apply(Node):
         """
         if hasattr(self.op, 'get_context'):
             return self.op.get_context(self)
-        return None
+        return NoContext
 
     def default_output(self):
         """Returns the default output for this node.

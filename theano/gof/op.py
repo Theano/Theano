@@ -742,9 +742,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
         p = node.op.perform
 
-        ctx = node.get_context()
+        ctx = node.run_context()
 
-        if ctx is None:
+        if ctx is graph.NoContext:
             # default arguments are stored in the closure of `rval`
             def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
                 r = p(n, [x[0] for x in i], o)

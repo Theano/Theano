@@ -516,7 +516,7 @@ class CLinker(link.Linker):
         self.contexts = dict()
         for node in self.node_order:
             ctx = node.run_context()
-            if ctx is not None:
+            if ctx is not graph.NoContext:
                 # try to avoid creating more than one variable for the
                 # same context.
                 if ctx in self.contexts:
@@ -665,7 +665,7 @@ class CLinker(link.Linker):
             sub = dict(failure_var=failure_var)
 
             ctx = node.run_context()
-            if ctx is not None:
+            if ctx is not graph.NoContext:
                 context_var = symbol[self.contexts[ctx]]
 
             # The placeholder will be replaced by a hash of the entire
@@ -682,15 +682,15 @@ class CLinker(link.Linker):
             # Make the CodeBlock for c_code
             sub['id'] = id
             sub['fail'] = failure_code(sub)
-            if ctx is not None:
+            if ctx is not graph.NoContext:
                 sub['context'] = context_var
 
             sub_struct = dict()
             sub_struct['id'] = id + 1
             sub_struct['fail'] = failure_code_init(sub)
-            if ctx is not None:
+            if ctx is not graph.NoContext:
                 # Since context inputs are always constants they are
-                # guarenteed to be available in the struct init code.
+                # guaranteed to be available in the struct init code.
                 sub_struct['context'] = context_var
 
             struct_support = ""
