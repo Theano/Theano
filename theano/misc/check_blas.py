@@ -201,41 +201,43 @@ if __name__ == "__main__":
 
         Test time in float32
 
-        cuda version      6.0    5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
+        cuda version      6.5    6.0    5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
         gpu
-        K6000/NOECC              0.06s
-        K40                      0.07s
-        K20m/ECC                        0.07s
-        K20/NOECC                       0.07s
-        M2090                    0.19s
-        C2075                                  0.25s
-        M2075                           0.25s
-        M2070                           0.25s         0.27s         0.32s
-        M2070-Q                         0.48s         0.27s         0.32s
-        M2050(Amazon)                   0.25s
-        C1060                                                       0.46s
-        K600                     1.04s
+        K6000/NOECC                     0.06s
+        K40                             0.07s
+        K20m/ECC                               0.07s
+        K20/NOECC                              0.07s
+        M2090                           0.19s
+        C2075                                         0.25s
+        M2075                                  0.25s
+        M2070                                  0.25s         0.27s         0.32s
+        M2070-Q                                0.48s         0.27s         0.32s
+        M2050(Amazon)                          0.25s
+        C1060                                                              0.46s
+        K600                            1.04s
 
-        GTX Titan Black          0.05s
-        GTX Titan(D15U-50)       0.06s  0.06s  don't work
-        GTX 780                  0.06s
-        GTX 680                  0.11s  0.12s  0.154s               0.218s
-        GTX 580                  0.16s  0.16s  0.164s               0.203s
-        GTX 480                  0.19s  0.19s  0.192s               0.237s 0.27s
-        GTX 470                  0.23s  0.23s  0.238s               0.297s 0.34s
-        GTX 660                  0.18s  0.20s  0.23s
-        GTX 560                                0.30s
-        GTX 650 Ti                      0.27s
-        GTX 765M          0.27s
-        GTX 460                         0.37s                0.45s
-        GTX 285                  0.42s         0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
-        750M                            0.49s
-        GTX 550 Ti                                           0.57s
-        GT 520                                 2.68s                3.06s
-        520M                            2.44s                       3.19s        # with bumblebee on Ubuntu 12.04
-        GT 220                                                      3.80s
-        GT 210                                               6.35s
-        8500 GT                                                            10.68s
+        GTX Titan Black                 0.05s
+        GTX Titan(D15U-50)              0.06s  0.06s  don't work
+        GTX 780                         0.06s
+        GTX 970           0.08s
+        GTX 680                         0.11s  0.12s  0.154s               0.218s
+        GTX 580                         0.16s  0.16s  0.164s               0.203s
+        GTX 480                         0.19s  0.19s  0.192s               0.237s 0.27s
+        GTX 750 Ti        0.20s
+        GTX 470                         0.23s  0.23s  0.238s               0.297s 0.34s
+        GTX 660                         0.18s  0.20s  0.23s
+        GTX 560                                       0.30s
+        GTX 650 Ti                             0.27s
+        GTX 765M                 0.27s
+        GTX 460                                0.37s                0.45s
+        GTX 285                         0.42s         0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
+        750M                                   0.49s
+        GTX 550 Ti                                                  0.57s
+        GT 520                                        2.68s                3.06s
+        520M                                   2.44s                       3.19s        # with bumblebee on Ubuntu 12.04
+        GT 220                                                             3.80s
+        GT 210                                                      6.35s
+        8500 GT                                                                   10.68s
         """
 
     t, impl = execute(not options.print_only, not options.quiet,

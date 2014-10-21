@@ -586,6 +586,31 @@ def test_dnn_valid():
         yield t
 
 
+def test_default_conv():
+    """Just test that we introduce the right GPU convolution
+    version.
+
+    """
+    img = theano.tensor.ftensor4()
+    fil = theano.tensor.ftensor4()
+
+    c = theano.tensor.nnet.conv2d(img, fil)
+    f = theano.function([img, fil], c, mode=theano_mode)
+
+    if cuda.dnn.dnn_available():
+        assert any([isinstance(a.op, GpuDnnConv)
+                    for a in f.maker.fgraph.apply_nodes])
+    else:
+        assert any([isinstance(a.op, cuda.blas.GpuCorrMM)
+                    for a in f.maker.fgraph.apply_nodes])
+
+    mode = theano_mode.excluding('local_gpu_conv', 'local_conv_gemm')
+    f = theano.function([img, fil], c, mode=mode)
+
+    assert any([isinstance(a.op, cuda.blas.GpuConv)
+                for a in f.maker.fgraph.apply_nodes])
+
+
 def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
     seed_rng()
     shapes = get_basic_shapes()

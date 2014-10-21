@@ -616,6 +616,7 @@ class PerformLinker(LocalLinker):
 
         f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
+        f.storage_map = storage_map
 
         return f, [Container(input, storage) for input, storage in zip(fgraph.inputs, input_storage)], \
             [Container(output, storage, True) for output, storage in zip(fgraph.outputs, output_storage)], \

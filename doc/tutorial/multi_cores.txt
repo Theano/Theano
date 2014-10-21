@@ -1,3 +1,5 @@
+.. _tut_multi_cores:
+
 =============================
 Multi cores support in Theano
 =============================

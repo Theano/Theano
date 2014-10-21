@@ -1109,9 +1109,33 @@ def local_gpu_softmax_with_bias(node):
 from theano.tensor.nnet import conv
 
 
-@register_opt()
+# Needs to be registered before local_gpu_conv_legacy. Otherwise, it
+# will have priority over this optimization.  We want, if cudnn is
+# available and the GPU supports it, to use it.  Otherwise, the gemm
+# version should be used.  If the users want the legacy convolution,
+# they should use the Theano flag to disable the dnn and/or gemm version.
+@register_opt("dnn")
 @local_optimizer([gpu_from_host, conv.ConvOp])
 def local_gpu_conv(node):
+    """
+    If cudnn is available, use it. Otherwise, use the gemm version.
+    """
+    if theano.sandbox.cuda.dnn.dnn_available():
+        repl = local_gpu_conv_legacy.transform(node)
+        if repl:
+            n = repl[0].owner.inputs[0].owner
+            assert isinstance(n.op, GpuConv)
+            ret = theano.sandbox.cuda.dnn.local_conv_dnn.transform(n)
+            if ret:
+                return [host_from_gpu(ret[0])]
+    # If dnn isn't avail, the local_gpu_conv_legacy wil introduce the
+    # legacy opt. Then the local_conv_gemm will convert it to gemm
+    # opt.
+
+
+@register_opt()
+@local_optimizer([gpu_from_host, conv.ConvOp])
+def local_gpu_conv_legacy(node):
     """
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
 
@@ -1438,6 +1462,7 @@ def local_gpu_downsample_factor_max_grad(node):
                                               gpu_from_host(gz)))]
 
 
+@register_opt()
 @local_optimizer([GpuConv])
 def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
@@ -1493,7 +1518,6 @@ def local_conv_gemm(node):
             return [GpuCorrMM_gradInputs('valid', subsample, pad)(
                     gpu_contiguous(kern), gpu_contiguous(img))]
 
-gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 
