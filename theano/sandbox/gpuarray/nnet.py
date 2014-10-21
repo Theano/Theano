@@ -25,9 +25,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     nin = 3
     nout = 3
 
-    __props__ = ()
+    __props__ = ('context',)
 
     context_type = gpu_context_type
+
+    def __init__(self, context=None):
+        self.context = context
 
     def make_node(self, x, b, y_idx):
         #N.B. won't work when we don't cast y_idx to float anymore
@@ -36,13 +39,13 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         y_idx = as_gpuarray_variable(y_idx)
         nll = GpuArrayType(x.type.dtype,
                            y_idx.type.broadcastable,
-                           context=x.type.context)()
+                           context=self.context)()
         sm = x.type()
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -262,7 +265,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return (6,)
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
@@ -275,8 +278,11 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     nin = 3
     nout = 1
 
-    __props__ = ()
+    __props__ = ('context',)
     context_type = gpu_context_type
+
+    def __init__(self, context=None):
+        self.context = context
 
     def make_node(self, dnll, sm, y_idx):
         dnll = as_gpuarray_variable(dnll)
@@ -285,7 +291,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     def c_code_cache_version(self):
         return (7,)
@@ -294,7 +300,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_code(self, node, nodename, inp, out, sub):
         typecode_dx = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
@@ -441,15 +447,18 @@ class GpuSoftmax (Op):
     """
     Implement Softmax on the gpu.
     """
-    __props__ = ()
+    __props__ = ('context',)
     context_type = gpu_context_type
+
+    def __init__(self, context=None):
+        self.context = context
 
     def make_node(self, x):
         x = as_gpuarray_variable(x)
         return Apply(self, [x], [x.type()])
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     def infer_shape(self, node, shape):
         return shape
@@ -462,7 +471,7 @@ class GpuSoftmax (Op):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
         
     def c_init_code(self):
         return ['setup_ext_cuda();']
@@ -632,8 +641,11 @@ class GpuSoftmaxWithBias (Op):
     nin = 2
     nout = 1
 
-    __props__ = ()
+    __props__ = ('context',)
     context_type = gpu_context_type
+
+    def __init__(self, context=None):
+        self.context = context
 
     def make_node(self, x, b):
         x = as_gpuarray_variable(x)
@@ -641,7 +653,7 @@ class GpuSoftmaxWithBias (Op):
         return Apply(self, [x, b], [x.type()])
 
     def get_context(self, node):
-        return node.inputs[0].type.context
+        return self.context
 
     def infer_shape(self, node, shape):
         return  [shape[0]]
@@ -654,7 +666,7 @@ class GpuSoftmaxWithBias (Op):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
         
     def c_init_code(self):
         return ['setup_ext_cuda();']
