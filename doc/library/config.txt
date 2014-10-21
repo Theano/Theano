@@ -468,9 +468,13 @@ import theano and print the config variable, as in:
 
     Default: True
 
-    Add asserts to graph ensuring that input and output shapes are correct
-    when local_alloc_elemwise removes allocs. Disabling this can improve
-    performance but can also hide shape errors.
+    When the local_alloc_optimization is applied, add an assert to highlight
+    shape errors.
+
+    Without such asserts this optimization could hide errors in the user code.
+    We add the assert only if we can't infer that the shapes are equivalent.
+    As such this optimization does not always introduce an assert in the graph.
+    Removing the assert could speed up execution.
 
 .. attribute:: config.cuda.root
 
