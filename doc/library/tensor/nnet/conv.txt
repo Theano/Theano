@@ -24,13 +24,13 @@
 
 .. note::
 
-    As October 20, 2014, the default GPU image convolution
+    As of October 21st, 2014, the default GPU image convolution
     changed. Here is the algo:
 
     - If we can use `cuDNN <https://developer.nvidia.com/cuDNN>`_, use it.
     - If not, use gemm version (slower then cuDNN, uses more memory).
 
-    If the users don't want the extra memory usage of the gemm
+    If the users do not want the extra memory usage of the gemm
     version, they can enable the legacy code that is even slower, but
     does not use extra memory. For this, use the Theano flag
     ``optimizer_excluding=conv_gemm``.
