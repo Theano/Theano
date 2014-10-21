@@ -22,8 +22,6 @@ import theano
 from theano import config
 from theano.gof.python25 import any, all, deque
 
-#if sys.version_info[:2] >= (2,5):
-#  from collections import defaultdict
 
 _logger = logging.getLogger('theano.gof.opt')
 
