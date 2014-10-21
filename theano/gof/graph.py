@@ -135,9 +135,14 @@ class Apply(Node):
             if len(self.outputs) == 1:
                 return self.outputs[0]
             else:
-                raise AttributeError("%s.default_output should be an output index." % self.op)
+                raise AttributeError(
+                    "%s.default_output should be an output index." % self.op)
+        elif not isinstance(do, (int, long)):
+            raise AttributeError("%s.default_output should be an int or long" %
+                                 self.op)
         elif do < 0 or do >= len(self.outputs):
-            raise AttributeError("%s.default_output is out of range." % self.op)
+            raise AttributeError("%s.default_output is out of range." %
+                                 self.op)
         return self.outputs[do]
 
     def env_getter(self):
