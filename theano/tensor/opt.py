@@ -1408,6 +1408,7 @@ def local_useless_elemwise(node):
             return [node.inputs[0]]
         if node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
             return [node.inputs[0]]
+
         if (node.op.scalar_op == theano.scalar.identity
             and len(node.inputs) == 1):
             return [node.inputs[0]]
@@ -1592,9 +1593,9 @@ def local_alloc_elemwise(node):
     if assert_op_idx < 0:
         # We want to optimize as many allocs as possible. When there is more
         # than one then do all but one.
-        if len(node.inputs) > 1:
+        if len([i for i in node.inputs
+            if i.type.broadcastable == node.outputs[0].type.broadcastable]) > 1:
             assert_op_idx = 0  # The first one is as good as any to use.
-
         else:
             # Otherwise nothing can be done.
             return False
