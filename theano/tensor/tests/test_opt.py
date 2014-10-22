@@ -2372,8 +2372,8 @@ class test_local_subtensor_merge(unittest.TestCase):
 class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
         mode = theano.compile.mode.get_default_mode()
-        self.mode = mode.including("local_incsubtensor_of_allocs",
-                                   "local_setsubtensor_of_allocs",
+        self.mode = mode.including("local_incsubtensor_of_zeros",
+                                   "local_setsubtensor_of_constants",
                                    "local_0_dot_x")
 
     def test_setsubtensor_allocs0(self):

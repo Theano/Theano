@@ -2334,10 +2334,11 @@ compile.optdb.register('local_inplace_incsubtensor1',
                        60, 'fast_run', 'inplace')  # DEBUG
 
 
-@register_canonicalize
-@register_stabilize
+# Register old name
+@register_canonicalize("local_incsubtensor_of_allocs")
+@register_stabilize("local_incsubtensor_of_allocs")
 @gof.local_optimizer([IncSubtensor])
-def local_incsubtensor_of_allocs(node):
+def local_incsubtensor_of_zeros(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
@@ -2357,10 +2358,10 @@ def local_incsubtensor_of_allocs(node):
             return False
 
 
-@register_canonicalize
-@register_stabilize
+@register_canonicalize('local_setsubtensor_of_allocs')
+@register_stabilize('local_setsubtensor_of_allocs')
 @gof.local_optimizer([IncSubtensor])
-def local_setsubtensor_of_allocs(node):
+def local_setsubtensor_of_constants(node):
     """
     SetSubtensor(x, x[idx], idx) -> x
 
