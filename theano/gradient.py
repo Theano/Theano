@@ -356,9 +356,21 @@ def grad(cost, wrt, consider_constant=None,
          disconnected_inputs='raise', add_names=True,
          known_grads=None, return_disconnected='zero'):
     """
-    :type cost: Scalar (0-dimensional) Variable.
+    Return symbolic gradients for one or more variables with respect to some
+    cost.
+
+    For more information about how automatic differentiation works in Theano,
+    see :mod:`gradient`. For information on how to implement the gradient of
+    a certain Op, see :func:`grad`.
+
+    :type cost: Scalar (0-dimensional) tensor variable.
         May optionally be None if known_grads is provided.
-    :type wrt: Variable or list of Variables.
+    :param cost: a scalar with respect to which we are differentiating
+
+    :type wrt: Tensor variable or list of variables.
+    :param wrt: term[s] for which we want gradients
+
+    :type consider_constant: list of variables
     :param consider_constant: a list of expressions not to backpropagate
         through
 
@@ -389,9 +401,10 @@ def grad(cost, wrt, consider_constant=None,
                    None
         - 'Disconnected' : returns variables of type DisconnectedType
 
-    :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
+    :rtype: variable or list/tuple of Variables (matching `wrt`)
 
-    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
+    :return: symbolic expression of gradient of `cost` with respect to each
+             of the `wrt` terms.
              If an element of `wrt` is not differentiable with respect
              to the output, then a zero variable is returned.
              It returns an object of same type as `wrt`: a list/tuple

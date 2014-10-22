@@ -1632,31 +1632,11 @@ Linear Algebra
 Gradient / Differentiation
 ==========================
 
-.. function:: grad(cost, wrt, g_cost=None, consider_constant=None, warn_type=False)
+.. automodule:: theano.gradient
+    :members: grad
 
-    Return symbolic gradients for one or more variables with respect to some
-    cost.
-
-    For more information about how automatic differentiation works in Theano,
-    see :mod:`gradient`. For information on how to implement the gradient of
-    a certain Op, see :func:`grad`.
-
-    :type cost: 0-d tensor variable
-    :type wrt: tensor variable or list of tensor variables
-    :type g_cost: same as type of `cost`
-    :type consider_constant: list of variables
-    :type warn_type: bool
-
-    :param cost: a scalar with respect to which we are differentiating
-    :param wrt: term[s] for which we want gradients
-    :param g_cost: the gradient on the cost
-    :param consider_constant: variables whose gradients will be held at 0.
-    :param warn_type: True will trigger warnings via the logging module when
-       the gradient on an expression has a different type than the original
-       expression
-
-    :rtype: variable or list of variables (matching `wrt`)
-    :returns: gradients of the cost with respect to each of the `wrt` terms
+See the :ref:`gradient <libdoc_gradient>` page for complete documentation
+of the gradient module.
 
 .. _R_op_list:
 
