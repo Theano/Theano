@@ -86,13 +86,16 @@ def test_gc_never_pickles_temporaries():
         len_post_f = len(post_f)
         len_post_g = len(post_g)
 
-        #assert that f() didn't cause the function to grow
+        # assert that f() didn't cause the function to grow
         # allow_gc should leave the function un-changed by calling
         assert len_pre_f == len_post_f
 
-        #assert that g() didn't cause g to grow because temporaries
+        # assert that g() didn't cause g to grow because temporaries
         # that weren't collected shouldn't be pickled anyway
-        assert len_post_f == len_post_g, (f_linker, len_post_f, len_post_g)
+        # Allow for a couple of bytes of difference, since timing info,
+        # for instance, can be represented as text of varying size.
+        assert abs(len_post_f - len_post_g) < 4, (
+            f_linker, len_post_f, len_post_g)
 
 
 def test_merge_opt_runtime():
