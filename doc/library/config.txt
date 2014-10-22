@@ -462,6 +462,20 @@ import theano and print the config variable, as in:
 
     Link arguments to link against a (Fortran) level-3 blas implementation.
 
+.. attribute:: config.experimental.local_alloc_elemwise_assert
+
+    Bool value: either True or False
+
+    Default: True
+
+    When the local_alloc_optimization is applied, add an assert to highlight
+    shape errors.
+
+    Without such asserts this optimization could hide errors in the user code.
+    We add the assert only if we can't infer that the shapes are equivalent.
+    As such this optimization does not always introduce an assert in the graph.
+    Removing the assert could speed up execution.
+
 .. attribute:: config.cuda.root
 
     Default: $CUDA_ROOT or failing that, "/usr/local/cuda"
