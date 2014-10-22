@@ -11,7 +11,7 @@ from epydoc.apidoc import RoutineDoc
 def Op_to_RoutineDoc(op, routine_doc, module_name=None):
     routine_doc.specialize_to(RoutineDoc)
 
-    #NB: this code is lifted from epydoc/docintrospecter.py
+    # NB: this code is lifted from epydoc/docintrospecter.py
 
     # op should be an op instance
     assert hasattr(op, 'perform')
@@ -39,7 +39,7 @@ def Op_to_RoutineDoc(op, routine_doc, module_name=None):
         # [XX] I should probably use UNKNOWN here??
         # dvarrazzo: if '...' is to be changed, also check that
         # `docstringparser.process_arg_field()` works correctly.
-        # See SF bug #1556024.
+        # See SF bug # 1556024.
         routine_doc.posargs = ['...']
         routine_doc.posarg_defaults = [None]
         routine_doc.kwarg = None
@@ -101,10 +101,10 @@ if __name__ == '__main__':
         mkdir("api")
         sys.path[0:0] = [throot]
 
-        #Generate HTML doc
+        # Generate HTML doc
 
         ## This causes problems with the subsequent generation of sphinx doc
-        #from epydoc.cli import cli
+        # from epydoc.cli import cli
         #sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot,
         #               '-o', 'api']
         #cli()

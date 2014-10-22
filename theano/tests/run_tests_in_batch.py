@@ -92,7 +92,7 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     if argv is None:
         argv = sys.argv
     if theano_nose is None:
-    #If Theano is installed with pip/easy_install, it can be in the
+    # If Theano is installed with pip/easy_install, it can be in the
     #*/lib/python2.7/site-packages/theano, but theano-nose in */bin
         for i in range(1, 5):
             path = theano.__path__[0]
