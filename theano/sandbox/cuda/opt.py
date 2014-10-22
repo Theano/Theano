@@ -1123,11 +1123,19 @@ def local_gpu_conv(node):
     if theano.sandbox.cuda.dnn.dnn_available():
         repl = local_gpu_conv_legacy.transform(node)
         if repl:
-            n = repl[0].owner.inputs[0].owner
-            assert isinstance(n.op, GpuConv)
+            if isinstance(repl[0].owner.op, GpuConv):
+                n = repl[0].owner
+                add_transfer = False
+            else:
+                n = repl[0].owner.inputs[0].owner
+                assert isinstance(n.op, GpuConv)
+                add_transfer = True
             ret = theano.sandbox.cuda.dnn.local_conv_dnn.transform(n)
             if ret:
-                return [host_from_gpu(ret[0])]
+                if add_transfer:
+                    return [host_from_gpu(ret[0])]
+                else:
+                    return ret
     # If dnn isn't avail, the local_gpu_conv_legacy wil introduce the
     # legacy opt. Then the local_conv_gemm will convert it to gemm
     # opt.

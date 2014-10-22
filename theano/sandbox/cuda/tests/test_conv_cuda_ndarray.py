@@ -747,6 +747,10 @@ def test_dnn_subsample():
 
 
 class TestConv2DGPU(unittest.TestCase):
+    conv_ops = (cuda.blas.GpuConv,
+                cuda.dnn.GpuDnnConvBase,
+                cuda.blas.BaseGpuCorrMM)
+
     def test_logical_shapes(self):
         seed_rng()
         for stride in range(1, 4):
@@ -773,7 +777,7 @@ class TestConv2DGPU(unittest.TestCase):
 
             func = theano.function([a, A], image_estimate, mode=theano_mode)
             #theano.printing.debugprint(func,)
-            assert any([isinstance(node.op, theano.sandbox.cuda.blas.GpuConv)
+            assert any([isinstance(node.op, self.conv_ops)
                         for node in func.maker.fgraph.toposort()])
 
             a_in = numpy.random.randn(*featshp).astype("float32")

@@ -396,7 +396,11 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     if use_gpu:
         # Check that GpuConv is used
         topo = train.maker.fgraph.toposort()
-        assert len([n for n in topo if isinstance(n.op, tcn.blas.GpuConv)]) > 0
+        conv_ops = (tcn.blas.GpuConv,
+                    tcn.dnn.GpuDnnConvBase,
+                    tcn.blas.BaseGpuCorrMM)
+
+        assert len([n for n in topo if isinstance(n.op, conv_ops)]) > 0
 
     shape_target = (n_batch, n_out)
     return train, params, shape_img, shape_target, mode
