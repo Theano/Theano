@@ -2620,6 +2620,47 @@ class Test_local_alloc_elemwise(unittest.TestCase):
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 0)
 
+    def test_multi_input_single_alloc(self):
+        tv = T.alloc(self.vec, 5, 5)
+        tm = T.alloc(self.mat, 5, 5, 5)
+        func = function(
+            [self.vec, self.mat],
+            tv + tm,
+            mode='FAST_COMPILE'
+        )
+
+        self._verify_alloc_count(func, 2)
+        self._verify_assert_count(func, 0)
+
+        func = function(
+            [self.vec, self.mat],
+            tv + tm,
+            mode='FAST_RUN'
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 0)
+
+        s = T.iscalar('s')
+        tv = T.alloc(self.vec, s, s)
+        tm = T.alloc(self.mat, 5, 5, 5)
+        func = function(
+            [self.vec, self.mat, s],
+            tv + tm,
+            mode='FAST_COMPILE'
+        )
+
+        self._verify_alloc_count(func, 2)
+        self._verify_assert_count(func, 0)
+
+        func = function(
+            [self.vec, self.mat, s],
+            tv + tm,
+            mode='FAST_RUN'
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 1)
+
+
 
 def test_local_subtensor_of_alloc():
 

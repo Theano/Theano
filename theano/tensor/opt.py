@@ -1554,14 +1554,14 @@ def local_alloc_elemwise(node):
     if len(node.outputs) > 1:
         # Ensure all outputs have the same broadcast pattern
         # This is a supposition that I'm not sure is always true.
-        assert all([list(o.type.broadcastable) == list(
-                    node.outputs[0].type.broadcastable) for o in
+        assert all([o.type.broadcastable == 
+                    node.outputs[0].type.broadcastable for o in
                     node.outputs[1:]])
 
     # The broadcast pattern of the ouptut must match the broadcast pattern of
     # at least one of the inputs.
-    if not any([list(i.type.broadcastable) == list(
-        node.outputs[0].type.broadcastable) for i in node.inputs]):
+    if not any([i.type.broadcastable == 
+        node.outputs[0].type.broadcastable for i in node.inputs]):
         return False
 
     def dimshuffled_alloc(i):
@@ -1593,12 +1593,20 @@ def local_alloc_elemwise(node):
     if assert_op_idx < 0:
         # We want to optimize as many allocs as possible. When there is more
         # than one then do all but one.
-        l = [idx for idx, i in enumerate(node.inputs)
-            if i.type.broadcastable == node.outputs[0].type.broadcastable]
-        if len(l) > 1:
+        # number of inputs with alloc or dimshuffle alloc
+        l2 = [i for i in node.inputs
+              if (i.owner and (isinstance(i.owner.op, T.Alloc)
+                         or dimshuffled_alloc(i)))]
+        # If only 1 alloc or dimshuffle alloc, it is the one we will use for the shape
+        # So no alloc would be removed.
+        if len(l2) > 1:
+            # l containt inputs with alloc or dimshuffle alloc only.
+            # Its length will always be at least one, as we checked that before
+            l = [idx for idx, i in enumerate(node.inputs)
+                 if i.type.broadcastable == node.outputs[0].type.broadcastable]
             assert_op_idx = l[0]  # The first one is as good as any to use.
         else:
-            # Otherwise nothing can be done.
+            # Nothing would be optimized!
             return False
 
     assert_op = node.inputs[assert_op_idx]
