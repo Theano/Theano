@@ -740,16 +740,18 @@ C file named vectorTimesVector.c :
 
 .. code-block:: c
 
-    // Support code
-    #ifndef VECTOR_TIMES_VECTOR_SUPPORT_CODE
-    #define VECTOR_TIMES_VECTOR_SUPPORT_CODE
+    THEANO_SUPPORT_CODE_SECTION
+
+    // Support code function
     bool vector_same_shape(PyArrayObject* arr1, PyArrayObject* arr2)
     {
         return (PyArray_DIMS(arr1)[0] == PyArray_DIMS(arr2)[0]);
     }
-    #endif
 
-    // Apply-specific support code
+
+    THEANO_APPLY_CODE_SECTION
+
+    // Apply-specific support function
     void APPLY_SPECIFIC(vector_elemwise_mult)(
         DTYPE_INPUT_0* x_ptr, int x_str,
         DTYPE_INPUT_1* y_ptr, int y_str,
@@ -760,7 +762,7 @@ C file named vectorTimesVector.c :
         }
     }
 
-    // Main function
+    // Apply-specific main function
     int APPLY_SPECIFIC(vector_times_vector)(PyArrayObject* input0,
                                             PyArrayObject* input1,
                                             PyArrayObject** output0)
@@ -918,26 +920,31 @@ wasn't apply-specific was simply defined in the ``c_support_code()`` method.
 When using the ``COp`` class, we still have to make the distinction between
 apply-specific and apply-agnostic support code but we express it differently
 in the code since it is all defined in the same external C file.
-Apply-agnostic code should now be defined inside a ``ifndef``-``define``
-structure (like the function ``vector_same_shape()`` in the example above) to
-ensure that it is only defined once. On the other hand, apply-specific
-functions and global variables only need to include the name of the
-:ref:`Apply` node in their names. To achieve this, the macro
-``APPLY_SPECIFIC(str)`` should be used when defining those elements as well as
-when referring to them. In the above example, this macro is used when defining
-the functions ``vector_elemwise_mult()`` and ``vector_times_vector()`` as well
-as when calling function ``vector_elemwise_mult()`` from inside
-``vector_times_vector()``.
+These two types of support code should each be defined in their own section of
+the file, like in the example above. These sections should be delimited by the
+markers ``THEANO_SUPPORT_CODE_SECTION`` (to be put on its own line, at the
+beginning of the apply-agnostic support code section) and
+``THEANO_APPLY_CODE_SECTION`` (to be put on its own line at the beginning of
+the apply-specific code section). Moreover, just like in the previous examples
+of this tutorial, apply-specific functions and global variables need to
+include the name of the :ref:`Apply` node in their names. To achieve this,
+the macro ``APPLY_SPECIFIC(str)`` should be used when defining those elements
+as well as when referring to them. In the above example, this macro is used
+when defining the functions ``vector_elemwise_mult()`` and
+``vector_times_vector()`` as well as when calling function
+``vector_elemwise_mult()`` from inside ``vector_times_vector()``.
 
 :note:
 
     The macro ``APPLY_SPECIFIC(str)`` should only ever be used for
     apply-specific code. It should not be used for apply-agnostic code.
 
-The rules for knowing if a piece of code should be treated as apply-specific
-or not are simple; if it uses any of the macros defined by the class ``COp``
-then it is apply-specific, if it calls any apply-specific code then it is
-apply-specific. Otherwise, it is apply-agnostic.
+The rules for knowing if a piece of code should be put in the apply-agnostic
+or the apply-specific support code section of the file are simple. If it uses
+any of the macros defined by the class ``COp`` then it is apply-specific and
+goes in the corresponding section. If it calls any apply-specific code then
+it is apply-specific. Otherwise, it is apply-agnostic and goes in the
+apply-agnostic support code section.
 
 In the above example, the ``function vector_same_shape()`` is apply-agnostic
 because it uses none of the macros defined by the class ``COp`` and it doesn't

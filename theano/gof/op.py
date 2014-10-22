@@ -992,21 +992,85 @@ class COp(Op):
         self.func_file = func_file
         self.func_name = func_name
 
-        # Load the func
+        # Define the markers that can be used to delimit sections in the
+        # external C code
+        self.support_code_marker = "THEANO_SUPPORT_CODE_SECTION"
+        self.apply_code_marker = "THEANO_APPLY_CODE_SECTION"
+        self.c_code_markers = [self.support_code_marker,
+                               self.apply_code_marker]
+
+        # Load the external C code
         f = open(self.func_file, "r")
         self.func_code = f.read()
         f.close()
 
+        # Separate the contents of the file in sections and validate that at
+        # lest one of the necessary code sections has been defined
+        self.code_sections = self.parse_external_c_code(self.func_code)
+
+        if sum([marker in self.code_sections.keys()
+               for marker in self.c_code_markers]) == 0:
+
+            raise(RuntimeError, "The provided C implementation does not "
+                  "define a support code section or a support code apply "
+                  "section.")
+
+    def parse_external_c_code(self, code):
+
+        # Obtain the positions of the C code markers used in the C code
+        positions = [(code.index(marker), marker)
+                     for marker in self.c_code_markers if marker in code]
+
+        # Go over the markers in their order of occurence and extract
+        # the C code they concern
+        positions.sort()
+        code_sections = {}
+
+        for i in range(len(positions)):
+
+            marker_start, marker = positions[i]
+
+            if i < len(positions) - 1:
+                # This is not the last section in the code : extract the code
+                # between the beginning of the current marker and the
+                # beginning of the next one.
+                next_marker_start = positions[i+1][0]
+                section = code[marker_start: next_marker_start]
+            else:
+                # This is the last section in the code : extract the remaining
+                # C code
+                section = code[marker_start:]
+
+            cleaned_section = section.replace(marker, "")
+            code_sections[marker] = cleaned_section
+
+        return code_sections
+
     def c_code_cache_version(self):
         return hash(self.func_code)
 
-    def c_support_code_apply(self, node, name):
-        if hasattr(self, 'check_inputs') and self.check_inputs == False:
-            return self.func_code
+    def c_support_code(self):
+
+        if self.support_code_marker in self.code_sections:
+            return self.code_sections[self.support_code_marker]
         else:
-            define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join([define_macros, self.func_code,
-                                    undef_macros])
+            return ""
+
+    def c_support_code_apply(self, node, name):
+
+        if self.apply_code_marker in self.code_sections:
+            apply_code = self.code_sections[self.apply_code_marker]
+
+            if hasattr(self, 'check_inputs') and self.check_inputs == False:
+                return apply_code
+            else:
+                define_macros, undef_macros = self.get_c_macros(node, name)
+                return os.linesep.join([define_macros, apply_code,
+                                        undef_macros])
+
+        else:
+            return ""
+
 
     def format_c_function_args(self, inp, out):
         # Generate an string containing the arguments sent to the external C
