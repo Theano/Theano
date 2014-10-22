@@ -27,7 +27,8 @@ from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      Subtensor, IncSubtensor, make_constant,
-                                     AdvancedIncSubtensor1)
+                                     AdvancedIncSubtensor1,
+                                     AdvancedIncSubtensor)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -2283,7 +2284,10 @@ def local_IncSubtensor_serialize(node):
     def movable(i):
         # Return True iff this is a incsubtensor that we can move
         return i.owner \
-                and isinstance(i.owner.op, IncSubtensor) \
+                and isinstance(i.owner.op, (IncSubtensor,
+                                            AdvancedIncSubtensor1,
+                                            AdvancedIncSubtensor,
+                                        )) \
                 and i.type == o_type \
                 and len(i.clients) == 1 \
                 and not i.owner.op.set_instead_of_inc
@@ -2355,10 +2359,11 @@ compile.optdb.register('local_inplace_incsubtensor1',
                        60, 'fast_run', 'inplace')  # DEBUG
 
 
-@register_canonicalize
-@register_stabilize
+# Register old name
+@register_canonicalize("local_incsubtensor_of_allocs")
+@register_stabilize("local_incsubtensor_of_allocs")
 @gof.local_optimizer([IncSubtensor])
-def local_incsubtensor_of_allocs(node):
+def local_incsubtensor_of_zeros(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
@@ -2378,10 +2383,10 @@ def local_incsubtensor_of_allocs(node):
             return False
 
 
-@register_canonicalize
-@register_stabilize
+@register_canonicalize('local_setsubtensor_of_allocs')
+@register_stabilize('local_setsubtensor_of_allocs')
 @gof.local_optimizer([IncSubtensor])
-def local_setsubtensor_of_allocs(node):
+def local_setsubtensor_of_constants(node):
     """
     SetSubtensor(x, x[idx], idx) -> x
 
