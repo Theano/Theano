@@ -174,6 +174,10 @@ class GpuDnnConvBase(DnnBase):
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
 
+        if not isinstance(desc.type, CDataType) \
+                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
+
         broadcastable = (img.type.broadcastable[0],
                          kern.type.broadcastable[0],
                          False, False)
@@ -437,15 +441,17 @@ class GpuDnnPoolDesc(GpuOp):
 
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
-        else:
+        elif self.mode == "average":
             mode_flag = 'CUDNN_POOLING_AVERAGE'
+        else:
+            raise NotImplementedError("Unsupported pooling model.")
 
         return """
 {
   cudnnStatus_t err;
 
   if ((err = cudnnCreatePoolingDescriptor(&%(desc)s)) != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_MemoryError, "could not allocate convolution "
+    PyErr_Format(PyExc_MemoryError, "could not allocate pooling "
                  "descriptor: %%s", cudnnGetErrorString(err));
     %(fail)s
   }
@@ -467,8 +473,8 @@ class GpuDnnPoolDesc(GpuOp):
            wsX=self.ws[0], wsY=self.ws[1], stridex=self.stride[0],
            stridey=self.stride[1])
 
-    #def c_code_cache_version(self):
-    #    return (1,)
+    def c_code_cache_version(self):
+        return (1,)
 
 
 class GpuDnnPool(DnnBase):
@@ -478,6 +484,10 @@ class GpuDnnPool(DnnBase):
         img = as_cuda_ndarray_variable(img)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
+        
+        if not isinstance(desc.type, CDataType) \
+                or desc.type.ctype != 'cudnnPoolingDescriptor_t':
+            raise TypeError('desc must be cudnnPoolingDescriptor_t')
 
         return Apply(self, [img, desc],
                      [img.type()])
@@ -593,11 +603,11 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            input_desc="input"+str(sub['struct_id']),
            output_desc="output"+str(sub['struct_id']))
 
-    #def c_code_cache_version(self):
-    #    return (1,)
+    def c_code_cache_version(self):
+        return (1,)
 
 
-def dnn_pool(img, ws=(2, 2), stride=(1, 1), mode='max'):
+def dnn_pool(img, ws, stride=(1, 1), mode='max'):
     """
     GPU pooling using cuDNN from NVIDIA.
 
@@ -605,13 +615,14 @@ def dnn_pool(img, ws=(2, 2), stride=(1, 1), mode='max'):
     'first dim', 'second dim' in that order.
 
     :param img: images to do the pooling over
-    :param ws: subsampling window size (default: (2, 2))
+    :param ws: subsampling window size
     :param stride: subsampling stride (default: (1, 1))
     :param mode: one of 'max', 'average' (default: 'max')
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
+    :note: This Op implements the ignore_border=True of max_pool_2d.
     """
     img = gpu_contiguous(img)
     desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode)()
