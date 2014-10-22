@@ -1650,8 +1650,7 @@ def test_local_useless_subtensor():
         #theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
-            assert isinstance(prog[0].op, theano.tensor.basic.
-                              SpecifyShape), dims
+            assert isinstance(prog[0].op, theano.tensor.SpecifyShape), dims
             assert prog[1].op == tensor.exp, dims
             assert len(prog) == 2, dims
         else:
