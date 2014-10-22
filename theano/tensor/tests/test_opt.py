@@ -2477,6 +2477,34 @@ class Test_alloc_zero(unittest.TestCase):
                                       _e1[2], _e2[1])
 
 
+def test_local_IncSubtensor_serialize():
+    d = numpy.random.normal(0, 0.01, size=(100, 100))
+    d = d.astype(theano.config.floatX)
+
+    W = theano.shared(d, name='W')
+    i = T.vector('i', dtype='int64')
+    j = T.vector('j', dtype='int64')
+    t = T.scalar('t')
+    if theano.tensor.subtensor.inplace_increment:
+        y = (W[i] + W[j] + W[1] + W[i, j]).sum()
+    else:
+        y = (W[i] + W[j] + W[1]).sum()
+    cost = T.sqr(t - y)
+    dW = theano.grad(cost, W)
+    mode = theano.compile.mode.get_default_mode().excluding('fusion')
+    f = theano.function([i, j, t], updates=[(W, W - 0.01 * dW)], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    adds = [n for n in topo if isinstance(n.op, T.Elemwise) and
+            isinstance(n.op.scalar_op, theano.scalar.Add)]
+    for a in adds:
+        assert not any([inp.owner and
+                        isinstance(inp.owner.op,
+                                   (tensor.IncSubtensor,
+                                    tensor.AdvancedIncSubtensor,
+                                    tensor.AdvancedIncSubtensor1))
+                        for inp in a.inputs])
+
+
 def test_local_subtensor_of_dot():
     m1 = theano.tensor.matrix()
     m2 = theano.tensor.matrix()

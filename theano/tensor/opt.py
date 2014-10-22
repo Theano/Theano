@@ -27,7 +27,8 @@ from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      Subtensor, IncSubtensor, make_constant,
-                                     AdvancedIncSubtensor1)
+                                     AdvancedIncSubtensor1,
+                                     AdvancedIncSubtensor)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -2258,7 +2259,10 @@ def local_IncSubtensor_serialize(node):
     def movable(i):
         # Return True iff this is a incsubtensor that we can move
         return i.owner \
-                and isinstance(i.owner.op, IncSubtensor) \
+                and isinstance(i.owner.op, (IncSubtensor,
+                                            AdvancedIncSubtensor1,
+                                            AdvancedIncSubtensor,
+                                        )) \
                 and i.type == o_type \
                 and len(i.clients) == 1 \
                 and not i.owner.op.set_instead_of_inc
