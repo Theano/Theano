@@ -1054,7 +1054,8 @@ class COp(Op):
         if self.support_code_marker in self.code_sections:
             return self.code_sections[self.support_code_marker]
         else:
-            return ""
+            raise utils.MethodNotDefined("c_support_code",
+                type(self), self.__class__.__name__)
 
     def c_support_code_apply(self, node, name):
 
@@ -1069,7 +1070,8 @@ class COp(Op):
                                         undef_macros])
 
         else:
-            return ""
+            raise utils.MethodNotDefined("c_support_code_apply",
+                type(self), self.__class__.__name__)
 
 
     def format_c_function_args(self, inp, out):
