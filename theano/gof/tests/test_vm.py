@@ -186,8 +186,13 @@ def test_speed_lazy():
 
 
 def test_allow_gc_cvm():
+    mode = theano.config.mode
+    if mode in ['DEBUG_MODE', 'DebugMode']:
+        mode = "FAST_RUN"
+
     v = theano.tensor.vector()
-    f = theano.function([v], v + 1)
+    f = theano.function([v], v + 1, mode=mode)
+
     f([1])
     n = list(f.maker.fgraph.apply_nodes)[0].outputs[0]
     assert f.fn.storage_map[n][0] is None
