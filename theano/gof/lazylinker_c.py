@@ -14,13 +14,15 @@ from theano.gof import cmodule
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
 force_compile = False
-version = 0.20  # must match constant returned in function get_version()
+version = 0.21  # must match constant returned in function get_version()
+
 
 def try_import():
     global lazylinker_ext
     sys.path[0:0] = [config.compiledir]
     import lazylinker_ext
     del sys.path[0]
+
 
 def try_reload():
     sys.path[0:0] = [config.compiledir]

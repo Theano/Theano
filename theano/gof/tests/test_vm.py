@@ -20,6 +20,7 @@ from theano import tensor
 from theano.ifelse import ifelse
 import theano
 
+
 class TestCallbacks(unittest.TestCase):
     """
     Test the VM_Linker's callback argument, which can be useful for debugging.
@@ -34,7 +35,7 @@ class TestCallbacks(unittest.TestCase):
 
     def test_callback(self):
         a, b, c = tensor.scalars('abc')
-        f = function([a,b,c], (a + b) + c,
+        f = function([a, b, c], (a + b) + c,
                 mode=Mode(
                     optimizer=None,
                     linker=vm.VM_Linker(callback=self.callback)))
@@ -44,13 +45,12 @@ class TestCallbacks(unittest.TestCase):
         f(1, 2, 3)
         assert sum(self.n_callbacks.values()) == len(f.maker.fgraph.toposort()) * 2
 
-
     def test_callback_with_ifelse(self):
         a, b, c = tensor.scalars('abc')
-        f = function([a,b,c], ifelse(a, 2*b, 2*c),
-                mode=Mode(
-                    optimizer=None,
-                    linker=vm.VM_Linker(callback=self.callback)))
+        f = function([a, b, c], ifelse(a, 2*b, 2*c),
+                     mode=Mode(
+                         optimizer=None,
+                         linker=vm.VM_Linker(callback=self.callback)))
 
         f(1, 2, 3)
         assert self.n_callbacks['IfElse'] == 2
@@ -71,6 +71,7 @@ def test_speed():
         for d in xrange(depth):
             z = (z+z)
         return z
+
     def time_numpy():
         steps_a = 5
         steps_b = 100
@@ -78,10 +79,10 @@ def test_speed():
 
         numpy_version(x, steps_a)
         t0 = time.time()
-        #print numpy_version(x, steps_a)
+        # print numpy_version(x, steps_a)
         t1 = time.time()
         t2 = time.time()
-        #print numpy_version(x, steps_b)
+        # print numpy_version(x, steps_b)
         t3 = time.time()
         t_a = t1 - t0
         t_b = t3 - t2
@@ -94,18 +95,17 @@ def test_speed():
         steps_a = 5
         steps_b = 100
         x = tensor.vector()
-        a = build_graph(x,steps_a)
-        b = build_graph(x,steps_b)
-
+        a = build_graph(x, steps_a)
+        b = build_graph(x, steps_b)
 
         f_a = function([x], a,
-                mode=Mode(optimizer=None, linker=linker()),
-                #profile='f_a speed test %s'%name,
-                )
+                       mode=Mode(optimizer=None, linker=linker()),
+                       #profile='f_a speed test %s'%name,
+        )
         f_b = function([x], b,
-                mode=Mode(optimizer=None, linker=linker()),
-                #profile='f_b speed test %s'%name,
-                )
+                       mode=Mode(optimizer=None, linker=linker()),
+                       #profile='f_b speed test %s'%name,
+        )
 
         f_a([2.0, 3.0])
         t0 = time.time()
@@ -122,16 +122,17 @@ def test_speed():
         t_b = t3 - t2
 
         print "%s takes %f s/Kop" % (
-                name,
-                (1000*(t_b-t_a) / (steps_b - steps_a)))
+            name,
+            (1000*(t_b-t_a) / (steps_b - steps_a)))
 
     time_linker('c|py', OpWiseCLinker)
     time_linker('vmLinker', vm.VM_Linker)
-    time_linker('vmLinker_nogc', lambda : vm.VM_Linker(allow_gc=False))
+    time_linker('vmLinker_nogc', lambda: vm.VM_Linker(allow_gc=False))
     if theano.config.cxx:
-        time_linker('vmLinker_CLOOP', lambda : vm.VM_Linker(allow_gc=False,
-                                                            use_cloop=True))
+        time_linker('vmLinker_CLOOP', lambda: vm.VM_Linker(allow_gc=False,
+                                                           use_cloop=True))
     time_numpy()
+
 
 def test_speed_lazy():
 
@@ -148,17 +149,16 @@ def test_speed_lazy():
         a = build_graph(x, steps_a)
         b = build_graph(x, steps_b)
 
-
         f_a = function([x], a,
-                mode=Mode(optimizer=None,
-                    linker=linker()),
-                #profile='f_a lazy ifelse %s'%name,
-                )
+                       mode=Mode(optimizer=None,
+                                 linker=linker()),
+                       #profile='f_a lazy ifelse %s'%name,
+        )
         f_b = function([x], b,
-                mode=Mode(optimizer=None,
-                    linker=linker()),
-                #profile='f_b lazy ifelse %s'%name,
-                )
+                       mode=Mode(optimizer=None,
+                                 linker=linker()),
+                       #profile='f_b lazy ifelse %s'%name,
+        )
 
         f_a([2.0])
         t0 = time.time()
@@ -179,15 +179,20 @@ def test_speed_lazy():
                 (1000*(t_b-t_a) / (steps_b - steps_a)))
 
     time_linker('vmLinker', vm.VM_Linker)
-    time_linker('vmLinker_nogc', lambda : vm.VM_Linker(allow_gc=False))
+    time_linker('vmLinker_nogc', lambda: vm.VM_Linker(allow_gc=False))
     if theano.config.cxx:
-        time_linker('vmLinker_C', lambda : vm.VM_Linker(allow_gc=False,
-                                                        use_cloop=True))
+        time_linker('vmLinker_C', lambda: vm.VM_Linker(allow_gc=False,
+                                                       use_cloop=True))
 
 
 def test_allow_gc_cvm():
+    mode = theano.config.mode
+    if mode in ['DEBUG_MODE', 'DebugMode']:
+        mode = "FAST_RUN"
+
     v = theano.tensor.vector()
-    f = theano.function([v], v + 1)
+    f = theano.function([v], v + 1, mode=mode)
+
     f([1])
     n = list(f.maker.fgraph.apply_nodes)[0].outputs[0]
     assert f.fn.storage_map[n][0] is None
@@ -262,8 +267,8 @@ if run_memory_usage_tests:
             a = build_graph(x, steps_a)
 
             f_a = function([x], a,
-                    mode=Mode(optimizer=None,
-                        linker=linker()))
+                           mode=Mode(optimizer=None,
+                                     linker=linker()))
 
             for i in xrange(100000):
                 f_a([2.0])
@@ -296,8 +301,8 @@ if run_memory_usage_tests:
             a = build_graph(x, steps_a)
 
             f_a = function([x], a,
-                    mode=Mode(optimizer=None,
-                        linker=linker()))
+                           mode=Mode(optimizer=None,
+                                     linker=linker()))
 
             for i in xrange(500000):
                 f_a([2.0])
