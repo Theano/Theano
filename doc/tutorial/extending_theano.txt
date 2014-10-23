@@ -5,8 +5,11 @@
 Extending Theano
 ================
 
-This tutorial covers how to extend Theano. It mainly focuses on ops that offer a Python implementation, refers to  :ref:`extending_theano_c` for C-based op.
-Providing a novel Theano op requires an understanting of the Theano Graphs, which is introduced in the next section of this tutorial. This tutorial then propose an overview of the most important methods that the op needs to implement. Finally, it shows how to combine these elements to write a simple Python-based op that performs operation on Double. It also shows how to tests for ensuring the proper working of an op.
+This tutorial covers how to extend Theano with novel ops. It mainly focuses on ops that offer a Python implementation, refers to  :ref:`extending_theano_c` for C-based op.
+The first section of this tutorial introduces the Theano Graphs,
+as providing a novel Theano op requires a basic understanting of the Theano Graphs. It then proposes an overview of the most important methods that define an op.
+
+As an illustration, this tutorial shows how to write a simple Python-based op which performs operations on Double. It also shows how to implement tests that ensure the proper working of an op.
 
 .. note::
 
@@ -40,7 +43,7 @@ Theano Graphs
     :width: 500 px
 
 Theano represents symbolic mathematical computations as graphs. Those graphs are bi-partite graphs (graphs with 2 types of nodes), they are composed of interconnected :ref:`apply` and :ref:`variable` nodes.
-:ref:`variable` represent data in the graph, either inputs, outputs or intermediary values. As such, Inputs and Outputs of a graph are lists of Theano :ref:`variable` nodes. :ref:`apply` nodes perform computation on these variables to produce new variables. Each ref:`apply` node has a link to an instance of :ref:`Op` which describes the computation to perform. This tutorial details how to write such an Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
+:ref:`variable` nodes represent data in the graph, either inputs, outputs or intermediary values. As such, Inputs and Outputs of a graph are lists of Theano :ref:`variable` nodes. :ref:`apply` nodes perform computation on these variables to produce new variables. Each :ref:`apply` node has a link to an instance of :ref:`Op` which describes the computation to perform. This tutorial details how to write such an Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
 
 
 
@@ -58,6 +61,7 @@ possibilities you may encounter or need.  For that refer to
     import theano
 
     class MyOp(theano.Op):
+        # Properties attribute
         __props__ = ()
 
         def make_node(self, *inputs):
@@ -93,34 +97,33 @@ possibilities you may encounter or need.  For that refer to
 
 .. ../extending/op.txt
 
-As such, it has to implement some methods defined in the the interface
-of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  method :func:`make_node` and a implemtation method (either :func:`perform`,
-:meth:`Op.c_code` or :func:`make_thunk`).
+An op has to implement some methods defined in the the interface of
+:class:`gof.Op`. More specifically, it is mandatory for an op to define the method :func:`make_node` and one of the implementation methods, either :func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
 
   :func:`make_node` method creates an Apply node representing the application
-  of the op on the inputs provided.
-  This methods first checks that the input Variables types are compatible
-  with the current op. If the op cannot be applied on the provided
-  input types, it must raises an exception (such as :class:`TypeError`).
-  Then :func:`make_node` operates on the Variables found in
-  ``*inputs`` in Theano's symbolic language to infer the type of
-  the symbolic output Variables. This method is responsible for creating output
-  Variables of a suitable symbolic Type to serve as the outputs of this op's
-  application.
-  Finally :func:`make_node` method  creates an Apply instance with the input
-  and output Variable, and return the Apply instance.
+  of the op on the inputs provided. This method is reponsible for three things:
+
+    - it first checks that the input Variables types are compatible
+      with the current op. If the op cannot be applied on the provided
+      input types, it must raises an exception (such as :class:`TypeError`).
+    - it operates on the Variables found in
+      ``*inputs`` in Theano's symbolic language to infer the type of
+      the symbolic output Variables. It creates output Variables of a suitable
+      symbolic Type to serve as the outputs of this op's
+      application.
+    - finally it  creates an Apply instance with the input and output Variable,      and return the Apply instance.
 
 
 
   :func:`perform` method defines the Python implementation of an op.
   It takes several arguments:
-    - ``node``: This is a reference to an Apply node which was previously
+    - ``node`` is a reference to an Apply node which was previously
       obtained via the ``Op``'s :func:`make_node` method. It is typically not
       used in simple ops, but it contains symbolic information that
       could be required for complex ops.
-    - ``inputs``: This is a list of references to data to operate on using
+    - ``inputs`` is a list of references to data which can be operate on using
       non-symbolic statements, (i.e., statements in Python, Numpy).
-    - ``output_storage``: This is a list of storage cells where the output
+    - ``output_storage`` is a list of storage cells where the output
       is to be stored. There is one storage cell for each output of the op.
       The data put in ``output_storage`` must match the type of the
       symbolic output. It is forbidden to change the length of the list(s)
@@ -138,19 +141,19 @@ of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  
   inputs C, equal to A, are presented again, then outputs equal to
   B must be returned again.
 
-:class:`gof.Op` allows some other way to define the op implentation.
-For instance, it is possible to define :meth:`Op.c_code` to provide a
-C-implementation to the op. Please refers to tutorial
-:ref:`extending_theano_c` for a description of :meth:`Op.c_code` and other
-related c_methods. Note that an op can provide both Python and C implementation.
+  :class:`gof.Op` allows some other way to define the op implentation.
+  For instance, it is possible to define :meth:`Op.c_code` to provide a
+  C-implementation to the op. Please refers to tutorial
+  :ref:`extending_theano_c` for a description of :meth:`Op.c_code` and other
+  related c_methods. Note that an op can provide both Python and C implementation.
 
-  :func:`make_thunk` method is another alternative to the :func:`perform`.
-  It returns a thunk, that is a zero-arguments
-  function that encapsulates the computation to be performed by this
-  op on the arguments of the node. It takes several parameters:
+  :func:`make_thunk` method is another alternative to :func:`perform`.
+  It returns a thunk, a thunk is defined as a zero-arguments
+  function which encapsulates the computation to be performed by an
+  op on the arguments of its corresponding node. It takes several parameters:
     - ``node`` is the Apply instance for which a thunk is requested,
     - ``storage_map`` is a dict of lists which  maps variables to a one-element
-      lists holding the variabe's current value. The one-element list acts as
+      lists holding the variable's current value. The one-element list acts as
       pointer to the value and allows sharing that "pointer" with other nodes
       and instances.
     - ``compute_map`` is also a  dict of lists.
@@ -160,7 +163,7 @@ related c_methods. Note that an op can provide both Python and C implementation.
       variable has been computed and the value is valid.  If the value
       is 2 the variable has been garbage-collected and is no longer
       valid, but shouldn't be required anymore for this call.
-      The returned function must ensure that is sets the computed
+      The returned function must ensure that it sets the computed
       variables as computed in the `compute_map`.
 
 
@@ -169,24 +172,21 @@ related c_methods. Note that an op can provide both Python and C implementation.
   code.
 
   If :func:`make_thunk()` is defined by an op, it will be used by Theano
-  to obtainthe op's implementationm bith , both perform() and the methods related to the C implementation will be ignored
-
-If both :func:`make_thunk` and :func:`perform` are defined by an op,
+  to obtain the op's implementation.
   :func:`perform` and :meth:`Op.c_code` will be ignored.
 
 Other methods can be optionally defined by the op.
 
-  The :func:`__str__` method is useful in order to provide a more meaningful
-  string representation of your op.
+  The :func:`__str__` method provides a meaningful  string representation of
+  your op.
 
-  :func:`__eq__` and :func:`__hash__` will be used by the optimization
-  phase to merge nodes that are doing a equivalent compuation (same
-  inputs, same operation).  It is especially important that two ops that
-  compare equal and  compute the same thing when presented
-  with the same inputs.
-  Also note that this attribute will also generate a suitable
-  :func:`__str__` method for your op.  You may override this default
-  with a custom one if you want another format for the output.
+  :func:`__eq__` and :func:`__hash__` define respectivelly equality
+  between two ops and the hash of an op instance.
+  They will be used by the optimization
+  phase to merge nodes that are doing equivalent computations (same
+  inputs, same operation).
+  Two ops that are equal according :func:`__eq__`
+  should return the same output when they are applied on the same inputs.
 
   The :attr:`__props__` lists the properties
   that influence how the computation is performed (Ususally these are those
@@ -194,7 +194,7 @@ Other methods can be optionally defined by the op.
   If you don't have any properties, then you should set this attribute to the
   emtpy tuple `()`.
 
-  :attr:`__props__` also enables the  automatic generation of appropriate
+  :attr:`__props__` enables the  automatic generation of appropriate
   :func:`__eq__` and :func:`__hash__`.
   Given the method :func:`__eq__`, automatically generated from
   :attr:`__props__`, two ops will be equal if they have the same values for all
@@ -206,19 +206,18 @@ Other methods can be optionally defined by the op.
   This requires development version after September 1st, 2014 or version 0.7.
 
 
-  The :func:`infer_shape` method allows to infer the shape of the node
-  output variable, without actually computing the outputs.
+  The :func:`infer_shape` method allows to infer the shape of the op
+  output variables, without actually computing the outputs.
   Inputs are tuples of Theano variables. Output is a list of tuples of
   Theano variables.
 
-  :func:`infer_shape` takes as input ``node``, a reference to the op Apply node
+  :func:`infer_shape` takes as input ``node``, a reference to the op Apply node,
   and a list of Theano symbolic Varables (``i0_shape``, ``i1_shape``, ...)
   which are the shape of the op input Variables.
   :func:`infer_shape` returns a list where each element is a tuple representing  the shape of one output.
-
   This could be helpful if one only
-  needs the shape of the output instead of the actual outputs, which
-  can be useful, for instance, for optimization procedure.
+  need the shape of the output instead of the actual outputs, which
+  can be useful, for instance, for optimization procedures.
 
   The :func:`grad` method is required if you want to differentiate some cost whose expression includes your op. The gradient may be
   specified symbolically in this method. It takes two arguments ``inputs`` and
