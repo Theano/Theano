@@ -13,6 +13,8 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 import logging
+import numpy
+import os
 import sys
 import warnings
 
@@ -974,3 +976,177 @@ int main( int argc, const char* argv[] )
         self.update_self_openmp()
         return super(OpenMPOp, self).make_thunk(node, storage_map,
                                                 compute_map, no_recycling)
+
+
+class COp(Op):
+    """ Class to allow an op to have an external C implementation.
+
+    An op can use this class by inheriting from it and calling its
+    __init__() method, providing it with a path to an external file containing
+    the C implementation and the name of the function, in that file, to call
+    to perform the computations for the op.
+    """
+
+    def __init__(self, func_file, func_name):
+
+        self.func_file = func_file
+        self.func_name = func_name
+
+        # Define the markers that can be used to delimit sections in the
+        # external C code
+        self.support_code_marker = "THEANO_SUPPORT_CODE_SECTION"
+        self.apply_code_marker = "THEANO_APPLY_CODE_SECTION"
+        self.c_code_markers = [self.support_code_marker,
+                               self.apply_code_marker]
+
+        # Load the external C code
+        f = open(self.func_file, "r")
+        self.func_code = f.read()
+        f.close()
+
+        # Separate the contents of the file in sections and validate that at
+        # lest one of the necessary code sections has been defined
+        self.code_sections = self.parse_external_c_code(self.func_code)
+
+        if sum([marker in self.code_sections.keys()
+               for marker in self.c_code_markers]) == 0:
+
+            raise(RuntimeError, "The provided C implementation does not "
+                  "define a support code section or a support code apply "
+                  "section.")
+
+    def parse_external_c_code(self, code):
+
+        # Obtain the positions of the C code markers used in the C code
+        positions = [(code.index(marker), marker)
+                     for marker in self.c_code_markers if marker in code]
+
+        # Go over the markers in their order of occurence and extract
+        # the C code they concern
+        positions.sort()
+        code_sections = {}
+
+        for i in range(len(positions)):
+
+            marker_start, marker = positions[i]
+
+            if i < len(positions) - 1:
+                # This is not the last section in the code : extract the code
+                # between the beginning of the current marker and the
+                # beginning of the next one.
+                next_marker_start = positions[i+1][0]
+                section = code[marker_start: next_marker_start]
+            else:
+                # This is the last section in the code : extract the remaining
+                # C code
+                section = code[marker_start:]
+
+            cleaned_section = section.replace(marker, "")
+            code_sections[marker] = cleaned_section
+
+        return code_sections
+
+    def c_code_cache_version(self):
+        return hash(self.func_code)
+
+    def c_support_code(self):
+
+        if self.support_code_marker in self.code_sections:
+            return self.code_sections[self.support_code_marker]
+        else:
+            raise utils.MethodNotDefined("c_support_code",
+                type(self), self.__class__.__name__)
+
+    def c_support_code_apply(self, node, name):
+
+        if self.apply_code_marker in self.code_sections:
+            apply_code = self.code_sections[self.apply_code_marker]
+
+            if hasattr(self, 'check_inputs') and self.check_inputs == False:
+                return apply_code
+            else:
+                define_macros, undef_macros = self.get_c_macros(node, name)
+                return os.linesep.join([define_macros, apply_code,
+                                        undef_macros])
+
+        else:
+            raise utils.MethodNotDefined("c_support_code_apply",
+                type(self), self.__class__.__name__)
+
+
+    def format_c_function_args(self, inp, out):
+        # Generate an string containing the arguments sent to the external C
+        # function. The argstring will be of format :
+        # "input0, input1, input2, &output0, &output1"
+        return ", ".join(list(inp) + ["&%s" % o for o in out])
+
+    def get_c_macros(self, node, name):
+
+        define_template = "#define %s %s" + os.linesep
+        undef_template = "#undef %s" + os.linesep
+        define_macros = ""
+        undef_macros = ""
+
+        # Extract the various properties of the input and output variables
+        variables = node.inputs + node.outputs
+        variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
+                          ["OUTPUT_%i" % i for i in range(len(node.inputs))])
+        variable_dtypes_names = [v.dtype for v in variables]
+        variable_dtypes = [numpy.dtype(d) for d in variable_dtypes_names]
+        variable_typenums = [d.num for d in variable_dtypes]
+        variable_itemsizes = [d.itemsize for d in variable_dtypes]
+
+        # Generate dtype macros
+        for i in range(len(variables)):
+            macro_name = "DTYPE_" + variable_names[i]
+            macro_value = "npy_" + variable_dtypes_names[i]
+
+            define_macros += define_template % (macro_name, macro_value)
+            undef_macros += undef_template % macro_name
+
+        # Generate typenum macros
+        for i in range(len(variables)):
+            macro_name = "TYPENUM_" + variable_names[i]
+            macro_value = variable_typenums[i]
+
+            define_macros += define_template % (macro_name, macro_value)
+            undef_macros += undef_template % macro_name
+
+        # Generate itemsize macros
+        for i in range(len(variables)):
+            macro_name = "ITEMSIZE_" + variable_names[i]
+            macro_value = variable_itemsizes[i]
+
+            define_macros += define_template % (macro_name, macro_value)
+            undef_macros += undef_template % macro_name
+
+        # Generate a macro to mark code as being apply-specific
+        define_macros += define_template % ("APPLY_SPECIFIC(str)",
+                                            "str##_%s" % name)
+        undef_macros += undef_template % "APPLY_SPECIFIC"
+
+        return define_macros, undef_macros
+
+    def c_code(self, node, name, inp, out, sub):
+
+        func_name = self.func_name
+        func_args = self.format_c_function_args(inp, out)
+        fail = sub['fail']
+
+        # Generate the code to define/undefine the C macros
+        define_macros, undef_macros = self.get_c_macros(node, name)
+
+        # Generate the C code
+        c_code = """
+        %(define_macros)s
+        {
+            int result = %(func_name)s(%(func_args)s);
+            if (result != 0)
+            {
+                %(fail)s;
+            }
+        }
+        %(undef_macros)s
+        """ % locals()
+
+        return c_code
