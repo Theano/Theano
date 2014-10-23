@@ -9,11 +9,11 @@
    :synopsis: low-level automatic differentiation
 .. moduleauthor:: LISA
 
-Symbolic gradient is usually computed from :func:`tensor.grad`, which offers a
+Symbolic gradient is usually computed from :func:`gradient.grad`, which offers a
 more convenient syntax for the common case of wanting the gradient in some
 expressions with respect to a scalar cost.  The :func:`grad_sources_inputs`
 function does the underlying work, and is more flexible, but is also more
-awkward to use when :func:`tensor.grad` can do the job.
+awkward to use when :func:`gradient.grad` can do the job.
 
 
 .. automodule:: theano.gradient
