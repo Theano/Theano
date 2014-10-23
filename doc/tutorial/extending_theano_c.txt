@@ -953,3 +953,10 @@ apply-specific because it uses the macros defined by ``COp``. Finally, the
 function ``vector_times_vector()`` is apply-specific because it uses those
 same macros and also because it calls ``vector_elemwise_mult()`` which is an
 apply-specific function.
+
+Final Note
+==========
+
+This tutorial focuses on providing C implementations to ops that manipulate
+Theano tensors. For more information about other Theano types, you can refer
+to the section :ref:`Other ops <other_ops>`.
