@@ -112,10 +112,10 @@ of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  
 
 
 
-  :func:`perform` method defines the actual implementation of an op.
+  :func:`perform` method defines the Python implementation of an op.
   It takes several arguments:
     - ``node``: This is a reference to an Apply node which was previously
-      obtained via the ``Op``'s ``make_node`` method. It is typically not
+      obtained via the ``Op``'s :func:`make_node` method. It is typically not
       used in simple ops, but it contains symbolic information that
       could be required for complex ops.
     - ``inputs``: This is a list of references to data to operate on using
@@ -166,8 +166,13 @@ related c_methods. Note that an op can provide both Python and C implementation.
 
   :func:`make_thunk` is useful if you want to generate code and compile
   it yourself. For example, this allows you to use PyCUDA to compile GPU
-  code. If both :func:`make_thunk` and :func:`perform` are defined by an op,
-  :func:`perform` will be ignored.
+  code.
+
+  If :func:`make_thunk()` is defined by an op, it will be used by Theano
+  to obtainthe op's implementationm bith , both perform() and the methods related to the C implementation will be ignored
+
+If both :func:`make_thunk` and :func:`perform` are defined by an op,
+  :func:`perform` and :meth:`Op.c_code` will be ignored.
 
 Other methods can be optionally defined by the op.
 
@@ -177,29 +182,36 @@ Other methods can be optionally defined by the op.
   :func:`__eq__` and :func:`__hash__` will be used by the optimization
   phase to merge nodes that are doing a equivalent compuation (same
   inputs, same operation).  It is especially important that two ops that
-  compare equal amd  compute the same thing when presented
+  compare equal and  compute the same thing when presented
   with the same inputs.
   Also note that this attribute will also generate a suitable
   :func:`__str__` method for your op.  You may override this default
   with a custom one if you want another format for the output.
 
-  The :attr:`__props__` attribute serves to make op generate an
-  appropriate :func:`__eq__` and :func:`__hash__` for your op.  It must
-  be a tuple that lists the properties that influence how the
-  computation is performed (Ususally these are those that you set in
-  :func:`__init__`). If you don't have any properties, then you should
-  set this attribute to the emtpy tuple `()`.
-  Two ops will be equal if they have the same values for all the properties
-  listed in :attr:`__props__`.
+  The :attr:`__props__` lists the properties
+  that influence how the computation is performed (Ususally these are those
+  that you set in  :func:`__init__`). It must be a tuple.
+  If you don't have any properties, then you should set this attribute to the
+   emtpy tuple `()`.
+
+  :attr:`__props__` also enables the  automatic generation of appropriate
+  :func:`__eq__` and :func:`__hash__`.
+  Given the method :func:`__eq__`, automatically generated from
+  :attr:`__props__`, two ops will be equal if they have the same values for all
+  the properties listed in :attr:`__props__`.
+  Given to the method :func:`__hash__` automatically generated from
+  :attr:`__props__`, two ops will be have the same hash if they have the same
+  values for all the properties listed in :attr:`__props__`.
+
   :attr:`__props__` will also generate a  suitable :func:`__str__` for your op.
   This requires development version after September 1st, 2014 or version 0.7.
 
 
-  The :func:`infer_shape` method allows to infer the shape of some variable,
-  somewhere in the  middle of the computational graph without actually
-  computing the outputs.
+  The :func:`infer_shape` method allows to infer the shape of the node
+  output variable, without actually computing the outputs.
+  Inputs are tuples of Theano variables. Output is a list of tuples of
+  Theano variables.
 
-  Inputs and the return value are symbolic Theano Variables.
   :func:`infer_shape` takes as input ``node``, a reference to the op Apply node
   and a list of Theano symbolic Varables (``i0_shape``, ``i1_shape``, ...)
   which are the shape of the op input Variables.
