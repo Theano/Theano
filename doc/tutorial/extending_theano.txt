@@ -192,7 +192,7 @@ Other methods can be optionally defined by the op.
   that influence how the computation is performed (Ususally these are those
   that you set in  :func:`__init__`). It must be a tuple.
   If you don't have any properties, then you should set this attribute to the
-   emtpy tuple `()`.
+  emtpy tuple `()`.
 
   :attr:`__props__` also enables the  automatic generation of appropriate
   :func:`__eq__` and :func:`__hash__`.
@@ -202,7 +202,6 @@ Other methods can be optionally defined by the op.
   Given to the method :func:`__hash__` automatically generated from
   :attr:`__props__`, two ops will be have the same hash if they have the same
   values for all the properties listed in :attr:`__props__`.
-
   :attr:`__props__` will also generate a  suitable :func:`__str__` for your op.
   This requires development version after September 1st, 2014 or version 0.7.
 
