@@ -250,35 +250,31 @@ Most ops in Theano are used to manipulate tensors. However, Theano also
 supports many other variable types. The supported types are listed below,
 along with pointers to the relevant documentation.
 
-*       TensorType : Theano type that representes a multidimensional
-        array containing elements that all have the same type. Variables of
-        this Theano type are represented in C as objects of class
+*       :class:`TensorType <tensor.TensorType>` : Theano type that represents
+        a multidimensional array containing elements that all have the same
+        type. Variables of this Theano type are represented in C as objects of
+        class
         `PyArrayObject <http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html#PyArrayObject>`_.
-        The :class:`TensorType documentation <tensor.TensorType>`.
 
-*       TypedList : Theano type that represents a typed list (a list where
-        every element in the list has the same Theano type). Variables of this
-        Theano type are represented in C as objects of class
-        `PyListObject <https://docs.python.org/2/c-api/list.html>`_. The
-        :ref:`TypedList documentation <libdoc_typed_list>`.
+*       :ref:`TypedList <libdoc_typed_list>` : Theano type that represents a
+        typed list (a list where every element in the list has the same Theano
+        type). Variables of this Theano type are represented in C as objects
+        of class `PyListObject <https://docs.python.org/2/c-api/list.html>`_.
 
-*       Scalar : Theano type that represents a C primitive type. The C type
-        associated with this Theano type is the represented C primitive
-        itself. The :ref:`Scalar documentation <libdoc_scalar>`.
+*       :ref:`Scalar <libdoc_scalar>` : Theano type that represents a C
+        primitive type. The C type associated with this Theano type is the
+        represented C primitive itself.
 
-*       SparseType : Theano type used to represent sparse tensors. There is no
-        equivalent C type for this Theano Type but you can split a sparse
-        variable into its parts as TensorVariables. Those can then be used as
-        inputs to an op with C code. The 
-        :ref:`Sparse Ops documentation <sparse_ops>`.
+*       :ref:`SparseType <sparse_ops>` : Theano type used to represent sparse
+        tensors. There is no equivalent C type for this Theano Type but you
+        can split a sparse variable into its parts as TensorVariables. Those
+        can then be used as inputs to an op with C code.
 
-*       Generic : Theano type that represents a simple Python Object.
-        Variables of this Theano type are represented in C as objects of class
-        `PyObject
-        <https://docs.python.org/2/c-api/structures.html#c.PyObject>`_. The
-        :class:`Generic documentation <theano.gof.type.Generic>`.
+*       :class:`Generic <theano.gof.type.Generic>` : Theano type that
+        represents a simple Python Object. Variables of this Theano type are
+        represented in C as objects of class `PyObject
+        <https://docs.python.org/2/c-api/structures.html#c.PyObject>`_.
 
-*       CDataType :  Theano type that represents a C data type. The C type
-        associated with this Theano type depends on the data being
-        represented. The :class:`CDataType documentation
-        <theano.gof.type.CDataType>`.
+*       :class:`CDataType <theano.gof.type.CDataType>` :  Theano type that
+        represents a C data type. The C type associated with this Theano type
+        depends on the data being represented.
