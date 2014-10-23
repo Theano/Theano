@@ -279,7 +279,7 @@ along with pointers to the relevant documentation.
         Variables of this Theano type are represented in C as objects of class
         `PyObject
         <https://docs.python.org/2/c-api/structures.html#c.PyObject>`_. The
-        documentation for TypedList can be found
+        documentation for Generic can be found
         :class:`here <theano.gof.type.Generic>`.
 
 *       CDataType :  Theano type that represents a C data type. The C type
