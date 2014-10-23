@@ -1080,7 +1080,13 @@ class COp(Op):
         # "input0, input1, input2, &output0, &output1"
         input_arg_str = ", ".join(inp)
         output_arg_str = ", ".join(["&%s"] * len(out)) % tuple(out)
-        return input_arg_str + ", " + output_arg_str
+        
+        if len(input_arg_str) > 0 and len(output_arg_str) > 0:
+            full_arg_str = ", ".join([input_arg_str, output_arg_str])
+        else:
+            full_arg_str = input_arg_str + output_arg_str
+            
+        return full_arg_str
 
     def get_c_macros(self, node, name):
 
