@@ -1077,7 +1077,7 @@ class COp(Op):
     def format_c_function_args(self, inp, out):
         # Generate an string containing the arguments sent to the external C
         # function. The argstring will be of format :
-        # "input0, input1, input2, (void**)&output0, (void**)&output1"
+        # "input0, input1, input2, &output0, &output1"
         input_arg_str = ", ".join(inp)
         output_arg_str = ", ".join(["&%s"] * len(out)) % tuple(out)
         return input_arg_str + ", " + output_arg_str
