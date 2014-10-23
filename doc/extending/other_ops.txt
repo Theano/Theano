@@ -260,19 +260,17 @@ along with pointers to the relevant documentation.
         every element in the list has the same Theano type). Variables of this
         Theano type are represented in C as objects of class
         `PyListObject <https://docs.python.org/2/c-api/list.html>`_. The
-        documentation for TypedList can be found
-        :ref:`here <libdoc_typed_list>`.
+        :ref:`TypedList documentation <libdoc_typed_list>`.
 
 *       Scalar : Theano type that represents a C primitive type. The C type
         associated with this Theano type is the represented C primitive
-        itself. The documentation for the Scalar type can be
-        found :ref:`here <libdoc_scalar>`.
+        itself. The :ref:`Scalar documentation <libdoc_scalar>`.
 
 *       SparseType : Theano type used to represent sparse tensors. There is no
         equivalent C type for this Theano Type but you can split a sparse
         variable into its parts as TensorVariables. Those can then be used as
-        inputs to an op with C code. The documentation for ops that rely on
-        SparseType can be found :ref:`here <sparse_ops>`.
+        inputs to an op with C code. The 
+        :ref:`Sparse Ops documentation <sparse_ops>`.
 
 *       Generic : Theano type that represents a simple Python Object.
         Variables of this Theano type are represented in C as objects of class
