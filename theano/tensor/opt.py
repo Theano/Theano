@@ -1640,7 +1640,14 @@ def local_alloc_elemwise(node):
                                       for idx in xrange(i.type.ndim)
                                       if not i.type.broadcastable[idx]])
             alloc_input = i.owner.inputs[0].owner.inputs[0]
-            assert alloc_input.ndim == i.owner.inputs[0].ndim
+            if alloc_input.ndim != i.owner.inputs[0].ndim:
+                # The alloc can add dimension to the value
+                # We add a dimshuffle to add them.
+                # We let later optimization merge the multiple dimshuffle
+                nb_dim_to_add = i.owner.inputs[0].ndim - alloc_input.ndim
+                alloc_input = alloc_input.dimshuffle(['x'] * nb_dim_to_add +
+                                                     range(alloc_input.ndim))
+
             # We need to keep the dimshuffle. It could swap axes or
             # add dimensions anywhere.
             new_i.append(i.owner.op(alloc_input))
