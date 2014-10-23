@@ -39,7 +39,8 @@ Theano Graphs
 .. image:: ../hpcs2011_tutorial/pics/apply_node.png
     :width: 500 px
 
-Theano represents symbolic mathematical computations as graphs. Those graphs are bi-partite graphs (graphs with 2 types of nodes), they are composed of interconnected :ref:`apply` and :ref:`variable` nodes which associated to *function application* and *data*, respectively. Inputs and Outputs of a graph are lists of Theano :ref:`variable`. Each :ref:`apply` node, corresponding to a *function application*, has a link to the operation that it which is represented by :ref:`Op` instance. This tutorial details how to write such an Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
+Theano represents symbolic mathematical computations as graphs. Those graphs are bi-partite graphs (graphs with 2 types of nodes), they are composed of interconnected :ref:`apply` and :ref:`variable` nodes.
+:ref:`variable` represent data in the graph, either inputs, outputs or intermediary values. As such, Inputs and Outputs of a graph are lists of Theano :ref:`variable` nodes. :ref:`apply` nodes perform computation on these variables to produce new variables. Each ref:`apply` node has a link to an instance of :ref:`Op` which describes the computation to perform. This tutorial details how to write such an Op instance. Please refers to :ref:`graphstructures` for a more detailed explanation about the graph structure.
 
 
 
@@ -48,6 +49,9 @@ Op Structure
 ============
 
 An op is any Python object which inherits from :class:`gof.Op`.
+This section provides an overview of the methods you typically have to implement to make a new op.  It does not provide extensive coverage of all the
+possibilities you may encounter or need.  For that refer to
+:ref:`op_contract`.
 
 .. code-block:: python
 
@@ -63,7 +67,7 @@ An op is any Python object which inherits from :class:`gof.Op`.
         def perform(self, node, inputs_storage, output_storage):
             pass
 
-        # alternative to Python implementation
+        # Other type of implementation
         # C implementation: [see theano web site for other functions]
         def c_code(...):
             # ...
@@ -90,20 +94,25 @@ An op is any Python object which inherits from :class:`gof.Op`.
 .. ../extending/op.txt
 
 As such, it has to implement some methods defined in the the interface
-of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  methods :func:`make_node` and :func:`perform`.
+of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  method :func:`make_node` and a implemtation method (either :func:`perform`,
+:meth:`Op.c_code` or :func:`make_thunk`).
 
-  :func:`make_node`  method is responsible for creating output Variables of a
-  suitable symbolic Type to serve as the outputs of this op's
-  application.  The Variables found in ``*inputs`` must be operated on
-  using Theano's symbolic language to compute the symbolic output
-  Variables. This method should put these outputs into an Apply
-  instance, and return the Apply instance.
-  :func:`make_node`  method creates an Apply node representing the application of
-  the op on the inputs provided. If the op cannot be applied to these
-  inputs, it must raise an appropriate exception.
+  :func:`make_node` method creates an Apply node representing the application
+  of the op on the inputs provided.
+  This methods first checks that the input Variables types are compatible
+  with the current op. If the op cannot be applied on the provided
+  input types, it must raises an exception (such as :class:`TypeError`).
+  Then :func:`make_node` operates on the Variables found in
+  ``*inputs`` in Theano's symbolic language to infer the type of
+  the symbolic output Variables. This method is responsible for creating output
+  Variables of a suitable symbolic Type to serve as the outputs of this op's
+  application.
+  Finally :func:`make_node` method  creates an Apply instance with the input
+  and output Variable, and return the Apply instance.
 
 
-  :func:`perform` method computes the function associated to this op.
+
+  :func:`perform` method defines the actual implementation of an op.
   It takes several arguments:
     - ``node``: This is a reference to an Apply node which was previously
       obtained via the ``Op``'s ``make_node`` method. It is typically not
@@ -129,11 +138,11 @@ of :class:`gof.Op`. More specifically, it is mandatory for an op to define the  
   inputs C, equal to A, are presented again, then outputs equal to
   B must be returned again.
 
-:class:`gof.Op` allows some alternatives to the :func:`perform`.
-For instance, it is possible to define :meth:`Op.c_code` gto provide a
+:class:`gof.Op` allows some other way to define the op implentation.
+For instance, it is possible to define :meth:`Op.c_code` to provide a
 C-implementation to the op. Please refers to tutorial
 :ref:`extending_theano_c` for a description of :meth:`Op.c_code` and other
-related c_methods
+related c_methods. Note that an op can provide both Python and C implementation.
 
   :func:`make_thunk` method is another alternative to the :func:`perform`.
   It returns a thunk, that is a zero-arguments
@@ -157,7 +166,8 @@ related c_methods
 
   :func:`make_thunk` is useful if you want to generate code and compile
   it yourself. For example, this allows you to use PyCUDA to compile GPU
-  code.
+  code. If both :func:`make_thunk` and :func:`perform` are defined by an op,
+  :func:`perform` will be ignored.
 
 Other methods can be optionally defined by the op.
 
@@ -167,8 +177,7 @@ Other methods can be optionally defined by the op.
   :func:`__eq__` and :func:`__hash__` will be used by the optimization
   phase to merge nodes that are doing a equivalent compuation (same
   inputs, same operation).  It is especially important that two ops that
-  compare equal (have the same values for all the properties listed in
-  __props__ and the same type) compute the same thing when presented
+  compare equal amd  compute the same thing when presented
   with the same inputs.
   Also note that this attribute will also generate a suitable
   :func:`__str__` method for your op.  You may override this default
@@ -179,14 +188,26 @@ Other methods can be optionally defined by the op.
   be a tuple that lists the properties that influence how the
   computation is performed (Ususally these are those that you set in
   :func:`__init__`). If you don't have any properties, then you should
-  set this attribute to the emtpy tuple `()`. It will also generate a
-  suitable :func:`__str__` for your op. This requires development
-  version after September 1st, 2014 or version 0.7.
+  set this attribute to the emtpy tuple `()`.
+  Two ops will be equal if they have the same values for all the properties
+  listed in :attr:`__props__`.
+  :attr:`__props__` will also generate a  suitable :func:`__str__` for your op.
+  This requires development version after September 1st, 2014 or version 0.7.
 
 
-  The :func:`infer_shape` method allows to infer the shape of some variable, somewhere in the
-  middle of the computational graph without actually computing the outputs (when possible).
-  This could be helpful if one only needs the shape of the output instead of the actual outputs.
+  The :func:`infer_shape` method allows to infer the shape of some variable,
+  somewhere in the  middle of the computational graph without actually
+  computing the outputs.
+
+  Inputs and the return value are symbolic Theano Variables.
+  :func:`infer_shape` takes as input ``node``, a reference to the op Apply node
+  and a list of Theano symbolic Varables (``i0_shape``, ``i1_shape``, ...)
+  which are the shape of the op input Variables.
+  :func:`infer_shape` returns a list where each element is a tuple representing  the shape of one output.
+
+  This could be helpful if one only
+  needs the shape of the output instead of the actual outputs, which
+  can be useful, for instance, for optimization procedure.
 
   The :func:`grad` method is required if you want to differentiate some cost whose expression includes your op. The gradient may be
   specified symbolically in this method. It takes two arguments ``inputs`` and
@@ -218,10 +239,6 @@ Other methods can be optionally defined by the op.
   (particularly for scalars) and reduce the number of generated C files.
 
 
-This an overview of the methods you typically have to implement to
-make a new op.  It does not provide extensive coverage of all the
-possibilities you may encounter or need.  For that refer to
-:ref:`op_contract`.
 
 Op Example
 ==========
