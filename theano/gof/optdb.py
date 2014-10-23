@@ -223,6 +223,7 @@ class SequenceDB(DB):
     other tags) fast_run and fast_compile optimizers are drawn is a SequenceDB.
 
     """
+    seq_opt = opt.SeqOptimizer
 
     def __init__(self, failure_callback=opt.SeqOptimizer.warn):
         super(SequenceDB, self).__init__()
@@ -256,13 +257,13 @@ class SequenceDB(DB):
         # the order we want.
         opts.sort(key=lambda obj: obj.name)
         opts.sort(key=lambda obj: self.__position__[obj.name])
-        ret = opt.SeqOptimizer(opts, failure_callback=self.failure_callback)
+        ret = self.seq_opt(opts, failure_callback=self.failure_callback)
         if hasattr(tags[0], 'name'):
             ret.name = tags[0].name
         return ret
 
     def print_summary(self, stream=sys.stdout):
-        print >> stream, "SequenceDB (id %i)" % id(self)
+        print >> stream, self.__class__.__name__ + " (id %i)" % id(self)
         positions = self.__position__.items()
 
         def c(a, b):
@@ -277,6 +278,13 @@ class SequenceDB(DB):
         sio = StringIO()
         self.print_summary(sio)
         return sio.getvalue()
+
+
+class LocalSequenceDB(SequenceDB):
+    """
+    This generate a local optimizer instead of a global optimizer.
+    """
+    seq_opt = opt.LocalSeqOptimizer
 
 
 class ProxyDB(DB):

@@ -2687,6 +2687,21 @@ class Test_local_alloc_elemwise(unittest.TestCase):
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 1)
 
+    def test_error(self):
+        t3fft = theano.tensor.tensor(dtype=self.dtype,
+                                     broadcastable=(False, False, True))
+        row = theano.tensor.row(dtype=self.dtype)
+        o = T.alloc(row, 5, 5).dimshuffle(0, 1, 'x') + t3fft
+        func = function(
+            [t3fft, row],
+            o,
+            mode='FAST_RUN'
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 1)
+        d = numpy.random.rand(5, 5, 1).astype(self.dtype)
+        r = numpy.random.rand(1, 5).astype(self.dtype)
+        func(d, r)
 
 
 def test_local_subtensor_of_alloc():

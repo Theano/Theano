@@ -992,7 +992,7 @@ def pydotprint_variables(vars,
         if nd.owner:
             plot_apply(nd.owner, depth)
     try:
-        g.write_png(outfile, prog='dot')
+        g.write(outfile, prog='dot', format=format)
     except pd.InvocationException, e:
         # Some version of pydot are bugged/don't work correctly with
         # empty label. Provide a better user error message.
@@ -1006,6 +1006,7 @@ def pydotprint_variables(vars,
                             " Theano. Using another version of pydot could"
                             " fix this problem. The pydot error is: " +
                             e.message)
+        raise
 
     print 'The output file is available at', outfile
 
