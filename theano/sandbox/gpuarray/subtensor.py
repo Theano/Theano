@@ -185,8 +185,10 @@ class GpuIncSubtensor(IncSubtensor):
         # We store a iadd_node in the op that contain the info needed
         # for the inplace add.
         cop = theano.tensor.inplace.add_inplace
-        gop = GpuElemwise(cop.scalar_op, copy.copy(cop.inplace_pattern),
-                          "Gpu" + cop.name, cop.nfunc_spec)
+        gop = GpuElemwise(cop.scalar_op,
+                          inplace_pattern=copy.copy(cop.inplace_pattern),
+                          name="Gpu" + cop.name, nfunc_spec=cop.nfunc_spec,
+                          context=node.inputs[0].type.context)
         y = node.inputs[1]
         xview = y.type()
         iadd_node = gop(xview, y).owner

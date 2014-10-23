@@ -18,26 +18,26 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import (
-    host_from_gpu, gpu_from_host, HostFromGpu, GpuFromHost,
-    GpuSplit,
+
+from .type import GpuArrayType, GpuArrayConstant, get_context
+from .basic_ops import (
+    host_from_gpu, gpu_from_host, HostFromGpu, GpuSplit,
     gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
+    as_gpuarray_variable
 )
-from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
-from theano.sandbox.gpuarray.conv import GpuConv
-from theano.sandbox.gpuarray.nnet import (
+from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
+from .conv import GpuConv
+from .nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
     GpuCrossentropySoftmax1HotWithBiasDx,
     GpuSoftmaxWithBias, GpuSoftmax
 )
-from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
-                                              GpuDimShuffle, GpuCAReduceCuda,
-                                              GpuCAReduceCPY)
-from theano.sandbox.gpuarray.subtensor import (GpuIncSubtensor, GpuSubtensor,
-                                               GpuAdvancedIncSubtensor1,
-                                               GpuAdvancedIncSubtensor1_dev20)
-from theano.sandbox.gpuarray.type import GpuArrayConstant
+from .elemwise import (GpuElemwise, _is_scalar,
+                       GpuDimShuffle, GpuCAReduceCuda,
+                       GpuCAReduceCPY)
+from .subtensor import (GpuIncSubtensor, GpuSubtensor,
+                        GpuAdvancedIncSubtensor1,
+                        GpuAdvancedIncSubtensor1_dev20)
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -404,15 +404,16 @@ def local_gpua_advanced_incsubtensor(node):
 def local_gpua_careduce(node):
     if isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul,
                                       scalar.Maximum, scalar.Minimum)):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if dev.startswith('opencl'):
+        x, = node.inputs
+        x_gpu = as_gpuarray_variable(x)
+        ctx = get_context(x_gpu.type.context)
+        if ctx.kind == 'opencl':
             op = GpuCAReduceCPY
             if node.op.scalar_op not in [scalar.add, scalar.mul]:
                 # We don't support yet all reduction with cpy code.
                 return
         else:
             op = GpuCAReduceCuda
-        x, = node.inputs
 
         greduce = op(
             node.op.scalar_op, axis=node.op.axis,

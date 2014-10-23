@@ -64,7 +64,10 @@ class GpuElemwise(HideC, Elemwise):
 
     context_type = gpu_context_type
 
-    def __init__(self, context=None):
+    def __init__(self, scalar_op, inplace_pattern=None, name=None,
+                 nfunc_spec=None, context=None):
+        Elemwise.__init__(self, scalar_op, inplace_pattern=inplace_pattern,
+                          name=name, nfunc_spec=nfunc_spec)
         self.context = context
 
     def __eq__(self, other):
