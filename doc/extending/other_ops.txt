@@ -252,7 +252,7 @@ along with pointers to the relevant documentation.
 
 *       TensorType : Theano type that representes a multidimensional
         array containing elements that all have the same type. Variables of
-        this Theano type are representedin C as objects of class
+        this Theano type are represented in C as objects of class
         `PyArrayObject <http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html#PyArrayObject>`_.
         The :class:`TensorType documentation <tensor.TensorType>`.
 
@@ -282,5 +282,5 @@ along with pointers to the relevant documentation.
 
 *       CDataType :  Theano type that represents a C data type. The C type
         associated with this Theano type depends on the data being
-        represented.The :class:`CDataType documentation
+        represented. The :class:`CDataType documentation
         <theano.gof.type.CDataType>`.
