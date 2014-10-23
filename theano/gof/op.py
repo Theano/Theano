@@ -1078,15 +1078,7 @@ class COp(Op):
         # Generate an string containing the arguments sent to the external C
         # function. The argstring will be of format :
         # "input0, input1, input2, &output0, &output1"
-        input_arg_str = ", ".join(inp)
-        output_arg_str = ", ".join(["&%s"] * len(out)) % tuple(out)
-        
-        if len(input_arg_str) > 0 and len(output_arg_str) > 0:
-            full_arg_str = ", ".join([input_arg_str, output_arg_str])
-        else:
-            full_arg_str = input_arg_str + output_arg_str
-            
-        return full_arg_str
+        return ", ".join(list(inp) + ["&%s" % o for o in out])
 
     def get_c_macros(self, node, name):
 
