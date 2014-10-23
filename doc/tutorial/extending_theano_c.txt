@@ -959,4 +959,4 @@ Final Note
 
 This tutorial focuses on providing C implementations to ops that manipulate
 Theano tensors. For more information about other Theano types, you can refer
-to the section :ref:`Other ops <other_ops>`.
+to the section :ref:`Alternate Theano Types <alternate_theano_types>`.
