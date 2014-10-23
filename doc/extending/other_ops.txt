@@ -257,6 +257,17 @@ pointers to the relevant documentation.
         documentation for TypedList can be found
         :ref:`here <libdoc_typed_list>`.
 
+*       Scalar : Theano type that represents a C primitive type. The C type
+        associated with this Theano type is the represented C primitive
+        itself. The documentation for the Scalar type can be
+        found :ref:`here <libdoc_scalar>`.
+
+*       SparseType : Theano type used to represent sparse tensors. There is no
+        equivalent C type for this Theano Type but you can split a sparse
+        variable into its parts as TensorVariables. Those can then be used as
+        inputs to an op with C code. The documentation for ops that rely on
+        SparseType can be found :ref:`here <sparse_ops>`.
+
 *       Generic : Theano type that represents a simple Python Object.
         Variables of this Theano type are represented in C as objects of class
         `PyObject
@@ -264,18 +275,7 @@ pointers to the relevant documentation.
         documentation for TypedList can be found
         :class:`here <theano.gof.type.Generic>`.
 
-*       Scalar : Theano type that represents a C primitive type. The C type
-        associated with this Theano type is the represented C primitive
-        itself. The documentation for the Scalar type can be
-        found :ref:`here <libdoc_scalar>`.
-
 *       CDataType :  Theano type that represents a C data type. The C type
         associated with this Theano type depends on the data being
         represented.The documentation for CDataType can be found
         :class:`here <theano.gof.type.CDataType>`.
-
-*       SparseType : Theano type used to represent sparse tensors. There is no
-        equivalent C type for this Theano Type but you can split a sparse
-        variable into its parts as TensorVariables. Those can then be used as
-        inputs to an op with C code. The documentation for ops that rely on
-        SparseType can be found :ref:`here <sparse_ops>`.
