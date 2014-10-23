@@ -2016,26 +2016,26 @@ def zeros_like(model, dtype=None):
     return fill(model, constant(0.0, dtype=dtype))
 
 
-def zeros(shp, dtype=None):
+def zeros(shape, dtype=None):
     """
     Create a Tensor filled with zeros, closer to Numpy's syntax than ``alloc``.
     """
-    if not isinstance(shp, (list, tuple, TensorVariable)):
-        shp = [shp]
+    if not isinstance(shape, (list, tuple, TensorVariable)):
+        shape = [shape]
     if dtype is None:
         dtype = config.floatX
-    return alloc(numpy.array(0, dtype=dtype), *shp)
+    return alloc(numpy.array(0, dtype=dtype), *shape)
 
 
-def ones(shp, dtype=None):
+def ones(shape, dtype=None):
     """
     Create a Tensor filled with ones, closer to Numpy's syntax than ``alloc``.
     """
-    if not isinstance(shp, (list, tuple, TensorVariable)):
-        shp = [shp]
+    if not isinstance(shape, (list, tuple, TensorVariable)):
+        shape = [shape]
     if dtype is None:
         dtype = config.floatX
-    return alloc(numpy.array(1, dtype=dtype), *shp)
+    return alloc(numpy.array(1, dtype=dtype), *shape)
 
 
 class Nonzero(gof.Op):
