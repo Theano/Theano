@@ -3,13 +3,13 @@ import theano
 from theano import Apply, tensor, scalar, Constant
 from theano.tensor import DimShuffle, discrete_dtypes
 
-from theano.gradient import grad_undefined, grad_not_implemented
+from theano.gradient import grad_undefined
 
 from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
 
 if cuda_available:
-    from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
-                                     CudaNdarray, opt, GpuFromHost,
+    from theano.sandbox.cuda import (basic_ops,
+                                     opt, GpuFromHost,
                                      HostFromGpu, host_from_gpu,
                                      GpuDimShuffle)
 
