@@ -247,8 +247,15 @@ Alternate Theano Types
 ======================
 
 Most ops in Theano are used to manipulate tensors. However, Theano also
-supports many other variable types. These are listed below, along with
-pointers to the relevant documentation.
+supports many other variable types. The supported types are listed below,
+along with pointers to the relevant documentation.
+
+*       TensorType : Theano type that representes a multidimensional
+        array containing elements that all have the same type. Variables of
+        this Theano type are representedin C as objects of class
+        `PyArrayObject <http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html#PyArrayObject>`_.
+        The documentation for TensorType can be found
+        :class:`here <tensor.TensorType>`.
 
 *       TypedList : Theano type that represents a typed list (a list where
         every element in the list has the same Theano type). Variables of this
