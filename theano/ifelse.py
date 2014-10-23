@@ -435,7 +435,7 @@ where, each of the optimization do the following things:
 acceptable_ops = (theano.tensor.basic.Dot,
                   theano.tensor.basic.Reshape,
                   theano.tensor.basic.Shape,
-                  theano.tensor.basic.SpecifyShape,
+                  theano.tensor.SpecifyShape,
                   theano.tensor.basic.MaxAndArgmax,
                   theano.tensor.Subtensor,
                   theano.tensor.IncSubtensor,

@@ -65,3 +65,6 @@ from theano.tensor.sort import sort, argsort
 from theano.tensor.extra_ops import (DiffOp, bincount, squeeze,
                        repeat, bartlett, fill_diagonal, fill_diagonal_offset,
                        cumsum, cumprod)
+
+# SpecifyShape is defined in theano.compile, but should be available in tensor
+from theano.compile import SpecifyShape, specify_shape
