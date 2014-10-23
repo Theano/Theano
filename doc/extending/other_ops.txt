@@ -275,6 +275,7 @@ pointers to the relevant documentation.
         :class:`here <theano.gof.type.CDataType>`.
 
 *       SparseType : Theano type used to represent sparse tensors. There is no
-        equivalent C type for this Theano Type but Theano provides functions
-        to extract the data from SparseType variables. The documentation for
-        Ops that rely on SparseType can be found :ref:`here <sparse_ops>`.
+        equivalent C type for this Theano Type but you can split a sparse
+        variable into its parts as TensorVariables. Those can then be used as
+        inputs to an op with C code. The documentation for ops that rely on
+        SparseType can be found :ref:`here <sparse_ops>`.
