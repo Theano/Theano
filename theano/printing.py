@@ -949,7 +949,7 @@ def pydotprint_variables(vars,
                     g.add_node(pd.Node(varastr, color='green'))
             else:
                 varastr = my_list[nd]
-            label = ''
+            label = None
             if len(app.inputs) > 1:
                 label = str(i)
             g.add_edge(pd.Edge(varastr, astr, label=label))
@@ -969,12 +969,12 @@ def pydotprint_variables(vars,
                     g.add_node(pd.Node(varastr))
                 elif high_contrast:
                     g.add_node(pd.Node(varastr, style='filled',
-                                        fillcolor=color))
+                                       fillcolor=color))
                 else:
                     g.add_node(pd.Node(varastr, color=color))
             else:
                 varastr = my_list[nd]
-            label = ''
+            label = None
             if len(app.outputs) > 1:
                 label = str(i)
             g.add_edge(pd.Edge(astr, varastr, label=label))
