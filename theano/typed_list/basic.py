@@ -41,6 +41,7 @@ class _typed_list_py_operators:
         return index_(self, elem)
 
     ttype = property(lambda self: self.type.ttype)
+    dtype = property(lambda self: self.type.ttype.dtype)
 
 
 class TypedListVariable(_typed_list_py_operators, Variable):

@@ -7048,11 +7048,12 @@ class T_Choose(utt.InferShapeTester):
 
     def test_numpy_compare(self):
 
-        a = tensor.vector(dtype='int64')
-        b = tensor.matrix(dtype='int64')
+        a = tensor.vector(dtype='int32')
+        b = tensor.matrix(dtype='float32')
 
-        A = numpy.asarray(numpy.random.rand(4), dtype='int64')
-        B = numpy.asarray(numpy.random.rand(4, 4), dtype='int64')
+        A = numpy.asarray(numpy.random.random_integers(0, 3, 4),
+                          dtype='int32')
+        B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
 
         modes = ['raise', 'wrap', 'clip']
 
@@ -7064,13 +7065,14 @@ class T_Choose(utt.InferShapeTester):
 
     def test_numpy_compare_tuple(self):
 
-        a = tensor.tensor3(dtype='int64')
-        b = tensor.tensor3(dtype='int64')
-        c = tensor.tensor3(dtype='int64')
+        a = tensor.tensor3(dtype='int32')
+        b = tensor.tensor3(dtype='float32')
+        c = tensor.tensor3(dtype='float32')
 
-        A = numpy.asarray(numpy.random.rand(2, 1, 1), dtype='int64')
-        B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='int64')
-        C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='int64')
+        A = numpy.asarray(numpy.random.random_integers(0, 1, (2, 1, 1)),
+                          dtype='int32')
+        B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='float32')
+        C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='float32')
 
         f = function([a, b, c], choose(a, (b, c)))
         t_c = f(A, B, C)
@@ -7079,15 +7081,15 @@ class T_Choose(utt.InferShapeTester):
 
     def test_infer_shape(self):
 
-        a = tensor.matrix(dtype='int64')
-        b = tensor.vector(dtype='int64')
-        c = tensor.matrix(dtype='int64')
-        d = tensor.vector(dtype='int64')
+        a = tensor.matrix(dtype='int32')
+        b = tensor.vector(dtype='int32')
+        c = tensor.matrix(dtype='int32')
+        d = tensor.vector(dtype='int32')
 
-        A = numpy.asarray(numpy.random.rand(5, 4), dtype='int64')
-        B = numpy.asarray(numpy.random.rand(4), dtype='int64')
-        C = numpy.asarray(numpy.random.rand(7, 4), dtype='int64')
-        D = numpy.asarray(numpy.random.rand(4), dtype='int64')
+        A = numpy.asarray(numpy.random.rand(5, 4) * 4, dtype='int32')
+        B = numpy.asarray(numpy.random.rand(4) * 4, dtype='int32')
+        C = numpy.asarray(numpy.random.rand(7, 4) * 4, dtype='int32')
+        D = numpy.asarray(numpy.random.rand(4) * 4, dtype='int32')
 
         var1 = [a, b, a, b]
         var2 = [c, d, b, a]
@@ -7106,13 +7108,13 @@ class T_Choose(utt.InferShapeTester):
 # Disabled as it isn't implemented.
     def ___test_infer_shape_tuple(self):
 
-        a = tensor.tensor3(dtype='int64')
-        b = tensor.tensor3(dtype='int64')
-        c = tensor.tensor3(dtype='int64')
+        a = tensor.tensor3(dtype='int32')
+        b = tensor.tensor3(dtype='int32')
+        c = tensor.tensor3(dtype='int32')
 
-        A = numpy.asarray([1, 0], dtype='int64').reshape((2, 1, 1))
-        B = numpy.asarray(numpy.random.rand(1, 4, 1), dtype='int64')
-        C = numpy.asarray(numpy.random.rand(1, 1, 7), dtype='int64')
+        A = numpy.asarray([1, 0], dtype='int32').reshape((2, 1, 1))
+        B = numpy.asarray(numpy.random.rand(1, 4, 1), dtype='int32')
+        C = numpy.asarray(numpy.random.rand(1, 1, 7), dtype='int32')
 
         f = function([a, b, c], choose(a, (b, c)))
         shape = (2, 4, 7)
