@@ -528,7 +528,8 @@ def pydotprint(fct, outfile=None,
     """
     Print to a file (png format) the graph of a compiled theano function's ops.
 
-    :param fct: the theano fct returned by theano.function.
+    :param fct: a compiled Theano function, a Variable, an Apply or
+                a list of Variable.
     :param outfile: the output file where to put the graph.
     :param compact: if True, will remove intermediate var that don't have name.
     :param format: the file format of the output.
@@ -597,9 +598,19 @@ def pydotprint(fct, outfile=None,
         outputs = fct.outputs
         topo = fct.toposort()
     else:
-        raise ValueError(('pydotprint expects as input a theano.function or '
-                         'the FunctionGraph of a function!'), fct)
-
+        if isinstance(fct, gof.Variable):
+            fct = [fct]
+        elif isinstance(fct, gof.Apply):
+            fct = fct.outputs
+        assert isinstance(fct, (list, tuple))
+        assert all(isinstance(v, gof.Variable) for v in fct)
+        inputs = gof.graph.inputs(fct)
+        fct = gof.FunctionGraph(inputs=gof.graph.inputs(fct),
+                                outputs=fct)
+        mode = None
+        profile = None
+        outputs = fct.outputs
+        topo = fct.toposort()
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
                             " for `pydotprint` to work.")
