@@ -111,7 +111,7 @@ An op has to implement some methods defined in the the interface of
       the symbolic output Variables. It creates output Variables of a suitable
       symbolic Type to serve as the outputs of this op's
       application.
-    - it  creates an Apply instance with the input and output Variable,      and return the Apply instance.
+    - it creates an Apply instance with the input and output Variable, and return the Apply instance.
 
 
 
@@ -137,7 +137,7 @@ An op has to implement some methods defined in the the interface of
       dtype, but can have the wrong shape and have any stride pattern.
 
   :func:`perform` method must be determined by the inputs. That is to say,
-  when applied to similar inputs the method must return the same outputs.
+  when applied to identical inputs the method must return the same outputs.
 
   :class:`gof.Op` allows some other way to define the op implentation.
   For instance, it is possible to define :meth:`Op.c_code` to provide a
