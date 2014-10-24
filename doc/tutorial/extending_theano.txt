@@ -111,7 +111,7 @@ An op has to implement some methods defined in the the interface of
       the symbolic output Variables. It creates output Variables of a suitable
       symbolic Type to serve as the outputs of this op's
       application.
-    - finally it  creates an Apply instance with the input and output Variable,      and return the Apply instance.
+    - it  creates an Apply instance with the input and output Variable,      and return the Apply instance.
 
 
 
@@ -136,10 +136,8 @@ An op has to implement some methods defined in the the interface of
       preallocated in the ``output_storage``, it will be of the good
       dtype, but can have the wrong shape and have any stride pattern.
 
-  :func:`perform` method must be determined by the inputs. That is to say, if
-  it is evaluated once on inputs A and returned B, then if ever
-  inputs C, equal to A, are presented again, then outputs equal to
-  B must be returned again.
+  :func:`perform` method must be determined by the inputs. That is to say,
+  when applied to similar inputs the method must return the same outputs.
 
   :class:`gof.Op` allows some other way to define the op implentation.
   For instance, it is possible to define :meth:`Op.c_code` to provide a
@@ -208,10 +206,7 @@ Other methods can be optionally defined by the op.
 
   The :func:`infer_shape` method allows to infer the shape of the op
   output variables, without actually computing the outputs.
-  Inputs are tuples of Theano variables. Output is a list of tuples of
-  Theano variables.
-
-  :func:`infer_shape` takes as input ``node``, a reference to the op Apply node,
+  It takes as input ``node``, a reference to the op Apply node,
   and a list of Theano symbolic Varables (``i0_shape``, ``i1_shape``, ...)
   which are the shape of the op input Variables.
   :func:`infer_shape` returns a list where each element is a tuple representing  the shape of one output.
