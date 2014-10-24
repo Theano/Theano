@@ -5198,6 +5198,8 @@ class Choose(Op):
     def infer_shape(self, node, shapes):
 
         if isinstance(node.inputs[1], TensorVariable):
+            # We have padded node.inputs[0] to the right number of
+            # dimensions for the output
             return[(shapes[0])]
         else:
             import theano.typed_list
@@ -5214,13 +5216,28 @@ class Choose(Op):
         # import at the top as it would cause circular import.
         import theano.typed_list
         a = as_tensor_variable(a)
+        if "int" not in a.dtype:
+            raise TypeError(
+                'choose first argument must have an [u]int* dtype. Got %s.'
+                % a.dtype)
+
         if isinstance(choices, (tuple, list)):
             choice = theano.typed_list.make_list(choices)
-            dtype = choice.ttype.dtype
+            choice_ndim = choice.ttype.ndim
+            choice_bcast = choice.ttype.broadcastable
         else:
             choice = as_tensor_variable(choices)
-        o = TensorType(choice.dtype, a.broadcastable)
-
+            choice_ndim = choice.ndim - 1
+            choice_bcast = choice.broadcastable[1:]
+        out_ndim = numpy.max([a.ndim, choice_ndim])
+        a = shape_padleft(a, out_ndim - a.ndim)
+        bcast = [False] * out_ndim
+        for idx, (b1, b2) in enumerate(
+            zip(a.broadcastable,
+                (True,) * (out_ndim - choice_ndim) + choice_bcast)):
+            if b1 and b2:
+                bcast[idx] = True
+        o = TensorType(choice.dtype, bcast)
         return Apply(self, [a, choice], [o()])
 
     def perform(self, node, inputs, (z, )):

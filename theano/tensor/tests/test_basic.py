@@ -7045,6 +7045,7 @@ class T_Power(unittest.TestCase):
 class T_Choose(utt.InferShapeTester):
     op = staticmethod(choose)
     op_class = Choose
+    modes = ['raise', 'wrap', 'clip']
 
     def test_numpy_compare(self):
 
@@ -7055,13 +7056,43 @@ class T_Choose(utt.InferShapeTester):
                           dtype='int32')
         B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
 
-        modes = ['raise', 'wrap', 'clip']
-
-        for m in modes:
+        for m in self.modes:
             f = function([a, b], choose(a, b, mode=m))
             t_c = f(A, B)
             n_c = numpy.choose(A, B, mode=m)
             assert numpy.allclose(t_c, n_c)
+
+    def test_broadcasted(self):
+        a = tensor.scalar(dtype='int32')
+        b = tensor.matrix(dtype='float32')
+
+        # Test when a is broadcastable
+        A = 3
+        B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
+
+        for m in self.modes:
+            f = function([a, b], choose(a, b, mode=m))
+            t_c = f(A, B)
+            n_c = numpy.choose(A, B, mode=m)
+            assert numpy.allclose(t_c, n_c)
+
+        # Test when the result should be broadcastable
+        b = theano.tensor.col(dtype='float32')
+        B = numpy.asarray(numpy.random.rand(4, 1), dtype='float32')
+        for m in self.modes:
+            f = function([a, b], choose(a, b, mode=m))
+            assert choose(a, b, mode=m).broadcastable[0]
+            t_c = f(A, B)
+            n_c = numpy.choose(A, B, mode=m)
+            assert numpy.allclose(t_c, n_c)
+
+    def test_dtype_error(self):
+        a = tensor.scalar(dtype='float32')
+        b = tensor.matrix(dtype='float32')
+
+        A = 3
+        B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
+        self.assertRaises(TypeError, choose, a, b)
 
     def test_numpy_compare_tuple(self):
 
@@ -7074,36 +7105,42 @@ class T_Choose(utt.InferShapeTester):
         B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='float32')
         C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='float32')
 
-        f = function([a, b, c], choose(a, (b, c)))
-        t_c = f(A, B, C)
-        n_c = numpy.choose(A, (B, C))
-        assert numpy.allclose(t_c, n_c)
+        for m in self.modes:
+            f = function([a, b, c], choose(a, (b, c), mode=m))
+            t_c = f(A, B, C)
+            n_c = numpy.choose(A, (B, C), mode=m)
+            assert numpy.allclose(t_c, n_c)
 
     def test_infer_shape(self):
+        for shp1, shp2 in [
+            ((5, 4), (7, 4)),
+            ((4,), (4,)),
+            ((5, 4), (4,)),
+            ((4,), (5, 4)),
 
-        a = tensor.matrix(dtype='int32')
-        b = tensor.vector(dtype='int32')
-        c = tensor.matrix(dtype='int32')
-        d = tensor.vector(dtype='int32')
-
-        A = numpy.asarray(numpy.random.rand(5, 4) * 4, dtype='int32')
-        B = numpy.asarray(numpy.random.rand(4) * 4, dtype='int32')
-        C = numpy.asarray(numpy.random.rand(7, 4) * 4, dtype='int32')
-        D = numpy.asarray(numpy.random.rand(4) * 4, dtype='int32')
-
-        var1 = [a, b, a, b]
-        var2 = [c, d, b, a]
-        mat1 = [A, B, A, B]
-        mat2 = [C, D, B, A]
-
-        for v, m, w, n in zip(var1, mat1, var2, mat2):
-            self._compile_and_check([v, w],  # theano.function inputs
-                                        [self.op(v, w)],  # theano.function outputs
-                                        # Always use not square matrix!
-                                        # inputs data
-                                        [m, n],
-                                        # Op that should be removed from the graph.
-                                        self.op_class)
+            ((1, 4), (7, 4)),
+            ((1,), (4,)),
+            ((1, 4), (4,)),
+# The following case cause error from NumPy.
+#            ((5, 4), (1, 4)),
+#            ((1,), (1,)),
+#            ((4,), (1,)),
+#            ((4,), (1, 4)),
+#            ((4,), (3, 1)),
+        ]:
+            a = tensor.tensor(dtype='int32',
+                              broadcastable=[n == 1 for n in shp1])
+            c = tensor.tensor(dtype='float32',
+                              broadcastable=[n == 1 for n in shp2])
+            A = numpy.asarray(numpy.random.rand(*shp1) * 4, dtype='int32')
+            C = numpy.asarray(numpy.random.rand(*shp2) * 4, dtype='float32')
+            self._compile_and_check([a, c],  # theano.function inputs
+                                    [self.op(a, c)],  # theano.function outputs
+                                    # Always use not square matrix!
+                                    # inputs data
+                                    [A, C],
+                                    # Op that should be removed from the graph.
+                                    self.op_class)
 
 # Disabled as it isn't implemented.
     def ___test_infer_shape_tuple(self):
