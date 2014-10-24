@@ -5216,9 +5216,12 @@ class Choose(Op):
         a = as_tensor_variable(a)
         if isinstance(choices, (tuple, list)):
             choice = theano.typed_list.make_list(choices)
+            dtype = choice.ttype.dtype
         else:
             choice = as_tensor_variable(choices)
-        return Apply(self, [a, choice], [a.type()])
+        o = TensorType(choice.dtype, a.broadcastable)
+
+        return Apply(self, [a, choice], [o()])
 
     def perform(self, node, inputs, (z, )):
         a = inputs[0]
