@@ -7114,26 +7114,32 @@ class T_Choose(utt.InferShapeTester):
     def test_infer_shape(self):
         for shp1, shp2 in [
             ((5, 4), (7, 4)),
-            ((4,), (4,)),
-            ((5, 4), (4,)),
-            ((4,), (5, 4)),
-
             ((1, 4), (7, 4)),
-            ((1,), (4,)),
+            ((5, 1), (7, 4)),
+            ((5, 4), (1, 4)),
+            ((5, 4), (7, 1)),
+
+            ((5, 4), (4,)),
             ((1, 4), (4,)),
-# The following case cause error from NumPy.
-#            ((5, 4), (1, 4)),
-#            ((1,), (1,)),
-#            ((4,), (1,)),
-#            ((4,), (1, 4)),
-#            ((4,), (3, 1)),
+            ((5, 1), (4,)),
+            ((5, 4), (1,)),
+
+            ((4,), (5, 4)),
+            ((1,), (5, 4)),
+            ((4,), (1, 4)),
+            ((4,), (3, 1)),
+
+            ((4,), (4,)),
+            ((1,), (4,)),
+            ((4,), (1,)),
+            ((1,), (1,)),
         ]:
             a = tensor.tensor(dtype='int32',
                               broadcastable=[n == 1 for n in shp1])
             c = tensor.tensor(dtype='float32',
                               broadcastable=[n == 1 for n in shp2])
-            A = numpy.asarray(numpy.random.rand(*shp1) * 4, dtype='int32')
-            C = numpy.asarray(numpy.random.rand(*shp2) * 4, dtype='float32')
+            A = numpy.asarray(numpy.random.rand(*shp1) * shp2[0], dtype='int32')
+            C = numpy.asarray(numpy.random.rand(*shp2) * shp2[0], dtype='float32')
             self._compile_and_check([a, c],  # theano.function inputs
                                     [self.op(a, c)],  # theano.function outputs
                                     # Always use not square matrix!

@@ -5200,7 +5200,15 @@ class Choose(Op):
         if isinstance(node.inputs[1], TensorVariable):
             # We have padded node.inputs[0] to the right number of
             # dimensions for the output
-            return[(shapes[0])]
+            l = []
+            for sh1, sh2, b1 in zip(shapes[0],
+                                        shapes[1][1:],
+                                        node.inputs[0].broadcastable):
+                if b1:
+                    l.append(sh2)
+                else:
+                    l.append(sh1)
+            return [tuple(l)]
         else:
             import theano.typed_list
             assert isinstance(node.inputs[1],
@@ -5221,7 +5229,8 @@ class Choose(Op):
                 'choose first argument must have an [u]int* dtype. Got %s.'
                 % a.dtype)
 
-        if isinstance(choices, (tuple, list)):
+        if isinstance(choices, (tuple, list,
+                                theano.typed_list.TypedListVariable)):
             choice = theano.typed_list.make_list(choices)
             choice_ndim = choice.ttype.ndim
             choice_bcast = choice.ttype.broadcastable
@@ -5230,7 +5239,24 @@ class Choose(Op):
             choice_ndim = choice.ndim - 1
             choice_bcast = choice.broadcastable[1:]
         out_ndim = numpy.max([a.ndim, choice_ndim])
+
+        # Make explicit all added broadcastable dimensions.
         a = shape_padleft(a, out_ndim - a.ndim)
+        if len(choice_bcast) != out_ndim:
+            if isinstance(choice.type, TensorType):
+                choice = choice.dimshuffle(0,
+                                           *(('x',) *(out_ndim - choice_ndim) +
+                                             tuple(range(1, choice.ndim))))
+                choice_ndim = choice.ndim - 1
+                choice_bcast = choice.broadcastable[1:]
+            else:
+                raise NotImplementedError(
+                    "We currently didn't implemented that case. "
+                    "To make it work, explicitly add dimensions "
+                    "of size one for dimensions that will be broadcasted")
+                assert isinstance(node.inputs[1],
+                                  theano.typed_list.TypedListVariable)
+
         bcast = [False] * out_ndim
         for idx, (b1, b2) in enumerate(
             zip(a.broadcastable,
