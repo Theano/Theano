@@ -3494,8 +3494,8 @@ class Join(Op):
         else:
             # the output has integer type, so the gradient through it
             # is 0
-            # TODO what should be there?
-            rval = rval + [tensor.zeros_like() for tensor in tensors]
+            rval = rval + [tensor.zeros_like(dtype=config.floatX)
+                           for tensor in tensors]
 
         return rval
 
