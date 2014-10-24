@@ -121,7 +121,7 @@ An op has to implement some methods defined in the the interface of
       obtained via the ``Op``'s :func:`make_node` method. It is typically not
       used in simple ops, but it contains symbolic information that
       could be required for complex ops.
-    - ``inputs`` is a list of references to data which can be operate on using
+    - ``inputs`` is a list of references to data which can be operated on using
       non-symbolic statements, (i.e., statements in Python, Numpy).
     - ``output_storage`` is a list of storage cells where the output
       is to be stored. There is one storage cell for each output of the op.
@@ -148,7 +148,7 @@ An op has to implement some methods defined in the the interface of
   related c_methods. Note that an op can provide both Python and C implementation.
 
   :func:`make_thunk` method is another alternative to :func:`perform`.
-  It returns a thunk, a thunk is defined as a zero-arguments
+  It returns a thunk. A thunk is defined as a zero-arguments
   function which encapsulates the computation to be performed by an
   op on the arguments of its corresponding node. It takes several parameters:
     - ``node`` is the Apply instance for which a thunk is requested,
@@ -177,7 +177,7 @@ An op has to implement some methods defined in the the interface of
 
 Other methods can be optionally defined by the op.
 
-  The :func:`__str__` method provides a meaningful  string representation of
+  The :func:`__str__` method provides a meaningful string representation of
   your op.
 
   :func:`__eq__` and :func:`__hash__` define respectivelly equality
@@ -216,7 +216,7 @@ Other methods can be optionally defined by the op.
   which are the shape of the op input Variables.
   :func:`infer_shape` returns a list where each element is a tuple representing  the shape of one output.
   This could be helpful if one only
-  need the shape of the output instead of the actual outputs, which
+  needs the shape of the output instead of the actual outputs, which
   can be useful, for instance, for optimization procedures.
 
   The :func:`grad` method is required if you want to differentiate some cost whose expression includes your op. The gradient may be
