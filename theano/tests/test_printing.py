@@ -45,6 +45,12 @@ def test_pydotprint_cond_highlight():
             ' is no IfElse node in the graph\n')
 
 
+def test_pydotprint_return_image():
+    x = tensor.dvector()
+    ret = theano.printing.pydotprint(x * 2, return_image=True)
+    assert isinstance(ret, str)
+
+
 def test_pydotprint_variables():
     """
     This is a REALLY PARTIAL TEST.

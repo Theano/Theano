@@ -523,7 +523,8 @@ def pydotprint(fct, outfile=None,
                max_label_size=70, scan_graphs=False,
                var_with_name_simple=False,
                print_output_file=True,
-               assert_nb_all_strings=-1
+               assert_nb_all_strings=-1,
+               return_image=False,
                ):
     """
     Print to a file (png format) the graph of a compiled theano function's ops.
@@ -558,6 +559,16 @@ def pydotprint(fct, outfile=None,
                 the number of unique string nodes in the dot graph is equal to
                 this number. This is used in tests to verify that dot won't
                 merge Theano nodes.
+    :param return_image: If True, it will create the image and return it.
+        Useful to display the image in ipython notebook.
+
+        .. code-block:: python
+
+            import theano
+            v = theano.tensor.vector()
+            from IPython.display import SVG
+            SVG(theano.printing.pydotprint(v*2, return_image=True,
+                                           format='svg'))
 
     In the graph, ellipses are Apply Nodes (the execution of an op)
     and boxes are variables.  If variables have names they are used as
@@ -837,10 +848,6 @@ def pydotprint(fct, outfile=None,
     if not outfile.endswith('.' + format):
         outfile += '.' + format
 
-    g.write(outfile, prog='dot', format=format)
-    if print_output_file:
-        print 'The output file is available at', outfile
-
     if assert_nb_all_strings != -1:
         assert len(all_strings) == assert_nb_all_strings, len(all_strings)
 
@@ -862,6 +869,13 @@ def pydotprint(fct, outfile=None,
             pydotprint(scan_op.op.fn, new_name, compact, format, with_ids,
                        high_contrast, cond_highlight, colorCodes,
                        max_label_size, scan_graphs)
+
+    if return_image:
+        return g.create(prog='dot', format=format)
+    else:
+        g.write(outfile, prog='dot', format=format)
+        if print_output_file:
+            print 'The output file is available at', outfile
 
 
 def pydotprint_variables(vars,
