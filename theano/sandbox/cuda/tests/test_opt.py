@@ -80,7 +80,8 @@ def test_gpualloc():
     x = theano.shared(numpy.ones(3, dtype='float32'), 'x')
     m = (x).dimshuffle(['x', 0])
     v = tensor.alloc(1., *m.shape)
-    f = theano.function([], v + x, mode=mode_with_gpu)
+    f = theano.function([], v + x,
+                        mode=mode_with_gpu.excluding("local_alloc_elemwise"))
     l = f.maker.fgraph.toposort()
     assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
 
