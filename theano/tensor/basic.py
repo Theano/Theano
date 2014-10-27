@@ -3474,7 +3474,10 @@ class Join(Op):
 
         rval = [grad_undefined(self, 0, axis)]
 
-        if 'float' in tensors[0].dtype or 'complex' in tensors[0].dtype:
+        dtypes = [as_tensor_variable(x).type.dtype for x in tensors]
+        out_dtype = scal.upcast(*dtypes)
+
+        if 'float' in out_dtype or 'complex' in out_dtype:
             # assume that this is differentiable
             split = Split(len(tensors))
             split_gz = split(gz, axis, stack(*[shape(x)[axis]
@@ -3491,7 +3494,8 @@ class Join(Op):
         else:
             # the output has integer type, so the gradient through it
             # is 0
-            rval = rval + [tensor.zeros_like() for tensor in tensors]
+            rval = rval + [tensor.zeros_like(dtype=config.floatX)
+                           for tensor in tensors]
 
         return rval
 

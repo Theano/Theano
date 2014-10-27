@@ -3290,6 +3290,36 @@ class T_Join_and_Split(unittest.TestCase):
         utt.verify_grad(lambda a, b: join(1, a, b), [av, bv],
                         eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
 
+    def test_join_matrix_dtypes(self):
+        # Test mixed dtype. There was a bug that caused crash in the past.
+        av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int8')
+        bv = numpy.array([[7], [8]], dtype='float32')
+        a = self.shared(av)
+        b = as_tensor_variable(bv)
+        s = join(1, a, b)
+        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
+
+        grad(s.sum(), b)
+        grad(s.sum(), a)
+        utt.verify_grad(lambda b: join(1, a, b), [bv],
+                        eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
+
+    def test_join_matrix_ints(self):
+        # Test mixed dtype. There was a bug that caused crash in the past.
+        av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int8')
+        bv = numpy.array([[7], [8]], dtype='int32')
+        a = self.shared(av)
+        b = as_tensor_variable(bv)
+        s = join(1, a, b)
+        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
+
+        assert (grad(s.sum(), b).eval() == 0).all()
+        assert (grad(s.sum(), a).eval() == 0).all()
+
     def test_join_matrix1_using_vertical_stack(self):
         a = self.shared(numpy.array([[1, 2, 3], [4, 5, 6]], dtype=self.floatX))
         b = as_tensor_variable(numpy.array([[7, 8, 9]], dtype=self.floatX))
