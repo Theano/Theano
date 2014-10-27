@@ -43,9 +43,9 @@ Running the code above we see:
     Traceback (most recent call last):
       File "test0.py", line 10, in <module>
         f(np.ones((2,)), np.ones((3,)))
-      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 605, in __call__
+      File "/PATH_TO_THEANO/theano/compile/function_module.py", line 605, in __call__
         self.fn.thunks[self.fn.position_of_error])
-      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 595, in __call__
+      File "/PATH_TO_THEANO/theano/compile/function_module.py", line 595, in __call__
         outputs = self.fn()
     ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 2)
     Apply node that caused the error: Elemwise{add,no_inplace}(<TensorType(float64, vector)>, <TensorType(float64, vector)>, <TensorType(float64, vector)>)
@@ -54,7 +54,7 @@ Running the code above we see:
     Inputs strides: [(8,), (8,), (8,)]
     Inputs scalar values: ['not scalar', 'not scalar', 'not scalar']
 
-    HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags optimizer=fast_compile
+    HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags 'optimizer=fast_compile'. If that does not work, Theano optimization can be disabled with 'optimizer=None'.
     HINT: Use the Theano flag 'exception_verbosity=high' for a debugprint of this apply node.
 
 Arguably the most useful information is approximately half-way through
@@ -66,9 +66,10 @@ caused the error, as well as the input types, shapes, strides and
 scalar values.
 
 The two hints can also be helpful when debugging. Using the theano flag
-``optimizer=fast_compile`` can in some cases tell you the faulty line,
-while ``exception_verbosity=high`` will display a debugprint of the
-apply node. Using these hints, the end of the error message becomes :
+``optimizer=fast_compile`` or ``optimizer=None`` can often tell you
+the faulty line, while ``exception_verbosity=high`` will display a
+debugprint of the apply node. Using these hints, the end of the error
+message becomes :
 
 .. code-block:: bash
 
@@ -84,8 +85,8 @@ apply node. Using these hints, the end of the error message becomes :
      |<TensorType(float64, vector)> [@D] <TensorType(float64, vector)>
 
 We can here see that the error can be traced back to the line ``z = z + y``.
-Nevertheless, it may happen that setting ``optimizer=fast_compile`` does not
-give you a backtrace of the error. In this case, you can use test values.
+For this example, using ``optimizer=fast_compile`` worked. If it did not,
+you could set ``optimizer=None`` or use test values.
 
 Using Test Values
 -----------------
@@ -95,14 +96,19 @@ on-the-fly, before a ``theano.function`` is ever compiled. Since optimizations
 haven't been applied at this stage, it is easier for the user to locate the
 source of some bug. This functionality is enabled through the config flag
 ``theano.config.compute_test_value``. Its use is best shown through the
-following example (both ``optimizer=fast_compile`` and ``exception_verbosity=high``
-are already used here).
+following example. Here, we use ``exception_verbosity=high`` and
+``optimizer=fast_compile``, which would not tell you the line at fault.
+``optimizer=None`` would and it could therefore be used instead of test values.
 
 
 .. code-block:: python
 
+    import numpy
+    import theano
+    import theano.tensor as T
+
     # compute_test_value is 'off' by default, meaning this feature is inactive
-    theano.config.compute_test_value = 'off'
+    theano.config.compute_test_value = 'off' # Use 'warn' to activate this feature
 
     # configure shared variables
     W1val = numpy.random.rand(2, 10, 10).astype(theano.config.floatX)
@@ -112,6 +118,8 @@ are already used here).
 
     # input which will be of shape (5,10)
     x  = T.matrix('x')
+    # provide Theano with a default test-value
+    #x.tag.test_value = numpy.random.rand(5, 10)
 
     # transform the shared variable in some way. Theano does not
     # know off hand that the matrix func_of_W1 has shape (20, 10)
@@ -132,11 +140,11 @@ Running the above code generates the following error message:
 .. code-block:: bash
 
     Traceback (most recent call last):
-      File "test1.py", line 29, in <module>
+      File "test1.py", line 31, in <module>
         f(numpy.random.rand(5, 10))
-      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 605, in __call__
+      File "PATH_TO_THEANO/theano/compile/function_module.py", line 605, in __call__
         self.fn.thunks[self.fn.position_of_error])
-      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 595, in __call__
+      File "PATH_TO_THEANO/theano/compile/function_module.py", line 595, in __call__
         outputs = self.fn()
     ValueError: Shape mismatch: x has 10 cols (and 5 rows) but y has 20 rows (and 10 cols)
     Apply node that caused the error: Dot22(x, DimShuffle{1,0}.0)
@@ -153,7 +161,7 @@ Running the above code generates the following error message:
          |DimShuffle{2,0,1} [@E] <TensorType(float64, 3D)> ''
            |W1 [@F] <TensorType(float64, 3D)>
 
-    HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags optimizer=fast_compile
+    HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags 'optimizer=fast_compile'. If that does not work, Theano optimization can be disabled with 'optimizer=None'.
 
 If the above is not informative enough, by instrumenting the code ever
 so slightly, we can get Theano to reveal the exact source of the error.
@@ -182,13 +190,13 @@ following error message, which properly identifies *line 24* as the culprit.
     Traceback (most recent call last):
       File "test2.py", line 24, in <module>
         h1 = T.dot(x, func_of_W1)
-      File "/data/lisa/exp/jeasebas/Theano/theano/tensor/basic.py", line 4734, in dot
+      File "PATH_TO_THEANO/theano/tensor/basic.py", line 4734, in dot
         return _dot(a, b)
-      File "/data/lisa/exp/jeasebas/Theano/theano/gof/op.py", line 545, in __call__
+      File "PATH_TO_THEANO/theano/gof/op.py", line 545, in __call__
         required = thunk()
-      File "/data/lisa/exp/jeasebas/Theano/theano/gof/op.py", line 752, in rval
+      File "PATH_TO_THEANO/theano/gof/op.py", line 752, in rval
         r = p(n, [x[0] for x in i], o)
-      File "/data/lisa/exp/jeasebas/Theano/theano/tensor/basic.py", line 4554, in perform
+      File "PATH_TO_THEANO/theano/tensor/basic.py", line 4554, in perform
         z[0] = numpy.asarray(numpy.dot(x, y))
     ValueError: matrices are not aligned
 
