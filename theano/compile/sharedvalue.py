@@ -169,14 +169,31 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     """Return a SharedVariable Variable, initialized with a copy or
     reference of `value`.
 
-    This function iterates over constructor functions (see
-    `shared_constructor`) to find a suitable SharedVariable subclass.
+    This function iterates over
+    :ref:`constructor functions <shared_constructor>`
+    to find a suitable SharedVariable subclass.
+    The suitable one is the first constructor that accept the given value.
+
+    This function is meant as a convenient default.  If you want to use a
+    specific shared variable constructor, consider calling it directly.
+
+    ``theano.shared`` is a shortcut to this function.
 
     :note: By passing kwargs, you effectively limit the set of
-    potential constructors to those that can accept those kwargs.
+        potential constructors to those that can accept those kwargs.
 
-    :note: Some shared variable have 'borrow' as extra kwargs.
+    :note: Some shared variable have ``borrow`` as extra kwargs.
            `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
+
+    :note: Some shared variable have ``broadcastable`` as extra kwargs.
+        As shared variable shapes can changes, all dimensions default
+        to not being broadcastable. This parameter allow you to create
+        for example a `row` or `column` 2d tensor.
+
+    .. attribute:: constructors
+
+        A list of shared variable constructors that will be tried in reverse
+        order.
 
     """
 
