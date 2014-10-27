@@ -67,8 +67,6 @@ def test_pydotprint_variables():
 
     theano.theano_logger.removeHandler(orig_handler)
     theano.theano_logger.addHandler(new_handler)
-    theano.theano_logger.removeHandler(orig_handler)
-    theano.theano_logger.addHandler(new_handler)
     try:
         theano.printing.pydotprint_variables(x * 2)
     finally:

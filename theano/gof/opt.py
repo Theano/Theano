@@ -942,8 +942,16 @@ class LocalOptGroup(LocalOptimizer):
 
     def __str__(self):
         return getattr(self, '__name__',
-                       ('<theano.gof.opt.LocalOptGroup instance>' +
-                        str([str(o) for o in self.opts])))
+                       ('LocalOptGroup(%s)' %
+                        ','.join([str(o) for o in self.opts])))
+
+    def tracks(self):
+        t = []
+        for l in self.opts:
+            tt = l.tracks()
+            if tt:
+                t.extend(tt)
+        return t
 
     def transform(self, node):
         for opt in self.opts:
