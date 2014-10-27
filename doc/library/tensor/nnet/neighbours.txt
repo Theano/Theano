@@ -14,33 +14,77 @@
 
     - Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
       allows to apply a sliding window operation to a tensor containing images 
-      or other two-dimensional objects. The input is a 4-dimensional array which
-      represents a list of lists of images. The first two dimensions can be 
+      or other two-dimensional objects. The sliding window operation loops 
+      over points in input data and stores a rectangular neighbourhood of each 
+      point. The input `ten4` is a 4-dimensional array which represents a list 
+      of lists of images. The first two dimensions can be 
       useful to store different channels and batches.
 
-      The second input of the function `neib_shape` is a tuple of two values: 
-      height and width of the neighbourhood.
+      The second input of the function `neib_shape` is a tuple containing two 
+      values: height and width of the neighbourhood.
 
       It is possible to assign a step of selecting patches (parameter 
-      `neib_step`). By default it is equal to `neib_shape` in other words, the 
-      patches are disjoint.
+      `neib_step`). The parameter should be a tuple of two elements: number of
+      rows and number of columns to skip each iteration. Basically, when the 
+      step is 1, the neighbourhood of every first element is taken and every 
+      possible rectangular subset is returned. By default it is equal to 
+      `neib_shape` in other words, the 
+      patches are disjoint. When the step is greater than `neib_shape`, some
+      elements are omitted. 
 
-        Example:
+      .. note:: Currently the step size should be chosen in the way that the 
+         corresponding dimension :math:`i` (width or height) is equal to 
+         :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
 
-        .. code-block:: python
+      The output can be defined using the following pseudo-code
 
-            images = T.tensor4('images')
-            neibs = images2neibs(images, neib_shape=(5, 5))
-            im_val = np.arange(100.).reshape((1, 1, 10, 10))
-            neibs_val = theano.function([images], neibs)(im_val)
+      .. code-block:: python
 
-        .. note:: The underlying code will construct a 2D tensor of disjoint 
-           patches 5x5. The output has shape 4x25. 
+         idx = 0
+         for i in xrange(list 1 dim):
+             for j in xrange(list 2 dim):
+                 for k in <image column coordinates>:
+                     for l in <image row coordinates>:
+                         output[idx,:]
+                              = flattened version of ten4[i,j,l:l+r,k:k+c]
+                         idx += 1
+
+      .. note:: The operation isn't necessarily implemented internally with 
+         these for loops, they're just the easiest way to describe the output
+         pattern.
+
+
+      Example:
+
+      .. code-block:: python
+
+          # Defining variables
+          images = T.tensor4('images')
+          neibs = images2neibs(images, neib_shape=(5, 5))
+
+          # Constructing theano function 
+          window_function = theano.function([images], neibs)
+
+          # Input tensor (one image 10x10)
+          im_val = np.arange(100.).reshape((1, 1, 10, 10))
+
+          # Function application
+          neibs_val = window_function(im_val)
+
+      .. note:: The underlying code will construct a 2D tensor of disjoint 
+         patches 5x5. The output has shape 4x25. 
 
 
     - Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
       performs the inverse operation of 
-      :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`.
+      :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`. It inputs
+      the output of :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
+      `neib_shape` -- `neib_shape` that was used in 
+      :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`, 
+      `original_shape` -- original shape of 4d tensor given to 
+      :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
+     
+       and reconstructs its input.
 
         .. note:: Currently, the function doesn't support tensors created with
            `neib_step` different from default value. This means that it may be
@@ -52,6 +96,9 @@
         .. code-block:: python
 
             im_new = neibs2images(neibs, (5, 5), im_val.shape)
-            im_new_val = theano.function([neibs], im_new)(neibs_val)
+            # Theano function definition
+            inv_window = theano.function([neibs], im_new)
+            # Function application
+            im_new_val = inv_window(neibs_val)
 
         .. note:: The code will output the initial image array.
