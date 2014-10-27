@@ -3025,8 +3025,7 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 {
     int *gpu_data = (int*)device_malloc(sizeof(int)*2);
     if(gpu_data == NULL){
-        return PyErr_Format(PyExc_MemoryError,
-                            "CudaNdarray_ptr_int_size: Can't allocate memory on the gpu.");
+        return NULL;
     }
     get_gpu_ptr_size<<<1,1>>>(gpu_data);
     if (cudaSuccess != cudaGetLastError()){
