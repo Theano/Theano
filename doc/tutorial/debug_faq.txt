@@ -40,28 +40,13 @@ Running the code above we see:
 
 .. code-block:: bash
 
-    ---------------------------------------------------------------------------
-    ValueError                                Traceback (most recent call last)
-    <ipython-input-1-902f5bb7425a> in <module>()
-          8 z = z + y
-          9 f = theano.function([x, y], z)
-    ---> 10 f(np.ones((2,)), np.ones((3,)))
-
-    /data/lisa/exp/jeasebas/Theano/theano/compile/function_module.pyc in __call__(se
-    lf, *args, **kwargs)
-        603                     gof.link.raise_with_op(
-        604                         self.fn.nodes[self.fn.position_of_error],
-    --> 605                         self.fn.thunks[self.fn.position_of_error])
-        606                 else:
-        607                     # For the c linker We don't have access from
-
-    /data/lisa/exp/jeasebas/Theano/theano/compile/function_module.pyc in __call__(self, *args, **kwargs)
-        593         t0_fn = time.time()
-        594         try:
-    --> 595             outputs = self.fn()
-        596         except Exception:
-        597             if hasattr(self.fn, 'position_of_error'):
-
+    Traceback (most recent call last):
+      File "test0.py", line 10, in <module>
+        f(np.ones((2,)), np.ones((3,)))
+      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 605, in __call__
+        self.fn.thunks[self.fn.position_of_error])
+      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 595, in __call__
+        outputs = self.fn()
     ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 2)
     Apply node that caused the error: Elemwise{add,no_inplace}(<TensorType(float64, vector)>, <TensorType(float64, vector)>, <TensorType(float64, vector)>)
     Inputs types: [TensorType(float64, vector), TensorType(float64, vector), TensorType(float64, vector)]
@@ -88,11 +73,7 @@ apply node. Using these hints, the end of the error message becomes :
 .. code-block:: bash
 
     Backtrace when the node is created:
-      File "/opt/lisa/os/lib/python2.7/site-packages/IPython/core/interactiveshell.py", line 2690, in run_ast_nodes
-        if self.run_code(code):
-      File "/opt/lisa/os/lib/python2.7/site-packages/IPython/core/interactiveshell.py", line 2746, in run_code
-        exec code_obj in self.user_global_ns, self.user_ns
-      File "<ipython-input-1-902f5bb7425a>", line 8, in <module>
+      File "test0.py", line 8, in <module>
         z = z + y
 
     Debugprint of the apply node:
@@ -150,27 +131,13 @@ Running the above code generates the following error message:
 
 .. code-block:: bash
 
-    ---------------------------------------------------------------------------
-    ValueError                                Traceback (most recent call last)
-    <ipython-input-1-f144ea5aa857> in <module>()
-         27 # compile and call the actual function
-         28 f = theano.function([x], h2)
-    ---> 29 f(numpy.random.rand(5, 10))
-
-    /data/lisa/exp/jeasebas/Theano/theano/compile/function_module.pyc in __call__(self, *args, **kwargs)
-        603                     gof.link.raise_with_op(
-        604                         self.fn.nodes[self.fn.position_of_error],
-    --> 605                         self.fn.thunks[self.fn.position_of_error])
-        606                 else:
-        607                     # For the c linker We don't have access from
-
-    /data/lisa/exp/jeasebas/Theano/theano/compile/function_module.pyc in __call__(self, *args, **kwargs)
-        593         t0_fn = time.time()
-        594         try:
-    --> 595             outputs = self.fn()
-        596         except Exception:
-        597             if hasattr(self.fn, 'position_of_error'):
-
+    Traceback (most recent call last):
+      File "test1.py", line 29, in <module>
+        f(numpy.random.rand(5, 10))
+      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 605, in __call__
+        self.fn.thunks[self.fn.position_of_error])
+      File "/data/lisa/exp/jeasebas/Theano/theano/compile/function_module.py", line 595, in __call__
+        outputs = self.fn()
     ValueError: Shape mismatch: x has 10 cols (and 5 rows) but y has 20 rows (and 10 cols)
     Apply node that caused the error: Dot22(x, DimShuffle{1,0}.0)
     Inputs types: [TensorType(float64, matrix), TensorType(float64, matrix)]
@@ -187,7 +154,6 @@ Running the above code generates the following error message:
            |W1 [@F] <TensorType(float64, 3D)>
 
     HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags optimizer=fast_compile
-
 
 If the above is not informative enough, by instrumenting the code ever
 so slightly, we can get Theano to reveal the exact source of the error.
@@ -213,42 +179,18 @@ following error message, which properly identifies *line 24* as the culprit.
 
 .. code-block:: bash
 
-    ---------------------------------------------------------------------------
-    ValueError                                Traceback (most recent call last)
-    <ipython-input-1-320832559ee8> in <module>()
-         22
-         23 # source of error: dot product of 5x10 with 20x10
-    ---> 24 h1 = T.dot(x, func_of_W1)
-         25
-         26 # do more stuff
-
-    /data/lisa/exp/jeasebas/Theano/theano/tensor/basic.pyc in dot(a, b)
-       4732         return tensordot(a, b, [[a.ndim - 1], [numpy.maximum(0, b.ndim - 2)]])
-       4733     else:
-    -> 4734         return _dot(a, b)
-       4735
-       4736
-
-    /data/lisa/exp/jeasebas/Theano/theano/gof/op.pyc in __call__(self, *inputs, **kwargs)
-        543                 thunk.outputs = [storage_map[v] for v in node.outputs]
-        544
-    --> 545                 required = thunk()
-        546                 assert not required  # We provided all inputs
-        547
-
-    /data/lisa/exp/jeasebas/Theano/theano/gof/op.pyc in rval(p, i, o, n)
-        750
-        751         def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
-    --> 752             r = p(n, [x[0] for x in i], o)
-        753             for o in node.outputs:
-        754                 compute_map[o][0] = True
-
-    /data/lisa/exp/jeasebas/Theano/theano/tensor/basic.pyc in perform(self, node, inp, out)
-       4552         # gives a numpy float object but we need to return a 0d
-       4553         # ndarray
-    -> 4554         z[0] = numpy.asarray(numpy.dot(x, y))
-       4555
-       4556     def grad(self, inp, grads):
+    Traceback (most recent call last):
+      File "test2.py", line 24, in <module>
+        h1 = T.dot(x, func_of_W1)
+      File "/data/lisa/exp/jeasebas/Theano/theano/tensor/basic.py", line 4734, in dot
+        return _dot(a, b)
+      File "/data/lisa/exp/jeasebas/Theano/theano/gof/op.py", line 545, in __call__
+        required = thunk()
+      File "/data/lisa/exp/jeasebas/Theano/theano/gof/op.py", line 752, in rval
+        r = p(n, [x[0] for x in i], o)
+      File "/data/lisa/exp/jeasebas/Theano/theano/tensor/basic.py", line 4554, in perform
+        z[0] = numpy.asarray(numpy.dot(x, y))
+    ValueError: matrices are not aligned
 
 The ``compute_test_value`` mechanism works as follows:
 
