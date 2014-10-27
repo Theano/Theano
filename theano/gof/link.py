@@ -156,7 +156,8 @@ def raise_with_op(node, thunk=None, exc_info=None):
             "HINT: Re-running with most Theano optimization disabled could"
             " give you a back-traces when this node was created. This can"
             " be done with by setting the Theano flags"
-            " optimizer=fast_compile")
+            " 'optimizer=fast_compile'. If that do not work, disabling as"
+            " Theano toptimization can be with with 'optimizer=None'.")
 
     if theano.config.exception_verbosity == 'high':
         f = StringIO.StringIO()
