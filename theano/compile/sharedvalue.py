@@ -186,8 +186,9 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
            `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
 
     :note: Some shared variable have ``broadcastable`` as extra kwargs.
-        As shared variable shapes can changes, all dimensions default
-        to not being broadcastable. This parameter allow you to create
+        As shared variable shapes can change, all dimensions default
+        to not being broadcastable, even if ``value`` has a shape of 1
+        along some dimension. This parameter allows you to create
         for example a `row` or `column` 2d tensor.
 
     .. attribute:: constructors
