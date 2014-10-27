@@ -46,6 +46,10 @@ def test_pydotprint_cond_highlight():
 
 
 def test_pydotprint_return_image():
+    # Skip test if pydot is not available.
+    if not theano.printing.pydot_imported:
+        raise SkipTest('pydot not available')
+
     x = tensor.dvector()
     ret = theano.printing.pydotprint(x * 2, return_image=True)
     assert isinstance(ret, str)

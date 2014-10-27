@@ -20,7 +20,7 @@ before_install:
 install:
 # We support scipy 0.7.2, but it is not available on conda.
 # So we test with 0.11. Our internal buildbot have 0.7.2.
-  - conda create --yes -q -n py26 python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pip
+  - conda create --yes -q -n py26 python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pip pydot=1.0.28
   - source activate py26
   - pip install . --no-deps --use-mirrors
 
