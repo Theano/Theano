@@ -27,7 +27,8 @@ from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      Subtensor, IncSubtensor, make_constant,
-                                     AdvancedIncSubtensor1)
+                                     AdvancedIncSubtensor1,
+                                     AdvancedIncSubtensor)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -1408,6 +1409,7 @@ def local_useless_elemwise(node):
             return [node.inputs[0]]
         if node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
             return [node.inputs[0]]
+
         if (node.op.scalar_op == theano.scalar.identity
             and len(node.inputs) == 1):
             return [node.inputs[0]]
@@ -1529,14 +1531,15 @@ def local_remove_useless_assert(node):
             return [assert_(node.inputs[0], *cond)]
 
 
+@register_specialize
 @gof.local_optimizer([T.Elemwise])
 def local_alloc_elemwise(node):
     """
     elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
-      -> elemwise(x, y.TensorType(no broadcast flag))
+      -> elemwise(x, y.TensorType(BROADCAST CONDITION))
 
     elemwise(dimshuffle(alloc(x, shp)),... ,y.TensorType(BROADCAST CONDITION))
-      -> elemwise(x, y.TensorType(no broadcast flag))
+      -> elemwise(x.dimshuffle(...), y.TensorType(BROADCAST CONDITION))
 
     BROADCAST CONDITION: the condition is that the one input that are
     not to be optimized to have the same broadcast pattern as the
@@ -1548,99 +1551,133 @@ def local_alloc_elemwise(node):
     """
     if not isinstance(node.op, T.Elemwise):
         return False
+
     if len(node.outputs) > 1:
-        #This is a supposition this code make that I'm not sure is always true.
-        assert all([list(o.type.broadcastable) == list(
-                    node.outputs[0].type.broadcastable) for o in
+        # Ensure all outputs have the same broadcast pattern
+        # This is a supposition that I'm not sure is always true.
+        assert all([o.type.broadcastable == 
+                    node.outputs[0].type.broadcastable for o in
                     node.outputs[1:]])
 
-    if not any([list(i.type.broadcastable) == list(
-                node.outputs[0].type.broadcastable) for i in node.inputs]):
+    # The broadcast pattern of the ouptut must match the broadcast pattern of
+    # at least one of the inputs.
+    if not any([i.type.broadcastable == 
+        node.outputs[0].type.broadcastable for i in node.inputs]):
         return False
-    if not any([i.owner and (isinstance(i.owner.op, T.Alloc) or \
-                             (isinstance(i.owner.op, T.DimShuffle) and
-                              i.owner.inputs[0].owner and \
-                              isinstance(i.owner.inputs[0].owner.op, T.Alloc)))
+
+    def dimshuffled_alloc(i):
+        return (isinstance(i.owner.op, T.DimShuffle) and
+                     i.owner.inputs[0].owner and \
+                         isinstance(i.owner.inputs[0].owner.op, T.Alloc))
+
+    # At least one input must have an owner that is either a T.Alloc or a
+    # T.DimShuffle with an owner that is a T.Alloc -- otherwise there is
+    # nothing to optimize.
+    if not any([i.owner
+                and (isinstance(i.owner.op, T.Alloc) or dimshuffled_alloc(i))
                 for i in node.inputs]):
         return False
-    no_broad_idx = -1
-    for idx, i in enumerate(node.inputs):
-        if not i.owner:
-            if list(i.type.broadcastable) == [False, ] * i.type.ndim:
-                no_broad_idx = idx
-                break
-            else:
-                continue
-        if not any(i.type.broadcastable) and not isinstance(i.owner.op,
-                                                            T.Alloc):
-            no_broad_idx = idx
-            break
-        elif list(i.type.broadcastable) == list(
-            node.outputs[0].type.broadcastable) \
-            and not isinstance(i.owner.op, T.Alloc) \
-            and not (isinstance(i.owner.op, T.DimShuffle) and
-                     i.owner.inputs[0].owner and \
-                         isinstance(i.owner.inputs[0].owner.op, T.Alloc)):
-            no_broad_idx = idx
-            break
 
-    assert no_broad_idx >= 0
-    assert_op = node.inputs[no_broad_idx]
+    ## Search for input that we can use as a baseline for the dimensions.
+    assert_op_idx = -1
+    for idx, i in enumerate(node.inputs):
+        if i.type.broadcastable == node.outputs[0].type.broadcastable:
+            # Prefer an input that is not a T.Alloc nor a T.DimShuffle of a
+            # T.Alloc so that all allocs can be optimized.
+            if not (i.owner
+                    and (isinstance(i.owner.op, T.Alloc)
+                         or dimshuffled_alloc(i))):
+                assert_op_idx = idx
+                break
+
+    # It may be the case that only T.Allocs and T.DimShuffle of T.Allocs exist.
+    if assert_op_idx < 0:
+        # We want to optimize as many allocs as possible. When there is more
+        # than one then do all but one.
+        # number of inputs with alloc or dimshuffle alloc
+        l2 = [i for i in node.inputs
+              if (i.owner and (isinstance(i.owner.op, T.Alloc)
+                         or dimshuffled_alloc(i)))]
+        # If only 1 alloc or dimshuffle alloc, it is the one we will use for the shape
+        # So no alloc would be removed.
+        if len(l2) > 1:
+            # l containt inputs with alloc or dimshuffle alloc only.
+            # Its length will always be at least one, as we checked that before
+            l = [idx for idx, i in enumerate(node.inputs)
+                 if i.type.broadcastable == node.outputs[0].type.broadcastable]
+            assert_op_idx = l[0]  # The first one is as good as any to use.
+        else:
+            # Nothing would be optimized!
+            return False
+
+    assert_op = node.inputs[assert_op_idx]
     cmp_op = assert_op
-    new = []
+    new_i = []
 
     for i in node.inputs:
+        # Remove alloc
         if (i.owner and isinstance(i.owner.op, T.Alloc)
             and i.owner.inputs[0].type != i.owner.outputs[0].type):
             # when i.owner.inputs[0].type == i.owner.outputs[0].type we
             # will remove that alloc later
 
             assert i.type.ndim == cmp_op.ndim
-            if theano.config.experimental.local_alloc_elemwise_assert:
+            if (theano.config.experimental.local_alloc_elemwise_assert
+                and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
                 assert_op = assert_(assert_op,
                                     *[T.eq(i.shape[idx], cmp_op.shape[idx])\
                                           for idx in xrange(i.type.ndim) \
                                           if not i.type.broadcastable[idx]])
-                new.append(i.owner.inputs[0])
-        elif i.owner and isinstance(i.owner.op, T.DimShuffle) \
-                and i.owner.inputs[0].owner \
-                and isinstance(i.owner.inputs[0].owner.op, T.Alloc):
+            new_i.append(i.owner.inputs[0])
+
+        # Remove Alloc in DimShuffle
+        elif i.owner and dimshuffled_alloc(i):
             assert i.type.ndim == cmp_op.type.ndim
-            if theano.config.experimental.local_alloc_elemwise_assert:
+            if (theano.config.experimental.local_alloc_elemwise_assert
+                and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
                 assert_op = assert_(assert_op,
                                     *[T.eq(i.shape[idx], cmp_op.shape[idx])
                                       for idx in xrange(i.type.ndim)
                                       if not i.type.broadcastable[idx]])
-            new.append(i.owner.inputs[0].owner.inputs[0])
+            alloc_input = i.owner.inputs[0].owner.inputs[0]
+            if alloc_input.ndim != i.owner.inputs[0].ndim:
+                # The alloc can add dimension to the value
+                # We add a dimshuffle to add them.
+                # We let later optimization merge the multiple dimshuffle
+                nb_dim_to_add = i.owner.inputs[0].ndim - alloc_input.ndim
+                alloc_input = alloc_input.dimshuffle(['x'] * nb_dim_to_add +
+                                                     range(alloc_input.ndim))
+
+            # We need to keep the dimshuffle. It could swap axes or
+            # add dimensions anywhere.
+            new_i.append(i.owner.op(alloc_input))
         else:
-            new.append(i)
-    new[no_broad_idx] = assert_op
-    if theano.config.experimental.local_alloc_elemwise_assert:
-        assert assert_op.owner.op is assert_
-    return [node.op(*new)]
+            new_i.append(i)
+    new_i[assert_op_idx] = assert_op
+
+    return node.op(*new_i, return_list=True)
 
 #TODO, global optimizer that lift the assert to the beginning of the graph.
-#TODO, when all inputs can be optimized do all except one
+#TODO, optimize all inputs when possible -- currently when all inputs have
+# an alloc all but one is optimized.
 
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
-        "If True enable the experimental optimization local_alloc_elemwise",
-        theano.configparser.BoolParam(False),
-        in_c_key=False)
-#This version if faster but not as save.
+                                 "DEPRECATED: If True, enable the experimental"
+                                 " optimization local_alloc_elemwise."
+                                 " Generates error if not True. Use"
+                                 " optimizer_excluding=local_alloc_elemwise"
+                                 " to dsiable.",
+                                 theano.configparser.BoolParam(
+                                     True,
+                                     is_valid=lambda x: x
+                                 ),
+                                 in_c_key=False)
+#This version if faster but not as safe.
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise_assert',
         "If False enable the experimental optimization local_alloc_elemwise"
                                  " but WITHOUT assert into the graph!",
         theano.configparser.BoolParam(True),
         in_c_key=False)
-if theano.config.experimental.local_alloc_elemwise:
-    #enabled by default when the lifter of assert is done.
-    register_specialize(local_alloc_elemwise)
-else:
-    #don't register them in fast_run by default to have them disabled
-    #by default disable them by default as we are not sure it is
-    #always a good idea to replace an alloc with multiple op.
-    compile.optdb['specialize'].register("local_alloc_elemwise",
-                                         local_alloc_elemwise)
 
 ############################
 # Constant Canonicalization
@@ -2176,6 +2213,53 @@ def local_subtensor_of_alloc(node):
 
 
 @register_canonicalize
+@register_stabilize
+@register_specialize
+@gof.local_optimizer([Subtensor])
+def local_subtensor_of_dot(node):
+    """
+    This optimization translates T.dot(A, B)[idxs] into T.dot(A[idxs_a], B[idxs_b]),
+    where idxs_a and idxs_b are defined appropriately.
+
+    idxs_a is the first A.ndim-1 entries of idxs,
+    and idxs_b is the remaining entries of idxs (if any),
+    modified to skip the second-to-last dimension of B
+    (because dot sums over this dimension)
+    """
+    if not isinstance(node.op, Subtensor):
+        return
+    if (not node.inputs[0].owner or
+        not isinstance(node.inputs[0].owner.op, T.Dot)):
+        return
+    # If there is other node that use the outputs of the dot
+    # We don't want to compute twice the sub part.
+    if len(node.inputs[0].clients) > 1:
+        return
+
+    a = node.inputs[0].owner.inputs[0]
+    b = node.inputs[0].owner.inputs[1]
+
+    idx_list = theano.tensor.subtensor.get_idx_list(node.inputs, node.op.idx_list)
+
+    num_a_indices = min(a.ndim - 1, len(idx_list))
+    a_indices = idx_list[:num_a_indices]
+    b_indices = idx_list[num_a_indices:]
+
+    # This is necessary because np.dot sums the last index of a with the second to last of b
+    # so we want to skip the second-to-last index into b.
+    # This wasn't necessary for a, because we just ommitted the last index.
+    # We skip this if b.ndim = 1, since then we just want b_sub = b, not b_sub = b[:]
+    # (dot also handles b.ndim < 2 as a special case)
+    if b.ndim > 1 and len(b_indices) >= b.ndim - 1:
+        b_indices = b_indices[:b.ndim-2] + (slice(None, None, None),) + b_indices[b.ndim-2:]
+
+    a_sub = a.__getitem__(tuple(a_indices))
+    b_sub = b.__getitem__(tuple(b_indices)) if b_indices else b
+
+    return [T.dot(a_sub, b_sub)]
+
+
+@register_canonicalize
 @gof.local_optimizer([T.add])
 def local_IncSubtensor_serialize(node):
     """
@@ -2211,7 +2295,10 @@ def local_IncSubtensor_serialize(node):
     def movable(i):
         # Return True iff this is a incsubtensor that we can move
         return i.owner \
-                and isinstance(i.owner.op, IncSubtensor) \
+                and isinstance(i.owner.op, (IncSubtensor,
+                                            AdvancedIncSubtensor1,
+                                            AdvancedIncSubtensor,
+                                        )) \
                 and i.type == o_type \
                 and len(i.clients) == 1 \
                 and not i.owner.op.set_instead_of_inc
@@ -2283,10 +2370,11 @@ compile.optdb.register('local_inplace_incsubtensor1',
                        60, 'fast_run', 'inplace')  # DEBUG
 
 
-@register_canonicalize
-@register_stabilize
+# Register old name
+@register_canonicalize("local_incsubtensor_of_allocs")
+@register_stabilize("local_incsubtensor_of_allocs")
 @gof.local_optimizer([IncSubtensor])
-def local_incsubtensor_of_allocs(node):
+def local_incsubtensor_of_zeros(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
@@ -2306,10 +2394,10 @@ def local_incsubtensor_of_allocs(node):
             return False
 
 
-@register_canonicalize
-@register_stabilize
+@register_canonicalize('local_setsubtensor_of_allocs')
+@register_stabilize('local_setsubtensor_of_allocs')
 @gof.local_optimizer([IncSubtensor])
-def local_setsubtensor_of_allocs(node):
+def local_setsubtensor_of_constants(node):
     """
     SetSubtensor(x, x[idx], idx) -> x
 
@@ -2616,6 +2704,7 @@ def local_useless_tile(node):
                     return
         except NotScalarConstantError:
             return
+
 
 ################
 # Flatten Opts #

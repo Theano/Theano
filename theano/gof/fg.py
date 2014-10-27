@@ -87,6 +87,11 @@ class FunctionGraph(utils.object2):
         #TODO: document what variables are[not] set in the FunctionGraph when a feature
         is added via the constructor.  How constructed is the FunctionGraph?
 
+        Note: the intermediate nodes between 'inputs' and 'outputs' are not explicitely
+        passed.
+         
+        :param inputs: inputs nodes of the graph, usually declared by the user
+        :param outputs: outputs nodes of the graph.
         :param clone: If true, we will clone the graph. This is
         useful to remove the constant cache problem.
 
@@ -724,17 +729,42 @@ class FunctionGraph(utils.object2):
         return self.__str__()
 
     ### clone ###
-    def clone(self):
+    def clone(self, check_integrity=True):
         """WRITEME"""
-        return self.clone_get_equiv()[0]
+        return self.clone_get_equiv(check_integrity)[0]
 
-    def clone_get_equiv(self):
+    def clone_get_equiv(self, check_integrity=True):
         """WRITEME"""
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
-        self.check_integrity()
+        if check_integrity:
+            self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],
                           [equiv[o] for o in self.outputs])
-        e.check_integrity()
+        if check_integrity:
+            e.check_integrity()
         for feature in self._features:
             e.attach_feature(feature)
         return e, equiv
+
+    def __getstate__(self):
+        """This is needed as some feature introduce instancemethod and
+        this is not pickable.
+        """
+        d = self.__dict__.copy()
+        for feature in self._features:
+            for attr in getattr(feature, "pickle_rm_attr", []):
+                del d[attr]
+        # The class Updater take fct as parameter and they are lambda function, so unpicklable.
+
+        # execute_callbacks_times have reference to optimizer, and they can't 
+        # be pickled as the decorators with parameters aren't pickable.
+        if "execute_callbacks_times" in d:
+            del d["execute_callbacks_times"]
+
+        return d
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        for feature in self._features:
+            if hasattr(feature, "unpickle"):
+                feature.unpickle(self)

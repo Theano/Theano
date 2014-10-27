@@ -154,9 +154,10 @@ def raise_with_op(node, thunk=None, exc_info=None):
     else:
         hints.append(
             "HINT: Re-running with most Theano optimization disabled could"
-            " give you a back-traces when this node was created. This can"
-            " be done with by setting the Theano flags"
-            " optimizer=fast_compile")
+            " give you a back-trace of when this node was created. This can"
+            " be done with by setting the Theano flag"
+            " 'optimizer=fast_compile'. If that does not work,"
+            " Theano optimizations can be disabled with 'optimizer=None'.")
 
     if theano.config.exception_verbosity == 'high':
         f = StringIO.StringIO()
@@ -616,6 +617,7 @@ class PerformLinker(LocalLinker):
 
         f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
+        f.storage_map = storage_map
 
         return f, [Container(input, storage) for input, storage in zip(fgraph.inputs, input_storage)], \
             [Container(output, storage, True) for output, storage in zip(fgraph.outputs, output_storage)], \

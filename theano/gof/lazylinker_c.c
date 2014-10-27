@@ -1024,7 +1024,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.20);
+  PyObject *result = PyFloat_FromDouble(0.21);
   return result;
 }
 

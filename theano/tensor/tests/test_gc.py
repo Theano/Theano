@@ -53,10 +53,10 @@ def test_gc_never_pickles_temporaries():
         len_pre_f = len(cPickle.dumps(f))
         len_pre_g = len(cPickle.dumps(g))
 
-        # should be no difference at first
-        # In future, FunctionMaker might pickle linker-dependent stuff and make
-        # this assertion fail.
-        assert len_pre_f == len_pre_g
+        # We can't compare the content or the length of the string
+        # between f and g. 2 reason, we store some timming information
+        # in float. They won't be the same each time. Different float
+        # can have different lenght when printed.
 
         def a(fn):
             return len(cPickle.dumps(fn.maker))
@@ -86,13 +86,16 @@ def test_gc_never_pickles_temporaries():
         len_post_f = len(post_f)
         len_post_g = len(post_g)
 
-        #assert that f() didn't cause the function to grow
+        # assert that f() didn't cause the function to grow
         # allow_gc should leave the function un-changed by calling
         assert len_pre_f == len_post_f
 
-        #assert that g() didn't cause g to grow because temporaries
+        # assert that g() didn't cause g to grow because temporaries
         # that weren't collected shouldn't be pickled anyway
-        assert len_post_f == len_post_g, (f_linker, len_post_f, len_post_g)
+        # Allow for a couple of bytes of difference, since timing info,
+        # for instance, can be represented as text of varying size.
+        assert abs(len_post_f - len_post_g) < 4, (
+            f_linker, len_post_f, len_post_g)
 
 
 def test_merge_opt_runtime():

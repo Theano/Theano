@@ -1105,13 +1105,127 @@ def local_gpu_softmax_with_bias(node):
             return [host_from_gpu(gpu_sm)]
     return False
 
-#### Convolution, maxpooling
+# Convolution, maxpooling
 from theano.tensor.nnet import conv
+# We need a fixed order for the user interface.
+conv_seqopt = theano.gof.optdb.LocalSequenceDB()
+conv_seqopt.__name__ = "nnn"
+register_opt('fast_compile', 'fast_run', 'gpu')(conv_seqopt)
+
+def _gpu_conv_to_fftconv(node):
+    # shared helper function for local_conv_fft_valid and local_conv_fft_full.
+    # we import conv2d_fft locally to avoid pycuda warnings
+    from theano.sandbox.cuda.fftconv import conv2d_fft
+    kwargs = {'border_mode': node.op.border_mode}
+    if (node.op.imshp is not None and
+        node.op.imshp[-1] is not None and
+        node.op.imshp[-1] % 2 == 1):
+        kwargs['pad_last_dim'] = True
+    # If the user supplied the full nonsymbolic image_shape and
+    # filter_shape in conv2d(), we can pass it on to conv2d_fft().
+    if ((node.op.imshp is not None) and
+            (len(node.op.imshp) == 3) and
+            (None not in node.op.imshp) and
+            (node.op.bsize is not None)):
+        kwargs['image_shape'] = (node.op.bsize,) + node.op.imshp
+    if ((node.op.kshp is not None) and
+            (None not in node.op.kshp) and
+            (node.op.nkern is not None) and
+            (len(node.op.imshp) == 3) and
+            (node.op.imshp[0] is not None)):
+        kwargs['filter_shape'] = (node.op.nkern, node.op.imshp[0]) + node.op.kshp
+    rval = conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
+    if ('image_shape' in kwargs) or ('filter_shape' in kwargs):
+        # With given shape information, conv2d_fft may return a different
+        # broadcast pattern than GpuConv. This is forbidden, so we fix it.
+        rval = tensor.patternbroadcast(rval, node.outputs[0].type.broadcastable)
+    return rval
 
 
-@register_opt()
+@local_optimizer([gpu_from_host, conv.ConvOp, GpuConv])
+def local_conv_fft_valid(node):
+    if isinstance(node.op, GpuConv):
+        if (node.op.border_mode == 'valid' and
+            node.op.subsample == (1, 1) and
+            node.op.fft_opt):
+            return [_gpu_conv_to_fftconv(node)]
+        return False
+
+    repl = local_gpu_conv_legacy.transform(node)
+    if repl:
+        if isinstance(node.op, GpuFromHost):
+            gpu_conv = repl[0].owner
+        else:
+            gpu_conv = repl[0].owner.inputs[0].owner
+        assert isinstance(gpu_conv.op, GpuConv)
+        if (gpu_conv.op.border_mode == 'valid' and
+            gpu_conv.op.subsample == (1, 1) and
+            gpu_conv.op.fft_opt):
+            ret = _gpu_conv_to_fftconv(gpu_conv)
+            if ret:
+                if isinstance(node.op, GpuFromHost):
+                    return [ret]
+                else:
+                    return [host_from_gpu(ret)]
+
+
+@local_optimizer([gpu_from_host, conv.ConvOp, GpuConv])
+def local_conv_fft_full(node):
+    if isinstance(node.op, GpuConv):
+        if (node.op.border_mode == 'full' and
+            node.op.subsample == (1, 1) and
+            node.op.fft_opt):
+            return [_gpu_conv_to_fftconv(node)]
+        return
+
+    repl = local_gpu_conv_legacy.transform(node)
+    if repl:
+        if isinstance(node.op, GpuFromHost):
+            gpu_conv = repl[0].owner
+        else:
+            gpu_conv = repl[0].owner.inputs[0].owner
+        assert isinstance(gpu_conv.op, GpuConv)
+        if (gpu_conv.op.border_mode == 'full' and
+            gpu_conv.op.subsample == (1, 1) and
+            gpu_conv.op.fft_opt):
+            ret = _gpu_conv_to_fftconv(gpu_conv)
+            if ret:
+                if isinstance(node.op, GpuFromHost):
+                    return [ret]
+                else:
+                    return [host_from_gpu(ret)]
+
+# Needs to be registered before local_gpu_conv_legacy. Otherwise, it
+# will have priority over this optimization.  We want, if cudnn is
+# available and the GPU supports it, to use it.  Otherwise, the gemm
+# version should be used.  If the users want the legacy convolution,
+# they should use the Theano flag to disable the dnn and/or gemm version.
 @local_optimizer([gpu_from_host, conv.ConvOp])
 def local_gpu_conv(node):
+    """
+    If cudnn is available, use it. Otherwise, use the gemm version.
+    """
+    if theano.sandbox.cuda.dnn.dnn_available():
+        repl = local_gpu_conv_legacy.transform(node)
+        if repl:
+            if isinstance(node.op, GpuFromHost):
+                gpu_conv = repl[0].owner
+            else:
+                gpu_conv = repl[0].owner.inputs[0].owner
+            assert isinstance(gpu_conv.op, GpuConv)
+            ret = theano.sandbox.cuda.dnn.local_conv_dnn.transform(gpu_conv)
+            if ret:
+                if isinstance(node.op, GpuFromHost):
+                    return ret
+                else:
+                    return [host_from_gpu(ret[0])]
+    # If dnn isn't avail, the local_gpu_conv_legacy wil introduce the
+    # legacy opt. Then the local_conv_gemm will convert it to gemm
+    # opt.
+
+
+@local_optimizer([gpu_from_host, conv.ConvOp])
+def local_gpu_conv_legacy(node):
     """
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
 
@@ -1211,55 +1325,76 @@ def local_gpu_conv(node):
             return [out]
 
 
-def _gpu_conv_to_fftconv(node):
-    # shared helper function for local_conv_fft_valid and local_conv_fft_full.
-    # we import conv2d_fft locally to avoid pycuda warnings
-    from theano.sandbox.cuda.fftconv import conv2d_fft
-    kwargs = {'border_mode': node.op.border_mode}
-    if (node.op.imshp is not None and
-        node.op.imshp[-1] is not None and
-        node.op.imshp[-1] % 2 == 1):
-        kwargs['pad_last_dim'] = True
-    # If the user supplied the full nonsymbolic image_shape and
-    # filter_shape in conv2d(), we can pass it on to conv2d_fft().
-    if ((node.op.imshp is not None) and
-            (len(node.op.imshp) == 3) and
-            (None not in node.op.imshp) and
-            (node.op.bsize is not None)):
-        kwargs['image_shape'] = (node.op.bsize,) + node.op.imshp
-    if ((node.op.kshp is not None) and
-            (None not in node.op.kshp) and
-            (node.op.nkern is not None) and
-            (len(node.op.imshp) == 3) and
-            (node.op.imshp[0] is not None)):
-        kwargs['filter_shape'] = (node.op.nkern, node.op.imshp[0]) + node.op.kshp
-    rval = conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
-    if ('image_shape' in kwargs) or ('filter_shape' in kwargs):
-        # With given shape information, conv2d_fft may return a different
-        # broadcast pattern than GpuConv. This is forbidden, so we fix it.
-        rval = tensor.patternbroadcast(rval, node.outputs[0].type.broadcastable)
-    return rval
-
-
 @local_optimizer([GpuConv])
-def local_conv_fft_valid(node):
+def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
-        node.op.border_mode == 'valid' and
-        node.op.subsample == (1, 1) and
-        node.op.fft_opt):
-        return [_gpu_conv_to_fftconv(node)]
+        node.op.border_mode in ['full', 'valid']):
+        img, kern = node.inputs
+        border_mode = node.op.border_mode
+        subsample = node.op.subsample
+        pad = (0,0)
+        if (border_mode == 'full') and (subsample != (1,1)):
+            # need to simulate this via a padded valid convolution
+            pad = 'full'
+            border_mode = 'valid'
+        if (border_mode == 'valid'):
+            # need to flip the kernel for valid convolution
+            kern = kern[:, :, ::-1, ::-1]
+            # call GpuCorrMM or GpuCorrMM_gradWeights
+            # (the latter is faster if batchsize * kernelHeight * kernelWidth
+            # is larger than inputChannels * outputHeight * outputWidth.
+            # GpuConv does not always store information on the batchsize and
+            # channels, though, so we only use what information we have.)
+            if ((subsample == (1,1)) and
+                    (node.op.imshp is not None) and
+                    (None not in node.op.imshp[-2:]) and
+                    (node.op.kshp is not None) and
+                    (None not in node.op.kshp)):
+                # we know the kernel and output size
+                prod1 = node.op.kshp[0] * node.op.kshp[1]
+                prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
+                    (node.op.imshp[-1] - node.op.kshp[1] + 1))
+                if ((node.op.bsize is not None) and
+                        (len(node.op.imshp) == 3) and
+                        (node.op.imshp[0] is not None)):
+                    # we also know batchsize and input channels
+                    prod1 *= node.op.bsize
+                    prod2 *= node.op.imshp[0]
+                # compare to decide
+                if prod1 > prod2:
+                    # (we need to wrap the result in as_cuda_ndarray_variable,
+                    # because we are not allowed to replace a CudaNdarray with
+                    # a DimShuffle instance in a graph optimization)
+                    return [theano.sandbox.cuda.as_cuda_ndarray_variable(
+                            GpuCorrMM_gradWeights('valid', subsample, pad)(
+                            gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
+                            gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
+                            ).dimshuffle(1, 0, 2, 3))]
+            # use GpuCorrMM if we did not choose GpuCorrMM_gradWeights above
+            return [GpuCorrMM('valid', subsample, pad)(
+                    gpu_contiguous(img), gpu_contiguous(kern))]
+        elif (border_mode == 'full'):
+            # need to dimshuffle the kernel for full convolution
+            kern = kern.dimshuffle(1, 0, 2, 3)
+            # call GpuCorrMM_gradInputs
+            return [GpuCorrMM_gradInputs('valid', subsample, pad)(
+                    gpu_contiguous(kern), gpu_contiguous(img))]
 
 
-@local_optimizer([GpuConv])
-def local_conv_fft_full(node):
-    if (isinstance(node.op, GpuConv) and
-        node.op.border_mode == 'full' and
-        node.op.subsample == (1, 1) and
-        node.op.fft_opt):
-        return [_gpu_conv_to_fftconv(node)]
-
-gpu_optimizer.register("conv_fft_valid", local_conv_fft_valid)
-gpu_optimizer.register("conv_fft_full", local_conv_fft_full)
+# fft optimization not enabled by default. Need to be registered
+# before the default convolution optimization. If the user ask fft, as
+# this isn't the default, it should have higher prio then the default.
+conv_seqopt.register("conv_fft_valid", local_conv_fft_valid, 1)
+conv_seqopt.register("conv_fft_full", local_conv_fft_full, 1)
+# default gpu conv optimization
+conv_seqopt.register('local_gpu_conv', local_gpu_conv, 10,
+                     'fast_compile', 'fast_run', "dnn")
+# Legacy convolution, after default
+conv_seqopt.register('local_gpu_conv_legacy', local_gpu_conv_legacy, 11,
+                     'fast_compile', 'fast_run', "dnn")
+# conv gemm after legacy, as it convert legacy to gemm version
+conv_seqopt.register('local_conv_gemm', local_conv_gemm, 12,
+                     'fast_compile', 'fast_run', "dnn")
 
 
 @local_optimizer([Conv3D])
@@ -1437,63 +1572,6 @@ def local_gpu_downsample_factor_max_grad(node):
                                               gpu_from_host(z),
                                               gpu_from_host(gz)))]
 
-
-@local_optimizer([GpuConv])
-def local_conv_gemm(node):
-    if (isinstance(node.op, GpuConv) and
-        node.op.border_mode in ['full', 'valid']):
-        img, kern = node.inputs
-        border_mode = node.op.border_mode
-        subsample = node.op.subsample
-        pad = (0,0)
-        if (border_mode == 'full') and (subsample != (1,1)):
-            # need to simulate this via a padded valid convolution
-            pad = 'full'
-            border_mode = 'valid'
-        if (border_mode == 'valid'):
-            # need to flip the kernel for valid convolution
-            kern = kern[:, :, ::-1, ::-1]
-            # call GpuCorrMM or GpuCorrMM_gradWeights
-            # (the latter is faster if batchsize * kernelHeight * kernelWidth
-            # is larger than inputChannels * outputHeight * outputWidth.
-            # GpuConv does not always store information on the batchsize and
-            # channels, though, so we only use what information we have.)
-            if ((subsample == (1,1)) and
-                    (node.op.imshp is not None) and
-                    (None not in node.op.imshp[-2:]) and
-                    (node.op.kshp is not None) and
-                    (None not in node.op.kshp)):
-                # we know the kernel and output size
-                prod1 = node.op.kshp[0] * node.op.kshp[1]
-                prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
-                    (node.op.imshp[-1] - node.op.kshp[1] + 1))
-                if ((node.op.bsize is not None) and
-                        (len(node.op.imshp) == 3) and
-                        (node.op.imshp[0] is not None)):
-                    # we also know batchsize and input channels
-                    prod1 *= node.op.bsize
-                    prod2 *= node.op.imshp[0]
-                # compare to decide
-                if prod1 > prod2:
-                    # (we need to wrap the result in as_cuda_ndarray_variable,
-                    # because we are not allowed to replace a CudaNdarray with
-                    # a DimShuffle instance in a graph optimization)
-                    return [theano.sandbox.cuda.as_cuda_ndarray_variable(
-                            GpuCorrMM_gradWeights('valid', subsample, pad)(
-                            gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
-                            gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
-                            ).dimshuffle(1, 0, 2, 3))]
-            # use GpuCorrMM if we did not choose GpuCorrMM_gradWeights above
-            return [GpuCorrMM('valid', subsample, pad)(
-                    gpu_contiguous(img), gpu_contiguous(kern))]
-        elif (border_mode == 'full'):
-            # need to dimshuffle the kernel for full convolution
-            kern = kern.dimshuffle(1, 0, 2, 3)
-            # call GpuCorrMM_gradInputs
-            return [GpuCorrMM_gradInputs('valid', subsample, pad)(
-                    gpu_contiguous(kern), gpu_contiguous(img))]
-
-gpu_optimizer.register("conv_gemm", local_conv_gemm)
 
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 

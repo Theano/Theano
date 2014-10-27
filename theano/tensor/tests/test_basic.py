@@ -11,7 +11,7 @@ from itertools import izip
 # Import builtin min to be able to use it after importing the tensor version.
 import __builtin__
 builtin_min = __builtin__.min
-
+from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
@@ -46,7 +46,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes
+        swapaxes, choose, Choose
         )
 
 from theano.tests import unittest_tools as utt
@@ -3289,6 +3289,36 @@ class T_Join_and_Split(unittest.TestCase):
 #        assert tensor.grad(join(1,a,b), a
         utt.verify_grad(lambda a, b: join(1, a, b), [av, bv],
                         eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
+
+    def test_join_matrix_dtypes(self):
+        # Test mixed dtype. There was a bug that caused crash in the past.
+        av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int8')
+        bv = numpy.array([[7], [8]], dtype='float32')
+        a = self.shared(av)
+        b = as_tensor_variable(bv)
+        s = join(1, a, b)
+        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
+
+        grad(s.sum(), b)
+        grad(s.sum(), a)
+        utt.verify_grad(lambda b: join(1, a, b), [bv],
+                        eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
+
+    def test_join_matrix_ints(self):
+        # Test mixed dtype. There was a bug that caused crash in the past.
+        av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int8')
+        bv = numpy.array([[7], [8]], dtype='int32')
+        a = self.shared(av)
+        b = as_tensor_variable(bv)
+        s = join(1, a, b)
+        want = numpy.array([[1, 2, 3, 7], [4, 5, 6, 8]], dtype='float32')
+        out = self.eval_outputs_and_check_join([s])
+        self.assertTrue((out == want).all())
+
+        assert (grad(s.sum(), b).eval() == 0).all()
+        assert (grad(s.sum(), a).eval() == 0).all()
 
     def test_join_matrix1_using_vertical_stack(self):
         a = self.shared(numpy.array([[1, 2, 3], [4, 5, 6]], dtype=self.floatX))
@@ -6984,7 +7014,8 @@ class T_swapaxes(unittest.TestCase):
         t_s = fn(a)
         assert numpy.allclose(n_s, t_s)
 
-class T_Power():
+
+class T_Power(unittest.TestCase):
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = tensor.matrix("A", dtype=theano.config.floatX)
@@ -6997,29 +7028,103 @@ class T_Power():
         assert numpy.allclose(n_p, t_p)
 
     def test_multiple_power(self):
-        x = tensor.matrix()
+        x = tensor.vector()
         y = [1, 2, 3]
         z = power(x, y)
         f = function([x], z)
-        assert allclose(f([1, 2, 3]), [1, 4, 27])
+        assert numpy.allclose(f([1, 2, 3]), [1, 4, 27])
 
     def test_wrong_shape(self):
-        x = tensor.matrix()
+        x = tensor.vector()
         y = [1, 2, 3]
         z = power(x, y)
         f = function([x], z)
-        self.assertRaise(ValueError, f, [1, 2, 3, 4])
+        self.assertRaises(ValueError, f, [1, 2, 3, 4])
+
+
+class T_Choose(utt.InferShapeTester):
+    op = staticmethod(choose)
+    op_class = Choose
 
     def test_numpy_compare(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        A = tensor.matrix("A", dtype=theano.config.floatX)
-        Q = power(A, 2)
-        fn = function([A], [Q])
-        a = rng.rand(4, 4).astype(theano.config.floatX)
 
-        n_p = numpy.power(a, 2)
-        t_p = fn(a)
-        assert numpy.allclose(n_s, t_s)
+        a = tensor.vector(dtype='int64')
+        b = tensor.matrix(dtype='int64')
+
+        A = numpy.asarray(numpy.random.rand(4), dtype='int64')
+        B = numpy.asarray(numpy.random.rand(4, 4), dtype='int64')
+
+        modes = ['raise', 'wrap', 'clip']
+
+        for m in modes:
+            f = function([a, b], choose(a, b, mode=m))
+            t_c = f(A, B)
+            n_c = numpy.choose(A, B, mode=m)
+            assert numpy.allclose(t_c, n_c)
+
+    def test_numpy_compare_tuple(self):
+
+        a = tensor.tensor3(dtype='int64')
+        b = tensor.tensor3(dtype='int64')
+        c = tensor.tensor3(dtype='int64')
+
+        A = numpy.asarray(numpy.random.rand(2, 1, 1), dtype='int64')
+        B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='int64')
+        C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='int64')
+
+        f = function([a, b, c], choose(a, (b, c)))
+        t_c = f(A, B, C)
+        n_c = numpy.choose(A, (B, C))
+        assert numpy.allclose(t_c, n_c)
+
+    def test_infer_shape(self):
+
+        a = tensor.matrix(dtype='int64')
+        b = tensor.vector(dtype='int64')
+        c = tensor.matrix(dtype='int64')
+        d = tensor.vector(dtype='int64')
+
+        A = numpy.asarray(numpy.random.rand(5, 4), dtype='int64')
+        B = numpy.asarray(numpy.random.rand(4), dtype='int64')
+        C = numpy.asarray(numpy.random.rand(7, 4), dtype='int64')
+        D = numpy.asarray(numpy.random.rand(4), dtype='int64')
+
+        var1 = [a, b, a, b]
+        var2 = [c, d, b, a]
+        mat1 = [A, B, A, B]
+        mat2 = [C, D, B, A]
+
+        for v, m, w, n in zip(var1, mat1, var2, mat2):
+            self._compile_and_check([v, w],  # theano.function inputs
+                                        [self.op(v, w)],  # theano.function outputs
+                                        # Always use not square matrix!
+                                        # inputs data
+                                        [m, n],
+                                        # Op that should be removed from the graph.
+                                        self.op_class)
+
+# Disabled as it isn't implemented.
+    def ___test_infer_shape_tuple(self):
+
+        a = tensor.tensor3(dtype='int64')
+        b = tensor.tensor3(dtype='int64')
+        c = tensor.tensor3(dtype='int64')
+
+        A = numpy.asarray([1, 0], dtype='int64').reshape((2, 1, 1))
+        B = numpy.asarray(numpy.random.rand(1, 4, 1), dtype='int64')
+        C = numpy.asarray(numpy.random.rand(1, 1, 7), dtype='int64')
+
+        f = function([a, b, c], choose(a, (b, c)))
+        shape = (2, 4, 7)
+        assert numpy.allclose(f(A, B, C).shape, shape)
+
+        self._compile_and_check([a, b, c],  # theano.function inputs
+                                [self.op(a, (b, c))],  # theano.function outputs
+                                # Always use not square matrix!
+                                # inputs data
+                                [A, B, C],
+                                # Op that should be removed from the graph.
+                                self.op_class)
 
 """
 

@@ -383,6 +383,15 @@ commonly used.
     while ``c_support_code()`` is for support code that is not specific to
     each apply.
 
+    Both ``c_support_code()`` and ``c_support_code_apply ()`` are necessary
+    because a Theano op can be used more than once in a given Theano
+    function. For example, an op that adds two matrices could be used at some
+    point in the Theano function to add matrices of integers and, at another
+    point, to add matrices of doubles. Because the dtype of the inputs and
+    outputs can change between different applies of the op, any support code
+    that relies on a certain dtype is specific to a given apply of the op and
+    should therefore be defined in ``c_support_code_apply()``.
+
 .. method:: c_code_cache_version()
 
     Returns a tuple of integers representing the version of the C code in this
@@ -664,3 +673,290 @@ C code.
             """
 
             return c_code % locals()
+
+
+Alternate way of defining C Ops
+===============================
+
+The two previous examples have covered the standard way of implementing C Ops
+in Theano by inheriting from the class :class:`Op`. This process is mostly
+simple but it still involves defining many methods as well as mixing, in the
+same file, both Python and C code which tends to make the result less
+readable.
+
+To help with this, Theano defines a class, ``COp``, from which new C ops
+can inherit. The class ``COp`` aims to simplify the process of implementing
+C ops by doing the following :
+
+*       It allows you to define the C implementation of your op in a distinct
+        C code file. This makes it easier to keep your Python and C code
+        readable and well indented.
+
+*       It automatically handles the methods :meth:`Op.c_code()`,
+        :meth:`Op.c_support_code()`, :meth:`Op.c_support_code_apply()` and
+        :meth:`Op.c_code_cache_version()` based on the provided external C
+        implementation.
+
+To illustrate how much simpler the class ``COp`` makes the process of defining
+a new op with a C implementation, let's revisit the second example of this
+tutorial, the ``VectorTimesVector`` op. In that example, we implemented an op
+to perform the task of element-wise vector-vector multiplication. The two
+following blocks of code illustrate what the op would look like if it was
+implemented using the ``COp`` class.
+
+The new op is defined inside a Python file with the following code :
+
+.. code-block:: python
+
+    import theano
+    from theano import gof
+
+    class VectorTimesVector(gof.COp):
+        __props__ = ()
+
+        func_file = "./vectorTimesVector.c"
+        func_name = "APPLY_SPECIFIC(vector_times_vector)"
+
+        def __init__(self):
+            super(VectorTimesVector, self).__init__(self.func_file,
+                                                    self.func_name)
+
+        def make_node(self, x, y):
+            # Validate the inputs' type
+            if x.type.ndim != 1:
+                raise TypeError('x must be a 1-d vector')
+            if y.type.ndim != 1:
+                raise TypeError('y must be a 1-d vector')
+
+            # Create an output variable of the same type as x
+            output_var = theano.tensor.TensorType(
+                            dtype=theano.scalar.upcast(x.dtype, y.dtype),
+                            broadcastable=[False])()
+
+            return gof.Apply(self, [x, y], [output_var])
+
+And the following is the C implementation of the op, defined in an external
+C file named vectorTimesVector.c :
+
+.. code-block:: c
+
+    THEANO_SUPPORT_CODE_SECTION
+
+    // Support code function
+    bool vector_same_shape(PyArrayObject* arr1, PyArrayObject* arr2)
+    {
+        return (PyArray_DIMS(arr1)[0] == PyArray_DIMS(arr2)[0]);
+    }
+
+
+    THEANO_APPLY_CODE_SECTION
+
+    // Apply-specific support function
+    void APPLY_SPECIFIC(vector_elemwise_mult)(
+        DTYPE_INPUT_0* x_ptr, int x_str,
+        DTYPE_INPUT_1* y_ptr, int y_str,
+        DTYPE_OUTPUT_0* z_ptr, int z_str, int nbElements)
+    {
+        for (int i=0; i < nbElements; i++){
+            z_ptr[i * z_str] = x_ptr[i * x_str] * y_ptr[i * y_str];
+        }
+    }
+
+    // Apply-specific main function
+    int APPLY_SPECIFIC(vector_times_vector)(PyArrayObject* input0,
+                                            PyArrayObject* input1,
+                                            PyArrayObject** output0)
+    {
+        // Validate that the inputs have the same shape
+        if ( !vector_same_shape(input0, input1))
+        {
+            PyErr_Format(PyExc_ValueError, "Shape mismatch : "
+                        "input0.shape[0] and input1.shape[0] should "
+                        "match but x.shape[0] == %i and "
+                        "y.shape[0] == %i",
+                        PyArray_DIMS(input0)[0], PyArray_DIMS(input1)[0]);
+            return 1;
+        }
+
+        // Validate that the output storage exists and has the same
+        // dimension as x.
+        if (NULL == *output0 || !(vector_same_shape(input0, *output0)))
+        {
+            /* Reference received to invalid output variable.
+            Decrease received reference's ref count and allocate new
+            output variable */
+            Py_XDECREF(*output0);
+            *output0 = (PyArrayObject*)PyArray_EMPTY(1,
+                                                    PyArray_DIMS(input0),
+                                                    TYPENUM_OUTPUT_0,
+                                                    0);
+
+            if (!*output0) {
+                PyErr_Format(PyExc_ValueError,
+                            "Could not allocate output storage");
+                return 1;
+            }
+        }
+
+        // Perform the actual vector-vector multiplication
+        APPLY_SPECIFIC(vector_elemwise_mult)(
+                                (DTYPE_INPUT_0*)PyArray_DATA(input0),
+                                PyArray_STRIDES(input0)[0] / ITEMSIZE_INPUT_0,
+                                (DTYPE_INPUT_1*)PyArray_DATA(input1),
+                                PyArray_STRIDES(input1)[0] / ITEMSIZE_INPUT_1,
+                                (DTYPE_OUTPUT_0*)PyArray_DATA(*output0),
+                                PyArray_STRIDES(*output0)[0] / ITEMSIZE_OUTPUT_0,
+                                PyArray_DIMS(input0)[0]);
+
+        return 0;
+    }
+
+As you can see from this example, the Python and C implementations are nicely
+decoupled which makes them much more readable than when they were intertwined
+in the same file and the C code contained string formatting markers.
+
+Now that we have motivated the COp class, we can have a more precise look at
+what it does for us. For this, we go through the various elements that make up
+this new version of the VectorTimesVector op :
+
+*       Parent class : instead of inheriting from the class :class:`Op`,
+        VectorTimesVector inherits from the class ``COp``.
+
+*       Constructor : in our new op, the ``__init__()`` method has an important
+        use; to inform the constructor of the ``COp`` class of the location,
+        on the filesystem of the C implementation of this op. To do this, it
+        gives the path of file containing the C code as well as the name of
+        the function, in that file, that should be called to perform the
+        computation.
+
+*       ``make_node()`` : the ``make_node()`` method is absolutely identical to
+        the one in our old example. Using the ``COp`` class doesn't change
+        anything here.
+
+*       External C code : the external C code performs the computation
+        associated with the op. It contains, at the very least, a 'main' function
+        having the same name as provided to the constructor of the Python class
+        ``COp``. Writing this C code involves a few subtleties which deserve their
+        own respective sections.
+
+
+Main function
+-------------
+
+The external C implementation must implement a main function whose name
+is passed by the op to the ``__init__()`` method of the ``COp`` class. This
+main C function must respect the following constraints :
+
+*       It must return an int. The value of that int indicates whether the
+        op could perform its task or not. A value of 0 indicates success while
+        any non-zero value will interrupt the execution of the Theano function.
+        Before returning a non-zero integer, the main function should call the
+        function ``PyErr_Format()`` to setup a Python exception.
+
+*       It must receive one pointer for each input to the op followed by one
+        pointer to a pointer for each output of the op.
+
+For example, the main C function of an op that takes two scalars as inputs and
+returns both their sum and the difference between them would have four
+parameters (two for the op's inputs and two for its outputs) and it's
+signature would look something like this :
+
+.. code-block:: c
+
+    int sumAndDiffOfScalars(PyArrayObject* in0, PyArrayObject* in1,
+                            PyArrayObject** out0, PyArrayObject** out1)
+
+Macros
+------
+
+The ``COp`` class defines a number of macros that can you can use in your C
+implementation to make it simpler and more generic.
+
+For every input array 'i' (indexed from 0) of the op, the following macros are
+defined:
+
+*       ``DTYPE_INPUT_{i}`` : NumPy dtype of the data in the array.
+        This is the variable type corresponding to the NumPy dtype, not the
+        string representation of the NumPy dtype. For instance, if the op's
+        first input is a float32 ndarray, then the macro ``DTYPE_INPUT_0``
+        corresponds to ``npy_float32`` and can directly be used to declare a
+        new variable of the same dtype as the data in the array :
+
+        .. code-block:: c
+
+            DTYPE_INPUT_0 myVar = someValue;
+
+*       ``TYPENUM_INPUT_{i}`` : Typenum of the data in the array
+
+*       ``ITEMSIZE_INPUT_{i}`` : Size, in bytes, of the elements in the array.
+
+In the same way, the macros ``DTYPE_OUTPUT_{i}``, ``ITEMSIZE_OUTPUT_{i}`` and
+``TYPENUM_OUTPUT_{i}``  are defined for every output 'i' of the op.
+
+The ``COp`` class also defines the macro ``APPLY_SPECIFIC(str)`` which will
+automatically append the name of the :ref:`Apply node that applies the Op at
+the end of the provided ``str``. The use of this macro is discussed below.
+
+You should be aware, however, that these macros are apply-specific. As such,
+any function that uses them is considered to contain apply-specific code.
+
+
+Support code
+------------
+
+The file whose name is provided to the ``COp`` class is not constrained to
+contain only one function. It can in fact contain many functions, with every
+function but the main one acting as support code.
+
+When we defined the VectorTimesVector op without using the ``COp`` class, we
+had to make a distinction between two types of support_code : the support
+code that was apply-specific and the support code that wasn't.
+The apply-specific code was defined in the ` c_support_code_apply()`` method
+and the elements defined in that code (global variables and functions) had to
+include the name of the Apply node in their own names to avoid conflicts
+between the different versions of the apply-specific code. The code that
+wasn't apply-specific was simply defined in the ``c_support_code()`` method.
+
+When using the ``COp`` class, we still have to make the distinction between
+apply-specific and apply-agnostic support code but we express it differently
+in the code since it is all defined in the same external C file.
+These two types of support code should each be defined in their own section of
+the file, like in the example above. These sections should be delimited by the
+markers ``THEANO_SUPPORT_CODE_SECTION`` (to be put on its own line, at the
+beginning of the apply-agnostic support code section) and
+``THEANO_APPLY_CODE_SECTION`` (to be put on its own line at the beginning of
+the apply-specific code section). Moreover, just like in the previous examples
+of this tutorial, apply-specific functions and global variables need to
+include the name of the :ref:`Apply` node in their names. To achieve this,
+the macro ``APPLY_SPECIFIC(str)`` should be used when defining those elements
+as well as when referring to them. In the above example, this macro is used
+when defining the functions ``vector_elemwise_mult()`` and
+``vector_times_vector()`` as well as when calling function
+``vector_elemwise_mult()`` from inside ``vector_times_vector()``.
+
+:note:
+
+    The macro ``APPLY_SPECIFIC(str)`` should only ever be used for
+    apply-specific code. It should not be used for apply-agnostic code.
+
+The rules for knowing if a piece of code should be put in the apply-agnostic
+or the apply-specific support code section of the file are simple. If it uses
+any of the macros defined by the class ``COp`` then it is apply-specific and
+goes in the corresponding section. If it calls any apply-specific code then
+it is apply-specific. Otherwise, it is apply-agnostic and goes in the
+apply-agnostic support code section.
+
+In the above example, the ``function vector_same_shape()`` is apply-agnostic
+because it uses none of the macros defined by the class ``COp`` and it doesn't
+rely on any apply-specific code. The function ``vector_elemwise_mult()`` is
+apply-specific because it uses the macros defined by ``COp``. Finally, the
+function ``vector_times_vector()`` is apply-specific because it uses those
+same macros and also because it calls ``vector_elemwise_mult()`` which is an
+apply-specific function.
+
+Final Note
+==========
+
+This tutorial focuses on providing C implementations to ops that manipulate
+Theano tensors. For more information about other Theano types, you can refer
+to the section :ref:`Alternate Theano Types <alternate_theano_types>`.

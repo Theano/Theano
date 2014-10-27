@@ -356,9 +356,21 @@ def grad(cost, wrt, consider_constant=None,
          disconnected_inputs='raise', add_names=True,
          known_grads=None, return_disconnected='zero'):
     """
-    :type cost: Scalar (0-dimensional) Variable.
+    Return symbolic gradients for one or more variables with respect to some
+    cost.
+
+    For more information about how automatic differentiation works in Theano,
+    see :mod:`gradient`. For information on how to implement the gradient of
+    a certain Op, see :func:`grad`.
+
+    :type cost: Scalar (0-dimensional) tensor variable.
         May optionally be None if known_grads is provided.
-    :type wrt: Variable or list of Variables.
+    :param cost: a scalar with respect to which we are differentiating
+
+    :type wrt: Tensor variable or list of variables.
+    :param wrt: term[s] for which we want gradients
+
+    :type consider_constant: list of variables
     :param consider_constant: a list of expressions not to backpropagate
         through
 
@@ -389,9 +401,10 @@ def grad(cost, wrt, consider_constant=None,
                    None
         - 'Disconnected' : returns variables of type DisconnectedType
 
-    :rtype: Variable or list/tuple of Variables (depending upon `wrt`)
+    :rtype: variable or list/tuple of Variables (matching `wrt`)
 
-    :return: symbolic expression of gradient of `cost` with respect to `wrt`.
+    :return: symbolic expression of gradient of `cost` with respect to each
+             of the `wrt` terms.
              If an element of `wrt` is not differentiable with respect
              to the output, then a zero variable is returned.
              It returns an object of same type as `wrt`: a list/tuple
@@ -567,6 +580,33 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     subgraph_grad as `start` with any other `cost` (e.g. weight
     decay).
     
+    In an MLP, we could use subgraph_grad to iteratively backpropagate:
+
+    .. code-block:: python
+
+        x, t = theano.tensor.fvector('x'), theano.tensor.fvector('t')
+        w1 = theano.shared(np.random.randn(3,4))
+        w2 = theano.shared(np.random.randn(4,2))
+        a1 = theano.tensor.tanh(theano.tensor.dot(x,w1))
+        a2 = theano.tensor.tanh(theano.tensor.dot(a1,w2))
+        cost2 = theano.tensor.sqr(a2 - t).sum()
+        cost2 += theano.tensor.sqr(w2.sum())
+        cost1 = theano.tensor.sqr(w1.sum())
+
+        params = [[w2],[w1]]
+        costs = [cost2,cost1]
+        grad_ends = [[a1], [x]]
+
+        next_grad = None
+        param_grads = []
+        for i in xrange(2):
+            param_grad, next_grad = theano.subgraph_grad(
+                wrt=params[i], end=grad_ends[i],
+                start=next_grad, cost=costs[i]
+            )
+            next_grad = dict(zip(grad_ends[i], next_grad))
+            param_grads.extend(param_grad)
+
     :type wrt: list of variables
     :param wrt:
       Gradients are computed with respect to `wrt`.
@@ -593,7 +633,14 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
       : If the gradients of `cost` with respect to any of the `start`
       variables is already part of the `start` dictionary, then it may
       be counted twice with respect to `wrt` and `end`.
-    
+
+      .. warning::
+
+        If the gradients of `cost` with respect to any of the `start`
+        variables is already part of the `start` dictionary, then it
+        may be counted twice with respect to `wrt` and `end`.
+
+
     :type details: bool
     :param details:
       When True, additionally returns the list of gradients from
@@ -605,6 +652,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     :return: Returns lists of gradients with respect to `wrt` and `end`, 
             respectively.
 
+    .. versionadded:: 0.6.1
     '''
     assert ((cost is not None) or (start is not None))
     assert isinstance(end, list)

@@ -22,8 +22,6 @@ import theano
 from theano import config
 from theano.gof.python25 import any, all, deque
 
-#if sys.version_info[:2] >= (2,5):
-#  from collections import defaultdict
 
 _logger = logging.getLogger('theano.gof.opt')
 
@@ -154,7 +152,7 @@ def inplace_optimizer(f):
 
 
 class SeqOptimizer(Optimizer, list):
-    #inherit from Optimizer first to get Optimizer.__hash__
+    # inherit from Optimizer first to get Optimizer.__hash__
     """WRITEME
     Takes a list of L{Optimizer} instances and applies them
     sequentially.
@@ -825,6 +823,68 @@ class LocalOptimizer(object):
                 (' ' * level), self.__class__.__name__, id(self))
 
 
+class LocalSeqOptimizer(LocalOptimizer, list):
+    """
+    This allow to try a group of local optimizer in sequence.
+    When one do something, we return without trying the following one.
+    """
+    # inherit from Optimizer first to get Optimizer.__hash__
+    def __init__(self, *opts, **kw):
+        """WRITEME"""
+        if len(opts) == 1 and isinstance(opts[0], (list, tuple)):
+            opts = opts[0]
+        self[:] = opts
+        self.failure_callback = kw.pop('failure_callback', None)
+
+    def tracks(self):
+        t = []
+        for l in self:
+            tt = l.tracks()
+            if tt:
+                t.extend(tt)
+        return t
+
+    def transform(self, node):
+        """Transform a subgraph whose output is `node`.
+
+        Subclasses should implement this function so that it returns one of two
+        kinds of things:
+
+        - False to indicate that no optimization can be applied to this `node`;
+          or
+        - <list of variables> to use in place of `node`'s outputs in the
+          greater graph.
+        - dict(old variables -> new variables). A dictionary that map
+          from old variables to new variables to replace.
+
+        :type node: an Apply instance
+
+        """
+        for l in self:
+            ret = l.transform(node)
+            if ret:
+                return ret
+
+    def add_requirements(self, fgraph):
+        """
+        If this local optimization wants to add some requirements to the
+        fgraph,
+        This is the place to do it.
+        """
+        for l in self:
+            l.add_requirements(fgraph)
+
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        name = getattr(self, 'name', None)
+        print >> stream, "%s%s %s id=%i" % (
+            (' ' * level), self.__class__.__name__, name, id(self))
+        # This way, -1 will do all depth
+        if depth != 0:
+            depth -= 1
+            for opt in self:
+                opt.print_summary(stream, level=(level + 2), depth=depth)
+
+
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
     def __init__(self, fn, tracks=None, requirements=()):
@@ -1241,6 +1301,30 @@ class PatternSub(LocalOptimizer):
 
 # Use the following classes to apply LocalOptimizers
 
+class Updater:
+    def __init__(self, importer, pruner, chin):
+        self.importer = importer
+        self.pruner = pruner
+        self.chin = chin
+
+    def on_import(self, fgraph, node, reason):
+        if self.importer:
+            self.importer(node)
+
+    def on_prune(self, fgraph, node, reason):
+        if self.pruner:
+            self.pruner(node)
+
+    def on_change_input(self, fgraph, node, i, r, new_r, reason):
+        if self.chin:
+            self.chin(node, i, r, new_r, reason)
+
+    def on_detach(self, fgraph):
+        # To allow pickling this object
+        self.importer = None
+        self.pruner = None
+        self.chin = None
+
 
 class NavigatorOptimizer(Optimizer):
     """Abstract class
@@ -1329,18 +1413,7 @@ class NavigatorOptimizer(Optimizer):
         if importer is None and pruner is None:
             return None
 
-        class Updater:
-            if importer is not None:
-                def on_import(self, fgraph, node, reason):
-                    importer(node)
-            if pruner is not None:
-                def on_prune(self, fgraph, node, reason):
-                    pruner(node)
-            if chin is not None:
-                def on_change_input(self, fgraph, node, i, r, new_r, reason):
-                    chin(node, i, r, new_r, reason)
-
-        u = Updater()
+        u = Updater(importer, pruner, chin)
         fgraph.attach_feature(u)
         return u
 

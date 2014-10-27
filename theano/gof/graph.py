@@ -135,9 +135,14 @@ class Apply(Node):
             if len(self.outputs) == 1:
                 return self.outputs[0]
             else:
-                raise AttributeError("%s.default_output should be an output index." % self.op)
+                raise AttributeError(
+                    "%s.default_output should be an output index." % self.op)
+        elif not isinstance(do, (int, long)):
+            raise AttributeError("%s.default_output should be an int or long" %
+                                 self.op)
         elif do < 0 or do >= len(self.outputs):
-            raise AttributeError("%s.default_output is out of range." % self.op)
+            raise AttributeError("%s.default_output is out of range." %
+                                 self.op)
         return self.outputs[do]
 
     def env_getter(self):
@@ -873,6 +878,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
     # Get result from the merge-based function.
     rval1 = is_same_graph_with_merge(var1=var1, var2=var2, givens=givens)
     # Get result from the function `equal_computations` from scan_utils.
+
     use_equal_computations = True
     if givens:
         # We need to build the `in_xs` and `in_ys` lists. To do this, we need

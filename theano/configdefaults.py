@@ -118,6 +118,7 @@ AddConfigVar('print_active_device',
         BoolParam(True, allow_override=False),
         in_c_key=False)
 
+
 # Do not add FAST_RUN_NOGC to this list (nor any other ALL CAPS shortcut).
 # The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'.
 # The old all capital letter way of working is deprecated as it is not
@@ -465,6 +466,12 @@ AddConfigVar('unpickle_function',
              BoolParam(True),
              in_c_key=False)
 
+AddConfigVar('reoptimize_unpickled_function',
+        "Re-optimize the graph when a theano function is unpickled from the disk.",
+        BoolParam(True, allow_override=True),
+        in_c_key=False)
+
+
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
     method when exception_verbosity == 'low'. When exception_verbosity
@@ -538,3 +545,11 @@ AddConfigVar('check_input',
               "(particularly for scalars) and reduce the number of generated C "
               "files.",
              BoolParam(True))
+
+AddConfigVar('cache_optimizations',
+             "WARNING: work in progress, does not work yet."
+             "Specify if the optimization cache should be used. This cache will"
+             "any optimized graph and its optimization. Actually slow downs a lot"
+             "the first optimization, and could possibly still contains some bugs."
+             "Use at your own risks.",
+             BoolParam(False))

@@ -242,3 +242,41 @@ Numba Ops
 Want C speed without writing C code for your new Op? You can use Numba
 to generate the C code for you! Here is an `example
 Op <https://gist.github.com/nouiz/5492778#file-theano_op-py>`_ doing that.
+
+.. _alternate_theano_types:
+
+Alternate Theano Types
+======================
+
+Most ops in Theano are used to manipulate tensors. However, Theano also
+supports many other variable types. The supported types are listed below,
+along with pointers to the relevant documentation.
+
+*       :class:`TensorType <tensor.TensorType>` : Theano type that represents
+        a multidimensional array containing elements that all have the same
+        type. Variables of this Theano type are represented in C as objects of
+        class
+        `PyArrayObject <http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html#PyArrayObject>`_.
+
+*       :ref:`TypedList <libdoc_typed_list>` : Theano type that represents a
+        typed list (a list where every element in the list has the same Theano
+        type). Variables of this Theano type are represented in C as objects
+        of class `PyListObject <https://docs.python.org/2/c-api/list.html>`_.
+
+*       :ref:`Scalar <libdoc_scalar>` : Theano type that represents a C
+        primitive type. The C type associated with this Theano type is the
+        represented C primitive itself.
+
+*       :ref:`SparseType <sparse_ops>` : Theano type used to represent sparse
+        tensors. There is no equivalent C type for this Theano Type but you
+        can split a sparse variable into its parts as TensorVariables. Those
+        can then be used as inputs to an op with C code.
+
+*       :class:`Generic <theano.gof.type.Generic>` : Theano type that
+        represents a simple Python Object. Variables of this Theano type are
+        represented in C as objects of class `PyObject
+        <https://docs.python.org/2/c-api/structures.html#c.PyObject>`_.
+
+*       :class:`CDataType <theano.gof.type.CDataType>` :  Theano type that
+        represents a C data type. The C type associated with this Theano type
+        depends on the data being represented.

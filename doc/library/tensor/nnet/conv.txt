@@ -22,6 +22,33 @@
 .. moduleauthor:: LISA
 
 
+.. note::
+
+    As of October 21st, 2014, the default GPU image convolution
+    changed. Here is the algo:
+
+    - If we can use `cuDNN <https://developer.nvidia.com/cuDNN>`_, use it.
+    - If not, use gemm version (slower then cuDNN, uses more memory).
+
+    If the users do not want the extra memory usage of the gemm
+    version, they can enable the legacy code that is even slower, but
+    does not use extra memory. For this, use the Theano flag
+    ``optimizer_excluding=conv_gemm``.
+
+    There is no reason to use the legacy code or the gemm version if
+    cuDNN is available.
+
+    2 other options:
+
+    - There is also the fft version that is the fastest in some cases,
+      but uses even more memory. It does not support striding to remove
+      computation and has some shapes restriction.
+
+    - There is also the cuda_convnet convolution in Pylearn2. It uses a
+      different memory layout, has shapes restrictions, but does not use
+      extra memory and is faster then the legacy convolution.
+
+
 TODO: Give examples on how to use these things! They are pretty complicated.
 
 - Convolution operators implemented:

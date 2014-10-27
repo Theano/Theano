@@ -1494,11 +1494,11 @@ class GemmOptimizer(Optimizer):
             callbacks_before = fgraph.execute_callbacks_times.copy()
             callback_before = fgraph.execute_callbacks_time
 
-        class Updater:
-            def on_import(self, fgraph, new_node, reason):
-                if new_node is not node:
-                    nodelist.append(new_node)
-        u = Updater()
+        def on_import(new_node):
+            if new_node is not node:
+                nodelist.append(new_node)
+
+        u = theano.gof.opt.Updater(on_import, None, None)
         fgraph.attach_feature(u)
         while did_something:
             nb_iter += 1

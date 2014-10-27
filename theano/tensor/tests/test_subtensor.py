@@ -1281,7 +1281,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         z = b[[i, j], :]
         f1 = theano.function([i, j], z)
         cmd = f1(0, 1) == a[[0, 1], :]
-        self.assertTrue(numpy.all(cmp))
+        self.assertTrue(cmd.all())
 
         aa = rng.uniform(size=(4, 2, 3))
         bb = theano.shared(aa)
@@ -1289,7 +1289,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         z = bb[[i, j, k], :, i:k]
         f2 = theano.function([i, j, k], z)
         cmd = f2(0, 1, 2) == aa[[0, 1, 2], :, 0:2]
-        self.assertTrue(numpy.all(cmp))
+        self.assertTrue(cmd.all())
 
 
 class TestInferShape(utt.InferShapeTester):

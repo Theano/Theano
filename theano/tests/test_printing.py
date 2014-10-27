@@ -11,6 +11,7 @@ import theano.tensor as tensor
 from theano.printing import min_informative_str, debugprint
 from theano.compat.six import StringIO
 
+
 def test_pydotprint_cond_highlight():
     """
     This is a REALLY PARTIAL TEST.
@@ -42,6 +43,37 @@ def test_pydotprint_cond_highlight():
 
     assert (s.getvalue() == 'pydotprint: cond_highlight is set but there'
             ' is no IfElse node in the graph\n')
+
+
+def test_pydotprint_variables():
+    """
+    This is a REALLY PARTIAL TEST.
+
+    I did them to help debug stuff.
+
+    It make sure the code run.
+    """
+
+    # Skip test if pydot is not available.
+    if not theano.printing.pydot_imported:
+        raise SkipTest('pydot not available')
+
+    x = tensor.dvector()
+
+    s = StringIO()
+    new_handler = logging.StreamHandler(s)
+    new_handler.setLevel(logging.DEBUG)
+    orig_handler = theano.logging_default_handler
+
+    theano.theano_logger.removeHandler(orig_handler)
+    theano.theano_logger.addHandler(new_handler)
+    theano.theano_logger.removeHandler(orig_handler)
+    theano.theano_logger.addHandler(new_handler)
+    try:
+        theano.printing.pydotprint_variables(x * 2)
+    finally:
+        theano.theano_logger.addHandler(orig_handler)
+        theano.theano_logger.removeHandler(new_handler)
 
 
 def test_pydotprint_long_name():

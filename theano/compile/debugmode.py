@@ -494,7 +494,8 @@ def char_from_number(number):
 def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False,
                print_view_map=False, order=None, ids='CHAR',
-               stop_on_name=False, prefix_child=None):
+               stop_on_name=False, prefix_child=None,
+               scan_ops=None):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -502,10 +503,10 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     :param depth: maximum recursion depth (Default -1 for unlimited).
     :param done: dict of Apply instances that have already been printed
                  and their associated printed ids
-    :param print_type: wether to print the Variable type after the other infos
+    :param print_type: whether to print the Variable type after the other infos
     :param file: file-like object to which to print
-    :param print_destroy_map: wether to print the op destroy_map after ofther info
-    :param print_view_map: wether to print the op view_map after ofther info
+    :param print_destroy_map: whether to print the op destroy_map after other info
+    :param print_view_map: whether to print the op view_map after other info
     :param order: If not empty will print the index in the toposort.
     :param ids: How do we print the identifier of the variable
                 id - print the python id value
@@ -514,6 +515,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 "" - don't print an identifier
     :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
+    :param scan_ops: Scan ops in the graph will be added inside this list
+                     for later printing purposes.
 
     """
     if depth == 0:
@@ -524,6 +527,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
     if done is None:
         done = dict()
+
+    if scan_ops is None:
+        scan_ops = []
 
     if print_type:
         type_str = ' <%s>' % r.type
@@ -575,37 +581,45 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         o = ''
         if order:
             o = str(order.index(r.owner))
+
         already_printed = a in done  # get_id_str put it in the dict
         id_str = get_id_str(a)
 
         if len(a.outputs) == 1:
             print >> file, '%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                             id_str,
-                                                             type_str, r_name,
+                                                          id_str,
+                                                          type_str,
+                                                          r_name,
+                                                          destroy_map_str,
+                                                          view_map_str,
+                                                          o)
+        else:
+            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
+                                                             a.outputs.index(r),
+                                                             id_str, type_str,
+                                                             r_name,
                                                              destroy_map_str,
                                                              view_map_str,
                                                              o)
-        else:
-            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                            a.outputs.index(r),
-                                                            id_str, type_str,
-                                                            r_name,
-                                                            destroy_map_str,
-                                                            view_map_str,
-                                                            o)
         if not already_printed:
             if (not stop_on_name or
                 not (hasattr(r, 'name') and r.name is not None)):
                 new_prefix = prefix_child + ' |'
                 new_prefix_child = prefix_child + ' |'
+
                 for idx, i in enumerate(a.inputs):
                     if idx == len(a.inputs) - 1:
                         new_prefix_child = prefix_child + '  '
 
+                    if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
+                        if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
+                            scan_ops.append(i)
+
                     debugprint(i, new_prefix, depth=depth - 1, done=done,
                                print_type=print_type, file=file, order=order,
                                ids=ids, stop_on_name=stop_on_name,
-                               prefix_child=new_prefix_child)
+                               prefix_child=new_prefix_child, scan_ops=scan_ops)
+
     else:
         #this is an input variable
         id_str = get_id_str(r)
@@ -624,7 +638,6 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
     :type accept_inplace: Bool
     :rtype: `FunctionGraph`
     :returns: a new FunctionGraph with a cloned graph, with debugging `Feature` instances already installed.
-
     """
     orig_inputs = [spec.variable for spec in input_specs]
     updates = [spec.update for spec in input_specs if spec.update]
@@ -2152,7 +2165,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one
         # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
 

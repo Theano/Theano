@@ -4,7 +4,6 @@
 ==========================
 Frequently Asked Questions
 ==========================
-
 TypeError: object of type 'TensorVariable' has no len()
 -------------------------------------------------------
 
@@ -62,6 +61,13 @@ which would be unnecessary otherwise. In short, using this flag will speed up
 compilation but it will also use more memory because
 ``optimizer_excluding=inplace`` excludes inplace optimizations resulting
 in a trade off between speed of compilation and memory usage.
+
+Theano flag `reoptimize_unpickled_function` controls if an unpickled theano function
+should reoptimize its graph or not. Theano users can use the standard python pickle 
+tools to save a compiled theano function. When pickling, both graph before and 
+after the optimization are saved, including shared variables. When set to True, 
+the graph is reoptimized when being unpickled. Otherwise, skip the graph optimization 
+and use directly the optimized graph from the pickled file.
 
 Faster Theano function
 ----------------------
