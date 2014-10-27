@@ -5224,7 +5224,7 @@ class Choose(Op):
         # import at the top as it would cause circular import.
         import theano.typed_list
         a = as_tensor_variable(a)
-        if "int" not in a.dtype:
+        if a.dtype not in theano.tensor.discrete_dtypes:
             raise TypeError(
                 'choose first argument must have an [u]int* dtype. Got %s.'
                 % a.dtype)
