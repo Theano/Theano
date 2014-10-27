@@ -3028,11 +3028,14 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
         return NULL;
     }
     get_gpu_ptr_size<<<1,1>>>(gpu_data);
-    if (cudaSuccess != cudaGetLastError()){
+
+    cudaError_t cudaErr = cudaGetLastError();
+    if (cudaSuccess != cudaErr){
 
         device_free(gpu_data);
         return PyErr_Format(PyExc_RuntimeError,
-                            "CudaNdarray_ptr_int_size: error when calling the gpu code.");
+                            "CudaNdarray_ptr_int_size: error when calling the gpu code. (%s)",
+                            cudaGetErrorString(cudaErr));
     }
 
     // Transfer the result to cpu
