@@ -47,21 +47,11 @@
 
         :type: class:`Container`
 
-.. function:: shared(value, name=None, strict=False, **kwargs)
+.. autofunction:: theano.compile.sharedvalue.shared
 
-    Return a :class:`SharedVariable` Variable, initialized with a copy or reference of `value`.
+.. function:: shared_constructor(ctor)
 
-    This function iterates over constructor functions (see `shared_constructor`) to find a
-    suitable SharedVariable subclass.  The suitable one is the first constructor
-    that doesn't raise an exception.
-
-    This function is meant as a convenient default.  If you want to use a
-    specific shared variable constructor, consider calling it directly.
-
-    .. note::
-
-        By passing `kwargs`, you effectively limit the set of potential constructors to those that
-        can accept those kwargs.
+    Append `ctor` to the list of shared constructors (see :func:`shared`).
 
     Each registered constructor ``ctor`` will be called like this:
 
@@ -69,12 +59,4 @@
 
         ctor(value, name=name, strict=strict, **kwargs)
 
-    .. attribute:: constructors
-
-        A list of shared variable constructors that will be tried in reverse
-        order.
-
-.. function:: shared_constructor(ctor)
-
-    Append `ctor` to the list of shared constructors (see :func:`shared`).
-
+    If it do not support given value, it must raise a TypeError.
