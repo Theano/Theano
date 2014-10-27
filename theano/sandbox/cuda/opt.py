@@ -1109,8 +1109,9 @@ def local_gpu_softmax_with_bias(node):
 from theano.tensor.nnet import conv
 # We need a fixed order for the user interface.
 conv_groupopt = theano.gof.optdb.LocalGroupDB()
-conv_groupopt.__name__ = "gpu_conv_opt"
+conv_groupopt.__name__ = "gpu_conv_opts"
 register_opt('fast_compile', 'fast_run', 'gpu')(conv_groupopt)
+
 
 def _gpu_conv_to_fftconv(node):
     # shared helper function for local_conv_fft_valid and local_conv_fft_full.
