@@ -1108,9 +1108,9 @@ def local_gpu_softmax_with_bias(node):
 # Convolution, maxpooling
 from theano.tensor.nnet import conv
 # We need a fixed order for the user interface.
-conv_seqopt = theano.gof.optdb.LocalSequenceDB()
-conv_seqopt.__name__ = "nnn"
-register_opt('fast_compile', 'fast_run', 'gpu')(conv_seqopt)
+conv_groupopt = theano.gof.optdb.LocalGroupDB()
+conv_groupopt.__name__ = "gpu_conv_opt"
+register_opt('fast_compile', 'fast_run', 'gpu')(conv_groupopt)
 
 def _gpu_conv_to_fftconv(node):
     # shared helper function for local_conv_fft_valid and local_conv_fft_full.
@@ -1384,16 +1384,16 @@ def local_conv_gemm(node):
 # fft optimization not enabled by default. Need to be registered
 # before the default convolution optimization. If the user ask fft, as
 # this isn't the default, it should have higher prio then the default.
-conv_seqopt.register("conv_fft_valid", local_conv_fft_valid, 1)
-conv_seqopt.register("conv_fft_full", local_conv_fft_full, 1)
+conv_groupopt.register("conv_fft_valid", local_conv_fft_valid, 1)
+conv_groupopt.register("conv_fft_full", local_conv_fft_full, 1)
 # default gpu conv optimization
-conv_seqopt.register('local_gpu_conv', local_gpu_conv, 10,
+conv_groupopt.register('local_gpu_conv', local_gpu_conv, 10,
                      'fast_compile', 'fast_run', "dnn")
 # Legacy convolution, after default
-conv_seqopt.register('local_gpu_conv_legacy', local_gpu_conv_legacy, 11,
+conv_groupopt.register('local_gpu_conv_legacy', local_gpu_conv_legacy, 11,
                      'fast_compile', 'fast_run', "dnn")
 # conv gemm after legacy, as it convert legacy to gemm version
-conv_seqopt.register('local_conv_gemm', local_conv_gemm, 12,
+conv_groupopt.register('local_conv_gemm', local_conv_gemm, 12,
                      'fast_compile', 'fast_run', "dnn")
 
 

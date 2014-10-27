@@ -823,68 +823,6 @@ class LocalOptimizer(object):
                 (' ' * level), self.__class__.__name__, id(self))
 
 
-class LocalSeqOptimizer(LocalOptimizer, list):
-    """
-    This allow to try a group of local optimizer in sequence.
-    When one do something, we return without trying the following one.
-    """
-    # inherit from Optimizer first to get Optimizer.__hash__
-    def __init__(self, *opts, **kw):
-        """WRITEME"""
-        if len(opts) == 1 and isinstance(opts[0], (list, tuple)):
-            opts = opts[0]
-        self[:] = opts
-        self.failure_callback = kw.pop('failure_callback', None)
-
-    def tracks(self):
-        t = []
-        for l in self:
-            tt = l.tracks()
-            if tt:
-                t.extend(tt)
-        return t
-
-    def transform(self, node):
-        """Transform a subgraph whose output is `node`.
-
-        Subclasses should implement this function so that it returns one of two
-        kinds of things:
-
-        - False to indicate that no optimization can be applied to this `node`;
-          or
-        - <list of variables> to use in place of `node`'s outputs in the
-          greater graph.
-        - dict(old variables -> new variables). A dictionary that map
-          from old variables to new variables to replace.
-
-        :type node: an Apply instance
-
-        """
-        for l in self:
-            ret = l.transform(node)
-            if ret:
-                return ret
-
-    def add_requirements(self, fgraph):
-        """
-        If this local optimization wants to add some requirements to the
-        fgraph,
-        This is the place to do it.
-        """
-        for l in self:
-            l.add_requirements(fgraph)
-
-    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        name = getattr(self, 'name', None)
-        print >> stream, "%s%s %s id=%i" % (
-            (' ' * level), self.__class__.__name__, name, id(self))
-        # This way, -1 will do all depth
-        if depth != 0:
-            depth -= 1
-            for opt in self:
-                opt.print_summary(stream, level=(level + 2), depth=depth)
-
-
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
     def __init__(self, fn, tracks=None, requirements=()):
@@ -934,6 +872,9 @@ class LocalOptGroup(LocalOptimizer):
     """WRITEME"""
 
     def __init__(self, *optimizers):
+        if len(optimizers) == 1 and isinstance(optimizers[0], list):
+            # This happen when created by LocalGroupDB.
+            optimizers = tuple(optimizers[0])
         self.opts = optimizers
         self.reentrant = any(getattr(opt, 'reentrant', True)
                              for opt in optimizers)

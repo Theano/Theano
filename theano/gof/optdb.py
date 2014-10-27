@@ -257,7 +257,10 @@ class SequenceDB(DB):
         # the order we want.
         opts.sort(key=lambda obj: obj.name)
         opts.sort(key=lambda obj: self.__position__[obj.name])
-        ret = self.seq_opt(opts, failure_callback=self.failure_callback)
+        kwargs = {}
+        if self.failure_callback:
+            kwargs["failure_callback"] = self.failure_callback
+        ret = self.seq_opt(opts, **kwargs)
         if hasattr(tags[0], 'name'):
             ret.name = tags[0].name
         return ret
@@ -280,11 +283,17 @@ class SequenceDB(DB):
         return sio.getvalue()
 
 
-class LocalSequenceDB(SequenceDB):
+class LocalGroupDB(SequenceDB):
+    """This generate a local optimizer of type LocalOptGroup instead
+    of a global optimizer.
+
+    It support the tracks, to only get applied to some Op.
     """
-    This generate a local optimizer instead of a global optimizer.
-    """
-    seq_opt = opt.LocalSeqOptimizer
+    seq_opt = opt.LocalOptGroup
+
+    def __init__(self, failure_callback=opt.SeqOptimizer.warn):
+        super(LocalGroupDB, self).__init__()
+        self.failure_callback = None
 
 
 class ProxyDB(DB):
