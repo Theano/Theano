@@ -327,10 +327,19 @@ class GpuDimShuffle(GpuOp):
     def make_node(self, input):
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
-            raise TypeError(
-                "The number of dimensions and/or broadcastable pattern of the"
-                " input is incorrect for this op. Expected %s, got %s." %
-                (self.input_broadcastable, ib))
+            if len(ib) != len(self.input_broadcastable):
+                raise TypeError((
+                    "The number of dimensions of the "
+                    "input is incorrect for this op. Expected %s, got %s."
+                    % (self.input_broadcastable, ib)))
+            for expected, b in zip(self.input_broadcastable, ib):
+                if expected is True and b is False:
+                    raise TypeError((
+                        "The broadcastable pattern of the "
+                        "input is incorrect for this op. Expected %s, got %s."
+                        % (self.input_broadcastable, ib)))
+                #else, expected == b or expected is False and b is True
+                # Both case are good.
         ob = []
         if not isinstance(input.type, CudaNdarrayType):
             raise TypeError("The input of a GpuDimshuffle must"

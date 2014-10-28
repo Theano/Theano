@@ -1362,7 +1362,8 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
     """Gradient wrt. filters for `GpuCorr3dMM`.
 
     :note: You will not want to use this directly, but rely on Theano's
-    automatic differentiation or graph optimization to use it as needed."""
+        automatic differentiation or graph optimization to use it as needed.
+    """
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
@@ -1417,7 +1418,8 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
     """Gradient wrt. inputs for `GpuCorr3dMM`.
 
     :note: You will not want to use this directly, but rely on Theano's
-    automatic differentiation or graph optimization to use it as needed."""
+        automatic differentiation or graph optimization to use it as needed.
+    """
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),

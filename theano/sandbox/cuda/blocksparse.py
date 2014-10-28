@@ -3,15 +3,16 @@ import theano
 from theano import Apply, tensor, scalar, Constant
 from theano.tensor import DimShuffle, discrete_dtypes
 
-from theano.gradient import grad_undefined, grad_not_implemented
+from theano.gradient import grad_undefined
 
 from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
 
 if cuda_available:
-    from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
-                                     CudaNdarray, opt, GpuFromHost,
+    from theano.sandbox.cuda import (basic_ops,
+                                     opt, GpuFromHost,
                                      HostFromGpu, host_from_gpu,
                                      GpuDimShuffle)
+
 
 class SparseBlockGemvSS(GpuOp):
     """
@@ -183,7 +184,8 @@ static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
                         cudaMemcpyHostToDevice);
   Py_DECREF(aa);
   if (err != cudaSuccess) {
-    PyErr_SetString(PyExc_RuntimeError, "Cannot copy index data to GPU");
+    PyErr_Format(PyExc_RuntimeError, "Cannot copy index data to GPU (%s)",
+                 cudaGetErrorString(err));
     return -1;
   }
   return 0;
@@ -241,11 +243,11 @@ Py_INCREF(%(out)s);
             res = """
 if (CudaNdarray_prep_output(&%(out)s, 3, CudaNdarray_HOST_DIMS(%(o)s)))
 {
-  PyErr_SetString(PyExc_RuntimeError, "Cannot allocate output");
+  // Error already set
   %(fail)s
 }
 if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
-  PyErr_SetString(PyExc_RuntimeError, "Cannot copy data to output");
+  // Error already set
   %(fail)s
 }
 """ % dict(out=out, o=o, fail=sub['fail'])
@@ -313,7 +315,8 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                              CudaNdarray_HOST_DIMS(%(h)s)[1] *
                              CudaNdarray_HOST_DIMS(%(o)s)[0]);
           if (err != CUBLAS_STATUS_SUCCESS) {
-            PyErr_SetString(PyExc_RuntimeError, "SgemvBatched failed");
+            PyErr_Format(PyExc_RuntimeError, "SgemvBatched failed(%%s)",
+                         cublasGetErrorString(err));
             %(fail)s
           }
         }
@@ -322,7 +325,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (10,)
+        return (11,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -482,7 +485,8 @@ static int SparseBlockOuter_copy(PyArrayObject *a, npy_intp *b) {
                         cudaMemcpyHostToDevice);
   Py_DECREF(aa);
   if (err != cudaSuccess) {
-    PyErr_SetString(PyExc_RuntimeError, "Cannot copy index data to GPU");
+    PyErr_Format(PyExc_RuntimeError, "Cannot copy index data to GPU(%s)",
+                 cudaGetErrorString(err));
     return -1;
   }
   return 0;
@@ -541,11 +545,11 @@ Py_INCREF(%(out)s);
             res = """
 if (CudaNdarray_prep_output(&%(out)s, 4, CudaNdarray_HOST_DIMS(%(o)s)))
 {
-  PyErr_SetString(PyExc_RuntimeError, "Cannot allocate output");
+  // Python error already set
   %(fail)s
 }
 if (CudaNdarray_CopyFromCudaNdarray(%(out)s, %(o)s)) {
-  PyErr_SetString(PyExc_RuntimeError, "Cannot copy data to output");
+  //Error message already set
   %(fail)s
 }
 """ % dict(out=out, o=o, fail=sub['fail'])
@@ -612,7 +616,8 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                        "block size too big. The current limit is 65535 for "
                        "iSize * oSize.");
     } else {
-      PyErr_SetString(PyExc_RuntimeError, "SgerBatched failed");
+      PyErr_Format(PyExc_RuntimeError, "SgerBatched failed(%%s)",
+                   cublasGetErrorString(err));
     }
     %(fail)s
   }
@@ -620,7 +625,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)

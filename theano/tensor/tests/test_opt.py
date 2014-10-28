@@ -2491,6 +2491,7 @@ def test_local_IncSubtensor_serialize():
     cost = T.sqr(t - y)
     dW = theano.grad(cost, W)
     mode = theano.compile.mode.get_default_mode().excluding('fusion')
+    mode = mode.including("local_IncSubtensor_serialize")
     f = theano.function([i, j, t], updates=[(W, W - 0.01 * dW)], mode=mode)
     topo = f.maker.fgraph.toposort()
     adds = [n for n in topo if isinstance(n.op, T.Elemwise) and

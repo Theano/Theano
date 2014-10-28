@@ -91,6 +91,8 @@ extern DllExport cublasHandle_t handle;
  *
  * device_malloc will set the Python error message before returning None.
  * device_free will return nonzero on failure (after setting the python error message)
+ *
+ * Set the Python error
  */
 DllExport void * device_malloc(size_t size);
 DllExport void * device_malloc(size_t size, int verbose);
@@ -148,6 +150,8 @@ enum operator_t
 /*
  * Return a CudaNdarray whose 'nd' dimensions are all 0.
  * if nd==-1, it is not initialized.
+ *
+ * Set the Python error
  */
 DllExport PyObject *
 CudaNdarray_New(int nd=-1);
@@ -286,6 +290,8 @@ static PyObject *CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
  * Allocate a new CudaNdarray with room for given number of dimensions
  *
  * No Storage space is allocated (and all dimensions are 0)
+ *
+ * Set the Python error
  */
 DllExport PyObject * CudaNdarray_new_nd(const int nd);
 
@@ -294,6 +300,8 @@ DllExport PyObject * CudaNdarray_new_nd(const int nd);
  *
  * Note: This does not allocate storage for data, or free
  *       pre-existing storage.
+ *
+ * Set the Python error
  */
 DllExport inline int ALWAYS_INLINE
 CudaNdarray_set_nd(CudaNdarray * self, const int nd)
@@ -505,6 +513,8 @@ DllExport int CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj);
  *               e.g. suppose self and other are 2D matrices and other
  *               has only one row. Then we need to copy this row several
  *               times when copying to self.
+ *
+ * Set the Python error
  */
 DllExport int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
         const CudaNdarray * other, bool unbroadcast = false);
@@ -575,6 +585,7 @@ DllExport int CudaNdarray_dimshuffle(CudaNdarray * self, unsigned int len, const
 DllExport PyObject*
 CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args);
 
+// Set the Python error
 int fprint_CudaNdarray(FILE * fd, const CudaNdarray *self);
 
 
@@ -589,6 +600,8 @@ DllExport int CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_othe
 // or a pointer to an ndarray of the right size. In the last case it will
 // not change.
 // If fortran is non-zero, a fortran order is expected/created
+//
+// Set the Python error
 DllExport int CudaNdarray_prep_output(CudaNdarray ** arr, int nd,
                                       const int * dims, int fortran = 0);
 
