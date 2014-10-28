@@ -1746,6 +1746,18 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog[0].inputs) == 2
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 2
+    
+    def test_AdvancedSubtensor1_idx(self):
+        x, y, z = tensor.lscalars('xyz')
+        v = make_vector(x, y, z)
+        f = function([x, y, z], v[[0, 2]], mode=mode_opt)
+
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, MakeVector)
+        assert len(prog[0].inputs) == 2
+        r = f(0, 1, 2)
+        assert r[0] == 0 and r[1] == 2
 
 
 class test_local_subtensor_lift(unittest.TestCase):
