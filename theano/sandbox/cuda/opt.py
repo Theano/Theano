@@ -1108,9 +1108,10 @@ def local_gpu_softmax_with_bias(node):
 # Convolution, maxpooling
 from theano.tensor.nnet import conv
 # We need a fixed order for the user interface.
-conv_seqopt = theano.gof.optdb.LocalSequenceDB()
-conv_seqopt.__name__ = "nnn"
-register_opt('fast_compile', 'fast_run', 'gpu')(conv_seqopt)
+conv_groupopt = theano.gof.optdb.LocalGroupDB()
+conv_groupopt.__name__ = "gpu_conv_opts"
+register_opt('fast_compile', 'fast_run', 'gpu')(conv_groupopt)
+
 
 def _gpu_conv_to_fftconv(node):
     # shared helper function for local_conv_fft_valid and local_conv_fft_full.
@@ -1142,7 +1143,7 @@ def _gpu_conv_to_fftconv(node):
     return rval
 
 
-@local_optimizer([gpu_from_host, conv.ConvOp, GpuConv])
+@local_optimizer([GpuConv])
 def local_conv_fft_valid(node):
     if isinstance(node.op, GpuConv):
         if (node.op.border_mode == 'valid' and
@@ -1151,25 +1152,8 @@ def local_conv_fft_valid(node):
             return [_gpu_conv_to_fftconv(node)]
         return False
 
-    repl = local_gpu_conv_legacy.transform(node)
-    if repl:
-        if isinstance(node.op, GpuFromHost):
-            gpu_conv = repl[0].owner
-        else:
-            gpu_conv = repl[0].owner.inputs[0].owner
-        assert isinstance(gpu_conv.op, GpuConv)
-        if (gpu_conv.op.border_mode == 'valid' and
-            gpu_conv.op.subsample == (1, 1) and
-            gpu_conv.op.fft_opt):
-            ret = _gpu_conv_to_fftconv(gpu_conv)
-            if ret:
-                if isinstance(node.op, GpuFromHost):
-                    return [ret]
-                else:
-                    return [host_from_gpu(ret)]
 
-
-@local_optimizer([gpu_from_host, conv.ConvOp, GpuConv])
+@local_optimizer([GpuConv])
 def local_conv_fft_full(node):
     if isinstance(node.op, GpuConv):
         if (node.op.border_mode == 'full' and
@@ -1178,47 +1162,21 @@ def local_conv_fft_full(node):
             return [_gpu_conv_to_fftconv(node)]
         return
 
-    repl = local_gpu_conv_legacy.transform(node)
-    if repl:
-        if isinstance(node.op, GpuFromHost):
-            gpu_conv = repl[0].owner
-        else:
-            gpu_conv = repl[0].owner.inputs[0].owner
-        assert isinstance(gpu_conv.op, GpuConv)
-        if (gpu_conv.op.border_mode == 'full' and
-            gpu_conv.op.subsample == (1, 1) and
-            gpu_conv.op.fft_opt):
-            ret = _gpu_conv_to_fftconv(gpu_conv)
-            if ret:
-                if isinstance(node.op, GpuFromHost):
-                    return [ret]
-                else:
-                    return [host_from_gpu(ret)]
 
 # Needs to be registered before local_gpu_conv_legacy. Otherwise, it
 # will have priority over this optimization.  We want, if cudnn is
 # available and the GPU supports it, to use it.  Otherwise, the gemm
 # version should be used.  If the users want the legacy convolution,
 # they should use the Theano flag to disable the dnn and/or gemm version.
-@local_optimizer([gpu_from_host, conv.ConvOp])
+@local_optimizer([GpuConv])
 def local_gpu_conv(node):
     """
     If cudnn is available, use it. Otherwise, use the gemm version.
     """
-    if theano.sandbox.cuda.dnn.dnn_available():
-        repl = local_gpu_conv_legacy.transform(node)
-        if repl:
-            if isinstance(node.op, GpuFromHost):
-                gpu_conv = repl[0].owner
-            else:
-                gpu_conv = repl[0].owner.inputs[0].owner
-            assert isinstance(gpu_conv.op, GpuConv)
-            ret = theano.sandbox.cuda.dnn.local_conv_dnn.transform(gpu_conv)
-            if ret:
-                if isinstance(node.op, GpuFromHost):
-                    return ret
-                else:
-                    return [host_from_gpu(ret[0])]
+    if (isinstance(node.op, GpuConv) and
+        theano.sandbox.cuda.dnn.dnn_available()):
+        return theano.sandbox.cuda.dnn.local_conv_dnn.transform(node)
+
     # If dnn isn't avail, the local_gpu_conv_legacy wil introduce the
     # legacy opt. Then the local_conv_gemm will convert it to gemm
     # opt.
@@ -1381,20 +1339,20 @@ def local_conv_gemm(node):
                     gpu_contiguous(kern), gpu_contiguous(img))]
 
 
-# fft optimization not enabled by default. Need to be registered
-# before the default convolution optimization. If the user ask fft, as
-# this isn't the default, it should have higher prio then the default.
-conv_seqopt.register("conv_fft_valid", local_conv_fft_valid, 1)
-conv_seqopt.register("conv_fft_full", local_conv_fft_full, 1)
-# default gpu conv optimization
-conv_seqopt.register('local_gpu_conv', local_gpu_conv, 10,
-                     'fast_compile', 'fast_run', "dnn")
-# Legacy convolution, after default
-conv_seqopt.register('local_gpu_conv_legacy', local_gpu_conv_legacy, 11,
-                     'fast_compile', 'fast_run', "dnn")
-# conv gemm after legacy, as it convert legacy to gemm version
-conv_seqopt.register('local_conv_gemm', local_conv_gemm, 12,
-                     'fast_compile', 'fast_run', "dnn")
+# Legacy opt first, as this is the only that move to the GPU.
+# Then fft, as disabled dy default. So if use enable it, it have prio
+# Then default, use dnn if avail
+# Then default, use gemm if dnn or fft didn't worked.
+# Normally, gemm should catch all case, so the legacy should never run.
+conv_groupopt.register('local_gpu_conv_legacy', local_gpu_conv_legacy, 0,
+                       'fast_compile', 'fast_run')
+conv_groupopt.register("conv_fft_valid", local_conv_fft_valid, 1)
+conv_groupopt.register("conv_fft_full", local_conv_fft_full, 1)
+# Use dnn if avail, so have the dnn tag to be able to disable it.
+conv_groupopt.register('local_gpu_conv', local_gpu_conv, 10,
+                       'fast_compile', 'fast_run', 'dnn')
+conv_groupopt.register('local_conv_gemm', local_conv_gemm, 12,
+                       'fast_compile', 'fast_run')
 
 
 @local_optimizer([Conv3D])
