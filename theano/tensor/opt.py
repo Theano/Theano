@@ -1383,11 +1383,18 @@ def local_subtensor_make_vector(node):
             return [make_vector(*[x.owner.inputs[v] for v in values])]
         else:
             raise TypeError('case not expected')
-    else:
+    elif isinstance(idx, slice):
         # it is a slice of ints and/or Variables
-        #TODO: check subtensor to see if it can contain
-        #      constant variables, and if it can, then try to
-        #      unpack them.
+        # check subtensor to see if it can contain constant variables, and if
+        # it can, then try to unpack them.
+        try:
+            const_slice = node.op.get_constant_idx(node.inputs,
+                                                   allow_partial=False)[0]
+            return [make_vector(*x.owner.inputs[const_slice])]
+        except NotScalarConstantError:
+            pass
+        
+        # there was at least one non-constant variable in the slice
         try:
             return [make_vector(*x.owner.inputs.__getitem__(idx))]
         except TypeError:
@@ -1395,6 +1402,8 @@ def local_subtensor_make_vector(node):
         except Exception:
             _logger.error('failed to index with "%s"' % str(idx))
             raise
+    else:
+        raise TypeError('case not expected')
 
 
 #TODO: the other optimization for and, or, xor, le and ge see ticket #496.
