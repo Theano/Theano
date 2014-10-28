@@ -1368,18 +1368,21 @@ def local_subtensor_make_vector(node):
     if isinstance(idx, (int, numpy.integer)):
         return [x.owner.inputs[idx]]
     elif isinstance(idx, Variable):
-        # if it is a constant we can do something with it
-        if isinstance(idx, T.Constant):
-            # make sure we have an ndarray to access the `ndim` attribute
-            idx = numpy.asarray(idx.value)
-            if idx.ndim == 0:
-                # Python 2.4 wants to index only with Python integers
-                return [x.owner.inputs[int(idx)]]
-            elif idx.ndim == 1:
-                values = map(int, list(idx))
-                return [make_vector(*[x.owner.inputs[v] for v in values])]
-            else:
-                raise TypeError
+        if idx.ndim == 0:
+            # if it is a constant we can do something with it
+            try:
+                v = get_scalar_constant_value(idx)
+                if isinstance(v, numpy.integer):
+                    # Python 2.4 wants to index only with Python integers
+                    v = int(v)
+                return [x.owner.inputs[v]]
+            except NotScalarConstantError:
+                pass
+        elif idx.ndim == 1 and isinstance(idx, T.Constant):
+            values = map(int, list(idx.value))
+            return [make_vector(*[x.owner.inputs[v] for v in values])]
+        else:
+            raise TypeError('case not expected')
     else:
         # it is a slice of ints and/or Variables
         #TODO: check subtensor to see if it can contain
