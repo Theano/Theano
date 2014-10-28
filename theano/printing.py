@@ -7,6 +7,7 @@ from copy import copy
 import logging
 import os
 import sys
+import warnings
 # Not available on all platforms
 hashlib = None
 
@@ -885,8 +886,15 @@ def pydotprint_variables(vars,
                          high_contrast=True, colorCodes=None,
                          max_label_size=50,
                          var_with_name_simple=False):
-    ''' Identical to pydotprint just that it starts from a variable instead
-    of a compiled function. Could be useful ? '''
+    '''DEPRECATED: use pydotprint() instead.
+
+    Identical to pydotprint just that it starts from a variable
+    instead of a compiled function. Could be useful ?
+
+    '''
+
+    warnings.warn("pydotprint_variables() is deprecated."
+                 " Use pydotprint() instead.")
 
     if colorCodes is None:
         colorCodes = default_colorCodes
