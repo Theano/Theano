@@ -603,6 +603,178 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            input_desc="input"+str(sub['struct_id']),
            output_desc="output"+str(sub['struct_id']))
 
+    def grad(self, inp, grads):
+        img, desc = inp
+        grad, = grads
+
+        grad = gpu_contiguous(grad)
+
+        out = self(img, desc)
+
+        g_out = GpuDnnPoolGrad()(out, grad, img, desc)
+
+        return g_out, theano.gradient.DisconnectedType()()
+
+    def connection_pattern(self, node):
+        # not connected to desc
+        return [[1], [0]]
+
+    def c_code_cache_version(self):
+        return (1,)
+
+
+class GpuDnnPoolGrad(DnnBase):
+    __props__ = ()
+
+    def make_node(self, inp, inp_grad, out, desc):
+        inp = as_cuda_ndarray_variable(inp)
+        if inp.type.ndim != 4:
+            raise TypeError('inp must be 4D tensor')
+
+        inp_grad = as_cuda_ndarray_variable(inp_grad)
+        if inp_grad.type.ndim != 4:
+            raise TypeError('inp_grad must be 4D tensor')
+                
+        out = as_cuda_ndarray_variable(out)
+        if out.type.ndim != 4:
+            raise TypeError('out must be 4D tensor')
+
+        if not isinstance(desc.type, CDataType) \
+                or desc.type.ctype != 'cudnnPoolingDescriptor_t':
+            raise TypeError('desc must be cudnnPoolingDescriptor_t')
+
+        return Apply(self, [inp, inp_grad, out, desc],
+                     [inp.type()])
+
+    def c_support_code_struct(self, node, struct_id):
+        return """
+cudnnTensor4dDescriptor_t input%(id)d;        
+cudnnTensor4dDescriptor_t input_grad%(id)d;
+cudnnTensor4dDescriptor_t output%(id)d;
+cudnnTensor4dDescriptor_t output_grad%(id)d;
+""" % dict(id=struct_id)
+
+    def c_init_code_struct(self, node, struct_id, sub):
+        return """
+cudnnStatus_t err%(id)d;
+input%(id)d = NULL;
+input_grad%(id)d = NULL;
+output%(id)d = NULL;
+output_grad%(id)d = NULL;
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&input%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(input): %%s", cudnnGetErrorString(err%(id)d));
+  %(fail)s
+}
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&input_grad%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(input_grad): %%s", cudnnGetErrorString(err%(id)d));
+  %(fail)s
+}
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(output): %%s", cudnnGetErrorString(err%(id)d));
+  %(fail)s
+}
+if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output_grad%(id)d)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+               "(output_grad): %%s", cudnnGetErrorString(err%(id)d));
+  %(fail)s
+}
+""" % dict(id=struct_id, fail=sub['fail'])
+
+    def c_cleanup_code_struct(self, node, struct_id):
+        return """
+cudnnDestroyTensor4dDescriptor(input%(id)d);
+cudnnDestroyTensor4dDescriptor(input_grad%(id)d);
+cudnnDestroyTensor4dDescriptor(output%(id)d);
+cudnnDestroyTensor4dDescriptor(output_grad%(id)d);
+""" % dict(id=struct_id)
+
+    def c_set_tensor4d(self, var, desc, err, fail):
+        return """
+%(err)s = cudnnSetTensor4dDescriptorEx(
+%(desc)s, CUDNN_DATA_FLOAT,
+CudaNdarray_HOST_DIMS(%(var)s)[0],
+CudaNdarray_HOST_DIMS(%(var)s)[1],
+CudaNdarray_HOST_DIMS(%(var)s)[2],
+CudaNdarray_HOST_DIMS(%(var)s)[3],
+CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
+CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
+CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
+CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
+);
+if (%(err)s != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
+               cudnnGetErrorString(%(err)s));
+  %(fail)s
+}
+""" % dict(var=var, err=err, desc=desc, fail=fail)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        inp, inp_grad, out, desc = inputs
+        out_grad, = outputs
+
+        set_in = "\n".join([
+            self.c_set_tensor4d(inp, "input" + str(sub['struct_id']),
+                'err' + name, sub['fail']),
+            self.c_set_tensor4d(inp_grad, "input_grad" + str(sub['struct_id']),
+                'err' + name, sub['fail']),
+            self.c_set_tensor4d(out, "output" + str(sub['struct_id']),
+                'err' + name, sub['fail'])
+        ])
+
+        set_out = self.c_set_tensor4d(out, "output_grad" + str(sub['struct_id']),
+            'err' + name, sub['fail'])
+
+        return """
+cudnnStatus_t err%(name)s;
+
+if (!CudaNdarray_is_c_contiguous(%(input)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
+  %(fail)s
+}
+
+if (!CudaNdarray_is_c_contiguous(%(input_grad)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous input gradients are supported.");
+  %(fail)s
+}
+
+if (!CudaNdarray_is_c_contiguous(%(output)s)) {
+  PyErr_SetString(PyExc_ValueError, "Only contiguous outputs are supported.");
+  %(fail)s
+}
+
+%(set_in)s
+
+if (CudaNdarray_prep_output(&%(output_grad)s, 4, CudaNdarray_HOST_DIMS(%(output)s)) != 0)
+{
+  %(fail)s
+}
+
+%(set_out)s
+
+err%(name)s = cudnnPoolingBackward(
+_handle,
+%(desc)s,
+%(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
+%(input_grad_desc)s, CudaNdarray_DEV_DATA(%(input_grad)s),
+%(output_desc)s, CudaNdarray_DEV_DATA(%(output)s),
+%(output_grad_desc)s, CudaNdarray_DEV_DATA(%(output_grad)s)
+);
+if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
+               cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
+""" % dict(output_grad=out_grad, desc=desc, fail=sub['fail'], id=sub['struct_id'],
+           name=name, set_in=set_in,
+           set_out=set_out, input=inp, input_grad=inp_grad, output=out,
+           input_desc="input"+str(sub['struct_id']),
+           input_grad_desc="input_grad"+str(sub['struct_id']),
+           output_desc="output"+str(sub['struct_id']),
+           output_grad_desc="output_grad"+str(sub['struct_id']))
+
     def c_code_cache_version(self):
         return (1,)
 
