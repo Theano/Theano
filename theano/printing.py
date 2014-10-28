@@ -28,7 +28,6 @@ from theano import gof
 from theano import config
 from theano.compat.six import StringIO
 from theano.gof import Op, Apply
-from theano.gof.python25 import any
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
 
@@ -616,7 +615,6 @@ def pydotprint(fct, outfile=None,
             fct = fct.outputs
         assert isinstance(fct, (list, tuple))
         assert all(isinstance(v, gof.Variable) for v in fct)
-        inputs = gof.graph.inputs(fct)
         fct = gof.FunctionGraph(inputs=gof.graph.inputs(fct),
                                 outputs=fct)
         mode = None
