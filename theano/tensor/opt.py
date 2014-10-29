@@ -1393,15 +1393,6 @@ def local_subtensor_make_vector(node):
             return [make_vector(*x.owner.inputs[const_slice])]
         except NotScalarConstantError:
             pass
-        
-        # there was at least one non-constant variable in the slice
-        try:
-            return [make_vector(*x.owner.inputs.__getitem__(idx))]
-        except TypeError:
-            pass
-        except Exception:
-            _logger.error('failed to index with "%s"' % str(idx))
-            raise
     else:
         raise TypeError('case not expected')
 
