@@ -99,6 +99,26 @@ class GpuDnnConvDesc(GpuOp):
         return Apply(self, [img_shape, kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t")()])
 
+    def c_set_tensor4d(self, var, desc, err, fail):
+        return """
+%(err)s = cudnnSetTensor4dDescriptorEx(
+    %(desc)s, CUDNN_DATA_FLOAT,
+    CudaNdarray_HOST_DIMS(%(var)s)[0],
+    CudaNdarray_HOST_DIMS(%(var)s)[1],
+    CudaNdarray_HOST_DIMS(%(var)s)[2],
+    CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
+    CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
+);
+if (%(err)s != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
+    cudnnGetErrorString(%(err)s));
+    %(fail)s
+}
+        """ % dict(var=var, err=err, desc=desc, fail=fail)
+
     def c_code(self, node, name, inputs, outputs, sub):
         img_shape, kern_shape = inputs
         desc, = outputs
@@ -690,26 +710,6 @@ cudnnDestroyTensor4dDescriptor(input_grad%(id)d);
 cudnnDestroyTensor4dDescriptor(output%(id)d);
 cudnnDestroyTensor4dDescriptor(output_grad%(id)d);
 """ % dict(id=struct_id)
-
-    def c_set_tensor4d(self, var, desc, err, fail):
-        return """
-%(err)s = cudnnSetTensor4dDescriptorEx(
-%(desc)s, CUDNN_DATA_FLOAT,
-CudaNdarray_HOST_DIMS(%(var)s)[0],
-CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_DIMS(%(var)s)[2],
-CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
-);
-if (%(err)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
-               cudnnGetErrorString(%(err)s));
-  %(fail)s
-}
-""" % dict(var=var, err=err, desc=desc, fail=fail)
 
     def c_code(self, node, name, inputs, outputs, sub):
         inp, inp_grad, out, desc = inputs
