@@ -56,6 +56,14 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
 
+def raise_no_dnn():
+    """ Raise a RuntimeError if cudnn can't be used"""
+    if not dnn_available():
+        raise RuntimeError(
+            "cuDNN optimization was enabled, but cuDNN is not available. " +
+            dnn_available.msg)
+
+
 class DnnBase(GpuOp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
@@ -923,6 +931,7 @@ if cuda_available:
 
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
+        raise_no_dnn()
         if isinstance(node.op, GpuConv):
             if node.op.border_mode not in ['full', 'valid']:
                 return
@@ -965,6 +974,7 @@ if cuda_available:
 
     @local_optimizer([GpuSoftmax])
     def local_softmax_dnn(node):
+        raise_no_dnn()
         if isinstance(node.op, GpuSoftmax):
             ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
             out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
