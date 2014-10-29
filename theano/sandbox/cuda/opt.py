@@ -95,13 +95,13 @@ register_opt(name='gpu_constant_folding')(
 # moved to the GPU. This list is used by an optimization.
 # Hopefully, we can keep this list up to date.
 import theano.tensor.signal.downsample
-import theano.sandbox.neighbours
+import theano.tensor.nnet.neighbours
 cpu_ops_moved_to_gpu = [
     tensor.blas.Dot22, tensor.blas.Dot22Scalar, tensor.blas.Gemm,
     tensor.blas.Gemv, tensor.blas.Ger, tensor.nnet.conv.ConvOp,
     tensor.signal.downsample.DownsampleFactorMax,
     tensor.signal.downsample.DownsampleFactorMaxGrad,
-    theano.sandbox.neighbours.Images2Neibs,
+    theano.tensor.nnet.neighbours.Images2Neibs,
     tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias,
     tensor.nnet.CrossentropySoftmax1HotWithBiasDx,
     tensor.nnet.Softmax, tensor.nnet.SoftmaxWithBias,

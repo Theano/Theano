@@ -2,7 +2,7 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.gof import local_optimizer
-from theano.sandbox.neighbours import Images2Neibs
+from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
 try:
