@@ -119,9 +119,9 @@ class GpuDnnConvDesc(GpuOp):
         self.conv_mode = conv_mode
 
     def make_node(self, img_shape, kern_shape):
-        if img_shape.type.ndim != 1 and img_shape.type.dtype != numpy.int64:
+        if img_shape.type.ndim != 1 or img_shape.type.dtype != 'int64':
             raise TypeError('img must be 1D shape tensor')
-        if kern_shape.type.ndim != 1 and kern_shape.type.dtype != numpy.int64:
+        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
 
         return Apply(self, [img_shape, kern_shape],
