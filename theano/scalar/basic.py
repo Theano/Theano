@@ -1792,7 +1792,7 @@ class Clip(ScalarOp):
 
     def grad(self, (x, mn, mx), (gz, )):
         assert gz.type not in complex_types
-        gx = ((x > mn) & (x < mx)) * gz
+        gx = ((x >= mn) & (x <= mx)) * gz
         gmn = (x < mn) * gz
         gmx = (x > mx) * gz
 
