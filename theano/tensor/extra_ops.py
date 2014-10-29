@@ -886,3 +886,23 @@ def fill_diagonal_offset(a, val, offset):
           is filled with scalar 'val'. The output is unwrapped.
     """
     return fill_diagonal_offset_(a, val, offset)
+
+
+def to_one_hot(y, nb_class, dtype=None):
+    """Return a matrix where each row correspond to the one hot
+    encoding of each element in y.
+
+        :param y: A vector of integer value between 0 and nb_class - 1.
+        :param nb_class: The number of class in y.
+        :param dtype: The dtype of the returned matrix. Default floatX.
+
+        :return: A matrix of shape (y.shape[0], nb_class), where each
+          row ``i`` is the one hot encoding of the corresponding ``y[i]``
+          value.
+
+   """
+    ret = theano.tensor.zeros((y.shape[0], nb_class),
+                              dtype=dtype)
+    ret = theano.tensor.set_subtensor(ret[theano.tensor.arange(y.shape[0]), y],
+                                      1)
+    return ret
