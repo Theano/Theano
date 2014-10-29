@@ -2393,12 +2393,17 @@ compile.optdb.register('local_inplace_incsubtensor1',
 # Register old name
 @register_canonicalize("local_incsubtensor_of_allocs")
 @register_stabilize("local_incsubtensor_of_allocs")
-@gof.local_optimizer([IncSubtensor])
+@gof.local_optimizer([IncSubtensor,
+                      AdvancedIncSubtensor,
+                      AdvancedIncSubtensor1])
 def local_incsubtensor_of_zeros(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
-    if isinstance(node.op, IncSubtensor) and not node.op.set_instead_of_inc:
+    if (isinstance(node.op, (IncSubtensor,
+                             AdvancedIncSubtensor,
+                             AdvancedIncSubtensor1)) and
+        not node.op.set_instead_of_inc):
         x = node.inputs[0]
         y = node.inputs[1]
         replace = False
