@@ -242,26 +242,6 @@ cudnnDestroyTensor4dDescriptor(output%(id)d);
 cudnnDestroyFilterDescriptor(kerns%(id)d);
 """ % dict(id=struct_id)
 
-    def c_set_tensor4d(self, var, desc, err, fail):
-        return """
-%(err)s = cudnnSetTensor4dDescriptorEx(
-%(desc)s, CUDNN_DATA_FLOAT,
-CudaNdarray_HOST_DIMS(%(var)s)[0],
-CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_DIMS(%(var)s)[2],
-CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
-);
-if (%(err)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
-               cudnnGetErrorString(%(err)s));
-  %(fail)s
-}
-""" % dict(var=var, err=err, desc=desc, fail=fail)
-
     def c_set_filter(self, var, desc, err, fail):
         return """
 %(err)s = cudnnSetFilterDescriptor(
@@ -537,29 +517,9 @@ if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output%(id)d)) != CUDNN_STATUS_S
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-cudnnDestroyTensor4dDescriptor(input%(id)d);
-cudnnDestroyTensor4dDescriptor(output%(id)d);
+if (input%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(input%(id)d); }
+if (output%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
 """ % dict(id=struct_id)
-
-    def c_set_tensor4d(self, var, desc, err, fail):
-        return """
-%(err)s = cudnnSetTensor4dDescriptorEx(
-%(desc)s, CUDNN_DATA_FLOAT,
-CudaNdarray_HOST_DIMS(%(var)s)[0],
-CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_DIMS(%(var)s)[2],
-CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
-CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
-);
-if (%(err)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
-               cudnnGetErrorString(%(err)s));
-  %(fail)s
-}
-""" % dict(var=var, err=err, desc=desc, fail=fail)
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc = inputs[1]
@@ -705,10 +665,10 @@ if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output_grad%(id)d)) != CUDNN_STA
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-cudnnDestroyTensor4dDescriptor(input%(id)d);
-cudnnDestroyTensor4dDescriptor(input_grad%(id)d);
-cudnnDestroyTensor4dDescriptor(output%(id)d);
-cudnnDestroyTensor4dDescriptor(output_grad%(id)d);
+if (input%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(input%(id)d); }
+if (input_grad%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(input_grad%(id)d); }
+if (output%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
+if (output_grad%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id)d); }
 """ % dict(id=struct_id)
 
     def c_code(self, node, name, inputs, outputs, sub):
