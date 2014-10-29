@@ -35,7 +35,8 @@ from theano.tensor.opt import (
         out2in,
         Shape_i,
         Assert,
-        MakeVector
+        MakeVector,
+        make_vector
         )
 from theano import tensor
 from theano import tensor as T
