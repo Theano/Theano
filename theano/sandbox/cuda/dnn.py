@@ -1,11 +1,9 @@
-import copy
 import os
 
 import theano
 from theano import Apply, tensor
 from theano.gof.type import CDataType
 from theano.compat import PY3
-from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
                                  device_properties)
@@ -926,8 +924,7 @@ err%(name)s = cudnnSoftmaxForward(
 # We need this since other stuff from opt is not importable.
 if cuda_available:
 
-    from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
-                                         gpu_optimizer)
+    from theano.sandbox.cuda.opt import local_optimizer, gpu_optimizer
 
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
