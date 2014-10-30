@@ -21,6 +21,7 @@ config = theano.config
 # We cannot import discrete_dtypes from tensor.basic yet,
 # so we redefine them here
 discrete_dtypes = map(str, scalar.discrete_types)
+float_dtypes = map(str, scalar.float_types)
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -851,11 +852,25 @@ class Elemwise(OpenMPOp):
         #         storage[0] = odat
 
         ufunc_args = inputs  # + output_storage
+        ufunc_kwargs = {}
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
             nout = self.nfunc_spec[2]
             if nout < 0:
                 nout = -nout
+            # Numpy ufuncs will sometimes perform operations in
+            # float16, in particular when the input is int8.
+            # This is not something that we want, and we do not
+            # do it in the C code, so we specify that the computation
+            # should be carried out in the returned dtype.
+            # This is done via the "sig" kwarg of the ufunc, its value
+            # should be something like "ff->f", where the characters
+            # represent the dtype of the inputs and outputs.
+            out_dtype = node.outputs[0].dtype
+            if out_dtype in float_dtypes and isinstance(ufunc, numpy.ufunc):
+                char = numpy.sctype2char(out_dtype)
+                sig = char * node.nin + '->' + char * node.nout
+                ufunc_kwargs['sig'] = sig
             # Unfortunately, the else case does not allow us to
             # directly feed the destination arguments to the nfunc
             # since it sometimes requires resizing. Doing this
@@ -869,7 +884,7 @@ class Elemwise(OpenMPOp):
                                       self.scalar_op.nout))
             nout = ufunc.nout
 
-        variables = ufunc(*ufunc_args)
+        variables = ufunc(*ufunc_args, **ufunc_kwargs)
 
         if nout == 1:
             variables = [variables]
