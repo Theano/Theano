@@ -920,7 +920,7 @@ class ProfileStats(object):
                     else:
                         set_idx = list_set.index(DONE_SET)
                         past_mem = list_mem[set_idx]
-                        if past_mem > mem_count:
+                        if past_mem >= mem_count:
                             list_mem[set_idx] = mem_count
                         else:
                             DONE_SET.remove(node)
