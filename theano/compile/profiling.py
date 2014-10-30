@@ -912,13 +912,14 @@ class ProfileStats(object):
                     mem_count -= mem_freed
 
                     DONE_SET.add(node)
-                    if DONE_SET not in done_dict.keys():
-                        froze_set = frozenset(DONE_SET)
-                        done_dict[frozenset] = mem_count
+                    frozen_set = frozenset(DONE_SET)
+                    if frozen_set not in done_dict:
+                        done_dict[frozen_set] = mem_count
                     else:
-                        past_mem = done_dict[DONE_SET]
+                        past_mem = done_dict[frozen_set]
+                        print past_mem > mem_count
                         if past_mem > mem_count:
-                            done_dict[DONE_SET] = mem_count
+                            done_dict[frozen_set] = mem_count
                         else:
                             DONE_SET.remove(node)
                             mem_count -= mem_created
