@@ -1504,7 +1504,7 @@ class TrueDiv(BinaryScalarOp):
         x = numpy.asarray(x)
         y = numpy.asarray(y)
         if all(a.dtype in discrete_types for a in (x, y)):
-            return numpy.array(float(x) / y, dtype=config.floatX)
+            return numpy.sctypeDict[config.floatX](float(x) / y)
         else:
             return x / y
 
