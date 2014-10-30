@@ -2166,7 +2166,7 @@ neg = Neg(same_out, name='neg')
 class Inv(UnaryScalarOp):
     """ multiplicative inverse. Also called reciprocal"""
     def impl(self, x):
-        return 1.0 / x
+        return numpy.float32(1.0) / x
 
     def grad(self, (x,), (gz,)):
         if x.type in complex_types:
@@ -2190,6 +2190,11 @@ class Log(UnaryScalarOp):
     amd_float64 = "amd_vrda_log"
 
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.log will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.log(x, sig='f')
         return numpy.log(x)
 
     def grad(self, (x,), (gz,)):
@@ -2219,6 +2224,11 @@ class Log2(UnaryScalarOp):
     amd_float64 = "amd_vrda_log2"
 
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.log2 will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.log2(x, sig='f')
         return numpy.log2(x)
 
     def grad(self, (x,), (gz,)):
@@ -2245,6 +2255,11 @@ class Log10(UnaryScalarOp):
     amd_float64 = "amd_vrda_log10"
 
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.log10 will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.log10(x, sig='f')
         return numpy.log10(x)
 
     def grad(self, (x,), (gz,)):
@@ -2268,6 +2283,11 @@ log10 = Log10(upgrade_to_float, name='log10')
 class Log1p(UnaryScalarOp):
     """ log(1+x) """
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.log1p will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.log1p(x, sig='f')
         return numpy.log1p(x)
 
     def grad(self, (x,), (gz,)):
@@ -2293,6 +2313,11 @@ class Exp(UnaryScalarOp):
     amd_float64 = "amd_vrda_exp"
 
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.exp will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.exp(x, sig='f')
         return numpy.exp(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2315,6 +2340,11 @@ exp = Exp(upgrade_to_float, name='exp')
 
 class Exp2(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.exp2 will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.exp2(x, sig='f')
         return numpy.exp2(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2337,6 +2367,11 @@ exp2 = Exp2(upgrade_to_float, name='exp2')
 
 class Expm1(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.expm1 will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.expm1(x, sig='f')
         return numpy.expm1(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2382,6 +2417,11 @@ sqr = Sqr(same_out, name='sqr')
 
 class Sqrt(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.sqrt will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.sqrt(x, sig='f')
         return numpy.sqrt(x)
 
     def grad(self, (x,), (gz,)):
@@ -2404,6 +2444,11 @@ sqrt = Sqrt(upgrade_to_float, name='sqrt')
 
 class Deg2Rad(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.deg2rad will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.deg2rad(x, sig='f')
         return numpy.deg2rad(x)
 
     def grad(self, (x,), (gz,)):
@@ -2426,6 +2471,11 @@ deg2rad = Deg2Rad(upgrade_to_float, name='deg2rad')
 
 class Rad2Deg(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.rad2deg will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.rad2deg(x, sig='f')
         return numpy.rad2deg(x)
 
     def grad(self, (x,), (gz,)):
@@ -2451,6 +2501,11 @@ class Cos(UnaryScalarOp):
     amd_float64 = "amd_vrda_cos"
 
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.cos will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.cos(x, sig='f')
         return numpy.cos(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2473,6 +2528,11 @@ cos = Cos(upgrade_to_float, name='cos')
 
 class ArcCos(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.arccos will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.arccos(x, sig='f')
         return numpy.arccos(x)
 
     def grad(self, (x,), (gz,)):
@@ -2498,6 +2558,11 @@ class Sin(UnaryScalarOp):
     amd_float64 = "amd_vrda_sin"
 
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.sin will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.sin(x, sig='f')
         return numpy.sin(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2520,6 +2585,11 @@ sin = Sin(upgrade_to_float, name='sin')
 
 class ArcSin(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.arcsin will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.arcsin(x, sig='f')
         return numpy.arcsin(x)
 
     def grad(self, (x,), (gz,)):
@@ -2542,6 +2612,11 @@ arcsin = ArcSin(upgrade_to_float, name='arcsin')
 
 class Tan(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.tan will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.tan(x, sig='f')
         return numpy.tan(x)
 
     def grad(self, (x,), (gz,)):
@@ -2564,6 +2639,11 @@ tan = Tan(upgrade_to_float, name='tan')
 
 class ArcTan(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.arctan will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.arctan(x, sig='f')
         return numpy.arctan(x)
 
     def grad(self, (x,), (gz,)):
@@ -2586,6 +2666,13 @@ arctan = ArcTan(upgrade_to_float, name='arctan')
 
 class ArcTan2(BinaryScalarOp):
     def impl(self, y, x):
+        # If x and y are int8 or uint8, numpy.arctan2 will compute the result
+        # in half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            y_dtype = str(getattr(x, 'dtype', ''))
+            if y_dtype in ('int8', 'uint8'):
+                return numpy.arctan2(y, x, sig='f')
         return numpy.arctan2(y, x)
 
     def grad(self, (y, x), (gz,)):
@@ -2621,6 +2708,11 @@ class Cosh(UnaryScalarOp):
     cosh(x) = (exp(x) + exp(-x)) / 2
     """
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.cosh will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.cosh(x, sig='f')
         return numpy.cosh(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2643,6 +2735,11 @@ cosh = Cosh(upgrade_to_float, name='cosh')
 
 class ArcCosh(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.arccosh will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.arccosh(x, sig='f')
         return numpy.arccosh(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2668,6 +2765,11 @@ class Sinh(UnaryScalarOp):
     sinh(x) = (exp(x) - exp(-x)) / 2
     """
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.sinh will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.sinh(x, sig='f')
         return numpy.sinh(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2690,6 +2792,11 @@ sinh = Sinh(upgrade_to_float, name='sinh')
 
 class ArcSinh(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.arcsinh will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.arcsinh(x, sig='f')
         return numpy.arcsinh(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2716,6 +2823,11 @@ class Tanh(UnaryScalarOp):
             = (exp(2*x) - 1) / (exp(2*x) + 1)
     """
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.tanh will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.tanh(x, sig='f')
         return numpy.tanh(x)
 
     def grad(self, (x, ), (gz, )):
@@ -2738,6 +2850,11 @@ tanh = Tanh(upgrade_to_float, name='tanh')
 
 class ArcTanh(UnaryScalarOp):
     def impl(self, x):
+        # If x is an int8 or uint8, numpy.arctanh will compute the result in
+        # half-precision (float16), where we want float32.
+        x_dtype = str(getattr(x, 'dtype', ''))
+        if x_dtype in ('int8', 'uint8'):
+            return numpy.arctanh(x, sig='f')
         return numpy.arctanh(x)
 
     def grad(self, (x, ), (gz, )):
