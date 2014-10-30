@@ -2180,6 +2180,8 @@ class Inv(UnaryScalarOp):
         return -gz / (x * x),
 
     def c_code(self, node, name, (x,), (z,), sub):
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError()
         return "%(z)s = 1.0 / %(x)s;" % locals()
 inv = Inv(upgrade_to_float, name='inv')
 
