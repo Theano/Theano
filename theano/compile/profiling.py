@@ -798,8 +798,7 @@ class ProfileStats(object):
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
             DONE_SET = set([])
-            list_set = []
-            list_mem = []
+            done_dict = {}
 
             # Initial compute_map which is used to check if a node is valid
             compute_map = defaultdict(lambda: [0])
@@ -913,15 +912,13 @@ class ProfileStats(object):
                     mem_count -= mem_freed
 
                     DONE_SET.add(node)
-                    if DONE_SET not in list_set:
-                        set_copy = DONE_SET.copy()
-                        list_set.append(set_copy)
-                        list_mem.append(mem_count)
+                    if DONE_SET not in done_dict.keys():
+                        froze_set = frozenset(DONE_SET)
+                        done_dict[frozenset] = mem_count
                     else:
-                        set_idx = list_set.index(DONE_SET)
-                        past_mem = list_mem[set_idx]
-                        if past_mem >= mem_count:
-                            list_mem[set_idx] = mem_count
+                        past_mem = done_dict[DONE_SET]
+                        if past_mem > mem_count:
+                            done_dict[DONE_SET] = mem_count
                         else:
                             DONE_SET.remove(node)
                             mem_count -= mem_created
