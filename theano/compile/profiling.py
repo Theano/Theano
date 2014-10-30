@@ -797,7 +797,7 @@ class ProfileStats(object):
             mem_bound = numpy.inf
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
-            DONE_SET = set([])
+            done_set = set([])
             done_dict = {}
 
             # Initial compute_map which is used to check if a node is valid
@@ -911,8 +911,8 @@ class ProfileStats(object):
 
                     mem_count -= mem_freed
 
-                    DONE_SET.add(node)
-                    frozen_set = frozenset(DONE_SET)
+                    done_set.add(node)
+                    frozen_set = frozenset(done_set)
                     if frozen_set not in done_dict:
                         done_dict[frozen_set] = mem_count
                     else:
@@ -920,7 +920,7 @@ class ProfileStats(object):
                         if past_mem > mem_count:
                             done_dict[frozen_set] = mem_count
                         else:
-                            DONE_SET.remove(node)
+                            done_set.remove(node)
                             mem_count -= mem_created
                             max_mem_count = max_storage
                             mem_count += mem_freed
@@ -955,7 +955,7 @@ class ProfileStats(object):
                         min_memory_generator(new_exec_nodes, viewed_by, view_of)
 
                     # Reset track variables
-                    DONE_SET.remove(node)
+                    done_set.remove(node)
                     mem_count -= mem_created
                     max_mem_count = max_storage
                     mem_count += mem_freed
