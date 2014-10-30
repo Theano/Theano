@@ -526,8 +526,7 @@ def pydotprint(fct, outfile=None,
                assert_nb_all_strings=-1,
                return_image=False,
                ):
-    """
-    Print to a file (png format) the graph of a compiled theano function's ops.
+    """Print to a file (png format) the graph of a compiled theano function's ops.
 
     :param fct: a compiled Theano function, a Variable, an Apply or
                 a list of Variable.
@@ -586,6 +585,11 @@ def pydotprint(fct, outfile=None,
     grey boxes are variables that are not outputs and are not used,
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
     HostFromGpu).
+
+    .. note::
+
+        Since October 20th, 2014, this print the inner function of all
+        scan separately after the top level debugprint output.
 
     """
     if colorCodes is None:
