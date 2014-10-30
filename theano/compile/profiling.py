@@ -917,7 +917,6 @@ class ProfileStats(object):
                         done_dict[frozen_set] = mem_count
                     else:
                         past_mem = done_dict[frozen_set]
-                        print past_mem > mem_count
                         if past_mem > mem_count:
                             done_dict[frozen_set] = mem_count
                         else:
