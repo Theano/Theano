@@ -518,8 +518,8 @@ if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output%(id)d)) != CUDNN_STATUS_S
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-if (input%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(input%(id)d); }
-if (output%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
+if (input%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(input%(id)d); }
+if (output%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
 """ % dict(id=struct_id)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -601,7 +601,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -666,10 +666,10 @@ if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output_grad%(id)d)) != CUDNN_STA
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-if (input%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(input%(id)d); }
-if (input_grad%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(input_grad%(id)d); }
-if (output%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
-if (output_grad%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id)d); }
+if (input%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(input%(id)d); }
+if (input_grad%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(input_grad%(id)d); }
+if (output%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
+if (output_grad%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id)d); }
 """ % dict(id=struct_id)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -737,7 +737,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            output_grad_desc="output_grad"+str(sub['struct_id']))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 def dnn_pool(img, ws, stride=(1, 1), mode='max'):
