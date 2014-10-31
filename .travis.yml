@@ -19,6 +19,8 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pip flake8==2.3; fi
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
+  - pip install coveralls
+  - pip install nose-timelimit
   - pip install . --no-deps
 
 # command to run tests
@@ -48,12 +50,14 @@ script:
   # Move to the path of the installed version
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
-  - theano-nose -v $PART
+  - echo "$THEANO_FLAGS"
+  - theano-nose -v --with-timelimit --with-coverage --cover-package=theano $PART
 #  - theano-cache list
 
 #after_script:
 after_failure:
   - cat /home/travis/.pip/pip.log
-#after_success:
+after_success:
+  - coveralls
 
 cache: apt
