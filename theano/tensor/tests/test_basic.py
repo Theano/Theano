@@ -3291,6 +3291,10 @@ class T_Join_and_Split(unittest.TestCase):
                         eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
 
     def test_join_matrix_dtypes(self):
+        if "float32" in self.shared.__name__:
+            raise SkipTest(
+                "The shared variable constructor"
+                " need to support other dtype then float32")
         # Test mixed dtype. There was a bug that caused crash in the past.
         av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int8')
         bv = numpy.array([[7], [8]], dtype='float32')
@@ -3307,6 +3311,10 @@ class T_Join_and_Split(unittest.TestCase):
                         eps=1.0e-4, rel_tol=1.0e-3, mode=self.mode)
 
     def test_join_matrix_ints(self):
+        if "float32" in self.shared.__name__:
+            raise SkipTest(
+                "The shared variable constructor"
+                " need to support other dtype then float32")
         # Test mixed dtype. There was a bug that caused crash in the past.
         av = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int8')
         bv = numpy.array([[7], [8]], dtype='int32')
