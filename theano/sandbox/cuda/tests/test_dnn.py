@@ -46,8 +46,8 @@ def pool_2d_i2n(input, ds=(2, 2), strides=None, pool_function=T.max, mode='ignor
 def test_pooling():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    
-    x = T.tensor4()
+
+    x = T.ftensor4()
 
     for func in (T.max, T.mean):
         for ws in (4, 5):
@@ -57,8 +57,8 @@ def test_pooling():
                 out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
                     pool_function=func)
 
-                f1 = theano.function([x], out1)
-                f2 = theano.function([x], out2)
+                f1 = theano.function([x], out1, mode=mode_with_gpu)
+                f2 = theano.function([x], out2, mode=mode_with_gpu)
 
                 data = numpy.random.normal(0, 1, (1, 10, 100, 100)).astype("float32")
                 a = f1(data).__array__()
