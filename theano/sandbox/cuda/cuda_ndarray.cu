@@ -1272,8 +1272,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (cpu_err_var != 0) {
         PyErr_Format(
             PyExc_IndexError,
-            "Cuda error: %s: The error code on the gpu is %i.\n",
-            "CudaNdarray_TakeFrom",
+            "CudaNdarray_TakeFrom: One of the index value is out of bound.\n",
             cpu_err_var);
         // Must reset it to 0 to don't reset it before each use.
         err = cudaMemset((void*)err_var, 0, sizeof(int));
