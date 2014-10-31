@@ -34,6 +34,27 @@ dnn_available.avail = None
 dnn_available.msg = None
 
 
+def c_set_tensor4d(var, desc, err, fail):
+    return """
+%(err)s = cudnnSetTensor4dDescriptorEx(
+    %(desc)s, CUDNN_DATA_FLOAT,
+    CudaNdarray_HOST_DIMS(%(var)s)[0],
+    CudaNdarray_HOST_DIMS(%(var)s)[1],
+    CudaNdarray_HOST_DIMS(%(var)s)[2],
+    CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
+    CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
+);
+if (%(err)s != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
+    cudnnGetErrorString(%(err)s));
+    %(fail)s
+}
+        """ % dict(var=var, err=err, desc=desc, fail=fail)
+
+
 class DnnBase(GpuOp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
@@ -98,26 +119,6 @@ class GpuDnnConvDesc(GpuOp):
 
         return Apply(self, [img_shape, kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t")()])
-
-    def c_set_tensor4d(self, var, desc, err, fail):
-        return """
-%(err)s = cudnnSetTensor4dDescriptorEx(
-    %(desc)s, CUDNN_DATA_FLOAT,
-    CudaNdarray_HOST_DIMS(%(var)s)[0],
-    CudaNdarray_HOST_DIMS(%(var)s)[1],
-    CudaNdarray_HOST_DIMS(%(var)s)[2],
-    CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
-    CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
-);
-if (%(err)s != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
-    cudnnGetErrorString(%(err)s));
-    %(fail)s
-}
-        """ % dict(var=var, err=err, desc=desc, fail=fail)
 
     def c_code(self, node, name, inputs, outputs, sub):
         img_shape, kern_shape = inputs
@@ -525,10 +526,10 @@ if (output%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
         desc = inputs[1]
         out, = outputs
 
-        set_in = self.c_set_tensor4d(inputs[0], "input" + str(sub['struct_id']),
+        set_in = c_set_tensor4d(inputs[0], "input" + str(sub['struct_id']),
             'err' + name, sub['fail'])
 
-        set_out = self.c_set_tensor4d(out, "output" + str(sub['struct_id']),
+        set_out = c_set_tensor4d(out, "output" + str(sub['struct_id']),
             'err' + name, sub['fail'])
 
         return """
@@ -676,15 +677,15 @@ if (output_grad%(id)d) != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id
         out_grad, = outputs
 
         set_in = "\n".join([
-            self.c_set_tensor4d(inp, "input" + str(sub['struct_id']),
+            c_set_tensor4d(inp, "input" + str(sub['struct_id']),
                 'err' + name, sub['fail']),
-            self.c_set_tensor4d(inp_grad, "input_grad" + str(sub['struct_id']),
+            c_set_tensor4d(inp_grad, "input_grad" + str(sub['struct_id']),
                 'err' + name, sub['fail']),
-            self.c_set_tensor4d(out, "output" + str(sub['struct_id']),
+            c_set_tensor4d(out, "output" + str(sub['struct_id']),
                 'err' + name, sub['fail'])
         ])
 
-        set_out = self.c_set_tensor4d(out, "output_grad" + str(sub['struct_id']),
+        set_out = c_set_tensor4d(out, "output_grad" + str(sub['struct_id']),
             'err' + name, sub['fail'])
 
         return """
