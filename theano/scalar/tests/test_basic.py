@@ -18,9 +18,9 @@ from theano import gof
 from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
-                                 Composite, add, div_proxy,
+                                 Composite, add, div_proxy, clip,
                                  and_, eq, neq, invert, mul)
-
+import numpy
 
 def inputs():
     return floats('xyz')
@@ -55,6 +55,38 @@ class test_ScalarOps(unittest.TestCase):
                     (5,3), (-5,3), (5,-3), (-5,-3)
                     ):
             self.assertTrue(fn(a,b) == a%b, (a,))
+
+    def test_clip(self):
+        x, y, z = inputs()
+        a = clip(x, y, z)
+        fn = gof.DualLinker().accept(FunctionGraph([x, y, z], [a])).make_function()
+        numpy.random.seed(1)
+        xval = numpy.random.rand(1)
+        yval = numpy.random.rand(1)
+        zval = numpy.random.rand(1)
+        aval = fn(xval, yval, zval)
+        np_aval = numpy.clip(xval, yval, zval)
+        self.assertTrue(aval == np_aval)
+
+    def test_clip_grad(self):
+        x, y = floats('xy')
+        a = theano.tensor.clip(x, y, x)
+        g = theano.gradient.grad(a, x)
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [g])).make_function()
+
+        # Test the other way around as well
+        a2 = theano.tensor.clip(x, x, y)
+        g2 = theano.gradient.grad(a2, x)
+        fn2 = gof.DualLinker().accept(FunctionGraph([x, y], [g2])).make_function()
+
+        numpy.random.seed(1)
+        xval = numpy.random.rand(1).astype("int64")
+        yval = numpy.random.rand(1).astype("int64")
+        aval = fn(xval, yval)
+        aval2 = fn2(xval, yval)
+        self.assertTrue(aval == 1)
+        self.assertTrue(aval2 == 1)
+
 
 class test_composite(unittest.TestCase):
 
