@@ -99,6 +99,8 @@ def debugprint(obj, depth=-1, print_type=False,
             order = obj.toposort()
         elif isinstance(obj, (int, long, float, numpy.ndarray)):
             print obj
+        elif isinstance(obj, (theano.In, theano.Out)):
+            results_to_print.append(obj.variable)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
@@ -123,8 +125,12 @@ def debugprint(obj, depth=-1, print_type=False,
             debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
                                  file=_file, ids=ids,
                                  scan_ops=scan_ops, stop_on_name=stop_on_name)
-
-            for idx, i in enumerate(s.owner.op.outputs):
+            if hasattr(s.owner.op, 'fn'):
+                # If the op was compiled, print the optimized version.
+                outputs = s.owner.op.fn.maker.fgraph.outputs
+            else:
+                outputs = s.owner.op.output
+            for idx, i in enumerate(outputs):
                 if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
                     if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
                         scan_ops.append(i)
