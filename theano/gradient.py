@@ -1602,13 +1602,13 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     # random_projection should not have elements too small,
     # otherwise too much precision is lost in numerical gradient
-    def random_projection():
+    def random_projection(dtype):
         plain = rng.rand(*o_fn_out.shape) + 0.5
         if cast_to_output_type:
             return numpy.array(plain, o_output.dtype)
-        return plain
-
-    t_r = shared(random_projection())
+        return plain.astype(dtype)
+    dtype = "float32" if all([p.dtype == 'float32' for p in pt]) else "float64"
+    t_r = shared(random_projection(dtype))
     t_r.name = 'random_projection'
 
     # random projection of o onto t_r
@@ -1643,7 +1643,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
             # get new random projection for next test
             if test_num < n_tests - 1:
-                t_r.set_value(random_projection(), borrow=True)
+                t_r.set_value(random_projection(t_r.dtype), borrow=True)
         except Exception, e:
             e.args += ("\nThe error happened with the following inputs:", pt,
                        "\nThe value of eps is:", eps,
