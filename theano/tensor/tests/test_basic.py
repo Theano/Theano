@@ -833,8 +833,9 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     integer=(randint(2, 3), randint_nonzero(2, 3)),
     uinteger=(randint(2, 3).astype("uint8"),
               randint_nonzero(2, 3).astype("uint8")),
-    int8=[numpy.arange(-127, 127, dtype='int8')[:, numpy.newaxis],
-          numpy.array(range(-127, 0) + range(1, 128), dtype='int8')],
+    int8=[numpy.tile(numpy.arange(-127, 128, dtype='int8'), [254, 1]).T,
+          numpy.tile(numpy.array(range(-127, 0) + range(1, 128), dtype='int8'),
+                     [255, 1])],
     # This empty2 doesn't work for some tests. I don't remember why
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
     )
@@ -911,7 +912,7 @@ TrueDivInplaceTester = makeBroadcastTester(
         good=copymod(
             _good_broadcast_div_mod_normal_float_inplace,
             # The output is now in float, we cannot work inplace on an int.
-            without=['integer', 'uinteger']),
+            without=['integer', 'uinteger', 'int8']),
         grad=_grad_broadcast_div_mod_normal,
         grad_rtol=div_grad_rtol,
         inplace=True)
@@ -925,7 +926,8 @@ _good_inv = dict(
     empty=[numpy.asarray([], dtype=config.floatX)])
 
 _good_inv_inplace = copymod(_good_inv, without=['integers', 'int8', 'complex'])
-_grad_inv = copymod(_good_inv, without=['integers', 'int8', 'complex', 'empty'])
+_grad_inv = copymod(_good_inv,
+                    without=['integers', 'int8', 'complex', 'empty'])
 
 _bad_runtime_inv = dict(
     float=[numpy.zeros((2, 3))],
