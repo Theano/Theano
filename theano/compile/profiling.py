@@ -913,46 +913,22 @@ class ProfileStats(object):
 
                     done_set.add(node)
                     frozen_set = frozenset(done_set)
-                    if frozen_set not in done_dict:
-                        done_dict[frozen_set] = mem_count
-                    else:
-                        past_mem = done_dict[frozen_set]
-                        if past_mem > mem_count:
-                            done_dict[frozen_set] = mem_count
+                    if done_dict.get(frozen_set, max_mem_count+1) > max_mem_count:
+                        done_dict[frozen_set] = max_mem_count
+ 
+                        for var in node.outputs:
+                            for c, _ in var.clients:
+                                if c != "output":
+                                    deps = c.inputs + c.destroy_dependencies
+                                    if all(compute_map[v][0] for v in deps):
+                                        new_exec_nodes.add(c)
+
+                        if not new_exec_nodes:
+                            # Check and Update mem_bound
+                            if max_mem_count < mem_bound:
+                                mem_bound = max_mem_count
                         else:
-                            done_set.remove(node)
-                            mem_count -= mem_created
-                            max_mem_count = max_storage
-                            mem_count += mem_freed
-                            for var in node.outputs:
-                                compute_map[var][0] = 0
-
-                            for k_remove, v_remove in viewedby_remove.iteritems():
-                                for i in v_remove:
-                                    viewed_by[k_remove].append(i)
-
-                            for k_add, v_add in viewedby_add.iteritems():
-                                for i in v_add:
-                                    viewed_by[k_add].remove(i)
-
-                            for k in viewof_change:
-                                del view_of[k]
-
-                            continue
-
-                    for var in node.outputs:
-                        for c, _ in var.clients:
-                            if c != "output":
-                                deps = c.inputs + c.destroy_dependencies
-                                if all(compute_map[v][0] for v in deps):
-                                    new_exec_nodes.add(c)
-
-                    if not new_exec_nodes:
-                        # Check and Update mem_bound
-                        if max_mem_count < mem_bound:
-                            mem_bound = max_mem_count
-                    else:
-                        min_memory_generator(new_exec_nodes, viewed_by, view_of)
+                            min_memory_generator(new_exec_nodes, viewed_by, view_of)
 
                     # Reset track variables
                     done_set.remove(node)
