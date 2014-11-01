@@ -2519,6 +2519,9 @@ class Test_alloc_zero(unittest.TestCase):
                           for x in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs0(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+        
         x = tensor.matrix()
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
@@ -2528,6 +2531,9 @@ class Test_alloc_zero(unittest.TestCase):
                           for x in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs0t(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+        
         x = tensor.matrix()
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
@@ -2537,6 +2543,9 @@ class Test_alloc_zero(unittest.TestCase):
                           for x in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs1(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+        
         x = tensor.matrix()
         y0 = tensor.constant(numpy.asarray(numpy.zeros_like((2, 2)),
                                            dtype=config.floatX))
