@@ -124,7 +124,8 @@ class GpuElemwise(HideC, Elemwise):
                                     scal_out,
                                     dict(fail='return;'))
 
-        # OpenCL implicitly has 'stdint' defs at the kernel compilation stage
+        # Translate types for scalar composite ops (except complex).
+        # NB: OpenCL implicitly has 'stdint' defs at the kernel compilation stage
         support_code = "" if pygpu.get_default_context().kind == 'opencl' else """
 #ifdef _MSC_VER
 #define signed __int8 int8_t
@@ -139,8 +140,7 @@ class GpuElemwise(HideC, Elemwise):
 #include <stdint.h>
 #endif
 """
-
-        # Translate types for scalar composite ops (except complex).
+        # Translate ga_ pseudo-types into their specific realizations
         support_code += """
 #define ga_bool uint8_t
 #define ga_byte int8_t
