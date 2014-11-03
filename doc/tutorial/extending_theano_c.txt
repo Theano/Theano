@@ -827,7 +827,8 @@ this new version of the VectorTimesVector op :
         on the filesystem of the C implementation of this op. To do this, it
         gives the path of file containing the C code as well as the name of
         the function, in that file, that should be called to perform the
-        computation.
+        computation. The path should be given as a relative path from the
+        folder where the descendant of the ``COp`` class is defined.
 
 *       ``make_node()`` : the ``make_node()`` method is absolutely identical to
         the one in our old example. Using the ``COp`` class doesn't change
