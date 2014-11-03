@@ -35,7 +35,8 @@ from theano.tensor.opt import (
         out2in,
         Shape_i,
         Assert,
-        MakeVector
+        MakeVector,
+        make_vector
         )
 from theano import tensor
 from theano import tensor as T
@@ -1712,6 +1713,54 @@ def test_local_useless_subtensor():
         f([[1, 2, 3], [4, 5, 6]], 3)
 
 
+class test_local_subtensor_make_vector(unittest.TestCase):
+    def test_scalar_idx(self):
+        x, y, z = tensor.lscalars('xyz')
+        v = make_vector(x, y, z)
+        f = function([x, y, z], v[0], mode=mode_opt)
+
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, theano.compile.ops.DeepCopyOp)
+        assert f(0, 1, 2) == 0
+    
+    def test_slice_idx_stop(self):
+        x, y, z = tensor.lscalars('xyz')
+        v = make_vector(x, y, z)
+        f = function([x, y, z], v[:2], mode=mode_opt)
+
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, MakeVector)
+        assert len(prog[0].inputs) == 2
+        r = f(0, 1, 2)
+        assert r[0] == 0 and r[1] == 1
+    
+    def test_slice_idx_step(self):
+        x, y, z = tensor.lscalars('xyz')
+        v = make_vector(x, y, z)
+        f = function([x, y, z], v[::2], mode=mode_opt)
+
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, MakeVector)
+        assert len(prog[0].inputs) == 2
+        r = f(0, 1, 2)
+        assert r[0] == 0 and r[1] == 2
+    
+    def test_AdvancedSubtensor1_idx(self):
+        x, y, z = tensor.lscalars('xyz')
+        v = make_vector(x, y, z)
+        f = function([x, y, z], v[[0, 2]], mode=mode_opt)
+
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, MakeVector)
+        assert len(prog[0].inputs) == 2
+        r = f(0, 1, 2)
+        assert r[0] == 0 and r[1] == 2
+
+
 class test_local_subtensor_lift(unittest.TestCase):
     def test0(self):
         # basic test that the Op works
@@ -2441,6 +2490,69 @@ class Test_alloc_zero(unittest.TestCase):
         f = theano.function([x], z, mode=self.mode)
         assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
                            f.maker.fgraph.toposort()])
+
+    def test_advancedincsubtensor1_allocs0(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        y0 = tensor.zeros_like(y)
+        z = tensor.inc_subtensor(x[[0, 1, 2, 3]], y0)
+        f = theano.function([x, y], z, mode=self.mode)
+        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor1)
+                          for x in f.maker.fgraph.toposort()])
+
+    def test_advancedincsubtensor1_allocs0t(self):
+        x = tensor.matrix()
+        y = tensor.matrix()
+        y0 = tensor.zeros_like(y)
+        z = tensor.inc_subtensor(x[[0, 1, 2, 3]], y0.T)
+        f = theano.function([x, y], z, mode=mode_opt)
+        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor1)
+                          for x in f.maker.fgraph.toposort()])
+
+    def test_advancedincsubtensor1_allocs1(self):
+        x = tensor.matrix()
+        y0 = tensor.constant(numpy.asarray(numpy.zeros_like((4, 4)),
+                                           dtype=config.floatX))
+        z = tensor.inc_subtensor(x[[0, 1, 2, 3]], y0)
+        f = theano.function([x], z, mode=self.mode)
+        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor1)
+                          for x in f.maker.fgraph.toposort()])
+
+    def test_advancedincsubtensor_allocs0(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+        
+        x = tensor.matrix()
+        y = tensor.matrix()
+        y0 = tensor.zeros_like(y)
+        z = tensor.inc_subtensor(x[[[0, 0], [1, 1]], [[0, 1], [0, 1]]], y0)
+        f = theano.function([x, y], z, mode=self.mode)
+        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor)
+                          for x in f.maker.fgraph.toposort()])
+
+    def test_advancedincsubtensor_allocs0t(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+        
+        x = tensor.matrix()
+        y = tensor.matrix()
+        y0 = tensor.zeros_like(y)
+        z = tensor.inc_subtensor(x[[[0, 0], [1, 1]], [[0, 1], [0, 1]]], y0.T)
+        f = theano.function([x, y], z, mode=mode_opt)
+        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor)
+                          for x in f.maker.fgraph.toposort()])
+
+    def test_advancedincsubtensor_allocs1(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+        
+        x = tensor.matrix()
+        y0 = tensor.constant(numpy.asarray(numpy.zeros_like((2, 2)),
+                                           dtype=config.floatX))
+        z = tensor.inc_subtensor(x[[[0, 0], [1, 1]], [[0, 1], [0, 1]]], y0)
+        f = theano.function([x], z, mode=self.mode)
+        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor)
+                          for x in f.maker.fgraph.toposort()])
 
     def test_dot_allocs_0(self):
         v1 = tensor.vector('v1')

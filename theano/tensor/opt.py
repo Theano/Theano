@@ -28,7 +28,8 @@ from theano.tensor.elemwise import Elemwise, DimShuffle
 from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      Subtensor, IncSubtensor, make_constant,
                                      AdvancedIncSubtensor1,
-                                     AdvancedIncSubtensor)
+                                     AdvancedIncSubtensor,
+                                     AdvancedSubtensor1)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -1330,52 +1331,71 @@ def local_track_shape_i(node):
 
 @register_specialize
 @register_canonicalize('fast_compile_gpu')
-@gof.local_optimizer([Subtensor])
+@gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_subtensor_make_vector(node):
-    # replace all subtensor(make_vector) like:
-    # [a,b,c][0] -> a
-    # [a,b,c][0:2] -> [a,b]
-    # we can do this for constant indexes
+    """
+    replace all subtensor(make_vector) like:
+    [a,b,c][0] -> a
+    [a,b,c][0:2] -> [a,b]
+    
+    replace all AdvancedSubtensor1(make_vector) like:
+    [a,b,c][[0,2]] -> [a,c]
+    
+    we can do this for constant indexes
+    """
+    x = node.inputs[0]
+    if not x.owner or x.owner.op != make_vector:
+        return
+
     if isinstance(node.op, Subtensor):
         # This optimization needs ShapeOpt and fgraph.shape_feature
-        x = node.inputs[0]
-        if x.owner and x.owner.op == make_vector:
+        try:
+            idx, = node.op.idx_list
+        except Exception:
+            #'how can you have multiple indexes into a shape?'
+            raise
+
+        if isinstance(idx, (scalar.Scalar, T.TensorType)):
+            # The idx is a Scalar, ie a Type. This means the actual index
+            # is contained in node.inputs[1]
+            old_idx, idx = idx, node.inputs[1]
+            assert idx.type == old_idx
+    elif isinstance(node.op, AdvancedSubtensor1):
+        idx = node.inputs[1]
+    else:
+        return
+
+    if isinstance(idx, (int, numpy.integer)):
+        return [x.owner.inputs[idx]]
+    elif isinstance(idx, Variable):
+        if idx.ndim == 0:
+            # if it is a constant we can do something with it
             try:
-                idx, = node.op.idx_list
-            except Exception:
-                #'how can you have multiple indexes into a shape?'
-                raise
+                v = get_scalar_constant_value(idx)
+                if isinstance(v, numpy.integer):
+                    # Python 2.4 wants to index only with Python integers
+                    v = int(v)
+                return [x.owner.inputs[v]]
+            except NotScalarConstantError:
+                pass
+        elif idx.ndim == 1 and isinstance(idx, T.Constant):
+            values = map(int, list(idx.value))
+            return [make_vector(*[x.owner.inputs[v] for v in values])]
+        else:
+            raise TypeError('case not expected')
+    elif isinstance(idx, slice):
+        # it is a slice of ints and/or Variables
+        # check subtensor to see if it can contain constant variables, and if
+        # it can, then try to unpack them.
+        try:
+            const_slice = node.op.get_constant_idx(node.inputs,
+                                                   allow_partial=False)[0]
+            return [make_vector(*x.owner.inputs[const_slice])]
+        except NotScalarConstantError:
+            pass
+    else:
+        raise TypeError('case not expected')
 
-            if isinstance(idx, (scalar.Scalar, T.TensorType)):
-                # The idx is a Scalar, ie a Type. This means the actual index
-                # is contained in node.inputs[1]
-                old_idx, idx = idx, node.inputs[1]
-                assert idx.type == old_idx
-
-            if isinstance(idx, (int, numpy.integer)):
-                return [x.owner.inputs[idx]]
-            elif isinstance(idx, Variable):
-                # if it is a constant we can do something with it
-                try:
-                    v = get_scalar_constant_value(idx)
-                    if isinstance(v, numpy.integer):
-                        # Python 2.4 wants to index only with Python integers
-                        v = int(v)
-                    return [x.owner.inputs[v]]
-                except NotScalarConstantError:
-                    pass
-            else:
-                # it is a slice of ints and/or Variables
-                #TODO: check subtensor to see if it can contain
-                #      constant variables, and if it can, then try to
-                #      unpack them.
-                try:
-                    return [make_vector(*x.owner.inputs.__getitem__(idx))]
-                except TypeError:
-                    pass
-                except Exception:
-                    _logger.error('failed to index with "%s"' % str(idx))
-                    raise
 
 #TODO: the other optimization for and, or, xor, le and ge see ticket #496.
 
@@ -2373,12 +2393,17 @@ compile.optdb.register('local_inplace_incsubtensor1',
 # Register old name
 @register_canonicalize("local_incsubtensor_of_allocs")
 @register_stabilize("local_incsubtensor_of_allocs")
-@gof.local_optimizer([IncSubtensor])
+@gof.local_optimizer([IncSubtensor,
+                      AdvancedIncSubtensor,
+                      AdvancedIncSubtensor1])
 def local_incsubtensor_of_zeros(node):
     """
     IncSubtensor(x, zeros, idx) -> x
     """
-    if isinstance(node.op, IncSubtensor) and not node.op.set_instead_of_inc:
+    if (isinstance(node.op, (IncSubtensor,
+                             AdvancedIncSubtensor,
+                             AdvancedIncSubtensor1)) and
+        not node.op.set_instead_of_inc):
         x = node.inputs[0]
         y = node.inputs[1]
         replace = False
