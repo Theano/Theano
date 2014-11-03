@@ -571,7 +571,7 @@ class test_Prod(unittest.TestCase):
 
         # including zeros, as the case with zeros is important
         # (and special cases: 1 zero in the row, more than 1 zero in the row)
-        x_val = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+        x_val = numpy.asarray([[.1, .2, .3], [.4, .5, .6], [.7, .8, .9]],
                               dtype='float32')
         # now with verify_grad
         unittest_tools.verify_grad(Prod(axis=1), [x_val], mode=self.mode)

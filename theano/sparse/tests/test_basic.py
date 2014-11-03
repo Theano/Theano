@@ -2322,7 +2322,7 @@ class CastTester(utt.InferShapeTester):
 
                     eps = None
                     if o_dtype == 'float32':
-                        eps = 7e-4
+                        eps = 1e-2
 
                     verify_grad_sparse(Cast(o_dtype), data, eps=eps)
 
@@ -2386,7 +2386,7 @@ class _HVStackTester(utt.InferShapeTester):
                         self.op_class(format=out_f, dtype=dtype),
                         self.mat[format],
                         structured=False,
-                        eps=7e-4)
+                        eps=1e-1)
 
 
 def _hv_switch(op, expected_function):
