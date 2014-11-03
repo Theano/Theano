@@ -547,9 +547,9 @@ AddConfigVar('check_input',
              BoolParam(True))
 
 AddConfigVar('cache_optimizations',
-             "WARNING: work in progress, does not work yet."
-             "Specify if the optimization cache should be used. This cache will"
-             "any optimized graph and its optimization. Actually slow downs a lot"
-             "the first optimization, and could possibly still contains some bugs."
+             "WARNING: work in progress, does not work yet. "
+             "Specify if the optimization cache should be used. This cache will "
+             "any optimized graph and its optimization. Actually slow downs a lot "
+             "the first optimization, and could possibly still contains some bugs. "
              "Use at your own risks.",
              BoolParam(False))
