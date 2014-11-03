@@ -56,19 +56,9 @@ class test_ScalarOps(unittest.TestCase):
                     ):
             self.assertTrue(fn(a,b) == a%b, (a,))
 
-    def test_clip(self):
-        x, y, z = inputs()
-        a = clip(x, y, z)
-        fn = gof.DualLinker().accept(FunctionGraph([x, y, z], [a])).make_function()
-        numpy.random.seed(1)
-        xval = numpy.random.rand(1)
-        yval = numpy.random.rand(1)
-        zval = numpy.random.rand(1)
-        aval = fn(xval, yval, zval)
-        np_aval = numpy.clip(xval, yval, zval)
-        self.assertTrue(aval == np_aval)
 
     def test_clip_grad(self):
+        #This is testing for the issue #633
         x, y = floats('xy')
         a = theano.tensor.clip(x, y, x)
         g = theano.gradient.grad(a, x)
@@ -78,14 +68,22 @@ class test_ScalarOps(unittest.TestCase):
         a2 = theano.tensor.clip(x, x, y)
         g2 = theano.gradient.grad(a2, x)
         fn2 = gof.DualLinker().accept(FunctionGraph([x, y], [g2])).make_function()
+        rng = numpy.random.RandomState(1)
 
-        numpy.random.seed(1)
-        xval = numpy.random.rand(1).astype("int64")
-        yval = numpy.random.rand(1).astype("int64")
-        aval = fn(xval, yval)
-        aval2 = fn2(xval, yval)
-        self.assertTrue(aval == 1)
-        self.assertTrue(aval2 == 1)
+        ntests = 3
+        for i in xrange(ntests):
+            xval = rng.rand(1)
+            #To ensure that the min is smaller than the value for x.
+            yval_mn = rng.rand(1) - 0.5
+
+            #To ensure that the max is larger than the value for y.
+            yval_mx = rng.rand(1) + 0.5
+
+            aval = fn(xval, yval_mn)
+            aval2 = fn2(xval, yval_mx)
+
+            self.assertTrue(aval == 1.)
+            self.assertTrue(aval2 == 1.)
 
 
 class test_composite(unittest.TestCase):
