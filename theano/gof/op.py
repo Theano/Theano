@@ -12,6 +12,7 @@ __contact__   = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
+import inspect
 import logging
 import numpy
 import os
@@ -1000,9 +1001,34 @@ class COp(Op):
                                self.apply_code_marker]
 
         # Load the external C code
-        f = open(self.func_file, "r")
-        self.func_code = f.read()
-        f.close()
+        try:
+            # Attempt to find the file self.func_file in the folder where the
+            # concrete type of the COp instance is defined
+
+            # Get the name of the folder where the concrete type of the COp is
+            # defined
+            path_concrete_type = inspect.getfile(self.__class__)
+            folder_concrete_type = os.path.dirname(path_concrete_type)
+
+            # Try to open the file from there
+            f = open(os.path.join(folder_concrete_type, self.func_file), "r")
+            self.func_code = f.read()
+            f.close()
+
+        except IOError:
+
+            # Add information to the exception message to inform the user
+            # on the locations in which the class COp will look for the
+            # specified file
+            message = ("The path to the external C implementation should "
+                       "be given as a relative path from the folder "
+                       "where the Op is defined. ")
+
+            # Can't update the exception's message by modifying e.args
+            # because IOErrors don't use their attribute args to generate
+            # their error message
+            e.strerror = message + e.strerror
+            raise e
 
         # Separate the contents of the file in sections and validate that at
         # lest one of the necessary code sections has been defined
