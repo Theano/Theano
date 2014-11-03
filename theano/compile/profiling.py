@@ -1033,7 +1033,7 @@ class ProfileStats(object):
             new_max_running_max_memory_size / 1024.)), int(round(
             max_running_max_memory_size / 1024.)))
         if min_max_peak:
-            print >> file,  "    Minimum peak from all valid apply node order is %dKB(took %f.2s to compute)" % (int(round(
+            print >> file,  "    Minimum peak from all valid apply node order is %dKB(took %.3fs to compute)" % (int(round(
                 min_max_peak / 1024.)), min_peak_time)
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
