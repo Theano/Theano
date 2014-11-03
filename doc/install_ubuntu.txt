@@ -242,16 +242,16 @@ Test GPU configuration
 
 .. note::
 
-   Ubuntu 10.04 LTS: default gcc version 4.4.3. gcc 4.1.2, 4.3.4 availables.
+   Ubuntu 10.04 LTS: default gcc version 4.4.3. gcc 4.1.2, 4.3.4 available.
 
-   Ubuntu 11.04: default gcc version 4.5.2. gcc 4.4.5 availables.
+   Ubuntu 11.04: default gcc version 4.5.2. gcc 4.4.5 available.
 
-   Ubuntu 11.10: default gcc version 4.6.1. gcc 4.4.6 and 4.5.3 availables.
+   Ubuntu 11.10: default gcc version 4.6.1. gcc 4.4.6 and 4.5.3 available.
 
-   Ubuntu 12.04 LTS: default gcc version 4.6.3. gcc 4.4.7 and 4.5.3 availables.
+   Ubuntu 12.04 LTS: default gcc version 4.6.3. gcc 4.4.7 and 4.5.3 available.
 
-   Ubuntu 12.10: default gcc version 4.7.2. gcc 4.4.7, 4.5.4 and 4.6.3 availables.
+   Ubuntu 12.10: default gcc version 4.7.2. gcc 4.4.7, 4.5.4 and 4.6.3 available.
 
-   Ubuntu 13.10: default gcc version 4.8.1. gcc 4.4.7, 4.6.4 and 4.7.3 availables.
+   Ubuntu 13.10: default gcc version 4.8.1. gcc 4.4.7, 4.6.4 and 4.7.3 available.
 
-   Ubuntu 14.04: default gcc version 4.8.2, gcc 4.4.7,, 4.6.4, and 4.7.3 availables.
+   Ubuntu 14.04: default gcc version 4.8.2, gcc 4.4.7,, 4.6.4, and 4.7.3 available.
