@@ -567,12 +567,16 @@ PyObject * CudaNdarray_CreateArrayObj(CudaNdarray * self, PyObject *args)
 PyObject* CudaNdarray_ZEROS(int n, int * dims)
 {
 
-    int total_elements = 1;
-    for(int i=0;i<n;i++)
+    size_t total_elements = 1;
+    for(size_t i=0;i<n;i++)
         total_elements*=dims[i];
 
     // total_elements now contains the size of the array, in reals
-    int total_size = total_elements * sizeof(real);
+    size_t total_size = total_elements * sizeof(real);
+    if (total_elements < 0 or total_size < 0 or total_size < total_elements){
+        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: size_t overflow, can't allocate that much memory");
+        return NULL;
+    }
 
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_New();
     if (!rval)
