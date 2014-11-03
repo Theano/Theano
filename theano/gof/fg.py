@@ -748,7 +748,7 @@ class FunctionGraph(utils.object2):
 
     def __getstate__(self):
         """This is needed as some feature introduce instancemethod and
-        this is not pickable.
+        this is not picklable.
         """
         d = self.__dict__.copy()
         for feature in self._features:
