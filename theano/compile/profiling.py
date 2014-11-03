@@ -797,6 +797,8 @@ class ProfileStats(object):
             mem_bound = numpy.inf
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
+            done_set = set([])
+            done_dict = {}
 
             # Initial compute_map which is used to check if a node is valid
             compute_map = defaultdict(lambda: [0])
@@ -909,21 +911,27 @@ class ProfileStats(object):
 
                     mem_count -= mem_freed
 
-                    for var in node.outputs:
-                        for c, _ in var.clients:
-                            if c != "output":
-                                deps = c.inputs + c.destroy_dependencies
-                                if all(compute_map[v][0] for v in deps):
-                                    new_exec_nodes.add(c)
+                    done_set.add(node)
+                    frozen_set = frozenset(done_set)
+                    if done_dict.get(frozen_set, max_mem_count+1) > max_mem_count:
+                        done_dict[frozen_set] = max_mem_count
+ 
+                        for var in node.outputs:
+                            for c, _ in var.clients:
+                                if c != "output":
+                                    deps = c.inputs + c.destroy_dependencies
+                                    if all(compute_map[v][0] for v in deps):
+                                        new_exec_nodes.add(c)
 
-                    if not new_exec_nodes:
-                        # Check and Update mem_bound
-                        if max_mem_count < mem_bound:
-                            mem_bound = max_mem_count
-                    else:
-                        min_memory_generator(new_exec_nodes, viewed_by, view_of)
+                        if not new_exec_nodes:
+                            # Check and Update mem_bound
+                            if max_mem_count < mem_bound:
+                                mem_bound = max_mem_count
+                        else:
+                            min_memory_generator(new_exec_nodes, viewed_by, view_of)
 
                     # Reset track variables
+                    done_set.remove(node)
                     mem_count -= mem_created
                     max_mem_count = max_storage
                     mem_count += mem_freed
@@ -1025,7 +1033,7 @@ class ProfileStats(object):
             new_max_running_max_memory_size / 1024.)), int(round(
             max_running_max_memory_size / 1024.)))
         if min_max_peak:
-            print >> file,  "    Minimum peak from all valid apply node order is %dKB(took %f.2s to compute)" % (int(round(
+            print >> file,  "    Minimum peak from all valid apply node order is %dKB(took %.3fs to compute)" % (int(round(
                 min_max_peak / 1024.)), min_peak_time)
         print >> file,  "    Memory saved if views are used: %dKB (%dKB)" % (int(
             round(new_max_node_memory_saved_by_view / 1024.)), int(
