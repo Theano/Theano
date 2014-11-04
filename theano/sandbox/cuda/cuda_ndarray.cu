@@ -608,7 +608,9 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
     //fprintf(stdout, "Sizeof: %d\n", total_size);
     if (cudaSuccess != cudaMemset(rval->devdata, 0, total_size))
     {
-        PyErr_Format(PyExc_MemoryError, "CudaNdarray_ZEROS: Error memsetting %d bytes of device memory.", total_size);
+        PyErr_Format(PyExc_MemoryError,
+                     "CudaNdarray_ZEROS: Error memsetting %llu bytes of device memory.",
+                     (unsigned long long)total_size);
         Py_DECREF(rval);
         return NULL;
     }
