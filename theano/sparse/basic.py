@@ -2680,7 +2680,7 @@ class HStack(gof.op.Op):
                          for i in range(len(inputs))]
 
         if _is_sparse_variable(gz):
-            gz = DenseFromSparse()(gz)
+            gz = dense_from_sparse(gz)
 
         split = tensor.Split(len(inputs))(gz, 1,
                                           tensor.stack(
@@ -2747,7 +2747,7 @@ class VStack(HStack):
                         for i in range(len(inputs))]
 
         if _is_sparse_variable(gz):
-            gz = DenseFromSparse()(gz)
+            gz = dense_from_sparse(gz)
 
         split = tensor.Split(len(inputs))(gz, 0,
                                           tensor.stack(
