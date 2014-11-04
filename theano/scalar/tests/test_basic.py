@@ -14,6 +14,7 @@ import unittest
 import theano
 from theano.gof import FunctionGraph
 from theano import gof
+from theano.tests import unittest_tools as utt
 
 from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
@@ -68,22 +69,29 @@ class test_ScalarOps(unittest.TestCase):
         a2 = theano.tensor.clip(x, x, y)
         g2 = theano.gradient.grad(a2, x)
         fn2 = gof.DualLinker().accept(FunctionGraph([x, y], [g2])).make_function()
-        rng = numpy.random.RandomState(1)
 
-        ntests = 3
+        # Test for the equal case too .
+        a3 = theano.tensor.clip(x, x, x)
+        g3 = theano.gradient.grad(a3, x)
+        fn3 = gof.DualLinker().accept(FunctionGraph([x], [g3])).make_function()
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        ntests = 50
         for i in xrange(ntests):
             xval = rng.rand(1)
-            #To ensure that the min is smaller than the value for x.
-            yval_mn = rng.rand(1) - 0.5
+            #To ensure that the min < x .
+            yval_mn = rng.rand(1) - 1.0
 
-            #To ensure that the max is larger than the value for y.
-            yval_mx = rng.rand(1) + 0.5
+            #To ensure that the max > x.
+            yval_mx = rng.rand(1) + 1.0
 
             aval = fn(xval, yval_mn)
             aval2 = fn2(xval, yval_mx)
-
+            aval3 = fn3(xval)
             self.assertTrue(aval == 1.)
             self.assertTrue(aval2 == 1.)
+            self.assertTrue(aval3 == 1.)
 
 
 class test_composite(unittest.TestCase):
