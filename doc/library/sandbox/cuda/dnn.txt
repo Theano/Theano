@@ -1,0 +1,46 @@
+.. _libdoc_cuda_dnn:
+
+================================
+:mod:`sandbox.cuda.dnn` -- cuDNN
+================================
+
+.. moduleauthor:: LISA
+
+Normally you should not call directly those Ops, but the CPU interface
+currently don't allow all option supported by those ops, so it is
+possible that you need to call them manually.
+
+`cuDNN <https://developer.nvidia.com/cuDNN>`_ is NVIDIA library with
+functionality used by deep neural network. It provide faster
+implementation of some operation like the convolution. cuDNN currently
+is not installed with CUDA 6.5. You must download it and install it
+yourself.
+
+To install it, decompress the downloaded file and make the *.h and
+*.so* files available to the compilation environment. On Linux, this
+can be done by setting the environment variable LD_LIBRARY_PATH,
+LIBRARY_PATH and CPATH to the uncompressed directory path. They work
+the same way as PATH. Or you can copy the *.h files to /usr/include
+and the files *.so* to /lib64.
+
+Then you need to tell Theano to use it. For the convolution, if cuDNN
+is available, we will use it by default, but not for other
+operations. Also, it do not give you an error in case it can't use
+cuDNN as it will fall back to a slower and more memory hungry version.
+
+To enable the use of all cuDNN operation and get an error if we can't
+use cuDNN, use the Theano flags: ``optimizer_including=cudnn``.
+
+
+
+Functions
+=========
+
+.. automodule:: theano.sandbox.cuda.dnn
+    :members: dnn_conv, dnn_pool
+
+Ops
+===
+
+.. automodule:: theano.sandbox.cuda.dnn
+    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI, GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad, GpuDnnSoftmax

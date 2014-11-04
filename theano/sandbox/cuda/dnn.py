@@ -96,6 +96,13 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnConvDesc(GpuOp):
+    """
+    The convolution description.
+
+    :param border_mode: 'valid' or 'full'
+    :param subsample: The subsample, tuple like (dx, dy)
+    :param conv_mode: 'conv' or 'cross'
+    """
     __props__ = ('border_mode', 'subsample', 'conv_mode')
 
     def c_headers(self):
@@ -354,6 +361,14 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnConv(GpuDnnConvBase):
+    """
+    The forward convolution.
+
+    :param image:
+    :param kernel:
+    :param descr: the convolution descriptor
+
+    """
     conv_inputs = 'input', 'kerns'
     conv_output = 'output'
     conv_types = 'tensor4d', 'filter', 'tensor4d'
@@ -377,6 +392,15 @@ class GpuDnnConv(GpuDnnConvBase):
 
 
 class GpuDnnConvGradW(GpuDnnConvBase):
+    """
+    The convolution gradient with respect to the weights.
+
+    :param image:
+    :param kernel:
+    :param descr: the convolution descriptor
+
+    """
+
     conv_inputs = 'input', 'output',
     conv_output = 'kerns'
     conv_types = 'tensor4d', 'tensor4d', 'filter'
@@ -385,6 +409,15 @@ class GpuDnnConvGradW(GpuDnnConvBase):
 
 
 class GpuDnnConvGradI(GpuDnnConvBase):
+    """
+    The convolution gradient with respect to the inputs.
+
+    :param image:
+    :param kernel:
+    :param descr: the convolution descriptor
+
+    """
+
     conv_inputs = 'kerns', 'output',
     conv_output = 'input'
     conv_types = 'filter', 'tensor4d', 'tensor4d'
@@ -496,6 +529,12 @@ class GpuDnnPoolDesc(GpuOp):
 
 
 class GpuDnnPool(DnnBase):
+    """
+    Pooling.
+
+    :param img: the image 4d tensor.
+    :param desc: the pooling descriptor.
+    """
     __props__ = ()
 
     def make_node(self, img, desc):
@@ -622,6 +661,14 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnPoolGrad(DnnBase):
+    """
+    The pooling gradient.
+
+    :param inp: the input of the pooling.
+    :param inp_grad: same size as out, but is the corresponding gradient information.
+    :param out: the output of the pooling in the forward.
+    :param desc: The pooling descriptor.
+    """
     __props__ = ()
 
     def make_node(self, inp, inp_grad, out, desc):
@@ -784,13 +831,12 @@ class GpuDnnSoftmax(DnnBase):
     """
     Op for the cuDNN Softmax.
 
-    Parameters''
-    -tensor_format: Whether the data format is 'bc01' or 'b01c'
-    -algo: 'fast' or 'accurate' indicating whether computations should be
-    optimized for speed or accuracy respectively.
-    -mode: 'instance' or 'channel' indicating whether the softmax should be
-    computed per image across 'c01' or per spationali location '01' per image
-    across 'c'.
+    :param tensor_format: Whether the data format is 'bc01' or 'b01c'
+    :param algo: 'fast' or 'accurate' indicating whether computations should be
+        optimized for speed or accuracy respectively.
+    :param mode: 'instance' or 'channel' indicating whether the softmax should
+        be computed per image across 'c01' or per spationali location '01' per
+        image across 'c'.
     """
 
     __props__ = ('tensor_format', 'mode', 'algo')
