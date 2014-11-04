@@ -11,7 +11,8 @@ from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
                                  device_properties)
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
-from theano.sandbox.cuda.blas import GpuConv, GpuDownsampleFactorMax
+from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
+                                      GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
@@ -940,10 +941,26 @@ if cuda_available:
             if node.op.ignore_border:
                 return
             img, = node.inputs
-            ds = node.op.ws
+            ds = node.op.ds
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
     gpu_optimizer.register("pool_cudnn", local_pool_dnn, 'cudnn')
+
+
+    @local_optimizer([GpuDownsampleFactorMaxGrad])
+    def local_pool_dnn_grad(node):
+        if isinstance(node.op, GpuDownsampleFactorMaxGrad):
+            if node.op.ignore_border:
+                return
+            inp, out, inp_grad = node.inputs
+            ds = node.op.ds
+            
+            desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
+            
+            return [GpuDnnPoolGrad()(gpu_contiguous(inp),
+                gpu_contiguous(inp_grad), gpu_contiguous(out), desc)]
+
+    gpu_optimizer.register("pool_cudnn_grad", local_pool_dnn_grad, 'cudnn')
 
 
     @local_optimizer([GpuSoftmax])

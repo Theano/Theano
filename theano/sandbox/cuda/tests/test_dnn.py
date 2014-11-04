@@ -76,9 +76,17 @@ def test_pooling_opt():
     x = T.tensor4()
 
     f = theano.function([x],
-        max_pool_2d(x, ds=(2, 2)), mode=theano.compile.mode.get_mode('FAST_RUN').including("cudnn"))
+        max_pool_2d(x, ds=(2, 2)),
+        mode=theano.compile.mode.get_mode('FAST_RUN').including("cudnn"))
     
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
+        for n in f.maker.fgraph.toposort()])
+        
+    f = theano.function([x],
+        T.grad(max_pool_2d(x, ds=(2, 2)).sum(), x),
+        mode=theano.compile.mode.get_mode('FAST_RUN').including("cudnn"))
+    
+    assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
         for n in f.maker.fgraph.toposort()])
 
 
