@@ -495,7 +495,7 @@ class GpuDnnPool(DnnBase):
         img = as_cuda_ndarray_variable(img)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
-        
+
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
@@ -537,10 +537,10 @@ if (output%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
         out, = outputs
 
         set_in = c_set_tensor4d(inputs[0], "input" + str(sub['struct_id']),
-            'err' + name, sub['fail'])
+                                'err' + name, sub['fail'])
 
         set_out = c_set_tensor4d(out, "output" + str(sub['struct_id']),
-            'err' + name, sub['fail'])
+                                 'err' + name, sub['fail'])
 
         return """
 cudnnStatus_t err%(name)s;
@@ -625,7 +625,7 @@ class GpuDnnPoolGrad(DnnBase):
         inp_grad = as_cuda_ndarray_variable(inp_grad)
         if inp_grad.type.ndim != 4:
             raise TypeError('inp_grad must be 4D tensor')
-                
+
         out = as_cuda_ndarray_variable(out)
         if out.type.ndim != 4:
             raise TypeError('out must be 4D tensor')
@@ -688,15 +688,15 @@ if (output_grad%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id)
 
         set_in = "\n".join([
             c_set_tensor4d(inp, "input" + str(sub['struct_id']),
-                'err' + name, sub['fail']),
+                           'err' + name, sub['fail']),
             c_set_tensor4d(inp_grad, "input_grad" + str(sub['struct_id']),
-                'err' + name, sub['fail']),
+                           'err' + name, sub['fail']),
             c_set_tensor4d(out, "output" + str(sub['struct_id']),
-                'err' + name, sub['fail'])
+                           'err' + name, sub['fail'])
         ])
 
         set_out = c_set_tensor4d(out, "output_grad" + str(sub['struct_id']),
-            'err' + name, sub['fail'])
+                                 'err' + name, sub['fail'])
 
         return """
 cudnnStatus_t err%(name)s;
@@ -738,7 +738,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-""" % dict(output_grad=out_grad, desc=desc, fail=sub['fail'], id=sub['struct_id'],
+""" % dict(output_grad=out_grad, desc=desc,
+           fail=sub['fail'], id=sub['struct_id'],
            name=name, set_in=set_in,
            set_out=set_out, input=inp, input_grad=inp_grad, output=out,
            input_desc="input"+str(sub['struct_id']),
@@ -943,7 +944,6 @@ if cuda_available:
 
     gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
 
-
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
         if isinstance(node.op, GpuDownsampleFactorMax):
@@ -955,7 +955,6 @@ if cuda_available:
 
     gpu_optimizer.register("pool_cudnn", local_pool_dnn, 'cudnn')
 
-
     @local_optimizer([GpuDownsampleFactorMaxGrad])
     def local_pool_dnn_grad(node):
         if isinstance(node.op, GpuDownsampleFactorMaxGrad):
@@ -963,21 +962,22 @@ if cuda_available:
                 return
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
-            
+
             desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
-            
+
             return [GpuDnnPoolGrad()(gpu_contiguous(inp),
-                gpu_contiguous(inp_grad), gpu_contiguous(out), desc)]
+                                     gpu_contiguous(inp_grad),
+                                     gpu_contiguous(out), desc)]
 
     gpu_optimizer.register("pool_cudnn_grad", local_pool_dnn_grad, 'cudnn')
-
 
     @local_optimizer([GpuSoftmax])
     def local_softmax_dnn(node):
         raise_no_dnn()
         if isinstance(node.op, GpuSoftmax):
             ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
-            out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
+            ins = gpu_contiguous(ins)
+            out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(ins)
             out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
             return [out]
 
