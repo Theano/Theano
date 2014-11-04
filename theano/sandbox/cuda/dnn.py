@@ -418,7 +418,14 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
 
 class GpuDnnPoolDesc(GpuOp):
-    __props__ = ('mode', 'ws', 'stride')
+    """
+    The pooling descriptor.
+
+    :param ws: windows size
+    :param stride: (dx, dy)
+    :param mode: 'max' or 'average'
+    """
+    __props__ = ('ws', 'stride', 'mode')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
