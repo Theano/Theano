@@ -88,7 +88,7 @@
 
         .. note:: Currently, the function doesn't support tensors created with
            `neib_step` different from default value. This means that it may be
-           impossible to compute the gradient in this case.
+           impossible to compute the gradient of an error signal in this case.
 
 
         Example:
@@ -102,3 +102,5 @@
             im_new_val = inv_window(neibs_val)
 
         .. note:: The code will output the initial image array.
+
+- See also: :ref:`indexing`, :ref:`lib_scan`

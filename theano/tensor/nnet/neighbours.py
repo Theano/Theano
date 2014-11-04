@@ -436,19 +436,24 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
             Reshapes the input as a 2D tensor where each row is an
             pooling example. Pseudo-code of the output:
 
-            .. code-block:: python
+              .. code-block:: python
 
-                idx = 0
-                for i in xrange(list 1 dim)
-                    for j in xrange(list 2 dim)
-                        for k in <image column coordinates>
-                            for l in <image row coordinates>
-                                output[idx,:]
-                                     = flattened version of ten4[i,j,l:l+r,k:k+c]
-                                idx += 1
-                (note: the op isn't necessarily implemented internally with these
-                for loops, they're just the easiest way to describe the output
-                pattern)
+                 idx = 0
+                 for i in xrange(list 1 dim):
+                     for j in xrange(list 2 dim):
+                         for k in <image column coordinates>:
+                             for l in <image row coordinates>:
+                                 output[idx,:]
+                                      = flattened version of ten4[i,j,l:l+r,k:k+c]
+                                 idx += 1
+
+              .. note:: The operation isn't necessarily implemented internally with 
+                 these for loops, they're just the easiest way to describe the output
+                 pattern.
+                 
+        .. note:: Currently the step size should be chosen in the way that the 
+           corresponding dimension :math:`i` (width or height) is equal to 
+           :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
     """
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
@@ -462,6 +467,10 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     :param original_shape: original shape of the 4d tensor given to images2neib
 
     :return: Return a 4d tensor of shape `original_shape`.
+
+    .. note:: Currently, the function doesn't support tensors created with
+       `neib_step` different from default value. This means that it may be
+       impossible to compute the gradient of an error signal in this case.
     """
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
