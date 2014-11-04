@@ -25,12 +25,6 @@ from theano.sparse.type import SparseType, _is_sparse
 sparse_formats = ['csc', 'csr']
 
 
-# TODO: move this decorator to the compile submodule
-def register_specialize(lopt, *tags, **kwargs):
-    compile.optdb['specialize'].register((kwargs and kwargs.pop('name')) or
-                                         lopt.__name__, lopt, 'fast_run',
-                                         *tags)
-
 """ Types of sparse matrices to use for testing """
 _mtypes = [scipy.sparse.csc_matrix, scipy.sparse.csr_matrix]
 #_mtypes = [sparse.csc_matrix, sparse.csr_matrix, sparse.dok_matrix,
