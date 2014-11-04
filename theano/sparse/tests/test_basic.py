@@ -2336,8 +2336,7 @@ def _format_info(nb):
         spa = getattr(sp, format + '_matrix')
 
         x[format] = [variable() for t in range(nb)]
-        mat[format] = [spa(numpy.random.random_integers(5, size=(3, 4)) - 1,
-                           dtype=theano.config.floatX)
+        mat[format] = [spa(random_lil((3, 4), theano.config.floatX, 8))
                        for t in range(nb)]
     return x, mat
 
@@ -2386,7 +2385,8 @@ class _HVStackTester(utt.InferShapeTester):
                         self.op_class(format=out_f, dtype=dtype),
                         self.mat[format],
                         structured=False,
-                        eps=1e-1)
+                        eps=1e-2,
+                        )
 
 
 def _hv_switch(op, expected_function):
