@@ -6,7 +6,7 @@ import scipy
 import theano
 from theano import gof, scalar, tensor
 from theano.tensor import blas
-from theano.tensor.opt import register_specialize
+from theano.tensor.opt import register_specialize, register_canonicalize
 from theano.sparse import (CSC, CSR, csm_properties,
                            csm_grad, usmm, csm_indices, csm_indptr,
                            csm_data)
@@ -175,6 +175,16 @@ theano.compile.optdb.register('local_inplace_addsd_ccode',
                               gof.TopoOptimizer(local_inplace_addsd_ccode,
     failure_callback=gof.TopoOptimizer.warn_inplace),
                               60, 'fast_run', 'inplace')
+
+
+@register_canonicalize("fast_compile")
+@register_specialize
+@gof.local_optimizer([sparse.DenseFromSparse])
+def local_dense_from_sparse_sparse_from_dense(node):
+    if isinstance(node.op, sparse.DenseFromSparse):
+        inp = node.inputs[0]
+        if inp.owner and isinstance(inp.owner.op, sparse.SparseFromDense):
+            return inp.owner.inputs
 
 
 @gof.local_optimizer([sparse.AddSD])
