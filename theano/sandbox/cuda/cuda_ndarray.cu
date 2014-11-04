@@ -568,15 +568,27 @@ PyObject* CudaNdarray_ZEROS(int n, int * dims)
 {
 
     size_t total_elements = 1;
-    for(size_t i=0;i<n;i++)
+
+    for(size_t i=0;i<n;i++){
+        // Detect overflow on unsigned integer
+        if (dims[i] != 0 && total_elements > (SIZE_MAX / dims[i])) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "Can't store in size_t for the bytes requested %llu * %llu",
+                         (unsigned long long)total_elements,
+                         (unsigned long long)dims[i]);
+            return NULL;
+        }
         total_elements*=dims[i];
+    }
 
     // total_elements now contains the size of the array, in reals
-    size_t total_size = total_elements * sizeof(real);
-    if (total_elements < 0 or total_size < 0 or total_size < total_elements){
-        PyErr_SetString(PyExc_RuntimeError, "CudaNdarray_ZEROS: size_t overflow, can't allocate that much memory");
+    if (total_elements > (SIZE_MAX / sizeof(real))){
+        PyErr_Format(PyExc_RuntimeError,
+                     "Can't store in size_t for the bytes requested %llu * 4",
+                     (unsigned long long)total_elements);
         return NULL;
     }
+    size_t total_size = total_elements * sizeof(real);
 
     CudaNdarray* rval = (CudaNdarray*)CudaNdarray_New();
     if (!rval)
