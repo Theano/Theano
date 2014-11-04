@@ -7,6 +7,7 @@ from theano.gof.python25 import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs, neibs2images
+from theano.tensor.signal.downsample import max_pool_2d
 
 
 # Skip test if cuda_ndarray is not available.
@@ -66,3 +67,18 @@ def test_pooling():
                 b = f2(data).__array__()
 
                 assert numpy.allclose(a, b, atol=numpy.finfo(numpy.float32).eps)
+
+
+def test_pooling_opt():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    
+    x = T.tensor4()
+
+    f = theano.function([x],
+        max_pool_2d(x, ds=(2, 2)), mode=theano.compile.mode.get_mode('FAST_RUN').including("cudnn"))
+    
+    assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
+        for n in f.maker.fgraph.toposort()])
+
+
