@@ -295,15 +295,15 @@ def tag_solve_triangular(node):
     if node.op == solve:
         if node.op.A_structure == 'general':
             A, b = node.inputs  # result is solution Ax=b
-            if isinstance(A.owner.op, type(cholesky)):
+            if A.owner and isinstance(A.owner.op, type(cholesky)):
                 if A.owner.op.lower:
                     return [Solve('lower_triangular')(A, b)]
                 else:
                     return [Solve('upper_triangular')(A, b)]
-            if (isinstance(A.owner.op, DimShuffle)
+            if (A.owner and isinstance(A.owner.op, DimShuffle)
                 and A.owner.op.new_order == (1, 0)):
                 A_T, = A.owner.inputs
-                if isinstance(A_T.owner.op, type(cholesky)):
+                if A_T.owner and isinstance(A_T.owner.op, type(cholesky)):
                     if A_T.owner.op.lower:
                         return [Solve('upper_triangular')(A, b)]
                     else:
