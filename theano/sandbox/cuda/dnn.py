@@ -90,12 +90,13 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnConvDesc(GpuOp):
-    """
-    The convolution description.
+    """This Op builds a convolution descriptor for use in the other
+    convolution operations.
 
     :param border_mode: 'valid' or 'full'
     :param subsample: The subsample, tuple like (dx, dy)
     :param conv_mode: 'conv' or 'cross'
+
     """
     __props__ = ('border_mode', 'subsample', 'conv_mode')
 
@@ -446,7 +447,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
 class GpuDnnPoolDesc(GpuOp):
     """
-    The pooling descriptor.
+    This Op builds a pooling descriptor for use in the other
+    pooling operations.
 
     :param ws: windows size
     :param stride: (dx, dy)
