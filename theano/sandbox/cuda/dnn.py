@@ -1,11 +1,9 @@
-import copy
 import os
 
 import theano
 from theano import Apply, tensor
 from theano.gof.type import CDataType
 from theano.compat import PY3
-from theano.compat.six import StringIO
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
                                  device_properties)
@@ -54,6 +52,14 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
     %(fail)s
 }
         """ % dict(var=var, err=err, desc=desc, fail=fail)
+
+
+def raise_no_dnn():
+    """ Raise a RuntimeError if cudnn can't be used"""
+    if not dnn_available():
+        raise RuntimeError(
+            "cuDNN optimization was enabled, but cuDNN is not available. " +
+            dnn_available.msg)
 
 
 class DnnBase(GpuOp):
@@ -113,9 +119,9 @@ class GpuDnnConvDesc(GpuOp):
         self.conv_mode = conv_mode
 
     def make_node(self, img_shape, kern_shape):
-        if img_shape.type.ndim != 1 and img_shape.type.dtype != numpy.int64:
+        if img_shape.type.ndim != 1 or img_shape.type.dtype != 'int64':
             raise TypeError('img must be 1D shape tensor')
-        if kern_shape.type.ndim != 1 and kern_shape.type.dtype != numpy.int64:
+        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
 
         return Apply(self, [img_shape, kern_shape],
@@ -918,11 +924,11 @@ err%(name)s = cudnnSoftmaxForward(
 # We need this since other stuff from opt is not importable.
 if cuda_available:
 
-    from theano.sandbox.cuda.opt import (local_optimizer, gpu_contiguous,
-                                         gpu_optimizer)
+    from theano.sandbox.cuda.opt import local_optimizer, gpu_optimizer
 
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
+        raise_no_dnn()
         if isinstance(node.op, GpuConv):
             if node.op.border_mode not in ['full', 'valid']:
                 return
@@ -965,6 +971,7 @@ if cuda_available:
 
     @local_optimizer([GpuSoftmax])
     def local_softmax_dnn(node):
+        raise_no_dnn()
         if isinstance(node.op, GpuSoftmax):
             ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
             out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))

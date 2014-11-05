@@ -309,8 +309,7 @@ class DownsampleFactorMaxGrad(Op):
                         zj = j // ds1
                         if (maxout[n, k, zi, zj] == x[n, k, i, j]):
                             gx[n, k, i, j] = gz[n, k, zi, zj]
-                        else:
-                            gx[n, k, i, j] = 0
+                        # No else clause needed as it is allocated with zeros
         gx_stg[0] = gx
 
     def infer_shape(self, node, in_shapes):

@@ -2,11 +2,11 @@ import numpy
 import scipy.sparse
 
 from theano import gof, tensor
-
+from theano.tensor.opt import register_specialize
 from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
     mul_s_s, mul_s_d, dot,
-    CSMProperties, CSM, register_specialize,
+    CSMProperties, CSM,
     _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse,
@@ -122,8 +122,9 @@ class Binomial(gof.op.Op):
         n = tensor.as_tensor_variable(n)
         p = tensor.as_tensor_variable(p)
         shape = tensor.as_tensor_variable(shape)
-        return gof.Apply(self, [n, p, shape], [SparseType(dtype=self.dtype,
-                                 format=self.format).make_variable()])
+        return gof.Apply(self, [n, p, shape],
+                         [SparseType(dtype=self.dtype,
+                                     format=self.format).make_variable()])
 
     def perform(self, node, (n, p, shape, ), (out, )):
         binomial = numpy.random.binomial(n, p, size=shape)

@@ -3,8 +3,8 @@
 Easy Installation of an optimized Theano on Ubuntu
 ==================================================
 
-These instructions were written for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04
-and 13.10. You can probably do something similar on older versions.
+These instructions were written for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04,
+13.10 and 14.04.
 
 .. note::
 
@@ -148,8 +148,6 @@ Do like in the section "Updating Theano", but use
 ``git+git://github.com/Theano/Theano.git`` instead of ``theano``.
 
 
-.. _install_ubuntu_gpu:
-
 Manual Openblas instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -172,6 +170,8 @@ yourself. Here is some code that will help you.
     echo -e "\n[blas]\nldflags = -lopenblas\n" >> ~/.theanorc
 
 
+.. _install_ubuntu_gpu:
+
 Contributed GPU instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -188,7 +188,17 @@ Ubuntu 11.10/12.04 (probably work on 11.04 too):
 Then you need to fetch latest CUDA tool kit (download ubuntu 11.04 32/64bit package)
 from `here <http://developer.nvidia.com/cuda-downloads>`_.
 
-For the `run` installed (the only one available for CUDA 5.0 and older), you install it like this:
+Ubuntu 14.04:
+
+.. code-block:: bash
+
+   sudo apt-get install nvidia-current
+   sudo apt-get install nvidia-cuda-toolkit # As of October 31th, 2014, provide cuda 5.5, not the latest cuda 6.5
+
+If you want cuda 6.5, you can download packages from `nvidia
+<http://developer.nvidia.com/cuda-downloads>`_ for Ubuntu 14.04.
+
+If you downloaded the `run` package (the only one available for CUDA 5.0 and older), you install it like this:
 
 .. code-block:: bash
 
@@ -197,14 +207,20 @@ For the `run` installed (the only one available for CUDA 5.0 and older), you ins
 
 Since CUDA 5.5, Nvidia provide a DEB package. If you don't know how to
 intall it, just double click on it from the graphical interface. It
-should ask if you want to install it.
+should ask if you want to install it. On Ubuntu 14.04, you need to run
+this in your terminal:
+
+.. code-block:: bash
+
+    sudo apt-get update
+    sudo apt-get install cuda
 
 You must reboot the computer after the driver installation. To test
 that it was loaded correctly after the reboot, run the command
 `nvidia-smi` from the command line.
 
 You probably need to change the default version of gcc as
-`explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_:
+`explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_ if the package you downloaded is for another Ubuntu version:
 
 
 
@@ -226,14 +242,16 @@ Test GPU configuration
 
 .. note::
 
-   Ubuntu 10.04 LTS: default gcc version 4.4.3. gcc 4.1.2, 4.3.4 availables.
+   Ubuntu 10.04 LTS: default gcc version 4.4.3. gcc 4.1.2, 4.3.4 available.
 
-   Ubuntu 11.04: default gcc version 4.5.2. gcc 4.4.5 availables.
+   Ubuntu 11.04: default gcc version 4.5.2. gcc 4.4.5 available.
 
-   Ubuntu 11.10: default gcc version 4.6.1. gcc 4.4.6 and 4.5.3 availables.
+   Ubuntu 11.10: default gcc version 4.6.1. gcc 4.4.6 and 4.5.3 available.
 
-   Ubuntu 12.04 LTS: default gcc version 4.6.3. gcc 4.4.7 and 4.5.3 availables.
+   Ubuntu 12.04 LTS: default gcc version 4.6.3. gcc 4.4.7 and 4.5.3 available.
 
-   Ubuntu 12.10: default gcc version 4.7.2. gcc 4.4.7, 4.5.4 and 4.6.3 availables.
+   Ubuntu 12.10: default gcc version 4.7.2. gcc 4.4.7, 4.5.4 and 4.6.3 available.
 
-   Ubuntu 13.10: default gcc version 4.8.1. gcc 4.4.7, 4.6.4 and 4.7.3 availables.
+   Ubuntu 13.10: default gcc version 4.8.1. gcc 4.4.7, 4.6.4 and 4.7.3 available.
+
+   Ubuntu 14.04: default gcc version 4.8.2, gcc 4.4.7,, 4.6.4, and 4.7.3 available.

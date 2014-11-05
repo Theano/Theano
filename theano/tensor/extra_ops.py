@@ -10,6 +10,7 @@ from theano import gof, scalar
 from theano.gradient import DisconnectedType
 tensor = basic
 
+
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
     def __init__(self, axis=None):
@@ -170,10 +171,11 @@ class CumprodOp(theano.Op):
 
         # We need to reverse the gradients along ``self.axis``,
         #  compute cumsum, then reverse again
-        reverse_slicing = [slice(None,None,None)] * gi.ndim
-        reverse_slicing[self.axis] = slice(None,None,-1)
+        reverse_slicing = [slice(None, None, None)] * gi.ndim
+        reverse_slicing[self.axis] = slice(None, None, -1)
         reverse_slicing = tuple(reverse_slicing)
-        return [cumsum((fx * gi)[reverse_slicing], self.axis)[reverse_slicing] / x]
+        return [cumsum((fx * gi)[reverse_slicing],
+                       self.axis)[reverse_slicing] / x]
 
     def infer_shape(self, node, shapes):
         if self.axis is None:
@@ -845,18 +847,17 @@ class FillDiagonalOffset(gof.Op):
         neg_offset_flag = basic.lt(offset, 0)
         min_wh = basic.minimum(width, height)
 
-        start = offset * pos_offset_flag + offset_abs * width \
-                 * neg_offset_flag
-        num_of_step = basic.minimum( min_wh, width * pos_offset_flag
-                    + height * neg_offset_flag - offset_abs )   
+        start = offset * pos_offset_flag + offset_abs * width * neg_offset_flag
+        num_of_step = basic.minimum(min_wh, width * pos_offset_flag +
+                                    height * neg_offset_flag - offset_abs)
 
         step = a.shape[1] + 1
         end = start + step * num_of_step
 
         # input of slice should be integer
-        start = basic.cast(start,'int32')
-        step = basic.cast(step,'int32')
-        end = basic.cast(end,'int32')
+        start = basic.cast(start, 'int32')
+        step = basic.cast(step, 'int32')
+        end = basic.cast(end, 'int32')
 
         wr_val = grad.flatten()[start:end:step].sum()
 
@@ -865,9 +866,10 @@ class FillDiagonalOffset(gof.Op):
             "offset is not defined for non-integer offset so"
             " fill_diagonal_offset(a,val,offset+eps) is undefined")
 
-        return [wr_a, wr_val,wr_offset]
+        return [wr_a, wr_val, wr_offset]
 
 fill_diagonal_offset_ = FillDiagonalOffset()
+
 
 def fill_diagonal_offset(a, val, offset):
     """
@@ -885,3 +887,22 @@ def fill_diagonal_offset(a, val, offset):
     """
     return fill_diagonal_offset_(a, val, offset)
 
+
+def to_one_hot(y, nb_class, dtype=None):
+    """Return a matrix where each row correspond to the one hot
+    encoding of each element in y.
+
+        :param y: A vector of integer value between 0 and nb_class - 1.
+        :param nb_class: The number of class in y.
+        :param dtype: The dtype of the returned matrix. Default floatX.
+
+        :return: A matrix of shape (y.shape[0], nb_class), where each
+          row ``i`` is the one hot encoding of the corresponding ``y[i]``
+          value.
+
+   """
+    ret = theano.tensor.zeros((y.shape[0], nb_class),
+                              dtype=dtype)
+    ret = theano.tensor.set_subtensor(ret[theano.tensor.arange(y.shape[0]), y],
+                                      1)
+    return ret

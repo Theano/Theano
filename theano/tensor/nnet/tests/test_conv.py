@@ -13,13 +13,13 @@ from theano.tensor.basic import _allclose, NotScalarConstantError
 
 class TestConv2D(utt.InferShapeTester):
     mode = None
-    dtype = 'float64'
+    dtype = theano.config.floatX
 
     def setUp(self):
         super(TestConv2D, self).setUp()
-        self.input = T.dtensor4('input')
+        self.input = T.tensor4('input', dtype=self.dtype)
         self.input.name = 'default_V'
-        self.filters = T.dtensor4('filters')
+        self.filters = T.tensor4('filters', dtype=self.dtype)
         self.filters.name = 'default_filters'
         if not conv.imported_scipy_signal and theano.config.cxx == "":
             raise SkipTest("conv2d tests need SciPy or a c++ compiler")

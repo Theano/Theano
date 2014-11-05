@@ -6,8 +6,8 @@ import scipy
 import theano
 from theano import gof, scalar, tensor
 from theano.tensor import blas
+from theano.tensor.opt import register_specialize, register_canonicalize
 from theano.sparse import (CSC, CSR, csm_properties,
-                           register_specialize,
                            csm_grad, usmm, csm_indices, csm_indptr,
                            csm_data)
 from theano.sparse import basic as sparse
@@ -29,7 +29,7 @@ def local_csm_properties_csm(node):
             return ret_var
 
     return False
-sparse.register_specialize(local_csm_properties_csm)
+register_specialize(local_csm_properties_csm)
 
 
 # This is tested in tests/test_basic.py:test_remove0
@@ -175,6 +175,16 @@ theano.compile.optdb.register('local_inplace_addsd_ccode',
                               gof.TopoOptimizer(local_inplace_addsd_ccode,
     failure_callback=gof.TopoOptimizer.warn_inplace),
                               60, 'fast_run', 'inplace')
+
+
+@register_canonicalize("fast_compile")
+@register_specialize
+@gof.local_optimizer([sparse.DenseFromSparse])
+def local_dense_from_sparse_sparse_from_dense(node):
+    if isinstance(node.op, sparse.DenseFromSparse):
+        inp = node.inputs[0]
+        if inp.owner and isinstance(inp.owner.op, sparse.SparseFromDense):
+            return inp.owner.inputs
 
 
 @gof.local_optimizer([sparse.AddSD])
@@ -861,7 +871,7 @@ def local_usmm_csx(node):
                 return [usmm_csc_dense(alpha, x_val, x_ind, x_ptr,
                                        x_nsparse, y, z)]
     return False
-sparse.register_specialize(local_usmm_csx, 'cxx_only')
+register_specialize(local_usmm_csx, 'cxx_only')
 
 
 class CSMGradC(gof.Op):
@@ -1272,7 +1282,7 @@ def local_mul_s_d(node):
                     sparse.csm_shape(svar))]
 
     return False
-sparse.register_specialize(local_mul_s_d, 'cxx_only')
+register_specialize(local_mul_s_d, 'cxx_only')
 
 
 class MulSVCSR(gof.Op):
@@ -1414,7 +1424,7 @@ def local_mul_s_v(node):
         return [CSx(c_data, s_ind, s_ptr, s_shape)]
 
     return False
-sparse.register_specialize(local_mul_s_v, 'cxx_only')
+register_specialize(local_mul_s_v, 'cxx_only')
 
 
 class StructuredAddSVCSR(gof.Op):
@@ -1573,7 +1583,7 @@ def local_structured_add_s_v(node):
         return [CSx(c_data, s_ind, s_ptr, s_shape)]
 
     return False
-sparse.register_specialize(local_structured_add_s_v, 'cxx_only')
+register_specialize(local_structured_add_s_v, 'cxx_only')
 
 
 class SamplingDotCSR(gof.Op):
@@ -1822,6 +1832,6 @@ def local_sampling_dot_csr(node):
             return [sparse.CSR(z_data, z_ind, z_ptr, p_shape)]
     return False
 
-sparse.register_specialize(local_sampling_dot_csr,
-                           'cxx_only',
-                           name='local_sampling_dot_csr')
+register_specialize(local_sampling_dot_csr,
+                    'cxx_only',
+                    name='local_sampling_dot_csr')

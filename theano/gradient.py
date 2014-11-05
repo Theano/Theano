@@ -1492,7 +1492,7 @@ class numeric_grad(object):
 
 def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 out_type=None, abs_tol=None,
-                rel_tol=None, mode=None, cast_to_output_type=False):
+                rel_tol=None, mode=None, cast_to_output_type=True):
     """Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
@@ -1517,7 +1517,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         None is type-dependent)
         Raising the value of eps can raise or lower the absolute and
         relative errors of the verification depending on the
-        Op. Raising eps does not lower the verification quality. It
+        Op. Raising eps does not lower the verification quality
+        for linear operations. It
         is better to raise eps than raising abs_tol or rel_tol.
     :param out_type: dtype of output, if complex (i.e. 'complex32' or
         'complex64')
@@ -1525,6 +1526,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         comparison
     :param rel_tol: relative tolerance used as threshold for gradient
         comparison
+    :param cast_to_output_type: if the output is float32 and
+        cast_to_output_type is True, cast the random projection to
+        float32. Otherwise it is float64.
 
     :note: WARNING to unit-test writers: if `op` is a function that builds
         a graph, try to make it a SMALL graph.  Often verify grad is run
@@ -1604,7 +1608,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     # otherwise too much precision is lost in numerical gradient
     def random_projection():
         plain = rng.rand(*o_fn_out.shape) + 0.5
-        if cast_to_output_type:
+        if cast_to_output_type and o_output.dtype == "float32":
             return numpy.array(plain, o_output.dtype)
         return plain
 

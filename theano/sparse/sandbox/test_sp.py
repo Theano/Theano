@@ -138,7 +138,7 @@ class TestSP(unittest.TestCase):
 
         # fixed parameters
         bsize = 10     # batch size
-        imshp = (28,28)
+        imshp = (8, 8)
         kshp = (5,5)
         nkern = 1 # per output pixel
         ssizes = ((1,1),(2,2))
@@ -151,8 +151,8 @@ class TestSP(unittest.TestCase):
         rng = numpy.random.RandomState(3423489)
 
         import theano.gof as gof
-        #Mode(optimizer='fast_run', linker=gof.OpWiseCLinker(allow_gc=False)),):
-        for mode in ('FAST_COMPILE','FAST_RUN'): #,profmode):
+
+        for mode in (None,):
             ntot, ttot = 0,0
             for conv_mode in convmodes:
                 for ss in ssizes:

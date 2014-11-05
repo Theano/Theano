@@ -48,6 +48,10 @@
       different memory layout, has shapes restrictions, but does not use
       extra memory and is faster then the legacy convolution.
 
+    If you want to verify the usage of cuDNN, you can use the Theano
+    flag ``optimizer_including=cudnn``. This will raise an error if we
+    can't use cuDNN.
+
 
 TODO: Give examples on how to use these things! They are pretty complicated.
 

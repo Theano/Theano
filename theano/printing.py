@@ -99,14 +99,17 @@ def debugprint(obj, depth=-1, print_type=False,
             order = obj.toposort()
         elif isinstance(obj, (int, long, float, numpy.ndarray)):
             print obj
+        elif isinstance(obj, (theano.In, theano.Out)):
+            results_to_print.append(obj.variable)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
 
     scan_ops = []
     for r in results_to_print:
-        #Add the parent scan op to the list as well
-        if hasattr(r.owner, 'op') and isinstance(r.owner.op, theano.scan_module.scan_op.Scan):
+        # Add the parent scan op to the list as well
+        if (hasattr(r.owner, 'op') and
+            isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
             scan_ops.append(r)
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
@@ -120,19 +123,26 @@ def debugprint(obj, depth=-1, print_type=False,
 
         for s in scan_ops:
             print >> file, ""
-            debugmode.debugprint(s, depth=depth, done=done, print_type=print_type,
+            debugmode.debugprint(s, depth=depth, done=done,
+                                 print_type=print_type,
                                  file=_file, ids=ids,
                                  scan_ops=scan_ops, stop_on_name=stop_on_name)
-
-            for idx, i in enumerate(s.owner.op.outputs):
+            if hasattr(s.owner.op, 'fn'):
+                # If the op was compiled, print the optimized version.
+                outputs = s.owner.op.fn.maker.fgraph.outputs
+            else:
+                outputs = s.owner.op.output
+            for idx, i in enumerate(outputs):
                 if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
                     if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
                         scan_ops.append(i)
 
-                debugmode.debugprint(r=i, prefix=new_prefix, depth=depth, done=done,
+                debugmode.debugprint(r=i, prefix=new_prefix,
+                                     depth=depth, done=done,
                                      print_type=print_type, file=file,
                                      ids=ids, stop_on_name=stop_on_name,
-                                     prefix_child=new_prefix_child, scan_ops=scan_ops)
+                                     prefix_child=new_prefix_child,
+                                     scan_ops=scan_ops)
 
     if file is _file:
         return file
@@ -263,10 +273,10 @@ class OperatorPrinter:
             if (self.assoc == 'left' and i != 0 or self.assoc == 'right'
                 and i != max_i):
                 s = pprinter.process(input, pstate.clone(
-                        precedence=self.precedence + 1e-6))
+                    precedence=self.precedence + 1e-6))
             else:
                 s = pprinter.process(input, pstate.clone(
-                        precedence=self.precedence))
+                    precedence=self.precedence))
             input_strings.append(s)
         if len(input_strings) == 1:
             s = self.operator + input_strings[0]
@@ -321,8 +331,8 @@ class FunctionPrinter:
         idx = node.outputs.index(output)
         name = self.names[idx]
         return "%s(%s)" % (name, ", ".join(
-                [pprinter.process(input, pstate.clone(precedence=-1000))
-                 for input in node.inputs]))
+            [pprinter.process(input, pstate.clone(precedence=-1000))
+             for input in node.inputs]))
 
 
 class MemberPrinter:
@@ -368,8 +378,8 @@ class DefaultPrinter:
         if node is None:
             return LeafPrinter().process(r, pstate)
         return "%s(%s)" % (str(node.op), ", ".join(
-                [pprinter.process(input, pstate.clone(precedence=-1000))
-                 for input in node.inputs]))
+            [pprinter.process(input, pstate.clone(precedence=-1000))
+             for input in node.inputs]))
 
 
 class LeafPrinter:
@@ -436,7 +446,7 @@ class PPrinter:
                 if output in inv_updates:
                     name = str(inv_updates[output])
                     strings.append((i + 1000, "%s <- %s" % (
-                                name, pprinter.process(output))))
+                        name, pprinter.process(output))))
                     i += 1
                 if output.name is not None or output in outputs:
                     if output.name is None:
@@ -508,13 +518,13 @@ Print to the terminal a math-like expression.
 # colors not used: orange, amber#FFBF00, purple, pink,
 # used by default: green, blue, grey, red
 default_colorCodes = {'GpuFromHost': 'red',
-              'HostFromGpu': 'red',
-              'Scan': 'yellow',
-              'Shape': 'cyan',
-              'IfElse': 'magenta',
-              'Elemwise': '#FFAABB',  # dark pink
-              'Subtensor': '#FFAAFF',  # purple
-              'Alloc': '#FFAA22'}  # orange
+                      'HostFromGpu': 'red',
+                      'Scan': 'yellow',
+                      'Shape': 'cyan',
+                      'IfElse': 'magenta',
+                      'Elemwise': '#FFAABB',  # dark pink
+                      'Subtensor': '#FFAAFF',  # purple
+                      'Alloc': '#FFAA22'}  # orange
 
 
 def pydotprint(fct, outfile=None,
@@ -526,8 +536,7 @@ def pydotprint(fct, outfile=None,
                assert_nb_all_strings=-1,
                return_image=False,
                ):
-    """
-    Print to a file (png format) the graph of a compiled theano function's ops.
+    """Print to a file (png format) the graph of a compiled theano function's ops.
 
     :param fct: a compiled Theano function, a Variable, an Apply or
                 a list of Variable.
@@ -587,6 +596,11 @@ def pydotprint(fct, outfile=None,
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
     HostFromGpu).
 
+    .. note::
+
+        Since October 20th, 2014, this print the inner function of all
+        scan separately after the top level debugprint output.
+
     """
     if colorCodes is None:
         colorCodes = default_colorCodes
@@ -623,7 +637,7 @@ def pydotprint(fct, outfile=None,
         topo = fct.toposort()
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
-                            " for `pydotprint` to work.")
+                           " for `pydotprint` to work.")
         return
 
     g = pd.Dot()
@@ -686,8 +700,8 @@ def pydotprint(fct, outfile=None,
                 varstr = (input_update[var].variable.name + " UPDATE "
                           + str(var.type))
         else:
-            #a var id is needed as otherwise var with the same type will be
-            #merged in the graph.
+            # a var id is needed as otherwise var with the same type will be
+            # merged in the graph.
             varstr = str(var.type)
         if (varstr in all_strings) or with_ids:
             idx = ' id=' + str(len(var_str))
@@ -716,7 +730,7 @@ def pydotprint(fct, outfile=None,
         prof_str = ''
         if mode:
             time = mode.profile_stats[fct].apply_time.get(node, 0)
-            #second, % total time in profiler, %fct time in profiler
+            # second, % total time in profiler, %fct time in profiler
             if mode.local_time == 0:
                 pt = 0
             else:
@@ -728,7 +742,7 @@ def pydotprint(fct, outfile=None,
             prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
         elif profile:
             time = profile.apply_time.get(node, 0)
-            #second, %fct time in profiler
+            # second, %fct time in profiler
             if profile.fct_callcount == 0:
                 pf = 0
             else:
@@ -778,7 +792,7 @@ def pydotprint(fct, outfile=None,
             nw_node = pd.Node(astr, shape=apply_shape)
         elif high_contrast:
             nw_node = pd.Node(astr, style='filled', fillcolor=use_color,
-                               shape=apply_shape)
+                              shape=apply_shape)
         else:
             nw_node = pd.Node(astr, color=use_color, shape=apply_shape)
         g.add_node(nw_node)
@@ -809,7 +823,7 @@ def pydotprint(fct, outfile=None,
             elif var.name or not compact:
                 g.add_edge(pd.Edge(varstr, astr, label=label))
             else:
-                #no name, so we don't make a var ellipse
+                # no name, so we don't make a var ellipse
                 g.add_edge(pd.Edge(apply_name(var.owner), astr, label=label))
 
         for id, var in enumerate(node.outputs):
@@ -892,7 +906,7 @@ def pydotprint_variables(vars,
     '''
 
     warnings.warn("pydotprint_variables() is deprecated."
-                 " Use pydotprint() instead.")
+                  " Use pydotprint() instead.")
 
     if colorCodes is None:
         colorCodes = default_colorCodes
@@ -976,7 +990,7 @@ def pydotprint_variables(vars,
                     g.add_node(pd.Node(varastr))
                 elif high_contrast:
                     g.add_node(pd.Node(varastr, style='filled',
-                                        fillcolor='green'))
+                                       fillcolor='green'))
                 else:
                     g.add_node(pd.Node(varastr, color='green'))
             else:
