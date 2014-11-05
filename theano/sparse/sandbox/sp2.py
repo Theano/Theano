@@ -2,11 +2,11 @@ import numpy
 import scipy.sparse
 
 from theano import gof, tensor
-
+from theano.tensor.opt import register_specialize
 from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
     mul_s_s, mul_s_d, dot,
-    CSMProperties, CSM, register_specialize,
+    CSMProperties, CSM,
     _is_sparse_variable, _is_dense_variable, CSC, CSR,
     csm_properties, csm_data, csm_indices, csm_indptr, csm_shape,
     _is_sparse,

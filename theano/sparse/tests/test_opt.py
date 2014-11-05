@@ -152,4 +152,4 @@ def test_local_dense_from_sparse_sparse_from_dense():
         f = theano.function([m], o, mode=mode)
         # We should just have a deep copy.
         assert len(f.maker.fgraph.apply_nodes) == 1
-        f([[1,2], [3, 4]])
+        f([[1, 2], [3, 4]])
