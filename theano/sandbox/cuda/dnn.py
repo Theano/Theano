@@ -266,6 +266,9 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
 }
 """ % dict(var=var, desc=desc, err=err, fail=fail)
 
+    def c_set_tensor4d(self, *arg):
+        return c_set_tensor4d(*arg)
+
     def c_code(self, node, name, inputs, outputs, sub):
         desc = inputs[2]
         out, = outputs
