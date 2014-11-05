@@ -122,8 +122,9 @@ class Binomial(gof.op.Op):
         n = tensor.as_tensor_variable(n)
         p = tensor.as_tensor_variable(p)
         shape = tensor.as_tensor_variable(shape)
-        return gof.Apply(self, [n, p, shape], [SparseType(dtype=self.dtype,
-                                 format=self.format).make_variable()])
+        return gof.Apply(self, [n, p, shape],
+                         [SparseType(dtype=self.dtype,
+                                     format=self.format).make_variable()])
 
     def perform(self, node, (n, p, shape, ), (out, )):
         binomial = numpy.random.binomial(n, p, size=shape)
