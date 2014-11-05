@@ -2,6 +2,7 @@ import os
 
 import theano
 from theano import Apply, tensor
+from theano.gof import Optimizer
 from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -12,6 +13,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
+from theano.sandbox.cuda.opt import register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
@@ -52,14 +54,6 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
     %(fail)s
 }
         """ % dict(var=var, err=err, desc=desc, fail=fail)
-
-
-def raise_no_dnn():
-    """ Raise a RuntimeError if cudnn can't be used"""
-    if not dnn_available():
-        raise RuntimeError(
-            "cuDNN optimization was enabled, but cuDNN is not available. " +
-            dnn_available.msg)
 
 
 class DnnBase(GpuOp):
@@ -981,11 +975,14 @@ err%(name)s = cudnnSoftmaxForward(
 # We need this since other stuff from opt is not importable.
 if cuda_available:
 
-    from theano.sandbox.cuda.opt import local_optimizer, gpu_optimizer
+    from theano.sandbox.cuda.opt import (
+        local_optimizer, gpu_optimizer, gpu_seqopt)
 
+    @register_opt('cudnn')
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
-        raise_no_dnn()
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuConv):
             if node.op.border_mode not in ['full', 'valid']:
                 return
@@ -995,10 +992,11 @@ if cuda_available:
             return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
                              border_mode=border_mode, subsample=subsample)]
 
-    gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
-
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuDownsampleFactorMax):
             if node.op.ignore_border:
                 return
@@ -1006,10 +1004,11 @@ if cuda_available:
             ds = node.op.ds
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
-    gpu_optimizer.register("pool_cudnn", local_pool_dnn, 'cudnn')
-
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMaxGrad])
     def local_pool_dnn_grad(node):
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuDownsampleFactorMaxGrad):
             if node.op.ignore_border:
                 return
@@ -1022,11 +1021,11 @@ if cuda_available:
                                      gpu_contiguous(inp_grad),
                                      gpu_contiguous(out), desc)]
 
-    gpu_optimizer.register("pool_cudnn_grad", local_pool_dnn_grad, 'cudnn')
-
+    @register_opt('cudnn')
     @local_optimizer([GpuSoftmax])
     def local_softmax_dnn(node):
-        raise_no_dnn()
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuSoftmax):
             ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
             ins = gpu_contiguous(ins)
@@ -1034,4 +1033,11 @@ if cuda_available:
             out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
             return [out]
 
-    gpu_optimizer.register("softmax_cudnn", local_softmax_dnn, 'cudnn')
+    class NoCuDNNRaise(Optimizer):
+        def apply(self, fgraph):
+            """ Raise a RuntimeError if cudnn can't be used"""
+            if not dnn_available():
+                raise RuntimeError(
+                    "cuDNN optimization was enabled, but cuDNN is not available. " +
+                    dnn_available.msg)
+    gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
