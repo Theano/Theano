@@ -9,12 +9,10 @@ import theano.tests.unittest_tools as utt
 from theano.sandbox import gpuarray
 
 # We let that import do the init of the back-end if needed.
-from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
-                                                          mode_without_gpu)
+from .test_basic_ops import mode_with_gpu, mode_without_gpu
 
-from theano.sandbox.gpuarray.nnet import (
-    GpuCrossentropySoftmaxArgmax1HotWithBias,
-    GpuCrossentropySoftmax1HotWithBiasDx)
+from ..nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
+                    GpuCrossentropySoftmax1HotWithBiasDx)
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
