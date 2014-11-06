@@ -1,7 +1,7 @@
 import os
 
 import theano
-from theano import Apply, tensor
+from theano import Apply, gof, tensor
 from theano.gof import Optimizer
 from theano.gof.type import CDataType
 from theano.compat import PY3
@@ -26,8 +26,8 @@ def dnn_available():
             dnn_available.avail = False
         else:
             dnn_available.msg = "Can not find the cuDNN library"
-            dnn_available.avail = theano.gof.cmodule.GCC_compiler.try_flags(
-                ["-l", "cudnn"])
+            dnn_available.avail = all(gof.cmodule.GCC_compiler.try_flags(
+                ["-l", "cudnn"], try_run=True, preambule="#include <cudnn.h>"))
     return dnn_available.avail
 
 
