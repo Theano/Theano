@@ -1851,7 +1851,8 @@ class GCC_compiler(object):
             return (compilation_ok, run_ok, out, err)
 
     @staticmethod
-    def try_flags(flag_list, preambule="", try_run=False, output=False):
+    def try_flags(flag_list, preambule="", body="",
+                  try_run=False, output=False):
         '''
         Try to compile a dummy file with these flags.
 
@@ -1865,6 +1866,7 @@ class GCC_compiler(object):
         %(preambule)s
         int main(int argc, char** argv)
         {
+            %(body)s
             return 0;
         }
         """ % locals())

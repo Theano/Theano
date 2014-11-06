@@ -25,8 +25,26 @@ def dnn_available():
             dnn_available.msg = "Device not supported by cuDNN"
             dnn_available.avail = False
         else:
+            preambule = """
+#include <cudnn.h>
+#include <stdio.h>
+#include <cuda.h>
+#include <cudnn_helper.h>
+            """
+
+            body = """
+cudnnHandle_t _handle = NULL;
+cudnnStatus_t err;
+if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
+  fprintf(stderr, "could not create cuDNN handle: %s",
+          cudnnGetErrorString(err));
+  return 1;
+}
+"""
+
             comp, run, out, err = gof.cmodule.GCC_compiler.try_flags(
-                ["-l", "cudnn"], preambule="#include <cudnn.h>",
+                ["-l", "cudnn", "-I" + os.path.dirname(__file__)],
+                preambule=preambule, body=body,
                 try_run=True, output=True)
 
             dnn_available.avail = comp and run
@@ -90,7 +108,7 @@ cudnnHandle_t _handle = NULL;
         return ["""{
 cudnnStatus_t err;
 if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not create cudnn handle: %%s",
+  PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %%s",
                cudnnGetErrorString(err));
   return %s;
 }
