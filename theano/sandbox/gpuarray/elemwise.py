@@ -721,7 +721,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         inp = ['fake_input_name_%d' % i for i in xrange(len(inputs))]
         out = ['fake_output_name_%d' % i for i in xrange(len(node.outputs))]
 
-        sub = {'fail': 'fake failure code'}
+        sub = {'fail': 'fake failure code', 'context': 'fake_val'}
 
         try:
             self.c_code(node, name, inp, out, sub)
