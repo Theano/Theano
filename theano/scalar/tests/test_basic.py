@@ -240,7 +240,11 @@ class test_logical(unittest.TestCase):
             self.assertTrue(fn(a,b) == ~a, (a,))
 
 
-#class test_upgrade_to_float(unittest.TestCase):
+# This class does not inherit from unittest.TestCase, because it would
+# interfere with the "yield" mechanism that automatically generates test, see
+# http://stackoverflow.com/questions/6689537/nose-test-generators-inside-class
+# Therefore, it needs to be named "test_..." or "Test_...", so nose can pick
+# it up by name, otherwise the tests would not be executed.
 class test_upgrade_to_float(object):
     # Test for Ops whose output has to be floating point, even when all
     # inputs are ints.
