@@ -473,14 +473,11 @@ class Elemwise(OpenMPOp):
             the input's storage. (Just like destroymap, but without the lists.)
         * nfunc_spec: either None or a tuple of three elements,
             (nfunc_name, nin, nout) such that getattr(numpy, nfunc_name)
-            implements this operation, takes nin inputs and abs(nout) outputs
-            (nout < 0 if the numpy function does not provide the option of
-            providing a numpy array to store the results in). Note that nin
-            cannot always be inferred from the scalar op's own nin field
-            because that value is sometimes 0 (meaning a variable number of
-            inputs), whereas the numpy function may not have varargs.
-            NOTE: as of now, the sign of the nout field is ignored (some work
-            needs to be done to resize the destinations when needed).
+            implements this operation, takes nin inputs and nout outputs.
+            Note that nin cannot always be inferred from the scalar op's
+            own nin field because that value is sometimes 0 (meaning a
+            variable number of inputs), whereas the numpy function may
+            not have varargs.
         """
         if inplace_pattern is None:
             inplace_pattern = {}
@@ -820,44 +817,11 @@ class Elemwise(OpenMPOp):
                 out_shape.append(max(values))
         out_shape = tuple(out_shape)
 
-        # Commented as we don't reuse outputs now.
-        #
-        # if not self.inplace_pattern:
-        #     for output, storage in izip(node.outputs, output_storage):
-        #         odat = storage[0]
-        #         if odat is not None:
-        #             if odat.shape != out_shape:
-        #                 # It is unsafe to try to resize odat,
-        #                 # we have to allocate output storage.
-        #                 odat = None
-        #         if odat is None:
-        #             odat = numpy.ndarray(out_shape, dtype=output.type.dtype)
-        #         storage[0] = odat
-        # else:
-        #     for i, (output, storage) in enumerate(
-        #             izip(node.outputs, output_storage)):
-        #         #i is an output idx
-        #         if i in self.inplace_pattern:
-        #             odat = inputs[self.inplace_pattern[i]]
-        #         else:
-        #             odat = storage[0]
-        #             if odat is not None:
-        #                 if odat.shape != out_shape:
-        #                     # It is unsafe to try to resize odat,
-        #                     # we have to allocate output storage.
-        #                     odat = None
-        #             if odat is None:
-        #                 odat = numpy.ndarray(out_shape,
-        #                         dtype=output.type.dtype)
-        #         storage[0] = odat
-
-        ufunc_args = inputs  # + output_storage
+        ufunc_args = inputs
         ufunc_kwargs = {}
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
             nout = self.nfunc_spec[2]
-            if nout < 0:
-                nout = -nout
             # Numpy ufuncs will sometimes perform operations in
             # float16, in particular when the input is int8.
             # This is not something that we want, and we do not
