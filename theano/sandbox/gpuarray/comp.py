@@ -12,6 +12,9 @@ from theano.sandbox.cuda.nvcc_compiler import (NVCC_compiler as NVCC_base,
 from .type import get_context
 
 class NVCC_compiler(NVCC_base):
+    # This is for gof/cc.py
+    __name__ = 'NVCC_compiler'
+
     def __init__(self, context):
         self.context = get_context(context)
 

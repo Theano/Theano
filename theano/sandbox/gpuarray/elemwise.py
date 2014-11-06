@@ -197,7 +197,8 @@ class GpuElemwise(HideC, Elemwise):
                         ("npy_float64", "ga_double"),
             ]:
             kop = kop.replace(npy, ga)
-        return ElemwiseKernel(None, inps+outs, kop, preamble=support_code)
+        return ElemwiseKernel(get_context(self.context), inps+outs,
+                              kop, preamble=support_code)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
