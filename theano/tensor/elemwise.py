@@ -18,7 +18,7 @@ from theano.tensor import elemwise_cgen as cgen
 
 config = theano.config
 
-# We cannot import discrete_dtypes from tensor.basic yet,
+# We cannot import discrete_dtypes or float_dtypes from tensor.basic yet,
 # so we redefine them here
 discrete_dtypes = map(str, scalar.discrete_types)
 float_dtypes = map(str, scalar.float_types)
