@@ -123,29 +123,13 @@ def git_version():
         git_revision = "unknown-git"
     return git_revision
 
-# Python 2.4 compatibility: Python versions 2.6 and later support new
-# exception syntax, but for now we have to resort to exec.
-if sys.hexversion >= 0x2070000:
-    exec("""\
+
 def write_text(filename, text):
-    with open(filename, 'w') as a:
-        try:
-            a.write(text)
-        except Exception as e:
-            print(e)
-""")
-else:
-    exec("""\
-def write_text(filename, text):
-    a = open(filename, 'w')
     try:
-        try:
+        with open(filename, 'w') as a:
             a.write(text)
-        except Exception, e:
-            print e
-    finally:
-        a.close()
-""")
+    except Exception as e:
+        print(e)
 
 
 def write_version_py(filename=os.path.join('theano', 'generated_version.py')):
