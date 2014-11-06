@@ -104,7 +104,7 @@ def rand_gpuarray(*shape, **kwargs):
     cls = kwargs.pop('cls', None)
     if len(kwargs) != 0:
         raise TypeError('Unexpected argument %s', kwargs.keys()[0])
-    return gpuarray.array(r, dtype=dtype, cls=cls, context=test_ctx)
+    return gpuarray.array(r, dtype=dtype, cls=cls, context=test_ctx_real)
 
 
 def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
