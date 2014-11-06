@@ -88,7 +88,11 @@
 
         .. note:: Currently, the function doesn't support tensors created with
            `neib_step` different from default value. This means that it may be
-           impossible to compute the gradient of an error signal in this case.
+           impossible to compute the gradient of a variable gained by 
+           :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` w.r.t. 
+           its inputs in this case because it uses 
+           :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for 
+           gradient computation.
 
 
         Example:
