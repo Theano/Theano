@@ -2997,8 +2997,10 @@ def clip(x, min, max):
     """clip x to be between min and max.
 
     :note: When `x` is equal to the boundaries, the output is considered
-        to be `x`, so at these points, the gradient will flow through `x`,
-        not through `min` nor `max`.
+        to be `x`, so at these points, the gradient of the cost wrt the output
+        will be propagated to `x`, not to `min` nor `max`. In other words,
+        on these points, the gradient wrt `x` will be equal to the gradient wrt
+        the output, and the gradient wrt `min` and `max` will be zero.
     """
     # see decorator for function body
     # for grep: clamp, bound

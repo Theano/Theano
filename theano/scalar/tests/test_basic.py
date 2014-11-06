@@ -20,7 +20,7 @@ from theano.tests import unittest_tools as utt
 from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
-                                 Composite, add, div_proxy, clip,
+                                 Composite, add, div_proxy,
                                  and_, eq, neq, invert, mul, Scalar)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
@@ -61,41 +61,6 @@ class test_ScalarOps(unittest.TestCase):
                     (5, 3), (-5, 3), (5, -3), (-5, -3)
                     ):
             self.assertTrue(fn(a, b) == a%b, (a,))
-
-    def test_clip_grad(self):
-        # This is testing for the issue #633
-        x, y = floats('xy')
-        a = theano.tensor.clip(x, y, x)
-        g = theano.gradient.grad(a, x)
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [g])).make_function()
-
-        # Test the other way around as well
-        a2 = theano.tensor.clip(x, x, y)
-        g2 = theano.gradient.grad(a2, x)
-        fn2 = gof.DualLinker().accept(FunctionGraph([x, y], [g2])).make_function()
-
-        # Test for the equal case too .
-        a3 = theano.tensor.clip(x, x, x)
-        g3 = theano.gradient.grad(a3, x)
-        fn3 = gof.DualLinker().accept(FunctionGraph([x], [g3])).make_function()
-
-        rng = np.random.RandomState(utt.fetch_seed())
-
-        ntests = 50
-        for i in xrange(ntests):
-            xval = rng.rand(1)
-            # To ensure that the min < x .
-            yval_mn = rng.rand(1) - 1.0
-
-            # To ensure that the max > x.
-            yval_mx = rng.rand(1) + 1.0
-
-            aval = fn(xval, yval_mn)
-            aval2 = fn2(xval, yval_mx)
-            aval3 = fn3(xval)
-            self.assertTrue(aval == 1.)
-            self.assertTrue(aval2 == 1.)
-            self.assertTrue(aval3 == 1.)
 
 
 class test_composite(unittest.TestCase):
