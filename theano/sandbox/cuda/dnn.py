@@ -25,9 +25,17 @@ def dnn_available():
             dnn_available.msg = "Device not supported by cuDNN"
             dnn_available.avail = False
         else:
-            dnn_available.msg = "Can not find the cuDNN library"
-            dnn_available.avail = all(gof.cmodule.GCC_compiler.try_flags(
-                ["-l", "cudnn"], try_run=True, preambule="#include <cudnn.h>"))
+            comp, run, out, err = gof.cmodule.GCC_compiler.try_flags(
+                ["-l", "cudnn"], preambule="#include <cudnn.h>",
+                try_run=True, output=True)
+
+            dnn_available.avail = comp and run
+            if dnn_available.avail:
+                dnn_available.msg = "cuDNN should work"
+            else:
+                dnn_available.msg = (
+                    "Theano is not able to use cuDNN. We got this error: \n" +
+                    err)
     return dnn_available.avail
 
 
@@ -1040,6 +1048,7 @@ if cuda_available:
             """ Raise a RuntimeError if cudnn can't be used"""
             if not dnn_available():
                 raise RuntimeError(
-                    "cuDNN optimization was enabled, but cuDNN is not available. " +
+                    "cuDNN optimization was enabled, but Theano was not able"
+                    " to use it. We got this error: \n" +
                     dnn_available.msg)
     gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
