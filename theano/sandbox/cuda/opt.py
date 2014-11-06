@@ -1163,11 +1163,6 @@ def local_conv_fft_full(node):
         return
 
 
-# Needs to be registered before local_gpu_conv_legacy. Otherwise, it
-# will have priority over this optimization.  We want, if cudnn is
-# available and the GPU supports it, to use it.  Otherwise, the gemm
-# version should be used.  If the users want the legacy convolution,
-# they should use the Theano flag to disable the dnn and/or gemm version.
 @local_optimizer([GpuConv])
 def local_gpu_conv(node):
     """
@@ -1350,7 +1345,7 @@ conv_groupopt.register("conv_fft_valid", local_conv_fft_valid, 1)
 conv_groupopt.register("conv_fft_full", local_conv_fft_full, 1)
 # Use dnn if avail, so have the dnn tag to be able to disable it.
 conv_groupopt.register('local_gpu_conv', local_gpu_conv, 10,
-                       'fast_compile', 'fast_run', 'dnn')
+                       'fast_compile', 'fast_run', 'cudnn')
 conv_groupopt.register('local_conv_gemm', local_conv_gemm, 12,
                        'fast_compile', 'fast_run')
 
