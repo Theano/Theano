@@ -1522,7 +1522,7 @@ def gcc_llvm():
     """
     if gcc_llvm.is_llvm is None:
         try:
-            p_out = output_subprocess_Popen(['g++', '--version'])
+            p_out = output_subprocess_Popen([theano.config.cxx, '--version'])
             output = p_out[0] + p_out[1]
         except OSError:
             # Typically means g++ cannot be found.
@@ -1544,7 +1544,7 @@ class GCC_compiler(object):
 
     @staticmethod
     def version_str():
-        return "g++ " + gcc_version_str
+        return theano.config.cxx + " " + gcc_version_str
 
     @staticmethod
     def compile_args():
@@ -1611,7 +1611,7 @@ class GCC_compiler(object):
 
             # The '-' at the end is needed. Otherwise, g++ do not output
             # enough information.
-            native_lines = get_lines("g++ -march=native -E -v -")
+            native_lines = get_lines("%s -march=native -E -v -" % theano.config.cxx)
             if native_lines is None:
                 _logger.info("Call to 'g++ -march=native' failed,"
                              "not setting -march flag")
@@ -1625,7 +1625,7 @@ class GCC_compiler(object):
                 if len(native_lines) == 0:
                     # That means we did not select the right lines, so
                     # we have to report all the lines instead
-                    reported_lines = get_lines("g++ -march=native -E -v -",
+                    reported_lines = get_lines("%s -march=native -E -v -" % theano.config.cxx,
                                                parse=False)
                 else:
                     reported_lines = native_lines
@@ -1638,7 +1638,7 @@ class GCC_compiler(object):
                     " problem:\n %s",
                     reported_lines)
             else:
-                default_lines = get_lines("g++ -E -v -")
+                default_lines = get_lines("%s -E -v -" % theano.config.cxx)
                 _logger.info("g++ default lines: %s", default_lines)
                 if len(default_lines) < 1:
                     _logger.warn(
@@ -1649,7 +1649,7 @@ class GCC_compiler(object):
                         " functions. Please submit the following lines to"
                         " Theano's mailing list so that we can fix this"
                         " problem:\n %s",
-                        get_lines("g++ -E -v -", parse=False))
+                        get_lines("%s -E -v -" % theano.config.cxx, parse=False))
                 else:
                     # Some options are actually given as "-option value",
                     # we want to treat them as only one token when comparing
@@ -1819,7 +1819,7 @@ class GCC_compiler(object):
                 os.close(fd)
                 fd = None
                 p_ret = call_subprocess_Popen(
-                    ['g++', path, '-o', exe_path] + flags)
+                    [theano.config.cxx, path, '-o', exe_path] + flags)
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
@@ -1937,7 +1937,7 @@ class GCC_compiler(object):
                                     (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
-        cmd = ['g++', get_gcc_shared_library_arg(), '-g']
+        cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
 
         if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))
