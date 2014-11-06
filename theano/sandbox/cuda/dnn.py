@@ -1047,7 +1047,9 @@ if cuda_available:
         def apply(self, fgraph):
             """ Raise a RuntimeError if cudnn can't be used"""
             if not dnn_available():
-                raise RuntimeError(
+                # Make an assert error as we want Theano to fail, not
+                # just skip this optimization.
+                raise AssertionError(
                     "cuDNN optimization was enabled, but Theano was not able"
                     " to use it. We got this error: \n" +
                     dnn_available.msg)
