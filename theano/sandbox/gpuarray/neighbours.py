@@ -11,12 +11,11 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable,
-                                               host_from_gpu, gpu_from_host)
-from theano.sandbox.gpuarray.opt import register_opt as register_gpu_opt
-from theano.sandbox.gpuarray.opt import op_lifter as op_lifter
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.comp import NVCC_compiler
+from .basic_ops import (HideC, as_gpuarray_variable,
+                        host_from_gpu, gpu_from_host)
+from .opt import op_lifter, register_opt as register_gpu_opt
+from .type import GpuArrayType, gpu_context_type
+from .comp import NVCC_compiler
 
 
 class GpuImages2Neibs(HideC, Images2Neibs):
@@ -33,11 +32,11 @@ class GpuImages2Neibs(HideC, Images2Neibs):
 
     def __eq__(self, other):
         return (type(self) == type(other) and
-                self.context = other.context and
+                self.context == other.context and
                 Images2Neibs.__eq__(self, other))
 
     def __hash__(self):
-        return hash((type(self), self.context)) ^ Image2Neibs.__hash__(self)
+        return hash((type(self), self.context)) ^ Images2Neibs.__hash__(self)
 
     def make_node(self, ten4, neib_shape, neib_step):
         ten4 = as_gpuarray_variable(ten4)
