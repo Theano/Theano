@@ -201,7 +201,8 @@ def local_gpualloc_memset_0(node):
         if (isinstance(inp, GpuArrayConstant) and
             inp.data.size == 1 and
             (numpy.asarray(inp.data) == 0).all()):
-            new_out = GpuAlloc(memset_0=True)(*node.inputs)
+            new_out = GpuAlloc(node.op.get_context(node),
+                               memset_0=True)(*node.inputs)
             return [new_out]
 
 

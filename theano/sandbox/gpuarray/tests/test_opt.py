@@ -3,17 +3,16 @@ import numpy
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
-import theano.sandbox.gpuarray
-from theano.sandbox.gpuarray.type import (
-    GpuArrayType, gpuarray_shared_constructor)
-from theano.sandbox.gpuarray.basic_ops import (
-    GpuAlloc, GpuReshape, gpu_alloc, gpu_from_host, host_from_gpu)
-from theano.sandbox.gpuarray.elemwise import (
-    GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise)
-from theano.sandbox.gpuarray.subtensor import GpuSubtensor
-from theano.sandbox.gpuarray.tests.test_basic_ops import (
-    rand_gpuarray, mode_with_gpu, mode_without_gpu
-    )
+
+from ..type import GpuArrayType, gpuarray_shared_constructor
+from ..basic_ops import (GpuAlloc, GpuReshape, gpu_alloc,
+                         gpu_from_host, host_from_gpu)
+from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
+from ..subtensor import GpuSubtensor
+
+from .test_basic_ops import (rand_gpuarray, mode_with_gpu, mode_without_gpu,
+                             test_ctx, test_ctx_real)
+
 from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_basic import TestSpecifyShape
 
@@ -63,8 +62,6 @@ def test_flatten():
 
 
 def test_reduce():
-    dev = theano.sandbox.gpuarray.init_dev.device
-
     for method, param in [('sum', dict(acc_dtype='float32')),
                           ('prod', dict(acc_dtype='float32')),
                           ('max', {}), ('min', {})]:
@@ -79,7 +76,7 @@ def test_reduce():
         topo = f.maker.fgraph.toposort()
         ops = [type(node.op) for node in topo]
 
-        if dev.startswith('opencl') and method in ["max", "min"]:
+        if test_ctx_real.kind == 'opencl' and method in ["max", "min"]:
             assert not(GpuCAReduceCuda in ops or GpuCAReduceCPY in ops)
         else:
             assert GpuCAReduceCuda in ops or GpuCAReduceCPY in ops
@@ -147,8 +144,6 @@ def test_print_op():
     f = theano.function([b], theano.printing.Print()(b) * 2,
                         mode=mode_with_gpu)
     theano.printing.debugprint(f)
-    #print f.maker.fgraph.toposort()
-#[GpuFromHost(<TensorType(float32, matrix)>), <theano.printing.Print object at 0x3581210>(GpuFromHost.0), GpuElemwise{mul}(CudaNdarray{[[ 2.]]}, <theano.printing.Print object at 0x3581210>.0), HostFromGpu(GpuElemwise{mul}.0)]
     topo = f.maker.fgraph.toposort()
     assert topo[0].op == gpu_from_host
     assert isinstance(topo[1].op, theano.printing.Print)
