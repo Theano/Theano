@@ -22,19 +22,13 @@ from theano.gof.python25 import any
 from theano.tests.unittest_tools import seed_rng
 
 # We let that import do the init of the back-end if needed.
-from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
-                                                          mode_without_gpu)
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.conv import GpuConv
+from .test_basic_ops import (mode_with_gpu, mode_without_gpu,
+                             test_ctx, test_ctx_real)
+from ..type import GpuArrayType
+from ..conv import GpuConv
 import pygpu
-gftensor4 = GpuArrayType('float32', [False] * 4)
 
-device_id = theano.sandbox.cuda.use.device_number
-# TODO do with with the new back-end.
-from theano.sandbox.cuda import cuda_ndarray
-cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-device_prop = cuda_ndarray.device_properties(device_id)
-
+gftensor4 = GpuArrayType('float32', [False] * 4, context=test_ctx)
 
 def py_conv_valid_numpy(img, kern):
     assert img.shape[1] == kern.shape[1]
@@ -140,8 +134,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                 numpy.prod(ishape)).reshape(ishape), dtype='float32') + 1
         npy_kern = -(theano._asarray(numpy.arange(
                     numpy.prod(kshape)).reshape(kshape), dtype='float32') + 1)
-    img = pygpu.array(npy_img)
-    kern = pygpu.array(npy_kern)
+    img = pygpu.array(npy_img, context=test_ctx_real)
+    kern = pygpu.array(npy_kern, context=test_ctx_real)
 
     #we take the stride after the transfert as we make c_contiguous
     #data on the GPU.
@@ -164,7 +158,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                      subsample=subsample,
                      version=version,
                      verbose=verbose,
-                     kshp=compile_kshp)(i, k)
+                     kshp=compile_kshp,
+                     context=test_ctx)(i, k)
         f = theano.function([i, k], op, mode=mode_with_gpu)
         gpuval = f(img, kern)
         t2 = time.time()
@@ -417,7 +412,7 @@ def test_valid_0_2():
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
                                                   numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
+        if oshape[3] > test_ctx_real.maxlsize:
             continue
         if ishape[1] > 1:
             continue
@@ -449,7 +444,7 @@ def test_valid_1_3_11_12():
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
                                                   numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
+        if oshape[3] > test_ctx_real.maxlsize:
             continue
         if ((numpy.prod(ishape[2:]) + numpy.prod(kshape[2:])) * 4 >
             (16 * 1024 - 150)):
@@ -479,7 +474,7 @@ def test_valid_4():
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
                                                   numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
+        if oshape[3] > test_ctx_real.maxlsize:
             continue
         if ishape[1] > 1:
             continue
@@ -512,7 +507,7 @@ def test_valid_5():
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
                                                   numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
+        if oshape[3] > test_ctx_real.maxlsize:
             continue
         if ((kshape[2] * ishape[3] * 4 + numpy.prod(kshape[2:]) * 4) >
             (16 * 1024 - 150)):
@@ -547,7 +542,7 @@ def test_valid_7_8_13():
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
                                                   numpy.asarray([1, 1]))
-        if oshape[2] * oshape[3] > device_prop['maxThreadsDim0']:
+        if oshape[2] * oshape[3] > test_ctx_real.maxlsize:
             continue
         if max(numpy.prod(ishape[2:]) * 4 + 2 * kshape[3] * 4,
                oshape[2] * oshape[3] * 4 * 2) > (16 * 1024 - 150):
@@ -579,7 +574,7 @@ def test_valid_9_10():
         oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
                                                   numpy.asarray(kshape[2:]) +
                                                   numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
+        if oshape[3] > test_ctx_real.maxlsize:
             continue
         if (kshape[3] * 4 + ishape[3]) > (16 * 1024 - 150):
             continue
