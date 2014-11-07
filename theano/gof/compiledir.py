@@ -66,7 +66,7 @@ compiledir_format_dict = {
         }
 
 
-def short_platform():
+def short_platform(r=None, p=None):
     """Return a safe shorter version of platform.platform().
 
     The old default Theano compiledir used platform.platform in
@@ -103,24 +103,42 @@ def short_platform():
     compiledir_Linux-2.6.32-220.7.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
     compiledir_Linux-2.6.32-220.4.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
 
+    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We
+    keep ``X.Y`` and don't keep less important digit in the part
+    before ``-`` and we remove the leading digit after the first
+    ``-``.
+
+    If the information don't fit that pattern, we do not modify
+    platform.
+
     """
-    r = platform.release()
+    if r is None:
+        r = platform.release()
+    if p is None:
+        p = platform.platform()
     sp = r.split('-')
-    if len(sp) != 2:
-        return r
+    if len(sp) < 2:
+        return p
+
+    # For the split before the first -, we remove all learning digit:
     kernel_version = sp[0].split('.')
     if len(kernel_version) <= 2:
-        return r
+        # kernel version should always have at least 3 number.
+        # If not, it use another semantic, so don't change it.
+        return p
     sp[0] = '.'.join(kernel_version[:2])
+
+    # For the split after the first -, we remove leading non-digit value.
     rest = sp[1].split('.')
-    while len(rest) > 2:
+    while len(rest):
         if rest[0].isdigit():
             del rest[0]
         else:
             break
     sp[1] = '.'.join(rest)
+
+    # For sp[2:], we don't change anything.
     sr = '-'.join(sp)
-    p = platform.platform()
     p = p.replace(r, sr)
 
     return p
