@@ -13,6 +13,7 @@
 .. toctree::
     :maxdepth: 1
 
+    op
     var
     type
-    op
+    dnn

@@ -1,7 +1,8 @@
 import os
 
 import theano
-from theano import Apply, tensor
+from theano import Apply, gof, tensor
+from theano.gof import Optimizer
 from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -12,6 +13,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
+from theano.sandbox.cuda.opt import register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
@@ -23,9 +25,35 @@ def dnn_available():
             dnn_available.msg = "Device not supported by cuDNN"
             dnn_available.avail = False
         else:
-            dnn_available.msg = "Can not find the cuDNN library"
-            dnn_available.avail = theano.gof.cmodule.GCC_compiler.try_flags(
-                ["-l", "cudnn"])
+            preambule = """
+#include <cudnn.h>
+#include <stdio.h>
+#include <cuda.h>
+#include <cudnn_helper.h>
+            """
+
+            body = """
+cudnnHandle_t _handle = NULL;
+cudnnStatus_t err;
+if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
+  fprintf(stderr, "could not create cuDNN handle: %s",
+          cudnnGetErrorString(err));
+  return 1;
+}
+"""
+
+            comp, run, out, err = gof.cmodule.GCC_compiler.try_flags(
+                ["-l", "cudnn", "-I" + os.path.dirname(__file__)],
+                preambule=preambule, body=body,
+                try_run=True, output=True)
+
+            dnn_available.avail = comp and run
+            if dnn_available.avail:
+                dnn_available.msg = "cuDNN should work"
+            else:
+                dnn_available.msg = (
+                    "Theano is not able to use cuDNN. We got this error: \n" +
+                    err)
     return dnn_available.avail
 
 
@@ -54,14 +82,6 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
 
-def raise_no_dnn():
-    """ Raise a RuntimeError if cudnn can't be used"""
-    if not dnn_available():
-        raise RuntimeError(
-            "cuDNN optimization was enabled, but cuDNN is not available. " +
-            dnn_available.msg)
-
-
 class DnnBase(GpuOp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
@@ -88,7 +108,7 @@ cudnnHandle_t _handle = NULL;
         return ["""{
 cudnnStatus_t err;
 if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not create cudnn handle: %%s",
+  PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %%s",
                cudnnGetErrorString(err));
   return %s;
 }
@@ -96,6 +116,14 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnConvDesc(GpuOp):
+    """This Op builds a convolution descriptor for use in the other
+    convolution operations.
+
+    :param border_mode: 'valid' or 'full'
+    :param subsample: The subsample, tuple like (dx, dy)
+    :param conv_mode: 'conv' or 'cross'
+
+    """
     __props__ = ('border_mode', 'subsample', 'conv_mode')
 
     def c_headers(self):
@@ -354,6 +382,14 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnConv(GpuDnnConvBase):
+    """
+    The forward convolution.
+
+    :param image:
+    :param kernel:
+    :param descr: the convolution descriptor
+
+    """
     conv_inputs = 'input', 'kerns'
     conv_output = 'output'
     conv_types = 'tensor4d', 'filter', 'tensor4d'
@@ -377,6 +413,15 @@ class GpuDnnConv(GpuDnnConvBase):
 
 
 class GpuDnnConvGradW(GpuDnnConvBase):
+    """
+    The convolution gradient with respect to the weights.
+
+    :param image:
+    :param kernel:
+    :param descr: the convolution descriptor
+
+    """
+
     conv_inputs = 'input', 'output',
     conv_output = 'kerns'
     conv_types = 'tensor4d', 'tensor4d', 'filter'
@@ -385,6 +430,15 @@ class GpuDnnConvGradW(GpuDnnConvBase):
 
 
 class GpuDnnConvGradI(GpuDnnConvBase):
+    """
+    The convolution gradient with respect to the inputs.
+
+    :param image:
+    :param kernel:
+    :param descr: the convolution descriptor
+
+    """
+
     conv_inputs = 'kerns', 'output',
     conv_output = 'input'
     conv_types = 'filter', 'tensor4d', 'tensor4d'
@@ -418,7 +472,15 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
 
 class GpuDnnPoolDesc(GpuOp):
-    __props__ = ('mode', 'ws', 'stride')
+    """
+    This Op builds a pooling descriptor for use in the other
+    pooling operations.
+
+    :param ws: windows size
+    :param stride: (dx, dy)
+    :param mode: 'max' or 'average'
+    """
+    __props__ = ('ws', 'stride', 'mode')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -489,13 +551,19 @@ class GpuDnnPoolDesc(GpuOp):
 
 
 class GpuDnnPool(DnnBase):
+    """
+    Pooling.
+
+    :param img: the image 4d tensor.
+    :param desc: the pooling descriptor.
+    """
     __props__ = ()
 
     def make_node(self, img, desc):
         img = as_cuda_ndarray_variable(img)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
-        
+
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
@@ -537,10 +605,10 @@ if (output%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output%(id)d); }
         out, = outputs
 
         set_in = c_set_tensor4d(inputs[0], "input" + str(sub['struct_id']),
-            'err' + name, sub['fail'])
+                                'err' + name, sub['fail'])
 
         set_out = c_set_tensor4d(out, "output" + str(sub['struct_id']),
-            'err' + name, sub['fail'])
+                                 'err' + name, sub['fail'])
 
         return """
 cudnnStatus_t err%(name)s;
@@ -615,6 +683,14 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
 
 class GpuDnnPoolGrad(DnnBase):
+    """
+    The pooling gradient.
+
+    :param inp: the input of the pooling.
+    :param inp_grad: same size as out, but is the corresponding gradient information.
+    :param out: the output of the pooling in the forward.
+    :param desc: The pooling descriptor.
+    """
     __props__ = ()
 
     def make_node(self, inp, inp_grad, out, desc):
@@ -625,7 +701,7 @@ class GpuDnnPoolGrad(DnnBase):
         inp_grad = as_cuda_ndarray_variable(inp_grad)
         if inp_grad.type.ndim != 4:
             raise TypeError('inp_grad must be 4D tensor')
-                
+
         out = as_cuda_ndarray_variable(out)
         if out.type.ndim != 4:
             raise TypeError('out must be 4D tensor')
@@ -688,15 +764,15 @@ if (output_grad%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id)
 
         set_in = "\n".join([
             c_set_tensor4d(inp, "input" + str(sub['struct_id']),
-                'err' + name, sub['fail']),
+                           'err' + name, sub['fail']),
             c_set_tensor4d(inp_grad, "input_grad" + str(sub['struct_id']),
-                'err' + name, sub['fail']),
+                           'err' + name, sub['fail']),
             c_set_tensor4d(out, "output" + str(sub['struct_id']),
-                'err' + name, sub['fail'])
+                           'err' + name, sub['fail'])
         ])
 
         set_out = c_set_tensor4d(out, "output_grad" + str(sub['struct_id']),
-            'err' + name, sub['fail'])
+                                 'err' + name, sub['fail'])
 
         return """
 cudnnStatus_t err%(name)s;
@@ -738,7 +814,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-""" % dict(output_grad=out_grad, desc=desc, fail=sub['fail'], id=sub['struct_id'],
+""" % dict(output_grad=out_grad, desc=desc,
+           fail=sub['fail'], id=sub['struct_id'],
            name=name, set_in=set_in,
            set_out=set_out, input=inp, input_grad=inp_grad, output=out,
            input_desc="input"+str(sub['struct_id']),
@@ -776,13 +853,12 @@ class GpuDnnSoftmax(DnnBase):
     """
     Op for the cuDNN Softmax.
 
-    Parameters''
-    -tensor_format: Whether the data format is 'bc01' or 'b01c'
-    -algo: 'fast' or 'accurate' indicating whether computations should be
-    optimized for speed or accuracy respectively.
-    -mode: 'instance' or 'channel' indicating whether the softmax should be
-    computed per image across 'c01' or per spationali location '01' per image
-    across 'c'.
+    :param tensor_format: Whether the data format is 'bc01' or 'b01c'
+    :param algo: 'fast' or 'accurate' indicating whether computations should be
+        optimized for speed or accuracy respectively.
+    :param mode: 'instance' or 'channel' indicating whether the softmax should
+        be computed per image across 'c01' or per spationali location '01' per
+        image across 'c'.
     """
 
     __props__ = ('tensor_format', 'mode', 'algo')
@@ -927,11 +1003,14 @@ err%(name)s = cudnnSoftmaxForward(
 # We need this since other stuff from opt is not importable.
 if cuda_available:
 
-    from theano.sandbox.cuda.opt import local_optimizer, gpu_optimizer
+    from theano.sandbox.cuda.opt import (
+        local_optimizer, gpu_optimizer, gpu_seqopt)
 
+    @register_opt('cudnn')
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
-        raise_no_dnn()
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuConv):
             if node.op.border_mode not in ['full', 'valid']:
                 return
@@ -941,11 +1020,11 @@ if cuda_available:
             return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
                              border_mode=border_mode, subsample=subsample)]
 
-    gpu_optimizer.register("conv_cudnn", local_conv_dnn, 'cudnn')
-
-
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuDownsampleFactorMax):
             if node.op.ignore_border:
                 return
@@ -953,32 +1032,43 @@ if cuda_available:
             ds = node.op.ds
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
-    gpu_optimizer.register("pool_cudnn", local_pool_dnn, 'cudnn')
-
-
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMaxGrad])
     def local_pool_dnn_grad(node):
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuDownsampleFactorMaxGrad):
             if node.op.ignore_border:
                 return
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
-            
+
             desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
-            
+
             return [GpuDnnPoolGrad()(gpu_contiguous(inp),
-                gpu_contiguous(inp_grad), gpu_contiguous(out), desc)]
+                                     gpu_contiguous(inp_grad),
+                                     gpu_contiguous(out), desc)]
 
-    gpu_optimizer.register("pool_cudnn_grad", local_pool_dnn_grad, 'cudnn')
-
-
+    @register_opt('cudnn')
     @local_optimizer([GpuSoftmax])
     def local_softmax_dnn(node):
-        raise_no_dnn()
+        if not dnn_available():
+            return
         if isinstance(node.op, GpuSoftmax):
             ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
-            out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(gpu_contiguous(ins))
+            ins = gpu_contiguous(ins)
+            out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(ins)
             out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
             return [out]
 
-    gpu_optimizer.register("softmax_cudnn", local_softmax_dnn, 'cudnn')
+    class NoCuDNNRaise(Optimizer):
+        def apply(self, fgraph):
+            """ Raise a RuntimeError if cudnn can't be used"""
+            if not dnn_available():
+                # Make an assert error as we want Theano to fail, not
+                # just skip this optimization.
+                raise AssertionError(
+                    "cuDNN optimization was enabled, but Theano was not able"
+                    " to use it. We got this error: \n" +
+                    dnn_available.msg)
+    gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')

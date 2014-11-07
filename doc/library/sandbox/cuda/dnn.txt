@@ -1,0 +1,59 @@
+.. _libdoc_cuda_dnn:
+
+================================
+:mod:`sandbox.cuda.dnn` -- cuDNN
+================================
+
+.. moduleauthor:: LISA
+
+`cuDNN <https://developer.nvidia.com/cuDNN>`_ is an NVIDIA library with
+functionality used by deep neural network. It provides optimized versions
+of some operations like the convolution. cuDNN is not currently
+installed with CUDA 6.5. You must download and install it
+yourself.
+
+To install it, decompress the downloaded file and make the ``*.h`` and
+``*.so*`` files available to the compilation environment. On Linux,
+this can be done by setting the environment variables
+``LD_LIBRARY_PATH``, ``LIBRARY_PATH`` and ``CPATH`` to the
+uncompressed directory path. Separate multiple directory with ``:`` as
+the ``PATH`` environment variable. Or you can copy the ``*.h`` files
+to ``/usr/include`` and the ``*.so*`` files to ``/lib64``.
+
+By default, Theano will detect if it can use cuDNN. If so, it will use
+it.  If not, Theano optimizations will not introduce cuDNN ops. So
+Theano will still work if the user did not introduce them manually.
+
+To get an error if Theano can not use cuDNN, use this Theano flag:
+``optimizer_including=cudnn``.
+
+.. note::
+
+    Normally you should not call GPU Ops directly, but the CPU interface
+    currently does not allow all options supported by cuDNN ops. So it is
+    possible that you will need to call them manually.
+
+
+Functions
+=========
+
+.. automodule:: theano.sandbox.cuda.dnn
+    :members: dnn_conv, dnn_pool
+
+Convolution Ops
+===============
+
+.. automodule:: theano.sandbox.cuda.dnn
+    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI,
+
+Pooling Ops
+===========
+
+.. automodule:: theano.sandbox.cuda.dnn
+    :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad,
+
+Softmax Ops
+===========
+
+.. automodule:: theano.sandbox.cuda.dnn
+    :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad
