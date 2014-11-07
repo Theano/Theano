@@ -642,12 +642,13 @@ class ProfileStats(object):
             fct_shapes[node.fgraph].setdefault(node, [])
             sum_dense = 0
             for out in node.outputs:
-                sh = self.variable_shape[out]
-                if hasattr(out.type, 'get_size'):
-                    v = out.type.get_size(sh)
-                    sum_dense += v
-                else:
-                    v = "Unknown"
+                if out in self.variable_shape.keys():
+                    sh = self.variable_shape[out]
+                    if hasattr(out.type, 'get_size'):
+                        v = out.type.get_size(sh)
+                        sum_dense += v
+                    else:
+                        v = "Unknown"
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
