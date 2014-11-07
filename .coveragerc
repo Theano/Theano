@@ -1,3 +1,10 @@
 [run]
-omit=test*.py
+omit=
+    test*.py
+# GPUs stuff not tested on travis.
+    theano/sandbox/cuda*
+    theano/sandbox/gpuarray*
+    theano/misc/pycuda*
+    theano/misc/gnumpy*
+
 source=theano
