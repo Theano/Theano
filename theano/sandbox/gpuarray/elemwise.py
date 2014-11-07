@@ -40,7 +40,7 @@ def make_argument(v, name):
         return ArrayArg(numpy.dtype(v.type.dtype), name)
 
 
-def ensure_allocated(storage, shape, dtype):
+def ensure_allocated(storage, shape, dtype, ctx):
     odat = storage[0]
     if odat is not None:
         if odat.shape != shape:
@@ -48,7 +48,7 @@ def ensure_allocated(storage, shape, dtype):
             # we have to allocate output storage.
             odat = None
     if odat is None:
-        odat = pygpu.empty(shape, dtype=dtype)
+        odat = pygpu.empty(shape, dtype=dtype, context=ctx)
     storage[0] = odat
     return odat
 
@@ -424,7 +424,7 @@ class GpuElemwise(HideC, Elemwise):
             code += "GpuArray_sync(&%(z)s->ga);\n" % dict(z=z)
         return str(code)
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, ctx):
         # Try to reuse the kernel from a previous call to hopefully
         # avoid recompiling
         if not hasattr(node, '_cache_elemwise_k'):
@@ -445,7 +445,8 @@ class GpuElemwise(HideC, Elemwise):
             if n in self.inplace_pattern:
                 stor[0] = inputs[self.inplace_pattern[n]]
             else:
-                args.append(ensure_allocated(stor, out_shape, out.type.dtype))
+                args.append(ensure_allocated(stor, out_shape, out.type.dtype,
+                                             ctx))
 
         node._cache_elemwise_k(*args, broadcast=True)
         if config.gpuarray.sync:
