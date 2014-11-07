@@ -16,7 +16,7 @@ from theano.tensor.nnet.sigm import (
     register_local_1msigmoid, simplify_mul,
 )
 from theano.tensor.tests.test_basic import (makeBroadcastTester, rand,
-                                            check_floatX,
+                                            check_floatX, upcast_int8_nfunc,
                                             _good_broadcast_unary_normal_no_complex)
 
 
@@ -30,8 +30,8 @@ class T_sigmoid(unittest.TestCase):
 
 SigmoidTester = makeBroadcastTester(
     op=sigmoid,
-    expected=lambda inputs: check_floatX(
-        inputs, 1/(1+numpy.exp(-inputs))),
+    expected=upcast_int8_nfunc(lambda inputs: check_floatX(
+        inputs, 1 / (1 + numpy.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
     #grad=_grad_broadcast_unary_normal,
     name='SigmoidTester',
@@ -39,8 +39,8 @@ SigmoidTester = makeBroadcastTester(
 
 UltraFastSigmoidTester = makeBroadcastTester(
     op=ultra_fast_sigmoid,
-    expected=lambda inputs: check_floatX(
-        inputs, 1/(1+numpy.exp(-inputs))),
+    expected=upcast_int8_nfunc(lambda inputs: check_floatX(
+        inputs, 1 / (1 + numpy.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
     #grad=_grad_broadcast_unary_normal,
     name='UltraFastSigmoidTester',
@@ -49,20 +49,21 @@ UltraFastSigmoidTester = makeBroadcastTester(
 
 HardSigmoidTester = makeBroadcastTester(
     op=hard_sigmoid,
-    expected=lambda inputs: check_floatX(
-        inputs, 1/(1+numpy.exp(-inputs))),
+    expected=upcast_int8_nfunc(lambda inputs: check_floatX(
+        inputs, 1 / (1 + numpy.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
     #grad=_grad_broadcast_unary_normal,
-    name='UltraFastSigmoidTester',
+    name='HardSigmoidTester',
 # This is an approx of the sigmoid. That is why we raise eps
     eps=1e-1)
 
 
 SoftplusTester = makeBroadcastTester(
     op=softplus,
-    expected=lambda inputs: check_floatX(
-        inputs, numpy.log1p(numpy.exp(inputs))),
-    good=_good_broadcast_unary_normal_no_complex,
+    expected=upcast_int8_nfunc(lambda inputs: check_floatX(
+        inputs, numpy.log1p(numpy.exp(inputs)))),
+    good=dict(_good_broadcast_unary_normal_no_complex,
+              int8=[numpy.arange(-127, 89, dtype='int8')]),
     #grad=_grad_broadcast_unary_normal,
     name='SoftplusTester',
 )
