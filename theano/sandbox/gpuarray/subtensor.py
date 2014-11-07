@@ -324,7 +324,7 @@ class GpuIncSubtensor(IncSubtensor):
         #def c_code(self, node, name, inputs, outputs, sub):
         inputs = ["dst", "src"]
         outputs = ["ret"]
-        sub = {"fail": "return NULL;"}
+        sub = {"fail": "return NULL;", 'context': 'src->context'}
         ret += gop.c_code(self.iadd_node, sub_name, inputs, outputs, sub)
         ret += """
             return dst;

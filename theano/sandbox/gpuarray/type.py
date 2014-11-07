@@ -172,7 +172,7 @@ class GpuArrayType(Type):
 
     def value_zeros(self, shape):
         return pygpu.gpuarray.zeros(shape, dtype=self.typecode,
-                                    context=self.context)
+                                    context=self.real_context)
 
     def make_variable(self, name=None):
         return self.Variable(self, name=name)
