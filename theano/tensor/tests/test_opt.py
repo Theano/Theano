@@ -2653,7 +2653,7 @@ def test_local_subtensor_of_dot():
     assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4,:,1:,1])
 
 
-class Test_local_alloc_elemwise(unittest.TestCase):
+class Test_local_elemwise_alloc(unittest.TestCase):
     dtype = config.floatX
 
     def setUp(self):

@@ -1553,7 +1553,7 @@ def local_remove_useless_assert(node):
 
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
-def local_alloc_elemwise(node):
+def local_elemwise_alloc(node):
     """
     elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
       -> elemwise(x, y.TensorType(BROADCAST CONDITION))
