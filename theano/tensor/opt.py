@@ -1449,6 +1449,29 @@ def local_alloc_unary(node):
             return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
 
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Elemwise])
+def local_cast_cast(node):
+    """cast(cast(x, dtype1), dtype2)
+
+    when those contrain:
+    dtype1 == dtype2
+    TODO: the base dtype is the same (int, uint, float, complex)
+          and the first cast cause an upcast.
+    """
+    if (not isinstance(node.op, T.Elemwise) or
+        not isinstance(node.op.scalar_op, scalar.Cast)):
+        return
+    x = node.inputs[0]
+    if (not x.owner or
+        not isinstance(x.owner.op, T.Elemwise) or
+        not isinstance(x.owner.op.scalar_op, scalar.Cast)):
+        return
+    if node.op.scalar_op.o_type == x.owner.op.scalar_op.o_type:
+        return [x]
+
+
 class Assert(T.Op):
     """
     Implements assertion in a computational graph.

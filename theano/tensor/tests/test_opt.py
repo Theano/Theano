@@ -3599,6 +3599,31 @@ class T_useless_elemwise(unittest.TestCase):
         assert topo[0].op == deep_copy_op
 
 
+class T_cast_cast(unittest.TestCase):
+    def setUp(self):
+        mode = theano.compile.get_default_mode()
+        self.mode = mode.including('local_cast_cast')
+
+    def test(self):
+        x = T.fmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("float64")))(x.astype("float64"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype("float32")
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, T.Elemwise)
+
+        x = T.dmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("float32")))(x.astype("float32"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4)
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, T.Elemwise)
+
+
 def test_constant_folding():
     """ Test that constant folding get registered at fast_compile
 
