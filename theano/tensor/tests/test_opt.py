@@ -2417,6 +2417,64 @@ class test_local_subtensor_merge(unittest.TestCase):
                         f(x_val, *i_val)
 
 
+class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+        mode = theano.compile.mode.get_default_mode()
+        self.mode = mode.including("local_adv_sub1_adv_inc_sub1")
+
+    def test0(self):
+        for dtype1, dtype2 in [("float32", "float32"),
+                               ("float32", "float64"),
+                               ("float64", "float32"),
+                               ("float64", "float64")]:
+            x = tensor.matrix(dtype=dtype1)
+            y = tensor.matrix(dtype=dtype2)
+            idx = tensor.ivector()
+
+            dx = numpy.random.rand(4, 5).astype(dtype1)
+            dy = numpy.random.rand(2, 5).astype(dtype2)
+            didx = numpy.asarray([1, 3], "int32")
+
+            # set_subtensor
+            inc = tensor.set_subtensor(x[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode)
+
+            res = f(dx, dy, didx)
+            assert numpy.allclose(dy, res)
+            topo = f.maker.fgraph.toposort()
+            if opt:
+                assert len(topo) == 1
+                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
+            else:
+                assert len(topo) == 2
+
+            # inc_subtensor(data[idx], y)
+            inc = tensor.inc_subtensor(x[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode)
+
+            res = f(dx, dy, didx)
+            assert numpy.allclose((dx[didx] + dy), res)
+            topo = f.maker.fgraph.toposort()
+            len(topo) == 2
+
+            # inc_subtensor(0[idx], y)
+            inc = tensor.inc_subtensor(x.zeros_like()[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode)
+
+            res = f(dx, dy, didx)
+            assert numpy.allclose(dy, res)
+            topo = f.maker.fgraph.toposort()
+            if opt:
+                assert len(topo) == 1
+                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
+            else:
+                assert len(topo) > 2
+
+
 class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
         mode = theano.compile.mode.get_default_mode()

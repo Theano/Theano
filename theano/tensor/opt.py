@@ -2452,6 +2452,40 @@ def local_setsubtensor_of_constants(node):
             return False
 
 
+@register_canonicalize("rm_idx_err", "rm_shape_err")
+@register_stabilize("rm_idx_err", "rm_shape_err")
+@gof.local_optimizer([AdvancedSubtensor1])
+def local_adv_sub1_adv_inc_sub1(node):
+    """ Optimize the possible AdvSub1(AdvIncSub1(...), ...)
+
+    AdvancedSubtensor1(AdvancedIncSubtensor1(0s, y, idx), idx) -> y
+    AdvancedSubtensor1(AdvancedSetSubtensor1(x, y, idx), idx) -> y
+
+    :note: This opt can remove index errors.  We should assert that idx
+        values are in range and that x and y have compatible shapes.
+
+    :todo: add AssertOp to do not remove shape error.
+    """
+    if not isinstance(node.op, AdvancedSubtensor1):
+        return
+    x = node.inputs[0]
+    if (not x.owner or
+        not isinstance(x.owner.op, AdvancedIncSubtensor1)):
+        return
+    idx = node.inputs[1]
+    idx2 = x.owner.inputs[2]
+    y = x.owner.inputs[1]
+    if idx is not idx2:
+        return
+    if (not x.owner.op.set_instead_of_inc and
+        T.extract_constant(x.owner.inputs[0]) != 0):
+        return
+    if y.dtype == node.outputs[0].dtype:
+        return [y]
+    # It is possible that y is upcast or downcast to x.dtype.
+    # In all case, as we set or add with 0, we can just cast y.
+    return [T.cast(y, x.dtype)]
+
 ####################
 # Rebroadcast opts #
 ####################
