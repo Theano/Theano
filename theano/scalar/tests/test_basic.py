@@ -10,6 +10,7 @@ If you do want to rewrite these tests, bear in mind:
 """
 
 import unittest
+import numpy as np
 
 import theano
 from theano.gof import FunctionGraph
@@ -20,8 +21,12 @@ from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy, clip,
-                                 and_, eq, neq, invert, mul)
-import numpy
+                                 and_, eq, neq, invert, mul, Scalar)
+from theano.scalar.basic import (
+    true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
+    rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
+    sinh, arcsinh, tanh, arctanh)
+
 
 def inputs():
     return floats('xyz')
@@ -75,7 +80,7 @@ class test_ScalarOps(unittest.TestCase):
         g3 = theano.gradient.grad(a3, x)
         fn3 = gof.DualLinker().accept(FunctionGraph([x], [g3])).make_function()
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         ntests = 50
         for i in xrange(ntests):
@@ -233,6 +238,128 @@ class test_logical(unittest.TestCase):
         fn = gof.DualLinker().accept(FunctionGraph([x,y], [~x])).make_function()
         for a,b in ((0,1), (0,0), (1,0), (1,1)):
             self.assertTrue(fn(a,b) == ~a, (a,))
+
+
+# This class does not inherit from unittest.TestCase, because it would
+# interfere with the "yield" mechanism that automatically generates test, see
+# http://stackoverflow.com/questions/6689537/nose-test-generators-inside-class
+# Therefore, it needs to be named "test_..." or "Test_...", so nose can pick
+# it up by name, otherwise the tests would not be executed.
+class test_upgrade_to_float(object):
+    # Test for Ops whose output has to be floating point, even when all
+    # inputs are ints.
+    # In particular, when the inputs are int8, the output should be
+    # at least float32, not float16.
+
+    unary_ops_vals = [
+        (inv, range(-127, 0) + range(1, 127)),
+        (sqrt, range(0, 128)),
+        (log, range(1, 128)),
+        (log2, range(1, 128)),
+        (log10, range(1, 128)),
+        (log1p, range(0, 128)),
+        (exp, range(-127, 89)),
+        (exp2, range(-127, 89)),
+        (expm1, range(-127, 89)),
+        (deg2rad, range(-127, 128)),
+        (rad2deg, range(-127, 128)),
+        (cos, range(-127, 128)),
+        (arccos, range(-1, 2)),
+        (cosh, range(-89, 90)),
+        (arccosh, range(1, 128)),
+        (sin, range(-127, 128)),
+        (arcsin, range(-1, 2)),
+        (sinh, range(-89, 90)),
+        (arcsinh, range(-127, 128)),
+        (tan, range(-3, 4)),
+        (arctan, range(-127, 128)),
+        (tanh, range(-127, 128)),
+        (arctanh, [0])]
+
+    binary_ops_vals = [
+        (arctan2, range(-127, 128), range(-127, 128))]
+
+    @staticmethod
+    def _test_unary(unary_op, x_range):
+        xi = int8('xi')
+        xf = float32('xf')
+
+        ei = unary_op(xi)
+        fi = theano.function([xi], ei)
+
+        ef = unary_op(xf)
+        ff = theano.function([xf], ef)
+
+        for x_val in x_range:
+            outi = fi(x_val)
+            outf = ff(x_val)
+
+            assert outi.dtype == outf.dtype, 'incorrect dtype'
+            assert np.allclose(outi, outf), 'insufficient precision'
+
+    @staticmethod
+    def _test_binary(binary_op, x_range, y_range):
+        xi = int8('xi')
+        yi = int8('yi')
+        xf = float32('xf')
+        yf = float32('yf')
+
+        ei = binary_op(xi, yi)
+        fi = theano.function([xi, yi], ei)
+
+        ef = binary_op(xf, yf)
+        ff = theano.function([xf, yf], ef)
+
+        for x_val in x_range:
+            for y_val in y_range:
+                outi = fi(x_val, y_val)
+                outf = ff(x_val, y_val)
+
+                assert outi.dtype == outf.dtype, 'incorrect dtype'
+                assert np.allclose(outi, outf), 'insufficient precision'
+
+    def test_true_div(self):
+        # true_div's upcast policy is not exactly "upgrade_to_float",
+        # so the test is a little bit different
+        x_range = range(-127, 128)
+        y_range = range(-127, 0) + range(1, 127)
+
+        xi = int8('xi')
+        yi = int8('yi')
+        xf = Scalar(theano.config.floatX)('xf')
+        yf = Scalar(theano.config.floatX)('yf')
+
+        ei = true_div(xi, yi)
+        fi = theano.function([xi, yi], ei)
+
+        ef = true_div(xf, yf)
+        ff = theano.function([xf, yf], ef)
+
+        for x_val in x_range:
+            for y_val in y_range:
+                outi = fi(x_val, y_val)
+                outf = ff(x_val, y_val)
+
+                assert outi.dtype == outf.dtype, 'incorrect dtype'
+                assert np.allclose(outi, outf), 'insufficient precision'
+
+    def test_unary(self):
+        # Automatically define all individual unary tests
+        for unary_op, x_range in self.unary_ops_vals:
+            test_name = 'test_%s' % unary_op.name
+            # Make a lambda function so we can name the test
+            test = lambda: self._test_unary(unary_op, x_range)
+            test.description = test_name
+            yield test
+
+    def test_binary(self):
+        # Automatically define all individual binary tests
+        for binary_op, x_range, y_range in self.binary_ops_vals:
+            test_name = 'test_%s' % binary_op.name
+            # Make a lambda function so we can name the test
+            test = lambda: self._test_binary(binary_op, x_range, y_range)
+            test.description = test_name
+            yield test
 
 
 class test_complex_mod(unittest.TestCase):

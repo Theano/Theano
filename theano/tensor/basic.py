@@ -1812,7 +1812,7 @@ def round(a, mode="half_away_from_zero"):
         raise Exception("round mode %s is not implemented." % mode)
 
 
-@_scal_elemwise_with_nfunc('around', 1, -1)
+@_scal_elemwise_with_nfunc('around', 1, 1)
 def round_half_to_even(a):
     """round_half_to_even(a)"""
 
@@ -1952,20 +1952,20 @@ def chi2sf(x, k):
 
 
 #numpy.real(float32) return a view on the inputs.
-#@_scal_elemwise_with_nfunc('real', 1, -1)
+#@_scal_elemwise_with_nfunc('real', 1, 1)
 @_scal_elemwise
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 _tensor_py_operators.real = property(real)
 
 
-@_scal_elemwise_with_nfunc('imag', 1, -1)
+@_scal_elemwise_with_nfunc('imag', 1, 1)
 def imag(z):
     """Return imaginary component of complex-valued tensor `z`"""
 _tensor_py_operators.imag = property(imag)
 
 
-@_scal_elemwise_with_nfunc('angle', 1, -1)
+@_scal_elemwise_with_nfunc('angle', 1, 1)
 def angle(z):
     """Return polar-coordinate angle of complex-valued tensor `z`"""
 
@@ -1975,7 +1975,7 @@ def complex(real, imag):
     """Return complex-valued tensor with `real` and `imag` components"""
 
 
-@_scal_elemwise_with_nfunc('conj', 1, -1)
+@_scal_elemwise_with_nfunc('conj', 1, 1)
 def conj(z):
     """Return the complex conjugate of `z`."""
 

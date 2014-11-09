@@ -1795,7 +1795,8 @@ class GCC_compiler(object):
         return cxxflags
 
     @staticmethod
-    def try_compile_tmp(src_code, tmp_prefix='', flags=(), try_run=False):
+    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False):
         """Try to compile (and run) a test program.
 
         This is useful in various occasions, to check if libraries
@@ -1806,6 +1807,7 @@ class GCC_compiler(object):
 
         If try_run is False, returns the compilation status.
         If try_run is True, returns a (compile_status, run_status) pair.
+        If output is there, we append the stdout and stderr to the output.
         """
         if not theano.config.cxx:
             return False
@@ -1825,14 +1827,14 @@ class GCC_compiler(object):
                 os.write(fd, src_code)
                 os.close(fd)
                 fd = None
-                p_ret = call_subprocess_Popen(
+                out, err, p_ret = output_subprocess_Popen(
                     [theano.config.cxx, path, '-o', exe_path] + flags)
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
                     # Try to execute the program
                     try:
-                        p_ret = call_subprocess_Popen([exe_path])
+                        out, err, p_ret = output_subprocess_Popen([exe_path])
                         run_ok = (p_ret == 0)
                     finally:
                         os.remove(exe_path)
@@ -1846,13 +1848,18 @@ class GCC_compiler(object):
         except OSError, e:
             compilation_ok = False
 
-        if not try_run:
+        if not try_run and not output:
             return compilation_ok
-        else:
+        elif not try_run and output:
+            return (compilation_ok, out, err)
+        elif not output:
             return (compilation_ok, run_ok)
+        else:
+            return (compilation_ok, run_ok, out, err)
 
     @staticmethod
-    def try_flags(flag_list):
+    def try_flags(flag_list, preambule="", body="",
+                  try_run=False, output=False):
         '''
         Try to compile a dummy file with these flags.
 
@@ -1863,13 +1870,16 @@ class GCC_compiler(object):
             return False
 
         code = b("""
+        %(preambule)s
         int main(int argc, char** argv)
         {
+            %(body)s
             return 0;
         }
-        """)
+        """ % locals())
         return GCC_compiler.try_compile_tmp(code, tmp_prefix='try_flags_',
-                flags=flag_list, try_run=False)
+                                            flags=flag_list, try_run=try_run,
+                                            output=output)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
