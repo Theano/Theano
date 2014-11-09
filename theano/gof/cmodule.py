@@ -1572,6 +1572,13 @@ class GCC_compiler(object):
                     GCC_compiler.march_flags = []
                     break
 
+        if not "g++" in theano.config.cxx:
+            _logger.warn(
+                "WARNING: your Theano flag `cxx` seems not to specify `g++`.\n"
+                "         Please specify name or path including `g++`."
+            )
+            detect_march = False
+
         if detect_march:
             GCC_compiler.march_flags = []
 
