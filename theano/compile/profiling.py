@@ -785,19 +785,10 @@ class ProfileStats(object):
                         # ins is viewed_by something else, so its
                         # memory isn't freed
                         pass
-
-            # CPU/GPU check
-            for var in fgraph.variables:
-                from theano.sandbox.cuda import CudaNdarrayType
-                if isinstance(var.type, CudaNdarrayType):
-                    cg_check = 'GPU'
-                else:
-                    cg_check = 'CPU'
-                break 
                 
             return [node_memory_size, running_memory_size,
                     running_max_memory_size, node_memory_saved_by_inplace,
-                    node_memory_saved_by_view, cg_check]
+                    node_memory_saved_by_view]
 
         def count_minimum_peak(node_list, fgraph, nodes_mem):
             global mem_count, mem_bound, max_mem_count
@@ -1044,8 +1035,6 @@ class ProfileStats(object):
         print >> file,  "---"
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
-
-        # print >> file,  "    Running on %s" % (new_running_memory[5])
 
         print >> file,  "    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
             new_max_node_memory_size / 1024.)), int(round(
