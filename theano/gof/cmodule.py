@@ -1574,7 +1574,7 @@ class GCC_compiler(object):
 
         if not "g++" in theano.config.cxx:
             _logger.warn(
-                "WARNING: your Theano flag `cxx` seems not to specify `g++`.\n"
+                "WARNING: your Theano flag `cxx` seems not to be g++ compiler.\n"
                 "         Please specify name or path including `g++`."
             )
             detect_march = False
