@@ -599,12 +599,8 @@ class PushOutScanOutput(gof.Optimizer):
         nodelist = [x for x in fgraph.toposort()
                     if isinstance(x.op, scan_op.Scan)]
         for node in nodelist:
-            #self.process_node(fgraph, node)
-
-            print "Pick a new node"
             # Process the node as long as something gets optimized
             while node != None:
-                print "Process the node"
                 node = self.process_node(fgraph, node)
 
     def process_node(self, fgraph, node):
