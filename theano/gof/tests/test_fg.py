@@ -24,8 +24,3 @@ class TFunctionGraph(unittest.TestCase):
 
         s = pickle.dumps(func)
         func2 = pickle.loads(s)
-
-        vec = numpy.random.uniform(size=100)
-        assert func[vec] == func2(vec)
-
-        
