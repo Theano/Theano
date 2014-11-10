@@ -2089,7 +2089,7 @@ class TestAlloc(unittest.TestCase):
     dtype = config.floatX
     mode = mode_opt
     shared = staticmethod(theano.shared)
-    allocs = [tensor.Alloc] * 3
+    allocs = [tensor.Alloc()] * 3
 
     def setUp(self):
         self.rng = numpy.random.RandomState(seed=utt.fetch_seed())
@@ -2121,13 +2121,13 @@ class TestAlloc(unittest.TestCase):
             #<= is needed as the GPU currently don't implement
             #AdvancedIncSubtensor. When this is the case it can be
             #replaced with ==.
-            assert numpy.sum([isinstance(node.op, alloc)
+            assert numpy.sum([isinstance(node.op, type(alloc))
                               for node in topo_obj]) <= 1
             topo_grad = fgrad.maker.fgraph.toposort()
 
             #print subtensor
             #theano.printing.debugprint(fgrad)
-            assert numpy.sum([isinstance(node.op, alloc)
+            assert numpy.sum([isinstance(node.op, type(alloc))
                               for node in topo_grad]) == n_alloc, (
                                   alloc, subtensor, n_alloc, topo_grad)
             fobj(test_params)
@@ -2138,46 +2138,51 @@ class TestAlloc(unittest.TestCase):
         for alloc in self.allocs:
             # The output is the result of the alloc operation,
             # we do not want it to be constant-folded
-            out = alloc()(val, 50, 60)
+            out = alloc(val, 50, 60)
 
-            f = theano.function([], out)
+            f = theano.function([], out, mode=self.mode)
             topo = f.maker.fgraph.toposort()
-            assert numpy.sum([isinstance(node.op, alloc)
+            assert numpy.sum([isinstance(node.op, type(alloc))
                               for node in topo]) == 1
             assert not isinstance(topo[0].op, DeepCopyOp)
 
     def test_ones(self):
         for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
-            ones = theano.function([], [tensor.ones(shp)])
+            ones = theano.function([], [tensor.ones(shp)], mode=self.mode)
             assert numpy.allclose(ones(), numpy.ones(shp))
 
         # scalar doesn't have to be provided as input
         x = scalar()
         shp = []
-        ones_scalar = theano.function([], [tensor.ones(x.shape)])
+        ones_scalar = theano.function([], [tensor.ones(x.shape)],
+                                      mode=self.mode)
         assert numpy.allclose(ones_scalar(), numpy.ones(shp))
 
         for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
             x = typ()
-            ones_tensor = theano.function([x], [tensor.ones(x.shape)])
+            ones_tensor = theano.function([x], [tensor.ones(x.shape)],
+                                          mode=self.mode)
             inp = numpy.zeros(shp, dtype=config.floatX)
             assert numpy.allclose(ones_tensor(inp),
                                   numpy.ones(shp))
 
     def test_zeros(self):
         for shp in [[], 1, [1], [1, 2], [1, 2, 3]]:
-            zeros = theano.function([], [tensor.zeros(shp)])
+            zeros = theano.function([], [tensor.zeros(shp)],
+                                    mode=self.mode)
             assert numpy.allclose(zeros(), numpy.zeros(shp))
 
         # scalar doesn't have to be provided as input
         x = scalar()
         shp = []
-        zeros_scalar = theano.function([], [tensor.zeros(x.shape)])
+        zeros_scalar = theano.function([], [tensor.zeros(x.shape)],
+                                       mode=self.mode)
         assert numpy.allclose(zeros_scalar(), numpy.zeros(shp))
 
         for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
             x = typ()
-            zeros_tensor = theano.function([x], [tensor.zeros(x.shape)])
+            zeros_tensor = theano.function([x], [tensor.zeros(x.shape)],
+                                           mode=self.mode)
             inp = numpy.zeros(shp, dtype=config.floatX)
             assert numpy.allclose(zeros_tensor(inp),
                                   numpy.zeros(shp))
@@ -3177,7 +3182,8 @@ class T_Join_and_Split(unittest.TestCase):
         self.mode = theano.compile.get_default_mode().excluding(
             'constant_folding'
         )
-        self.join_op = Join
+        # join is an instance, others are classes
+        self.join_op = Join()
         self.split_op = Split
         self.make_vector_op = opt.MakeVector
         self.floatX = config.floatX
@@ -3189,7 +3195,7 @@ class T_Join_and_Split(unittest.TestCase):
     def eval_outputs_and_check_join(self, outputs):
         f = theano.function([], outputs, self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        assert [True for node in topo if isinstance(node.op, type(self.join_op))]
         variables = f()
         if isinstance(variables, (tuple, list)) and len(variables) == 1:
             return variables[0]
@@ -3249,7 +3255,7 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
         topo = f.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
-        assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
+        assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == self.floatX
 
     def test_stack_scalar_make_vector_dtype(self):
@@ -3263,7 +3269,7 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
         topo = f.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
-        assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
+        assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
     def test_stack_scalar_make_vector_constant(self):
@@ -3279,7 +3285,7 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertTrue(numpy.all(val == [10, 1, 2, 3]))
         topo = f.maker.fgraph.toposort()
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
-        assert len([n for n in topo if isinstance(n, self.join_op)]) == 0
+        assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
     def test_stack_hessian(self):
@@ -3489,7 +3495,7 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = inplace_func([ax], [s], mode=self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        assert [True for node in topo if isinstance(node.op, type(self.join_op))]
 
         want = numpy.array([[.1, .2, .3], [.4, .5, .6],
                             [.1, .2, .3], [.4, .5, .6]])
@@ -3530,25 +3536,25 @@ class T_Join_and_Split(unittest.TestCase):
 
         a = self.shared(a_val, broadcastable=(False, False, True))
         b = self.shared(b_val, broadcastable=(True, False, True))
-        c = self.join_op()(1, a, b)
+        c = self.join_op(1, a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # Opt can remplace the int by a Theano constant
-        c = self.join_op()(theano.tensor.constant(1), a, b)
+        c = self.join_op(theano.tensor.constant(1), a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         # In case futur opt insert other useless stuff
-        c = self.join_op()(theano.tensor.cast(theano.tensor.constant(1),
-                                              dtype="int32"),
+        c = self.join_op(theano.tensor.cast(theano.tensor.constant(1),
+                                            dtype="int32"),
                  a, b)
         assert c.type.broadcastable[0] and c.type.broadcastable[2]
         assert not c.type.broadcastable[1]
 
         f = function([], c, mode=self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        assert [True for node in topo if isinstance(node.op, type(self.join_op))]
 
         f()
         utt.verify_grad((lambda a, b: join(1, a, b)), [a_val, b_val], rng=rng,
@@ -3570,12 +3576,12 @@ class T_Join_and_Split(unittest.TestCase):
 
         a = self.shared(a_val, broadcastable=(False, False, True))
         b = self.shared(b_val, broadcastable=(True, False, True))
-        c = self.join_op()(0, a, b)
+        c = self.join_op(0, a, b)
         assert not c.type.broadcastable[0]
 
         f = function([], c, mode=self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        assert [True for node in topo if isinstance(node.op, type(self.join_op))]
 
         f()
         utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng,
@@ -3603,12 +3609,12 @@ class T_Join_and_Split(unittest.TestCase):
 
         a = self.shared(a_val, broadcastable=(True, False, True))
         b = self.shared(b_val, broadcastable=(True, False, True))
-        c = self.join_op()(0, a, b)
+        c = self.join_op(0, a, b)
         assert not c.type.broadcastable[0]
 
         f = function([], c, mode=self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        assert [True for node in topo if isinstance(node.op, type(self.join_op))]
 
         f()
         utt.verify_grad((lambda a, b: join(0, a, b)), [a_val, b_val], rng=rng,
@@ -3620,7 +3626,7 @@ class T_Join_and_Split(unittest.TestCase):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 4, 1).astype(self.floatX)
         a = self.shared(a_val, broadcastable=(True, False, True))
-        b = self.join_op()(0, a)
+        b = self.join_op(0, a)
         assert b.type.broadcastable[0]
         assert b.type.broadcastable[2]
         assert not b.type.broadcastable[1]
@@ -3629,7 +3635,7 @@ class T_Join_and_Split(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         if theano.config.mode != 'FAST_COMPILE':
             assert not [True for node in topo if isinstance(
-                node.op, self.join_op)]
+                node.op, type(self.join_op))]
 
         f()
         utt.verify_grad((lambda a: join(0, a)), [a_val], rng=rng,
@@ -3659,7 +3665,7 @@ class T_Join_and_Split(unittest.TestCase):
 
         f = function([a, b, c, d, e], f, mode=self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, self.join_op)]
+        assert [True for node in topo if isinstance(node.op, type(self.join_op))]
 
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         a_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
@@ -3748,7 +3754,7 @@ class T_Join_and_Split(unittest.TestCase):
         out = f()
         if theano.config.mode != 'FAST_COMPILE':
             assert [True for node in f.maker.fgraph.toposort() if isinstance(
-                node.op, self.join_op)]
+                node.op, type(self.join_op))]
         assert numpy.allclose(out,
                               numpy.concatenate([T_shared.get_value(),
                                                  T_shared.get_value()]))
@@ -3757,7 +3763,7 @@ class T_Join_and_Split(unittest.TestCase):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         v = self.shared(rng.rand(4).astype(self.floatX))
         m = self.shared(rng.rand(4, 4).astype(self.floatX))
-        self.assertRaises(TypeError, self.join_op(), 0, v, m)
+        self.assertRaises(TypeError, self.join_op, 0, v, m)
 
     def test_split_0elem(self):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
