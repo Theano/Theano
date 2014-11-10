@@ -124,8 +124,12 @@ class RecordMode(Mode):
 
        # Then call the function you wish to test, which uses Apply nodes,
        # with record_mode as first parameter to record all the computations
-       # to file.
-       ...
+       # to file. For example, call a theano function which takes the record
+       # mode as mode:
+       
+       x = theano.tensor.dscalar()
+       f = theano.function([x], 2*x, mode=record_mode)
+       print f(4)
 
        # Create a new RecordMode object and initialize it with the previous
        # record.
@@ -136,7 +140,8 @@ class RecordMode(Mode):
        # Call the function to test again with record_mode as first parameter.
        # An exception will be thrown if the recorded computations are not
        # identical between the two runs.
-       ...
+       
+       print f(4)
 
     """
 
@@ -179,11 +184,13 @@ class RecordMode(Mode):
             Parameters
             ----------
             line : string
-                Name of function?
-            i : integer?
-                unique id of node?
-            node : ???
-            fn : ???
+                Line to record. For example, the function name or node name.
+            i : integer
+                Node number in the toposort order.
+            node : ApplyNode,
+                The ApplyNode which created the entry.
+            fn : FunctionType,
+                Function related to ApplyNode.
             """
             try:
                 self.record.handle_line(line)
