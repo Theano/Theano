@@ -320,6 +320,13 @@ class test_SoftMax(unittest.TestCase):
             'channel'
         )
 
+        # Verify the grad operation
+        n = 3
+        m = 5
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        gdata = numpy.asarray(data)[:, :, None, None]
+        T.verify_grad(f_gpu, [gdata], rng=numpy.random)
+
         def check_types(graph, graph_gpu):
             self._check_types(
                 graph,
@@ -337,6 +344,8 @@ class test_SoftMax(unittest.TestCase):
                             theano.sandbox.cuda.dnn.GpuDnnSoftmax
                         )]) == 1
 
+        # Verify that the CPU and GPU implementations return the same results
+        # up to a tolerance.
         self._test_softmax(
             x,
             x_gpu,
