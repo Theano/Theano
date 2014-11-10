@@ -188,7 +188,7 @@ class GpuIncSubtensor(IncSubtensor):
         gop = GpuElemwise(cop.scalar_op,
                           inplace_pattern=copy.copy(cop.inplace_pattern),
                           name="Gpu" + cop.name, nfunc_spec=cop.nfunc_spec,
-                          context=node.inputs[0].type.context)
+                          context=node.inputs[1].type.context)
         y = node.inputs[1]
         xview = y.type()
         iadd_node = gop(xview, y).owner
@@ -222,7 +222,7 @@ class GpuIncSubtensor(IncSubtensor):
                 #sub_x += y
                 pygpu.elemwise.ielemwise2(sub_x, '+', y,  broadcast=False)
             else:
-                #sub_x += -sub_x + y
+                #sub_x = y
                 x.__setitem__(cdata, y)
         else:
             # scalar case
@@ -470,13 +470,10 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
 
         if ilist_.type.dtype[:3] not in ('int', 'uin'):
             raise TypeError('index must be integers')
-        if ilist_.type.broadcastable != (False,):
+        if ilist_.ndim != 1:
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
-        if x_.type.broadcastable[0]:
-            # the caller should have made a copy of x len(ilist) times
-            raise TypeError('cannot index into a broadcastable dimension')
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 

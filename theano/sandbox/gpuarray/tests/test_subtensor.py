@@ -1,36 +1,38 @@
 import numpy
 
 import theano
-from theano.tensor.tests.test_subtensor import T_subtensor
+# Avoid repeating the T_subtensor tests by not directly importing the class
+from theano.tensor.tests import test_subtensor
 
-from theano.sandbox.gpuarray.basic_ops import (HostFromGpu, GpuFromHost)
-from theano.sandbox.gpuarray.subtensor import (GpuIncSubtensor, GpuSubtensor,
-                                               GpuAdvancedIncSubtensor1)
+from ..basic_ops import HostFromGpu, GpuFromHost
+from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
+                         GpuAdvancedIncSubtensor1)
 
-from theano.sandbox.gpuarray.type import gpuarray_shared_constructor
+from ..type import gpuarray_shared_constructor
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import mode_with_gpu
+from .test_basic_ops import mode_with_gpu
 
 from theano.compile import DeepCopyOp
 
 from theano import tensor
 
 
-class G_subtensor(T_subtensor):
+class G_subtensor(test_subtensor.T_subtensor):
     def shortDescription(self):
         return None
 
     def __init__(self, name):
-        T_subtensor.__init__(self, name,
-                             shared=gpuarray_shared_constructor,
-                             sub=GpuSubtensor,
-                             inc_sub=GpuIncSubtensor,
-                             adv_incsub1=GpuAdvancedIncSubtensor1,
-                             mode=mode_with_gpu,
-                             # avoid errors with limited devices
-                             dtype='float32',
-                             ignore_topo=(HostFromGpu, GpuFromHost,
-                                          DeepCopyOp))
+        test_subtensor.T_subtensor.__init__(
+            self, name,
+            shared=gpuarray_shared_constructor,
+            sub=GpuSubtensor,
+            inc_sub=GpuIncSubtensor,
+            adv_incsub1=GpuAdvancedIncSubtensor1,
+            mode=mode_with_gpu,
+            # avoid errors with limited devices
+            dtype='float32',
+            ignore_topo=(HostFromGpu, GpuFromHost,
+                         DeepCopyOp))
         # GPU opt can't run in fast_compile only.
         self.fast_compile = False
         assert self.sub == GpuSubtensor

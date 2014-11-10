@@ -360,18 +360,18 @@ class G_reshape(test_basic.T_reshape):
         return None
 
     def __init__(self, name):
-        test_basic.T_reshape.__init__(self, name,
-                                      shared=gpuarray_shared_constructor,
-                                      op=GpuReshape,
-                                      mode=mode_with_gpu,
-                           # avoid errors with limited devices
-#                             dtype='float32',
-                                      ignore_topo=
-                                      (HostFromGpu, GpuFromHost,
-                                       theano.compile.DeepCopyOp,
-                                       theano.sandbox.gpuarray.elemwise.GpuElemwise,
-                                       theano.tensor.opt.Shape_i,
-                                       theano.tensor.opt.MakeVector))
+        test_basic.T_reshape.__init__(
+            self, name,
+            shared=gpuarray_shared_constructor,
+            op=GpuReshape,
+            mode=mode_with_gpu,
+            # avoid errors with limited devices
+            # dtype='float32',
+            ignore_topo=(HostFromGpu, GpuFromHost,
+                         theano.compile.DeepCopyOp,
+                         theano.sandbox.gpuarray.elemwise.GpuElemwise,
+                         theano.tensor.opt.Shape_i,
+                         theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
 
 
