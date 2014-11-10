@@ -776,6 +776,26 @@ class BaseGpuCorrMM(GpuOp):
 class GpuCorrMM(BaseGpuCorrMM):
     """GPU correlation implementation using Matrix Multiplication.
 
+    :param border_mode: currently supports "valid" only; "full" can be
+        simulated by setting `pad="full"` (at the cost of performance), or
+        by using `GpuCorrMM_gradInputs`
+    :param subsample: the subsample operation applied to each output image.
+        Should be a tuple with 2 elements.
+        `(sv, sh)` is equivalent to `GpuCorrMM(...)(...)[:,:,::sv, ::sh]`,
+        but faster.
+        Set to `(1, 1)` to disable subsampling.
+    :param pad: the width of a border of implicit zeros to pad the input
+        image with. Should be a tuple with 2 elements giving the numbers of
+        rows and columns to pad on each side, or "half" to set the padding
+        to `(kernel_rows // 2, kernel_columns // 2)`, or "full" to set the
+        padding to `(kernel_rows - 1, kernel_columns - 1)` at runtime.
+        Set to `(0, 0)` to disable padding.
+
+    :note: Currently, the Op requires the inputs, filters and outputs to be
+        C-contiguous. Use :func:`gpu_contiguous
+        <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
+        if needed.
+
     :note: You can either enable the Theano flag `optimizer_including=conv_gemm`
         to automatically replace all convolution operations with `GpuCorrMM`
         or one of its gradients, or you can use it as a replacement for
@@ -794,29 +814,8 @@ class GpuCorrMM(BaseGpuCorrMM):
         batchsize or number of filters) may also work around the CUBLAS bug.
     """
     def __init__(self, border_mode="valid",
-            subsample=(1, 1),
-            pad=(0, 0)):
-        """
-        :param border_mode: currently supports "valid" only; "full" can be
-            simulated by setting `pad="full"` (at the cost of performance), or
-            by using `GpuCorrMM_gradInputs`
-        :param subsample: the subsample operation applied to each output image.
-            Should be a tuple with 2 elements.
-            `(sv, sh)` is equivalent to `GpuCorrMM(...)(...)[:,:,::sv, ::sh]`,
-            but faster.
-            Set to `(1, 1)` to disable subsampling.
-        :param pad: the width of a border of implicit zeros to pad the input
-            image with. Should be a tuple with 2 elements giving the numbers of
-            rows and columns to pad on each side, or "half" to set the padding
-            to `(kernel_rows // 2, kernel_columns // 2)`, or "full" to set the
-            padding to `(kernel_rows - 1, kernel_columns - 1)` at runtime.
-            Set to `(0, 0)` to disable padding.
-
-        :note: Currently, the Op requires the inputs, filters and outputs to be
-            C-contiguous. Use :func:`gpu_contiguous
-            <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
-            if needed.
-        """
+                 subsample=(1, 1),
+                 pad=(0, 0)):
         super(GpuCorrMM, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, img, kern):
