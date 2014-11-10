@@ -887,7 +887,7 @@ cudnnTensor4dDescriptor_t %(name)s_%(id)d;
 %(name)s_%(id)d = NULL;
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&%(name)s_%(id)d)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
-               "(inp): %%s", cudnnGetErrorString(err%(id)d));
+               "%%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
 """ % dict(name=name, id=id, fail=fail)
@@ -921,9 +921,6 @@ cudnnStatus_t err%(id)d;
 
     def c_code(self, node, name, inputs, outputs, sub):
         ins = inputs
-        if type(inputs) is not list:
-            ins = [ins]
-
         outs, = outputs
 
         if self.tensor_format == 'b01c':
@@ -1058,7 +1055,7 @@ err%(name)s = cudnnSoftmaxForward(
 
 
 class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
-    softmax_inputs = ['softmax_var', 'softmax_input']
+    softmax_inputs = ['softmax_gout', 'softmax_input']
 
     def make_node(self, dy, sm):
         dy = as_cuda_ndarray_variable(dy)

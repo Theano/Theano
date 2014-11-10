@@ -321,10 +321,11 @@ class test_SoftMax(unittest.TestCase):
         )
 
         # Verify the grad operation
-        n = 3
-        m = 5
-        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-        gdata = numpy.asarray(data)[:, :, None, None]
+        dims = (2, 3, 4, 5)
+        gdata = numpy.arange(
+            numpy.product(dims),
+            dtype='float32'
+        ).reshape(dims)
         T.verify_grad(f_gpu, [gdata], rng=numpy.random)
 
         def check_types(graph, graph_gpu):
