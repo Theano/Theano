@@ -9,7 +9,7 @@ from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 from theano.tensor.basic import Alloc, Join, Split
 
-from theano.gof.python25 import any
+from theano.gof import graph
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 
@@ -21,8 +21,11 @@ except ImportError:
 
 from .type import GpuArrayType, gpu_context_type, get_context
 
+# This is a marker to indicate that any context is acceptable
+# It should never be registered as a context name
+AnyContext = object()
 
-def as_gpuarray_variable(x):
+def as_gpuarray_variable(x, ctx=AnyContext):
     # This is needed to lower the number of useless transfer
     # introduced during optimization.  This speed up optimization and
     # "canonicalize" the graph, so it make easier making some
@@ -33,14 +36,14 @@ def as_gpuarray_variable(x):
         isinstance(x.owner.op, HostFromGpu)):
         return x.owner.inputs[0]
     if hasattr(x, '_as_GpuArrayVariable'):
-        return x._as_GpuArrayVariable()
+        return x._as_GpuArrayVariable(ctx)
     # TODO we need to have the cuda -> gpu path taken care of.
     tensor_x = tensor.as_tensor_variable(x)
-    return gpu_from_host(tensor_x)
-
-
-def as_gpuarray(x):
-    return gpuarray.array(x, copy=False)
+    if ctx is AnyContext:
+        # whether the context tag is None or the attribute is not
+        # defined is not a meaningful difference
+        ctx = getattr(tensor_x.tag, 'context', None)
+    return GpuFromHost(ctx)(tensor_x)
 
 
 class HideC(object):
@@ -322,12 +325,11 @@ class GpuFromHost(Op):
     def perform(self, node, inp, out, ctx):
         x, = inp
         z, = out
-        type = node.outputs[0].type
         z[0] = gpuarray.array(x, context=ctx)
 
     def grad(self, inputs, grads):
         gz, = grads
-        return [host_from_gpu(as_gpuarray_variable(gz))]
+        return [host_from_gpu(as_gpuarray_variable(gz, self.context))]
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
@@ -359,6 +361,53 @@ class GpuFromHost(Op):
         return (4, 1)
 
 gpu_from_host = GpuFromHost(None)
+
+
+class GpuFromGpu(Op):
+    __props__ = ('context',)
+
+    context_type = gpu_context_type
+
+    def __init__(self, context):
+        self.context = context
+
+    def make_node(self, x):
+        if not isinstance(x.type, GpuArrayType):
+            raise TypeError(x)
+        return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
+                                              dtype=x.dtype,
+                                              context=self.context)()])
+
+    def get_context(self, node):
+        return self.context
+
+    def perform(self, node, inp, out, ctx):
+        x, = inp
+        z, = out
+        z[0] = x.transfer(ctx)
+
+    def grad(self, inputs, grads):
+        gz, = grads
+        return [GpuFromGpu(inputs[0].type.context)(gz)]
+
+    def R_op(self, inputs, eval_points):
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+        Py_XDECREF(%(out)s);
+        %(out)s = pygpu_transfer(%(inp)s, %(ctx)s, 0);
+        if (%(out)s == NULL) {
+            %(fail)s
+        }
+        """ % {'inp': inputs[0], 'ctx': sub['context'],
+               'out': outputs[0], 'fail': sub['fail']}
+
+    def c_code_cache_version(self):
+        return (0,)
 
 
 class GpuFromCuda(Op):
