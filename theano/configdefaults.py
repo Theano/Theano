@@ -131,22 +131,22 @@ AddConfigVar('mode',
                 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
         in_c_key=False)
 
-enum = EnumStr("g++", "")
+param = StrParam("g++")
 
 # Test whether or not g++ is present: disable C code if it is not.
 try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
-    enum = EnumStr("")
+    param = StrParam("")
     rc = 1
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             enum,
+             param,
              in_c_key=False)
-del enum
+del param
 
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN

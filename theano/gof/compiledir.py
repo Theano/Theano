@@ -22,7 +22,7 @@ from theano.misc.windows import output_subprocess_Popen
 _logger = logging.getLogger("theano.gof.compiledir")
 
 try:
-    p_out = output_subprocess_Popen(['g++', '-dumpversion'])
+    p_out = output_subprocess_Popen([theano.config.cxx, '-dumpversion'])
     gcc_version_str = p_out[0].strip().decode()
 except OSError:
     # Typically means gcc cannot be found.
