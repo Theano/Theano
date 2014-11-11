@@ -189,3 +189,29 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX)],
                                 self.op_class,
                                 warn=False)
+        
+    def test_solve_correctness(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the Cholesky op.")
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        A = theano.tensor.matrix()
+        b = theano.tensor.matrix()
+        y = self.op(A, b)
+        solve_func = theano.function([A,b],y)
+
+        b_val = numpy.asarray(rng.rand(5, 1), dtype=config.floatX)
+        
+        # 1-test general case
+        A_val = numpy.asarray(rng.rand(5, 5), dtype=config.floatX)
+        assert numpy.allclose(scipy.linalg.solve(A_val, b_val),
+                              solve_func(A_val, b_val))
+
+        # 2-test lower traingular case
+        A_val_low = numpy.tril(A_val)
+        assert numpy.allclose(scipy.linalg.solve_triangular(A_val_low, b_val, lower=True),
+                              solve_func(A_val_low, b_val))
+
+        # 3-test upper traingular case
+        A_val_up = numpy.triu(A_val)
+        assert numpy.allclose(scipy.linalg.solve_triangular(A_val_up, b_val, lower=False),
+                              solve_func(A_val_up, b_val))
