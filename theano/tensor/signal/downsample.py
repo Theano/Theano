@@ -68,7 +68,7 @@ class DownsampleFactorMax(Op):
     """
 
     @staticmethod
-    def out_shape(imgshape, ds, st, ignore_border=False):
+    def out_shape(imgshape, ds, ignore_border=False, st=None):
         """Return the shape of the output from this op, for input of given
         shape and flags.
 
@@ -96,18 +96,43 @@ class DownsampleFactorMax(Op):
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '
                             '(rows, cols)')
+
+        if st == None:
+            st = ds
         r, c = imgshape[-2:]
-        rval = list(imgshape[:-2]) + [(r - ds[0]) // st[0] + 1, (c - ds[1]) // st[1] + 1]
+        if st[0] >= ds[0]:
+            nr = r // st[0]
+        else:
+            nr = (r - ds[0]) // st[0] + 1
+
+        if st[1] >= ds[1]:
+            nc = c // st[1]
+        else:
+            nc = (c - ds[1]) // st[1] + 1
+        rval = list(imgshape[:-2]) + [nr, nc]
 
         if not ignore_border:
-            if isinstance(r, theano.Variable):
-                rval[-2] = tensor.switch((r - ds[0]) % st[0], rval[-2] + 1, rval[-2])
-            elif (r - ds[0]) % st[0]:
-                rval[-2] += 1
-            if isinstance(c, theano.Variable):
-                rval[-1] = tensor.switch((c - ds[1]) % st[1], rval[-1] + 1, rval[-1])
-            elif (c - ds[1]) % st[1]:
-                rval[-1] += 1
+            if st[0] >= ds[0]:
+                if isinstance(r, theano.Variable):
+                    rval[-2] = tensor.switch(r % st[0], rval[-2] + 1, rval[-2])
+                elif r % ds[0]:
+                    rval[-2] += 1
+            else:
+                if isinstance(r, theano.Variable):
+                    rval[-2] = tensor.switch((r - ds[0]) % st[0], rval[-2] + 1, rval[-2])
+                elif (r - ds[0]) % st[0]:
+                    rval[-2] += 1
+
+            if st[1] >= ds[1]:
+                if isinstance(c, theano.Variable):
+                    rval[-1] = tensor.switch(c % st[1], rval[-1] + 1, rval[-1])
+                elif c % ds[1]:
+                    rval[-1] += 1
+            else:
+                if isinstance(c, theano.Variable):
+                    rval[-1] = tensor.switch((c - ds[1]) % st[1], rval[-1] + 1, rval[-1])
+                elif (c - ds[1]) % st[1]:
+                    rval[-1] += 1
         return rval
 
     def __init__(self, ds, ignore_border=False, st=None):
@@ -148,7 +173,7 @@ class DownsampleFactorMax(Op):
         return hash(type(self)) ^ hash(self.ds) ^ hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
+        return '%s{%s,%s,%s}' % (self.__class__.__name__,
                               self.ds, self.st, self.ignore_border)
 
     def make_node(self, x):
@@ -165,10 +190,10 @@ class DownsampleFactorMax(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMax requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.st, self.ignore_border)
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.st,
-                                              self.ignore_border))
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
+                                              self.ignore_border, self.st))
             z[0] = theano._asarray(z[0], dtype=x.dtype)
         zz = z[0]
 
@@ -182,32 +207,36 @@ class DownsampleFactorMax(Op):
         img_cols = x.shape[-1]
 
         if self.ignore_border:
-            x_usable2 = (x.shape[2] - ds0) // st0 * st0 + ds0
+            if st0 >= ds0:
+                x_usable2 = (x.shape[2] // ds0 * ds0)
+            else:
+                x_usable2 = (x.shape[2] - ds0) // st0 * st0 + ds0
         else:
             x_usable2 = x.shape[2]
+
         if self.ignore_border:
-            x_usable3 = (x.shape[3] - ds1) // st1 * st1 + ds1
+            if st1 >= ds1:
+                x_usable3 = (x.shape[3] // ds1 * ds1)
+            else:
+                x_usable3 = (x.shape[3] - ds1) // st1 * st1 + ds1
         else:
             x_usable3 = x.shape[3]
+
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
                     row_st = r * st0
+                    row_end = __builtin__.min(row_st + ds0, img_rows)
                     for c in xrange(pc):
                         col_st = c * st1
-                        for i in xrange(ds0):
-                            row_ind = row_st + i
-                            if row_ind >= img_rows:
-                                continue
-                            for j in xrange(ds1):
-                                col_ind = col_st + j
-                                if col_ind >= img_cols:
-                                    continue
+                        col_end = __builtin__.min(col_st + ds1, img_cols)
+                        for row_ind in xrange(row_st, row_end):
+                            for col_ind in xrange(col_st, col_end):
                                 zz[n, k, r, c] = __builtin__.max(zz[n, k, r, c],
                                                            x[n, k, row_ind, col_ind])
 
     def infer_shape(self, node, in_shapes):
-        shp = self.out_shape(in_shapes[0], self.ds, self.st, self.ignore_border)
+        shp = self.out_shape(in_shapes[0], self.ds, self.ignore_border, self.st)
         return [shp]
 
     def grad(self, inp, grads):
@@ -290,7 +319,7 @@ class DownsampleFactorMax(Op):
         }
         """ % locals()
 
-    def c_code_cache_version_tmp(self):
+    def c_code_cache_version(self):
         return (0, 1)
 
 

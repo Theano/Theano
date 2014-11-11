@@ -1,4 +1,5 @@
 import unittest
+import __builtin__
 import numpy
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
@@ -34,6 +35,60 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 for j in range(output_val.shape[-1]):
                     jj = j * ds[1]
                     patch = input[k][ii:ii + ds[0], jj:jj + ds[1]]
+                    output_val[k][i, j] = numpy.max(patch)
+        return output_val
+
+    @staticmethod
+    def numpy_max_pool_2d_stride(input, ds, ignore_border=False, st=None):
+        '''Helper function, implementing max_pool_2d in pure numpy
+           this function provides st input to indicate the stide size
+           for the pooling regions. if not indicated, st == sd.'''
+        if len(input.shape) < 2:
+            raise NotImplementedError('input should have at least 2 dim,'
+                                      ' shape is %s'\
+                    % str(input.shape))
+
+        if st == None:
+            st = ds
+        xi = 0
+        yi = 0
+        if not ignore_border:
+            if st[0] >= ds[0]:
+                if input.shape[-2] % st[0]:
+                    xi += 1
+            else:
+                if (input.shape[-2] - ds[0]) % st[0]:
+                    xi += 1
+            if st[1] >= ds[1]:
+                if input.shape[-1] % st[1]:
+                    yi += 1
+            else:
+                if (input.shape[-1] % - ds[1]) % st[1]:
+                    yi += 1
+        out_shp = list(input.shape[:-2])
+        if st[0] >= ds[0]:
+            out_shp.append(input.shape[-2] / ds[0] + xi)
+        else:
+            out_shp.append((input.shape[-2] - ds[0]) / st[0] + 1 + xi)
+
+        if st[1] >= ds[1]:
+            out_shp.append(input.shape[-1] / ds[1] + yi)
+        else:
+            out_shp.append((input.shape[-1] - ds[1]) / st[1] + 1 + yi)
+            
+        output_val = numpy.zeros(out_shp)
+
+        img_rows = input.shape[-2]
+        img_cols = input.shape[-1]
+
+        for k in numpy.ndindex(*input.shape[:-2]):
+            for i in range(output_val.shape[-2]):
+                ii_st = i * ds[0]
+                ii_end = __builtin__.min(ii_st + ds[0], img_rows)
+                for j in range(output_val.shape[-1]):
+                    jj_st = j * ds[1]
+                    jj_end = __builtin__.min(jj_st + ds[1], img_cols)
+                    patch = input[k][ii_st:ii_end, jj_st:jj_end]
                     output_val[k][i, j] = numpy.max(patch)
         return output_val
 
