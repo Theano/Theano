@@ -1715,12 +1715,14 @@ theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
                                      is_valid=lambda x: x
                                  ),
                                  in_c_key=False)
-#This version if faster but not as safe.
-theano.configparser.AddConfigVar('experimental.local_alloc_elemwise_assert',
-        "If False enable the experimental optimization local_alloc_elemwise"
-                                 " but WITHOUT assert into the graph!",
-        theano.configparser.BoolParam(True),
-        in_c_key=False)
+
+# False could make the graph faster but not as safe.
+theano.configparser.AddConfigVar(
+    'experimental.local_alloc_elemwise_assert',
+    "When the local_alloc_elemwise is applied, add"
+    " an assert to highlight shape errors.",
+    theano.configparser.BoolParam(True),
+    in_c_key=False)
 
 ############################
 # Constant Canonicalization
