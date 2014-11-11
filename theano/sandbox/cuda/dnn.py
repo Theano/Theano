@@ -275,9 +275,9 @@ if ((err%(id)d = cudnnCreateFilterDescriptor(&kerns%(id)d)) != CUDNN_STATUS_SUCC
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-cudnnDestroyTensor4dDescriptor(input%(id)d);
-cudnnDestroyTensor4dDescriptor(output%(id)d);
-cudnnDestroyFilterDescriptor(kerns%(id)d);
+if (input%(id)d != NULL) {cudnnDestroyTensor4dDescriptor(input%(id)d);}
+if (output%(id)d != NULL) {cudnnDestroyTensor4dDescriptor(output%(id)d);}
+if (kerns%(id)d != NULL) {cudnnDestroyFilterDescriptor(kerns%(id)d);}
 """ % dict(id=struct_id)
 
     def c_set_filter(self, var, desc, err, fail):
@@ -380,7 +380,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            method=self.conv_op, path=self.path_flag)
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 class GpuDnnConv(GpuDnnConvBase):
