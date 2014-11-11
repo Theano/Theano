@@ -690,11 +690,12 @@ class ProfileStats(object):
                 The sum of memory saved by reusing the input instead of
                 new allocation
             """
-            node_memory_size = 0
-            running_memory_size = 0
-            running_max_memory_size = 0
-            node_memory_saved_by_view = 0
-            node_memory_saved_by_inplace = 0
+            # Initial Mem info values [CPU, GPU]
+            node_memory_size = [0, 0]
+            running_memory_size = [0, 0]
+            running_max_memory_size = [0, 0]
+            node_memory_saved_by_view = [0, 0]
+            node_memory_saved_by_inplace = [0, 0]
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
 
@@ -723,17 +724,25 @@ class ProfileStats(object):
 
                 for v in val:
                     # TODO check the op returned a view
+                    if isinstance(v.type, theano.sandbox.cuda.CudaNdarrayType):
+                        cg = 1
+                    else:
+                        cg = 0
                     if dmap and idx in dmap:
-                        node_memory_saved_by_inplace += v
+                        node_memory_saved_by_inplace[cg] += v
                     # TODO check the op returned a view
                     elif vmap and idx in vmap:
-                        node_memory_saved_by_view += v
+                        node_memory_saved_by_view[cg] += v
                     idx += 1
 
                 # Update the Python emulating dicts and add the memory
                 # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
+                    if isinstance(v.type, theano.sandbox.cuda.CudaNdarrayType):
+                        cg = 1
+                    else:
+                        cg = 0
                     ins = None
                     if dmap and idx2 in dmap:
                         vidx = dmap[idx2]
@@ -757,17 +766,23 @@ class ProfileStats(object):
                         view_of[out] = origin
                         viewed_by[origin].append(out)
                     else:
-                        running_memory_size += var_mem[out]
-                        node_memory_size += var_mem[out]
+                        running_memory_size[cg] += var_mem[out]
+                        node_memory_size[cg] += var_mem[out]
                     idx2 += 1
 
-                running_max_memory_size = max(running_max_memory_size,
-                                              running_memory_size)
+                running_max_memory_size[0] = max(running_max_memory_size[0],
+                                              running_memory_size[0])
+                running_max_memory_size[1] = max(running_max_memory_size[1],
+                                              running_memory_size[1])
 
                 # Mimic the combination of Theano and Python gc
                 for ins in node.inputs:
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
+                    if isinstance(v.type, theano.sandbox.cuda.CudaNdarrayType):
+                        cg = 1
+                    else:
+                        cg = 2
                     if (dependencies[ins] and
                             ins not in fgraph.outputs and
                             ins.owner and
@@ -780,7 +795,7 @@ class ProfileStats(object):
                             if (not viewed_by[origin] and
                                     origin not in fgraph.inputs and
                                     not isinstance(origin, theano.Constant)):
-                                running_memory_size -= var_mem[origin]
+                                running_memory_size[cg] -= var_mem[origin]
                     else:
                         # ins is viewed_by something else, so its
                         # memory isn't freed
