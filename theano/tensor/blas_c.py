@@ -204,7 +204,6 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
             {
                 double * zoutdata = (double*) PyArray_DATA(%(Z)s);
-                const double * zdata = (double*)PyArray_DATA(%(A)s);
                 const double * xdata = (double*)PyArray_DATA(%(x)s);
                 const double * ydata = (double*)PyArray_DATA(%(y)s);
                 const double * adata = (double*)PyArray_DATA(%(a)s);
@@ -264,7 +263,6 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                 }
                 else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
                 {
-                    //fprintf(stderr, "CGer V1 \\n");
                     double alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                     dger_(&Nz0, &Nz1, &alpha,
                         (double*)x_data, &Sx,
@@ -283,10 +281,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             {
                 if (PyArray_DESCR(%(Z)s)->type_num == NPY_FLOAT)
                 {
-                    //fprintf(stderr, "B %%i %%i %%i %%i\\n", Nz0, Nz1, Sz0, Sz1);
                     float alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
-                    //fprintf(stderr, "alpha=%%f\\n", alpha);
-                    //fprintf(stderr, "sx  sy %%i %%i\\n", Sx, Sy);
                     sger_(&Nz1, &Nz0, &alpha,
                         (float*)y_data, &Sy,
                         (float*)x_data, &Sx,
@@ -294,7 +289,6 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                 }
                 else if (PyArray_DESCR(%(Z)s)->type_num == NPY_DOUBLE)
                 {
-                    //fprintf(stderr, "CGer V2 \\n");
                     double alpha = ((dtype_%(a)s*)PyArray_DATA(%(a)s))[0];
                     dger_(&Nz1, &Nz0, &alpha,
                         (double*)y_data, &Sy,
