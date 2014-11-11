@@ -14,11 +14,13 @@ if cuda.cuda_available == False:
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
-    mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
+    # We should not exclude the 'gpu' tag, as some CPU opt are tagged
+    # as GPU to make them run in fast_compile with gpu.
+
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode()
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
