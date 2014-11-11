@@ -403,18 +403,44 @@ class Images2Neibs(Op):
 
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     """ 
-    :param ten4:     a list of lists of images
-                     ten4 is of shape (list 1 dim, list 2 dim,
-                     row, col)
+    Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
+    allows to apply a sliding window operation to a tensor containing 
+    images
+    or other two-dimensional objects. 
+    The sliding window operation loops 
+    over points in input data and stores a rectangular neighbourhood of 
+    each point.   
+    It is possible to assign a step of selecting patches (parameter 
+    `neib_step`). 
+
+    :param ten4:     A 4-dimensional tensor which represents 
+                     a list of lists of images.a list of lists of images.
+                     It should have shape (list 1 dim, list 2 dim,
+                     row, col). The first two dimensions can be 
+                     useful to store different channels and batches.
     :type ten4:      A 4d tensor-like.
-    :param neib_shape: (r,c) where r is the height of the neighborhood
-                    in rows and c is the width of the neighborhood
+    :param neib_shape: A tuple containing two
+                    values: height and width of the neighbourhood.
+                    It should have shape (r,c) where r is the height of the
+                    neighborhood in rows and c is the width of the neighborhood
                     in columns
     :type neib_shape: A 1d tensor-like of 2 values.
     :param neib_step: (dr,dc) where dr is the number of rows to
                       skip between patch and dc is the number of
-                      columns. When None, this is the same as
+                      columns. The parameter should be a tuple of two elements: 
+                      number 
+                      of rows and number of columns to skip each iteration. 
+                      Basically, when the step is 1, the neighbourhood of every
+                      first element is taken and every possible rectangular 
+                      subset is returned. By default it is equal to
+                      `neib_shape` in other words, the
+                      patches are disjoint. When the step is greater than 
+                      `neib_shape`, some elements are omitted. When None, this
+                      is the same as
                       neib_shape(patch are disjoint)
+                      .. note:: Currently the step size should be chosen in the way that the 
+                         corresponding dimension :math:`i` (width or height) is equal to 
+                         :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
     :type neib_step: A 1d tensor-like of 2 values.
     :param mode:
         Possible values:
@@ -451,33 +477,6 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
              these for loops, they're just the easiest way to describe the 
              output pattern.
 
-    Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
-    allows to apply a sliding window operation to a tensor containing 
-    images
-    or other two-dimensional objects. 
-    
-    The sliding window operation loops 
-    over points in input data and stores a rectangular neighbourhood of 
-    each point. The input `ten4` is a 4-dimensional array which represents 
-    a list of lists of images. The first two dimensions can be 
-    useful to store different channels and batches.
-
-    The second input of the function `neib_shape` is a tuple containing two
-    values: height and width of the neighbourhood.
-
-    It is possible to assign a step of selecting patches (parameter 
-    `neib_step`). The parameter should be a tuple of two elements: number of
-    rows and number of columns to skip each iteration. Basically, when the 
-    step is 1, the neighbourhood of every first element is taken and every
-    possible rectangular subset is returned. By default it is equal to
-    `neib_shape` in other words, the
-    patches are disjoint. When the step is greater than `neib_shape`, some
-    elements are omitted.
-             
-    .. note:: Currently the step size should be chosen in the way that the 
-       corresponding dimension :math:`i` (width or height) is equal to 
-       :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
-
     Example:
   
     .. code-block:: python
@@ -503,13 +502,22 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
 
 def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     """
-    Inverse of images2neib.
+    Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
+    performs the inverse operation of 
+    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`. It inputs
+    the output of :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
+    and reconstructs its input.
 
-    :param neibs: matrix like the one obtained by images2neib
-    :param neib_shape: neib_shape that was used in images2neib
-    :param original_shape: original shape of the 4d tensor given to images2neib
+    :param neibs: matrix like the one obtained by 
+                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
+    :param neib_shape: `neib_shape` that was used in 
+                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
+    :param original_shape: original shape of the 4d tensor given to 
+                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
 
-    :return: Return a 4d tensor of shape `original_shape`.
+    :return: Reconstructs the input of 
+                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
+                  a 4d tensor of shape `original_shape`.
 
     .. note:: Currently, the function doesn't support tensors created with
        `neib_step` different from default value. This means that it may be
@@ -519,17 +527,9 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for 
        gradient computation.
     
-    Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
-    performs the inverse operation of 
-    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`. It inputs
-    the output of :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
-    `neib_shape` -- `neib_shape` that was used in 
-    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`, 
-    `original_shape` -- original shape of 4d tensor given to 
-    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
-    and reconstructs its input.
 
-    Example:
+    Example which uses a tensor gained in example for
+    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`:
 
     .. code-block:: python
 
