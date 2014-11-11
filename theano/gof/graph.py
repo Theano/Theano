@@ -21,6 +21,9 @@ from theano.misc.ordered_set import OrderedSet
 is_same_graph_with_merge = None
 equal_computations = None
 
+# This is a marker to signify that there is no context for the node.
+# It should be used by referencing it though the graph module as
+# graph.NoContext
 NoContext = object()
 
 class Node(utils.object2):

@@ -16,24 +16,38 @@ except ImportError:
 
 _context_reg = {}
 
-def reg_context(name, ctx, dev):
+def reg_context(name, ctx):
+    """
+    Register a context by mapping it to a name.
+    
+    The context must be of type `GpuContext` and the name can be
+    anything hashable (but is usually a string).  Only one context can
+    be registered per name and the second registration for a given
+    name will raise an error.
+
+    :param name: an hashable object
+    :param ctx: a GpuContext instance
+    """
     if name in _context_reg:
         raise ValueError("context name %s is already defined" % (name,))
     if not isinstance(ctx, gpuarray.GpuContext):
         raise TypeError("context is not GpuContext")
-    _context_reg[name] = (ctx, dev)
+    _context_reg[name] = ctx
 
 
 def get_context(ref):
+    """
+    Retrive the context associated with a name.
+
+    Return the context object mapped to `ref` that was previously
+    register through :func:`reg_context`.  Trying to get the context
+    for an unregistered `ref` will raise a exception.
+
+    :param ref: an hashable object
+    """
     if not ref in _context_reg:
         raise ValueError("context name %s not defined" %(ref,))
-    return _context_reg[ref][0]
-
-
-def get_dev(ref):
-    if not ref in _context_reg:
-        raise ValueError("context name %s not defined" %(ref,))
-    return _context_reg[ref][1]
+    return _context_reg[ref]
 
 
 class GpuArrayType(Type):
