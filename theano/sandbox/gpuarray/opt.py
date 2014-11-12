@@ -49,7 +49,7 @@ gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
 
-# do not add 'fast_run' to these two as this would always enable gpuarray mode
+# do not add 'fast_run' to this as it would always enable gpuarray mode
 optdb.register('gpuarray_opt', gpu_seqopt,
                optdb.__position__.get('add_destroy_handler', 49.5) - 1,
                'gpuarray')

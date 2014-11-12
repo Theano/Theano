@@ -38,7 +38,7 @@ def init_dev(dev, name):
     reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
-        print >> sys.stderr, "Mapped name %s to device %s: %s" % (name, dev, context.devname)
+        print >> sys.stderr, "Mapped name %r to device %s: %s" % (name, dev, context.devname)
 
 
 if pygpu:
@@ -51,10 +51,15 @@ if pygpu:
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device, None)
+        if config.contexts != '':
+            for n, d in (c.split('->') for c in config.contexts.split(';')):
+                init_dev(d, n)
+                # TODO: figure out what to do with the optimizations
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
 else:
     if (config.gpuarray.init_device != '' or
+        config.contexts != '' or
         config.device.startswith('opencl') or
         config.device.startswith('cuda')):
         error("pygpu was configured but could not be imported", exc_info=True)
