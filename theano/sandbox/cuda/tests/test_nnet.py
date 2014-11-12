@@ -383,7 +383,8 @@ class test_SoftMax(unittest.TestCase):
             mode_w_cudnn, check_types_opt
         )
 
-        # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization
+        # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
+        # applied when cudnn is required
         y = T.vector('y')
         f = theano.function(
             [y],
@@ -403,3 +404,26 @@ class test_SoftMax(unittest.TestCase):
                         i.op,
                         theano.tensor.nnet.SoftmaxGrad
                     )]) == 0)
+
+        # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is not
+        # applied when cudnn is excluded or not available
+        mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
+        y = T.vector('y')
+        f = theano.function(
+            [y],
+            T.grad(T.nnet.softmax(y).mean(), y),
+            mode=mode_wo_cudnn
+        )
+        sorted_f = f.maker.fgraph.toposort()
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                    )]) == 0)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.tensor.nnet.SoftmaxGrad
+                    )]) == 1)
