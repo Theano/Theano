@@ -1173,7 +1173,7 @@ if cuda_available:
                 'accurate',
                 'channel'
             )(
-                ins[0],
+                gpu_contiguous(ins[0]),
                 gpu_contiguous(ins[1])
             )
             return [out.dimshuffle(0, 1)]
