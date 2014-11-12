@@ -503,7 +503,7 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
 def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     """
     Function :func:`neibs2images <theano.sandbox.neighbours.neibs2images>`
-    performs the inverse operation of 
+    performs the inverse operation of
     :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`. It inputs
     the output of :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
     and reconstructs its input.
@@ -523,12 +523,12 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
        `neib_step` different from default value. This means that it may be
        impossible to compute the gradient of a variable gained by 
        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` w.r.t. 
-       its inputs in this case because it uses 
+       its inputs in this case, because it uses 
        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for 
        gradient computation.
     
 
-    Example which uses a tensor gained in example for
+    Example, which uses a tensor gained in example for
     :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`:
 
     .. code-block:: python
