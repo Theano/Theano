@@ -2548,7 +2548,7 @@ class T_Scan(unittest.TestCase):
         x = theano.tensor.fmatrix('x')
 
         mem_val = numpy.zeros((2,), dtype='float32')
-        memory = theano.shared(mem_val.copy())
+        memory = theano.shared(mem_val)
         W = theano.shared(numpy.random.random((5, 2)).astype('float32'))
 
         def f(inp, mem):
@@ -2557,8 +2557,8 @@ class T_Scan(unittest.TestCase):
             return d, d
 
         outs, updts = theano.scan(f, sequences=[x],
-                          non_sequences=[],
-                          outputs_info=[None, memory])
+                                  non_sequences=[],
+                                  outputs_info=[None, memory])
 
         f = theano.function([x], outs[0])
         f2 = theano.function([x], outs[1])
@@ -2566,7 +2566,7 @@ class T_Scan(unittest.TestCase):
         x_val = numpy.random.random((4, 3)).astype('float32')
 
         f_vals = f(x_val)
-        memory.set_value(mem_val.copy())
+        memory.set_value(mem_val)
         f2_vals = f2(x_val)
         utt.assert_allclose(f_vals, f2_vals)
 
