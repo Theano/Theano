@@ -620,10 +620,7 @@ class PushOutScanOutput(gof.Optimizer):
         # Construct the list of non_sequences to simplify a few things
         inner_non_seqs = op.inner_non_seqs(clean_inputs)
         outer_non_seqs = op.outer_non_seqs(node.inputs)
-        inner_seqs = op.inner_seqs(clean_inputs)
-        outer_seqs = op.outer_seqs(node.inputs)
         assert len(inner_non_seqs) == len(outer_non_seqs)
-        assert len(inner_seqs) == len(outer_seqs)
 
         new_scan_node = None
 
