@@ -5,11 +5,12 @@ from theano import Apply, gof, tensor
 from theano.gof import Optimizer
 from theano.gof.type import CDataType
 from theano.compat import PY3
+from theano.tensor.nnet import SoftmaxGrad
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
                                  device_properties)
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
-                                           gpu_contiguous)
+                                           gpu_contiguous, HostFromGpu)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
@@ -887,7 +888,7 @@ cudnnTensor4dDescriptor_t %(name)s_%(id)d;
 %(name)s_%(id)d = NULL;
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&%(name)s_%(id)d)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
-               "%%s", cudnnGetErrorString(err%(id)d));
+               ": %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
 """ % dict(name=name, id=id, fail=fail)
@@ -1152,3 +1153,27 @@ if cuda_available:
                     " to use it. We got this error: \n" +
                     dnn_available.msg)
     gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
+
+    @register_opt('cudnn')
+    @local_optimizer([SoftmaxGrad])
+    def local_softmax_dnn_grad(node):
+        if (
+            isinstance(node.op, SoftmaxGrad)
+            and (isinstance(node.inputs[0].owner.op, HostFromGpu)
+                 or isinstance(node.inputs[1].owner.op, HostFromGpu))
+        ):
+            ins = []
+            for n in node.inputs:
+                if isinstance(n.owner.op, HostFromGpu):
+                    n = n.owner.inputs[0]
+                ins.append(n.dimshuffle(0, 1, 'x', 'x'))
+
+            out = GpuDnnSoftmaxGrad(
+                'bc01',
+                'accurate',
+                'channel'
+            )(
+                ins[0],
+                gpu_contiguous(ins[1])
+            )
+            return [out.dimshuffle(0, 1)]
