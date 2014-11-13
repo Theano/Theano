@@ -74,6 +74,7 @@ class GpuArrayType(Type):
         return self.__class__(dtype=dtype, broadcastable=broadcastable,
                               name=self.name, context=self.context)
 
+    # This is a property to keep the type pickleable
     @property
     def __real_context(self):
         return get_context(self.context)
