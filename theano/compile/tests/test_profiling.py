@@ -24,8 +24,8 @@ def test_profiling():
         x = [T.dvector("val%i" % i) for i in range(3)]
 
         z = []
-        z += [T.outer(x[i], x[i+1]).sum(axis=1) for i in range(len(x)-1)]
-        z += [x[i] + x[i+1] for i in range(len(x)-1)]
+        z += [T.outer(x[i], x[i + 1]).sum(axis=1) for i in range(len(x) - 1)]
+        z += [x[i] + x[i + 1] for i in range(len(x) - 1)]
 
         p = theano.ProfileStats(False)
 
@@ -47,8 +47,10 @@ def test_profiling():
         the_string = buf.getvalue()
         lines1 = [l for l in the_string.split("\n") if "Max if linker" in l]
         lines2 = [l for l in the_string.split("\n") if "Minimum peak" in l]
-        assert "Max if linker=cvm(default): 8224KB (16408KB)" in the_string, (lines1, lines2)
-        assert "Minimum peak from all valid apply node order is 8208KB" in the_string, (lines1, lines2)
+        assert "Max if linker=cvm(default): 8224KB (16408KB)" in the_string, (
+            lines1, lines2)
+        assert "Minimum peak from all valid apply node order is 8208KB" in the_string, (
+            lines1, lines2)
 
     finally:
         theano.config.profile = config1
@@ -64,10 +66,10 @@ def test_ifelse():
         theano.config.profile = True
         theano.config.profile_memory = True
 
-        a,b = T.scalars('a', 'b')
-        x,y = T.scalars('x', 'y')
+        a, b = T.scalars('a', 'b')
+        x, y = T.scalars('x', 'y')
 
-        z = ifelse(T.lt(a, b), x*2, y*2)
+        z = ifelse(T.lt(a, b), x * 2, y * 2)
 
         p = theano.ProfileStats(False)
 
@@ -77,7 +79,7 @@ def test_ifelse():
             m = None
 
         f_ifelse = theano.function([a, b, x, y], z, profile=p, name="test_ifelse",
-                                mode=m)
+                                   mode=m)
 
         val1 = 0.
         val2 = 1.
@@ -89,7 +91,6 @@ def test_ifelse():
     finally:
         theano.config.profile = config1
         theano.config.profile_memory = config2
-
 
 
 if __name__ == '__main__':
