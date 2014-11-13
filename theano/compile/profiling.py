@@ -700,6 +700,7 @@ class ProfileStats(object):
                 The sum of memory saved by reusing the input instead of
                 new allocation
             """
+            from theano.sandbox.cuda import CudaNdarrayType
             # Initial Mem info values [CPU, GPU]
             node_memory_size = [0, 0]
             running_memory_size = [0, 0]
@@ -745,7 +746,7 @@ class ProfileStats(object):
                 # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
-                    if isinstance(out.type, theano.sandbox.cuda.CudaNdarrayType):
+                    if isinstance(out.type, CudaNdarrayType):
                         cg = 1
                     else:
                         cg = 0
@@ -785,7 +786,7 @@ class ProfileStats(object):
                 for ins in node.inputs:
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
-                    if isinstance(ins.type, theano.sandbox.cuda.CudaNdarrayType):
+                    if isinstance(ins.type, CudaNdarrayType):
                         cg = 1
                     else:
                         cg = 0
@@ -794,7 +795,7 @@ class ProfileStats(object):
                             ins.owner and
                             all([compute_map[v][0] for v in dependencies[ins]])):
                         if ins not in view_of and not viewed_by.get(ins, []):
-                            running_memory_size -= var_mem[ins]
+                            running_memory_size[cg] -= var_mem[ins]
                         elif ins in view_of:
                             origin = view_of[ins]
                             viewed_by[origin].remove(ins)
