@@ -1582,6 +1582,23 @@ def local_remove_useless_assert(node):
             return [assert_(node.inputs[0], *cond)]
 
 
+@gof.local_optimizer([Assert])
+def local_remove_all_assert(node):
+    """An optimization disable by default that remove all assert from
+    the graph.
+
+    :note: See the :ref:`unsafe` section to know how to enable it.
+
+    """
+    if not isinstance(node.op, Assert):
+        return
+
+    return [node.inputs[0]]
+# Disabled by default
+compile.optdb['canonicalize'].register('local_remove_all_assert',
+                                       local_remove_all_assert)
+
+
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
 def local_elemwise_alloc(node):

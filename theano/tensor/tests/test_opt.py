@@ -3224,8 +3224,8 @@ class test_assert(utt.InferShapeTester):
         f(1, 1)
         self.assertRaises(AssertionError, f, 1, 0)
 
-    def test1(self):
-        #remove assert that are always true
+    def test_local_remove_useless_assert1(self):
+        # remove assert that are always true
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
@@ -3239,8 +3239,8 @@ class test_assert(utt.InferShapeTester):
         assert len(topo) == 1
         assert topo[0].op == deep_copy_op
 
-    def test2(self):
-        #remove assert condition that are always true
+    def test_test_local_remove_useless_assert2(self):
+        # remove assert condition that are always true
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
@@ -3257,8 +3257,8 @@ class test_assert(utt.InferShapeTester):
         assert len(topo[0].inputs) == 2
         assert topo[1].op == deep_copy_op
 
-    def test3(self):
-        #don't remove assert condition that are always false
+    def test_local_remove_useless_assert3(self):
+        # don't remove assert condition that are always false
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
@@ -3273,6 +3273,22 @@ class test_assert(utt.InferShapeTester):
         assert len(topo) == 2
         assert len(topo[0].inputs) == 3
         assert topo[1].op == deep_copy_op
+
+    def test_local_remove_all_assert1(self):
+        # remove assert condition that are unknown
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        mode = compile.mode.get_mode(mode).including('local_remove_all_assert')
+
+        x = T.scalar()
+        y = T.scalar()
+        f = theano.function([x, y], theano.tensor.opt.assert_op(x, y),
+                            mode=mode)
+        f(1, 0)  # Without opt, it should fail.
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1, topo
+        assert topo[0].op == deep_copy_op, topo
 
     def test_infer_shape(self):
 
