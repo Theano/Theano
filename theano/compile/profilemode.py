@@ -2,6 +2,7 @@ import atexit
 import copy
 import os
 import time
+import warnings
 
 import theano
 from theano.gof.link import WrapLinker
@@ -98,6 +99,10 @@ class Profile_Maker(FunctionMaker):
             # Lazy import to avoid compilation when importing theano.
             from theano.gof.cutils import run_cthunk
 
+        warnings.warn(
+            "DEPRECATION WARNING: The ProfileMode is deprecated. Use the Theano"
+            " flags/parameter to theano.function 'profile=True' instead"
+            " of 'mode=ProfileMode'")
         return ret
 
 
