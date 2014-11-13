@@ -2421,7 +2421,8 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
         mode = theano.compile.mode.get_default_mode()
-        self.mode = mode.including("local_adv_sub1_adv_inc_sub1")
+        self.mode = mode.including("local_adv_sub1_adv_inc_sub1").excluding("fusion")
+        self.mode_no_assert = self.mode.including("local_remove_all_assert")
 
     def test0(self):
         for dtype1, dtype2 in [("float32", "float32"),
@@ -2439,7 +2440,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             # set_subtensor
             inc = tensor.set_subtensor(x[idx], y)
             o = inc[idx]
-            f = theano.function([x, y, idx], o, self.mode)
+            f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
             assert numpy.allclose(dy, res)
@@ -2453,7 +2454,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             # inc_subtensor(data[idx], y)
             inc = tensor.inc_subtensor(x[idx], y)
             o = inc[idx]
-            f = theano.function([x, y, idx], o, self.mode)
+            f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
             assert numpy.allclose((dx[didx] + dy), res)
@@ -2463,7 +2464,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             # inc_subtensor(0[idx], y)
             inc = tensor.inc_subtensor(x.zeros_like()[idx], y)
             o = inc[idx]
-            f = theano.function([x, y, idx], o, self.mode)
+            f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
             assert numpy.allclose(dy, res)
@@ -2473,6 +2474,25 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
                 assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
             else:
                 assert len(topo) > 2
+
+    def test_assert(self):
+            x = tensor.matrix("x")
+            y = tensor.matrix("y")
+            idx = tensor.ivector()
+
+            dx = numpy.random.rand(4, 5).astype(config.floatX)
+            dy = numpy.random.rand(2, 5).astype(config.floatX)
+            didx = numpy.asarray([1, 3], "int32")
+
+            # set_subtensor
+            inc = tensor.set_subtensor(x[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode)
+            # test wrong index
+            for i in [dx.shape[0], -dx.shape[0] - 1]:
+                self.assertRaises(AssertionError, f, dx, dy, [i, i])
+            # test wrong shape
+            self.assertRaises(AssertionError, f, dx, dy, [1])
 
 
 class Test_alloc_zero(unittest.TestCase):
