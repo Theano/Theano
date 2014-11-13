@@ -657,14 +657,24 @@ class ProfileStats(object):
 
         # Find the function that used the most of that statistic
         max_sum_size = 0
+
+        # statistics with the old order
         max_node_memory_size = 0
+        max_node_memory_size_CPU = 0
+        max_node_memory_size_GPU = 0
         max_running_max_memory_size = 0
+        max_running_max_memory_size_CPU = 0
+        max_running_max_memory_size_GPU = 0
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
 
-        # statistic with the new order
+        # statistics with the new order
         new_max_node_memory_size = 0
+        new_max_node_memory_size_CPU = 0
+        new_max_node_memory_size_GPU = 0
         new_max_running_max_memory_size = 0
+        new_max_running_max_memory_size_CPU = 0
+        new_max_running_max_memory_size_GPU = 0
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
@@ -1006,23 +1016,45 @@ class ProfileStats(object):
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
             max_node_memory_size = max(max_node_memory_size,
-                                       old_running_memory[0])
+                                       sum(old_running_memory[0]))
             max_running_max_memory_size = max(max_running_max_memory_size,
-                                              old_running_memory[2])
-            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                old_running_memory[4])
+                                              sum(old_running_memory[2]))
+
+            # Separate CPU and GPU
+            max_node_memory_size_CPU = max(max_node_memory_size_CPU,
+                                           old_running_memory[0][0])
+            max_node_memory_size_GPU = max(max_node_memory_size_GPU,
+                                           old_running_memory[0][1])
+            max_running_max_memory_size_CPU = max(max_running_max_memory_size_CPU,
+                                                  old_running_memory[2][0])
+            max_running_max_memory_size_GPU = max(max_running_max_memory_size_GPU,
+                                                  old_running_memory[2][1])
+
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, old_running_memory[3])
+            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
+                                                old_running_memory[4])
 
             # Store max of some stats with new order
             new_max_node_memory_size = max(new_max_node_memory_size,
-                                           new_running_memory[0])
+                                           sum(new_running_memory[0]))
             new_max_running_max_memory_size = max(new_max_running_max_memory_size,
-                                                  new_running_memory[2])
-            new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
-                                                    new_running_memory[4])
+                                                  sum(new_running_memory[2]))
+
+            # Separate CPU and GPU
+            new_max_node_memory_size_CPU = max(new_max_node_memory_size_CPU,
+                                               new_running_memory[0][0])
+            new_max_node_memory_size_GPU = max(new_max_node_memory_size_GPU,
+                                               new_running_memory[0][1])
+            new_max_running_max_memory_size_CPU = max(new_max_running_max_memory_size_CPU,
+                                                      new_running_memory[2][0])
+            new_max_running_max_memory_size_GPU = max(new_max_running_max_memory_size_GPU,
+                                                      new_running_memory[2][1])
+
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
+            new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
+                                                    new_running_memory[4])
 
             # Config: whether print min memory peak
             if config.profiling.min_peak_memory:
@@ -1049,9 +1081,27 @@ class ProfileStats(object):
         print >> file,  "    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
             new_max_node_memory_size / 1024.)), int(round(
                 max_node_memory_size / 1024.)))
+        print >> file,  "    CPU: %dKB (%dKB)" % ((int(round(
+            new_max_node_memory_size_CPU / 1024.)), int(round(
+                max_node_memory_size_CPU / 1024.))))
+        print >> file,  "    GPU: %dKB (%dKB)" % ((int(round(
+            new_max_node_memory_size_GPU / 1024.)), int(round(
+                max_node_memory_size_GPU / 1024.))))
+
+        print >> file,  "---"
+
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
             new_max_running_max_memory_size / 1024.)), int(round(
                 max_running_max_memory_size / 1024.)))
+        print >> file,  "    CPU: %dKB (%dKB)" % ((int(round(
+            new_max_running_max_memory_size_CPU / 1024.)), int(round(
+                max_running_max_memory_size_CPU / 1024.))))
+        print >> file,  "    GPU: %dKB (%dKB)" % ((int(round(
+            new_max_running_max_memory_size_GPU / 1024.)), int(round(
+                max_running_max_memory_size_GPU / 1024.))))
+
+        print >> file,  "---"
+
         if min_max_peak:
             print >> file,  "    Minimum peak from all valid apply node order is %dKB(took %.3fs to compute)" % (int(round(
                 min_max_peak / 1024.)), min_peak_time)
