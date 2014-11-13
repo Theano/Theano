@@ -385,7 +385,7 @@ class test_SoftMax(unittest.TestCase):
 
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
         # applied when cudnn is required
-        y = T.vector('y')
+        y = T.fvector('y')
         f = theano.function(
             [y],
             T.grad(T.nnet.softmax(y).mean(), y),
