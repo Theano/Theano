@@ -69,7 +69,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -98,7 +98,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         }
 
         __device__
-        void k_fetchData_%(nodename)s(float* partialCumSum, float* input, int globalThreadID, dim3 dataStrides, int offsetY, int offsetZ, int nbElementsPerCumsum) {
+        void k_fetchData_%(nodename)s(float* partialCumSum, float* input, int globalThreadID, dim3 dataStrides, int offsetY, int offsetZ) {
             // blockIdx.y and blockIdx.z represents the current independent cumsum
             int idY = blockIdx.y + offsetY;
             int idZ = blockIdx.z + offsetZ;
@@ -110,7 +110,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         }
 
         __device__
-        void k_pushData_%(nodename)s(float* partialCumSum, float* output, int globalThreadID, dim3 dataStrides, int offsetY, int offsetZ, int nbElementsPerCumsum) {
+        void k_pushData_%(nodename)s(float* partialCumSum, float* output, int globalThreadID, dim3 dataStrides, int offsetY, int offsetZ) {
             __syncthreads();
             // blockIdx.y and blockIdx.z represents the current independent cumsum
             int idY = blockIdx.y + offsetY;
@@ -173,7 +173,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             extern __shared__ float partialCumSum[];
 
             // Load data in shared memory
-            k_fetchData_%(nodename)s(partialCumSum, input, globalThreadID, inputStrides, offsetY, offsetZ, nbElementsPerCumsum);
+            k_fetchData_%(nodename)s(partialCumSum, input, globalThreadID, inputStrides, offsetY, offsetZ);
 
             // Use a dichotomy approach to compute the cumsum (i.e. balanced binary tree).
             // The tree is sweeped from the leaves to the root and from the root to the leaves.
@@ -182,7 +182,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             k_reversePhase_%(nodename)s(partialCumSum);
 
             // Write the final output to global memory
-            k_pushData_%(nodename)s(partialCumSum, output, globalThreadID, outputStrides, offsetY, offsetZ, nbElementsPerCumsum);
+            k_pushData_%(nodename)s(partialCumSum, output, globalThreadID, outputStrides, offsetY, offsetZ);
 
             if (blockSum != NULL){
                 if (threadIdx.x == blockDim.x - 1) {
@@ -223,7 +223,6 @@ class GpuCumsum(CumsumOp, GpuOp):
                 outputStrides.z = CudaNdarray_HOST_STRIDES(output)[2];
                 break;
             default:
-                printf("Only 1D, 2D and 3D cumsum is implemented yet.\\n");
                 return -1;
             }
 
@@ -275,18 +274,16 @@ class GpuCumsum(CumsumOp, GpuOp):
                 outputStrides.z = tmp;
                 break;
             default:
-                printf("Axis can only be 0, 1 or 2.\\n");
                 return -1;
             }
 
             const int shapeBlockSum[2] = { dimGridX, dimGridY*dimGridZ };
             CudaNdarray* deviceBlockSum = (CudaNdarray*) CudaNdarray_NewDims(2, shapeBlockSum);
 
-            // Perform `maxGridY` cumsums in parallel.
+            // Perform `maxGridY`*`maxGridZ` cumsums in parallel.
             for (int offsetY = 0; offsetY < dimGridY; offsetY += maxGridY){
                 int localDimGridY = min(dimGridY - offsetY, maxGridY);
 
-                // Perform `maxGridY` cumsums in parallel.
                 for (int offsetZ = 0; offsetZ < dimGridZ; offsetZ += maxGridZ){
                     int localDimGridZ = min(dimGridZ - offsetZ, maxGridZ);
 
