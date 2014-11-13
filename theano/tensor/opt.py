@@ -1171,14 +1171,22 @@ class ShapeFeature(object):
                     self.set_shape_i(v, ii, new_r)
         self.shape_of_reverse_index[r] = set()
 
-    def same_shape(self, x, y):
+    def same_shape(self, x, y, dim_x=None, dim_y=None):
         """Return True if we are able to assert that x and y have the
-        same shape
+        same shape.
+
+        dim_x and dim_y are optional. If used, they should be an index
+        to compare only 1 shape of x or y.
+
         """
         sx = self.shape_of[x]
         sy = self.shape_of[y]
         if sx is None or sy is None:
             return False
+        if dim_x is not None:
+            sx = [sx[dim_x]]
+        if dim_y is not None:
+            sy = [sy[dim_y]]
         assert len(sx) == len(sy)
 
         for dx, dy in zip(sx, sy):
