@@ -728,9 +728,8 @@ class VM_Linker(link.LocalLinker):
             if self.use_cloop and config.profile_memory:
                 warnings.warn(
                     'CVM does not support memory profile, using Stack VM.')
-            deps = None
-            if self.allow_gc:
-                deps = self.compute_gc_dependencies(storage_map)
+            # Needed when allow_gc=True and profiling
+            deps = self.compute_gc_dependencies(storage_map)
             vm = Stack(
                 nodes, thunks, pre_call_clear,
                 storage_map, compute_map,
@@ -765,13 +764,11 @@ class VM_Linker(link.LocalLinker):
                 assert type(storage_map_list[0]) is list
                 assert type(compute_map_list[0]) is list
 
-            if self.allow_gc:
-                dependency_map = self.compute_gc_dependencies(storage_map)
-                dependency_map_list = [
-                    [vars_idx[d] for d in dependency_map[vars_idx_inv[i]]]
-                    for i in xrange(len(vars_idx_inv))]
-            else:
-                dependency_map_list = None
+            # Needed when allow_gc=True and profiling
+            dependency_map = self.compute_gc_dependencies(storage_map)
+            dependency_map_list = [
+                [vars_idx[d] for d in dependency_map[vars_idx_inv[i]]]
+                for i in xrange(len(vars_idx_inv))]
 
             # build the pointers to node inputs and offsets
             base_input_output_list = []
@@ -869,9 +866,8 @@ class VM_Linker(link.LocalLinker):
                         thunks,
                         pre_call_clear)
             else:
-                deps = None
-                if self.allow_gc:
-                    deps = self.compute_gc_dependencies(storage_map)
+                # Needed when allow_gc=True and profiling
+                deps = self.compute_gc_dependencies(storage_map)
                 vm = Stack(
                     nodes, thunks, pre_call_clear,
                     storage_map, compute_map,
