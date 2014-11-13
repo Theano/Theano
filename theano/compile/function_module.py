@@ -1002,7 +1002,7 @@ class FunctionMaker(object):
                 tmp = theano.config.unpickle_function
                 theano.config.unpickle_function = False
                 graph_db = cPickle.load(f)
-                theano.config.unpickle_function = tmp
+                
                 #hack end
                 f.close()
                 print 'graph_db loaded and it is not empty'
@@ -1011,6 +1011,9 @@ class FunctionMaker(object):
                 print e
                 print 'graph_db loaded and it is empty'
                 graph_db = {}
+            finally:
+                theano.config.unpickle_function = tmp
+                
             return graph_db
 
         def find_same_graph_in_db(graph_db):
@@ -1045,7 +1048,6 @@ class FunctionMaker(object):
                     print 'need to optimize, because outputs are of different types'
                     continue
                 elif not size_old == size_new:
-                    import ipdb; ipdb.set_trace()
                     print 'need to optimize, because numbers of nodes in graph are different'
                     continue
                 else:
@@ -1112,6 +1114,7 @@ class FunctionMaker(object):
         found_graph = find_same_graph_in_db(graph_db)
         if found_graph:
             self.fgraph = found_graph
+            optimizer_profile = None
         else:
             # this is a brand new graph, optimize it, save it to graph_db
             print 'graph not found in graph_db, optimizing the graph'
@@ -1129,7 +1132,7 @@ class FunctionMaker(object):
             f.close()
             print 'new graph saved into graph_db'
         release_lock()
-                
+        return optimizer_profile
                 
     def __init__(self, inputs, outputs,
             mode=None, accept_inplace=False, function_builder=Function,
@@ -1237,7 +1240,8 @@ class FunctionMaker(object):
 
                 # now optimize the graph
                 if theano.config.cache_optimizations:
-                    self.optimize_graph_with_cache(optimizer, inputs, outputs)
+                    optimizer_profile = self.optimize_graph_with_cache(
+                        optimizer, inputs, outputs)
                 else:    
                     optimizer_profile = optimizer(fgraph)
                     
