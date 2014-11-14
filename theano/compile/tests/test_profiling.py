@@ -21,7 +21,7 @@ def test_profiling():
         theano.config.profile_memory = True
         theano.config.profiling.min_peak_memory = True
 
-        x = [T.dvector("val%i" % i) for i in range(3)]
+        x = [T.fvector("val%i" % i) for i in range(3)]
 
         z = []
         z += [T.outer(x[i], x[i + 1]).sum(axis=1) for i in range(len(x) - 1)]
@@ -37,7 +37,7 @@ def test_profiling():
         f = theano.function(x, z, profile=p, name="test_profiling",
                             mode=m)
 
-        inp = [numpy.arange(1024) + 1 for i in range(len(x))]
+        inp = [numpy.arange(1024, dtype='float32') + 1 for i in range(len(x))]
         output = f(*inp)
 
         buf = StringIO.StringIO()
@@ -47,10 +47,16 @@ def test_profiling():
         the_string = buf.getvalue()
         lines1 = [l for l in the_string.split("\n") if "Max if linker" in l]
         lines2 = [l for l in the_string.split("\n") if "Minimum peak" in l]
-        assert "Max if linker=cvm(default): 8224KB (16408KB)" in the_string, (
-            lines1, lines2)
-        assert "Minimum peak from all valid apply node order is 8208KB" in the_string, (
-            lines1, lines2)
+        if theano.config.device == 'cpu':
+            assert "Max if linker=cvm(default): 4112KB (8204KB)" in the_string, (
+                lines1, lines2)
+            assert "Minimum peak from all valid apply node order is 4104KB" in the_string, (
+                lines1, lines2)
+        else:
+            assert "Max if linker=cvm(default): 8220KB (8220KB)" in the_string, (
+                lines1, lines2)
+            assert "Minimum peak from all valid apply node order is 4116KB" in the_string, (
+                lines1, lines2)
 
     finally:
         theano.config.profile = config1
