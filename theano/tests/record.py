@@ -122,8 +122,10 @@ class RecordMode(Mode):
        record = Record(file_object=output, replay=False)
        record_mode = RecordMode(record)
 
-       # Compile a new Theano function with the RecordMode object.
-       
+       # Then compile and call the function you wish to test, which uses
+       # Apply nodes with record_mode as first parameter to record all the
+       # computations to file. For example, call a Theano function with the 
+       # RecordMode object.
        x = theano.tensor.dscalar()
        f = theano.function([x], 2*x, mode=record_mode)
        print f(4)
@@ -134,10 +136,11 @@ class RecordMode(Mode):
        playback = Record(file_object=output, replay=True)
        playback_mode = RecordMode(playback)
 
-       # Call the function to test again with record_mode as first parameter.
-       # An exception will be thrown if the recorded computations are not
-       # identical between the two runs.
-       
+       # Compile an d call the function to test again with record_mode as
+       # first parameter. An exception will be thrown if the recorded 
+       # computations are not identical between the two runs.
+       x = theano.tensor.dscalar()
+       f = theano.function([x], 2*x, mode=playback_mode)
        print f(4)
 
     """
