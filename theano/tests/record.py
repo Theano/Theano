@@ -136,7 +136,7 @@ class RecordMode(Mode):
        playback = Record(file_object=output, replay=True)
        playback_mode = RecordMode(playback)
 
-       # Compile an d call the function to test again with record_mode as
+       # Compile and call the function to test again with record_mode as
        # first parameter. An exception will be thrown if the recorded 
        # computations are not identical between the two runs.
        x = theano.tensor.dscalar()
