@@ -27,9 +27,9 @@ def dnn_available():
             dnn_available.avail = False
         else:
             preambule = """
-#include <cudnn.h>
 #include <stdio.h>
 #include <cuda.h>
+#include <cudnn.h>
 #include <cudnn_helper.h>
             """
 
