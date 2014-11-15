@@ -27,9 +27,9 @@ def dnn_available():
             dnn_available.avail = False
         else:
             preambule = """
-#include <cudnn.h>
 #include <stdio.h>
 #include <cuda.h>
+#include <cudnn.h>
 #include <cudnn_helper.h>
             """
 
@@ -44,7 +44,9 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 """
 
             comp, run, out, err = gof.cmodule.GCC_compiler.try_flags(
-                ["-l", "cudnn", "-I" + os.path.dirname(__file__)],
+                ["-l", "cudnn", "-I" + os.path.dirname(__file__),
+                 "-I" + os.path.join(theano.config.cuda.root, 'include'),
+                 "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
                 preambule=preambule, body=body,
                 try_run=True, output=True)
 
