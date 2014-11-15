@@ -661,22 +661,15 @@ class ProfileStats(object):
         max_sum_size = 0
 
         # statistics with the old order
-        max_node_memory_size = 0
-        max_node_memory_size_CPU = 0
-        max_node_memory_size_GPU = 0
-        max_running_max_memory_size = 0
-        max_running_max_memory_size_CPU = 0
-        max_running_max_memory_size_GPU = 0
+        # TODO: Make list more flexible with mulitply GPUs later
+        max_node_memory_size = [0, 0, 0]
+        max_running_max_memory_size = [0, 0, 0]
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
 
         # statistics with the new order
-        new_max_node_memory_size = 0
-        new_max_node_memory_size_CPU = 0
-        new_max_node_memory_size_GPU = 0
-        new_max_running_max_memory_size = 0
-        new_max_running_max_memory_size_CPU = 0
-        new_max_running_max_memory_size_GPU = 0
+        new_max_node_memory_size = [0, 0, 0]
+        new_max_running_max_memory_size = [0, 0, 0]
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
@@ -1018,19 +1011,19 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size,
+            max_node_memory_size[0] = max(max_node_memory_size[0],
                                        sum(old_running_memory[0]))
-            max_running_max_memory_size = max(max_running_max_memory_size,
+            max_running_max_memory_size[0] = max(max_running_max_memory_size[1],
                                               sum(old_running_memory[2]))
 
             # Separate CPU and GPU
-            max_node_memory_size_CPU = max(max_node_memory_size_CPU,
+            max_node_memory_size[1] = max(max_node_memory_size[1],
                                            old_running_memory[0][0])
-            max_node_memory_size_GPU = max(max_node_memory_size_GPU,
+            max_node_memory_size[2] = max(max_node_memory_size[2],
                                            old_running_memory[0][1])
-            max_running_max_memory_size_CPU = max(max_running_max_memory_size_CPU,
+            max_running_max_memory_size[1] = max(max_running_max_memory_size[1],
                                                   old_running_memory[2][0])
-            max_running_max_memory_size_GPU = max(max_running_max_memory_size_GPU,
+            max_running_max_memory_size[2] = max(max_running_max_memory_size[2],
                                                   old_running_memory[2][1])
 
             max_node_memory_saved_by_inplace = max(
@@ -1039,19 +1032,19 @@ class ProfileStats(object):
                                                 old_running_memory[4])
 
             # Store max of some stats with new order
-            new_max_node_memory_size = max(new_max_node_memory_size,
+            new_max_node_memory_size[0] = max(new_max_node_memory_size[0],
                                            sum(new_running_memory[0]))
-            new_max_running_max_memory_size = max(new_max_running_max_memory_size,
+            new_max_running_max_memory_size[0] = max(new_max_running_max_memory_size[0],
                                                   sum(new_running_memory[2]))
 
             # Separate CPU and GPU
-            new_max_node_memory_size_CPU = max(new_max_node_memory_size_CPU,
+            new_max_node_memory_size[1] = max(new_max_node_memory_size[1],
                                                new_running_memory[0][0])
-            new_max_node_memory_size_GPU = max(new_max_node_memory_size_GPU,
+            new_max_node_memory_size[2] = max(new_max_node_memory_size[2],
                                                new_running_memory[0][1])
-            new_max_running_max_memory_size_CPU = max(new_max_running_max_memory_size_CPU,
+            new_max_running_max_memory_size[1] = max(new_max_running_max_memory_size[1],
                                                       new_running_memory[2][0])
-            new_max_running_max_memory_size_GPU = max(new_max_running_max_memory_size_GPU,
+            new_max_running_max_memory_size[2] = max(new_max_running_max_memory_size[2],
                                                       new_running_memory[2][1])
 
             new_max_node_memory_saved_by_inplace = max(
@@ -1082,26 +1075,26 @@ class ProfileStats(object):
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
         print >> file,  "    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
-            new_max_node_memory_size / 1024.)), int(round(
-                max_node_memory_size / 1024.)))
+            new_max_node_memory_size[0] / 1024.)), int(round(
+                max_node_memory_size[0] / 1024.)))
         print >> file,  "    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size_CPU / 1024.)), int(round(
-                max_node_memory_size_CPU / 1024.))))
+            new_max_node_memory_size[1] / 1024.)), int(round(
+                max_node_memory_size[1] / 1024.))))
         print >> file,  "    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size_GPU / 1024.)), int(round(
-                max_node_memory_size_GPU / 1024.))))
+            new_max_node_memory_size[2] / 1024.)), int(round(
+                max_node_memory_size[2] / 1024.))))
 
         print >> file,  "---"
 
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
-            new_max_running_max_memory_size / 1024.)), int(round(
-                max_running_max_memory_size / 1024.)))
+            new_max_running_max_memory_size[0] / 1024.)), int(round(
+                max_running_max_memory_size[0] / 1024.)))
         print >> file,  "    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size_CPU / 1024.)), int(round(
-                max_running_max_memory_size_CPU / 1024.))))
+            new_max_running_max_memory_size[1] / 1024.)), int(round(
+                max_running_max_memory_size[1] / 1024.))))
         print >> file,  "    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size_GPU / 1024.)), int(round(
-                max_running_max_memory_size_GPU / 1024.))))
+            new_max_running_max_memory_size[2] / 1024.)), int(round(
+                max_running_max_memory_size[2] / 1024.))))
 
         print >> file,  "---"
 
