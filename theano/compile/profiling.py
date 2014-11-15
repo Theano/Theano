@@ -1108,8 +1108,10 @@ class ProfileStats(object):
             (int(round(new_max_node_memory_saved_by_inplace / 1024.)),
              int(round(max_node_memory_saved_by_inplace / 1024.)))
         print >> file,  "    Memory saved if gc is enabled: %dKB (%dKB)" % (int(
-            round(new_max_node_memory_size - new_max_running_max_memory_size) / 1024.), int(
-            round(max_node_memory_size - max_running_max_memory_size) / 1024.))
+            round(new_max_node_memory_size[0] - new_max_running_max_memory_size[0]) / 1024.), int(
+            round(max_node_memory_size[0] - max_running_max_memory_size[0]) / 1024.))
+
+        print >> file,  "---"
 
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
