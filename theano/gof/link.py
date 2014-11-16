@@ -56,7 +56,7 @@ sys.excepthook = thunk_hook
 
 
 # TODO: Make this work with linker defined schedule
-def raise_with_op(node, thunk=None, exc_info=None):
+def raise_with_op(node, thunk=None, exc_info=None, func=None):
     """
     Re-raise an exception while annotating the exception object with
     debug info.

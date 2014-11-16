@@ -607,7 +607,7 @@ class Function(object):
                     # For the c linker We don't have access from
                     # python to all the temps values So for now, we
                     # just don't print the extra shapes/strides info
-                    gof.vm.raise_with_op(
+                    gof.link.raise_with_op(
                         self.fn.nodes[self.fn.position_of_error])
             else:
                 # old-style linkers raise their own exceptions
