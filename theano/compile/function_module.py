@@ -602,13 +602,15 @@ class Function(object):
                     # For the CVM
                     gof.link.raise_with_op(
                         self.fn.nodes[self.fn.position_of_error],
-                        self.fn.thunks[self.fn.position_of_error])
+                        self.fn.thunks[self.fn.position_of_error],
+                        storage_map=self.fn.storage_map)
                 else:
                     # For the c linker We don't have access from
                     # python to all the temps values So for now, we
                     # just don't print the extra shapes/strides info
                     gof.link.raise_with_op(
-                        self.fn.nodes[self.fn.position_of_error])
+                        self.fn.nodes[self.fn.position_of_error],
+                        storage_map=self.fn.storage_map)
             else:
                 # old-style linkers raise their own exceptions
                 raise

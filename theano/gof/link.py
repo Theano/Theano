@@ -56,7 +56,7 @@ sys.excepthook = thunk_hook
 
 
 # TODO: Make this work with linker defined schedule
-def raise_with_op(node, thunk=None, exc_info=None, func=None):
+def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     """
     Re-raise an exception while annotating the exception object with
     debug info.
@@ -69,6 +69,9 @@ def raise_with_op(node, thunk=None, exc_info=None, func=None):
         A tuple containing the exception type, exception object and
         associated traceback, as would be returned by a call to
         `sys.exc_info()` (which is done if `None` is passed).
+    storage_map: dict, optional
+        storage map of the theano function that resulted in the
+        raised exception.
 
     Notes
     -----
@@ -89,6 +92,7 @@ def raise_with_op(node, thunk=None, exc_info=None, func=None):
     """
     if exc_info is None:
         exc_info = sys.exc_info()
+    print exc_info
     exc_type, exc_value, exc_trace = exc_info
     if exc_type == KeyboardInterrupt:
         # print a simple traceback from KeyboardInterrupt
@@ -170,6 +174,16 @@ def raise_with_op(node, thunk=None, exc_info=None, func=None):
         hints.append(
             "HINT: Use the Theano flag 'exception_verbosity=high'"
             " for a debugprint of this apply node.")
+
+
+    # Prints output_map
+    if storage_map is not None:
+        from sys import getsizeof
+        detailed_err_msg += "\nStorage Map memory print:\n"
+        for k in storage_map.keys():
+            if storage_map[k][0] is not None:
+                bytes = getsizeof(storage_map[k][0])
+                detailed_err_msg += str(k) + ": " + str(bytes) + " bytes\n"
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
