@@ -870,10 +870,13 @@ class TestConvWithPadding(object):
             assert_allclose(cpuval, gpuval, rtol=1e-5, atol=1e-5)
 
     def test_numeric_value(self):
-        shape_param = [
-            ((5, 10, 4, 4), (12, 10, 4, 4), (2, 1))
+        params = [
+            ((5, 10, 4, 4), (12, 10, 4, 4), (2, 1)),
+            ((5, 10, 8, 8), (12, 10, 4, 4), 3),
+            ((5, 10, 6, 8), (12, 10, 3, 4), 'full'),
+            ((5, 10, 9, 6), (12, 10, 9, 4), 'valid')
         ]
-        for img_shape, kern_shape, padding in shape_param:
+        for img_shape, kern_shape, padding in params:
             yield (self._run_onecase, img_shape, kern_shape, padding)
 
 
