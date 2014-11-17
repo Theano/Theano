@@ -1,0 +1,19 @@
+.. _libdoc_tensor_nnet_neighbours:
+
+=======================================================================
+:mod:`neighbours` -- Ops for working with images in convolutional nets
+=======================================================================
+
+.. module:: sandbox.neighbours
+   :platform: Unix, Windows
+   :synopsis: Ops for working with images in conv nets
+.. moduleauthor:: LISA
+
+
+- Functions
+
+    .. autofunction:: theano.tensor.nnet.neighbours.images2neibs
+
+    .. autofunction:: theano.tensor.nnet.neighbours.neibs2images
+
+- See also: :ref:`indexing`, :ref:`lib_scan`

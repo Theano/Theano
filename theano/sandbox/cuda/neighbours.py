@@ -3,7 +3,7 @@ from theano import Op, Apply, tensor
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 
-from theano.sandbox.neighbours import Images2Neibs
+from theano.tensor.nnet.neighbours import Images2Neibs
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType

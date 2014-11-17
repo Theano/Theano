@@ -1000,6 +1000,7 @@ Reductions
 
     :Returns: A new array holding the result.
 
+.. _indexing:
 
 Indexing
 ========
