@@ -1012,19 +1012,19 @@ class ProfileStats(object):
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
             max_node_memory_size[0] = max(max_node_memory_size[0],
-                                       sum(old_running_memory[0]))
+                                          sum(old_running_memory[0]))
             max_running_max_memory_size[0] = max(max_running_max_memory_size[1],
-                                              sum(old_running_memory[2]))
+                                                 sum(old_running_memory[2]))
 
             # Separate CPU and GPU
             max_node_memory_size[1] = max(max_node_memory_size[1],
-                                           old_running_memory[0][0])
+                                          old_running_memory[0][0])
             max_node_memory_size[2] = max(max_node_memory_size[2],
-                                           old_running_memory[0][1])
+                                          old_running_memory[0][1])
             max_running_max_memory_size[1] = max(max_running_max_memory_size[1],
-                                                  old_running_memory[2][0])
+                                                 old_running_memory[2][0])
             max_running_max_memory_size[2] = max(max_running_max_memory_size[2],
-                                                  old_running_memory[2][1])
+                                                 old_running_memory[2][1])
 
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, old_running_memory[3])
@@ -1033,19 +1033,19 @@ class ProfileStats(object):
 
             # Store max of some stats with new order
             new_max_node_memory_size[0] = max(new_max_node_memory_size[0],
-                                           sum(new_running_memory[0]))
+                                              sum(new_running_memory[0]))
             new_max_running_max_memory_size[0] = max(new_max_running_max_memory_size[0],
-                                                  sum(new_running_memory[2]))
+                                                     sum(new_running_memory[2]))
 
             # Separate CPU and GPU
             new_max_node_memory_size[1] = max(new_max_node_memory_size[1],
-                                               new_running_memory[0][0])
+                                              new_running_memory[0][0])
             new_max_node_memory_size[2] = max(new_max_node_memory_size[2],
-                                               new_running_memory[0][1])
+                                              new_running_memory[0][1])
             new_max_running_max_memory_size[1] = max(new_max_running_max_memory_size[1],
-                                                      new_running_memory[2][0])
+                                                     new_running_memory[2][0])
             new_max_running_max_memory_size[2] = max(new_max_running_max_memory_size[2],
-                                                      new_running_memory[2][1])
+                                                     new_running_memory[2][1])
 
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
