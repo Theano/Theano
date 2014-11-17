@@ -144,10 +144,15 @@ class GpuDnnConvDesc(GpuOp):
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
-        assert isinstance(border_mode, tuple) or \
-            border_mode in ('valid', 'full'), \
-            'invalid border_mode {}, which must be either "valid", "full", '\
-            'an integer or a pair of integers'.format(border_mode)
+        if isinstance(border_mode, tuple):
+            pad_h, pad_w = map(int, border_mode)
+            border_mode = (pad_h, pad_w)
+        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
+                border_mode in ('valid', 'full')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", an integer or a pair of'
+                ' integers'.format(border_mode))
         self.border_mode = border_mode
         assert len(subsample) == 2
         self.subsample = subsample

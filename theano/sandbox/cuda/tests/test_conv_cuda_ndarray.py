@@ -9,6 +9,7 @@ import traceback
 import numpy
 
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 imported_scipy_convolve2d = False
 try:
     from scipy.signal import convolve2d
@@ -72,16 +73,21 @@ def py_conv_valid_numpy(img, kern):
                     out[b, k, rr, cc] = innerprod
     return out
 
+def py_conv_pad_img(img, pad_h, pad_w):
+    assert pad_h >= 0 and pad_w >= 0
+    padded_img = numpy.zeros(
+        (img.shape[0], img.shape[1],
+         pad_h * 2 + img.shape[2], pad_w * 2 + img.shape[3]),
+        dtype=img.dtype)
+    padded_img[:, :,
+               pad_h: pad_h + img.shape[2],
+               pad_w: pad_w + img.shape[3]] = img
+    return padded_img
 
 def py_conv_full_numpy(img, kern):
     # manually pad the img with zeros all around, and then run it
     # through py_conv_valid
-    pad_rows = 2 * (kern.shape[2] - 1) + img.shape[2]
-    pad_cols = 2 * (kern.shape[3] - 1) + img.shape[3]
-    padded_img = numpy.zeros((img.shape[0], img.shape[1], pad_rows, pad_cols),
-                             dtype=img.dtype)
-    padded_img[:, :, kern.shape[2] - 1: kern.shape[2] - 1 + img.shape[2],
-                     kern.shape[3] - 1: kern.shape[3] - 1 + img.shape[3]] = img
+    padded_img = py_conv_pad_img(img, kern.shape[2] - 1, kern.shape[3] - 1)
     return py_conv_valid_numpy(padded_img, kern)
 
 
@@ -90,6 +96,12 @@ def py_conv(img, kern, mode, subsample):
     use a scipy or numpy implementation depending is scipy is available.
     The scipy version is faster.
     """
+    if isinstance(mode, int):
+        mode = (mode, mode)
+    if isinstance(mode, tuple):
+        pad_h, pad_w = map(int, mode)
+        img = py_conv_pad_img(img, pad_h, pad_w)
+        mode = 'valid'
     if imported_scipy_convolve2d:
         return py_conv_scipy(img, kern, mode, subsample)
     elif mode == 'valid':
@@ -819,6 +831,50 @@ class TestConv2DGPU(unittest.TestCase):
                                           compile_kshp=shapes[2])
         finally:
             theano_mode = theano_mode_orig
+
+class TestConvWithPadding(object):
+    """test conv ops that support arbitrary padding via border_mode
+    note that in order to make the yield work, we can not subclass from 
+    unittest.TestCase
+    """
+    conv_ops = []
+
+    @classmethod
+    def setup_class(cls):
+        if cuda.dnn.dnn_available():
+            cls.conv_ops.append(cuda.dnn.dnn_conv)
+
+    def test_invalid_arg(self):
+        img = theano._asarray(numpy.empty((1, 1, 1, 1)), dtype='float32')
+        kern = theano._asarray(numpy.empty((1, 1, 1, 1)), dtype='float32')
+        for i in self.conv_ops:
+            assert_raises(ValueError, i, img, kern,
+                              border_mode=(-1, 0))
+            assert_raises(ValueError, i, img, kern,
+                              border_mode=(0, -1))
+            assert_raises(ValueError, i, img, kern,
+                              border_mode='not border')
+
+    def _run_onecase(self, img_shape, kern_shape, padding):
+        npy_img = numpy.random.rand(*img_shape).astype('float32')
+        npy_kern = numpy.random.rand(*kern_shape).astype('float32')
+        img = theano._asarray(npy_img, dtype='float32')
+        kern = theano.shared(npy_kern)
+        border_mode = padding
+        cpuval = py_conv(npy_img, npy_kern, border_mode, (1, 1))
+        X = tensor.ftensor4()
+        for op in self.conv_ops:
+            Y = op(X, kern, border_mode=border_mode)
+            func = theano.function([X], Y)
+            gpuval = func(img)
+            assert_allclose(cpuval, gpuval, rtol=1e-5, atol=1e-5)
+
+    def test_numeric_value(self):
+        shape_param = [
+            ((5, 10, 4, 4), (12, 10, 4, 4), (2, 1))
+        ]
+        for img_shape, kern_shape, padding in shape_param:
+            yield (self._run_onecase, img_shape, kern_shape, padding)
 
 
 def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
