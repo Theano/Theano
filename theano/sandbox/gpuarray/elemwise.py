@@ -23,7 +23,7 @@ except ImportError:
     pass
 
 from .basic_ops import (as_gpuarray_variable, HideC,
-                        GpuKernelBase, Kernel)
+                        GpuKernelBase, Kernel, infer_context)
 from .type import GpuArrayType, get_context, gpu_context_type
 
 from theano.gof.utils import MethodNotDefined
@@ -86,9 +86,8 @@ class GpuElemwise(HideC, Elemwise):
 
     def make_node(self, *inputs):
         res = Elemwise.make_node(self, *inputs)
-        inputs = [as_gpuarray_variable(i) for i in inputs]
-        if any(i.type.context != self.context for i in inputs):
-            return TypeError("Mismatched contexts in GpuElemwise inputs")
+        inputs = [as_gpuarray_variable(i, context=self.context)
+                  for i in inputs]
         outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
                                 dtype=o.type.dtype,
                                 context=self.context)() for o in res.outputs]
@@ -469,9 +468,10 @@ class SupportCodeError(Exception):
 class GpuDimShuffle(HideC, DimShuffle):
     def make_node(self, input):
         res = DimShuffle.make_node(self, input)
+        input = as_gpuarray_variable(input, infer_context(input))
         otype = GpuArrayType(dtype=res.outputs[0].type.dtype,
-                             broadcastable=res.outputs[0].type.broadcastable)
-        input = as_gpuarray_variable(input)
+                             broadcastable=res.outputs[0].type.broadcastable,
+                             context=input.type.context)
         return Apply(self, [input], [otype()])
 
     def __str__(self):
@@ -648,7 +648,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
     def make_node(self, x):
         ret = super(GpuCAReduceCuda, self).make_node(x)
-        x = as_gpuarray_variable(x)
+        x = as_gpuarray_variable(x, self.context)
         self = copy.copy(self)
         self.axis = ret.op.axis
         if self.pre_scalar_op:
@@ -2520,7 +2520,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
 
     def make_node(self, input):
         res = CAReduceDtype.make_node(self, input)
-        input = as_gpuarray_variable(input)
+        input = as_gpuarray_variable(input, infer_context(input))
         otype = GpuArrayType(dtype=res.outputs[0].dtype,
                              broadcastable=res.outputs[0].broadcastable,
                              context=input.type.context)

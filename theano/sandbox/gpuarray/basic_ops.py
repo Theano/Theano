@@ -25,25 +25,41 @@ from .type import GpuArrayType, gpu_context_type, get_context
 # It should never be registered as a context name
 AnyContext = object()
 
-def as_gpuarray_variable(x, ctx=AnyContext):
+def as_gpuarray_variable(x, context):
     # This is needed to lower the number of useless transfer
     # introduced during optimization.  This speed up optimization and
     # "canonicalize" the graph, so it make easier making some
     # optimization.
-    if (hasattr(x, 'fgraph') and
-        len(x.clients) == 1 and
-        x.owner and
-        isinstance(x.owner.op, HostFromGpu)):
-        return x.owner.inputs[0]
     if hasattr(x, '_as_GpuArrayVariable'):
-        return x._as_GpuArrayVariable(ctx)
-    # TODO we need to have the cuda -> gpu path taken care of.
+        return x._as_GpuArrayVariable(context)
+
+    if (x.owner and
+        isinstance(x.owner.op, HostFromGpu) and
+        context == x.owner.inputs[0].type.context):
+        return x.owner.inputs[0]
+
     tensor_x = tensor.as_tensor_variable(x)
-    if ctx is AnyContext:
-        # whether the context tag is None or the attribute is not
-        # defined is not a meaningful difference
-        ctx = getattr(tensor_x.tag, 'context', None)
-    return GpuFromHost(ctx)(tensor_x)
+    return GpuFromHost(context)(tensor_x)
+
+
+def infer_context(*vars):
+    "Infer the context to use from the inputs given"
+
+    # We try to infer the closest context first
+    for v in vars:
+        if isinstance(v.type, GpuArrayType):
+            return v.type.context
+        if hasattr(v.tag, 'context'):
+            return v.tag.context
+        if v.owner:
+            if isinstance(v.owner.op, HostFromGpu):
+                return v.owner.inputs[0].type.context
+            if len(v.owner.inputs) == 1:
+                return infer_context(v.owner.inputs[0])
+    # If we can't find anything, infer None.
+    import pdb; pdb.set_trace()
+    raise ValueError("couldn't infer context")
+    return None
 
 
 class HideC(object):
@@ -678,7 +694,7 @@ class GpuAlloc(HideC, Alloc):
 
     def make_node(self, value, *shape):
         res = Alloc.make_node(self, value, *shape)
-        value = as_gpuarray_variable(value)
+        value = as_gpuarray_variable(value, context=self.context)
         otype = GpuArrayType(dtype=res.outputs[0].dtype,
                              broadcastable=res.outputs[0].broadcastable,
                              context=self.context)
@@ -824,10 +840,9 @@ class GpuContiguous(Op):
         return hash(type(self))
 
     def grad(self, inputs, dout):
-
         x, = inputs
         dout, = dout
-        dout = as_gpuarray_variable(dout)
+        dout = as_gpuarray_variable(dout, context=infer_context(x))
 
         return [dout]
 
@@ -835,7 +850,7 @@ class GpuContiguous(Op):
         return self.__class__.__name__
 
     def make_node(self, input):
-        input = as_gpuarray_variable(input)
+        input = as_gpuarray_variable(input, context=infer_context(input))
         return Apply(self, [input], [input.type()])
 
     def c_headers(self):
@@ -883,10 +898,12 @@ class GpuReshape(HideC, tensor.Reshape):
     """
     # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
-        x = as_gpuarray_variable(x)
+        ctx = infer_context(x)
+        x = as_gpuarray_variable(x, context=ctx)
         res = host_from_gpu(x).reshape(shp, ndim=self.ndim)
         otype = GpuArrayType(dtype=res.dtype,
-                             broadcastable=res.broadcastable)
+                             broadcastable=res.broadcastable,
+                             context=ctx)
         return Apply(self, [x, shp], [otype()])
 
     def perform(self, node, inp, out_):
@@ -928,8 +945,10 @@ class GpuJoin(HideC, Join):
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
-        return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
-                                                  tensors),
+        def agv(v):
+            return as_gpuarray_variable(v, self.context)
+
+        return Apply(self, [node.inputs[0]] + map(agv, tensors),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
                                    dtype=node.outputs[0].dtype,
                                    context=self.context)()])
@@ -977,8 +996,9 @@ gpu_join = GpuJoin(None)
 class GpuSplit(HideC, Split):
     def make_node(self, x, axis, splits):
         node = Split.make_node(self, x, axis, splits)
-        x = as_gpuarray_variable(x)
-        outs = [GpuArrayType(dtype=o.dtype, broadcastable=o.broadcastable)()
+        x = as_gpuarray_variable(x, infer_context(x))
+        outs = [GpuArrayType(dtype=o.dtype, broadcastable=o.broadcastable,
+                             context=x.type.context)()
                 for o in node.outputs]
         return Apply(self, [x] + node.inputs[1:], outs)
     # we reuse the perform of the CPU op, which is suitable

@@ -15,7 +15,7 @@ except ImportError:
     pass
 
 from .type import GpuArrayType, get_context
-from .basic_ops import as_gpuarray_variable, HideC
+from .basic_ops import as_gpuarray_variable, HideC, infer_context
 from .elemwise import GpuElemwise
 from .comp import NVCC_compiler
 
@@ -23,9 +23,10 @@ from .comp import NVCC_compiler
 class GpuSubtensor(HideC, Subtensor):
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
+        x = as_gpuarray_variable(x, infer_context(x))
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
-                             broadcastable=rval.outputs[0].type.broadcastable)
-        x = as_gpuarray_variable(x)
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context=x.type.context)
         return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
 
     def perform(self, node, inputs, out_):
@@ -173,8 +174,9 @@ class GpuIncSubtensor(IncSubtensor):
         return self.iadd_node.op.c_init_code()
 
     def make_node(self, x, y, *inputs):
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        ctx = infer_context(x, y)
+        x = as_gpuarray_variable(x, ctx)
+        y = as_gpuarray_variable(y, ctx)
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         op = copy.copy(self)
         ret = gof.Apply(op, [x, y] + rval.inputs[2:], [x.type()])
@@ -361,8 +363,9 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     Implement AdvancedIncSubtensor1 on the gpu.
     """
     def make_node(self, x, y, ilist):
-        x_ = as_gpuarray_variable(x)
-        y_ = as_gpuarray_variable(y)
+        ctx = infer_context(x, y)
+        x_ = as_gpuarray_variable(x, ctx)
+        y_ = as_gpuarray_variable(y, ctx)
         ilist_ = tensor.as_tensor_variable(ilist)
 
         assert x_.type.dtype == y_.type.dtype
@@ -461,9 +464,10 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
         the index are of type long.
         """
-        x_ = as_gpuarray_variable(x)
-        y_ = as_gpuarray_variable(y)
-        ilist_ = as_gpuarray_variable(ilist)
+        ctx = infer_context(x, y, ilist)
+        x_ = as_gpuarray_variable(x, ctx)
+        y_ = as_gpuarray_variable(y, ctx)
+        ilist_ = as_gpuarray_variable(ilist, ctx)
 
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim

@@ -2,7 +2,7 @@ from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
 
-from .basic_ops import (HideC, as_gpuarray_variable)
+from .basic_ops import (HideC, as_gpuarray_variable, infer_context)
 from .type import gpu_context_type
 
 try:
@@ -26,10 +26,11 @@ class BlasOp(HideC):
 
 class GpuGemv(BlasOp, Gemv):
     def make_node(self, y, alpha, A, x, beta):
+        ctx = infer_context(y, A, x)
         res = Gemv.make_node(self, y, alpha, A, x, beta)
-        A = as_gpuarray_variable(A)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        A = as_gpuarray_variable(A, context=ctx)
+        x = as_gpuarray_variable(x, context=ctx)
+        y = as_gpuarray_variable(y, context=ctx)
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
@@ -89,10 +90,11 @@ gpugemv_inplace = GpuGemv(inplace=True)
 
 class GpuGemm(BlasOp, Gemm):
     def make_node(self, C, alpha, A, B, beta):
+        ctx = infer_context(C, A, B)
         res = Gemm.make_node(self, C, alpha, A, B, beta)
-        A = as_gpuarray_variable(A)
-        B = as_gpuarray_variable(B)
-        C = as_gpuarray_variable(C)
+        A = as_gpuarray_variable(A, context=ctx)
+        B = as_gpuarray_variable(B, context=ctx)
+        C = as_gpuarray_variable(C, context=ctx)
         assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
@@ -153,10 +155,11 @@ gpugemm_inplace = GpuGemm(inplace=True)
 
 class GpuGer(BlasOp, Ger):
     def make_node(self, A, alpha, x, y):
+        ctx = infer_context(A, x, y)
         res = Ger.make_node(self, A, alpha, x, y)
-        A = as_gpuarray_variable(A)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        A = as_gpuarray_variable(A, context=ctx)
+        x = as_gpuarray_variable(x, context=ctx)
+        y = as_gpuarray_variable(y, context=ctx)
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
@@ -216,9 +219,10 @@ class GpuDot22(BlasOp, Dot22):
     context_type = gpu_context_type
 
     def make_node(self, x, y):
+        ctx = infer_context(x, y)
         res = Dot22.make_node(self, x, y)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        x = as_gpuarray_variable(x, context=ctx)
+        y = as_gpuarray_variable(y, context=ctx)
         assert x.dtype == y.dtype
         return Apply(self, [x, y], [x.type()])
 
