@@ -574,7 +574,7 @@ def test_gemm_valid():
     extra_shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
 
     for t in _test_valid(cuda.blas.BaseGpuCorrMM,
-                         mode=theano_mode.including("conv_gemm"),
+                         mode=theano_mode.excluding("cudnn"),
                          extra_shapes=extra_shapes):
         yield t
 
@@ -683,7 +683,7 @@ def test_full():
 
 def test_gemm_full():
     for t in _test_full(cuda.blas.BaseGpuCorrMM,
-                        mode=theano_mode.including("conv_gemm")):
+                        mode=theano_mode.excluding("cudnn")):
         yield t
 
 
@@ -735,7 +735,7 @@ def test_subsample():
 
 def test_gemm_subsample():
     for t in _test_subsample(cuda.blas.BaseGpuCorrMM,
-                             theano_mode.including("conv_gemm")):
+                             theano_mode.excluding("cudnn")):
         yield t
 
 
