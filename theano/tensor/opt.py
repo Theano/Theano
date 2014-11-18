@@ -1584,7 +1584,7 @@ def local_remove_useless_assert(node):
 
 @gof.local_optimizer([Assert])
 def local_remove_all_assert(node):
-    """An optimization disable by default that remove all assert from
+    """An optimization disabled by default that removes all asserts from
     the graph.
 
     :note: See the :ref:`unsafe` section to know how to enable it.

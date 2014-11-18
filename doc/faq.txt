@@ -85,17 +85,17 @@ Unsafe optimization
 ===================
 
 
-Some Theano optimizations make the assumption that the user inputs is
-valid. What that mean is that if the user provide invalid values (like
-not compatible shapes or indexing values that are out of bound) and
-the optimizations is applied, the user error will get lost.Most of the
+Some Theano optimizations make the assumption that the user inputs are
+valid. What this means is that if the user provides invalid values (like
+incompatible shapes or indexing values that are out of bounds) and
+the optimizations are applied, the user error will get lost. Most of the
 time, the assumption is that the user inputs are valid. So it is good
-to have the optimization being applied. But loosing the error is bad.
-The newest optimization in Theano with such assumption will add
-assertion in the graph to keep the user error message. But computing
-those assumption could take some time. If you are sure you all is valid
+to have the optimization being applied, but loosing the error is bad.
+The newest optimization in Theano with such assumption will add an
+assertion in the graph to keep the user error message. Computing
+these assertions could take some time. If you are sure everything is valid
 in your graph and want the fastest possible Theano, you can enable an
-optimization that will remove those assertion:
+optimization that will remove those assertions with:
 ``optimizer_including=local_remove_all_assert``
 
 
