@@ -78,10 +78,11 @@ class DownsampleFactorMax(Op):
             scalar Theano variable.
 
         :param ds: downsample factor over rows and columns
-                   this parameter indicates the pooling region
+                   this parameter indicates the size of the pooling region
         :type ds: list or tuple of two ints
 
-        :param st: the stride size 
+        :param st: the stride size. This is the distance between the pooling 
+                   regions. If it's set to None, in which case it equlas ds.
         :type st: list or tuple of two ints
 
         :param ignore_border: if ds doesn't divide imgshape, do we include an
@@ -97,42 +98,27 @@ class DownsampleFactorMax(Op):
             raise TypeError('imgshape must have at least two elements '
                             '(rows, cols)')
 
-        if st == None:
+        if st is None:
             st = ds
         r, c = imgshape[-2:]
-        if st[0] >= ds[0]:
-            nr = r // st[0]
-        else:
-            nr = (r - ds[0]) // st[0] + 1
 
-        if st[1] >= ds[1]:
-            nc = c // st[1]
-        else:
-            nc = (c - ds[1]) // st[1] + 1
+        nr = (r - ds[0]) // st[0] + 1
+        nc = (c - ds[1]) // st[1] + 1
+
         rval = list(imgshape[:-2]) + [nr, nc]
 
         if not ignore_border:
-            if st[0] >= ds[0]:
-                if isinstance(r, theano.Variable):
-                    rval[-2] = tensor.switch(r % st[0], rval[-2] + 1, rval[-2])
-                elif r % ds[0]:
-                    rval[-2] += 1
-            else:
-                if isinstance(r, theano.Variable):
-                    rval[-2] = tensor.switch((r - ds[0]) % st[0], rval[-2] + 1, rval[-2])
-                elif (r - ds[0]) % st[0]:
-                    rval[-2] += 1
-
-            if st[1] >= ds[1]:
-                if isinstance(c, theano.Variable):
-                    rval[-1] = tensor.switch(c % st[1], rval[-1] + 1, rval[-1])
-                elif c % ds[1]:
-                    rval[-1] += 1
-            else:
-                if isinstance(c, theano.Variable):
-                    rval[-1] = tensor.switch((c - ds[1]) % st[1], rval[-1] + 1, rval[-1])
-                elif (c - ds[1]) % st[1]:
-                    rval[-1] += 1
+            if isinstance(r, theano.Variable):
+                rr = r % st[0]
+                rval[-2] = tensor.switch(tensor.and_((rr % ds[0]), tensor.eq(rr // ds[0], 0)), rval[-2] + 1, rval[-2])
+            elif (r % st[0]) % ds[0]:
+                rval[-2] += 1
+            if isinstance(c, theano.Variable):
+                cr = c % st[1]
+                crn = cr - ds[1]
+                rval[-1] = tensor.switch(tensor.lt(crn, 0), rval[-1] + 1, rval[-1])
+            elif (c % st[1]) % ds[1]:
+                rval[-1] += 1
         return rval
 
     def __init__(self, ds, ignore_border=False, st=None):
@@ -158,7 +144,7 @@ class DownsampleFactorMax(Op):
             raise ValueError(
                 "DownsampleFactorMax downsample parameters must be ints."
                 " Got %s" % str(ds))
-        if st == None:
+        if st is None:
             st = ds
         self.st = tuple(st)
         self.ignore_border = ignore_border
@@ -205,22 +191,6 @@ class DownsampleFactorMax(Op):
         st0, st1 = self.st
         img_rows = x.shape[-2]
         img_cols = x.shape[-1]
-
-        if self.ignore_border:
-            if st0 >= ds0:
-                x_usable2 = (x.shape[2] // ds0 * ds0)
-            else:
-                x_usable2 = (x.shape[2] - ds0) // st0 * st0 + ds0
-        else:
-            x_usable2 = x.shape[2]
-
-        if self.ignore_border:
-            if st1 >= ds1:
-                x_usable3 = (x.shape[3] // ds1 * ds1)
-            else:
-                x_usable3 = (x.shape[3] - ds1) // st1 * st1 + ds1
-        else:
-            x_usable3 = x.shape[3]
 
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
