@@ -1089,7 +1089,7 @@ if cuda_available:
     from theano.sandbox.cuda.opt import (
         local_optimizer, gpu_optimizer, gpu_seqopt)
 
-    @register_opt('cudnn')
+    #@register_opt('cudnn')  # this optimizer is registered in opt.py instead.
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
         if not dnn_available():

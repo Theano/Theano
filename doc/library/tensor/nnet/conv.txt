@@ -25,64 +25,59 @@
 .. note::
 
     As of October 21st, 2014, the default GPU image convolution
-    changed. Here is the algo:
+    changed: By default, if :ref:`cuDNN <_libdoc_cuda_dnn>`
+    is available, we will use it, otherwise we will fall back to using the
+    gemm version (slower then cuDNN in most cases, uses more memory, but
+    faster than the legacy version we used before).
 
-    - If we can use `cuDNN <https://developer.nvidia.com/cuDNN>`_, use it.
-    - If not, use gemm version (slower then cuDNN, uses more memory).
+    Both cuDNN and the gemm version can be disabled using the Theano flags
+    ``optimizer_excluding=conv_dnn`` and ``optimizer_excluding=conv_gemm``,
+    respectively. In this case, we will fall back to using the legacy
+    convolution code, which is slower, but does not require extra memory.
+    To verify that cuDNN is used, you can supply the Theano flag
+    ``optimizer_including=cudnn``. This will raise an error if cuDNN is
+    unavailable.
 
-    If the users do not want the extra memory usage of the gemm
-    version, they can enable the legacy code that is even slower, but
-    does not use extra memory. For this, use the Theano flag
-    ``optimizer_excluding=conv_gemm``.
+    It is not advised to ever disable cuDNN, as this is usually the fastest
+    option. Disabling the gemm version is only useful if cuDNN is unavailable
+    and you run out of GPU memory.
 
-    There is no reason to use the legacy code or the gemm version if
-    cuDNN is available.
-
-    2 other options:
-
-    - There is also the fft version that is the fastest in some cases,
-      but uses even more memory. It does not support striding to remove
-      computation and has some shapes restriction.
-
-    - There is also the cuda_convnet convolution in Pylearn2. It uses a
-      different memory layout, has shapes restrictions, but does not use
-      extra memory and is faster then the legacy convolution.
-
-    If you want to verify the usage of cuDNN, you can use the Theano
-    flag ``optimizer_including=cudnn``. This will raise an error if we
-    can't use cuDNN.
+    There are two other implementations: An FFT-based convolution integrated
+    into Theano, and an implementation by Alex Krizhevsky available via
+    Pylearn2. See the documentation below on how to use them.
 
 
 TODO: Give examples on how to use these things! They are pretty complicated.
 
-- Convolution operators implemented:
-    - :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>`. See note above.
+- Implemented operators for neural network 2D / image convolution:
     - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
       This is the standard operator for convolutional neural networks working
-      with batches of multi-channel 2D images, available for CPU and GPU.
-      Most of the more efficient GPU implementations listed below can be used
-      as an automatic replacement for nnet.conv2d by enabling specific graph
-      optimizations. It flip the kernel.
+      with batches of multi-channel 2D images, available for CPU and GPU. It
+      computes a convolution, i.e., it flips the kernel.
+      Most of the more efficient GPU implementations listed below can be
+      inserted automatically as a replacement for nnet.conv2d via graph
+      optimizations. Some of these graph optimizations are enabled by default,
+      others can be enabled via Theano flags.
     - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>` This
       is a GPU-only version of nnet.conv2d that uses an FFT transform
-      to perform the work.  It flip the kernel as ``conv2d``.
+      to perform the work.  It flips the kernel just like ``conv2d``.
       conv2d_fft should not be used directly as
       it does not provide a gradient. Instead, use nnet.conv2d and
       allow Theano's graph optimizer to replace it by the FFT version
-      by setting
-      'THEANO_FLAGS=optimizer_including=conv_fft_valid:conv_fft_full'
-      in your environement.  This is not enabled by default because it
+      by setting 'THEANO_FLAGS=optimizer_including=conv_fft'
+      in your environment. If enabled, it will take precedence over cuDNN
+      and the gemm version.  It is not enabled by default because it
       has some restrictions on input and uses a lot more memory.  Also
       note that it requires CUDA >= 5.0, scikits.cuda >= 0.5.0 and
       PyCUDA to run.  To deactivate the FFT optimization on a specific
-      nnet.conv2d while the optimization flags are active, you can set
+      nnet.conv2d while the optimization flag is active, you can set
       its ``version`` parameter to ``'no_fft'``. To enable it for just
       one Theano function:
 
       .. code-block:: python
 
           mode = theano.compile.get_default_mode()
-          mode = mode.including('conv_fft_valid', 'conv_fft_full')
+          mode = mode.including('conv_fft')
 
           f = theano.function(..., mode=mode)
 
@@ -90,17 +85,18 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
       Wrapper for an open-source GPU-only implementation of conv2d by Alex
       Krizhevsky, very fast, but with several restrictions on input and kernel
-      shapes, and with a different memory layout for the input.
+      shapes, and with a different memory layout for the input. It does not
+      flip the kernel.
 
       This is in Pylearn2, where it is normally called from the `linear transform
       <http://deeplearning.net/software/pylearn2/library/linear.html>`_
       implementation, but it can also be used `directly from within Theano
       <http://benanne.github.io/2014/04/03/faster-convolutions-in-theano.html>`_
-      as a manual replacement for nnet.conv2d. It does not flip the kernel.
+      as a manual replacement for nnet.conv2d.
     - :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`
       This is a GPU-only 2d correlation implementation taken from
       `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu>`_
-      and also used by Torch.
+      and also used by Torch. It does not flip the kernel.
 
       For each element in a batch, it first creates a
       `Toeplitz <http://en.wikipedia.org/wiki/Toeplitz_matrix>`_ matrix in a CUDA kernel.
@@ -110,36 +106,24 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       ``(no of channels * filter width * filter height, output width * output height)``.
 
       As it provides a gradient, you can use it as a replacement for nnet.conv2d.
-      Alternatively, you can use nnet.conv2d and allow Theano's graph optimizer
-      to replace it by the GEMM version by setting
-      ``THEANO_FLAGS=optimizer_including=conv_gemm`` in your environment.
-      This is not enabled by default because it uses some extra memory, but the
-      overhead is small compared to conv2d_fft, there are no restrictions on
-      input or kernel shapes and it is sometimes still faster than cuda-convnet.
+      But usually, you will just use nnet.conv2d and allow Theano's graph
+      optimizer to automatically replace it by the GEMM version if cuDNN is not
+      available. To explicitly disable the graph optimizer, set
+      ``THEANO_FLAGS=optimizer_excluding=conv_gemm`` in your environment.
       If using it, please see the warning about a bug in CUDA 5.0 to 6.0 below.
-      To enable it for just one Theano function:
-
-      .. code-block:: python
-
-          mode = theano.compile.get_default_mode()
-          mode = mode.including('conv_gemm')
-
-          f = theano.function(..., mode=mode)
-
     - :func:`dnn_conv <theano.sandbox.cuda.dnn.dnn_conv>` GPU-only
-      convolution using NVIDIA's cuDNN library.  To have conv2d()
-      automatically converted set
-      ``THEANO_FLAGS=optimizer_including=cudnn`` in your environment.
-      This will also replace other operations by their a
-      cuDNN-accelerated equivalent.  This requires that you have cuDNN
-      installed and available.  It requires a GPU with compute
-      capability 3.0 or more.
+      convolution using NVIDIA's cuDNN library. This requires that you have
+      cuDNN installed and available, which in turn requires CUDA 6.5 and a GPU
+      with compute capability 3.0 or more.
 
-      Since it has a gradient defined it can also be used manually.
-
+      If cuDNN is available, by default, Theano will replace all nnet.conv2d
+      operations with dnn_conv. To explicitly disable it, set
+      ``THEANO_FLAGS=optimizer_excluding=conv_dnn`` in your environment.
+      As dnn_conv has a gradient defined, you can also use it manually.
+- Implemented operators for neural network 3D / video convolution:
     - :func:`conv3D <theano.tensor.nnet.Conv3D.conv3D>`
       3D Convolution applying multi-channel 3D filters to batches of
-      multi-channel 3D images. It do not flip the kernel.
+      multi-channel 3D images. It does not flip the kernel.
     - :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`
       GPU-only version of conv3D using FFT transform. conv3d_fft should
       not be called directly as it does not provide a gradient.
