@@ -6,7 +6,8 @@ from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
 
-from .test_basic_ops import mode_with_gpu, rand_gpuarray, test_ctx_real
+from .test_basic_ops import (mode_with_gpu, rand_gpuarray, test_ctx_real,
+                             GPUMixin)
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY)
 from ..type import GpuArrayType
@@ -15,7 +16,7 @@ from pygpu.array import gpuarray
 
 
 # This is acutally a test for GpuElemwise
-class test_gpu_Broadcast(test_Broadcast):
+class test_gpu_Broadcast(GPUMixin, test_Broadcast):
     op = GpuElemwise
     type = GpuArrayType
     cop = GpuElemwise
@@ -24,6 +25,7 @@ class test_gpu_Broadcast(test_Broadcast):
     linkers = [gof.PerformLinker, gof.CLinker]
 
     def setUp(self):
+        super(test_gpu_Broadcast, self).setUp()
         if not test_ctx_real.kind == 'cuda':
             self.linkers = [gof.PerformLinker]
 
@@ -44,11 +46,11 @@ class test_gpu_Broadcast(test_Broadcast):
         super(test_gpu_Broadcast, self).test_c_inplace()
 
 
-class test_GpuDimShuffle(test_DimShuffle):
+class test_GpuDimShuffle(GPUMixin, test_DimShuffle):
     op = GpuDimShuffle
 
 
-class test_GpuCAReduceCPY(test_CAReduce):
+class test_GpuCAReduceCPY(GPUMixin, test_CAReduce):
     dtypes = ["float32"]
     bin_dtypes = ["uint8", "int8"]
     op = GpuCAReduceCPY
@@ -180,7 +182,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
         super(test_GpuCAReduceCuda, self).setUp()
 
 
-class T_gpureduce_dtype(T_reduce_dtype):
+class T_gpureduce_dtype(GPUMixin, T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
     op = GpuCAReduceCuda
     #Currently we don't support reduction on 0 axis
@@ -193,6 +195,7 @@ class T_gpureduce_dtype(T_reduce_dtype):
     def setUp(self):
         if not test_ctx_real.kind == 'cuda':
             raise SkipTest("Cuda specific tests")
+        super(T_gpureduce_dtype, self).setUp()
 
 
 def speed_reduce10():
