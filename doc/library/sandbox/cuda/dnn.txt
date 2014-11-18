@@ -13,12 +13,19 @@ installed with CUDA 6.5. You must download and install it
 yourself.
 
 To install it, decompress the downloaded file and make the ``*.h`` and
-``*.so*`` files available to the compilation environment. On Linux,
-this can be done by setting the environment variables
-``LD_LIBRARY_PATH``, ``LIBRARY_PATH`` and ``CPATH`` to the
-uncompressed directory path. Separate multiple directory with ``:`` as
-the ``PATH`` environment variable. Or you can copy the ``*.h`` files
-to ``/usr/include`` and the ``*.so*`` files to ``/lib64``.
+``*.so*`` files available to the compilation environment.
+There are at least three possible ways of doing so:
+
+- The easiest is to include them in your CUDA installation. Copy the
+  ``*.h`` files to ``CUDA_ROOT/include`` and the ``*.so*`` files to
+  ``CUDA_ROOT/lib64`` (by default, ``CUDA_ROOT`` is ``/usr/local/cuda``
+  on Linux).
+- Alternatively, on Linux, you can set the environment variables
+  ``LD_LIBRARY_PATH``, ``LIBRARY_PATH`` and ``CPATH`` to the directory
+  extracted from the download. If needed, separate multiple directories
+  with ``:`` as in the ``PATH`` environment variable.
+- And as a third way, also on Linux, you can copy the ``*.h`` files
+  to ``/usr/include`` and the ``*.so*`` files to ``/lib64``.
 
 By default, Theano will detect if it can use cuDNN. If so, it will use
 it.  If not, Theano optimizations will not introduce cuDNN ops. So
