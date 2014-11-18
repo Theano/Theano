@@ -437,6 +437,31 @@ class GpuDnnConv(GpuDnnConvBase):
         # not connected to desc
         return [[1], [1], [0]]
 
+    def infer_shape(self, node, shape):
+        b = shape[0][0]  # Number of inputs
+        h = shape[0][2]  # Height of input feature maps
+        w = shape[0][3]  # Width of input feature maps
+        nb = shape[1][0]  # Number of output feature maps
+        kh = shape[1][2]  # Height of each filter
+        kw = shape[1][3]  # Width of each filter
+        padh = 0
+        padw = 0
+        sh = 1
+        sw = 1
+
+        desc = node.inputs[2].owner.op
+        if desc.border_mode == 'full':
+            padh = kh - 1
+            padw = kw - 1
+            sh = desc.subsample[0]
+            sw = desc.subsample[1]
+
+        return [(
+            b, nb,
+            (h + 2*padh - kh)/sh + 1,
+            (w + 2*padw - kw)/sw + 1
+        )]
+
 
 class GpuDnnConvGradW(GpuDnnConvBase):
     """
@@ -706,6 +731,31 @@ class GpuDnnPool(DnnBase):
 
         return Apply(self, [img, desc],
                      [img.type()])
+
+    def infer_shape(self, node, shape):
+        n = shape[0][0]  # Number of inputs
+        h = shape[0][2]  # Height of input feature maps
+        w = shape[0][3]  # Width of input feature maps
+        nb = shape[1][0]  # Number of output feature maps
+        kh = shape[1][2]  # Height of each filter
+        kw = shape[1][3]  # Width of each filter
+        padh = 0
+        padw = 0
+        sh = 1
+        sw = 1
+
+        desc = node.inputs[2].owner.op
+        if desc.border_mode == 'full':
+            padh = kh - 1
+            padw = kw - 1
+            sh = desc.stride[0]
+            sw = desc.stride[1]
+
+        return (
+            b, nb,
+            (h + 2*padh - kh)/sh + 1,
+            (w + 2*padw - kw)/sw + 1
+        )
 
     def c_support_code_struct(self, node, struct_id):
         return """
@@ -1026,6 +1076,12 @@ class GpuDnnSoftmaxBase(DnnBase):
         self.tensor_4d_descs = [softmax_input
                                 for softmax_input in self.softmax_inputs]
         self.tensor_4d_descs.append('softmax_output')
+
+    def infer_shape(self, node, shape):
+        if isinstance(shape, list):
+            return [shape[0]]
+        else:
+            return shape
 
     def _define_tensor4d_desc(self, name, id):
         return """
