@@ -837,11 +837,20 @@ class TestConvWithPadding(object):
     note that in order to make the yield work, we can not subclass from 
     unittest.TestCase
     """
-    conv_ops = [lambda i, k, border_mode:
-                theano.sandbox.cuda.blas.GpuCorrMM(border_mode=border_mode)(i, k)]
+
+    @staticmethod
+    def gemm_conv_op(img, kern, border_mode):
+        kern = theano.sandbox.cuda.basic_ops.gpu_contiguous(
+            kern[:, :, ::-1, ::-1])
+        y = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=border_mode)(
+            img, kern)
+        return y
+
+    conv_ops = []
 
     @classmethod
     def setup_class(cls):
+        cls.conv_ops.append(cls.gemm_conv_op)
         if cuda.dnn.dnn_available():
             cls.conv_ops.append(cuda.dnn.dnn_conv)
 
