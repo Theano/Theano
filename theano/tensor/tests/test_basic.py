@@ -3653,13 +3653,13 @@ class T_Join_and_Split(unittest.TestCase):
         c = TensorType(dtype=self.floatX, broadcastable=[1, 0, 0, 0, 0, 0])()
         d = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 1, 0, 1])()
         e = TensorType(dtype=self.floatX, broadcastable=[1, 0, 1, 0, 0, 1])()
-        f = join(0, a, b, c, d, e)
+        f = self.join_op(0, a, b, c, d, e)
         fb = f.type.broadcastable
         assert not fb[0] and fb[1] and fb[2] and fb[3] and not fb[4] and fb[5]
-        g = join(1, a, b, c, d, e)
+        g = self.join_op(1, a, b, c, d, e)
         gb = g.type.broadcastable
         assert gb[0] and not gb[1] and gb[2] and gb[3] and not gb[4] and gb[5]
-        h = join(4, a, b, c, d, e)
+        h = self.join_op(4, a, b, c, d, e)
         hb = h.type.broadcastable
         assert hb[0] and hb[1] and hb[2] and hb[3] and not hb[4] and hb[5]
 
@@ -3674,7 +3674,7 @@ class T_Join_and_Split(unittest.TestCase):
         d_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
         e_val = rng.rand(1, 1, 1, 1, 2, 1).astype(self.floatX)
         f(a_val, b_val, c_val, d_val, e_val)
-        utt.verify_grad((lambda a, b, c, d, e: join(0, a, b, c, d, e)),
+        utt.verify_grad((lambda a, b, c, d, e: self.join_op(0, a, b, c, d, e)),
                         [a_val, b_val, c_val, d_val, e_val], rng=rng,
                         mode=self.mode)
         # Should raise an error if length of dimension 0 is not 1

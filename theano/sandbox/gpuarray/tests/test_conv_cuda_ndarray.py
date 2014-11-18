@@ -708,7 +708,9 @@ class TestConv2DGPU(unittest.TestCase):
             featshp = (3, 10, 11, 11)
 
             a = tensor.ftensor4()
+            a.tag.context = test_ctx
             A = tensor.ftensor4()
+            A.tag.context = test_ctx
 
             # Need to transpose first two dimensions of kernel, and reverse
             # index kernel image dims (for correlation)

@@ -7,6 +7,7 @@ from theano import Op, Apply
 from theano import tensor, scalar, config
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
+from theano.tensor import TensorType
 from theano.tensor.basic import Alloc, Join, Split
 
 from theano.gof import graph
@@ -46,20 +47,22 @@ def infer_context(*vars):
     "Infer the context to use from the inputs given"
 
     # We try to infer the closest context first
-    for v in vars:
+    # by doing a breadth-first search
+    nextv = list(vars)
+    while len(nextv) != 0:
+        v = nextv.pop(0)
         if isinstance(v.type, GpuArrayType):
             return v.type.context
         if hasattr(v.tag, 'context'):
             return v.tag.context
         if v.owner:
-            if isinstance(v.owner.op, HostFromGpu):
-                return v.owner.inputs[0].type.context
-            if len(v.owner.inputs) == 1:
-                return infer_context(v.owner.inputs[0])
-    # If we can't find anything, infer None.
+            for i in v.owner.inputs:
+                if isinstance(i.type, GpuArrayType):
+                    return i.type.context
+                if isinstance(i.type, TensorType):
+                    nextv.append(i)
     import pdb; pdb.set_trace()
     raise ValueError("couldn't infer context")
-    return None
 
 
 class HideC(object):

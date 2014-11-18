@@ -106,15 +106,12 @@ class GpuConv(gof.Op):
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
-        if (img.type.context != self.context or
-            kern.type.context != self.context):
-            raise TypeError("Wrong context for img or kern")
-        img = as_gpuarray_variable(img)
-        kern = as_gpuarray_variable(kern)
+        img = as_gpuarray_variable(img, self.context)
+        kern = as_gpuarray_variable(kern, self.context)
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
         out = GpuArrayType(img.dtype, broadcastable,
-                           context=img.type.context)()
+                           context=self.context)()
         return gof.Apply(self, [img, kern], [out])
 
     def flops(self, inputs, outputs):
