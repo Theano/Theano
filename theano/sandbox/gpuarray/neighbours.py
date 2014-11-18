@@ -39,7 +39,7 @@ class GpuImages2Neibs(HideC, Images2Neibs):
         return hash((type(self), self.context)) ^ Images2Neibs.__hash__(self)
 
     def make_node(self, ten4, neib_shape, neib_step):
-        ten4 = as_gpuarray_variable(ten4)
+        ten4 = as_gpuarray_variable(ten4, self.context)
         neib_shape = T.as_tensor_variable(neib_shape)
         neib_step = T.as_tensor_variable(neib_step)
 
@@ -456,8 +456,8 @@ class GpuImages2Neibs(HideC, Images2Neibs):
         """ % locals()
 
 @op_lifter([Images2Neibs])
-def use_gpu_images2neibs(node):
+def use_gpu_images2neibs(node, context):
     if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
-        return GpuImages2Neibs(node.op.mode)
+        return GpuImages2Neibs(node.op.mode, context=context)
 
 register_gpu_opt()(use_gpu_images2neibs)
