@@ -35,7 +35,7 @@ if not theano.sandbox.gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
 
 from ..type import (GpuArrayType, get_context, reg_context,
-                    gpuarray_shared_constructor)
+                    gpuarray_shared_constructor, _unreg_context)
 from ..basic_ops import (
     host_from_gpu, gpu_from_host,
     gpu_alloc, GpuAlloc,
@@ -211,6 +211,18 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
     return Checker
 
 
+class GPUMixin(object):
+    "Sets up the test context as the default context"
+    def setUp(self):
+        reg_context(None, test_ctx_real)
+        super(GPUMixin, self).setUp()
+
+    def tearDown(self):
+        super(GPUMixin, self).tearDown()
+        assert test_ctx is not None
+        _unreg_context(None)
+
+
 def test_transfer_cpu_gpu():
     a = T.fmatrix('a')
     g = GpuArrayType(dtype='float32', broadcastable=(False, False),
@@ -314,11 +326,11 @@ GpuAllocTester = makeTester(
 )
 
 
-class TestAlloc(test_basic.TestAlloc):
+class TestAlloc(GPUMixin, test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(gpuarray_shared_constructor)
-    allocs = [GpuAlloc(test_ctx), GpuAlloc(test_ctx), T.Alloc()]
+    allocs = [GpuAlloc(None), GpuAlloc(None), T.Alloc()]
 
 
 def test_shape():
@@ -355,7 +367,7 @@ def test_gpu_contiguous():
     assert f(a_val, 2).flags.c_contiguous
 
 
-class G_reshape(test_basic.T_reshape):
+class G_reshape(GPUMixin, test_basic.T_reshape):
     def shortDescription(self):
         return None
 
@@ -386,7 +398,7 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         # this is to avoid errors with limited devices
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
-        self.shared = gpuarray_shared_constructor
+        self.shared = fake_shared2
 
     def test_gpusplit_opt(self):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())

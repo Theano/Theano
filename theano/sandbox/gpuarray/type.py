@@ -50,6 +50,17 @@ def get_context(ref):
     return _context_reg[ref]
 
 
+def _name_for_ctx(ctx):
+    for k, v in _context_reg:
+        if v == ctx:
+            return k
+        raise ValueError('context is not registered')
+
+# This is a private method for use by the tests only
+def _unreg_context(name):
+    del _context_reg[name]
+
+
 class GpuArrayType(Type):
     def __init__(self, dtype, broadcastable, name=None, context=None):
         # In case this was not provided and no global value is available
@@ -377,7 +388,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
         raise TypeError('ndarray or GpuArray required')
 
     if context is None and isinstance(value, gpuarray.GpuArray):
-        context = value.context
+        context = _name_for_ctx(value.context)
 
     if broadcastable is None:
         broadcastable = (False,) * value.ndim
