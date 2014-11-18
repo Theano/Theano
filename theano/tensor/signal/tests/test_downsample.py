@@ -52,41 +52,29 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             st = ds
         xi = 0
         yi = 0
-        if not ignore_border:
-            if st[0] >= ds[0]:
-                if input.shape[-2] % st[0]:
-                    xi += 1
-            else:
-                if (input.shape[-2] - ds[0]) % st[0]:
-                    xi += 1
-            if st[1] >= ds[1]:
-                if input.shape[-1] % st[1]:
-                    yi += 1
-            else:
-                if (input.shape[-1] % - ds[1]) % st[1]:
-                    yi += 1
-        out_shp = list(input.shape[:-2])
-        if st[0] >= ds[0]:
-            out_shp.append(input.shape[-2] / ds[0] + xi)
-        else:
-            out_shp.append((input.shape[-2] - ds[0]) / st[0] + 1 + xi)
-
-        if st[1] >= ds[1]:
-            out_shp.append(input.shape[-1] / ds[1] + yi)
-        else:
-            out_shp.append((input.shape[-1] - ds[1]) / st[1] + 1 + yi)
-            
-        output_val = numpy.zeros(out_shp)
-
         img_rows = input.shape[-2]
         img_cols = input.shape[-1]
 
+        if not ignore_border:
+            rr = (img_rows) % st[0]
+            cr = (img_cols) % st[1]
+            if rr > 0 and rr < ds[0]:
+                xi += 1
+            if cr > 0 and cr < ds[1]:
+                yi += 1
+
+        out_shp = list(input.shape[:-2])
+        out_shp.append((img_rows - ds[0]) / st[0] + 1 + xi)
+        out_shp.append((img_cols - ds[1]) / st[1] + 1 + yi)
+            
+        output_val = numpy.zeros(out_shp)
+
         for k in numpy.ndindex(*input.shape[:-2]):
             for i in range(output_val.shape[-2]):
-                ii_st = i * ds[0]
+                ii_st = i * st[0]
                 ii_end = __builtin__.min(ii_st + ds[0], img_rows)
                 for j in range(output_val.shape[-1]):
-                    jj_st = j * ds[1]
+                    jj_st = j * st[1]
                     jj_end = __builtin__.min(jj_st + ds[1], img_cols)
                     patch = input[k][ii_st:ii_end, jj_st:jj_end]
                     output_val[k][i, j] = numpy.max(patch)
@@ -118,6 +106,30 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 f = function([images], maxpool_op)
                 output_val = f(imval)
                 assert (numpy.abs(output_val - numpy_output_val) < 1e-5).all()
+
+    def test_DownsampleFactorMaxStride(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        # generate random images
+        maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3))
+        stridesizes = ((1, 1), (2, 2), (3, 1), (2, 5), (5, 7))
+        imval = rng.rand(4, 10, 64, 64)
+        images = tensor.dtensor4()
+
+        for maxpoolshp in maxpoolshps:
+            for ignore_border in [True, False]:
+                for stride in stridesizes:
+                    print 'maxpoolshp =', maxpoolshp
+                    print 'ignore_border =', ignore_border
+                    print 'stride =', stride
+
+                    #DownsampleFactorMax op
+                    numpy_output_val = self.numpy_max_pool_2d_stride(imval, maxpoolshp,
+                                                              ignore_border, stride)
+                    maxpool_op = DownsampleFactorMax(maxpoolshp,
+                                                     ignore_border=ignore_border, st=stride)(images)
+                    f = function([images], maxpool_op)
+                    output_val = f(imval)
+                    assert (numpy.abs(output_val - numpy_output_val) < 1e-5).all()
 
     def test_DownsampleFactorMax_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
