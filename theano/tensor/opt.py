@@ -1598,6 +1598,12 @@ def local_remove_all_assert(node):
 compile.optdb['canonicalize'].register('local_remove_all_assert',
                                        local_remove_all_assert,
                                        use_db_name_as_tag=False)
+compile.optdb['stabilize'].register('local_remove_all_assert',
+                                    local_remove_all_assert,
+                                    use_db_name_as_tag=False)
+compile.optdb['specialize'].register('local_remove_all_assert',
+                                     local_remove_all_assert,
+                                     use_db_name_as_tag=False)
 
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
