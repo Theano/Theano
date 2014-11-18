@@ -191,7 +191,7 @@ class InferShapeTester(unittest.TestCase):
         self.mode = mode.including("canonicalize")
 
     def _compile_and_check(self, inputs, outputs, numeric_inputs, cls,
-                           excluding=None, warn=True):
+                           excluding=None, warn=True, check_topo=True):
         """This tests the infer_shape method only
 
         When testing with input values with shapes that take the same
@@ -203,6 +203,9 @@ class InferShapeTester(unittest.TestCase):
         matrix instead of its height, then testing with only square
         matrices will not detect the problem. If warn=True, we emit a
         warning when testing with such values.
+
+        :param check_topo: If True, we check that the Op where removed
+            from the graph. False is useful to test not implemented case.
 
         """
         mode = self.mode
@@ -236,8 +239,9 @@ class InferShapeTester(unittest.TestCase):
                                           mode=mode)
         #theano.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
-        topo_shape = shapes_function.maker.fgraph.toposort()
-        assert not any(isinstance(t.op, cls) for t in topo_shape)
+        if check_topo:
+            topo_shape = shapes_function.maker.fgraph.toposort()
+            assert not any(isinstance(t.op, cls) for t in topo_shape)
         topo_out = outputs_function.maker.fgraph.toposort()
         assert any(isinstance(t.op, cls) for t in topo_out)
         # Check that the shape produced agrees with the actual shape.

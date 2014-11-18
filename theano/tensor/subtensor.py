@@ -1893,7 +1893,9 @@ class AdvancedSubtensor(Op):
         # Really special case
         if len(ishapes) == 3:
             xshp, ind1shp, ind2shp = ishapes
-            if len(xshp) == 2 and len(ind1shp) == 1 and len(ind2shp) == 1:
+            if (len(xshp) == 2 and
+                    ind1shp is not None and len(ind1shp) == 1 and
+                    ind2shp is not None and len(ind2shp) == 1):
                 # if the graph is correct, we can assume ind1shp[0] and
                 # ind2shp[0] will have the same value.
                 # Try to return the one closest to the graph input.
