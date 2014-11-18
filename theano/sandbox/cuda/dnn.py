@@ -1164,6 +1164,8 @@ if cuda_available:
             and (isinstance(node.inputs[0].owner.op, HostFromGpu)
                  or isinstance(node.inputs[1].owner.op, HostFromGpu))
         ):
+            if not dnn_available():
+                return
             ins = []
             for n in node.inputs:
                 if isinstance(n.owner.op, HostFromGpu):
