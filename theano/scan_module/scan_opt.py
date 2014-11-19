@@ -627,6 +627,9 @@ class PushOutScanOutput(gof.Optimizer):
         outer_non_seqs = op.outer_non_seqs(node.inputs)
         assert len(inner_non_seqs) == len(outer_non_seqs)
 
+        inner_seqs = op.inner_seqs(clean_inputs)
+        outer_seqs = op.outer_seqs(node.inputs)
+
         new_scan_node = None
 
         for nd in local_fgraph.toposort():
@@ -693,7 +696,8 @@ class PushOutScanOutput(gof.Optimizer):
                       (nd.inputs[1] in inner_non_seqs or
                        isinstance(nd.inputs[1], tensor.Constant)) and
                       nd.inputs[0].ndim == 1 and
-                      nd.inputs[0] not in clean_inputs):
+                      (nd.inputs[0] in inner_seqs or
+                       nd.inputs[0] not in clean_inputs)):
 
                     valid_inputs = True
                     idx_matrix_input = 1
@@ -724,7 +728,11 @@ class PushOutScanOutput(gof.Optimizer):
                     # scan, get a reference to the corresponding outer output.
                     # Otherwise, add it as a new nit_sot output and then get a
                     # reference to it
-                    if nd.inputs[idx_vector_input] in nitsot_outs:
+                    if nd.inputs[idx_vector_input] in inner_seqs:
+                        _idx = inner_seqs.index(nd.inputs[idx_vector_input])
+                        outer_vector_input = outer_seqs[_idx]
+
+                    elif nd.inputs[idx_vector_input] in nitsot_outs:
                         # Figure out which scan output corresponds the vector
                         # input
                         inner_vector_input = nd.inputs[idx_vector_input]
@@ -741,6 +749,9 @@ class PushOutScanOutput(gof.Optimizer):
                                                                                         new_output_inner)
                         outer_vector_input = new_scan_node.outputs[idx_new_output]
 
+                        node = new_scan_node
+                        idx_dot_output = idx_old_outputs[idx_dot_output]
+
                     # Perform the Dot outside of scan
                     if idx_matrix_input == 0:
                         outer_dot_inputs = [outer_matrix_input,
@@ -752,9 +763,8 @@ class PushOutScanOutput(gof.Optimizer):
                         outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
 
                     # Modify the outer graph to add the outer Dot
-                    new_idx_dot_output = idx_old_outputs[idx_dot_output]
                     fgraph.replace_all([
-                           (new_scan_node.outputs[new_idx_dot_output],
+                           (node.outputs[idx_dot_output],
                             outer_dot_output)],
                            reason="scanOp_pushout_output")
 
