@@ -55,20 +55,37 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         img_rows = input.shape[-2]
         img_cols = input.shape[-1]
 
+        out_r = 0
+        out_c = 0
+        if img_rows - ds[0] >= 0:
+            out_r = (img_rows - ds[0]) // st[0] + 1 
+        if img_cols - ds[1] >= 0:
+            out_c = (img_cols - ds[1]) // st[1] + 1
+
         if not ignore_border:
-            rr = (img_rows) % st[0]
-            cr = (img_cols) % st[1]
-            if rr > 0 and rr < ds[0]:
-                xi += 1
-            if cr > 0 and cr < ds[1]:
-                yi += 1
+            if out_r > 0:
+                if img_rows - ((out_r - 1) * st[0] + ds[0]) > 0 :
+                    rr = img_rows - out_r * st[0]
+                    if rr > 0:
+                        out_r += 1
+            else:
+                if img_rows > 0:
+                        out_r += 1
+                        
+            if out_c > 0:
+                if img_cols - ((out_c - 1) * st[1] + ds[1]) > 0 :
+                    cr = img_cols - out_c * st[1]
+                    if cr > 0:
+                        out_c +=1
+            else:
+                if img_cols > 0:
+                        out_c += 1
 
         out_shp = list(input.shape[:-2])
-        out_shp.append((img_rows - ds[0]) / st[0] + 1 + xi)
-        out_shp.append((img_cols - ds[1]) / st[1] + 1 + yi)
-            
-        output_val = numpy.zeros(out_shp)
+        out_shp.append(out_r)
+        out_shp.append(out_c)
 
+        output_val = numpy.zeros(out_shp)
         for k in numpy.ndindex(*input.shape[:-2]):
             for i in range(output_val.shape[-2]):
                 ii_st = i * st[0]
@@ -109,15 +126,22 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
     def test_DownsampleFactorMaxStride(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
+        maxpoolshps = ((1, 1), (3, 3), (5, 3))
+        stridesizes = ((1, 1), (3, 3), (5, 7))
         # generate random images
-        maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3))
-        stridesizes = ((1, 1), (2, 2), (3, 1), (2, 5), (5, 7))
-        imval = rng.rand(4, 10, 64, 64)
+        imval = rng.rand(4, 10, 16, 16)
+        outputshps = ((4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3), (4, 10, 16, 16), \
+                      (4, 10, 6, 6), (4, 10, 4, 3), (4, 10, 14, 14), (4, 10, 5, 5), \
+                      (4, 10, 3, 2), (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3), \
+                      (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2), (4, 10, 12, 14), \
+                      (4, 10, 5, 6), (4, 10, 4, 3))
         images = tensor.dtensor4()
-
+        indx = 0
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True, False]:
                 for stride in stridesizes:
+                    outputshp = outputshps[indx]
+                    indx += 1
                     print 'maxpoolshp =', maxpoolshp
                     print 'ignore_border =', ignore_border
                     print 'stride =', stride
@@ -125,11 +149,54 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     #DownsampleFactorMax op
                     numpy_output_val = self.numpy_max_pool_2d_stride(imval, maxpoolshp,
                                                               ignore_border, stride)
+                    print "outshape is %s " %(outputshp, )
+                    print "calculated shape is %s " %(numpy_output_val.shape,)
+                    assert numpy_output_val.shape == outputshp
                     maxpool_op = DownsampleFactorMax(maxpoolshp,
                                                      ignore_border=ignore_border, st=stride)(images)
                     f = function([images], maxpool_op)
                     output_val = f(imval)
+                    print "numpy_output_val shape is %s" %(numpy_output_val.shape,) 
                     assert (numpy.abs(output_val - numpy_output_val) < 1e-5).all()
+
+    def test_DownsampleFactorMaxStrideExtra(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        maxpoolshps = ((5, 3), (5, 3), (5, 3), (5, 5), (3, 2), (7, 7), (9, 9))
+        stridesizes = ((3, 2), (7, 5), (10, 6), (1, 1), (2, 3), (10, 10), (1, 1))
+        imvsizs = ((16, 16), (16, 16), (16, 16), (8, 5), (8, 5), (8, 5), (8, 5))
+        outputshps = ((4, 10, 4, 7), (4, 10, 5, 8), (4, 10, 2, 3), (4, 10, 3, 4), \
+                      (4, 10, 2, 3), (4, 10, 2, 3), (4, 10, 4, 1), (4, 10, 4, 1), \
+                      (4, 10, 3, 2), (4, 10, 4, 2), (4, 10, 1, 0), (4, 10, 1, 1), \
+                      (4, 10, 0, 0), (4, 10, 1, 1))
+        images = tensor.dtensor4()
+        indx = 0
+        for indx in numpy.arange(len(maxpoolshps)):
+            imvsize = imvsizs[indx]       
+            imval = rng.rand(4, 10 , imvsize[0], imvsize[1])
+            stride = stridesizes[indx]
+            maxpoolshp = maxpoolshps[indx]
+            for ignore_border in [True, False]:
+                indx_out = indx * 2
+                if not ignore_border:
+                    indx_out += 1
+                outputshp = outputshps[indx_out]
+                print 'maxpoolshp =', maxpoolshp
+                print 'ignore_border =', ignore_border
+                print 'stride =', stride
+
+                #DownsampleFactorMax op
+                numpy_output_val = self.numpy_max_pool_2d_stride(imval, maxpoolshp,
+                                                          ignore_border, stride)
+                print "outshape is %s " %(outputshp, )
+                print "calculated shape is %s " %(numpy_output_val.shape,)
+                assert numpy_output_val.shape == outputshp
+                maxpool_op = DownsampleFactorMax(maxpoolshp,
+                                                 ignore_border=ignore_border, st=stride)(images)
+                f = function([images], maxpool_op)
+                output_val = f(imval)
+                print "numpy_output_val shape is %s" %(numpy_output_val.shape,) 
+                print "output_val shape is %s " %(output_val.shape,)
+                assert (numpy.abs(output_val - numpy_output_val) < 1e-5).all()
 
     def test_DownsampleFactorMax_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

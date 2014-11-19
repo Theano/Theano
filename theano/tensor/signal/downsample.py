@@ -102,23 +102,43 @@ class DownsampleFactorMax(Op):
             st = ds
         r, c = imgshape[-2:]
 
-        nr = (r - ds[0]) // st[0] + 1
-        nc = (c - ds[1]) // st[1] + 1
+        out_r = (r - ds[0]) // st[0] + 1
+        out_c = (c - ds[1]) // st[1] + 1
+        nr = 0
+        nc = 0
+        if isinstance(r, theano.Variable):
+            nr = tensor.switch(tensor.ge(r - ds[0], 0), out_r, 0)
+        elif r - ds[0] >= 0:
+                nr = out_r
+        if isinstance(c, theano.Variable):
+            nr = tensor.switch(tensor.ge(c - ds[1], 0), out_c, 0)
+        elif c - ds[1] >= 0:
+                nc = out_c
 
-        rval = list(imgshape[:-2]) + [nr, nc]
-
+        out_re = 0
+        out_ce = 0
         if not ignore_border:
+            re = r - ((out_r - 1) * st[0] + ds[0])
+            rr = r - out_r * st[0]
+            ce = c - ((out_c - 1) * st[1] + ds[1])
+            cr = c - out_c * st[1]
             if isinstance(r, theano.Variable):
-                rr = r % st[0]
-                rval[-2] = tensor.switch(tensor.and_((rr % ds[0]), tensor.eq(rr // ds[0], 0)), rval[-2] + 1, rval[-2])
-            elif (r % st[0]) % ds[0]:
-                rval[-2] += 1
+                out_re = tensor.switch(tensor.gt(nr, 0), tensor.switch(tensor.gt(re, 0), tensor.switch(tensor.gt(rr, 0), 1, 0), 0), tensor.switch(tensor.gt(r, 0), 1, 0))
+            elif nr > 0:
+                if re > 0 and rr > 0:
+                    out_re = 1
+            elif r > 0:
+                    out_re = 1
             if isinstance(c, theano.Variable):
-                cr = c % st[1]
-                crn = cr - ds[1]
-                rval[-1] = tensor.switch(tensor.lt(crn, 0), rval[-1] + 1, rval[-1])
-            elif (c % st[1]) % ds[1]:
-                rval[-1] += 1
+                out_ce = tensor.switch(tensor.gt(nc, 0), tensor.switch(tensor.gt(ce, 0), tensor.switch(tensor.gt(cr, 0), 1, 0), 0), tensor.switch(tensor.gt(c, 0), 1, 0))
+            elif nc > 0:
+                if ce > 0 and cr > 0:
+                    out_ce = 1
+            elif c > 0:
+                    out_ce = 1
+        nr += out_re
+        nc += out_ce
+        rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
     def __init__(self, ds, ignore_border=False, st=None):
