@@ -1013,7 +1013,7 @@ class ProfileStats(object):
             max_sum_size = max(max_sum_size, sum_size)
             max_node_memory_size[0] = max(max_node_memory_size[0],
                                           sum(old_running_memory[0]))
-            max_running_max_memory_size[0] = max(max_running_max_memory_size[1],
+            max_running_max_memory_size[0] = max(max_running_max_memory_size[0],
                                                  sum(old_running_memory[2]))
 
             # Separate CPU and GPU
