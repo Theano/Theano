@@ -10,7 +10,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
 
 from ..type import gpuarray_shared_constructor
 
-from .test_basic_ops import mode_with_gpu
+from .test_basic_ops import mode_with_gpu, fake_shared2
 
 from theano.compile import DeepCopyOp
 
@@ -24,7 +24,7 @@ class G_subtensor(test_subtensor.T_subtensor):
     def __init__(self, name):
         test_subtensor.T_subtensor.__init__(
             self, name,
-            shared=gpuarray_shared_constructor,
+            shared=fake_shared2,
             sub=GpuSubtensor,
             inc_sub=GpuIncSubtensor,
             adv_incsub1=GpuAdvancedIncSubtensor1,
@@ -41,7 +41,7 @@ class G_subtensor(test_subtensor.T_subtensor):
 def test_advinc_subtensor1():
     """ Test the second case in the opt local_gpu_advanced_incsubtensor1 """
     for shp in [(3, 3), (3, 3, 3)]:
-        shared = gpuarray_shared_constructor
+        shared = fake_shared2
         xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
         yval = numpy.empty((2,) + shp[1:], dtype='float32')
         yval[:] = 10

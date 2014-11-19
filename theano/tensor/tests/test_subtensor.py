@@ -84,8 +84,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         Subtensor.debug = False
         utt.seed_rng()
 
-    def eval_output_and_check(self, t, list=False):
-        f = inplace_func([], t, mode=self.mode)
+    def eval_output_and_check(self, t, list=False, mode=None):
+        if mode is None:
+            mode = self.mode
+        f = inplace_func([], t, mode=mode)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
@@ -163,12 +165,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones((), dtype=self.dtype))
         t = self.sub([])(n)
         self.assertTrue(isinstance(t.owner.op, Subtensor))
-        mode = self.mode
-        self.mode = mode.excluding("local_useless_subtensor")
-        try:
-            self.eval_output_and_check(t)
-        finally:
-            self.mode = mode
+        self.eval_output_and_check(
+            t, mode=mode.excluding("local_useless_subtensor"))
 
     def test1_err_invalid(self):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
@@ -867,17 +865,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         """
         Test increment and set with broadcast
         """
-
-        X = tensor.matrix(dtype=self.dtype)
+        X = self.shared(numpy.ones((9, 9)).astype(self.dtype))
         y = set_subtensor(X[1::, 1::],  0)
-        f = self.function([X], [y],
+        f = self.function([], [y],
                           op=self.inc_sub,
                           N=1)
+        out = f()
 
-        x_ = numpy.ones((9, 9))
-        out = f(x_.astype('float32'))
-
-        res = x_.copy()
+        res = numpy.ones((9, 9))
         res[1::, 1::] = 0
         assert numpy.allclose(out, res)
 

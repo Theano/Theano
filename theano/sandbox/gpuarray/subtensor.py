@@ -449,7 +449,13 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
 
     def __init__(self, inplace=False, set_instead_of_inc=False, context=None):
         GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
-        self.context = None
+        self.context = context
+
+    def clone_inplace(self):
+        return GpuAdvancedIncSubtensor1_dev20(
+            inplace=True,
+            set_instead_of_inc=self.set_instead_of_inc,
+            context=self.context)
 
     def __eq__(self, other):
         return (type(self) == type(other) and

@@ -478,10 +478,13 @@ def local_gpua_advanced_incsubtensor(node, context):
 
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
         return GpuAdvancedIncSubtensor1(
+            inplace=node.op.inplace,
             set_instead_of_inc=set_instead_of_inc)
     else:
         return GpuAdvancedIncSubtensor1_dev20(
-            set_instead_of_inc=set_instead_of_inc)
+            inplace=node.op.inplace,
+            set_instead_of_inc=set_instead_of_inc,
+            context=context)
 
 
 @register_opt('fast_compile')
