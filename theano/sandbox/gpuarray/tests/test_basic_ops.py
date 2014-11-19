@@ -61,7 +61,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
-test_ctx = None
+test_ctx = 'test'
 test_ctx_real = get_context(test_ctx)
 
 def may_fail(msg, EClass):
