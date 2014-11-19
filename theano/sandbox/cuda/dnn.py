@@ -56,7 +56,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             else:
                 dnn_available.msg = (
                     "Theano is not able to use cuDNN. We got this error: \n" +
-                    err)
+                    str(err))
     return dnn_available.avail
 
 
