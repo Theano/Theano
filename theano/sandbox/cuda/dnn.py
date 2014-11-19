@@ -467,6 +467,20 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
+    if border_mode == 'full' and subsample == (1, 1):
+        # Special case: We can be faster by using GpuDnnConvGradI to compute
+        # the full convolution as the backward pass of a valid convolution.
+        # We just need to set up a suitable 'fake' valid convolution.
+        img = gpu_contiguous(img)
+        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
+        conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
+        shape = theano.tensor.stack(img.shape[0], kerns.shape[1],
+                                    img.shape[2] + kerns.shape[2] - 1,
+                                    img.shape[3] + kerns.shape[3] - 1)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                              conv_mode=conv_mode)(shape, kerns.shape)
+        return GpuDnnConvGradI()(kerns, img, desc)
+
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
