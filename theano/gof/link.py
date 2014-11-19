@@ -126,10 +126,10 @@ def raise_with_op(node, thunk=None, exc_info=None):
                        for ipt in thunk.inputs]
             scalar_values = []
             for ipt in thunk.inputs:
-                if getattr(ipt[0], "size", -1) == 1:
+                if getattr(ipt[0], "size", -1) <= 5:
                     scalar_values.append(ipt[0])
                 else:
-                    scalar_values.append("not scalar")
+                    scalar_values.append("not shown")
         else:
             shapes = "The thunk don't have an inputs attributes."
             strides = "So we can't access the strides of inputs values"
@@ -137,7 +137,7 @@ def raise_with_op(node, thunk=None, exc_info=None):
 
         detailed_err_msg += ("Inputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
-                             "\nInputs scalar values: %s\n" % scalar_values)
+                             "\nInputs values: %s\n" % scalar_values)
     else:
         hints.append(
             "HINT: Use another linker then the c linker to"
