@@ -642,12 +642,15 @@ class ProfileStats(object):
             fct_shapes[node.fgraph].setdefault(node, [])
             sum_dense = 0
             for out in node.outputs:
-                sh = self.variable_shape[out]
-                if hasattr(out.type, 'get_size'):
-                    v = out.type.get_size(sh)
-                    sum_dense += v
+                if out in self.variable_shape.keys():
+                    sh = self.variable_shape[out]
+                    if hasattr(out.type, 'get_size'):
+                        v = out.type.get_size(sh)
+                        sum_dense += v
+                    else:
+                        v = 'Unknown'
                 else:
-                    v = "Unknown"
+                    v = 'Variable isnt created'
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
@@ -656,14 +659,17 @@ class ProfileStats(object):
 
         # Find the function that used the most of that statistic
         max_sum_size = 0
-        max_node_memory_size = 0
-        max_running_max_memory_size = 0
+
+        # statistics with the old order
+        # TODO: Make list more flexible with mulitply GPUs later
+        max_node_memory_size = [0, 0, 0]
+        max_running_max_memory_size = [0, 0, 0]
         max_node_memory_saved_by_view = 0
         max_node_memory_saved_by_inplace = 0
 
-        # statistic with the new order
-        new_max_node_memory_size = 0
-        new_max_running_max_memory_size = 0
+        # statistics with the new order
+        new_max_node_memory_size = [0, 0, 0]
+        new_max_running_max_memory_size = [0, 0, 0]
         new_max_node_memory_saved_by_view = 0
         new_max_node_memory_saved_by_inplace = 0
 
@@ -689,10 +695,11 @@ class ProfileStats(object):
                 The sum of memory saved by reusing the input instead of
                 new allocation
             """
-
-            node_memory_size = 0
-            running_memory_size = 0
-            running_max_memory_size = 0
+            from theano.sandbox.cuda import CudaNdarrayType
+            # Initial Mem info values [CPU, GPU]
+            node_memory_size = [0, 0]
+            running_memory_size = [0, 0]
+            running_max_memory_size = [0, 0]
             node_memory_saved_by_view = 0
             node_memory_saved_by_inplace = 0
             # This take only the inputs/outputs dependencies.
@@ -734,6 +741,10 @@ class ProfileStats(object):
                 # allocated by the node
                 idx2 = 0
                 for out in node.outputs:
+                    if isinstance(out.type, CudaNdarrayType):
+                        cg = 1
+                    else:
+                        cg = 0
                     ins = None
                     if dmap and idx2 in dmap:
                         vidx = dmap[idx2]
@@ -757,30 +768,36 @@ class ProfileStats(object):
                         view_of[out] = origin
                         viewed_by[origin].append(out)
                     else:
-                        running_memory_size += var_mem[out]
-                        node_memory_size += var_mem[out]
+                        running_memory_size[cg] += var_mem[out]
+                        node_memory_size[cg] += var_mem[out]
                     idx2 += 1
 
-                running_max_memory_size = max(running_max_memory_size,
-                                              running_memory_size)
+                running_max_memory_size[0] = max(running_max_memory_size[0],
+                                                 running_memory_size[0])
+                running_max_memory_size[1] = max(running_max_memory_size[1],
+                                                 running_memory_size[1])
 
                 # Mimic the combination of Theano and Python gc
                 for ins in node.inputs:
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
+                    if isinstance(ins.type, CudaNdarrayType):
+                        cg = 1
+                    else:
+                        cg = 0
                     if (dependencies[ins] and
                             ins not in fgraph.outputs and
                             ins.owner and
                             all([compute_map[v][0] for v in dependencies[ins]])):
                         if ins not in view_of and not viewed_by.get(ins, []):
-                            running_memory_size -= var_mem[ins]
+                            running_memory_size[cg] -= var_mem[ins]
                         elif ins in view_of:
                             origin = view_of[ins]
                             viewed_by[origin].remove(ins)
                             if (not viewed_by[origin] and
                                     origin not in fgraph.inputs and
                                     not isinstance(origin, theano.Constant)):
-                                running_memory_size -= var_mem[origin]
+                                running_memory_size[cg] -= var_mem[origin]
                     else:
                         # ins is viewed_by something else, so its
                         # memory isn't freed
@@ -994,24 +1011,46 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size = max(max_node_memory_size,
-                                       old_running_memory[0])
-            max_running_max_memory_size = max(max_running_max_memory_size,
-                                              old_running_memory[2])
-            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                old_running_memory[4])
+            max_node_memory_size[0] = max(max_node_memory_size[0],
+                                          sum(old_running_memory[0]))
+            max_running_max_memory_size[0] = max(max_running_max_memory_size[0],
+                                                 sum(old_running_memory[2]))
+
+            # Separate CPU and GPU
+            max_node_memory_size[1] = max(max_node_memory_size[1],
+                                          old_running_memory[0][0])
+            max_node_memory_size[2] = max(max_node_memory_size[2],
+                                          old_running_memory[0][1])
+            max_running_max_memory_size[1] = max(max_running_max_memory_size[1],
+                                                 old_running_memory[2][0])
+            max_running_max_memory_size[2] = max(max_running_max_memory_size[2],
+                                                 old_running_memory[2][1])
+
             max_node_memory_saved_by_inplace = max(
                 max_node_memory_saved_by_inplace, old_running_memory[3])
+            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
+                                                old_running_memory[4])
 
             # Store max of some stats with new order
-            new_max_node_memory_size = max(new_max_node_memory_size,
-                                           new_running_memory[0])
-            new_max_running_max_memory_size = max(new_max_running_max_memory_size,
-                                                  new_running_memory[2])
-            new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
-                                                    new_running_memory[4])
+            new_max_node_memory_size[0] = max(new_max_node_memory_size[0],
+                                              sum(new_running_memory[0]))
+            new_max_running_max_memory_size[0] = max(new_max_running_max_memory_size[0],
+                                                     sum(new_running_memory[2]))
+
+            # Separate CPU and GPU
+            new_max_node_memory_size[1] = max(new_max_node_memory_size[1],
+                                              new_running_memory[0][0])
+            new_max_node_memory_size[2] = max(new_max_node_memory_size[2],
+                                              new_running_memory[0][1])
+            new_max_running_max_memory_size[1] = max(new_max_running_max_memory_size[1],
+                                                     new_running_memory[2][0])
+            new_max_running_max_memory_size[2] = max(new_max_running_max_memory_size[2],
+                                                     new_running_memory[2][1])
+
             new_max_node_memory_saved_by_inplace = max(
                 new_max_node_memory_saved_by_inplace, new_running_memory[3])
+            new_max_node_memory_saved_by_view = max(new_max_node_memory_saved_by_view,
+                                                    new_running_memory[4])
 
             # Config: whether print min memory peak
             if config.profiling.min_peak_memory:
@@ -1035,13 +1074,30 @@ class ProfileStats(object):
         print >> file,  "---"
 #        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
 #            round(max_sum_size / 1024))
-
         print >> file,  "    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
-            new_max_node_memory_size / 1024.)), int(round(
-                max_node_memory_size / 1024.)))
+            new_max_node_memory_size[0] / 1024.)), int(round(
+                max_node_memory_size[0] / 1024.)))
+        print >> file,  "    CPU: %dKB (%dKB)" % ((int(round(
+            new_max_node_memory_size[1] / 1024.)), int(round(
+                max_node_memory_size[1] / 1024.))))
+        print >> file,  "    GPU: %dKB (%dKB)" % ((int(round(
+            new_max_node_memory_size[2] / 1024.)), int(round(
+                max_node_memory_size[2] / 1024.))))
+
+        print >> file,  "---"
+
         print >> file,  "    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
-            new_max_running_max_memory_size / 1024.)), int(round(
-                max_running_max_memory_size / 1024.)))
+            new_max_running_max_memory_size[0] / 1024.)), int(round(
+                max_running_max_memory_size[0] / 1024.)))
+        print >> file,  "    CPU: %dKB (%dKB)" % ((int(round(
+            new_max_running_max_memory_size[1] / 1024.)), int(round(
+                max_running_max_memory_size[1] / 1024.))))
+        print >> file,  "    GPU: %dKB (%dKB)" % ((int(round(
+            new_max_running_max_memory_size[2] / 1024.)), int(round(
+                max_running_max_memory_size[2] / 1024.))))
+
+        print >> file,  "---"
+
         if min_max_peak:
             print >> file,  "    Minimum peak from all valid apply node order is %dKB(took %.3fs to compute)" % (int(round(
                 min_max_peak / 1024.)), min_peak_time)
@@ -1052,8 +1108,10 @@ class ProfileStats(object):
             (int(round(new_max_node_memory_saved_by_inplace / 1024.)),
              int(round(max_node_memory_saved_by_inplace / 1024.)))
         print >> file,  "    Memory saved if gc is enabled: %dKB (%dKB)" % (int(
-            round(new_max_node_memory_size - new_max_running_max_memory_size) / 1024.), int(
-            round(max_node_memory_size - max_running_max_memory_size) / 1024.))
+            round(new_max_node_memory_size[0] - new_max_running_max_memory_size[0]) / 1024.), int(
+            round(max_node_memory_size[0] - max_running_max_memory_size[0]) / 1024.))
+
+        print >> file,  "---"
 
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
