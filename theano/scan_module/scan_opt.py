@@ -686,7 +686,8 @@ class PushOutScanOutput(gof.Optimizer):
                     (nd.inputs[0] in inner_non_seqs or
                      isinstance(nd.inputs[0], tensor.Constant)) and
                     nd.inputs[1].ndim == 1 and
-                    nd.inputs[1] not in clean_inputs):
+                      (nd.inputs[1] in inner_seqs or
+                       nd.inputs[1] not in clean_inputs)):
 
                     valid_inputs = True
                     idx_matrix_input = 0
