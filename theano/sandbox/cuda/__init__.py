@@ -211,6 +211,8 @@ if cuda_available:
     except EnvironmentError, e:
         cuda_available = False
         cuda_initialization_error_message = " ".join(e.args)
+else:
+    cuda_initialization_error_message = 'cuda unavilable'
 
 
 class GpuOp(theano.gof.Op):

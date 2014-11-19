@@ -122,9 +122,7 @@ class GpuDnnConvDesc(GpuOp):
     """This Op builds a convolution descriptor for use in the other
     convolution operations.
 
-    :param border_mode: 'valid' or 'full'
-    :param subsample: The subsample, tuple like (dx, dy)
-    :param conv_mode: 'conv' or 'cross'
+    see the doc of :func:`dnn_conv` for a description of the parameters
 
     """
     __props__ = ('border_mode', 'subsample', 'conv_mode')
@@ -142,7 +140,17 @@ class GpuDnnConvDesc(GpuOp):
         return NVCC_compiler
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
-        assert border_mode in ('valid', 'full')
+        if isinstance(border_mode, int):
+            border_mode = (border_mode, border_mode)
+        if isinstance(border_mode, tuple):
+            pad_h, pad_w = map(int, border_mode)
+            border_mode = (pad_h, pad_w)
+        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
+                border_mode in ('valid', 'full')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", an integer or a pair of'
+                ' integers'.format(border_mode))
         self.border_mode = border_mode
         assert len(subsample) == 2
         self.subsample = subsample
@@ -162,11 +170,18 @@ class GpuDnnConvDesc(GpuOp):
         img_shape, kern_shape = inputs
         desc, = outputs
 
-        if self.border_mode == "valid":
-            bmode = 1
+        if isinstance(self.border_mode, tuple):
+            pad_h_spec, pad_w_spec = map(int, self.border_mode)
+            assert pad_h_spec >= 0 and pad_w_spec >= 0
+            bmode = 2
         else:
-            assert self.border_mode == "full"
-            bmode = 0
+            pad_h_spec = pad_w_spec = 0
+
+            if self.border_mode == "valid":
+                bmode = 1
+            else:
+                assert self.border_mode == "full"
+                bmode = 0
 
         if self.conv_mode == 'conv':
             conv_flag = 'CUDNN_CONVOLUTION'
@@ -185,7 +200,10 @@ class GpuDnnConvDesc(GpuOp):
     %(fail)s
   }
 
-  if (%(bmode)d == 1) {
+  if (%(bmode)d == 2) {
+    pad_h%(name)s = %(pad_h_spec)d;
+    pad_w%(name)s = %(pad_w_spec)d;
+  } else if (%(bmode)d == 1) {
     pad_h%(name)s = 0;
     pad_w%(name)s = 0;
   } else if (%(bmode)d == 0) {
@@ -218,10 +236,11 @@ class GpuDnnConvDesc(GpuOp):
 }
 """ % dict(name=name, img_shape=img_shape, kern_shape=kern_shape, desc=desc,
            bmode=bmode, conv_flag=conv_flag, fail=sub['fail'],
-           subsx=self.subsample[0], subsy=self.subsample[1])
+           subsx=self.subsample[0], subsy=self.subsample[1],
+           pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class GpuDnnConvBase(DnnBase):
@@ -459,7 +478,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
     :param img: images to do the convolution over
     :param kerns: convolution filters
-    :param border_mode: one of 'valid', 'full' (default: 'valid')
+    :param border_mode: one of 'valid', 'full'; additionally, the padding size
+        could be directly specified by an integer or a pair of integers
     :param subsample: perform subsampling of the output (default: (1, 1))
     :param conv_mode: perform convolution (kernels flipped) or cross-correlation.  One of 'conv', 'cross'. (default: 'conv')
 
