@@ -81,6 +81,16 @@ from theano.updates import Updates, OrderedUpdates
 
 from theano.gradient import Rop, Lop, grad, subgraph_grad
 
+# This need to be before the init of GPU, as it add config variable
+# needed during that phase.
+import theano.tests
+if hasattr(theano.tests, "TheanoNoseTester"):
+    test = theano.tests.TheanoNoseTester().test
+else:
+    def test():
+        raise ImportError("The nose module is not installed."
+                          " It is needed for Theano tests.")
+
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
     # We can't test the driver during import of theano.sandbox.cuda as
@@ -184,15 +194,6 @@ def sparse_grad(var):
     assert isinstance(var.owner.op, tensor.AdvancedSubtensor1)
     ret = var.owner.op.__class__(sparse_grad=True)(*var.owner.inputs)
     return ret
-
-
-import theano.tests
-if hasattr(theano.tests, "TheanoNoseTester"):
-    test = theano.tests.TheanoNoseTester().test
-else:
-    def test():
-        raise ImportError("The nose module is not installed."
-                          " It is needed for Theano tests.")
 
 # This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
 # depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
