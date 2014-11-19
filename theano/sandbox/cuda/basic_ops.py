@@ -2345,7 +2345,8 @@ class GpuReshape(tensor.Reshape, GpuOp):
                 shp = shp_new
 
             else:
-                raise ValueError("total size of new array must be unchanged")
+                raise ValueError("total size of new array must be unchanged",
+                                 x.shape, shp)
 
         out[0] = x.reshape(tuple(shp))
 

@@ -693,7 +693,8 @@ int wsX, wsY, strideX, strideY;
 err%(name)s = cudnnGetPoolingDescriptor(%(desc)s, &mode, &wsX, &wsY, &strideX, &strideY);
 
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
+  PyErr_Format(PyExc_RuntimeError,
+               "GpuDnnPool: error doing cudnnGetPoolingDescriptor operation: %%s",
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -717,7 +718,8 @@ _handle,
 %(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
+  PyErr_Format(PyExc_RuntimeError,
+               "GpuDnnPool: error doing cudnnPoolingForward operation: %%s",
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -744,7 +746,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -794,22 +796,26 @@ input_grad%(id)d = NULL;
 output%(id)d = NULL;
 output_grad%(id)d = NULL;
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&input%(id)d)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError,
+               "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(input): %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&input_grad%(id)d)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError,
+               "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(input_grad): %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output%(id)d)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError,
+               "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(output): %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
 if ((err%(id)d = cudnnCreateTensor4dDescriptor(&output_grad%(id)d)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError,
+               "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(output_grad): %%s", cudnnGetErrorString(err%(id)d));
   %(fail)s
 }
@@ -843,23 +849,27 @@ if (output_grad%(id)d != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(id)
 cudnnStatus_t err%(name)s;
 
 if (!CudaNdarray_is_c_contiguous(%(input)s)) {
-  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
+  PyErr_SetString(PyExc_ValueError,
+                  "GpuDnnPoolGrad: Only contiguous inputs are supported.");
   %(fail)s
 }
 
 if (!CudaNdarray_is_c_contiguous(%(input_grad)s)) {
-  PyErr_SetString(PyExc_ValueError, "Only contiguous input gradients are supported.");
+  PyErr_SetString(PyExc_ValueError,
+                  "GpuDnnPoolGrad: Only contiguous input gradients are supported.");
   %(fail)s
 }
 
 if (!CudaNdarray_is_c_contiguous(%(output)s)) {
-  PyErr_SetString(PyExc_ValueError, "Only contiguous outputs are supported.");
+  PyErr_SetString(PyExc_ValueError,
+                  "GpuDnnPoolGrad: Only contiguous outputs are supported.");
   %(fail)s
 }
 
 %(set_in)s
 
-if (CudaNdarray_prep_output(&%(output_grad)s, 4, CudaNdarray_HOST_DIMS(%(output)s)) != 0)
+if (CudaNdarray_prep_output(&%(output_grad)s, 4,
+                            CudaNdarray_HOST_DIMS(%(output)s)) != 0)
 {
   %(fail)s
 }
@@ -875,7 +885,8 @@ _handle,
 %(output_grad_desc)s, CudaNdarray_DEV_DATA(%(output_grad)s)
 );
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
+  PyErr_Format(PyExc_RuntimeError,
+               "GpuDnnPoolGrad: error doing operation: %%s",
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -889,7 +900,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            output_grad_desc="output_grad"+str(sub['struct_id']))
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 def dnn_pool(img, ws, stride=(1, 1), mode='max'):
