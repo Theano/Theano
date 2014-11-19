@@ -35,7 +35,9 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     qr,
                                     matrix_power,
                                     norm,
-                                    svd
+                                    svd,
+                                    tensorsolve,
+                                    TensorSolve
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -491,3 +493,67 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+
+class T_TensorSolve(utt.InferShapeTester):
+    op = tensorsolve
+    op_class = TensorSolve
+
+    def test_numpy_compare(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        a = tensor.tensor4()
+        b = tensor.matrix()
+
+        A = rng.rand(1, 2, 1, 2).astype(theano.config.floatX)
+        B = rng.rand(1, 2).astype(theano.config.floatX)
+        C = rng.rand(2, 1, 1, 2).astype(theano.config.floatX)
+
+        n_ta = numpy.linalg.tensorsolve(A, B, (1,2))
+        n_tb = numpy.linalg.tensorsolve(C, B, (0,2))
+        n_t = numpy.linalg.tensorsolve(A, B)
+
+        fa = function([a, b], tensorsolve(a, b, (1, 2)))
+        fb = function([a, b], tensorsolve(a, b, (0, 2)))
+        f = function([a, b], tensorsolve(a, b))
+
+        t_ta = fa(A, B)
+        t_tb = fb(C, B)
+        t_t = f(A, B)
+
+        assert numpy.allclose(n_ta, t_ta)
+        assert numpy.allclose(n_tb, t_tb)
+        assert numpy.allclose(n_t, t_t)
+
+    def test_wrong_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a = tensor.tensor3()
+        b = tensor.tensor3()
+
+        f = function([a, b], tensorsolve(a, b, (1, 2)))
+
+        A = rng.rand(24, 8, 3).astype(theano.config.floatX)
+        B = rng.rand(24, 8, 3).astype(theano.config.floatX)
+
+        assert_raises(numpy.linalg.linalg.LinAlgError, f, A, B)
+
+    def test_infer_shape(self):
+        a = tensor.tensor4()
+        b = tensor.tensor3()
+        c = tensor.matrix()
+
+        A = numpy.random.rand(7, 2, 1, 14)
+        B = numpy.random.rand(7, 2, 1)
+        C = numpy.random.rand(7, 2)
+
+        inputs = [b, c]
+        data = [B, C]
+
+        for i, d in zip(inputs, data):
+            self._compile_and_check([a, i],  # theano.function inputs
+                                    [self.op(a, i)],  # theano.function outputs
+                                    # Always use not square matrix!
+                                    # inputs data
+                                    [A, d],
+                                    # Op that should be removed from the graph.
+                                    self.op_class)

@@ -6,7 +6,7 @@ import numpy
 
 from theano.gof import Op, Apply
 
-from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
+from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot, TensorType
 from theano.tensor.blas import Dot22
 from theano.tensor.opt import (register_stabilize,
         register_specialize, register_canonicalize)
@@ -696,3 +696,77 @@ def norm(x,ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class TensorSolve(Op):
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+
+    def infer_shape(self, node, shapes):
+        if theano.tensor.type_other.NoneConst.equals(node.inputs[2]):
+            return [(shapes[0][-(len(shapes[0]) - len(shapes[1])):])]
+        else:
+            raise theano.tensor.basic.ShapeError('Case not implemented')
+
+    def make_node(self, a, b, axes=None):
+        a = as_tensor_variable(a)
+        b = as_tensor_variable(b)
+
+        if axes is None:
+            axes = theano.tensor.type_other.NoneConst
+            xshape = a.shape[-(a.ndim - b.ndim):]
+            x = a.reshape(xshape, ndim=a.ndim - b.ndim)
+            out_type = x.type()
+            """ The type of the output depends on both inputs.
+                First, xshape is obtained (see shape Q in the doc),
+                with this shape, x can be created as a referrence for the type
+                using reshape on a.
+
+            """
+        else:
+            axes = as_tensor_variable(axes)
+            xbroad = a.type.broadcastable[a.ndim-b.ndim:]
+            out_type = TensorType('float64', xbroad)()
+
+        return Apply(self, [a, b, axes], [out_type])
+
+    def perform(self, node, inp, (out,)):
+        a = inp[0]
+        b = inp[1]
+        axes = inp[2]
+
+        out[0] = numpy.linalg.tensorsolve(a, b, axes)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+tensorsolve = TensorSolve()
+"""
+Solve the tensor equation ``a x = b`` for x.
+
+It is assumed that all indices of `x` are summed over in the product,
+together with the rightmost indices of `a`, as is done in, for example,
+``tensordot(a, x, axes=len(b.shape))``.
+
+Parameters
+----------
+a : array_like
+Coefficient tensor, of shape ``b.shape + Q``.`Q`, a tuple, equals
+the shape of that sub-tensor of `a` consisting of the appropriate
+number of its rightmost indices, and must be such that
+``prod(Q) == prod(b.shape)`` (in which sense `a` is said to be
+'square').
+b : array_like
+Right-hand tensor, which can be of any shape.
+axes : tuple of ints, optional
+Axes in `a` to reorder to the right, before inversion.
+If None (default), no reordering is done.
+
+Returns
+-------
+x : ndarray, shape Q
+"""
