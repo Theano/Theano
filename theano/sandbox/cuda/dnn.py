@@ -745,8 +745,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         # not connected to desc
         return [[1], [0]]
 
-    def c_code_cache_version(self):
-        return (3,)
+#    def c_code_cache_version(self):
+#        return (3,)
 
 
 class GpuDnnPoolGrad(DnnBase):

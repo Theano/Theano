@@ -57,8 +57,10 @@ def test_pooling():
     x = T.ftensor4()
 
     for func in (T.max, T.mean):
-        for ws in (4, 5):
+        for ws in (2, 4, 5):
             for stride in (2, 3):
+                if stride > ws:
+                    continue
                 out1 = cuda.dnn.dnn_pool(
                     x, ws=(ws, ws),
                     stride=(stride, stride),
@@ -68,15 +70,16 @@ def test_pooling():
 
                 f1 = theano.function([x], out1, mode=mode_with_gpu)
                 f2 = theano.function([x], out2, mode=mode_with_gpu)
+                for shp in [(1, 10, 100, 100),
+                            (1, 3, 99, 99),
+                            (32, 1, 147, 197),
+                         ]:
+                    data = numpy.random.normal(0, 1, shp).astype("float32")
+                    a = f1(data).__array__()
 
-                data = numpy.random.normal(
-                    0, 1, (1, 10, 100, 100)).astype("float32")
-                a = f1(data).__array__()
-
-                b = f2(data).__array__()
-
-                assert numpy.allclose(a, b,
-                                      atol=numpy.finfo(numpy.float32).eps)
+                    b = f2(data).__array__()
+                    assert numpy.allclose(a, b,
+                                          atol=numpy.finfo(numpy.float32).eps)
 
 
 def test_pooling_opt():
