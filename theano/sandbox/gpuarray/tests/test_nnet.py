@@ -9,7 +9,7 @@ import theano.tests.unittest_tools as utt
 from theano.sandbox import gpuarray
 
 # We let that import do the init of the back-end if needed.
-from .test_basic_ops import mode_with_gpu, mode_without_gpu
+from .test_basic_ops import mode_with_gpu, mode_without_gpu, test_ctx
 
 from ..nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                     GpuCrossentropySoftmax1HotWithBiasDx)
@@ -32,9 +32,12 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
         n_out = 4099
 
     x = T.fmatrix('x')
+    x.tag.context = test_ctx
     y = T.lvector('y')
+    y.tag.context = test_ctx
 
     b = T.fvector('b')
+    b.tag.context = test_ctx
     #W = T.fmatrix('W')
 
     #we precompute the dot with big shape before to allow the test of
@@ -43,6 +46,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     #powerful enough. We need the big shape to check for corner
     #case.
     dot_result = T.fmatrix('dot_result')
+    dot_result.tag.context = test_ctx
 
     # Seed numpy.random with config.unittests.rseed
     utt.seed_rng()
@@ -115,6 +119,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     softmax_output = T.fmatrix()
     softmax_output /= softmax_output.sum(axis=1).reshape(
         softmax_output.shape[1], 1)
+    softmax_output.tag.context = test_ctx
     op = theano.tensor.nnet.crossentropy_softmax_1hot_with_bias_dx(
         dnll_value,
         softmax_output,
@@ -185,7 +190,7 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
         x = T.fmatrix('x')
     elif dtypeInput == 'float64':
         x = T.dmatrix('x')
-
+    x.tag.context = test_ctx
     # We can't use zeros_like(x[0,::]) as this don't allow to test with
     # 0 shape
     if dtypeBias == 'float32':
@@ -250,6 +255,7 @@ def softmax_unittest_template(dtypeInput):
         x = T.fmatrix('x')
     elif dtypeInput == 'float64':
         x = T.dmatrix('x')
+    x.tag.context = test_ctx
 
     z = T.nnet.softmax(x)
     f = theano.function([x], z, mode=mode_without_gpu)

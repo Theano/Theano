@@ -34,9 +34,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
 
     def make_node(self, x, b, y_idx):
         #N.B. won't work when we don't cast y_idx to float anymore
-        x = as_gpuarray_variable(x)
-        b = as_gpuarray_variable(b)
-        y_idx = as_gpuarray_variable(y_idx)
+        x = as_gpuarray_variable(x, self.context)
+        b = as_gpuarray_variable(b, self.context)
+        y_idx = as_gpuarray_variable(y_idx, self.context)
         nll = GpuArrayType(x.type.dtype,
                            y_idx.type.broadcastable,
                            context=self.context)()
@@ -285,9 +285,9 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         self.context = context
 
     def make_node(self, dnll, sm, y_idx):
-        dnll = as_gpuarray_variable(dnll)
-        sm = as_gpuarray_variable(sm)
-        y_idx = as_gpuarray_variable(y_idx)
+        dnll = as_gpuarray_variable(dnll, self.context)
+        sm = as_gpuarray_variable(sm, self.context)
+        y_idx = as_gpuarray_variable(y_idx, self.context)
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def get_context(self, node):
@@ -454,7 +454,7 @@ class GpuSoftmax (Op):
         self.context = context
 
     def make_node(self, x):
-        x = as_gpuarray_variable(x)
+        x = as_gpuarray_variable(x, self.context)
         return Apply(self, [x], [x.type()])
 
     def get_context(self, node):
@@ -648,8 +648,8 @@ class GpuSoftmaxWithBias (Op):
         self.context = context
 
     def make_node(self, x, b):
-        x = as_gpuarray_variable(x)
-        b = as_gpuarray_variable(b)
+        x = as_gpuarray_variable(x, self.context)
+        b = as_gpuarray_variable(b, self.context)
         return Apply(self, [x, b], [x.type()])
 
     def get_context(self, node):
