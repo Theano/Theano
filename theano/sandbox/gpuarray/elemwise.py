@@ -654,7 +654,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         if self.pre_scalar_op:
             # Currently we only tested pre_scalar_op that don't cause
             # upcast.
-            d1 = self.__class__(scalar_op=self.scalar_op)(Elemwise(self.pre_scalar_op)(x))
+            d1 = self.__class__(scalar_op=self.scalar_op,
+                                context=self.context)(Elemwise(self.pre_scalar_op)(x))
             assert d1.dtype == ret.outputs[0].dtype
             assert Elemwise(self.pre_scalar_op)(x).dtype == x.dtype
         if self.reduce_mask is None:

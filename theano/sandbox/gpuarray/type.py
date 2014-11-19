@@ -87,7 +87,7 @@ class GpuArrayType(Type):
 
     # This is a property to keep the type pickleable
     @property
-    def __real_context(self):
+    def real_context(self):
         return get_context(self.context)
 
     def __str__(self):

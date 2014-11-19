@@ -8,7 +8,7 @@ except ImportError:
     pass
 
 from theano import tensor, scalar, gof
-from theano.compile import optdb
+from theano.compile import optdb, Rebroadcast
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, ProxyDB,
                         Optimizer, toolbox,
@@ -22,8 +22,7 @@ from theano.tensor.nnet.conv import ConvOp
 from .type import GpuArrayType, GpuArrayConstant, get_context
 from .basic_ops import (
     host_from_gpu, GpuFromHost, GpuFromGpu, GpuSplit,
-    gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
-    as_gpuarray_variable
+    GpuAlloc, GpuReshape, GpuEye, GpuJoin, as_gpuarray_variable
 )
 from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
 from .conv import GpuConv
@@ -302,9 +301,9 @@ def local_gpureshape(node, context):
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.Rebroadcast])
+@op_lifter([Rebroadcast])
 def local_gpu_rebroadcast(node, context):
-    if isinstance(node.inputs[0].owner.op == host_from_gpu):
+    if node.inputs[0].owner.op == host_from_gpu:
         return node.op(node.inputs[0].owner.inputs[0])
 
 

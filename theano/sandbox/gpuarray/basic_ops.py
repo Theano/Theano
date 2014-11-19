@@ -34,13 +34,14 @@ def as_gpuarray_variable(x, context):
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable(context)
 
+    x = tensor.as_tensor_variable(x)
+
     if (x.owner and
         isinstance(x.owner.op, HostFromGpu) and
         context == x.owner.inputs[0].type.context):
         return x.owner.inputs[0]
 
-    tensor_x = tensor.as_tensor_variable(x)
-    return GpuFromHost(context)(tensor_x)
+    return GpuFromHost(context)(x)
 
 
 def infer_context(*vars):
@@ -379,8 +380,6 @@ class GpuFromHost(Op):
     def c_code_cache_version(self):
         return (4, 1)
 
-gpu_from_host = GpuFromHost(None)
-
 
 class GpuFromGpu(Op):
     __props__ = ('context',)
@@ -563,8 +562,6 @@ class GpuFromCuda(Op):
     def c_code_cache_version(self):
         return (5, 1)
 
-gpu_from_cuda = GpuFromCuda(None)
-
 
 class CudaFromGpu(Op):
     __props__ = ()
@@ -675,7 +672,7 @@ cuda_from_gpu = CudaFromGpu()
 
 
 class GpuAlloc(HideC, Alloc):
-    __props__ = ('memset_0', 'context')
+    __props__ = ('memset_0', 'context') + Alloc.__props__
 
     context_type = gpu_context_type
 
@@ -825,8 +822,6 @@ class GpuAlloc(HideC, Alloc):
             elif isinstance(client[0].op, HostFromGpu):
                 return False
         return True
-
-gpu_alloc = GpuAlloc(None)
 
 
 class GpuContiguous(Op):
@@ -992,8 +987,6 @@ if (%(out)s == NULL)
                    axis=inputs[0], copy_inputs_to_list='\n'.join(copy_to_list),
                    restype=restype, ctx=sub['context'])
 
-
-gpu_join = GpuJoin(None)
 
 
 class GpuSplit(HideC, Split):

@@ -40,13 +40,12 @@ if not theano.sandbox.gpuarray.pygpu_activated:
 from ..type import (GpuArrayType, get_context, reg_context,
                     gpuarray_shared_constructor, _unreg_context)
 from ..basic_ops import (
-    host_from_gpu, gpu_from_host,
-    gpu_alloc, GpuAlloc,
+    host_from_gpu,
+    GpuAlloc,
     GpuFromCuda,
-    gpu_from_cuda,
     cuda_from_gpu, HostFromGpu,
     GpuFromHost, GpuReshape,
-    gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
+    GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
 from ..subtensor import GpuSubtensor
 
 from theano.tests import unittest_tools as utt

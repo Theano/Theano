@@ -5,13 +5,12 @@ from theano import tensor
 from theano.tests import unittest_tools as utt
 
 from ..type import GpuArrayType, gpuarray_shared_constructor
-from ..basic_ops import (GpuAlloc, GpuReshape, gpu_alloc,
-                         gpu_from_host, host_from_gpu)
+from ..basic_ops import (GpuAlloc, GpuReshape, GpuFromHost, host_from_gpu)
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
 
 from .test_basic_ops import (rand_gpuarray, mode_with_gpu, mode_without_gpu,
-                             test_ctx, test_ctx_real)
+                             test_ctx, test_ctx_real, GPUMixin)
 
 from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_basic import TestSpecifyShape
@@ -19,6 +18,7 @@ from theano.tensor.tests.test_basic import TestSpecifyShape
 
 def test_local_assert():
     x = theano.tensor.fmatrix()
+    x.tag.context = test_ctx
     a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
     f = theano.function([x], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
@@ -29,6 +29,7 @@ def test_local_assert():
 
 def test_flatten():
     m = theano.tensor.fmatrix()
+    m.tag.context = test_ctx
     f = theano.function([m], m.flatten(), mode=mode_with_gpu)
     val = numpy.random.rand(10, 11).astype("float32")
     res = f(val)
@@ -52,6 +53,7 @@ def test_flatten():
                           for node in f.maker.fgraph.toposort()]
 
     m = theano.tensor.tensor3()
+    m.tag.context = test_ctx
     f = theano.function([m], m.flatten(ndim=2), mode=mode_with_gpu)
     val = numpy.random.rand(10, 11, 12).astype("float32")
     res = f(val)
@@ -66,6 +68,7 @@ def test_reduce():
                           ('prod', dict(acc_dtype='float32')),
                           ('max', {}), ('min', {})]:
         m = theano.tensor.fmatrix()
+        m.tag.context = test_ctx
         f = theano.function([m], getattr(m, method)(axis=0,
                                                     **param),
                             mode=mode_with_gpu)
@@ -89,7 +92,7 @@ def test_local_gpualloc_memset_0():
     ones = numpy.ones((2,), dtype='float32')
 
     # Test with 0
-    a = gpu_alloc(z, i)
+    a = GpuAlloc(test_ctx)(z, i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 1
@@ -97,7 +100,7 @@ def test_local_gpualloc_memset_0():
     assert (numpy.asarray(f(6)) == 0).all()
 
     # Test with 1
-    a = gpu_alloc(o, i)
+    a = GpuAlloc(test_ctx)(o, i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 1
@@ -106,7 +109,7 @@ def test_local_gpualloc_memset_0():
     assert (numpy.asarray(f(6)) == 1).all()
 
     # Test with 1, 1
-    a = gpu_alloc(ones, i)
+    a = GpuAlloc(test_ctx)(ones, i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 1
@@ -118,6 +121,7 @@ def test_local_gpualloc_memset_0():
 def test_rebroadcast():
     d = numpy.random.rand(10, 10).astype('float32')
     v = theano.tensor.fmatrix()
+    v.tag.context = test_ctx
     up = tensor.unbroadcast(v.sum().dimshuffle('x', 'x'), 0, 1)
     f = theano.function([v], [up], mode=mode_with_gpu)
 
@@ -132,20 +136,20 @@ def test_rebroadcast():
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
 
 
-class TestSpecifyShape(TestSpecifyShape):
+class TestSpecifyShape(GPUMixin, TestSpecifyShape):
     mode = mode_with_gpu
     input_type = GpuArrayType
-    pass
 
 
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
     b = tensor.fmatrix()
+    b.tag.context = test_ctx
     f = theano.function([b], theano.printing.Print()(b) * 2,
                         mode=mode_with_gpu)
     theano.printing.debugprint(f)
     topo = f.maker.fgraph.toposort()
-    assert topo[0].op == gpu_from_host
+    assert isinstance(topo[0].op, GpuFromHost)
     assert isinstance(topo[1].op, theano.printing.Print)
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
@@ -154,6 +158,7 @@ def test_print_op():
 
 def test_local_gpu_elemwise_careduce():
     x = theano.tensor.matrix()
+    x.tag.context = test_ctx
     o = (x*x).sum()
     f = theano.function([x], o, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
