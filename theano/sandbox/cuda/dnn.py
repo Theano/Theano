@@ -469,7 +469,7 @@ class GpuDnnConvGradI(GpuDnnConvBase):
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
-             conv_mode='conv'):
+             conv_mode='conv', direction_hint=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -481,13 +481,41 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     :param border_mode: one of 'valid', 'full'; additionally, the padding size
         could be directly specified by an integer or a pair of integers
     :param subsample: perform subsampling of the output (default: (1, 1))
-    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.  One of 'conv', 'cross'. (default: 'conv')
+    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.
+        One of 'conv', 'cross'. (default: 'conv')
+    :param direction_hint: Used by graph optimizers to change algorithm choice.
+        By default, GpuDnnConv will be used to carry out the convolution.
+        If border_mode is 'valid', subsample is (1,1) and direction_hint is
+        'bprop weights', it will use GpuDnnConvGradW.
+        If border_mode is 'full', subsample is (1,1) and direction_hint is
+        *not* 'forward!', it will use GpuDnnConvGradI.
+        This parameter is used internally by graph optimizers and may be
+        removed at any time without a deprecation period. You have been warned.
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
-    if border_mode == 'full' and subsample == (1, 1):
+    if (border_mode == 'valid' and subsample == (1,1) and
+        direction_hint == 'bprop weights'):
+        # Special case: We are asked to use GpuDnnConvGradW. We need to set
+        # up a suitable 'fake' convolution to compute the gradient for.
+        img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
+        if conv_mode == 'conv':
+            # We need to flip manually. These 'kerns' are not the kernels
+            # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
+            kerns = kerns[:, :, ::-1, ::-1]
+        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
+        shape = theano.tensor.stack(kerns.shape[1], img.shape[1],
+                                    img.shape[2] - kerns.shape[2] + 1,
+                                    img.shape[3] - kerns.shape[3] + 1)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                              conv_mode='cross')(img.shape, shape)
+        conv = GpuDnnConvGradW()(img, kerns, desc)
+        return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
+
+    elif (border_mode == 'full' and subsample == (1, 1) and
+          direction_hint != 'forward!'):
         # Special case: We can be faster by using GpuDnnConvGradI to compute
         # the full convolution as the backward pass of a valid convolution.
         # We just need to set up a suitable 'fake' valid convolution.
@@ -501,6 +529,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(shape, kerns.shape)
         return GpuDnnConvGradI()(kerns, img, desc)
 
+    # Standard case: We use GpuDnnConv with suitable padding.
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
@@ -1134,8 +1163,11 @@ if cuda_available:
             img, kern = node.inputs
             border_mode = node.op.border_mode
             subsample = node.op.subsample
+            direction_hint = node.op.direction_hint
             return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
-                             border_mode=border_mode, subsample=subsample)]
+                             border_mode=border_mode, subsample=subsample,
+                             direction_hint=direction_hint)]
+
 # DISABLED as there is problems in the handling of borders
 #    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])

@@ -1513,6 +1513,7 @@ class GpuConv(GpuOp):
             logical_kern_hw=None,
             logical_kern_align_top=True,
             version=-1,
+            direction_hint=None,
             verbose=0,
             kshp=None,
             imshp=None,
@@ -1525,6 +1526,10 @@ class GpuConv(GpuOp):
                         convolution. By default we try to guess the best one.
                         You can force one version with this parameter. This
                         parameter is used by the tests.
+        :param direction_hint: 'forward', 'bprop weights' or 'bprop inputs'.
+                        Serves as a hint for graph optimizers replacing
+                        GpuConv by other implementations. If the GpuConv is
+                        inserted automatically, we take its value from ConvOp.
         :param verbose: for value of 1,2 and 3. Print more information during
                         the execution of the convolution. Mostly used for
                         optimization or debugging.
@@ -1570,6 +1575,7 @@ class GpuConv(GpuOp):
         self.logical_kern_hw = logical_kern_hw
         self.logical_kern_align_top = logical_kern_align_top
         self.version = version
+        self.direction_hint = direction_hint
         self.verbose = verbose
         self.kshp = kshp
         self.imshp = imshp
