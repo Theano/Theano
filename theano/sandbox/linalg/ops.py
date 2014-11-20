@@ -286,7 +286,7 @@ def inv_as_solve(node):
 
 @register_stabilize
 @register_canonicalize
-@local_optimizer(None)  # XXX: solve is defined later and can't be used here
+@local_optimizer([Solve])
 def tag_solve_triangular(node):
     """
     If a general solve() is applied to the output of a cholesky op, then
