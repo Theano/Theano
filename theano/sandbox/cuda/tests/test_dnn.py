@@ -121,7 +121,7 @@ def test_dnn_tag():
             [x],
             max_pool_2d(x, ds=(2, 2)),
             mode=mode_with_gpu.including("cudnn"))
-    except RuntimeError, e:
+    except (AssertionError, RuntimeError), e:
         assert not cuda.dnn.dnn_available()
         raised = True
     finally:
