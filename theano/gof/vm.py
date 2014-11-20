@@ -891,9 +891,11 @@ class VM_Linker(link.LocalLinker):
             fgraph, order, input_storage, output_storage)
         compute_map = {}
         for k in storage_map:
-            compute_map[k] = [k.owner is None]
+            compute_map[k] = [k.owner is None] 
 
         thunks = []
+
+        # Start here
         for node in order:
             try:
                 thunks.append(node.op.make_thunk(node,
