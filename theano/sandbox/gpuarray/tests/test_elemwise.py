@@ -48,6 +48,7 @@ class test_gpu_Broadcast(GPUMixin, test_Broadcast):
 
 class test_GpuDimShuffle(GPUMixin, test_DimShuffle):
     op = GpuDimShuffle
+    type = fake_type
 
 
 class test_GpuCAReduceCPY(GPUMixin, test_CAReduce):
@@ -56,6 +57,7 @@ class test_GpuCAReduceCPY(GPUMixin, test_CAReduce):
     op = GpuCAReduceCPY
     reds = [scalar.add, scalar.mul]
     pre_scalar_op = None
+    type = fake_type
 
     def test_perform(self):
         for dtype in self.dtypes + self.bin_dtypes:

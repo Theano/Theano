@@ -12,7 +12,7 @@ except ImportError:
     pass
 
 from .basic_ops import (HideC, as_gpuarray_variable,
-                        host_from_gpu, gpu_from_host)
+                        host_from_gpu, GpuFromHost)
 from .opt import op_lifter, register_opt as register_gpu_opt
 from .type import GpuArrayType, gpu_context_type
 from .comp import NVCC_compiler

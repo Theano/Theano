@@ -111,6 +111,9 @@ class GpuArrayType(Type):
                                   ndmin=len(self.broadcastable),
                                   context=self.real_context)
         else:
+            # allow ints/lists/numpy-like objects
+            if not hasattr(data, 'dtype'):
+                data = numpy.asarray(data)
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
                 data = gpuarray.array(data, dtype=self.dtype, copy=False,

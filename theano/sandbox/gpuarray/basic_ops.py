@@ -62,7 +62,6 @@ def infer_context(*vars):
                     return i.type.context
                 if isinstance(i.type, TensorType):
                     nextv.append(i)
-    import pdb; pdb.set_trace()
     raise ValueError("couldn't infer context")
 
 

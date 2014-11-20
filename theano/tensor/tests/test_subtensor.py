@@ -166,7 +166,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         t = self.sub([])(n)
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         self.eval_output_and_check(
-            t, mode=mode.excluding("local_useless_subtensor"))
+            t, mode=self.mode.excluding("local_useless_subtensor"))
 
     def test1_err_invalid(self):
         n = self.shared(numpy.ones(1, dtype=self.dtype))

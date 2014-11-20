@@ -460,11 +460,11 @@ def test_gpujoin_gpualloc():
     assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, GpuAlloc)
                 for node in f_gpu.maker.fgraph.toposort()]) == 2
-    assert sum([node.op == gpu_join
+    assert sum([isinstance(node.op, GpuJoin)
                 for node in f_gpu.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, GpuAlloc)
                 for node in f_gpu2.maker.fgraph.toposort()]) == 2
-    assert sum([node.op == gpu_join
+    assert sum([isinstance(node.op, GpuJoin)
                 for node in f_gpu2.maker.fgraph.toposort()]) == 1
     assert numpy.allclose(f(a_val, b_val), f_gpu2(a_val, b_val))
 
