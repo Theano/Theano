@@ -117,8 +117,14 @@ def op_lifter(OP, cuda_only=False):
                 # This is needed as sometimes new_op inherit from OP.
                 if new_op and new_op != node.op:
                     if isinstance(new_op, theano.Op):
+                        # tag the inputs with the context in case the
+                        # context was derived from the outputs.
+                        def tag(i, ctx):
+                            i.tag.context = ctx
+                            return i
+                        inputs = [tag(i, context) for i in node.inputs]
                         return [safe_to_cpu(o) for o in
-                                new_op(*node.inputs, return_list=True)]
+                                new_op(*inputs, return_list=True)]
                     elif isinstance(new_op, (tuple, list)):
                         return [safe_to_cpu(o) for o in new_op]
                     else:  # suppose it is a variable on the GPU
