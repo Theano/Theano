@@ -89,22 +89,11 @@ def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                            accept_inplace=True,
                            on_unused_input=on_unused_input, name=name)
 
-
-def fake_shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
-    from theano.tensor.sharedvar import tensor_constructor, scalar_constructor
-    for c in (gpuarray_shared_constructor, tensor_constructor,
-              scalar_constructor):
-        try:
-            return c(value, name=name, strict=strict,
-                     allow_downcast=allow_downcast, **kwargs)
-        except TypeError:
-            continue
-    raise ValueError("can't convert to shared")
-
-
-def fake_shared2(value, **kwargs):
+def fake_shared(value, **kwargs):
     return gpuarray_shared_constructor(value, context=test_ctx, **kwargs)
 
+def fake_type(dtype, broadcastable):
+    return GpuArrayType(dtype, broadcastable, context=test_ctx)
 
 def rand_gpuarray(*shape, **kwargs):
     r = rng.rand(*shape) * 2 - 1
@@ -428,7 +417,7 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         # this is to avoid errors with limited devices
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']
-        self.shared = fake_shared2
+        self.shared = fake_shared
 
     def test_gpusplit_opt(self):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())

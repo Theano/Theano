@@ -45,6 +45,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  adv_incsub1=tensor.AdvancedIncSubtensor1,
                  mode=None,
                  dtype=theano.config.floatX,
+                 type=tensor.TensorType,
                  ignore_topo=DeepCopyOp):
         self.shared = shared
         self.sub = sub
@@ -55,6 +56,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             mode = theano.compile.mode.get_default_mode()
         self.mode = mode
         self.dtype = dtype
+        self.type = type
         self.ignore_topo = ignore_topo
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
         self.ops = (sub, inc_sub, adv_sub1, adv_incsub1)
@@ -903,9 +905,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         # Symbolic variable to be incremented.
                         # We create a new one every time in order not to
                         # have duplicated variables in the function's inputs
-                        data_var = tensor.tensor(
-                                broadcastable=[False] * data_n_dims,
-                                dtype=self.dtype)
+                        data_var = self.type(
+                            broadcastable=[False] * data_n_dims,
+                            dtype=self.dtype)()
                         # Symbolic variable with rows to be incremented.
                         idx_var = theano.tensor.vector(dtype='int64')
                         n_to_inc = rng.randint(data_shape[0])
@@ -913,9 +915,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         idx_num = rng.randint(0, data_shape[0], n_to_inc)
                         idx_num = idx_num.astype('int64')
                         # Symbolic variable with increment value.
-                        inc_var = tensor.tensor(
-                                broadcastable=[False] * inc_n_dims,
-                                dtype=self.dtype)
+                        inc_var = self.type(
+                            broadcastable=[False] * inc_n_dims,
+                            dtype=self.dtype)()
                         # Trick for the case where `inc_shape` is the same as
                         # `data_shape`: what we actually want is the first
                         # shape element to be equal to the number of rows to

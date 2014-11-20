@@ -10,7 +10,7 @@ from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
 from .test_basic_ops import (makeTester, rand, mode_with_gpu, test_ctx,
-                             fake_shared2)
+                             fake_shared)
 
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemm_no_inplace,
@@ -90,7 +90,7 @@ class TestGpuSger(TestGer):
         raise SkipTest('0-sized objects not supported')
 
 class TestGpuSgerNoTransfer(TestGpuSger):
-    shared = staticmethod(fake_shared2)
+    shared = staticmethod(fake_shared)
 
 class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):

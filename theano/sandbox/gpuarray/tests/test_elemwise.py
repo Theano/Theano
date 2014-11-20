@@ -6,14 +6,20 @@ from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
 
-from .test_basic_ops import (mode_with_gpu, rand_gpuarray, test_ctx_real,
-                             GPUMixin)
+from .test_basic_ops import (mode_with_gpu, rand_gpuarray, test_ctx,
+                             test_ctx_real, GPUMixin, fake_type)
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY)
 from ..type import GpuArrayType
 
-from pygpu.array import gpuarray
+from pygpu import PyGpuArray
 
+@staticmethod
+def fake_op(scalar_op, inplace_pattern=None):
+    return GpuElemwise(scalar_op, inplace_pattern=inplace_pattern,
+                       context=test_ctx)
+
+fake_type = staticmethod(fake_type)
 
 # This is acutally a test for GpuElemwise
 class test_gpu_Broadcast(GPUMixin, test_Broadcast):
@@ -30,10 +36,12 @@ class test_gpu_Broadcast(GPUMixin, test_Broadcast):
             self.linkers = [gof.PerformLinker]
 
     def rand_val(self, shp):
-        return rand_gpuarray(*shp, **dict(cls=gpuarray))
+        return rand_gpuarray(*shp)
+        return rand_gpuarray(*shp, **dict(cls=PyGpuArray))
 
     def rand_cval(self, shp):
-        return rand_gpuarray(*shp, **dict(cls=gpuarray))
+        return rand_gpuarray(*shp)
+        return rand_gpuarray(*shp, **dict(cls=PyGpuArray))
 
     def test_c(self):
         if not test_ctx_real.kind == 'cuda':
