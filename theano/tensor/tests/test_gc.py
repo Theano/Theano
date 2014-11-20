@@ -94,7 +94,7 @@ def test_gc_never_pickles_temporaries():
         # that weren't collected shouldn't be pickled anyway
         # Allow for a couple of bytes of difference, since timing info,
         # for instance, can be represented as text of varying size.
-        assert abs(len_post_f - len_post_g) < 4, (
+        assert abs(len_post_f - len_post_g) < 16, (
             f_linker, len_post_f, len_post_g)
 
 

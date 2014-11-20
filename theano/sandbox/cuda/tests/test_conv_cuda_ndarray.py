@@ -616,7 +616,13 @@ def test_default_conv():
         assert any([isinstance(a.op, cuda.blas.GpuCorrMM)
                     for a in f.maker.fgraph.apply_nodes])
 
-    mode = theano_mode.excluding('local_gpu_conv', 'local_conv_gemm')
+    mode = theano_mode.excluding('local_conv_dnn', 'local_conv_gemm')
+    f = theano.function([img, fil], c, mode=mode)
+
+    assert any([isinstance(a.op, cuda.blas.GpuConv)
+                for a in f.maker.fgraph.apply_nodes])
+
+    mode = theano_mode.excluding('conv_dnn', 'conv_gemm')
     f = theano.function([img, fil], c, mode=mode)
 
     assert any([isinstance(a.op, cuda.blas.GpuConv)
