@@ -1122,8 +1122,8 @@ if cuda_available:
             subsample = node.op.subsample
             return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
                              border_mode=border_mode, subsample=subsample)]
-
-    @register_opt('cudnn')
+# DISABLED as there is problems in the handling of borders
+#    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
         if not dnn_available():
@@ -1135,7 +1135,8 @@ if cuda_available:
             ds = node.op.ds
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
-    @register_opt('cudnn')
+# DISABLED as there is problems in the handling of borders
+#    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMaxGrad])
     def local_pool_dnn_grad(node):
         if not dnn_available():
