@@ -163,8 +163,14 @@ def test_tag_solve_triangular():
     U = cholesky_upper(A)
     b1 = solve(L, x)
     b2 = solve(U, x)
-    b = b1 + b2
-    f = theano.function([A,x], b)
+    f = theano.function([A,x], b1)
     for node in f.maker.fgraph.toposort():
         if isinstance(node.op, Solve):
-            assert node.op.A_structure in ['lower_triangular', 'upper_triangular']
+            assert node.op.A_structure == 'lower_triangular'
+    f = theano.function([A,x], b2)
+    for node in f.maker.fgraph.toposort():
+        if isinstance(node.op, Solve):
+            assert node.op.A_structure == 'upper_triangular'
+
+
+        
