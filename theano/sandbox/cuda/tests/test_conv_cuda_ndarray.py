@@ -594,7 +594,7 @@ def test_gemm_valid():
 def test_dnn_valid():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn")):
+    for t in _test_valid(GpuDnnConvBase, mode=theano_mode.including("cudnn")):
         yield t
 
 
@@ -708,7 +708,7 @@ def test_gemm_full():
 def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_full(GpuDnnConv, mode=theano_mode.including("cudnn")):
+    for t in _test_full(GpuDnnConvBase, mode=theano_mode.including("cudnn")):
         yield t
 
 
@@ -760,7 +760,7 @@ def test_gemm_subsample():
 def test_dnn_subsample():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_subsample(GpuDnnConv, theano_mode.including('cudnn')):
+    for t in _test_subsample(GpuDnnConvBase, theano_mode.including('cudnn')):
         yield t
 
 
