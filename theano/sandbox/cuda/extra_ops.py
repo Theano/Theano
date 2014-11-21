@@ -3,9 +3,8 @@ import copy
 from theano import Op
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
-
+from theano.sandbox.cuda.basic_ops import GpuFlatten
 from theano.tensor.extra_ops import CumsumOp
-from theano.sandbox.cuda import GpuFlatten
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType

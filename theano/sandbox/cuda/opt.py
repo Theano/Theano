@@ -13,7 +13,7 @@ from theano import config, tensor, gof
 import theano.ifelse
 
 from theano.compile import optdb
-from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
+from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
                         Optimizer, toolbox)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
@@ -42,7 +42,7 @@ from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
-from theano.sandbox.cuda import gpu_optimizer, register_opt
+from theano.sandbox.cuda import gpu_optimizer, register_opt, gpu_seqopt
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 from theano.tensor import nlinalg
@@ -58,7 +58,6 @@ except ImportError:
 #optdb.print_summary()  # shows what is currently registered
 
 gpu_cut_copies = EquilibriumDB()
-gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
         'fast_run', 'fast_compile', 'inplace', 'gpu')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,

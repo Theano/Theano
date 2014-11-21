@@ -9,7 +9,7 @@ import sys
 import theano
 from theano.compat import get_unbound_function
 from theano.compile import optdb
-from theano.gof import EquilibriumDB
+from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
 from theano.configparser import config, AddConfigVar, StrParam, BoolParam
@@ -19,6 +19,7 @@ import nvcc_compiler
 # we use for optimization. Otherwise, we can iterate 100s of time on
 # the graph and apply only a few optimizations each time.
 gpu_optimizer = EquilibriumDB(ignore_newtrees=False)
+gpu_seqopt = SequenceDB()
 
 
 def register_opt(*tags, **kwargs):
