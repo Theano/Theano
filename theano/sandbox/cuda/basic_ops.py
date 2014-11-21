@@ -561,6 +561,7 @@ class GpuCAReduce(GpuOp):
             self.pre_scalar_op = None
 
     def make_node(self, x):
+        x = as_cuda_ndarray_variable(x)
         if (x.type.ndim != len(self.reduce_mask)):
             raise TypeError("x must have rank %i" % len(self.reduce_mask))
         o_broadcast = [x.type.broadcastable[i] for i

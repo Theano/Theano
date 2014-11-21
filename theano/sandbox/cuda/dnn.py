@@ -7,8 +7,7 @@ from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
-                                 device_properties)
+from theano.sandbox.cuda import (GpuOp, cuda_available)
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous, HostFromGpu)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
@@ -21,8 +20,8 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 def dnn_available():
     if dnn_available.avail is None:
-        dev = active_device_number()
-        if device_properties(dev)['major'] < 3:
+        dev = theano.sandbox.cuda.active_device_number()
+        if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
             dnn_available.msg = "Device not supported by cuDNN"
             dnn_available.avail = False
         else:
@@ -295,9 +294,9 @@ if ((err%(id)d = cudnnCreateFilterDescriptor(&kerns%(id)d)) != CUDNN_STATUS_SUCC
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-cudnnDestroyTensor4dDescriptor(input%(id)d);
-cudnnDestroyTensor4dDescriptor(output%(id)d);
-cudnnDestroyFilterDescriptor(kerns%(id)d);
+if (input%(id)d != NULL) {cudnnDestroyTensor4dDescriptor(input%(id)d);}
+if (output%(id)d != NULL) {cudnnDestroyTensor4dDescriptor(output%(id)d);}
+if (kerns%(id)d != NULL) {cudnnDestroyFilterDescriptor(kerns%(id)d);}
 """ % dict(id=struct_id)
 
     def c_set_filter(self, var, desc, err, fail):
@@ -400,7 +399,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            method=self.conv_op, path=self.path_flag)
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 class GpuDnnConv(GpuDnnConvBase):

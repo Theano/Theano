@@ -32,7 +32,21 @@ class DB(object):
         self.name = None  # will be reset by register
         #(via obj.name by the thing doing the registering)
 
-    def register(self, name, obj, *tags):
+    def register(self, name, obj, *tags, **kwargs):
+        """
+        :param name: name of the optimizer.
+        :param obj: the optimizer to register.
+        :param tags: tag name that allow to select the optimizer.
+        :param kwargs: If non empty, should contain
+            only use_db_name_as_tag=False.
+            By default, all optimizations registered in EquilibriumDB
+            are selected when the EquilibriumDB name is used as a
+            tag. We do not want this behavior for some optimizer like
+            local_remove_all_assert. use_db_name_as_tag=False remove
+            that behavior. This mean only the optimizer name and the
+            tags specified will enable that optimization.
+
+        """
         # N.B. obj is not an instance of class Optimizer.
         # It is an instance of a DB.In the tests for example,
         # this is not always the case.
@@ -42,9 +56,12 @@ class DB(object):
             raise ValueError('The name of the object cannot be an existing'
                              ' tag or the name of another existing object.',
                              obj, name)
-
-        if self.name is not None:
-            tags = tags + (self.name,)
+        if kwargs:
+            assert "use_db_name_as_tag" in kwargs
+            assert kwargs["use_db_name_as_tag"] is False
+        else:
+            if self.name is not None:
+                tags = tags + (self.name,)
         obj.name = name
         # This restriction is there because in many place we suppose that
         # something in the DB is there only once.
@@ -154,6 +171,10 @@ class Query(object):
             self.require = OrderedSet(self.require)
         if isinstance(self.exclude, (list, tuple)):
             self.exclude = OrderedSet(self.exclude)
+
+    def __str__(self):
+        return "Query{inc=%s,ex=%s,require=%s,subquery=%s,position_cutoff=%d}" % (
+            self.include, self.exclude, self.require, self.subquery, self.position_cutoff)
 
     #add all opt with this tag
     def including(self, *tags):

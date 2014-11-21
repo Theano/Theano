@@ -1171,14 +1171,22 @@ class ShapeFeature(object):
                     self.set_shape_i(v, ii, new_r)
         self.shape_of_reverse_index[r] = set()
 
-    def same_shape(self, x, y):
+    def same_shape(self, x, y, dim_x=None, dim_y=None):
         """Return True if we are able to assert that x and y have the
-        same shape
+        same shape.
+
+        dim_x and dim_y are optional. If used, they should be an index
+        to compare only 1 shape of x or y.
+
         """
         sx = self.shape_of[x]
         sy = self.shape_of[y]
         if sx is None or sy is None:
             return False
+        if dim_x is not None:
+            sx = [sx[dim_x]]
+        if dim_y is not None:
+            sy = [sy[dim_y]]
         assert len(sx) == len(sy)
 
         for dx, dy in zip(sx, sy):
@@ -1449,6 +1457,29 @@ def local_alloc_unary(node):
             return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
 
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Elemwise])
+def local_cast_cast(node):
+    """cast(cast(x, dtype1), dtype2)
+
+    when those contrain:
+    dtype1 == dtype2
+    TODO: the base dtype is the same (int, uint, float, complex)
+          and the first cast cause an upcast.
+    """
+    if (not isinstance(node.op, T.Elemwise) or
+        not isinstance(node.op.scalar_op, scalar.Cast)):
+        return
+    x = node.inputs[0]
+    if (not x.owner or
+        not isinstance(x.owner.op, T.Elemwise) or
+        not isinstance(x.owner.op.scalar_op, scalar.Cast)):
+        return
+    if node.op.scalar_op.o_type == x.owner.op.scalar_op.o_type:
+        return [x]
+
+
 class Assert(T.Op):
     """
     Implements assertion in a computational graph.
@@ -1551,9 +1582,32 @@ def local_remove_useless_assert(node):
             return [assert_(node.inputs[0], *cond)]
 
 
+@gof.local_optimizer([Assert])
+def local_remove_all_assert(node):
+    """An optimization disabled by default that removes all asserts from
+    the graph.
+
+    :note: See the :ref:`unsafe` section to know how to enable it.
+
+    """
+    if not isinstance(node.op, Assert):
+        return
+
+    return [node.inputs[0]]
+# Disabled by default
+compile.optdb['canonicalize'].register('local_remove_all_assert',
+                                       local_remove_all_assert,
+                                       use_db_name_as_tag=False)
+compile.optdb['stabilize'].register('local_remove_all_assert',
+                                    local_remove_all_assert,
+                                    use_db_name_as_tag=False)
+compile.optdb['specialize'].register('local_remove_all_assert',
+                                     local_remove_all_assert,
+                                     use_db_name_as_tag=False)
+
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
-def local_alloc_elemwise(node):
+def local_elemwise_alloc(node):
     """
     elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
       -> elemwise(x, y.TensorType(BROADCAST CONDITION))
@@ -1692,12 +1746,14 @@ theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
                                      is_valid=lambda x: x
                                  ),
                                  in_c_key=False)
-#This version if faster but not as safe.
-theano.configparser.AddConfigVar('experimental.local_alloc_elemwise_assert',
-        "If False enable the experimental optimization local_alloc_elemwise"
-                                 " but WITHOUT assert into the graph!",
-        theano.configparser.BoolParam(True),
-        in_c_key=False)
+
+# False could make the graph faster but not as safe.
+theano.configparser.AddConfigVar(
+    'experimental.local_alloc_elemwise_assert',
+    "When the local_alloc_elemwise is applied, add"
+    " an assert to highlight shape errors.",
+    theano.configparser.BoolParam(True),
+    in_c_key=False)
 
 ############################
 # Constant Canonicalization
@@ -2450,6 +2506,48 @@ def local_setsubtensor_of_constants(node):
             return [x]
         else:
             return False
+
+
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([AdvancedSubtensor1])
+def local_adv_sub1_adv_inc_sub1(node):
+    """Optimize the possible AdvSub1(AdvIncSub1(...), ...)
+
+    AdvancedSubtensor1(AdvancedIncSubtensor1(0s, y, idx), idx) -> y
+    AdvancedSubtensor1(AdvancedSetSubtensor1(x, y, idx), idx) -> y
+
+    :note: This opt add AssertOp. Otherwise, it would remove shape and
+        index error. If you want to get rid of them, see the
+        :ref:`unsafe_optimization` section.
+
+    """
+    if not isinstance(node.op, AdvancedSubtensor1):
+        return
+    inp = node.inputs[0]
+    if (not inp.owner or
+        not isinstance(inp.owner.op, AdvancedIncSubtensor1)):
+        return
+    idx = node.inputs[1]
+    idx2 = inp.owner.inputs[2]
+    x = inp.owner.inputs[0]
+    y = inp.owner.inputs[1]
+    if idx is not idx2:
+        return
+    if (not inp.owner.op.set_instead_of_inc and
+        T.extract_constant(x) != 0):
+        return
+    cond = [T.all(T.and_(T.lt(idx, x.shape[0]),
+                        T.ge(idx, -x.shape[0])))]
+    if not node.fgraph.shape_feature.same_shape(idx, y, 0, 0):
+        cond.append(T.eq(idx.shape[0], y.shape[0]))
+    y = Assert("Bad indexing or shapes in a AdvancedIncSubtensor1 that was optimized away")(y, *cond)
+
+    if y.dtype == node.outputs[0].dtype:
+        return [y]
+    # It is possible that y is upcast or downcast to x.dtype.
+    # In all case, as we set or add with 0, we can just cast y.
+    return [T.cast(y, node.outputs[0].dtype)]
 
 
 ####################

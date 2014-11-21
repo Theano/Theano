@@ -51,13 +51,13 @@ Convolution Ops
 ===============
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI,
+    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI
 
 Pooling Ops
 ===========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad,
+    :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
 
 Softmax Ops
 ===========

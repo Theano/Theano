@@ -12,4 +12,4 @@ Proposals for new/revised features
     noupdates
     opt_patterns2
     graphical_models
-
+    complex_gradient
