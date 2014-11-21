@@ -186,6 +186,49 @@ class Solve(Op):
 
 solve = Solve()  # general solve
 
+class SolveCholesky(Op):
+    """Solve a system of linear equations, represented by a triangular Cholesky
+    factor."""
+
+    __props__ = ('A_structure', 'lower')
+
+    def __init__(self, A_structure='lower_triangular', lower=True):
+        if A_structure not in MATRIX_STRUCTURES:
+            raise ValueError('Invalid matrix structure argument', A_structure)
+        self.A_structure = A_structure
+        self.lower = lower
+
+    def __repr__(self):
+        return 'SolveCholesky{%s}' % str(self.props())
+
+    def make_node(self, A, b):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the SolveCholesky op")
+        A = as_tensor_variable(A)
+        b = as_tensor_variable(b)
+        assert A.ndim == 2
+        assert b.ndim in [1, 2]
+        otype = tensor.tensor(
+                broadcastable=b.broadcastable,
+                dtype=(A * b).dtype)
+        return Apply(self, [A, b], [otype])
+
+    def perform(self, node, inputs, output_storage):
+        A, b = inputs
+        output_storage[0][0] = scipy.linalg.cho_solve((A, self.lower), b)
+
+    # computes shape of x where x = inv(A) * b
+    def infer_shape(self, node, shapes):
+        Ashape, Bshape = shapes
+        rows = Ashape[1]
+        if len(Bshape) == 1:  # b is a Vector
+            return [(rows,)]
+        else:
+            cols = Bshape[1]  # b is a Matrix
+            return [(rows, cols)]
+
+solve_cholesky = SolveCholesky()  # Cholesky solve
+
 #TODO : SolveTriangular
 
 #TODO: Optimizations to replace multiplication by matrix inverse
@@ -193,7 +236,7 @@ solve = Solve()  # general solve
 
 
 class Eigvalsh(Op):
-    """Generalized eigenvalues of a Hermetian positive definite eigensystem
+    """Generalized eigenvalues of a Hermetian positive definite Eigensystem
     """
 
     __props__ = ('lower',)

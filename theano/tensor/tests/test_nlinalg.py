@@ -14,7 +14,9 @@ from theano.tests import unittest_tools as utt
 from theano import config
 
 from theano.tensor.nlinalg import ( MatrixInverse,
+                                    MatrixInverseCholesky,
                                     matrix_inverse,
+                                    matrix_inverse_cholesky,
                                     MatrixPinv,
                                     pinv,
                                     AllocDiag,
@@ -38,10 +40,18 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     svd
                                     )
 
+from theano.tensor.slinalg import ( cholesky )
+
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 
+try:
+    import scipy.linalg
+    imported_scipy = True
+except ImportError:
+    # some ops (e.g. Cholesky, Solve, SolveCholesky, A_Xinv_b) won't work
+    imported_scipy = False
 
 def test_pseudoinverse_correctness():
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -491,3 +501,95 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+class test_MatrixInverseCholesky(unittest.TestCase):
+    def setUp(self):
+        super(test_MatrixInverseCholesky, self).setUp()
+        self.op_class = MatrixInverseCholesky
+        self.op = MatrixInverseCholesky(lower = True)
+        self.dtype = config.floatX
+        self.A = theano.tensor.matrix("A", self.dtype)
+        self.L = cholesky(self.A)
+        self.B = theano.tensor.matrix(self.dtype)
+        self.dim = 5
+        self.B_cols = 2
+        
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+        self.A_mat = numpy.asarray(self.rng.rand(self.dim, self.dim), dtype=self.dtype)
+        self.A_mat = self.A_mat.T.dot(self.A_mat)
+        self.B_mat = numpy.asarray(self.rng.rand(self.dim, self.B_cols), dtype=self.dtype)
+        self.L_mat = scipy.linalg.cholesky(self.A_mat, lower=True)
+
+    def test_shape_plain_inversion(self):
+        f = function([self.L], self.op(self.L))
+        A_inv = f(self.L_mat)
+        
+        assert A_inv.shape == self.A_mat.shape
+
+    def test_shape_dot_right(self):
+        f = function([self.L, self.B], self.op(self.L).dot(self.B))
+        A_inv_b = f(self.L_mat, self.B_mat)
+        
+        assert A_inv_b.shape == (self.dim, self.B_cols)
+
+    def test_shape_dot_left(self):
+        f = function([self.L, self.B], self.B.T.dot(self.op(self.L)))
+        b_A_inv = f(self.L_mat, self.B_mat)
+        
+        assert b_A_inv.shape == (self.B_cols, self.dim)
+
+    def test_plain_inversion_lower(self):
+        f = function([self.L], self.op(self.L))
+        A_inv = f(self.L_mat)
+        A_inv_ref = numpy.linalg.inv(self.A_mat)
+        
+        assert numpy.allclose(A_inv, A_inv_ref)
+
+    def test_plain_inversion_upper(self):
+        f = function([self.L], MatrixInverseCholesky(lower=False)(self.L))
+        A_inv = f(self.L_mat.T)
+        A_inv_ref = numpy.linalg.inv(self.A_mat)
+        
+        assert numpy.allclose(A_inv, A_inv_ref)
+
+    def test_dot_right_lower(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the cho_solve comparison.")
+         
+        f = function([self.L, self.B], self.op(self.L).dot(self.B))
+        A_inv_B = f(self.L_mat, self.B_mat)
+        lower = True
+        A_inv_B_ref = scipy.linalg.cho_solve((self.L_mat, lower), self.B_mat)
+         
+        assert numpy.allclose(A_inv_B, A_inv_B_ref)
+ 
+    def test_dot_right_upper(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the cho_solve comparison.")
+         
+        lower = False
+        f = function([self.L, self.B], MatrixInverseCholesky(lower=lower)(self.L).dot(self.B))
+        A_inv_B = f(self.L_mat.T, self.B_mat)
+        A_inv_B_ref = scipy.linalg.cho_solve((self.L_mat.T, lower), self.B_mat)
+         
+        assert numpy.allclose(A_inv_B, A_inv_B_ref)
+
+    def test_dot_left_lower(self):
+        f = function([self.L, self.B], self.B.dot(self.op(self.L)))
+        # B.T to make shapes match
+        B_A_inv = f(self.L_mat, self.B_mat.T)
+        
+        # B.T.T since the B.T from above is transposed due to left multiply
+        B_A_inv_ref = numpy.linalg.solve(self.A_mat.T, self.B_mat.T.T).T
+        
+        assert numpy.allclose(B_A_inv, B_A_inv_ref)
+
+    def test_dot_left_upper(self):
+        f = function([self.L, self.B], self.B.dot(MatrixInverseCholesky(lower=False)(self.L)))
+        # B.T to make shapes match
+        B_A_inv = f(self.L_mat.T, self.B_mat.T)
+        
+        # B.T.T since the B.T from above is transposed due to left multiply
+        B_A_inv_ref = numpy.linalg.solve(self.A_mat.T, self.B_mat.T.T).T
+        
+        assert numpy.allclose(B_A_inv, B_A_inv_ref)

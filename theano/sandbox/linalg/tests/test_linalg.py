@@ -18,8 +18,10 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        Cholesky,  # op class
                                        CholeskyGrad,
                                        matrix_inverse,
+                                       matrix_inverse_cholesky,
                                        pinv,
                                        Solve,
+                                       SolveCholesky,
                                        diag,
                                        ExtractDiag,
                                        extract_diag,
@@ -35,6 +37,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        imported_scipy,
                                        Eig,
                                        inv_as_solve,
+                                       inv_cholesky_as_solve_cholesky,
                                        norm
                                        )
 
@@ -137,3 +140,47 @@ def test_spectral_radius_bound():
     except ValueError:
         ok = True
     assert ok
+
+
+def test_matrix_inverse_as_solve_left():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Solve op.")
+    A = theano.tensor.dmatrix('A')
+    B = theano.tensor.dmatrix('B')
+    node = matrix_inverse(A).dot(B).owner
+    [out] = inv_as_solve.transform(node)
+    assert isinstance(out.owner.op, Solve)
+
+
+def test_matrix_inverse_as_solve_right():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Solve op.")
+    A = theano.tensor.dmatrix('A')
+    B = theano.tensor.dmatrix('B')
+    node = B.dot(matrix_inverse(A)).owner
+    [out] = inv_as_solve.transform(node)
+    # take into account the transpose after the solve operation, so go up one
+    # in expression tree
+    assert isinstance(out.owner.inputs[0].owner.op, Solve)
+
+
+def test_matrix_inverse_cholesky_as_solve_cholesky_left():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the SolveCholesky op.")
+    A = theano.tensor.dmatrix('A')
+    B = theano.tensor.dmatrix('B')
+    node = matrix_inverse_cholesky(A).dot(B).owner
+    [out] = inv_cholesky_as_solve_cholesky.transform(node)
+    assert isinstance(out.owner.op, SolveCholesky)
+
+
+def test_matrix_inverse_cholesky_as_solve_cholesky_right():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the SolveCholesky op.")
+    A = theano.tensor.dmatrix('A')
+    B = theano.tensor.dmatrix('B')
+    node = B.dot(matrix_inverse_cholesky(A)).owner
+    [out] = inv_cholesky_as_solve_cholesky.transform(node)
+    # take into account the transpose after the solve operation, so go up one
+    # in expression tree
+    assert isinstance(out.owner.inputs[0].owner.op, SolveCholesky)

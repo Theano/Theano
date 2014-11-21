@@ -17,6 +17,8 @@ from theano.gradient import DisconnectedType
 
 from theano.tensor.nlinalg import ( MatrixInverse,
                                     matrix_inverse,
+                                    MatrixInverseCholesky,
+                                    matrix_inverse_cholesky,
                                     MatrixPinv,
                                     pinv,
                                     AllocDiag,
@@ -46,6 +48,8 @@ from theano.tensor.slinalg import ( Cholesky,
                                     CholeskyGrad,
                                     Solve,
                                     solve,
+                                    SolveCholesky,
+                                    solve_cholesky,
                                     Eigvalsh,
                                     EigvalshGrad,
                                     eigvalsh
@@ -263,13 +267,26 @@ def inv_as_solve(node):
         return False
     if isinstance(node.op, (Dot, Dot22)):
         l, r = node.inputs
-        if l.owner and l.owner.op == matrix_inverse:
+        if l.owner and isinstance(l.owner.op, MatrixInverse):
             return [solve(l.owner.inputs[0], r)]
-        if r.owner and r.owner.op == matrix_inverse:
+        if r.owner and isinstance(r.owner.op, MatrixInverse):
             if is_symmetric(r.owner.inputs[0]):
                 return [solve(r.owner.inputs[0], l.T).T]
             else:
                 return [solve(r.owner.inputs[0].T, l.T).T]
+
+
+@register_stabilize
+@local_optimizer([Dot, Dot22])
+def inv_cholesky_as_solve_cholesky(node):
+    if not imported_scipy:
+        return False
+    if isinstance(node.op, (Dot, Dot22)):
+        l, r = node.inputs
+        if l.owner and isinstance(l.owner.op, MatrixInverseCholesky):
+            return [solve_cholesky(l.owner.inputs[0], r)]
+        if r.owner and isinstance(r.owner.op, MatrixInverseCholesky):
+            return [SolveCholesky(lower=False)(r.owner.inputs[0].T, l.T).T]
 
 
 @register_canonicalize
@@ -291,12 +308,8 @@ def psd_solve_with_chol(node):
     if node.op == solve:
         A, b = node.inputs  # result is solution Ax=b
         if is_psd(A):
-            L = cholesky(A)
-            #N.B. this can be further reduced to a yet-unwritten cho_solve Op
-            #     __if__ no other Op makes use of the the L matrix during the
-            #     stabilization
-            Li_b = Solve('lower_triangular')(L, b)
-            x = Solve('upper_triangular')(L.T, Li_b)
+            L = cholesky(A) # assume lower triangular factor
+            x = solve_cholesky(L, b)
             return [x]
 
 

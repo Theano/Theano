@@ -56,7 +56,8 @@ class MatrixInverse(Op):
     and :math:`A_{inv} \cdot A` equals the identity matrix :math:`I`.
 
     :note: When possible, the call to this op will be optimized to the call
-           of ``solve``.
+           of ``solve``. Inverting matrices is almost always a bad idea -- 
+           always multiply them to another term to use a linear solve.
     """
 
     __props__ = ()
@@ -70,6 +71,7 @@ class MatrixInverse(Op):
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, (x,), (z, )):
+        logger.warning("MatrixInverse: Doing explicit matrix inversion (almost always bad!)")
         z[0] = numpy.linalg.inv(x).astype(x.dtype)
 
     def grad(self, inputs, g_outputs):
@@ -112,6 +114,41 @@ class MatrixInverse(Op):
         return [-matrix_dot(xi, ev, xi)]
 
 matrix_inverse = MatrixInverse()
+
+
+class MatrixInverseCholesky(Op):
+    """Computes the inverse of a matrix :math:`A=LL^T`, represented via a 
+    Cholesky factor :math:`L` (can be lower or upper).
+
+    Given a Cholesky factorization of a square matrix :math:`A=LL^T`, 
+    ``matrix_inverse`` returns a square  matrix :math:`A_{inv}` such that the 
+    dot product :math:`A=LL^T \cdot A_{inv}` and :math:`A_{inv} \cdot A=LL^T` 
+    equals the identity matrix :math:`I`.
+
+    :note: When possible, the call to this op will be optimized to the call
+           of ``solve_cholesky``. Inverting matrices is almost always a bad 
+           idea -- always multiply them to another term to use a linear solve.
+    """
+    __props__ = ("lower",)
+
+    def __init__(self, lower=True):
+        self.lower = lower
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim == 2
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, (x,), (z, )):
+        if self.lower:
+            A = x.dot(x.T)
+        else:
+            A = x.T.dot(x)
+        
+        logger.warning("MatrixInverseCholesky: Doing explicit matrix inversion (almost always bad!)")
+        z[0] = numpy.linalg.inv(A).astype(x.dtype)
+
+matrix_inverse_cholesky = MatrixInverseCholesky()
 
 
 def matrix_dot(*args):
@@ -613,16 +650,6 @@ def svd(a, full_matrices=1, compute_uv=1):
     :returns: U, V and D matrices.
     """
     return SVD(full_matrices, compute_uv)(a)
-
-
-def test_matrix_inverse_solve():
-    if not imported_scipy:
-        raise SkipTest("Scipy needed for the Solve op.")
-    A = theano.tensor.dmatrix('A')
-    b = theano.tensor.dmatrix('b')
-    node = matrix_inverse(A).dot(b).owner
-    [out] = inv_as_solve.transform(node)
-    assert isinstance(out.owner.op, Solve)
 
 
 class lstsq(Op):
