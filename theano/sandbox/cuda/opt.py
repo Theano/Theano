@@ -17,7 +17,7 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
-    device_properties, gpu_eye, gpu_contiguous,
+    gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
@@ -46,6 +46,13 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 from theano.tensor import nlinalg
 from theano.tensor.nnet.Conv3D import Conv3D
+
+try:
+    # We need to be able to import this file even if cuda isn't avail.
+    from theano.sandbox.cuda import device_properties
+except ImportError:
+    pass
+
 
 #optdb.print_summary()  # shows what is currently registered
 
@@ -1337,10 +1344,12 @@ conv_groupopt.register('conv_fft_full', local_conv_fft_full, 10,
 # cuDNN is the second, but only registered if cuDNN is available.
 # It can be disabled by excluding 'conv_dnn' or 'cudnn'.
 from . import dnn
-if dnn.dnn_available():
-    conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn, 20,
-                           'conv_dnn',
-                           'fast_compile', 'fast_run', 'cudnn')
+# We can't check at import if dnn is available, so we must always
+# register it. This do not cause problem as if it is not avail, the
+# opt will do nothing.
+conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn, 20,
+                       'conv_dnn',
+                       'fast_compile', 'fast_run', 'cudnn')
 # The GEMM-based convolution comes last to catch all remaining cases.
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_conv_gemm', local_conv_gemm, 30,
