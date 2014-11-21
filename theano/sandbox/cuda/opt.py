@@ -1337,10 +1337,12 @@ conv_groupopt.register('conv_fft_full', local_conv_fft_full, 10,
 # cuDNN is the second, but only registered if cuDNN is available.
 # It can be disabled by excluding 'conv_dnn' or 'cudnn'.
 from . import dnn
-if dnn.dnn_available():
-    conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn, 20,
-                           'conv_dnn',
-                           'fast_compile', 'fast_run', 'cudnn')
+# We can't check at import if dnn is available, so we must always
+# register it. This do not cause problem as if it is not avail, the
+# opt will do nothing.
+conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn, 20,
+                       'conv_dnn',
+                       'fast_compile', 'fast_run', 'cudnn')
 # The GEMM-based convolution comes last to catch all remaining cases.
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_conv_gemm', local_conv_gemm, 30,
