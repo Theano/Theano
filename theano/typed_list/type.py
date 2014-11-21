@@ -129,4 +129,4 @@ class TypedListType(gof.Type):
         return (2,)
 
     dtype = property(lambda self: self.ttype)
-    ndim = property(lambda self: self.ttype.ndim)
+    ndim = property(lambda self: self.ttype.ndim + 1)
