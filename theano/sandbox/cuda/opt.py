@@ -17,7 +17,7 @@ from theano.gof import (local_optimizer, EquilibriumDB, SequenceDB, ProxyDB,
                         Optimizer, toolbox)
 from theano.gof.python25 import all, any
 from theano.sandbox.cuda.basic_ops import (
-    device_properties, gpu_eye, gpu_contiguous,
+    gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
@@ -46,6 +46,13 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 from theano.tensor import nlinalg
 from theano.tensor.nnet.Conv3D import Conv3D
+
+try:
+    # We need to be able to import this file even if cuda isn't avail.
+    from theano.sandbox.cuda import device_properties
+except ImportError:
+    pass
+
 
 #optdb.print_summary()  # shows what is currently registered
 
