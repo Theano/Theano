@@ -7,9 +7,7 @@ from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import (GpuOp, cuda_available,
-                                 active_device_number,
-                                 device_properties)
+from theano.sandbox.cuda import (GpuOp, cuda_available)
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous, HostFromGpu)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
@@ -22,8 +20,8 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 def dnn_available():
     if dnn_available.avail is None:
-        dev = active_device_number()
-        if device_properties(dev)['major'] < 3:
+        dev = theano.sandbox.cuda.active_device_number()
+        if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
             dnn_available.msg = "Device not supported by cuDNN"
             dnn_available.avail = False
         else:
