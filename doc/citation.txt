@@ -1,0 +1,41 @@
+
+.. _citation:
+
+
+Theano Citation Policy
+======================
+
+If you use Theano for academic research, you are highly encouraged (though not
+required) to cite the following two papers:
+
+* F. Bastien, P. Lamblin, R. Pascanu, J. Bergstra, I. Goodfellow,
+  A. Bergeron, N. Bouchard, D. Warde-Farley and Y. Bengio.
+  `"Theano: new features and speed improvements"
+  <http://arxiv.org/pdf/1211.5590.pdf>`_.
+  NIPS 2012 deep learning workshop. (`BibTex
+  <http://www.iro.umontreal.ca/~lisa/publications2/index.php/export/publication/551/bibtex>`_)
+
+* J. Bergstra, O. Breuleux, F. Bastien, P. Lamblin, R.
+  Pascanu, G. Desjardins, J. Turian, D. Warde-Farley and Y.
+  Bengio. `"Theano: A CPU and GPU Math Expression Compiler"
+  <http://www.iro.umontreal.ca/~lisa/pointeurs/theano_scipy2010.pdf>`_.
+  *Proceedings of the Python for Scientific Computing Conference (SciPy)
+  2010. June 30 - July 3, Austin, TX* (`BibTeX
+  <http://www.iro.umontreal.ca/~lisa/publications2/index.php/export/publication/461/bibtex>`_)
+
+Theano is primarily developed by academics, and so citations matter a lot to
+us. As an added benefit, you increase Theano's exposure and potential user
+(and developer) base, which is to the benefit of all users of Theano. Thanks
+in advance!
+
+Previously, we only asked users of Theano to cite the original 2010 paper. However,
+this policy did not give appropriate credit to the many members of our community
+who have contributed to Theano in the meantime.
+
+In the future, we intend to introduce new papers periodically (hopefully approximately
+once per year) with a comprehensive author list. As soon as one of these papers is
+prepared, we will only ask for users to cite the single most recent paper with the
+most comprehensive author list.
+
+
+
