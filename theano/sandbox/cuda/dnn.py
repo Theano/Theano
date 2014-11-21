@@ -1164,7 +1164,7 @@ if cuda_available:
             border_mode = node.op.border_mode
             subsample = node.op.subsample
             direction_hint = node.op.direction_hint
-            return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
+            return [dnn_conv(img, kern,
                              border_mode=border_mode, subsample=subsample,
                              direction_hint=direction_hint)]
 
