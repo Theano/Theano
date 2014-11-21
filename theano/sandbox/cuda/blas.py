@@ -1603,6 +1603,8 @@ class GpuConv(GpuOp):
             self.imshp = None
         if not hasattr(self, "max_threads_dim0"):
             self.max_threads_dim0 = None
+        if not hasattr(self, "direction_hint"):
+            self.direction_hint = None
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and

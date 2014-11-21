@@ -569,6 +569,7 @@ class ConvOp(OpenMPOp):
 
     def __setstate__(self, d):
         super(ConvOp, self).__setstate__(d)
+        self.direction_hint = d.get("direction_hint", None)
         self._rehash()
 
     def _rehash(self):
