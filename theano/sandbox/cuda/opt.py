@@ -1395,7 +1395,9 @@ class ConvMetaOptimizer(LocalCudaMetaOptimizer):
 # We just register all optimizers from conv_groupopt with the metaoptimizer
 conv_metaopt = ConvMetaOptimizer(
         conv_groupopt.query(*['+' + name for name in conv_groupopt._names]).opts)
-# And then register the metaoptimizer as the first optimizer in conv_groupopt
+# Then we add some optimizers that try less obvious options
+conv_metaopt.register(dnn.local_conv_dnn_alternative)
+# Finally, we register the metaoptimizer as the first optimizer in conv_groupopt
 conv_groupopt.register('conv_meta', conv_metaopt, 0)
 
 

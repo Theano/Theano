@@ -1207,7 +1207,37 @@ if True:
                              border_mode=border_mode, subsample=subsample,
                              direction_hint=direction_hint)]
 
-    @register_opt('cudnn')
+    # This optimizer is registered in opt.py as part of the meta-optimizer.
+    # It tries exactly the opposite code path of what local_conv_dnn() uses,
+    # because for some input/kernel shape configurations, this is faster.
+    @local_optimizer([GpuConv])
+    def local_conv_dnn_alternative(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, GpuConv):
+            border_mode = node.op.border_mode
+            subsample = node.op.subsample
+            if border_mode not in ['full', 'valid'] or subsample != (1, 1):
+                return
+            img, kern = node.inputs
+            direction_hint = node.op.direction_hint
+            if border_mode == 'full':
+                # for a full convolution, try using the forward pass instead
+                # of the backward pass wrt. inputs
+                direction_hint = 'forward!'
+            elif border_mode == 'valid':
+                # for a valid convolution, try using the backward pass wrt.
+                # weights instead of the forward pass and vice versa
+                if direction_hint == 'bprop weights':
+                    direction_hint = 'forward'
+                else:
+                    direction_hint = 'bprop weights'
+            return [dnn_conv(img, kern,
+                             border_mode=border_mode, subsample=subsample,
+                             direction_hint=direction_hint)]
+
+# DISABLED as there is problems in the handling of borders
+#    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
         if not dnn_available():
