@@ -280,6 +280,7 @@ class ConvOp(OpenMPOp):
                  kshp_logical_top_aligned=True,
                  verbose=0,
                  version=-1,
+                 direction_hint='forward',
                  openmp=None):
         """
         Initializes a ConvOp with given output_mode (full/valid). All other
@@ -348,6 +349,8 @@ class ConvOp(OpenMPOp):
         :type version: int or str
         :param version: passed to GpuConv, if version='no_fft', fft
             optimization will be desactivated at the op level.
+        :param direction_hint: 'forward', 'bprop weights' or 'bprop inputs'.
+            Passed to GpuConv, used by graph optimizers to aid algorithm choice
 
         The 3 following parameters are used internally when we generate
         the gradient when dx!=1 or dy!=1.
@@ -423,6 +426,7 @@ class ConvOp(OpenMPOp):
         self.dy = dy
         self.verbose = verbose
         self.version = version
+        self.direction_hint = direction_hint
 
         # a triple
         if imshp_logical is None:
@@ -565,6 +569,7 @@ class ConvOp(OpenMPOp):
 
     def __setstate__(self, d):
         super(ConvOp, self).__setstate__(d)
+        self.direction_hint = d.get("direction_hint", None)
         self._rehash()
 
     def _rehash(self):
@@ -888,6 +893,7 @@ class ConvOp(OpenMPOp):
                         kshp_logical=kshp_logical,
                         kshp_logical_top_aligned=kshp_logical_top_aligned,
                         version=self.version,
+                        direction_hint='bprop weights',
                         verbose=self.verbose)
 
         else:  # let __init__ choose c params be chosen automatically from shapes
@@ -897,6 +903,7 @@ class ConvOp(OpenMPOp):
                         kshp_logical=kshp_logical,
                         kshp_logical_top_aligned=kshp_logical_top_aligned,
                         version=self.version,
+                        direction_hint='bprop weights',
                         verbose=self.verbose)
 
         dw = dw(img, filters)
@@ -929,6 +936,7 @@ class ConvOp(OpenMPOp):
                          imshp_logical=imshp_logical,
                          kshp_logical=None,
                          version=-1,  # we we change the mode, we don't forward the version.
+                         direction_hint='bprop inputs',
                          verbose=self.verbose)
         else:  # let __init__ figure out the unrolling / patch sizes
             din = ConvOp(imshp, self.kshp, nkern, self.bsize,
@@ -938,6 +946,7 @@ class ConvOp(OpenMPOp):
                          imshp_logical=imshp_logical,
                          kshp_logical=None,
                          version=-1,  # we we change the mode, we don't forward the version.
+                         direction_hint='bprop inputs',
                          verbose=self.verbose)
 
         din = din(gz, filters)
