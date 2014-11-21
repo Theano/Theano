@@ -13,7 +13,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
-from theano.sandbox.cuda.opt import register_opt
+from theano.sandbox.cuda import register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
