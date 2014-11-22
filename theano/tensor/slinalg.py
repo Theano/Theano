@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 logger = logging.getLogger(__name__)
 import numpy
@@ -370,17 +371,21 @@ class ExpmGrad(Op):
         return [shapes[0]]
 
     def perform(self, node, (A, gw), (out,)):
-        w, M = scipy.linalg.eig(A)
+        # Kalbfleisch and Lawless, J. Am. Stat. Assoc. 80 (1985) Equation 3.4
+        w, UL, UR = scipy.linalg.eig(A, left=True, right=True)
 
-        G = scipy.linalg.solve(M, gw).dot(M)
+        if numpy.linalg.norm(w - numpy.real(w)) > numpy.finfo(A.dtype).eps:
+            warnings.warn("ExpmGrad not correct for matrices with complex "
+                          "eigenvalues")
+
+        G = (UR.conj().T).dot(gw).dot(UL)
 
         exp_w = numpy.exp(w)
         V = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
         V[numpy.diag_indices_from(V)] = exp_w
-        numpy.multiply(V, G, V)
+        V = numpy.multiply(V, G, V)
 
-        Mi = scipy.linalg.inv(M)
-        out[0] = numpy.real(M.dot(V).dot(Mi))
+        out[0] = numpy.real(UL.dot(V).dot(UR.conj().T)).astype(A.dtype)
 
 
 def expm(A):
