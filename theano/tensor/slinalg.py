@@ -207,7 +207,7 @@ class Eigvalsh(Op):
             "Scipy not  available. Scipy is needed for the Eigvalsh op")
 
         if b == theano.tensor.NoneConst:
-            a = as_tensor_variable(a)  
+            a = as_tensor_variable(a)
             assert a.ndim == 2
 
             out_dtype = theano.scalar.upcast(a.dtype)
@@ -269,7 +269,7 @@ class EigvalshGrad(Op):
             "Scipy not available. Scipy is needed for the GEigvalsh op")
         a = as_tensor_variable(a)
         b = as_tensor_variable(b)
-        gw = as_tensor_variable(gw)  
+        gw = as_tensor_variable(gw)
         assert a.ndim == 2
         assert b.ndim == 2
         assert gw.ndim == 1
@@ -329,3 +329,58 @@ def kron(a, b):
                          o.shape[1] * o.shape[3]) +
                         tuple([o.shape[i] for i in range(4, o.ndim)]))
     return o
+
+
+class Expm(Op):
+    """Compute the matrix exponential of a square array
+    """
+
+    def make_node(self, A):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Expm op")
+
+        A = as_tensor_variable(A)
+        assert A.ndim == 2
+        expm = theano.tensor.matrix(dtype=A.dtype)
+        return Apply(self, [A,], [expm,])
+
+    def perform(self, node, (A,), (expm,)):
+        expm[0] = scipy.linalg.expm(A)
+
+    def grad(self, (A,), (g_out,)):
+        return [ExpmGrad()(A, g_out)]
+
+
+class ExpmGrad(Op):
+    """Gradient of the matrix exponential of a square array
+    """
+
+    def make_node(self, A, gw):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Expm op")
+        A = as_tensor_variable(A)
+        assert A.ndim == 2
+        print(gw.shape)
+        out = theano.tensor.matrix(dtype=A.dtype)
+        return Apply(self, [A, gw], [out,])
+
+    def perform(self, node, (A, gw), outputs):
+         w, M = scipy.linalg.eig(A)
+         outputs[0][0] = numpy.zeros_like(A)
+
+        # Mi = scipy.linalg.inv(M)
+        # G = Mi.dot(gw).dot(M)
+
+        # V = np.zeros_like(x)
+        # for i in range(V.shape[0]):
+        #     for j in range(V.shape[1]):
+        #         if i != j:
+        #             V[i,j] = G[i,j] * (exp(w[i]) - exp(w[j])) / (w[i] - w[j])
+        #         else:
+        #             V[i,j] = G[i,i] * exp(w[i])
+
+        # outputs[0] = M.dot(V).dot(Mi)
+
+
+def expm(A):
+    return Expm()(A)
