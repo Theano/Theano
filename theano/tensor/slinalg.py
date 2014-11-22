@@ -395,5 +395,4 @@ class ExpmGrad(Op):
         out[0] = numpy.real(UL.dot(V).dot(UR.conj().T)).astype(A.dtype)
 
 
-def expm(A):
-    return Expm()(A)
+expm = Expm()
