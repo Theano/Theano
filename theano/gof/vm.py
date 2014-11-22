@@ -895,7 +895,16 @@ class VM_Linker(link.LocalLinker):
 
         thunks = []
 
-        # Start here
+        for node in order:
+            idx = order.index(node)
+            for ins in node.inputs:
+                if ins.allow_gc and ins.ndim == 0:
+                # check if input variable can be gc and ndim = 0
+                    for i in range(idx+1, len(order)):
+                        for outs in order[i].outputs:
+                            if outs.ndim == 0 and outs == ins:
+                                storage_map[outs] == storage_map[ins]
+        
         for node in order:
             try:
                 thunks.append(node.op.make_thunk(node,
