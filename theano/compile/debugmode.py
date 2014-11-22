@@ -495,7 +495,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
-               scan_ops=None):
+               scan_ops=None, profile=None):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -585,22 +585,36 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         already_printed = a in done  # get_id_str put it in the dict
         id_str = get_id_str(a)
 
+        op_time = profile.apply_time[a]
+        op_time_percent = (op_time / profile.fct_call_time) * 100
+        tot_time = 3.3
+        tot_time_percent = 4.4
+ 
         if len(a.outputs) == 1:
-            print >> file, '%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                          id_str,
-                                                          type_str,
-                                                          r_name,
-                                                          destroy_map_str,
-                                                          view_map_str,
-                                                          o)
+            print >> file, '%s%s %s%s \'%s\' %s %s %s %8.2es %4.1f%% %7.3fs %4.1f%%'\
+                % (prefix, a.op,
+                   id_str,
+                   type_str,
+                   r_name,
+                   destroy_map_str,
+                   view_map_str,
+                   o, op_time,
+                   op_time_percent,
+                   tot_time,
+                   tot_time_percent)
         else:
-            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                             a.outputs.index(r),
-                                                             id_str, type_str,
-                                                             r_name,
-                                                             destroy_map_str,
-                                                             view_map_str,
-                                                             o)
+            print >> file, '%s%s.%i %s%s \'%s\' %s %s %s %8.2es %4.1f%% %7.3fs %4.1f%%'\
+                % (prefix, a.op,
+                   a.outputs.index(r),
+                   id_str, type_str,
+                   r_name,
+                   destroy_map_str,
+                   view_map_str,
+                   o, op_time,
+                   op_time_percent,
+                   tot_time,
+                   tot_time_percent)
+                
         if not already_printed:
             if (not stop_on_name or
                 not (hasattr(r, 'name') and r.name is not None)):
@@ -614,16 +628,17 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                     if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
                         if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
                             scan_ops.append(i)
-
+   
                     debugprint(i, new_prefix, depth=depth - 1, done=done,
                                print_type=print_type, file=file, order=order,
                                ids=ids, stop_on_name=stop_on_name,
-                               prefix_child=new_prefix_child, scan_ops=scan_ops)
+                               prefix_child=new_prefix_child, scan_ops=scan_ops,
+                               profile=profile)
 
     else:
         #this is an input variable
         id_str = get_id_str(r)
-        print >> file, '%s%s %s%s' % (prefix, r, id_str, type_str)
+        print >> file, '%s%s %s%s ' % (prefix, r, id_str, type_str)
 
     return file
 
