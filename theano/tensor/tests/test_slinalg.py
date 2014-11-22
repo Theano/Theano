@@ -262,31 +262,29 @@ def test_expm_grad_2():
         raise SkipTest("Scipy needed for the expm op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = rng.randn(3, 3).astype(config.floatX)
-    A = A
 
     tensor.verify_grad(expm, [A,], rng=rng)
 
-
-def test_expm_grad_3():
-    if not imported_scipy:
-        raise SkipTest("Scipy needed for the expm op.")
-    from theano.gradient import grad
-    rng = numpy.random.RandomState(utt.fetch_seed())
-    A = rng.randn(3, 3).astype(config.floatX)
-
-    h = 1e-7
-    def e(i,j):
-        v = numpy.zeros((3, 3))
-        v[i, j] = 1
-        return v
-
-    x = tensor.matrix()
-    grad_expm_f = function([x], grad(expm(x)[0,1], x))
-    expm_f = function([x], expm(x)[0,1])
-
-    g = lambda i, j:  (expm_f(A + h*e(i,j)) - expm_f(A)) / h
-    numgrad = numpy.array([[g(i,j) for i in range(3)] for j in range(3)])
-
-    print(grad_expm_f(A))
-    print(numgrad)
-
+# def test_expm_grad_3():
+#     if not imported_scipy:
+#         raise SkipTest("Scipy needed for the expm op.")
+#     from theano.gradient import grad
+#     rng = numpy.random.RandomState(utt.fetch_seed())
+#     A = rng.randn(3, 3).astype(config.floatX)
+#
+#     h = 1e-7
+#     def e(i,j):
+#         v = numpy.zeros((3, 3))
+#         v[i, j] = 1
+#         return v
+#
+#     x = tensor.matrix()
+#     grad_expm_f = function([x], grad(expm(x)[0,0], x))
+#     expm_f = function([x], expm(x)[0,0])
+#
+#     g = lambda i, j:  (expm_f(A + h*e(i,j)) - expm_f(A)) / h
+#     numgrad = numpy.array([[g(i,j) for i in range(3)] for j in range(3)])
+#
+#     print(grad_expm_f(A))
+#     print(numgrad)
+#
