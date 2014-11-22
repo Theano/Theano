@@ -20,7 +20,8 @@ from theano.tensor.slinalg import ( Cholesky,
                                     solve,
                                     Eigvalsh,
                                     EigvalshGrad,
-                                    eigvalsh
+                                    eigvalsh,
+                                    expm
                                     )
 
 from nose.plugins.skip import SkipTest
@@ -227,3 +228,29 @@ class test_Solve(utt.InferShapeTester):
         U_val = scipy.linalg.cholesky(A_val, lower=False)
         assert numpy.allclose(scipy.linalg.solve_triangular(U_val, b_val, lower=False),
                               upper_solve_func(U_val, b_val))
+
+
+def test_expm():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the expm op.")
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = rng.randn(5, 5).astype(config.floatX)
+
+    ref = scipy.linalg.expm(A)
+
+    x = tensor.matrix()
+    m = expm(x)
+    expm_f = function([x], m)
+
+    val = expm_f(A)
+    numpy.testing.assert_array_almost_equal(val, ref)
+
+
+def test_expm_grad():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the expm op.")
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = rng.randn(5, 5).astype(config.floatX)
+
+    eps = None
+    yield (lambda: utt.verify_grad(expm, [A], 3, rng, eps=eps))
