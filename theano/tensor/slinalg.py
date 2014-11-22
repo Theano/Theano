@@ -357,6 +357,9 @@ class Expm(Op):
     def grad(self, (A,), (g_out,)):
         return [ExpmGrad()(A, g_out)]
 
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
 
 class ExpmGrad(Op):
     """Gradient of the matrix exponential of a square array
@@ -367,26 +370,24 @@ class ExpmGrad(Op):
             "Scipy not available. Scipy is needed for the Expm op")
         A = as_tensor_variable(A)
         assert A.ndim == 2
-        print(gw.shape)
         out = theano.tensor.matrix(dtype=A.dtype)
         return Apply(self, [A, gw], [out,])
 
-    def perform(self, node, (A, gw), outputs):
-         w, M = scipy.linalg.eig(A)
-         outputs[0][0] = numpy.zeros_like(A)
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
 
-        # Mi = scipy.linalg.inv(M)
-        # G = Mi.dot(gw).dot(M)
+    def perform(self, node, (A, gw), (out,)):
+        w, M = scipy.linalg.eig(A)
 
-        # V = np.zeros_like(x)
-        # for i in range(V.shape[0]):
-        #     for j in range(V.shape[1]):
-        #         if i != j:
-        #             V[i,j] = G[i,j] * (exp(w[i]) - exp(w[j])) / (w[i] - w[j])
-        #         else:
-        #             V[i,j] = G[i,i] * exp(w[i])
+        G = scipy.linalg.solve(M, gw).dot(M)
 
-        # outputs[0] = M.dot(V).dot(Mi)
+        exp_w = numpy.exp(w)
+        V = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
+        V[numpy.diag_indices_from(V)] = exp_w
+        numpy.multiply(V, G, V)
+
+        Mi = scipy.linalg.inv(M)
+        out[0] = numpy.real(M.dot(V).dot(Mi))
 
 
 def expm(A):
