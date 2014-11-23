@@ -207,7 +207,7 @@ class Eigvalsh(Op):
             "Scipy not  available. Scipy is needed for the Eigvalsh op")
 
         if b == theano.tensor.NoneConst:
-            a = as_tensor_variable(a)  
+            a = as_tensor_variable(a)
             assert a.ndim == 2
 
             out_dtype = theano.scalar.upcast(a.dtype)
@@ -269,7 +269,7 @@ class EigvalshGrad(Op):
             "Scipy not available. Scipy is needed for the GEigvalsh op")
         a = as_tensor_variable(a)
         b = as_tensor_variable(b)
-        gw = as_tensor_variable(gw)  
+        gw = as_tensor_variable(gw)
         assert a.ndim == 2
         assert b.ndim == 2
         assert gw.ndim == 1
@@ -329,3 +329,62 @@ def kron(a, b):
                          o.shape[1] * o.shape[3]) +
                         tuple([o.shape[i] for i in range(4, o.ndim)]))
     return o
+
+
+class Expm(Op):
+    """Compute the matrix exponential of a square array
+    """
+
+    def make_node(self, A):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Expm op")
+
+        A = as_tensor_variable(A)
+        assert A.ndim == 2
+        expm = theano.tensor.matrix(dtype=A.dtype)
+        return Apply(self, [A,], [expm,])
+
+    def perform(self, node, (A,), (expm,)):
+        expm[0] = scipy.linalg.expm(A)
+
+    def grad(self, (A,), (g_out,)):
+        return [ExpmGrad()(A, g_out)]
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
+
+class ExpmGrad(Op):
+    """Gradient of the matrix exponential of a square array. Currently
+    implemented only for Hermetian arguments.
+    """
+
+    def make_node(self, A, gw):
+        assert imported_scipy, (
+            "Scipy not available. Scipy is needed for the Expm op")
+        A = as_tensor_variable(A)
+        assert A.ndim == 2
+        out = theano.tensor.matrix(dtype=A.dtype)
+        return Apply(self, [A, gw], [out,])
+
+    def infer_shape(self, node, shapes):
+        return [shapes[0]]
+
+    def perform(self, node, (A, gA), (out,)):
+        if not numpy.allclose(A, A.T):
+            raise NotImplementedError(
+                "ExpmGrad is only implemented for symmetric matrices")
+
+        # Kalbfleisch and Lawless, J. Am. Stat. Assoc. 80 (1985) Equation 3.4
+        w, U = scipy.linalg.eigh(A)
+
+        G = (U.T).dot(gA).dot(U)
+        exp_w = numpy.exp(w)
+        V = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
+        numpy.fill_diagonal(V, exp_w)
+        V = numpy.multiply(V, G, V)
+
+        out[0] = (U.dot(V).dot(U.T)).astype(A.dtype)
+
+
+expm = Expm()
