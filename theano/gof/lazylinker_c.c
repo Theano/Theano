@@ -951,12 +951,12 @@ CLazyLinker_set_allow_gc(CLazyLinker *self, PyObject *value, void *closure)
 }
 
 static PyGetSetDef CLazyLinker_getset[] = {
-    {"allow_gc",
-     (getter)CLazyLinker_get_allow_gc,
-     (setter)CLazyLinker_set_allow_gc,
-     "do this function support allow_gc",
-     NULL},
-    {NULL, NULL, NULL, NULL}  /* Sentinel */
+  {(char*)"allow_gc",
+   (getter)CLazyLinker_get_allow_gc,
+   (setter)CLazyLinker_set_allow_gc,
+   (char*)"do this function support allow_gc",
+   NULL},
+  {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 static PyMemberDef CLazyLinker_members[] = {
     {(char*)"nodes", T_OBJECT_EX, offsetof(CLazyLinker, nodes), 0,

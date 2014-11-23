@@ -62,7 +62,7 @@ class TestCumsumOp(utt.InferShapeTester):
         utt.verify_grad(self.op, [a])  # Test axis=None
 
         for axis in range(len(a.shape)):
-            utt.verify_grad(self.op_class(axis=axis), [a])
+            utt.verify_grad(self.op_class(axis=axis), [a], eps=4e-4)
 
 
 class TestCumprodOp(utt.InferShapeTester):
@@ -493,10 +493,10 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
                 # We can't use numpy.fill_diagonal as it is bugged.
                 assert numpy.allclose(numpy.diag(out, test_offset), val)
                 if test_offset >= 0:
-                   assert (out == val).sum() == min( min(a.shape), 
+                   assert (out == val).sum() == min( min(a.shape),
                                             a.shape[1]-test_offset )
                 else:
-                    assert (out == val).sum() == min( min(a.shape), 
+                    assert (out == val).sum() == min( min(a.shape),
                                             a.shape[0]+test_offset )
 
     def test_gradient(self):
@@ -505,13 +505,13 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
             def fill_diagonal_with_fix_offset( a, val):
                 return fill_diagonal_offset( a, val, test_offset)
 
-            utt.verify_grad(fill_diagonal_with_fix_offset, 
+            utt.verify_grad(fill_diagonal_with_fix_offset,
                         [numpy.random.rand(5, 8), numpy.random.rand()],
                             n_tests=1, rng=TestFillDiagonalOffset.rng)
-            utt.verify_grad(fill_diagonal_with_fix_offset, 
+            utt.verify_grad(fill_diagonal_with_fix_offset,
                         [numpy.random.rand(8, 5), numpy.random.rand()],
                             n_tests=1, rng=TestFillDiagonalOffset.rng)
-            utt.verify_grad(fill_diagonal_with_fix_offset, 
+            utt.verify_grad(fill_diagonal_with_fix_offset,
                         [numpy.random.rand(5, 5), numpy.random.rand()],
                             n_tests=1, rng=TestFillDiagonalOffset.rng)
 

@@ -14,11 +14,13 @@ if cuda.cuda_available == False:
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
-    mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
+    # We should not exclude the 'gpu' tag, as some CPU opt are tagged
+    # as GPU to make them run in fast_compile with gpu.
+
+    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode()
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
@@ -301,6 +303,12 @@ class test_SoftMax(unittest.TestCase):
         self._cmp(2 << 15, 5, f, f_gpu)
         self._cmp(0, 10, f, f_gpu)
 
+    def test_softmax_cudnn(self):
+        if not cuda.dnn.dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+        x = T.fmatrix('x')
+        z = T.nnet.softmax
+
         def check_types_with_cudnn(graph, graph_gpu):
             self._check_types(
                 graph,
@@ -320,7 +328,7 @@ class test_SoftMax(unittest.TestCase):
             check_types_with_cudnn
         )
 
-    def test_cudnn_softmax(self):
+    def test_cudnn_softmax_grad(self):
         if not cuda.dnn.dnn_available():
             raise SkipTest(cuda.dnn.dnn_available.msg)
 

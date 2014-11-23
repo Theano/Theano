@@ -6,7 +6,7 @@ import theano
 from theano import shared, function
 from theano.gof.python25 import any
 import theano.tensor as T
-from neighbours import images2neibs, neibs2images, Images2Neibs
+from theano.tensor.nnet.neighbours import images2neibs, neibs2images, Images2Neibs
 
 from theano.tests import unittest_tools
 

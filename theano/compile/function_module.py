@@ -969,65 +969,64 @@ class FunctionMaker(object):
         else:
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
         
-    def retrieve_fgraph_from_opt_cache():
+    def optimize_graph_with_cache(self, optimizer, inputs, outputs):
         # This function is not finished
-        raise NotImplementedError('optimization cache is not finished! Should not be called.')
         from theano.gof.compilelock import get_lock, release_lock
         import os.path
+
         graph_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
+
         # the inputs, outputs, and size of the graph to be optimized
         inputs_new = [inp.variable for inp in inputs]
         outputs_new = [out.variable for out in outputs]
-        size_new = len(fgraph.apply_nodes)
+        size_new = len(self.fgraph.apply_nodes)
         need_optimize = False
         get_lock()
         key = None
-
         #Beginning of cache optimizations.
         #Could be refactored in different functions.
-        if theano.config.cache_optimizations: #set to false by default
-            '''
-            graph_db and need_optimize
-            '''
+        def load_graph_db():
             if os.path.isfile(graph_db_file):
-                print 'graph_db exists'
+                print 'graph_db already exists'
             else:
                 # create graph_db
                 f = open(graph_db_file, 'wb')
-                print 'created new graph_db %s' % graph_db_file
+                print 'create new graph_db in %s' % graph_db_file
                 #file needs to be open and closed for every pickle
                 f.close()
             # load the graph_db dictionary
             try:
                 f = open(graph_db_file, 'rb')
-
                 #Temporary hack to allow theano.scan_module.tests.test_scan.T_Scan
                 #to finish. Should be changed in definitive version.
                 tmp = theano.config.unpickle_function
                 theano.config.unpickle_function = False
-
                 graph_db = cPickle.load(f)
-
-                theano.config.unpickle_function = tmp
+                
                 #hack end
-
                 f.close()
-                print 'graph_db is not empty'
+                print 'graph_db loaded and it is not empty'
             except EOFError, e:
                 # the file has nothing in it
                 print e
-                print 'graph_db is empty'
+                print 'graph_db loaded and it is empty'
                 graph_db = {}
+            finally:
+                theano.config.unpickle_function = tmp
+                
+            return graph_db
 
-            need_optimize = True
-
-            print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
-            # the sole purpose of this loop is to set 'need_optimize'
-            for i, graph_old in enumerate(graph_db.keys()):
+        def find_same_graph_in_db(graph_db):
+            # If found_graph_in_db is None, then need to optimize.
+            # Otherwise, return the graph found.
+            found_graph_in_db = None
+            # The sole purpose of this loop is to set 'need_optimize' by
+            # going through graph_db, looking for graph that has the same
+            # computation performed. 
+            for graph_old, graph_optimized in graph_db.iteritems():
                 inputs_old = graph_old.inputs
                 outputs_old = graph_old.outputs
                 size_old = len(graph_old.apply_nodes)
-                print 'looping through graph_db %d/%d' % (i + 1, len(graph_db))
                 # Some heuristics to check is the same graphs have
                 # already been optimized before.
                 if len(inputs_new) != len(inputs_old):
@@ -1051,12 +1050,13 @@ class FunctionMaker(object):
                 elif not size_old == size_new:
                     print 'need to optimize, because numbers of nodes in graph are different'
                     continue
-
                 else:
                     flags = []
-                    for output_new, output_old, i in zip(outputs_new, outputs_old, range(len(outputs_new))):
+                    for output_new, output_old, i in zip(
+                            outputs_new, outputs_old, range(len(outputs_new))):
                         print 'loop through outputs node for both graphs'
-                        graph_old.variables = set(gof.graph.variables(graph_old.inputs, graph_old.outputs))
+                        graph_old.variables = set(gof.graph.variables(
+                            graph_old.inputs, graph_old.outputs))
 
                         #using clone allowed to avoid a lot of errors
                         #deep copy seemed to had.
@@ -1104,40 +1104,35 @@ class FunctionMaker(object):
                     is_same = all(flags)
                     if is_same:
                         # found the match
-                        print 'found #TODO: he match, no need to optimize'
-                        need_optimize = False
-                        key = graph_old
+                        print 'found a match, no need to optimize'
+                        found_graph_in_db = graph_optimized
                         break
-                if need_optimize:
-                    # this is a brand new graph, optimize it, save it to graph_db
-                    print 'optimizing the graph'
-                    fgraph.variables = set(gof.graph.variables(fgraph.inputs, fgraph.outputs))
-                    #check_integrity parameters was added to ignore 
-                    #"excess cached variables" errors. Works that way
-                    #but once again the error couldbe worth
-                    #investigating.
-                    before_opt = fgraph.clone(check_integrity=False)
-                    start_optimizer = time.time()
-                    optimizer_profile = optimizer(fgraph)
-                    end_optimizer = time.time()
-                    opt_time = end_optimizer - start_optimizer
-                    graph_db.update({before_opt:fgraph})
-                    f = open(graph_db_file, 'wb')
-                    cPickle.dump(graph_db, f, -1)
-                    f.close()
-                    print 'saved into graph_db'
-                else:
-                    print 'no opt, get graph from graph_db'
-                    # just read the optmized graph from graph_db
-                    opt_time = 0
-
-                    #"Naive" insertion. It's seems to work, but there may
-                    #be some problems inserting it like that.
-                    self.fgraph = graph_db[key]
-                    fgraph = self.fgraph
-                # release stuff
-                release_lock()
-                
+            return found_graph_in_db
+                   
+        graph_db = load_graph_db()
+        print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
+        found_graph = find_same_graph_in_db(graph_db)
+        if found_graph:
+            self.fgraph = found_graph
+            optimizer_profile = None
+        else:
+            # this is a brand new graph, optimize it, save it to graph_db
+            print 'graph not found in graph_db, optimizing the graph'
+            self.fgraph.variables = set(gof.graph.variables(
+                self.fgraph.inputs, self.fgraph.outputs))
+            #check_integrity parameters was added to ignore 
+            #"excess cached variables" errors. Works that way
+            #but once again the error couldbe worth
+            #investigating.
+            before_opt = self.fgraph.clone(check_integrity=False)
+            optimizer_profile = optimizer(self.fgraph)
+            graph_db.update({before_opt:self.fgraph})
+            f = open(graph_db_file, 'wb')
+            cPickle.dump(graph_db, f, -1)
+            f.close()
+            print 'new graph saved into graph_db'
+        release_lock()
+        return optimizer_profile
                 
     def __init__(self, inputs, outputs,
             mode=None, accept_inplace=False, function_builder=Function,
@@ -1242,7 +1237,14 @@ class FunctionMaker(object):
                 theano.config.compute_test_value = theano.config.compute_test_value_opt
                 gof.Op.add_stack_trace_on_call = False
                 start_optimizer = time.time()
-                optimizer_profile = optimizer(fgraph)
+
+                # now optimize the graph
+                if theano.config.cache_optimizations:
+                    optimizer_profile = self.optimize_graph_with_cache(
+                        optimizer, inputs, outputs)
+                else:    
+                    optimizer_profile = optimizer(fgraph)
+                    
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
                 if profile:

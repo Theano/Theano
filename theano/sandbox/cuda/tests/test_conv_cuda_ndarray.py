@@ -9,6 +9,7 @@ import traceback
 import numpy
 
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 imported_scipy_convolve2d = False
 try:
     from scipy.signal import convolve2d
@@ -72,16 +73,21 @@ def py_conv_valid_numpy(img, kern):
                     out[b, k, rr, cc] = innerprod
     return out
 
+def py_conv_pad_img(img, pad_h, pad_w):
+    assert pad_h >= 0 and pad_w >= 0
+    padded_img = numpy.zeros(
+        (img.shape[0], img.shape[1],
+         pad_h * 2 + img.shape[2], pad_w * 2 + img.shape[3]),
+        dtype=img.dtype)
+    padded_img[:, :,
+               pad_h: pad_h + img.shape[2],
+               pad_w: pad_w + img.shape[3]] = img
+    return padded_img
 
 def py_conv_full_numpy(img, kern):
     # manually pad the img with zeros all around, and then run it
     # through py_conv_valid
-    pad_rows = 2 * (kern.shape[2] - 1) + img.shape[2]
-    pad_cols = 2 * (kern.shape[3] - 1) + img.shape[3]
-    padded_img = numpy.zeros((img.shape[0], img.shape[1], pad_rows, pad_cols),
-                             dtype=img.dtype)
-    padded_img[:, :, kern.shape[2] - 1: kern.shape[2] - 1 + img.shape[2],
-                     kern.shape[3] - 1: kern.shape[3] - 1 + img.shape[3]] = img
+    padded_img = py_conv_pad_img(img, kern.shape[2] - 1, kern.shape[3] - 1)
     return py_conv_valid_numpy(padded_img, kern)
 
 
@@ -90,6 +96,12 @@ def py_conv(img, kern, mode, subsample):
     use a scipy or numpy implementation depending is scipy is available.
     The scipy version is faster.
     """
+    if isinstance(mode, int):
+        mode = (mode, mode)
+    if isinstance(mode, tuple):
+        pad_h, pad_w = map(int, mode)
+        img = py_conv_pad_img(img, pad_h, pad_w)
+        mode = 'valid'
     if imported_scipy_convolve2d:
         return py_conv_scipy(img, kern, mode, subsample)
     elif mode == 'valid':
@@ -574,7 +586,7 @@ def test_gemm_valid():
     extra_shapes += get_shapes2(scales_kern=(2, 2), kern_stride=(2, 2))
 
     for t in _test_valid(cuda.blas.BaseGpuCorrMM,
-                         mode=theano_mode.including("conv_gemm"),
+                         mode=theano_mode.excluding("cudnn"),
                          extra_shapes=extra_shapes):
         yield t
 
@@ -582,7 +594,7 @@ def test_gemm_valid():
 def test_dnn_valid():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_valid(GpuDnnConv, mode=theano_mode.including("cudnn")):
+    for t in _test_valid(GpuDnnConvBase, mode=theano_mode.including("cudnn")):
         yield t
 
 
@@ -604,7 +616,13 @@ def test_default_conv():
         assert any([isinstance(a.op, cuda.blas.GpuCorrMM)
                     for a in f.maker.fgraph.apply_nodes])
 
-    mode = theano_mode.excluding('local_gpu_conv', 'local_conv_gemm')
+    mode = theano_mode.excluding('local_conv_dnn', 'local_conv_gemm')
+    f = theano.function([img, fil], c, mode=mode)
+
+    assert any([isinstance(a.op, cuda.blas.GpuConv)
+                for a in f.maker.fgraph.apply_nodes])
+
+    mode = theano_mode.excluding('conv_dnn', 'conv_gemm')
     f = theano.function([img, fil], c, mode=mode)
 
     assert any([isinstance(a.op, cuda.blas.GpuConv)
@@ -683,14 +701,14 @@ def test_full():
 
 def test_gemm_full():
     for t in _test_full(cuda.blas.BaseGpuCorrMM,
-                        mode=theano_mode.including("conv_gemm")):
+                        mode=theano_mode.excluding("cudnn")):
         yield t
 
 
 def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_full(GpuDnnConv, mode=theano_mode.including("cudnn")):
+    for t in _test_full(GpuDnnConvBase, mode=theano_mode.including("cudnn")):
         yield t
 
 
@@ -735,14 +753,14 @@ def test_subsample():
 
 def test_gemm_subsample():
     for t in _test_subsample(cuda.blas.BaseGpuCorrMM,
-                             theano_mode.including("conv_gemm")):
+                             theano_mode.excluding("cudnn")):
         yield t
 
 
 def test_dnn_subsample():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_subsample(GpuDnnConv, theano_mode.including('cudnn')):
+    for t in _test_subsample(GpuDnnConvBase, theano_mode.including('cudnn')):
         yield t
 
 
@@ -820,6 +838,63 @@ class TestConv2DGPU(unittest.TestCase):
         finally:
             theano_mode = theano_mode_orig
 
+class TestConvWithPadding(object):
+    """test conv ops that support arbitrary padding via border_mode
+    note that in order to make the yield work, we can not subclass from 
+    unittest.TestCase
+    """
+
+    @staticmethod
+    def gemm_conv_op(img, kern, border_mode):
+        kern = theano.sandbox.cuda.basic_ops.gpu_contiguous(
+            kern[:, :, ::-1, ::-1])
+        y = theano.sandbox.cuda.blas.GpuCorrMM(border_mode=border_mode)(
+            img, kern)
+        return y
+
+    conv_ops = []
+
+    @classmethod
+    def setup_class(cls):
+        cls.conv_ops.append(cls.gemm_conv_op)
+        if cuda.dnn.dnn_available():
+            cls.conv_ops.append(cuda.dnn.dnn_conv)
+
+    def test_invalid_arg(self):
+        img = theano._asarray(numpy.empty((1, 1, 1, 1)), dtype='float32')
+        kern = theano._asarray(numpy.empty((1, 1, 1, 1)), dtype='float32')
+        for i in self.conv_ops:
+            assert_raises(ValueError, i, img, kern,
+                              border_mode=(-1, 0))
+            assert_raises(ValueError, i, img, kern,
+                              border_mode=(0, -1))
+            assert_raises(ValueError, i, img, kern,
+                              border_mode='not border')
+
+    def _run_onecase(self, img_shape, kern_shape, padding, op):
+        npy_img = numpy.random.rand(*img_shape).astype('float32')
+        npy_kern = numpy.random.rand(*kern_shape).astype('float32')
+        img = theano._asarray(npy_img, dtype='float32')
+        kern = theano.shared(npy_kern)
+        border_mode = padding
+        cpuval = py_conv(npy_img, npy_kern, border_mode, (1, 1))
+        X = tensor.ftensor4()
+        Y = op(X, kern, border_mode=border_mode)
+        func = theano.function([X], Y, mode=theano_mode)
+        gpuval = numpy.asarray(func(img))
+        assert_allclose(cpuval, gpuval, rtol=1e-5, atol=1e-5)
+
+    def test_numeric_value(self):
+        params = [
+            ((5, 10, 4, 4), (12, 10, 4, 4), (2, 1)),
+            ((5, 10, 8, 8), (12, 10, 4, 4), 3),
+            ((5, 10, 6, 8), (12, 10, 3, 4), 'full'),
+            ((5, 10, 9, 6), (12, 10, 9, 4), 'valid')
+        ]
+        for img_shape, kern_shape, padding in params:
+            for op in self.conv_ops:
+                yield self._run_onecase, img_shape, kern_shape, padding, op
+
 
 def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
                   direction):
@@ -879,8 +954,7 @@ def test_gemm_directly():
 
 
 def gemm_op(mode, subsample):
-    pad = 'full' if mode == 'full' else (0, 0)
-    return theano.sandbox.cuda.blas.GpuCorrMM('valid', subsample, pad)
+    return theano.sandbox.cuda.blas.GpuCorrMM(mode, subsample)
 
 
 def dnn_op(mode, subsample):

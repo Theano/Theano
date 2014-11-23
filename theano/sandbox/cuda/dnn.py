@@ -7,8 +7,7 @@ from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import (GpuOp, cuda_available, active_device_number,
-                                 device_properties)
+from theano.sandbox.cuda import (GpuOp, cuda_available)
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous, HostFromGpu)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
@@ -21,8 +20,8 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 def dnn_available():
     if dnn_available.avail is None:
-        dev = active_device_number()
-        if device_properties(dev)['major'] < 3:
+        dev = theano.sandbox.cuda.active_device_number()
+        if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
             dnn_available.msg = "Device not supported by cuDNN"
             dnn_available.avail = False
         else:
@@ -56,7 +55,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             else:
                 dnn_available.msg = (
                     "Theano is not able to use cuDNN. We got this error: \n" +
-                    err)
+                    str(err))
     return dnn_available.avail
 
 
@@ -122,9 +121,7 @@ class GpuDnnConvDesc(GpuOp):
     """This Op builds a convolution descriptor for use in the other
     convolution operations.
 
-    :param border_mode: 'valid' or 'full'
-    :param subsample: The subsample, tuple like (dx, dy)
-    :param conv_mode: 'conv' or 'cross'
+    see the doc of :func:`dnn_conv` for a description of the parameters
 
     """
     __props__ = ('border_mode', 'subsample', 'conv_mode')
@@ -142,7 +139,17 @@ class GpuDnnConvDesc(GpuOp):
         return NVCC_compiler
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
-        assert border_mode in ('valid', 'full')
+        if isinstance(border_mode, int):
+            border_mode = (border_mode, border_mode)
+        if isinstance(border_mode, tuple):
+            pad_h, pad_w = map(int, border_mode)
+            border_mode = (pad_h, pad_w)
+        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
+                border_mode in ('valid', 'full')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", an integer or a pair of'
+                ' integers'.format(border_mode))
         self.border_mode = border_mode
         assert len(subsample) == 2
         self.subsample = subsample
@@ -162,11 +169,18 @@ class GpuDnnConvDesc(GpuOp):
         img_shape, kern_shape = inputs
         desc, = outputs
 
-        if self.border_mode == "valid":
-            bmode = 1
+        if isinstance(self.border_mode, tuple):
+            pad_h_spec, pad_w_spec = map(int, self.border_mode)
+            assert pad_h_spec >= 0 and pad_w_spec >= 0
+            bmode = 2
         else:
-            assert self.border_mode == "full"
-            bmode = 0
+            pad_h_spec = pad_w_spec = 0
+
+            if self.border_mode == "valid":
+                bmode = 1
+            else:
+                assert self.border_mode == "full"
+                bmode = 0
 
         if self.conv_mode == 'conv':
             conv_flag = 'CUDNN_CONVOLUTION'
@@ -185,7 +199,10 @@ class GpuDnnConvDesc(GpuOp):
     %(fail)s
   }
 
-  if (%(bmode)d == 1) {
+  if (%(bmode)d == 2) {
+    pad_h%(name)s = %(pad_h_spec)d;
+    pad_w%(name)s = %(pad_w_spec)d;
+  } else if (%(bmode)d == 1) {
     pad_h%(name)s = 0;
     pad_w%(name)s = 0;
   } else if (%(bmode)d == 0) {
@@ -218,10 +235,11 @@ class GpuDnnConvDesc(GpuOp):
 }
 """ % dict(name=name, img_shape=img_shape, kern_shape=kern_shape, desc=desc,
            bmode=bmode, conv_flag=conv_flag, fail=sub['fail'],
-           subsx=self.subsample[0], subsy=self.subsample[1])
+           subsx=self.subsample[0], subsy=self.subsample[1],
+           pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class GpuDnnConvBase(DnnBase):
@@ -276,9 +294,9 @@ if ((err%(id)d = cudnnCreateFilterDescriptor(&kerns%(id)d)) != CUDNN_STATUS_SUCC
 
     def c_cleanup_code_struct(self, node, struct_id):
         return """
-cudnnDestroyTensor4dDescriptor(input%(id)d);
-cudnnDestroyTensor4dDescriptor(output%(id)d);
-cudnnDestroyFilterDescriptor(kerns%(id)d);
+if (input%(id)d != NULL) {cudnnDestroyTensor4dDescriptor(input%(id)d);}
+if (output%(id)d != NULL) {cudnnDestroyTensor4dDescriptor(output%(id)d);}
+if (kerns%(id)d != NULL) {cudnnDestroyFilterDescriptor(kerns%(id)d);}
 """ % dict(id=struct_id)
 
     def c_set_filter(self, var, desc, err, fail):
@@ -381,7 +399,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            method=self.conv_op, path=self.path_flag)
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 class GpuDnnConv(GpuDnnConvBase):
@@ -450,7 +468,7 @@ class GpuDnnConvGradI(GpuDnnConvBase):
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
-             conv_mode='conv'):
+             conv_mode='conv', direction_hint=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -459,14 +477,58 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
     :param img: images to do the convolution over
     :param kerns: convolution filters
-    :param border_mode: one of 'valid', 'full' (default: 'valid')
+    :param border_mode: one of 'valid', 'full'; additionally, the padding size
+        could be directly specified by an integer or a pair of integers
     :param subsample: perform subsampling of the output (default: (1, 1))
-    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.  One of 'conv', 'cross'. (default: 'conv')
+    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.
+        One of 'conv', 'cross'. (default: 'conv')
+    :param direction_hint: Used by graph optimizers to change algorithm choice.
+        By default, GpuDnnConv will be used to carry out the convolution.
+        If border_mode is 'valid', subsample is (1,1) and direction_hint is
+        'bprop weights', it will use GpuDnnConvGradW.
+        If border_mode is 'full', subsample is (1,1) and direction_hint is
+        *not* 'forward!', it will use GpuDnnConvGradI.
+        This parameter is used internally by graph optimizers and may be
+        removed at any time without a deprecation period. You have been warned.
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
+    if (border_mode == 'valid' and subsample == (1,1) and
+        direction_hint == 'bprop weights'):
+        # Special case: We are asked to use GpuDnnConvGradW. We need to set
+        # up a suitable 'fake' convolution to compute the gradient for.
+        img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
+        if conv_mode == 'conv':
+            # We need to flip manually. These 'kerns' are not the kernels
+            # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
+            kerns = kerns[:, :, ::-1, ::-1]
+        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
+        shape = theano.tensor.stack(kerns.shape[1], img.shape[1],
+                                    img.shape[2] - kerns.shape[2] + 1,
+                                    img.shape[3] - kerns.shape[3] + 1)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                              conv_mode='cross')(img.shape, shape)
+        conv = GpuDnnConvGradW()(img, kerns, desc)
+        return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
+
+    elif (border_mode == 'full' and subsample == (1, 1) and
+          direction_hint != 'forward!'):
+        # Special case: We can be faster by using GpuDnnConvGradI to compute
+        # the full convolution as the backward pass of a valid convolution.
+        # We just need to set up a suitable 'fake' valid convolution.
+        img = gpu_contiguous(img)
+        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
+        conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
+        shape = theano.tensor.stack(img.shape[0], kerns.shape[1],
+                                    img.shape[2] + kerns.shape[2] - 1,
+                                    img.shape[3] + kerns.shape[3] - 1)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                              conv_mode=conv_mode)(shape, kerns.shape)
+        return GpuDnnConvGradI()(kerns, img, desc)
+
+    # Standard case: We use GpuDnnConv with suitable padding.
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
@@ -1089,7 +1151,7 @@ if cuda_available:
     from theano.sandbox.cuda.opt import (
         local_optimizer, gpu_optimizer, gpu_seqopt)
 
-    @register_opt('cudnn')
+    #@register_opt('cudnn')  # this optimizer is registered in opt.py instead.
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
         if not dnn_available():
@@ -1100,10 +1162,13 @@ if cuda_available:
             img, kern = node.inputs
             border_mode = node.op.border_mode
             subsample = node.op.subsample
-            return [dnn_conv(gpu_contiguous(img), gpu_contiguous(kern),
-                             border_mode=border_mode, subsample=subsample)]
+            direction_hint = node.op.direction_hint
+            return [dnn_conv(img, kern,
+                             border_mode=border_mode, subsample=subsample,
+                             direction_hint=direction_hint)]
 
-    @register_opt('cudnn')
+# DISABLED as there is problems in the handling of borders
+#    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
         if not dnn_available():
@@ -1115,7 +1180,8 @@ if cuda_available:
             ds = node.op.ds
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
-    @register_opt('cudnn')
+# DISABLED as there is problems in the handling of borders
+#    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMaxGrad])
     def local_pool_dnn_grad(node):
         if not dnn_available():
@@ -1164,6 +1230,8 @@ if cuda_available:
             and (isinstance(node.inputs[0].owner.op, HostFromGpu)
                  or isinstance(node.inputs[1].owner.op, HostFromGpu))
         ):
+            if not dnn_available():
+                return
             ins = []
             for n in node.inputs:
                 if isinstance(n.owner.op, HostFromGpu):

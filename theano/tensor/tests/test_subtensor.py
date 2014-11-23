@@ -1455,3 +1455,24 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([admat, advec],
                     [set_subtensor(admat[aivec_val, bivec_val], advec)],
                     [admat_val, advec_val], AdvancedIncSubtensor)
+
+    def test_adv_sub(self):
+        admat = dmatrix()
+        aivec = lvector()
+        bivec = lvector()
+
+        admat_val = rand(5, 4)
+        aivec_val = [1, 3, 2]
+        bivec_val = [0, 3, 3]
+        self._compile_and_check([admat, aivec, bivec],
+                                [admat[aivec, bivec]],
+                                [admat_val, aivec_val, bivec_val], AdvancedSubtensor)
+        # Test case that aren't implemented, but make sure they do not crash.
+        self._compile_and_check([admat, aivec],
+                                [admat[aivec, 1:3]],
+                                [admat_val, aivec_val], AdvancedSubtensor,
+                                check_topo=False)
+        self._compile_and_check([admat, aivec],
+                                [admat[1:3, aivec]],
+                                [admat_val, aivec_val], AdvancedSubtensor,
+                                check_topo=False)

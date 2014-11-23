@@ -117,6 +117,7 @@ An op has to implement some methods defined in the the interface of
 
   :func:`perform` method defines the Python implementation of an op.
   It takes several arguments:
+
     - ``node`` is a reference to an Apply node which was previously
       obtained via the ``Op``'s :func:`make_node` method. It is typically not
       used in simple ops, but it contains symbolic information that
@@ -149,6 +150,7 @@ An op has to implement some methods defined in the the interface of
   It returns a thunk. A thunk is defined as a zero-arguments
   function which encapsulates the computation to be performed by an
   op on the arguments of its corresponding node. It takes several parameters:
+
     - ``node`` is the Apply instance for which a thunk is requested,
     - ``storage_map`` is a dict of lists which  maps variables to a one-element
       lists holding the variable's current value. The one-element list acts as

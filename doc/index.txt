@@ -30,7 +30,6 @@ News
 * Theano 0.6 was released. Everybody is encouraged to update.
 
 * New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
-  However, please keep citing the other paper below in scientific work involving Theano.
 
 * `HPCS 2011 Tutorial <http://www.iro.umontreal.ca/~lisa/pointeurs/tutorial_hpcs2011_fixed.pdf>`_.
   We included a few fixes discovered while doing the Tutorial.
@@ -88,7 +87,14 @@ Citing Theano
 ==============
 
 If you use Theano for academic research, you are highly encouraged (though not
-required) to cite the following paper:
+required) to cite the following two papers:
+
+* F. Bastien, P. Lamblin, R. Pascanu, J. Bergstra, I. Goodfellow,
+  A. Bergeron, N. Bouchard, D. Warde-Farley and Y. Bengio.
+  `"Theano: new features and speed improvements"
+  <http://arxiv.org/pdf/1211.5590.pdf>`_.
+  NIPS 2012 deep learning workshop. (`BibTex
+  <http://www.iro.umontreal.ca/~lisa/publications2/index.php/export/publication/551/bibtex>`_)
 
 * J. Bergstra, O. Breuleux, F. Bastien, P. Lamblin, R.
   Pascanu, G. Desjardins, J. Turian, D. Warde-Farley and Y.
@@ -102,6 +108,8 @@ Theano is primarily developed by academics, and so citations matter a lot to
 us. As an added benefit, you increase Theano's exposure and potential user
 (and developer) base, which is to the benefit of all users of Theano. Thanks
 in advance!
+
+See our :ref:`citation` for details.
 
 Documentation
 =============

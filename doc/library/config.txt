@@ -460,7 +460,9 @@ import theano and print the config variable, as in:
 
     Default: '-lblas'
 
-    Link arguments to link against a (Fortran) level-3 blas implementation.
+    Link arguments to link against a (Fortran) level-3 blas
+    implementation.  The default will test if '-lblas' work. If not,
+    we will disable our c code for BLAS.
 
 .. attribute:: config.experimental.local_alloc_elemwise_assert
 

@@ -72,12 +72,32 @@ and use directly the optimized graph from the pickled file.
 Faster Theano function
 ----------------------
 
-You can set the Theano flag `allow_gc` to `False` to get a speed-up by using
+You can set the Theano flag ``allow_gc`` to ``False`` to get a speed-up by using
 more memory. By default, Theano frees intermediate results when we don't need
 them anymore. Doing so prevents us from reusing this memory. So disabling the
 garbage collection will keep all intermediate results' memory space to allow to
 reuse them during the next call to the same Theano function, if they are of the
 correct shape. The shape could change if the shapes of the inputs change.
+
+.. unsafe_optimization:
+
+Unsafe optimization
+===================
+
+
+Some Theano optimizations make the assumption that the user inputs are
+valid. What this means is that if the user provides invalid values (like
+incompatible shapes or indexing values that are out of bounds) and
+the optimizations are applied, the user error will get lost. Most of the
+time, the assumption is that the user inputs are valid. So it is good
+to have the optimization being applied, but loosing the error is bad.
+The newest optimization in Theano with such assumption will add an
+assertion in the graph to keep the user error message. Computing
+these assertions could take some time. If you are sure everything is valid
+in your graph and want the fastest possible Theano, you can enable an
+optimization that will remove those assertions with:
+``optimizer_including=local_remove_all_assert``
+
 
 Faster Small Theano function
 ----------------------------

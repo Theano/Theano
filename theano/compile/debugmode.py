@@ -2098,7 +2098,7 @@ class _Linker(gof.link.LocalLinker):
             return deco
 
         f = run_with_tensortype_filter_check(f)
-
+        f.storage_map = storage_map
         f.allow_gc = True
         assert len(fgraph.inputs) == len(input_storage)
         assert len(fgraph.outputs) == len(output_storage)

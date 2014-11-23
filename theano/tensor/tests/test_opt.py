@@ -2417,6 +2417,84 @@ class test_local_subtensor_merge(unittest.TestCase):
                         f(x_val, *i_val)
 
 
+class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+        mode = theano.compile.mode.get_default_mode()
+        self.mode = mode.including("local_adv_sub1_adv_inc_sub1").excluding("fusion")
+        self.mode_no_assert = self.mode.including("local_remove_all_assert")
+
+    def test0(self):
+        for dtype1, dtype2 in [("float32", "float32"),
+                               ("float32", "float64"),
+                               ("float64", "float32"),
+                               ("float64", "float64")]:
+            x = tensor.matrix(dtype=dtype1)
+            y = tensor.matrix(dtype=dtype2)
+            idx = tensor.ivector()
+
+            dx = numpy.random.rand(4, 5).astype(dtype1)
+            dy = numpy.random.rand(2, 5).astype(dtype2)
+            didx = numpy.asarray([1, 3], "int32")
+
+            # set_subtensor
+            inc = tensor.set_subtensor(x[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode_no_assert)
+
+            res = f(dx, dy, didx)
+            assert numpy.allclose(dy, res)
+            topo = f.maker.fgraph.toposort()
+            if opt:
+                assert len(topo) == 1
+                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
+            else:
+                assert len(topo) == 2
+
+            # inc_subtensor(data[idx], y)
+            inc = tensor.inc_subtensor(x[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode_no_assert)
+
+            res = f(dx, dy, didx)
+            assert numpy.allclose((dx[didx] + dy), res)
+            topo = f.maker.fgraph.toposort()
+            len(topo) == 2
+
+            # inc_subtensor(0[idx], y)
+            inc = tensor.inc_subtensor(x.zeros_like()[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode_no_assert)
+
+            res = f(dx, dy, didx)
+            assert numpy.allclose(dy, res)
+            topo = f.maker.fgraph.toposort()
+            if opt:
+                assert len(topo) == 1
+                assert isinstance(topo[0].op, (compile.DeepCopyOp, T.Elemwise))
+            else:
+                assert len(topo) > 2
+
+    def test_assert(self):
+            x = tensor.matrix("x")
+            y = tensor.matrix("y")
+            idx = tensor.ivector()
+
+            dx = numpy.random.rand(4, 5).astype(config.floatX)
+            dy = numpy.random.rand(2, 5).astype(config.floatX)
+            didx = numpy.asarray([1, 3], "int32")
+
+            # set_subtensor
+            inc = tensor.set_subtensor(x[idx], y)
+            o = inc[idx]
+            f = theano.function([x, y, idx], o, self.mode)
+            # test wrong index
+            for i in [dx.shape[0], -dx.shape[0] - 1]:
+                self.assertRaises(AssertionError, f, dx, dy, [i, i])
+            # test wrong shape
+            self.assertRaises(AssertionError, f, dx, dy, [1])
+
+
 class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
         mode = theano.compile.mode.get_default_mode()
@@ -2653,7 +2731,7 @@ def test_local_subtensor_of_dot():
     assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4,:,1:,1])
 
 
-class Test_local_alloc_elemwise(unittest.TestCase):
+class Test_local_elemwise_alloc(unittest.TestCase):
     dtype = config.floatX
 
     def setUp(self):
@@ -3166,8 +3244,8 @@ class test_assert(utt.InferShapeTester):
         f(1, 1)
         self.assertRaises(AssertionError, f, 1, 0)
 
-    def test1(self):
-        #remove assert that are always true
+    def test_local_remove_useless_assert1(self):
+        # remove assert that are always true
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
@@ -3181,8 +3259,8 @@ class test_assert(utt.InferShapeTester):
         assert len(topo) == 1
         assert topo[0].op == deep_copy_op
 
-    def test2(self):
-        #remove assert condition that are always true
+    def test_test_local_remove_useless_assert2(self):
+        # remove assert condition that are always true
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
@@ -3199,8 +3277,8 @@ class test_assert(utt.InferShapeTester):
         assert len(topo[0].inputs) == 2
         assert topo[1].op == deep_copy_op
 
-    def test3(self):
-        #don't remove assert condition that are always false
+    def test_local_remove_useless_assert3(self):
+        # don't remove assert condition that are always false
         mode = theano.config.mode
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
@@ -3215,6 +3293,22 @@ class test_assert(utt.InferShapeTester):
         assert len(topo) == 2
         assert len(topo[0].inputs) == 3
         assert topo[1].op == deep_copy_op
+
+    def test_local_remove_all_assert1(self):
+        # remove assert condition that are unknown
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        mode = compile.mode.get_mode(mode).including('local_remove_all_assert')
+
+        x = T.scalar()
+        y = T.scalar()
+        f = theano.function([x, y], theano.tensor.opt.assert_op(x, y),
+                            mode=mode)
+        f(1, 0)  # Without opt, it should fail.
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1, topo
+        assert topo[0].op == deep_copy_op, topo
 
     def test_infer_shape(self):
 
@@ -3539,6 +3633,31 @@ class T_useless_elemwise(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert topo[0].op == deep_copy_op
+
+
+class T_cast_cast(unittest.TestCase):
+    def setUp(self):
+        mode = theano.compile.get_default_mode()
+        self.mode = mode.including('local_cast_cast')
+
+    def test(self):
+        x = T.fmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("float64")))(x.astype("float64"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype("float32")
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, T.Elemwise)
+
+        x = T.dmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("float32")))(x.astype("float32"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4)
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, T.Elemwise)
 
 
 def test_constant_folding():
