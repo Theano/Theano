@@ -356,7 +356,8 @@ class Expm(Op):
 
 
 class ExpmGrad(Op):
-    """Gradient of the matrix exponential of a square array
+    """Gradient of the matrix exponential of a square array. Currently
+    implemented only for Hermetian arguments.
     """
 
     def make_node(self, A, gw):
@@ -370,22 +371,21 @@ class ExpmGrad(Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
-    def perform(self, node, (A, gw), (out,)):
+    def perform(self, node, (A, gA), (out,)):
+        if not numpy.allclose(A, A.T):
+            raise NotImplementedError(
+                "ExpmGrad is only implemented for symmetric matrices")
+
         # Kalbfleisch and Lawless, J. Am. Stat. Assoc. 80 (1985) Equation 3.4
-        w, UL, UR = scipy.linalg.eig(A, left=True, right=True)
+        w, U = scipy.linalg.eigh(A)
 
-        if numpy.linalg.norm(w - numpy.real(w)) > numpy.finfo(A.dtype).eps:
-            warnings.warn("ExpmGrad not correct for matrices with complex "
-                          "eigenvalues")
-
-        G = (UR.conj().T).dot(gw).dot(UL)
-
+        G = (U.T).dot(gA).dot(U)
         exp_w = numpy.exp(w)
         V = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
-        V[numpy.diag_indices_from(V)] = exp_w
+        numpy.fill_diagonal(V, exp_w)
         V = numpy.multiply(V, G, V)
 
-        out[0] = numpy.real(UL.dot(V).dot(UR.conj().T)).astype(A.dtype)
+        out[0] = (U.dot(V).dot(U.T)).astype(A.dtype)
 
 
 expm = Expm()
