@@ -3709,11 +3709,15 @@ class Dot(gof.op.Op):
         raise NotImplementedError()
 
     def make_node(self, x, y):
-        dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
+        dtype_out = scalar.upcast(x.dtype, y.dtype)
 
         # Sparse dot product should have at least one sparse variable
         # as input. If the other one is not sparse, it has to be converted
         # into a tensor.
+        if isinstance(x, scipy.sparse.spmatrix):
+            x = as_sparse_variable(x)
+        if isinstance(y, scipy.sparse.spmatrix):
+            y = as_sparse_variable(y)
         x_is_sparse_var = _is_sparse_variable(x)
         y_is_sparse_var = _is_sparse_variable(y)
 

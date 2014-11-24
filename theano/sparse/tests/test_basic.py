@@ -1337,6 +1337,20 @@ class DotTests(utt.InferShapeTester):
                           dtype=intX)
         f(i, a)
 
+    def test_csr_dense_grad(self):
+
+        #shortcut: testing csc in float32, testing csr in float64
+
+        # allocate a random sparse matrix
+        spmat = sp.csr_matrix(random_lil((4, 3), 'float64', 3))
+
+        mat = numpy.asarray(numpy.random.randn(2, 4), 'float64')
+
+        def buildgraph_T(mat):
+            return Dot()(mat, spmat)
+
+        theano.tests.unittest_tools.verify_grad(buildgraph_T, [mat])
+
 
 class UsmmTests(unittest.TestCase):
     """ Test the Usmm and UsmmCscDense class and related optimization """
