@@ -1572,13 +1572,14 @@ class GCC_compiler(object):
                     GCC_compiler.march_flags = []
                     break
 
-        if not "g++" in theano.config.cxx:
+        if ('g++' not in theano.config.cxx and
+            'clang++' not in theano.config.cxx):
             _logger.warn(
                 "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
                 " the g++ compiler. So we disable the compiler optimization"
                 " specific to g++ that tell to compile for a specific CPU."
                 " At worst, this could cause slow down.\n"
-                "         You can add yourself those parameters to the compiler"
+                "         You can add those parameters to the compiler yourself"
                 " via the Theano flag `gcc.cxxflags`."
             )
             detect_march = False
