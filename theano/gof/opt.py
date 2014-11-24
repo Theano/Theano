@@ -858,14 +858,19 @@ class LocalMetaOptimizer(LocalOptimizer):
                 missing.add(input)
         if missing:
             givens.update(self.provide_inputs(node, missing))
+            missing.difference_update(givens.keys())
         # ensure we have data for all input variables that need it
-        if any(var not in givens for var in missing):
+        if missing:
             if self.verbose:
-                print ("%s skipping %s (cannot create test inputs)" %
-                       (self.__class__.__name__, node))
+                print ("%s cannot meta-optimize %s, "
+                       "%d of %d input shapes unknown" %
+                       (self.__class__.__name__, node, len(missing), node.nin))
             return
         # now we can apply the different optimizations in turn,
         # compile the resulting subgraphs and time their execution
+        if self.verbose:
+            print ("%s meta-optimizing %s (%d choices):" %
+                   (self.__class__.__name__, node, len(self.optimizers)))
         timings = []
         for opt in self.optimizers:
             outputs = opt.transform(node)
@@ -878,15 +883,20 @@ class LocalMetaOptimizer(LocalOptimizer):
                     timing = min(self.time_call(fn) for _ in range(3))
                 except Exception as e:
                     if self.verbose:
-                        print e
+                        print "* %s: exception" % opt, e
                     continue
                 else:
                     if self.verbose:
-                        print opt, timing
-                    timings.append((timing, outputs))
+                        print "* %s: %.5g sec" % (opt, timing)
+                    timings.append((timing, outputs, opt))
+            else:
+                if self.verbose:
+                    print "* %s: not applicable" % opt
         # finally, we choose the fastest one
         if timings:
             timings.sort()
+            if self.verbose:
+                print "= %s" % timings[0][2]
             return timings[0][1]
         return
 
