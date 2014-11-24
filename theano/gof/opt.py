@@ -880,10 +880,7 @@ class LocalMetaOptimizer(LocalOptimizer):
             outputs = opt.transform(node)
             if outputs:
                 try:
-                    fn = theano.function([],
-                                         [theano.Out(output, borrow=True)
-                                          for output in outputs],
-                                         givens=givens)
+                    fn = theano.function([], outputs, givens=givens)
                     timing = min(self.time_call(fn) for _ in range(3))
                 except Exception as e:
                     if self.verbose:
