@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 
 import theano
@@ -139,6 +140,15 @@ try:
 except OSError:
     param = StrParam("")
     rc = 1
+
+# On Mac we test for 'clang++' and use it by default
+if sys.platform == 'darwin':
+    try:
+        rc = call_subprocess_Popen(['clang++', '-v'])
+        param = StrParam("clang++")
+    except OSError:
+        pass
+
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
