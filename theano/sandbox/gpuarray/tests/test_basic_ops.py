@@ -32,7 +32,7 @@ if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
                          default_to_move_computation_to_gpu=False,
                          move_shared_float32_to_gpu=False,
                          enable_cuda=False)
-    theano.sandbox.gpuarray.init_dev('cuda')
+    theano.sandbox.gpuarray.init_dev('cuda', 'test')
 
 if not theano.sandbox.gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
