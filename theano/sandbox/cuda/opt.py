@@ -1361,14 +1361,9 @@ class LocalCudaMetaOptimizer(LocalMetaOptimizer):
 
 # Convolution Meta-optimizer
 
-theano.configparser.AddConfigVar('conv_meta.verbose',
-        "Enable verbose output for conv_meta optimizer",
-        theano.configparser.BoolParam(False), in_c_key=False)
-
 class ConvMetaOptimizer(LocalCudaMetaOptimizer):
     def __init__(self, optimizers):
         super(ConvMetaOptimizer, self).__init__([GpuConv], optimizers)
-        self.verbose = config.conv_meta.verbose
 
     def provide_inputs(self, node, inputs):
         # We need to provide dummy data for the given inputs.
