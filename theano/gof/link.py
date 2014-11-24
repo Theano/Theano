@@ -3,6 +3,7 @@ from copy import copy, deepcopy
 import StringIO
 import sys
 import traceback
+import numpy
 
 import theano
 from theano.gof import utils
@@ -179,11 +180,24 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     # Prints output_map
     if storage_map is not None:
         from sys import getsizeof
-        detailed_err_msg += "\nStorage Map memory print:\n"
+        detailed_err_msg += "\nStorage map footprint:\n"
         for k in storage_map.keys():
             if storage_map[k][0] is not None:
-                bytes = getsizeof(storage_map[k][0])
-                detailed_err_msg += str(k) + ": " + str(bytes) + " bytes\n"
+                detailed_err_msg += " - " + str(k) + ", "
+                shapeinfo = None
+                if hasattr(storage_map[k][0], 'shape'):
+                    shapeinfo = storage_map[k][0].shape
+                    detailed_err_msg += "shape: %s, " % str(shapeinfo)
+                if hasattr(storage_map[k][0], 'dtype'):
+                    dtype = storage_map[k][0].dtype
+                    if shapeinfo is None:
+                        detailed_err_msg += "size: %s\n" % numpy.dtype(dtype).itemsize
+                    else:
+                        detailed_err_msg += "size: %s\n" % (numpy.dtype(dtype).itemsize *
+                                                            numpy.prod(shapeinfo))
+                else:
+                    bytes = getsizeof(storage_map[k][0])
+                    detailed_err_msg += "size: %s\n" % str(bytes)
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
