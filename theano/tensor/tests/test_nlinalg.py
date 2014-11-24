@@ -61,23 +61,39 @@ def test_pseudoinverse_correctness():
     assert _allclose(ri, numpy.linalg.pinv(r))
 
 
-def test_inverse_correctness():
-    rng = numpy.random.RandomState(utt.fetch_seed())
+class test_MatrixInverse(utt.InferShapeTester):
+    def setUp(self):
+        super(test_MatrixInverse, self).setUp()
+        self.op_class = MatrixInverse
+        self.op = matrix_inverse
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
 
-    r = rng.randn(4, 4).astype(theano.config.floatX)
+    def test_inverse_correctness(self):
 
-    x = tensor.matrix()
-    xi = matrix_inverse(x)
+        r = self.rng.randn(4, 4).astype(theano.config.floatX)
 
-    ri = function([x], xi)(r)
-    assert ri.shape == r.shape
-    assert ri.dtype == r.dtype
+        x = tensor.matrix()
+        xi = self.op(x)
 
-    rir = numpy.dot(ri, r)
-    rri = numpy.dot(r, ri)
+        ri = function([x], xi)(r)
+        assert ri.shape == r.shape
+        assert ri.dtype == r.dtype
 
-    assert _allclose(numpy.identity(4), rir), rir
-    assert _allclose(numpy.identity(4), rri), rri
+        rir = numpy.dot(ri, r)
+        rri = numpy.dot(r, ri)
+
+        assert _allclose(numpy.identity(4), rir), rir
+        assert _allclose(numpy.identity(4), rri), rri
+
+    def test_infer_shape(self):
+
+        r = self.rng.randn(4, 4).astype(theano.config.floatX)
+
+        x = tensor.matrix()
+        xi = self.op(x)
+
+        self._compile_and_check([x], [xi], [r],
+                                self.op_class, warn=False)
 
 
 def test_matrix_dot():

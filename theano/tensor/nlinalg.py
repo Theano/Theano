@@ -111,6 +111,9 @@ class MatrixInverse(Op):
             return [None]
         return [-matrix_dot(xi, ev, xi)]
 
+    def infer_shape(self, node, shapes):
+        return shapes
+
 matrix_inverse = MatrixInverse()
 
 
