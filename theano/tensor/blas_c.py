@@ -719,14 +719,22 @@ def check_force_gemv_init():
         beta*aa which will result in NaN's in the result, then we need intialize
         the memory to zeros.
         """
-        aa = T.vector('aa')
-        yy = T.vector('yy')
-        xx = T.matrix('xx')
-        f = theano.function(
-            [aa, yy, xx],
-            gemv_no_inplace(aa, 1., xx, yy, 0.),
-            theano.compile.Mode(optimizer='fast_compile')
-        )
+        tv = theano.config.compute_test_value
+        tvo = theano.config.compute_test_value_opt
+        theano.config.compute_test_value = 'off'
+        theano.config.compute_test_value_opt = 'off'
+        try:
+            aa = T.vector('aa')
+            yy = T.vector('yy')
+            xx = T.matrix('xx')
+            f = theano.function(
+                [aa, yy, xx],
+                gemv_no_inplace(aa, 1., xx, yy, 0.),
+                theano.compile.Mode(optimizer='fast_compile')
+                )
+        finally:
+            theano.config.compute_test_value = tv
+            theano.config.compute_test_value_opt = tvo
 
         # Here we introduce NaNs into the data, if they are returned by the BLAS
         # then we want gemv_c_code to initiliaze the memory to 0 so that we
