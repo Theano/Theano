@@ -839,7 +839,7 @@ class LocalMetaOptimizer(LocalOptimizer):
         return self._tracks
 
     def transform(self, node):
-        # safety check: not sure if needed, but all optimizers do it
+        # safety check: depending on registration, tracks may have been ignored
         if self._tracks is not None:
             if not isinstance(node.op, tuple(self._tracks)):
                 return
@@ -852,8 +852,7 @@ class LocalMetaOptimizer(LocalOptimizer):
                 pass
             elif hasattr(input.tag, 'test_value'):
                 givens[input] = theano.shared(
-                        numpy.require(input.tag.test_value,
-                                      dtype=input.dtype),
+                        input.type.filter(input.tag.test_value),
                         input.name, borrow=True)
             else:
                 missing.add(input)

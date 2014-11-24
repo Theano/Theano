@@ -155,21 +155,6 @@ gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
                     'merge')  # TODO: how to make it mandatory for gpu_seqopt?
 
 
-class LocalCudaMetaOptimizer(LocalMetaOptimizer):
-    """Base class for CUDA-based LocalMetaOptimizers"""
-
-    def __init__(self, *args):
-        super(LocalCudaMetaOptimizer, self).__init__(*args)
-
-    def time_call(self, fn):
-        # Override time_call() to do device synchronization
-        theano.sandbox.cuda.synchronize()
-        start = time.time()
-        fn()
-        theano.sandbox.cuda.synchronize()
-        return time.time() - start
-
-
 @local_optimizer([gpu_from_host, host_from_gpu])
 def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
@@ -1362,6 +1347,18 @@ conv_groupopt.register('local_conv_gemm', local_conv_gemm, 30,
                        'fast_compile', 'fast_run')
 
 
+class LocalCudaMetaOptimizer(LocalMetaOptimizer):
+    """Base class for CUDA-based LocalMetaOptimizers"""
+
+    def time_call(self, fn):
+        # Override time_call() to do device synchronization
+        theano.sandbox.cuda.synchronize()
+        start = time.time()
+        fn()
+        theano.sandbox.cuda.synchronize()
+        return time.time() - start
+
+
 # Convolution Meta-optimizer
 
 class ConvMetaOptimizer(LocalCudaMetaOptimizer):
@@ -1386,6 +1383,9 @@ class ConvMetaOptimizer(LocalCudaMetaOptimizer):
                 (shape is not None) and
                 not any(s is None for s in shape)):
                 result[var] = theano.shared(
+# TODO: Use var.type.filter when cuda_ndarray.filter supports non-strict casts
+#                        var.type.filter(numpy.random.randn(*shape),
+#                                        allow_downcast=True),
                         numpy.require(numpy.random.randn(*shape),
                                       dtype=var.dtype),
                         var.name, borrow=True)
