@@ -2,7 +2,7 @@ import os
 
 import theano
 from theano import Apply, gof, tensor
-from theano.gof import Optimizer
+from theano.gof import Optimizer, local_optimizer
 from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
@@ -13,7 +13,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
-from theano.sandbox.cuda.opt import register_opt
+from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
@@ -1145,12 +1145,8 @@ err%(name)s = cudnnSoftmaxBackward(
 """
 
 
-# We need this since other stuff from opt is not importable.
-if cuda_available:
-
-    from theano.sandbox.cuda.opt import (
-        local_optimizer, gpu_optimizer, gpu_seqopt)
-
+# Intentation for history
+if True:
     #@register_opt('cudnn')  # this optimizer is registered in opt.py instead.
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
