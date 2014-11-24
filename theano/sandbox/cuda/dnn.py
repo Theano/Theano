@@ -449,6 +449,21 @@ class GpuDnnConvGradW(GpuDnnConvBase):
     path_flag = 'CUDNN_CONVOLUTION_WEIGHT_GRAD'
     conv_op = 'cudnnConvolutionBackwardFilter'
 
+    def grad(self, inp, grads):
+        img, top, desc = inp
+        kerns, = grads
+
+        kerns = gpu_contiguous(kerns)
+
+        d_img = GpuDnnConvGradI()(kerns, top, desc)
+        d_top = GpuDnnConv()(img, kerns, desc)
+
+        return d_img, d_top, theano.gradient.DisconnectedType()()
+
+    def connection_pattern(self, node):
+        # not connected to desc
+        return [[1], [1], [0]]
+
 
 class GpuDnnConvGradI(GpuDnnConvBase):
     """
@@ -465,6 +480,21 @@ class GpuDnnConvGradI(GpuDnnConvBase):
     conv_types = 'filter', 'tensor4d', 'tensor4d'
     path_flag = 'CUDNN_CONVOLUTION_DATA_GRAD'
     conv_op = 'cudnnConvolutionBackwardData'
+
+    def grad(self, inp, grads):
+        kerns, top, desc = inp
+        img, = grads
+
+        img = gpu_contiguous(img)
+
+        d_kerns = GpuDnnConvGradW()(img, top, desc)
+        d_top = GpuDnnConv()(img, kerns, desc)
+
+        return d_kerns, d_top, theano.gradient.DisconnectedType()()
+
+    def connection_pattern(self, node):
+        # not connected to desc
+        return [[1], [1], [0]]
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),

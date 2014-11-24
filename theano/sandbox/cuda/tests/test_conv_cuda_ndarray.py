@@ -1005,7 +1005,7 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
         # skip if the reference implementation can't do it
         pass
 
-    f = theano.function([i, k], outputs, mode=theano_mode)
+    f = theano.function([i, k], outputs, mode=theano_mode.excluding('conv_dnn', 'conv_gemm'))
 
     allvals = f(npy_img, npy_kern)
 
