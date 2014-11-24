@@ -561,6 +561,8 @@ class T_AddMul(unittest.TestCase):
                       theano.shared(array1)]:
                 for dtype1, dtype2 in [('float64', 'int8'),
                                        ('int8', 'float64'),
+                                       # Needed to test the grad
+                                       ('float32', 'float64'),
                                    ]:
                     a = a.astype(dtype1)
                     b = mtype(array2).astype(dtype2)
@@ -580,6 +582,8 @@ class T_AddMul(unittest.TestCase):
                         self.assertTrue(numpy.all(val == ans))
                         if isinstance(a, theano.Constant):
                             a = a.data
+                        if getattr(a, 'owner', None):
+                            continue
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=True)
                     elif op is mul:
@@ -589,6 +593,8 @@ class T_AddMul(unittest.TestCase):
                             [[1, 0], [9, 0], [0, 36]])))
                         if isinstance(a, theano.Constant):
                             a = a.data
+                        if getattr(a, 'owner', None):
+                            continue
                         if dtype1.startswith('float') and dtype2.startswith('float'):
                             verify_grad_sparse(op, [a, b], structured=False)
 

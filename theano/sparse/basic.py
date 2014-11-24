@@ -2244,7 +2244,7 @@ class MulSD(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_sparse_variable(gz)
-        return y * gz, x * gz
+        return y * gz, dense_from_sparse(x * gz)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

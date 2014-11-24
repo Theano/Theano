@@ -1089,6 +1089,14 @@ def _populate_grad_dict(var_to_app_to_idx,
                     raise ValueError(("%s returned the wrong number of" +
                                       " gradient terms.") % str(node.op))
 
+                for ig, i in zip(input_grads, inputs):
+                    if (not isinstance(ig.type, DisconnectedType) and
+                        type(ig.type) != type(i.type)):
+                        raise ValueError(
+                            "%s returned the wrong type for gradient terms."
+                            " Sparse inputs must have sparse grads and dense"
+                            " inputs must have dense grad" % str(node.op))
+
             # must convert to list in case the op returns a tuple
             # we won't be able to post-process out the Nones if it does that
             input_grads = list(input_grads)
