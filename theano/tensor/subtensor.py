@@ -1750,6 +1750,18 @@ class AdvancedIncSubtensor1(Op):
                     opname, x_.type.ndim, y_.type.ndim))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
+    
+    def c_code(self, node, name, input_names, output_names, sub):
+        x, y, idx = input_names
+        out = output_names[0]
+        fail = sub['fail']
+        return """
+        PyObject *arglist = PyTuple_Pack(3,%(x)s, %(idx)s, %(y)s);
+        //PyObject *result  /*Will be PyNone*/
+        //result = PyEval_CallObject(inplace_increment, arglist);
+        //Py_DECREF(arglist)
+        //Py_DECREF(result)
+        """ % locals()
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
