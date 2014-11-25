@@ -35,7 +35,7 @@ _logger = logging.getLogger("theano.printing")
 
 
 def debugprint(obj, depth=-1, print_type=False,
-               file=None, ids='CHAR', stop_on_name=False):
+               file=None, ids='CHAR', stop_on_name=False, profile=None):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -94,6 +94,10 @@ def debugprint(obj, depth=-1, print_type=False,
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
             order = obj.maker.fgraph.toposort()
+            profile=obj.profile
+            if profile != None:
+                print 'Timing Info\n-----------\n\t \
+                    --> <time> <% time> - <total time> <% total time>'
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
             order = obj.toposort()
@@ -114,7 +118,8 @@ def debugprint(obj, depth=-1, print_type=False,
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
-                             scan_ops=scan_ops, stop_on_name=stop_on_name)
+                             scan_ops=scan_ops, stop_on_name=stop_on_name,
+                             profile=profile)
     if len(scan_ops) > 0:
         print >> file, ""
         new_prefix = ' >'
