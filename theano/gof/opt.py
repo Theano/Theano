@@ -823,6 +823,10 @@ class LocalOptimizer(object):
                 (' ' * level), self.__class__.__name__, id(self))
 
 
+theano.configparser.AddConfigVar('metaopt.verbose',
+        "Enable verbose output for meta optimizers",
+        theano.configparser.BoolParam(False), in_c_key=False)
+
 class LocalMetaOptimizer(LocalOptimizer):
     """Base class for meta-optimizers that try a set of LocalOptimizers
     to replace a node and choose the one that executes the fastest"""
@@ -830,7 +834,7 @@ class LocalMetaOptimizer(LocalOptimizer):
     def __init__(self, tracks=None, optimizers=()):
         self._tracks = tracks
         self.optimizers = list(optimizers)
-        self.verbose = False
+        self.verbose = config.metaopt.verbose
 
     def register(self, optimizer):
         self.optimizers.append(optimizer)
@@ -876,10 +880,7 @@ class LocalMetaOptimizer(LocalOptimizer):
             outputs = opt.transform(node)
             if outputs:
                 try:
-                    fn = theano.function([],
-                                         [theano.Out(output, borrow=True)
-                                          for output in outputs],
-                                         givens=givens)
+                    fn = theano.function([], outputs, givens=givens)
                     timing = min(self.time_call(fn) for _ in range(3))
                 except Exception as e:
                     if self.verbose:
