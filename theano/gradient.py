@@ -1088,7 +1088,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                 if len(input_grads) != len(inputs):
                     raise ValueError(("%s returned the wrong number of" +
                                       " gradient terms.") % str(node.op))
-# We can not enforce this, as AdvancedSubtensor1 have an option to
+# We can not enforce this, as AdvancedSubtensor1 has an option to
 # return the sparse grad for optimization reason.
 
                     #                for ig, i in zip(input_grads, inputs):
