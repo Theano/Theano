@@ -9,6 +9,7 @@ import cPickle
 import itertools
 import time
 import warnings
+import sys
 
 import numpy
 
@@ -25,6 +26,8 @@ from theano.gof.op import ops_with_inner_function
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
 
+# pickle graph_db exceeds the recursion limit (default=1000)
+sys.setrecursionlimit(2000)
 
 class UnusedInputError(Exception):
     """
@@ -984,7 +987,6 @@ class FunctionMaker(object):
         get_lock()
         key = None
         #Beginning of cache optimizations.
-        #Could be refactored in different functions.
         def load_graph_db():
             if os.path.isfile(graph_db_file):
                 print 'graph_db already exists'
@@ -1023,7 +1025,9 @@ class FunctionMaker(object):
             # The sole purpose of this loop is to set 'need_optimize' by
             # going through graph_db, looking for graph that has the same
             # computation performed. 
-            for graph_old, graph_optimized in graph_db.iteritems():
+            for graph_old, value in graph_db.iteritems():
+                graph_optimized = value[0]
+                timestamp = value[1]
                 inputs_old = graph_old.inputs
                 outputs_old = graph_old.outputs
                 size_old = len(graph_old.apply_nodes)
@@ -1104,8 +1108,16 @@ class FunctionMaker(object):
                     is_same = all(flags)
                     if is_same:
                         # found the match
-                        print 'found a match, no need to optimize'
-                        found_graph_in_db = graph_optimized
+                        print 'found a match'
+                        # now check the timestamp
+                        current_time = time.time()
+                        patience = gof.cmodule.ModuleCache.age_thresh_del
+                        if current_time - timestamp > patience:
+                            print 'optimized graph outdated, need reoptimize!'
+                            found_graph_in_db = None
+                        else:
+                            print 'no need to optimize'
+                            found_graph_in_db = graph_optimized
                         break
             return found_graph_in_db
                    
@@ -1117,7 +1129,7 @@ class FunctionMaker(object):
             optimizer_profile = None
         else:
             # this is a brand new graph, optimize it, save it to graph_db
-            print 'graph not found in graph_db, optimizing the graph'
+            print 'optimizing the graph and put it in graph_db'
             self.fgraph.variables = set(gof.graph.variables(
                 self.fgraph.inputs, self.fgraph.outputs))
             #check_integrity parameters was added to ignore 
@@ -1126,7 +1138,7 @@ class FunctionMaker(object):
             #investigating.
             before_opt = self.fgraph.clone(check_integrity=False)
             optimizer_profile = optimizer(self.fgraph)
-            graph_db.update({before_opt:self.fgraph})
+            graph_db.update({before_opt:[self.fgraph, time.time()]})
             f = open(graph_db_file, 'wb')
             cPickle.dump(graph_db, f, -1)
             f.close()
