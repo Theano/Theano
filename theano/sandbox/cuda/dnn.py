@@ -245,23 +245,6 @@ class GpuDnnConvDesc(GpuOp):
 class GpuDnnConvBase(DnnBase):
     __props__ = ()
 
-    def make_node(self, img, kern, desc):
-        if img.type.ndim != 4:
-            raise TypeError('img must be 4D tensor')
-        if kern.type.ndim != 4:
-            raise TypeError('kern must be 4D tensor')
-
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
-            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
-
-        broadcastable = (img.type.broadcastable[0],
-                         kern.type.broadcastable[0],
-                         False, False)
-
-        return Apply(self, [img, kern, desc],
-                     [CudaNdarrayType(broadcastable)()])
-
     def c_support_code_struct(self, node, struct_id):
         return """
 cudnnTensor4dDescriptor_t input%(id)d;
@@ -417,6 +400,24 @@ class GpuDnnConv(GpuDnnConvBase):
     conv_op = 'cudnnConvolutionForward'
     path_flag = 'CUDNN_CONVOLUTION_FWD'
 
+    def make_node(self, img, kern, desc):
+        img = as_cuda_ndarray_variable(img)
+        kern = as_cuda_ndarray_variable(kern)
+        if img.type.ndim != 4:
+            raise TypeError('img must be 4D tensor')
+        if kern.type.ndim != 4:
+            raise TypeError('kern must be 4D tensor')
+
+        if not isinstance(desc.type, CDataType) \
+                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
+
+        broadcastable = (img.type.broadcastable[0],
+                         kern.type.broadcastable[0],
+                         False, False)
+        return Apply(self, [img, kern, desc],
+                     [CudaNdarrayType(broadcastable)()])
+
     def grad(self, inp, grads):
         img, kerns, desc = inp
         top, = grads
@@ -464,6 +465,24 @@ class GpuDnnConvGradW(GpuDnnConvBase):
         # not connected to desc
         return [[1], [1], [0]]
 
+    def make_node(self, img, topgrad, desc):
+        img = as_cuda_ndarray_variable(img)
+        topgrad = as_cuda_ndarray_variable(topgrad)
+        if img.type.ndim != 4:
+            raise TypeError('img must be 4D tensor')
+        if topgrad.type.ndim != 4:
+            raise TypeError('topgrad must be 4D tensor')
+
+        if not isinstance(desc.type, CDataType) \
+                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
+
+        broadcastable = [topgrad.type.broadcastable[1],
+                         img.type.broadcastable[1],
+                         False, False]
+        return Apply(self, [img, topgrad, desc],
+                     [CudaNdarrayType(broadcastable)()])
+
 
 class GpuDnnConvGradI(GpuDnnConvBase):
     """
@@ -495,6 +514,25 @@ class GpuDnnConvGradI(GpuDnnConvBase):
     def connection_pattern(self, node):
         # not connected to desc
         return [[1], [1], [0]]
+
+
+    def make_node(self, kern, topgrad, desc):
+        kern = as_cuda_ndarray_variable(kern)
+        topgrad = as_cuda_ndarray_variable(topgrad)
+        if kern.type.ndim != 4:
+            raise TypeError('kern must be 4D tensor')
+        if topgrad.type.ndim != 4:
+            raise TypeError('topgrad must be 4D tensor')
+
+        if not isinstance(desc.type, CDataType) \
+                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+            raise TypeError('desc must be cudnnConvolutionDescriptor_t')
+
+        broadcastable = [topgrad.type.broadcastable[0],
+                         kern.type.broadcastable[1],
+                         False, False]
+        return Apply(self, [kern, topgrad, desc],
+                     [CudaNdarrayType(broadcastable)()])
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
