@@ -3352,6 +3352,7 @@ class GpuContiguous(GpuOp):
     not already c contiguous.
     """
     view_map = {0: [0]}
+    check_input = False
 
     def __eq__(self, other):
         return type(self) == type(other)
