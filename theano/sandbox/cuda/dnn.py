@@ -516,7 +516,6 @@ class GpuDnnConvGradI(GpuDnnConvBase):
         # not connected to desc
         return [[1], [1], [0]]
 
-
     def make_node(self, kern, topgrad, desc):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
