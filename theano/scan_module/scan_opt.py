@@ -1453,10 +1453,7 @@ def scan_merge_inouts(node):
         inner_inputs = a.inner_inputs
         outer_inputs = a.outer_inputs
         info = a.info
-        if info['as_while']:
-            a_inner_outs = a.inner_outputs + a.cond
-        else:
-            a_inner_outs = a.inner_outputs
+        a_inner_outs = a.inner_outputs
         inner_outputs = scan_utils.clone(a_inner_outs, replace=inp_equiv)
 
         op = scan_op.Scan(inner_inputs, inner_outputs, info)
