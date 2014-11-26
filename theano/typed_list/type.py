@@ -127,3 +127,6 @@ class TypedListType(gof.Type):
 
     def c_code_cache_version(self):
         return (2,)
+
+    dtype = property(lambda self: self.ttype)
+    ndim = property(lambda self: self.ttype.ndim + 1)
