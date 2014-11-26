@@ -7,7 +7,7 @@ from theano.gof.type import CDataType
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import (GpuOp, cuda_available)
+from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous, HostFromGpu)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,

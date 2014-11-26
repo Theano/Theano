@@ -7,7 +7,6 @@ import warnings
 import numpy
 
 import theano
-from theano import config
 from theano import Type, Variable
 from theano import tensor, config
 from theano import scalar as scal
