@@ -756,9 +756,9 @@ class PushOutScanOutput(gof.Optimizer):
 
                     # Perform the Dot outside of scan
                     if idx_matrix_input == 0:
-                        outer_dot_inputs = [outer_matrix_input,
-                                            outer_vector_input.transpose()]
-                        outer_dot_output = theano.tensor.dot(*outer_dot_inputs).transpose()
+                        outer_dot_inputs = [outer_vector_input,
+                                            outer_matrix_input.transpose()]
+                        outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
                     else: # idx_matrix_input == 1
                         outer_dot_inputs = [outer_vector_input,
                                             outer_matrix_input]
