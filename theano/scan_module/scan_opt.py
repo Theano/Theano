@@ -639,7 +639,7 @@ class PushOutScanOutput(gof.Optimizer):
 
                 """
                 The following optimization involves pushing out, after the
-                can, a Dot where one input is one of scan's input with ndim=2
+                scan, a Dot where one input is one of scan's input with ndim=2
                 and the other is an intermediate variable in the Scan inner
                 graph with ndim=1.
 
@@ -676,7 +676,8 @@ class PushOutScanOutput(gof.Optimizer):
                 """
                 Validate that one of the inputs is a matrix AND a
                 non-sequence input to scan and that the other input is a
-                vector and neither an input nor an output.
+                vector and either an sequence input to scan or the result
+                of computation in the inner function of scan.
                 """
                 valid_inputs = False
                 idx_matrix_input = -1
