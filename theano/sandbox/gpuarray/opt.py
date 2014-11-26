@@ -102,7 +102,7 @@ def op_lifter(OP, cuda_only=False):
                     clients = [c for o in node.outputs for c in o.clients]
                     # Only replace a node if it has at least one client
                     replace = len(clients) != 0
-                    for c, idx in node.outputs[0].clients:
+                    for c, idx in clients:
                         if c == 'output' or not isinstance(c.op, GpuFromHost):
                             replace = False
                     # TODO: should we check that all clients want the same context?
