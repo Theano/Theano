@@ -3312,15 +3312,7 @@ class Join(Op):
         join(0, x, u)       # WRONG: joined tensors must have the same rank
     """
     check_input = False
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return '%s' % (self.__class__.__name__)
+    __props__ = ()
 
     def make_node(self, *axis_and_tensors):
         """

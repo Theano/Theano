@@ -323,6 +323,11 @@ class GpuArrayType(Type):
         # API-compatible.
         return (1, ver[0])
 
+    def may_share_memory(self, a, b):
+        return (isinstance(a, gpuarray.GpuArray) and
+                isinstance(b, gpuarray.GpuArray) and
+                gpuarray.may_share_memory(a, b))
+
 
 class _operators(_tensor_py_operators):
     def _as_TensorVariable(self):

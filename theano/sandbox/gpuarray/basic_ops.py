@@ -710,7 +710,7 @@ class GpuAlloc(HideC, Alloc):
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
-            if v.size == 1 and numpy.asarray(v)[0].item() == 0:
+            if v.size == 1 and numpy.asarray(v).item() == 0:
                 out[0] = gpuarray.zeros(sh, dtype=v.dtype, context=ctx)
             else:
                 out[0] = gpuarray.empty(sh, dtype=v.dtype, context=ctx)
@@ -932,7 +932,7 @@ class GpuReshape(HideC, tensor.Reshape):
 
 
 class GpuJoin(HideC, Join):
-    __props__ = ('context',)
+    __props__ = ('context',) + Join.__props__
 
     context_type = gpu_context_type
 
@@ -957,8 +957,8 @@ class GpuJoin(HideC, Join):
         out, = out_
         axis = int(axis_and_tensors[0])
         tensors = axis_and_tensors[1:]
-        out[0] = pygpu.concatenate(tensors, axis=axis).astype(
-            node.outputs[0].dtype, context=ctx)
+        out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
+            node.outputs[0].dtype)
 
     def c_code_cache_version(self):
         return (2)
