@@ -244,6 +244,7 @@ class GpuDnnConvDesc(GpuOp):
 
 class GpuDnnConvBase(DnnBase):
     __props__ = ()
+    check_broadcast = False
 
     def c_support_code_struct(self, node, struct_id):
         return """

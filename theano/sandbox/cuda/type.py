@@ -280,7 +280,8 @@ class CudaNdarrayType(Type):
     def c_init(self, name, sub):
         return "%(name)s = NULL;" % locals()
 
-    def c_extract(self, name, sub, check_input=True):
+    def c_extract(self, name, sub, check_input=True,
+                  check_broadcast=True):
         sio = StringIO()
         fail = sub['fail']
         nd = self.ndim
@@ -307,7 +308,7 @@ class CudaNdarrayType(Type):
                 //std::cerr << "c_extract " << %(name)s << " nd check passed\\n";
             """ % locals()
             for i, b in enumerate(self.broadcastable):
-                if b:
+                if b and check_broadcast:
                     print >> sio, """
                 if (CudaNdarray_HOST_DIMS(%(name)s)[%(i)s] != 1)
                 {
