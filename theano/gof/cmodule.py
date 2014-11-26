@@ -1837,19 +1837,15 @@ class GCC_compiler(object):
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
-                    # Try to execute the program
-                    try:
-                        out, err, p_ret = output_subprocess_Popen([exe_path])
-                        run_ok = (p_ret == 0)
-                    finally:
-                        os.remove(exe_path)
+                    out, err, p_ret = output_subprocess_Popen([exe_path])
+                    run_ok = (p_ret == 0)
             finally:
                 try:
                     if fd is not None:
                         os.close(fd)
                 finally:
                     os.remove(path)
-
+                    os.remove(exe_path)
         except OSError, e:
             compilation_ok = False
 
