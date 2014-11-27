@@ -547,7 +547,9 @@ get_scalar_constant_value_elemwises = (
 def get_scalar_constant_value(orig_v, elemwise=True):
     """return the constant scalar(0-D) value underlying variable `v`
 
-    If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
+    If v is the output of dimshuffles, fills, allocs, rebroadcasts,
+    cast, OutputGuard, DeepCopyOp, ScalarFromTensor, ScalarOp,
+    Elemwise and some pattern with Subtensor,
     this function digs through them.
 
     If `v` is not some view of constant scalar data, then raise a
@@ -587,7 +589,7 @@ def get_scalar_constant_value(orig_v, elemwise=True):
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
                 if isinstance(v.owner.inputs[0], Constant):
-                    return v.owner.inputs[0].data.shape[v.owner.op.i]
+                    return numpy.asarray(v.owner.inputs[0].data.shape[v.owner.op.i])
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
