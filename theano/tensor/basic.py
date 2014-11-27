@@ -3508,9 +3508,9 @@ class Join(Op):
         # Join op should get at least one input to join
         assert len(ishapes) > 1
         n_dim = len(ishapes[1])
-        for shape in ishapes[1:]:
-            assert shape is not None
-            assert len(shape) == n_dim
+        for shp in ishapes[1:]:
+            assert shp is not None
+            assert len(shp) == n_dim
 
         out_shapes = []
         for dim in xrange(n_dim):
@@ -3526,8 +3526,8 @@ class Join(Op):
             t_side = ishapes[1][dim]
             f_side = ishapes[1][dim]
             # loop over tensors and sum for the joining dimension
-            for shape in ishapes[2:]:
-                t_side = t_side + shape[dim]
+            for shp in ishapes[2:]:
+                t_side = t_side + shp[dim]
             # return the dimensions found
             out_shapes.append(switch(eq(dim, node.inputs[0]),
                               t_side, f_side))
