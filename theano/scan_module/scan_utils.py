@@ -818,6 +818,7 @@ class scan_args(object):
             self.cond = [rval[1][-1]]
             inner_outputs = rval[1][:-1]
         else:
+            self.cond = []
             inner_outputs = rval[1]
         inner_inputs = rval[0]
 
@@ -942,7 +943,8 @@ class scan_args(object):
                                            self.inner_out_mit_sot +
                                            self.inner_out_sit_sot +
                                            self.inner_out_nit_sot +
-                                           self.inner_out_shared))
+                                           self.inner_out_shared +
+                                           self.cond))
 
     outer_outputs = property(lambda self: (self.outer_out_mit_mot +
                                            self.outer_out_mit_sot +
