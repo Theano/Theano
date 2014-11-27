@@ -993,10 +993,11 @@ class FunctionMaker(object):
             else:
                 # create graph_db
                 f = open(graph_db_file, 'wb')
+                f.close()
                 print 'create new graph_db in %s' % graph_db_file
                 #file needs to be open and closed for every pickle
-                f.close()
             # load the graph_db dictionary
+            f = None
             try:
                 f = open(graph_db_file, 'rb')
                 #Temporary hack to allow theano.scan_module.tests.test_scan.T_Scan
@@ -1006,7 +1007,6 @@ class FunctionMaker(object):
                 graph_db = cPickle.load(f)
                 
                 #hack end
-                f.close()
                 print 'graph_db loaded and it is not empty'
             except EOFError, e:
                 # the file has nothing in it
@@ -1014,6 +1014,8 @@ class FunctionMaker(object):
                 print 'graph_db loaded and it is empty'
                 graph_db = {}
             finally:
+                if f:
+                    f.close()
                 theano.config.unpickle_function = tmp
                 
             return graph_db
@@ -1140,8 +1142,10 @@ class FunctionMaker(object):
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt:[self.fgraph, time.time()]})
             f = open(graph_db_file, 'wb')
-            cPickle.dump(graph_db, f, -1)
-            f.close()
+            try:
+                cPickle.dump(graph_db, f, -1)
+            finally:
+                f.close()
             print 'new graph saved into graph_db'
         release_lock()
         return optimizer_profile
