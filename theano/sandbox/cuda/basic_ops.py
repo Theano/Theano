@@ -298,6 +298,8 @@ class GpuDimShuffle(GpuOp):
     """
     Implement DimShuffle on the gpu.
     """
+    check_broadcast = False
+
     def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
@@ -2355,6 +2357,8 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
     """
     Implement subtensor on the gpu.
     """
+    check_broadcast = False
+
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, *inputs):
         assert isinstance(x.type, CudaNdarrayType)
@@ -3352,6 +3356,7 @@ class GpuContiguous(GpuOp):
     not already c contiguous.
     """
     view_map = {0: [0]}
+    check_input = False
 
     def __eq__(self, other):
         return type(self) == type(other)

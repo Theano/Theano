@@ -547,7 +547,9 @@ get_scalar_constant_value_elemwises = (
 def get_scalar_constant_value(orig_v, elemwise=True):
     """return the constant scalar(0-D) value underlying variable `v`
 
-    If v is the output of dimshuffles, fills, allocs, rebroadcasts, cast
+    If v is the output of dimshuffles, fills, allocs, rebroadcasts,
+    cast, OutputGuard, DeepCopyOp, ScalarFromTensor, ScalarOp,
+    Elemwise and some pattern with Subtensor,
     this function digs through them.
 
     If `v` is not some view of constant scalar data, then raise a
@@ -587,12 +589,14 @@ def get_scalar_constant_value(orig_v, elemwise=True):
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
                 if isinstance(v.owner.inputs[0], Constant):
-                    return v.owner.inputs[0].data.shape[v.owner.op.i]
+                    return numpy.asarray(v.owner.inputs[0].data.shape[v.owner.op.i])
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
             # We put all the scalar Ops used by get_canonical_form_slice()
             # to allow it to determine the broadcast pattern correctly.
+            elif isinstance(v.owner.op, ScalarFromTensor):
+                return get_scalar_constant_value(v.owner.inputs[0])
             elif isinstance(v.owner.op, scal.ScalarOp):
                 if isinstance(v.owner.op, scal.Second):
                     # We don't need both input to be constant for second
@@ -3504,9 +3508,9 @@ class Join(Op):
         # Join op should get at least one input to join
         assert len(ishapes) > 1
         n_dim = len(ishapes[1])
-        for shape in ishapes[1:]:
-            assert shape is not None
-            assert len(shape) == n_dim
+        for shp in ishapes[1:]:
+            assert shp is not None
+            assert len(shp) == n_dim
 
         out_shapes = []
         for dim in xrange(n_dim):
@@ -3522,8 +3526,8 @@ class Join(Op):
             t_side = ishapes[1][dim]
             f_side = ishapes[1][dim]
             # loop over tensors and sum for the joining dimension
-            for shape in ishapes[2:]:
-                t_side = t_side + shape[dim]
+            for shp in ishapes[2:]:
+                t_side = t_side + shp[dim]
             # return the dimensions found
             out_shapes.append(switch(eq(dim, node.inputs[0]),
                               t_side, f_side))

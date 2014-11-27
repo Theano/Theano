@@ -513,8 +513,9 @@ class BaseGpuCorrMM(GpuOp):
         integers
     :param subsample: perform subsampling of the output (default: (1, 1))
     :param pad: *deprecated*, now you should always use border_mode
-    
+
     """
+    check_broadcast = False
 
     def __init__(self, border_mode="valid", subsample=(1, 1), pad=(0, 0)):
         if pad != (0, 0):
@@ -1498,6 +1499,8 @@ class GpuConv(GpuOp):
     """
     Implement the batched and stacked 2d convolution on the gpu.
     """
+    check_broadcast = False
+
     @staticmethod
     def logical_output_shape_2d(imshp, kshp, mode):
         if mode == 'valid':

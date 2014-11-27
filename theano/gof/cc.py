@@ -342,8 +342,18 @@ def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
     if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
             r.clients]):
-
-        c_extract = r.type.c_extract(name, sub, True)
+        # check_broadcast is just an hack to easily remove just the
+        # broadcast check on the old GPU back-end. THis check isn't
+        # done in the new GPU back-end or on the CPU.
+        if hasattr(c.op, 'check_broadcast'):
+            try:
+                c_extract = r.type.c_extract(
+                    name, sub, True,
+                    check_broadcast=c.op.check_broadcast)
+            except TypeError, e:
+                c_extract = r.type.c_extract(name, sub, True)
+        else:
+            c_extract = r.type.c_extract(name, sub, True)
     else:
         c_extract = r.type.c_extract(name, sub, False)
 

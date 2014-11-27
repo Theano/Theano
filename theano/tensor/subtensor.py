@@ -16,7 +16,7 @@ from theano.gof.python25 import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
 from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
-                                 ARange, TensorType)
+                                 ARange, TensorType, NotScalarConstantError)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, make_slice
 from theano import config
@@ -470,15 +470,22 @@ class Subtensor(Op):
         broadcastable = []
         for i, (p, bc) in enumerate(izip(padded, x.type.broadcastable)):
             if isinstance(p, slice):
-                if bc and p.start in [None, 0]:
+                if bc:
                     start = p.start
-                    if start is None:
-                        start = 0
-                    if (p.stop is None or
-                        (isinstance(p.stop, (int, numpy.integer)) and
-                         p.stop > start)):
-                        broadcastable.append(True)
-                        continue
+                    try:
+                        start = get_scalar_constant_value(start)
+                    except NotScalarConstantError:
+                        pass
+                    if start in [None, 0]:
+                        start = p.start
+                        if start is None:
+                            start = 0
+                        if (p.stop is None or
+                            (isinstance(p.stop, (int, numpy.integer,
+                                                 numpy.ndarray)) and
+                             p.stop > start)):
+                            broadcastable.append(True)
+                            continue
 
                 broadcastable.append(False)
 
