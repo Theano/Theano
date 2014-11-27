@@ -1503,7 +1503,7 @@ class numeric_grad(object):
 
 def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 out_type=None, abs_tol=None,
-                rel_tol=None, mode=None, cast_to_output_type=True):
+                rel_tol=None, mode=None, cast_to_output_type=False):
     """Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
