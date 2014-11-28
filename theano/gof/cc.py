@@ -378,7 +378,6 @@ def get_c_extract_out(r, name, sub):
             c_extract = r.type.c_extract_out(name, sub, check_input,
                                              check_broadcast=False)
         except TypeError, e:
-            import pdb;pdb.set_trace()
             c_extract = r.type.c_extract_out(name, sub, check_input)
 
     pre = """
