@@ -474,6 +474,7 @@ TensorVariable
             * (2, 0, 1) -> AxBxC to CxAxB
             * (0, 'x', 1) -> AxB to Ax1xB
             * (1, 'x', 0) -> AxB to Bx1xA
+            * (1,) -> This remove dimensions 0. It must be a broadcastable dimension (1xA to A)
 
     .. method:: flatten(ndim=1)
 
