@@ -1069,7 +1069,7 @@ class FunctionMaker(object):
                             if hasattr(remove, 'fgraph'):
                                 del remove.fgraph
                             if hasattr(remove, 'owner'):
-                                if remove.owner == None:
+                                if remove.owner is None:
                                     pass
                                 else:
                                     if hasattr(remove.owner, 'fgraph'):

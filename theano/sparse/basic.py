@@ -1627,7 +1627,7 @@ class SpSum(gof.op.Op):
         return gof.Apply(self, [x], [z])
 
     def perform(self, node, (x,), (z,)):
-        if self.axis == None:
+        if self.axis is None:
             z[0] = numpy.asarray(x.sum())
         else:
             z[0] = numpy.asarray(x.sum(self.axis)).ravel()
