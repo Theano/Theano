@@ -8,7 +8,7 @@ W = T.matrix('W')
 Y = T.dot(X, W)
 Z = X - W
 
-f = theano.function(inputs=[X, W], outputs=[Y, Z], profile=False)
+f = theano.function(inputs=[X, W], outputs=[Y, Z], profile=True)
 for i in xrange(10):
     f(numpy.random.uniform(size=(2, 2)),
       numpy.random.uniform(size=(2, 2)))

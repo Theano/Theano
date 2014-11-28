@@ -81,6 +81,7 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = file
     done = dict()
     results_to_print = []
+    profile_list = []
     order = []
     if isinstance(obj, (list, tuple)):
         lobj = obj
@@ -89,18 +90,26 @@ def debugprint(obj, depth=-1, print_type=False,
     for obj in lobj:
         if isinstance(obj, gof.Variable):
             results_to_print.append(obj)
+            profile_list.append(None)
         elif isinstance(obj, gof.Apply):
             results_to_print.extend(obj.outputs)
+            for item in obj.outputs:
+                profile_list.append(obj.profile)
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
+            for item in obj.maker.fgraph.outputs:
+                profile_list.append(obj.profile)
             order = obj.maker.fgraph.toposort()
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
+            for item in obj.outputs:
+                profile_list.append(obj.profile)
             order = obj.toposort()
         elif isinstance(obj, (int, long, float, numpy.ndarray)):
             print obj
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
+            profile_list.append(None)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
