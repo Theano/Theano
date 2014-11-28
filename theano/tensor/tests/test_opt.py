@@ -3671,6 +3671,17 @@ def test_constant_folding():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 2
 
+    # Test that we do not crash when constant folding elemwise scalar
+    # as they should not generate c code.
+
+    x = tensor.constant(3)
+    assert x.ndim == 0
+    mode = theano.compile.get_mode("FAST_COMPILE").excluding("fusion")
+    f = theano.function([], [x * 2, x + x], mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert all([isinstance(n.op, DeepCopyOp) for n in topo])
+
 
 def test_constant_get_stabilized():
     """
