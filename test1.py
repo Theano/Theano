@@ -6,10 +6,9 @@ from theano.printing import debugprint
 X = T.matrix('X')
 W = T.matrix('W')
 Y = T.dot(X, W)
-R = X - W
-Z = Y + R
+Z = X - W
 
-f = theano.function(inputs=[X, W], outputs=[Z, R], profile=True)
+f = theano.function(inputs=[X, W], outputs=[Y, Z], profile=False)
 for i in xrange(10):
     f(numpy.random.uniform(size=(2, 2)),
       numpy.random.uniform(size=(2, 2)))

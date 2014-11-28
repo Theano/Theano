@@ -73,7 +73,6 @@ def debugprint(obj, depth=-1, print_type=False,
     to the Apply's identifier, to indicate which output a line corresponds to.
 
     """
-    profile = None
     if file == 'str':
         _file = StringIO()
     elif file is None:
@@ -95,10 +94,6 @@ def debugprint(obj, depth=-1, print_type=False,
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
             order = obj.maker.fgraph.toposort()
-            profile = obj.profile
-            if profile != None:
-                print 'Timing Info\n-----------\n\t \
-                    --> <time> <% time> - <total time> <% total time>'
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
             order = obj.toposort()
@@ -116,6 +111,11 @@ def debugprint(obj, depth=-1, print_type=False,
         if (hasattr(r.owner, 'op') and
             isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
             scan_ops.append(r)
+
+        profile = obj.profile
+        if profile != None:
+            print 'Timing Info\n-----------\n\t \
+                --> <time> <% time> - <total time> <% total time>'
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
