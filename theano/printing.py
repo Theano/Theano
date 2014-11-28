@@ -118,8 +118,7 @@ def debugprint(obj, depth=-1, print_type=False,
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
-                             scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=profile)
+                             scan_ops=scan_ops, stop_on_name=stop_on_name)
     if len(scan_ops) > 0:
         print >> file, ""
         new_prefix = ' >'
