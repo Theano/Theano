@@ -9,6 +9,7 @@ import time
 import logging
 
 from theano import config
+from theano.configparser import AddConfigVar, IntParam
 
 _logger = logging.getLogger("theano.gof.compilelock")
 # If the user provided a logging level, we don't want to override it.
@@ -16,31 +17,28 @@ if _logger.level == logging.NOTSET:
     # INFO will show the the messages "Refreshing lock" message
     _logger.setLevel(logging.INFO)
 
-# In seconds, time that a process will wait before deciding to override an
-# existing lock. An override only happens when the existing lock is held by
-# the same owner *and* has not been 'refreshed' by this owner for more than
-# 'timeout_before_override' seconds.
-timeout_before_override = 120
+AddConfigVar('compile.wait',
+             """Time to wait before retrying to aquire the compile lock. If you
+raise this be sure to also raise 'compile.timeout' by a proportionate
+amount.""",
+             IntParam(5, lambda i: i > 0, allow_override=False),
+             in_c_key=False)
 
-# In seconds, duration before a lock is refreshed. More precisely, the lock is
-# refreshed each time 'get_lock()' is called (typically for each file being
-# compiled) and the existing lock has not been refreshed in the past
-# 'refresh_every' seconds.
-refresh_every = 60
+AddConfigVar('compile.timeout',
+             """In seconds, time that a process will wait before deciding to
+override an existing lock. An override only happens when the existing
+lock is held by the same owner *and* has not been 'refreshed' by this
+owner for more than this period.""",
+             IntParam(120, lambda i: i >= 0, allow_override=False),
+             in_c_key=False)
 
 
 def force_unlock():
     """
     Delete the compilation lock if someone else has it.
     """
-    global timeout_before_override
-    timeout_backup = timeout_before_override
-    timeout_before_override = 0
-    try:
-        get_lock(min_wait=0, max_wait=0.001)
-        release_lock()
-    finally:
-        timeout_before_override = timeout_backup
+    get_lock(min_wait=0, max_wait=0.001, timeout=0)
+    release_lock()
 
 
 def get_lock(lock_dir=None, **kw):
@@ -74,16 +72,17 @@ def get_lock(lock_dir=None, **kw):
     if get_lock.lock_is_enabled:
         # Only really try to acquire the lock if we do not have it already.
         if get_lock.n_lock == 0:
-            lock(get_lock.lock_dir, timeout=timeout_before_override, **kw)
+            lock(get_lock.lock_dir, **kw)
             atexit.register(Unlocker.unlock, get_lock.unlocker)
             # Store time at which the lock was set.
             get_lock.start_time = time.time()
         else:
-            # Check whether we need to 'refresh' the lock. We do this every
-            # 'refresh_every' seconds to ensure noone else tries to override
-            # our lock after their 'timeout_before_override' timeout period.
+            # Check whether we need to 'refresh' the lock. We do this
+            # every 'config.compile.timeout / 2' seconds to ensure
+            # noone else tries to override our lock after their
+            # 'config.compile.timeout' timeout period.
             now = time.time()
-            if now - get_lock.start_time > refresh_every:
+            if now - get_lock.start_time > config.compile.timeout/2:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
                 _logger.info('Refreshing lock %s', str(lockpath))
                 refresh_lock(lockpath)
@@ -114,8 +113,10 @@ def set_lock_status(use_lock):
     """
     get_lock.lock_is_enabled = use_lock
 
+# This is because None is a valid input for timeout
+notset = object()
 
-def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
+def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
     """
     Obtain lock access by creating a given temporary directory (whose base will
     be created if needed, but will not be deleted after the lock is removed).
@@ -149,6 +150,12 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
     @param verbosity: amount of feedback displayed to screen
     @type  verbosity: int
     """
+    if min_wait is None:
+        min_wait = config.compile.wait
+    if max_wait is None:
+        max_wait = min_wait * 2
+    if timeout is notset:
+        timeout = config.compile.timeout
     # Create base of lock directory if required.
     base_lock = os.path.dirname(tmp_dir)
     if not os.path.isdir(base_lock):
@@ -207,7 +214,7 @@ def lock(tmp_dir, timeout=120, min_wait=5, max_wait=10, verbosity=1):
                     continue
                 if last_owner == read_owner:
                     if (timeout is not None and
-                            time.time() - time_start >= timeout):
+                        time.time() - time_start >= timeout):
                         # Timeout exceeded or locking process dead.
                         if not no_display:
                             if read_owner == 'failure':
