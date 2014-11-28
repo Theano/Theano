@@ -25,7 +25,7 @@
 .. note::
 
     As of October 21st, 2014, the default GPU image convolution
-    changed: By default, if :ref:`cuDNN <_libdoc_cuda_dnn>`
+    changed: By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
     is available, we will use it, otherwise we will fall back to using the
     gemm version (slower then cuDNN in most cases, uses more memory, but
     faster than the legacy version we used before).
