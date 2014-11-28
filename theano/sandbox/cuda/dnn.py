@@ -1274,8 +1274,7 @@ if True:
                              border_mode=border_mode, subsample=subsample,
                              direction_hint=direction_hint)]
 
-# DISABLED as there is problems in the handling of borders
-#    @register_opt('cudnn')
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
         if not dnn_available():
