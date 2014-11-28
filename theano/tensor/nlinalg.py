@@ -670,7 +670,7 @@ def norm(x,ord):
     if ndim == 0:
         raise ValueError("'axis' entry is out of bounds.")
     elif ndim == 1:
-        if ord == None:
+        if ord is None:
             return tensor.sum(x**2)**0.5
         elif ord == 'inf':
             return tensor.max(abs(x))
@@ -685,7 +685,7 @@ def norm(x,ord):
                 raise ValueError("Invalid norm order for vectors.")
             return z
     elif ndim == 2:
-        if ord == None or ord == 'fro':
+        if ord is None or ord == 'fro':
             return tensor.sum(abs(x**2))**(0.5)
         elif ord == 'inf':
             return tensor.max(tensor.sum(abs(x), 1))

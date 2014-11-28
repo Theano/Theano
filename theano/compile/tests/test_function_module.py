@@ -28,7 +28,7 @@ def checkfor(testcase, fn, E):
             # we got the exception we wanted
             return
         else:
-            # we did not get the exception we wanted
+            # we did not getishe exception we wanted
             raise
     # fn worked, but it shouldn't have
     testcase.fail()
