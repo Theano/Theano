@@ -115,21 +115,20 @@ def debugprint(obj, depth=-1, print_type=False,
                             obj)
 
     scan_ops = []
-    for r in results_to_print:
+    for r, p in zip(results_to_print, profile_list):
         # Add the parent scan op to the list as well
         if (hasattr(r.owner, 'op') and
             isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
             scan_ops.append(r)
 
-        profile = obj.profile
-        if profile != None:
+        if p != None:
             print 'Timing Info\n-----------\n\t \
                 --> <time> <% time> - <total time> <% total time>'
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=profile)
+                             profile=p)
     if len(scan_ops) > 0:
         print >> file, ""
         new_prefix = ' >'
