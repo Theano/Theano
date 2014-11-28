@@ -360,6 +360,24 @@ class CudaNdarrayType(Type):
         #print sio.getvalue()
         return sio.getvalue()
 
+    def c_extract_out(self, name, sub, check_input=True, check_broadcast=True):
+        """ To allow the hack to skip check_broadcast.
+        """
+        return """
+        if (py_%(name)s == Py_None)
+        {
+            %(c_init_code)s
+        }
+        else
+        {
+            %(c_extract_code)s
+        }
+        """ % dict(
+            name=name,
+            c_init_code=self.c_init(name, sub),
+            c_extract_code=self.c_extract(name, sub, check_input,
+                                          check_broadcast))
+
     def c_cleanup(self, name, sub):
         return """
         //std::cerr << "cleanup " << py_%(name)s << " " << %(name)s << "\\n";
