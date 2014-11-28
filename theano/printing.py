@@ -35,7 +35,7 @@ _logger = logging.getLogger("theano.printing")
 
 
 def debugprint(obj, depth=-1, print_type=False,
-               file=None, ids='CHAR', stop_on_name=False, profile=None):
+               file=None, ids='CHAR', stop_on_name=False):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
