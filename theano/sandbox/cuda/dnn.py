@@ -88,7 +88,7 @@ class DnnBase(GpuOp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
     """
-    # dnn do know know about broadcasting, so we do not need to assert
+    # dnn does not know about broadcasting, so we do not need to assert
     # the input broadcasting pattern.
     check_broadcast = False
 
