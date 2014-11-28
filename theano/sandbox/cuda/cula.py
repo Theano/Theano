@@ -7,7 +7,7 @@ from theano.tensor import as_tensor_variable
 from scikits.cuda import cula
 
 
-def gpu_solve(A, b, trans='N'):
+def cula_gpu_solve(A, b, trans='N'):
     cula.culaInitialize()
     A_shape = A.shape
     b_shape = b.shape
@@ -96,7 +96,7 @@ class GpuSolve(GpuOp):
             A_pycuda = to_gpuarray(A)
             b_pycuda = to_gpuarray(b)
 
-            gpu_solve(A_pycuda, b_pycuda, self.trans)
+            cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
 
         thunk.inputs = inputs
         thunk.outputs = outputs
@@ -104,4 +104,4 @@ class GpuSolve(GpuOp):
 
         return thunk
 
-#gpu_solve = GpuSolve()
+gpu_solve = GpuSolve()
