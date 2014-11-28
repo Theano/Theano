@@ -340,8 +340,10 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
-            r.clients]):
+    it = []
+    for c, _ in r.clients:
+        it.append(c)
+    if any([getattr(c.op, 'check_input', config.check_input) for c in it]):
         # check_broadcast is just an hack to easily remove just the
         # broadcast check on the old GPU back-end. THis check isn't
         # done in the new GPU back-end or on the CPU.
