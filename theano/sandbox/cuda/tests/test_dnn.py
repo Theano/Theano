@@ -178,7 +178,7 @@ def test_dnn_tag():
     try:
         f = theano.function(
             [x],
-            max_pool_2d(x, ds=(2, 2)),
+            max_pool_2d(x, ds=(2, 2), ignore_border=True),
             mode=mode_with_gpu.including("cudnn"))
     except (AssertionError, RuntimeError), e:
         assert not cuda.dnn.dnn_available()

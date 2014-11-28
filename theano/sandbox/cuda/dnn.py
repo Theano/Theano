@@ -88,6 +88,10 @@ class DnnBase(GpuOp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
     """
+    # dnn does not know about broadcasting, so we do not need to assert
+    # the input broadcasting pattern.
+    check_broadcast = False
+
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
 
@@ -244,7 +248,6 @@ class GpuDnnConvDesc(GpuOp):
 
 class GpuDnnConvBase(DnnBase):
     __props__ = ()
-    check_broadcast = False
 
     def c_support_code_struct(self, node, struct_id):
         return """
@@ -1274,8 +1277,7 @@ if True:
                              border_mode=border_mode, subsample=subsample,
                              direction_hint=direction_hint)]
 
-# DISABLED as there is problems in the handling of borders
-#    @register_opt('cudnn')
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
     def local_pool_dnn(node):
         if not dnn_available():
