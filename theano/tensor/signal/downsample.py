@@ -104,40 +104,31 @@ class DownsampleFactorMax(Op):
 
         out_r = (r - ds[0]) // st[0] + 1
         out_c = (c - ds[1]) // st[1] + 1
-        nr = 0
-        nc = 0
-        if isinstance(r, theano.Variable):
-            nr = tensor.switch(tensor.ge(r - ds[0], 0), out_r, 0)
-        elif r - ds[0] >= 0:
-                nr = out_r
-        if isinstance(c, theano.Variable):
-            nr = tensor.switch(tensor.ge(c - ds[1], 0), out_c, 0)
-        elif c - ds[1] >= 0:
-                nc = out_c
 
-        out_re = 0
-        out_ce = 0
+        if isinstance(r, theano.Variable):
+            nr = tensor.maximum(out_r, 0)
+        else:
+            nr = numpy.maximum(out_r, 0)
+        if isinstance(c, theano.Variable):
+            nc = tensor.maximum(out_c, 0)
+        else:
+            nc = numpy.maximum(out_c, 0)
+
         if not ignore_border:
-            re = r - ((out_r - 1) * st[0] + ds[0])
-            rr = r - out_r * st[0]
-            ce = c - ((out_c - 1) * st[1] + ds[1])
-            cr = c - out_c * st[1]
             if isinstance(r, theano.Variable):
-                out_re = tensor.switch(tensor.gt(nr, 0), tensor.switch(tensor.gt(re, 0), tensor.switch(tensor.gt(rr, 0), 1, 0), 0), tensor.switch(tensor.gt(r, 0), 1, 0))
-            elif nr > 0:
-                if re > 0 and rr > 0:
-                    out_re = 1
-            elif r > 0:
-                    out_re = 1
+                nr = tensor.switch(tensor.ge(st[0], ds[0]), (r - 1) // st[0] + 1, tensor.maximum(0, (r - 1 - ds[0]) // st[0] + 1) + 1)
+            elif st[0] >= ds[0]: 
+                nr = (r - 1) // st[0] + 1
+            else:
+                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
+
             if isinstance(c, theano.Variable):
-                out_ce = tensor.switch(tensor.gt(nc, 0), tensor.switch(tensor.gt(ce, 0), tensor.switch(tensor.gt(cr, 0), 1, 0), 0), tensor.switch(tensor.gt(c, 0), 1, 0))
-            elif nc > 0:
-                if ce > 0 and cr > 0:
-                    out_ce = 1
-            elif c > 0:
-                    out_ce = 1
-        nr += out_re
-        nc += out_ce
+                nc = tensor.switch(tensor.ge(st[1], ds[1]), (c - 1) // st[1] + 1, tensor.maximum(0, (c - 1 - ds[1]) // st[1] + 1) + 1)
+            elif st[1] >= ds[1]: 
+                nc = (c - 1) // st[1] + 1
+            else:
+                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
+
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
