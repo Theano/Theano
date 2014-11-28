@@ -184,6 +184,20 @@ There are less methods to define for an Op than for a Type:
        Overrides :meth:`c_code_cache_version` if defined, but
        otherwise has the same contract.
 
+    .. method:: python_constant_folding(node)
+
+       Optional. If present this method will be called before doing
+       constant folding of a node, with that node as a parameter. If
+       it return True, we will not generate c code when doing constant
+       folding of this node.  This is useful when the compilation of
+       the c code will be longer then the computation in python
+       (e.g. Elemwise of scalars).
+
+       In addition, this allow to lower the number of compiled module
+       and disk access. Particularly useful when the file system load
+       is high or when theano compilation directory is shared by many
+       process (like on a network file server on a cluster).
+
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides
 failure code that you *must* use if you want to raise an exception,
