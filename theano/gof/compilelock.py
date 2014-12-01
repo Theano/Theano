@@ -28,7 +28,8 @@ AddConfigVar('compile.timeout',
              """In seconds, time that a process will wait before deciding to
 override an existing lock. An override only happens when the existing
 lock is held by the same owner *and* has not been 'refreshed' by this
-owner for more than this period.""",
+owner for more than this period. Refreshes are done every half timeout
+period for running processes.""",
              IntParam(120, lambda i: i >= 0, allow_override=False),
              in_c_key=False)
 
@@ -79,7 +80,7 @@ def get_lock(lock_dir=None, **kw):
         else:
             # Check whether we need to 'refresh' the lock. We do this
             # every 'config.compile.timeout / 2' seconds to ensure
-            # noone else tries to override our lock after their
+            # no one else tries to override our lock after their
             # 'config.compile.timeout' timeout period.
             now = time.time()
             if now - get_lock.start_time > config.compile.timeout/2:
@@ -108,8 +109,8 @@ def set_lock_status(use_lock):
     by default). Disabling may make compilation slightly faster (but is not
     recommended for parallel execution).
 
-    @param use_lock: whether to use the compilation lock or not
-    @type  use_lock: bool
+    :param use_lock: whether to use the compilation lock or not
+    :type  use_lock: bool
     """
     get_lock.lock_is_enabled = use_lock
 
@@ -123,32 +124,35 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
     If access is refused by the same lock owner during more than 'timeout'
     seconds, then the current lock is overridden. If timeout is None, then no
     timeout is performed.
+
     The lock is performed by creating a 'lock' file in 'tmp_dir' that contains
     a unique id identifying the owner of the lock (the process id, followed by
     a random string).
+
     When there is already a lock, the process sleeps for a random amount of
     time between min_wait and max_wait seconds before trying again.
+
     If 'verbosity' is >= 1, then a message will be displayed when we need to
     wait for the lock. If it is set to a value >1, then this message will be
     displayed each time we re-check for the presence of the lock. Otherwise it
     is displayed only when we notice the lock's owner has changed.
 
-    @param tmp_dir: lock directory that will be created when acquiring the lock
-    @type  tmp_dir: string
+    :param str tmp_dir: lock directory that will be created when
+                        acquiring the lock
 
-    @param timeout: time (in seconds) to wait before replacing an existing lock
-    @type  timeout: int or None
+    :param timeout: time (in seconds) to wait before replacing an
+                    existing lock (default config 'compile.timeout')
+    :type  timeout: int or None
 
-    @param min_wait: minimum time (in seconds) to wait before trying again to
-                     get the lock
-    @type  min_wait: int
+    :param int min_wait: minimum time (in seconds) to wait before
+                         trying again to get the lock
+                         (default config 'compile.wait')
 
-    @param max_wait: maximum time (in seconds) to wait before trying again to
-                     get the lock
-    @type  max_wait: int
+    :param int max_wait: maximum time (in seconds) to wait before
+                         trying again to get the lock
+                         (default 2 * min_wait)
 
-    @param verbosity: amount of feedback displayed to screen
-    @type  verbosity: int
+    :param int verbosity: amount of feedback displayed to screen (default 1)
     """
     if min_wait is None:
         min_wait = config.compile.wait
