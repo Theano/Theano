@@ -166,7 +166,7 @@ import theano and print the config variable, as in:
     Theano initialize the GPU device.  Newer version of PyCUDA
     (currently only in the trunk) don't have this restriction.
 
-.. attribute:: config.print_active_device
+.. attribute:: print_active_device
 
     Bool value: either ``True`` or ``False``
 
@@ -310,26 +310,26 @@ import theano and print the config variable, as in:
     Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
     It only works when profile=True.
 
-.. attribute:: profiling.n_apply
+.. attribute:: config.profiling.n_apply
 
     Positive int value, default: 20.
 
     The number of Apply nodes to print in the profiler output
 
-.. attribute:: profiling.n_ops
+.. attribute:: config.profiling.n_ops
 
     Positive int value, default: 20.
 
     The number of Ops to print in the profiler output
 
-.. attribute:: profiling.min_memory_size
+.. attribute:: config.profiling.min_memory_size
 
     Positive int value, default: 1024.
 
     For the memory profile, do not print Apply nodes if the size
     of their outputs (in bytes) is lower than this.
 
-.. attribute:: profiling.min_peak_memory
+.. attribute:: config.profiling.min_peak_memory
 
     Bool value: either True or False
 
@@ -338,7 +338,7 @@ import theano and print the config variable, as in:
     Does the memory profile print the min peak memory usage?
     It only works when profile=True, profile_memory=True
 
-.. attribute:: profiling.destination
+.. attribute:: config.profiling.destination
 
     String value: 'stderr', 'stdout', or a name of a
     file to be created
@@ -491,7 +491,7 @@ import theano and print the config variable, as in:
     Extra parameters to pass to gcc when compiling.  Extra include paths,
     library paths, configuration options, etc.
 
-.. attribute:: config.cxx
+.. attribute:: cxx
 
 
     Default: 'g++' if g++ is present. Empty string otherwise.
@@ -555,7 +555,33 @@ import theano and print the config variable, as in:
     This means files whose compilation failed are deleted.
     Set to True to keep those files in order to debug compilation errors.
 
-.. attribute:: config.DebugMode
+.. attribute:: compile
+
+   This section contains attributes which influence the compilation of
+   C code for ops.  Due to historical reasons many attributes outside
+   of this section also have an influence over compilation, most
+   notably 'cxx'.  This is not expected to change any time soon.
+
+.. attribute:: config.compile.timeout
+
+   Positive int value, default: :attr:`compile.wait` * 24
+
+   Time to wait before an unrefreshed lock is broken and stolen.  This
+   is in place to avoid manual cleanup of locks in case a process
+   crashed and left a lock in place.
+
+   The refresh time is automatically set to half the timeout value.
+
+.. attribute:: config.compile.wait
+
+   Positive int value, default: 5
+
+   Time to wait between attempts at grabbing the lock if the first
+   attempt is not successful. The actual time will be between
+   :attr:`compile.wait` and :attr:`compile.wait` * 2 to avoid a
+   crowding effect on lock.
+
+.. attribute:: DebugMode
 
     This section contains various attributes configuring the behaviour
     of mode :class:`~debugmode.DebugMode`. See directly this section
@@ -595,7 +621,7 @@ import theano and print the config variable, as in:
     Generate a warning when the destroy_map or view_map tell that an op work
     inplace, but the op did not reuse the input for its output.
 
-.. attribute:: config.numpy
+.. attribute:: numpy
 
     This section contains different attributes for configuring numpy's
     behaviour, described by `numpy.seterr
@@ -669,7 +695,7 @@ import theano and print the config variable, as in:
 
     This flag's value cannot be modified during the program execution.
 
-.. attribute:: config.compute_test_value
+.. attribute:: compute_test_value
 
     String Value: ``'off'``, ``'ignore'``, ``'warn'``, ``'raise'``.
 
@@ -693,13 +719,13 @@ import theano and print the config variable, as in:
           this Op
         - ``'raise'`` will raise an Exception
     
-.. attribute:: config.compute_test_value_opt
+.. attribute:: compute_test_value_opt
 
    As ``compute_test_value``, but it is the value used during Theano
    optimization phase. Theano user's do not need to use this. This is
    to help debug shape error in Theano optimization.
 
-.. attribute:: config.reoptimize_unpickled_function
+.. attribute:: reoptimize_unpickled_function
 
     Bool value, default: True
 
@@ -709,7 +735,7 @@ import theano and print the config variable, as in:
     reoptimized when being unpickled. Otherwise, skip the graph optimization and 
     use directly the optimized graph. 
 
-.. attribute:: config.exception_verbosity
+.. attribute:: exception_verbosity
 
     String Value: ``'low'``, ``'high'``.
 
@@ -749,13 +775,13 @@ import theano and print the config variable, as in:
     This is useful to debug in gdb modules compiled by Theano.
     The parameter -g is passed by default to g++.
 
-.. attribute:: cmodule.compilation_warning
+.. attribute:: config.cmodule.compilation_warning
 
     Bool value, default: False
 
     If True, will print compilation warnings.
 
-.. attribute:: cmodule.preload_cache'
+.. attribute:: config.cmodule.preload_cache
 
     Bool value, default: False
 
