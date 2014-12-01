@@ -895,11 +895,11 @@ class VM_Linker(link.LocalLinker):
 
         thunks = []
 
-        for idx in range(order):
+        for idx in range(len(order)):
             node = order[idx]
             for ins in node.inputs:
-                if ins.allow_gc and ins.ndim == 0:
-                    # check if input variable can be gc and ndim = 0
+                if ins.ndim == 0:
+                    # check if input variable ndim = 0
                     for i in range(idx + 1, len(order)):
                         for outs in order[i].outputs:
                             if outs.ndim == 0:
