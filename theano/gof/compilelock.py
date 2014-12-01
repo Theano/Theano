@@ -14,15 +14,16 @@ from theano.configparser import AddConfigVar, IntParam
 _logger = logging.getLogger("theano.gof.compilelock")
 # If the user provided a logging level, we don't want to override it.
 if _logger.level == logging.NOTSET:
-    # INFO will show the the messages "Refreshing lock" message
+    # INFO will show the "Refreshing lock" messages
     _logger.setLevel(logging.INFO)
 
 AddConfigVar('compile.wait',
-             """Time to wait before retrying to aquire the compile lock. If you
-raise this be sure to also raise 'compile.timeout' by a proportionate
-amount.""",
+             """Time to wait before retrying to aquire the compile lock.""",
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
+
+def _timeout_default():
+    return config.wait * 24
 
 AddConfigVar('compile.timeout',
              """In seconds, time that a process will wait before deciding to
@@ -30,7 +31,8 @@ override an existing lock. An override only happens when the existing
 lock is held by the same owner *and* has not been 'refreshed' by this
 owner for more than this period. Refreshes are done every half timeout
 period for running processes.""",
-             IntParam(120, lambda i: i >= 0, allow_override=False),
+             IntParam(_timeout_default, lambda i: i >= 0,
+                      allow_override=False),
              in_c_key=False)
 
 
