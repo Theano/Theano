@@ -818,9 +818,9 @@ class PushOutScanOutput(gof.Optimizer):
                              scan_node.op.info['n_shared_outs'] +
                              scan_node.op.info['n_nit_sot'])
 
-        # (the initial value is the nb of taps to feed back as inputs to the
-        # next iteration of Scan's inner graph. Use 0 for a nit_sot output.)
-        nw_node_input_init_value = tensor.as_tensor_variable(0)
+        # (the initial value is the nb of steps to store. For a nistot,
+        # it should be the number of steps performed by scan)
+        nw_node_input_init_value = scan_node.inputs[0]
 
         nw_node_inputs = (scan_node.inputs[:nw_node_input_idx] +
                           [nw_node_input_init_value] +
