@@ -417,7 +417,7 @@ class Stack(VM):
                     except Exception:
                         link.raise_with_op(current_apply,
                                            self.thunks[self.node_idx[current_apply]],
-                                           storage_map)
+                                           storage_map=storage_map)
                     for o in current_apply.outputs:
                         compute_map[o][0] = 1
 

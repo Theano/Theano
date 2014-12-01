@@ -1,5 +1,6 @@
 """WRITEME"""
 from copy import copy, deepcopy
+from sys import getsizeof
 import StringIO
 import sys
 import traceback
@@ -164,39 +165,40 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             " Theano optimizations can be disabled with 'optimizer=None'.")
 
     if theano.config.exception_verbosity == 'high':
+
         f = StringIO.StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n"
         detailed_err_msg += f.getvalue()
 
+        # Prints output_map
+        if storage_map is not None:
+            detailed_err_msg += "\nStorage map footprint:\n"
+            for k in storage_map.keys():
+                if storage_map[k][0] is not None:
+                    detailed_err_msg += " - " + str(k) + ", "
+                    shapeinfo = None
+                    if hasattr(storage_map[k][0], 'shape'):
+                        shapeinfo = storage_map[k][0].shape
+                        detailed_err_msg += "shape: %s, " % str(shapeinfo)
+                    if hasattr(storage_map[k][0], 'dtype'):
+                        dtype = storage_map[k][0].dtype
+                        if shapeinfo is None:
+                            detailed_err_msg += "size: %s Byte(s)\n" % numpy.dtype(dtype).itemsize
+                        else:
+                            detailed_err_msg += "size: %s Byte(s)\n" % (numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo))
+                    else:
+                        bytes = getsizeof(storage_map[k][0])
+                        detailed_err_msg += "elementsize: %s Byte(s)\n" % str(bytes)
+
+
     else:
         hints.append(
             "HINT: Use the Theano flag 'exception_verbosity=high'"
-            " for a debugprint of this apply node.")
+            " for a debugprint and storage map footprint of this apply node.")
 
 
-    # Prints output_map
-    if storage_map is not None:
-        from sys import getsizeof
-        detailed_err_msg += "\nStorage map footprint:\n"
-        for k in storage_map.keys():
-            if storage_map[k][0] is not None:
-                detailed_err_msg += " - " + str(k) + ", "
-                shapeinfo = None
-                if hasattr(storage_map[k][0], 'shape'):
-                    shapeinfo = storage_map[k][0].shape
-                    detailed_err_msg += "shape: %s, " % str(shapeinfo)
-                if hasattr(storage_map[k][0], 'dtype'):
-                    dtype = storage_map[k][0].dtype
-                    if shapeinfo is None:
-                        detailed_err_msg += "size: %s\n" % numpy.dtype(dtype).itemsize
-                    else:
-                        detailed_err_msg += "size: %s\n" % (numpy.dtype(dtype).itemsize *
-                                                            numpy.prod(shapeinfo))
-                else:
-                    bytes = getsizeof(storage_map[k][0])
-                    detailed_err_msg += "size: %s\n" % str(bytes)
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
