@@ -377,15 +377,12 @@ class GpuDnnConv(DnnBase, COp):
         kw = shape[1][3]  # Width of each filter
         padh = 0
         padw = 0
-        sh = 1
-        sw = 1
 
         desc = node.inputs[2].owner.op
+        sh, sw = desc.subsample
         if desc.border_mode == 'full':
             padh = kh - 1
             padw = kw - 1
-            sh = desc.subsample[0]
-            sw = desc.subsample[1]
 
         return [(
             b, nb,
@@ -448,6 +445,30 @@ class GpuDnnConvGradW(DnnBase, COp):
         return Apply(self, [img, topgrad, desc, h, w],
                      [CudaNdarrayType(broadcastable)()])
 
+    def infer_shape(self, node, shape):
+        h = shape[0][2]  # Height of input feature maps
+        w = shape[0][3]  # Width of input feature maps
+        kh = shape[1][2]  # Height of each filter
+        kw = shape[1][3]  # Width of each filter
+
+        desc = node.inputs[2].owner.op
+        sh, sw = desc.subsample
+        if desc.border_mode == 'full':
+            kh = 2 - h + (kh - 1) * sh
+            kw = 2 - w + (kw - 1) * sw
+        else:
+            # border_mode is 'valid'
+            assert(desc.border_mode == 'valid')
+            kh = h - (kh - 1) * sh
+            kw = w - (kw - 1) * sw
+
+        return [(
+            shape[1][1],
+            shape[0][1],
+            kh,
+            kw
+        )]
+
 
 class GpuDnnConvGradI(DnnBase, COp):
     """
@@ -501,6 +522,29 @@ class GpuDnnConvGradI(DnnBase, COp):
 
         return Apply(self, [kern, topgrad, desc, h, w],
                      [CudaNdarrayType(broadcastable)()])
+
+    def infer_shape(self, node, shape):
+        b = shape[0][0]  # Number of inputs
+        h = shape[0][2]  # Height of input feature maps
+        w = shape[0][3]  # Width of input feature maps
+        nb = shape[1][0]  # Number of output feature maps
+        kh = shape[1][2]  # Height of each filter
+        kw = shape[1][3]  # Width of each filter
+        padh = 0
+        padw = 0
+
+        desc = node.inputs[2].owner.op
+        sh, sw = desc.subsample
+        if desc.border_mode == 'full':
+            padh = h - 1
+            padw = w - 1
+
+        return [(
+            shape[1][0],
+            shape[0][1],
+            (kh - 1) * sh + h - 2*padh,
+            (kw - 1) * sw + w - 2*padw
+        )]
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
@@ -1070,7 +1114,7 @@ class GpuDnnSoftmaxBase(DnnBase):
         if isinstance(shape, list):
             return [shape[0]]
         else:
-            return shape
+            return shape*2
 
     def _define_tensor4d_desc(self, name, id):
         return """
