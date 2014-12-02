@@ -1193,6 +1193,13 @@ class Elemwise(OpenMPOp):
         else:
             return ()
 
+    def python_constant_folding(self, node):
+        """
+        Return True if we do not want to compile c code
+        when doing constant folding of this node.
+        """
+        return node.outputs[0].ndim == 0
+
 # def elemwise_to_scal(fgraph):
 # TODO: why is this commented out? should it be removed?
 #       it has needed maintenance despite being commented

@@ -1605,7 +1605,7 @@ compile.optdb['specialize'].register('local_remove_all_assert',
                                      local_remove_all_assert,
                                      use_db_name_as_tag=False)
 
-@register_specialize
+@register_specialize("local_alloc_elemwise")
 @gof.local_optimizer([T.Elemwise])
 def local_elemwise_alloc(node):
     """
@@ -4508,9 +4508,21 @@ def constant_folding(node):
     for o in node.outputs:
         storage_map[o] = [None]
         compute_map[o] = [False]
+    if (hasattr(node.op, 'python_constant_folding') and
+        node.op.python_constant_folding(node)):
 
-    thunk = node.op.make_thunk(node, storage_map, compute_map,
-            no_recycling=[])
+        old_value = getattr(node.op, '_op_use_c_code', False)
+        try:
+            node.op._op_use_c_code = False
+            thunk = node.op.make_thunk(node,
+                                       storage_map,
+                                       compute_map,
+                                       [])
+        finally:
+            node.op._op_use_c_code = old_value
+    else:
+        thunk = node.op.make_thunk(node, storage_map, compute_map,
+                                   no_recycling=[])
 
     required = thunk()
     assert not required  # a node whose inputs are all provided should always
