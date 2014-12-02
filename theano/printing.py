@@ -119,8 +119,25 @@ def debugprint(obj, depth=-1, print_type=False,
             scan_ops.append(r)
 
         if p != None:
-            print 'Timing Info\n-----------\n\t \
-                --> <time> <% time> - <total time> <% total time>'
+           # print 'Timing Info\n-----------\n\t \
+           #     --> <time> <% time> - <total time> <% total time>'
+
+            print \
+"""
+Timing Info
+-----------
+--> <time> <% time> - <total time> <% total time>'
+
+<time>         computation time for this node
+<% time>       fraction of total computation time for this node
+<total time>   time for this node + total times for this node's ancestors
+<% total time> total time for this node over total computation time
+
+N.B.: <total time> and <% total time> may over-count computation times
+if inputs to a node share a common ancestor and should be viewed as a
+loose upper bound. Their intended use is to help rule out potential nodes
+to remove when optimizing a graph because their <total time> is very low.
+"""
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
