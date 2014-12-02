@@ -3,6 +3,7 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
+from itertools import product
 
 import theano
 from theano.compat.six import StringIO
@@ -12,7 +13,7 @@ import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs, neibs2images
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
-
+import theano.sandbox.cuda.dnn as dnn
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -192,3 +193,81 @@ def test_dnn_tag():
         assert cuda.dnn.dnn_available()
         assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
                     for n in f.maker.fgraph.toposort()])
+
+
+class TestDnnInferShapes(utt.InferShapeTester):
+    def setUp(self):
+        super(TestDnnInferShapes, self).setUp()
+
+    def test_softmax(self):
+        t = T.tensor4('t')
+        rand_tensor = numpy.asarray(
+            numpy.random.rand(5, 4, 3, 2),
+            dtype=theano.config.floatX
+        )
+        self._compile_and_check(
+            [t],
+            [dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(t)],
+            [rand_tensor],
+            dnn.GpuDnnSoftmax
+        )
+
+        self._compile_and_check(
+            [t],
+            [
+                T.grad(
+                    dnn.GpuDnnSoftmax(
+                        'bc01',
+                        'accurate',
+                        'channel'
+                    )(t).mean(),
+                    t
+                )
+            ],
+            [rand_tensor],
+            dnn.GpuDnnSoftmaxGrad
+        )
+
+    def test_conv(self):
+        img = T.tensor4('img')
+        kerns = T.tensor4('kerns')
+        img_val = numpy.asarray(
+            numpy.random.rand(2, 3, 4, 5),
+            dtype=theano.config.floatX
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(2, 3, 4, 5),
+            dtype=theano.config.floatX
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1), (2, 2)],
+            ['conv', 'cross']
+        ):
+            conv = dnn.dnn_conv(img, kerns, params[0], params[1], params[2])
+            softmax = dnn.GpuDnnSoftmax(
+                'bc01',
+                'accurate',
+                'channel'
+            )
+            self._compile_and_check(
+                [img, kerns],
+                [conv],
+                [img_val, kern_vals],
+                dnn.GpuDnnConv
+            )
+
+            self._compile_and_check(
+                [img, kerns],
+                [T.grad(softmax(conv).mean(), img)],
+                [img_val, kern_vals],
+                dnn.GpuDnnConvGradI
+            )
+
+            self._compile_and_check(
+                [img, kerns],
+                [T.grad(softmax(conv).mean(), kerns)],
+                [img_val, kern_vals],
+                dnn.GpuDnnConvGradW
+            )
