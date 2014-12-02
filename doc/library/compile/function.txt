@@ -187,3 +187,5 @@ Reference
     Replacements specified with
     givens are different from optimizations in that Var2 is not expected to be
     equivalent to Var1.
+
+.. autofunction:: theano.compile.function.function_dump
