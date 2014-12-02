@@ -119,11 +119,7 @@ def debugprint(obj, depth=-1, print_type=False,
             scan_ops.append(r)
 
         if p != None:
-           # print 'Timing Info\n-----------\n\t \
-           #     --> <time> <% time> - <total time> <% total time>'
-
-            print \
-"""
+            print >> file, """
 Timing Info
 -----------
 --> <time> <% time> - <total time> <% total time>'

@@ -607,7 +607,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             op_time_percent = (op_time / profile.fct_call_time) * 100
             tot_time_dict = profile.compute_total_times()
             tot_time = tot_time_dict[a]
-            tot_time_percent = (profile.fct_call_time / max(tot_time_dict.values())) * 100
+            tot_time_percent = (tot_time_dict[a] / profile.fct_call_time) * 100
      
             if len(a.outputs) == 1:
                 print >> file, '%s%s %s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
