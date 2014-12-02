@@ -907,24 +907,37 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
     npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
     npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
 
-    i = cuda.CudaNdarrayType(
-        broadcastable=[sh == 1 for sh in npy_img.shape])()
-    k = cuda.CudaNdarrayType(
-        broadcastable=[sh == 1 for sh in npy_kern.shape])()
-
     if direction == 'fprop':
+        i = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in npy_img.shape])()
+        k = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in npy_kern.shape])()
+
         cpuval = py_conv(npy_img, npy_kern, 'valid', subsample)
         op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode='valid',
                                                 subsample=subsample)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
         gpuval = f(npy_img, npy_kern[:,:,::-1,::-1])
     elif direction == 'bprop img':
+        i = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in
+                           npy_kern.transpose(1, 0, 2, 3).shape])()
+        k = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in npy_img.shape])()
+
         cpuval = py_conv(npy_img, npy_kern, 'full', subsample)
         op = theano.sandbox.cuda.blas.GpuCorrMM_gradInputs(
             border_mode='valid', subsample=subsample)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
         gpuval = f(npy_kern.transpose(1, 0, 2, 3), npy_img)
     elif direction == 'bprop kern':
+        i = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in
+                           npy_img.transpose(1, 0, 2, 3).shape])()
+        k = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in
+                           npy_kern.transpose(1, 0, 2, 3).shape])()
+
         cpuval = py_conv(npy_img, npy_kern, 'valid', subsample)
         op = theano.sandbox.cuda.blas.GpuCorrMM_gradWeights(
             border_mode='valid', subsample=subsample)(i, k)
