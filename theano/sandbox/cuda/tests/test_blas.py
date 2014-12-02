@@ -2,6 +2,7 @@ import copy
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
+from theano import gradient
 from theano import tensor
 from theano.tests import unittest_tools
 
@@ -16,7 +17,7 @@ if cuda_ndarray.cuda_available == False:
 import theano.sandbox.cuda as tcn
 
 from theano.tensor.signal.downsample import (DownsampleFactorMax,
-        DownsampleFactorMaxGrad)
+        DownsampleFactorMaxGrad, DownsampleFactorMaxGradGrad)
 from theano.gof.python25 import any
 
 import theano.compile.mode
@@ -26,12 +27,12 @@ from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu').excluding('cudnn')
     mode_without_gpu = theano.compile.mode.get_mode(
-            'FAST_RUN').excluding('gpu')
+            'FAST_RUN').excluding('gpu').excluding('cudnn')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu').excluding('cudnn')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu').excluding('cudnn')
 
 #The CPU tests already compare C/Py, so we only check C/GPU
 mode_with_gpu = copy.copy(mode_with_gpu)
@@ -307,6 +308,18 @@ def test_downsample():
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
                             for node in g2.maker.fgraph.toposort()])
                 assert numpy.allclose(g(), g2()), shp
+
+                ggf = gradient.Lop(tensor.grad((ds_op(
+                    tensor.as_tensor_variable(a))**2).sum(), a), a, a)
+                gg = pfunc([], ggf, mode=mode_with_gpu)
+                gg2 = pfunc([], ggf, mode=mode_without_gpu)
+                
+                assert any([isinstance(node.op,
+                                       tcn.blas.GpuDownsampleFactorMaxGradGrad)
+                            for node in gg.maker.fgraph.toposort()])
+                assert any([isinstance(node.op, DownsampleFactorMaxGradGrad)
+                            for node in gg2.maker.fgraph.toposort()])
+                assert numpy.allclose(gg(), gg2()), shp
 
                 # We already check that the gpu version return
                 # the same value as the gpu version for
