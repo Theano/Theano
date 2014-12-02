@@ -1605,7 +1605,7 @@ compile.optdb['specialize'].register('local_remove_all_assert',
                                      local_remove_all_assert,
                                      use_db_name_as_tag=False)
 
-@register_specialize
+@register_specialize("local_alloc_elemwise")
 @gof.local_optimizer([T.Elemwise])
 def local_elemwise_alloc(node):
     """
