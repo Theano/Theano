@@ -93,11 +93,10 @@ def debugprint(obj, depth=-1, print_type=False,
             profile_list.append(None)
         elif isinstance(obj, gof.Apply):
             results_to_print.extend(obj.outputs)
-            for item in obj.outputs:
-                profile_list.append(None)
+            profile_list.extend([None for item in obj.outputs])
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
-            profile_list.extend([None for item in obj.maker.fgraph.outputs])
+            profile_list.extend([obj.profile for item in obj.maker.fgraph.outputs])
             order = obj.maker.fgraph.toposort()
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)

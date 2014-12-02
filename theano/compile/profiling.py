@@ -294,20 +294,18 @@ class ProfileStats(object):
             rval[node.op] += t
         return rval
 
-    def get_node_total_time(self, node, total_times):
+    def fill_node_total_time(self, node, total_times):
         if node not in total_times.keys():
             total = self.apply_time[node]
             for parent in node.get_parents():
                 if parent.owner in self.apply_time.keys():
                     total += self.get_node_total_time(parent.owner)
-            return total
-        else:
-            return total_times[node]
+            total_times[node] = total
 
     def compute_total_times(self):
         rval = {}
         for node in self.apply_time.keys():
-            rval[node] = self.get_node_total_time(node, rval)
+            self.fill_node_total_time(node, rval)
         return rval
 
     def op_callcount(self):
