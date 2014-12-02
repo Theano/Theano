@@ -23,7 +23,7 @@ AddConfigVar('compile.wait',
              in_c_key=False)
 
 def _timeout_default():
-    return config.wait * 24
+    return config.compile.wait * 24
 
 AddConfigVar('compile.timeout',
              """In seconds, time that a process will wait before deciding to
