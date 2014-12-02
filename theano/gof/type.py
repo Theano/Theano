@@ -479,6 +479,15 @@ class CDataType(Type):
     Represents opaque C data to be passed around. The intent is to
     ease passing arbitrary data between ops C code.
     """
+    import ctypes
+    if PY3:
+        _cdata_type = ctypes.py_object.from_address(
+            ctypes.addressof(ctypes.pythonapi.PyCapsule_Type)).value
+    else:
+        _cdata_type = ctypes.py_object.from_address(
+            ctypes.addressof(ctypes.pythonapi.PyCObject_Type)).value
+    del ctypes
+
     def __init__(self, ctype, freefunc=None):
         """
         Build a type made to represent a C pointer in theano.
@@ -504,11 +513,9 @@ class CDataType(Type):
         return hash((type(self), self.ctype, self.freefunc))
 
     def filter(self, data, strict=False, allow_downcast=None):
-        if data is not None:
-            raise TypeError("only None is valid")
-
-    def is_valid_value(self, a):
-        return a is None
+        if data is not None and not isinstance(data, self._cdata_type):
+            raise TypeError("expected None or PyCObject/PyCapsule")
+        return data
 
     def c_declare(self, name, sub, check_input=True):
         return """
