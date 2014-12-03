@@ -8,7 +8,6 @@ from theano.compat.six.moves import configparser
 from theano.compat.six.moves import reload_module as reload
 
 if PY3:
-
     from operator import truediv as operator_div
 
     # In python 3.x, when an exception is reraised it saves original
@@ -28,8 +27,9 @@ if PY3:
     any = any
     from functools import partial
     from collections import defaultdict, deque
-    from itertools import combinations, product
     from sys import maxsize
+    from itertools import combinations, product
+    from collections import OrderedDict, MutableMapping as DictMixin
 
     def decode(x):
         return x.decode()
