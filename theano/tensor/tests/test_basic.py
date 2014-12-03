@@ -3455,8 +3455,8 @@ class T_Join_and_Split(unittest.TestCase):
         out = self.eval_outputs_and_check_join([s])
         self.assertTrue((out == want).all())
 
-        assert (grad(s.sum(), b).eval() == 0).all()
-        assert (grad(s.sum(), a).eval() == 0).all()
+        assert (numpy.asarray(grad(s.sum(), b).eval()) == 0).all()
+        assert (numpy.asarray(grad(s.sum(), a).eval()) == 0).all()
 
     def test_join_matrix1_using_vertical_stack(self):
         a = self.shared(numpy.array([[1, 2, 3], [4, 5, 6]], dtype=self.floatX))

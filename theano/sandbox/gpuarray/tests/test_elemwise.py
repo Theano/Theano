@@ -12,7 +12,7 @@ from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY)
 from ..type import GpuArrayType
 
-from pygpu import PyGpuArray
+from pygpu import ndgpuarray
 
 @staticmethod
 def fake_op(scalar_op, inplace_pattern=None):
@@ -36,12 +36,10 @@ class test_gpu_Broadcast(GPUMixin, test_Broadcast):
             self.linkers = [gof.PerformLinker]
 
     def rand_val(self, shp):
-        return rand_gpuarray(*shp)
-        return rand_gpuarray(*shp, **dict(cls=PyGpuArray))
+        return rand_gpuarray(*shp, **dict(cls=ndgpuarray))
 
     def rand_cval(self, shp):
-        return rand_gpuarray(*shp)
-        return rand_gpuarray(*shp, **dict(cls=PyGpuArray))
+        return rand_gpuarray(*shp, **dict(cls=ndgpuarray))
 
     def test_c(self):
         if not test_ctx_real.kind == 'cuda':

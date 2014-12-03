@@ -2,6 +2,7 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.gof import local_optimizer
+from theano.gof.utils import MethodNotDefined
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
@@ -56,6 +57,9 @@ class GpuImages2Neibs(HideC, Images2Neibs):
 
     def get_context(self, node):
         return self.context
+
+    def perform(self, node, inp, out, ctx):
+        raise MethodNotDefined()
 
     def c_code_cache_version(self):
         return (9,2)

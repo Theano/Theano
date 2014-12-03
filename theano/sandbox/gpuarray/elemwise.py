@@ -350,9 +350,7 @@ class GpuElemwise(HideC, Elemwise):
                             %(typecode)s, GA_C_ORDER,
                             %(ctx)s, Py_None);
             if (!%(oname)s) {
-                        //TODO, this check don't seam good.
-                        //TODO, set exception?
-                            %(fail)s
+               %(fail)s
             }
         }
         //std::cerr << "ELEMWISE NEW %(oname)s nd" << PyGpuArray_NDIM(%(oname)s) << "\\n";
@@ -2505,8 +2503,6 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     Too slow for now as it only have a python interface.
 
     """
-    context_type = gpu_context_type
-
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         if not hasattr(scalar_op, 'identity'):
             raise ValueError("No identity on scalar op")

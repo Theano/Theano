@@ -1627,7 +1627,6 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     t_r.name = 'random_projection'
 
     # random projection of o onto t_r
-    # This sum() is defined above, it's not the builtin sum.
     cost = theano.tensor.sum(t_r * o_output)
 
     cost_fn = function(tensor_pt, cost)

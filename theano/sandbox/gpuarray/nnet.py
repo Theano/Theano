@@ -657,20 +657,20 @@ class GpuSoftmaxWithBias(Op):
 
     def infer_shape(self, node, shape):
         return  [shape[0]]
-        
+
     def c_code_cache_version(self):
         return (12,) + inline_softmax.code_version
-        
+
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler(self.context)
-        
+
     def c_init_code(self):
         return ['setup_ext_cuda();']
-        
+
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
