@@ -363,8 +363,7 @@ class Expm(Op):
 
 
 class ExpmGrad(Op):
-    """Gradient of the matrix exponential of a square array. Currently
-    implemented only for Hermetian arguments.
+    """Gradient of the matrix exponential of a square array.
     """
 
     def make_node(self, A, gw):
