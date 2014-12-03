@@ -2,6 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 import numpy
+import warnings
 
 from theano.gof import Op, Apply
 
@@ -378,20 +379,20 @@ class ExpmGrad(Op):
         return [shapes[0]]
 
     def perform(self, node, (A, gA), (out,)):
-        if not numpy.allclose(A, A.T):
-            raise NotImplementedError(
-                "ExpmGrad is only implemented for symmetric matrices")
-
         # Kalbfleisch and Lawless, J. Am. Stat. Assoc. 80 (1985) Equation 3.4
-        w, U = scipy.linalg.eigh(A)
+        # Kind of... You need to do some algebra from there to arrive at
+        # this expression.
+        w, V = scipy.linalg.eig(A, right=True)
+        U = scipy.linalg.inv(V).T
 
-        G = (U.T).dot(gA).dot(U)
         exp_w = numpy.exp(w)
-        V = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
-        numpy.fill_diagonal(V, exp_w)
-        V = numpy.multiply(V, G, V)
+        X = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
+        numpy.fill_diagonal(X, exp_w)
+        Y = U.dot(V.T.dot(gA).dot(U) * X).dot(V.T)
 
-        out[0] = (U.dot(V).dot(U.T)).astype(A.dtype)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", numpy.ComplexWarning)
+            out[0] = Y.astype(A.dtype)
 
 
 expm = Expm()

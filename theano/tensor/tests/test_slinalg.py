@@ -251,7 +251,30 @@ def test_expm_grad_1():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the expm op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
-    A = rng.randn(3, 3).astype(config.floatX)
+    A = rng.randn(5, 5).astype(config.floatX)
     A = A + A.T
+
+    tensor.verify_grad(expm, [A,], rng=rng)
+
+
+def test_expm_grad_2():
+    # with non-symmetric matrix with real eigenspecta
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the expm op.")
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = rng.randn(5, 5).astype(config.floatX)
+    w =  (rng.randn(5).astype(config.floatX))**2
+    A = (numpy.diag(w**0.5)).dot(A + A.T).dot(numpy.diag(w**(-0.5)))
+    assert not numpy.allclose(A, A.T)
+
+    tensor.verify_grad(expm, [A,], rng=rng)
+
+
+def test_expm_grad_3():
+    # with non-symmetric matrix (complex eigenvectors)
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the expm op.")
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = rng.randn(5, 5).astype(config.floatX)
 
     tensor.verify_grad(expm, [A,], rng=rng)
