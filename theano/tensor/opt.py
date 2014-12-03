@@ -1605,7 +1605,7 @@ compile.optdb['specialize'].register('local_remove_all_assert',
                                      local_remove_all_assert,
                                      use_db_name_as_tag=False)
 
-@register_specialize
+@register_specialize("local_alloc_elemwise")
 @gof.local_optimizer([T.Elemwise])
 def local_elemwise_alloc(node):
     """
@@ -4309,6 +4309,11 @@ def local_log_add(node):
         z = node.inputs[0]
         if z.owner and z.owner.op == T.add:
             zi = z.owner.inputs
+            if len(zi) != 2:
+                # -- upgrading Maximum to handle multiple inputs wasn't trivial
+                #    TODO
+                #raise NotImplementedError()
+                return
             pre_exp = [x.owner.inputs[0] for x in zi
                        if x.owner and x.owner.op == T.exp]
             if len(pre_exp) == len(zi):
@@ -4503,9 +4508,21 @@ def constant_folding(node):
     for o in node.outputs:
         storage_map[o] = [None]
         compute_map[o] = [False]
+    if (hasattr(node.op, 'python_constant_folding') and
+        node.op.python_constant_folding(node)):
 
-    thunk = node.op.make_thunk(node, storage_map, compute_map,
-            no_recycling=[])
+        old_value = getattr(node.op, '_op_use_c_code', False)
+        try:
+            node.op._op_use_c_code = False
+            thunk = node.op.make_thunk(node,
+                                       storage_map,
+                                       compute_map,
+                                       [])
+        finally:
+            node.op._op_use_c_code = old_value
+    else:
+        thunk = node.op.make_thunk(node, storage_map, compute_map,
+                                   no_recycling=[])
 
     required = thunk()
     assert not required  # a node whose inputs are all provided should always

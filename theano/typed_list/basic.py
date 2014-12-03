@@ -42,6 +42,7 @@ class _typed_list_py_operators:
 
     ttype = property(lambda self: self.type.ttype)
     dtype = property(lambda self: self.type.ttype.dtype)
+    ndim = property(lambda self: self.type.ttype.ndim + 1)
 
 
 class TypedListVariable(_typed_list_py_operators, Variable):

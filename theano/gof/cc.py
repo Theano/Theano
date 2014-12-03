@@ -342,8 +342,19 @@ def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
     if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
             r.clients]):
-
-        c_extract = r.type.c_extract(name, sub, True)
+        # check_broadcast is just an hack to easily remove just the
+        # broadcast check on the old GPU back-end. This check isn't
+        # done in the new GPU back-end or on the CPU.
+        if any([getattr(c.op, 'check_broadcast', True) for (c, _) in
+                r.clients]):
+            c_extract = r.type.c_extract(name, sub, True)
+        else:
+            try:
+                c_extract = r.type.c_extract(
+                    name, sub, True,
+                    check_broadcast=False)
+            except TypeError, e:
+                c_extract = r.type.c_extract(name, sub, True)
     else:
         c_extract = r.type.c_extract(name, sub, False)
 
@@ -356,8 +367,18 @@ def get_c_extract(r, name, sub):
 
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
-    c_extract = r.type.c_extract_out(name, sub,
-                    getattr(r.owner.op, 'check_input', config.check_input))
+    # check_broadcast is just an hack to easily remove just the
+    # broadcast check on the old GPU back-end. This check isn't
+    # done in the new GPU back-end or on the CPU.
+    check_input = getattr(r.owner.op, 'check_input', config.check_input)
+    if getattr(r.owner.op, 'check_broadcast', True):
+        c_extract = r.type.c_extract_out(name, sub, check_input)
+    else:
+        try:
+            c_extract = r.type.c_extract_out(name, sub, check_input,
+                                             check_broadcast=False)
+        except TypeError, e:
+            c_extract = r.type.c_extract_out(name, sub, check_input)
 
     pre = """
     py_%(name)s = PyList_GET_ITEM(storage_%(name)s, 0);

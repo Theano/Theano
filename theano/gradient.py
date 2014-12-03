@@ -1088,6 +1088,17 @@ def _populate_grad_dict(var_to_app_to_idx,
                 if len(input_grads) != len(inputs):
                     raise ValueError(("%s returned the wrong number of" +
                                       " gradient terms.") % str(node.op))
+# We can not enforce this, as AdvancedSubtensor1 has an option to
+# return the sparse grad for optimization reason.
+
+                    #                for ig, i in zip(input_grads, inputs):
+#                    if (not isinstance(ig.type, (DisconnectedType, NullType)) and
+#                        type(ig.type) != type(i.type)):
+#                        raise ValueError(
+#                            "%s returned the wrong type for gradient terms."
+#                            " Sparse inputs must have sparse grads and dense"
+#                            " inputs must have dense grad. Got %s, expected %s" % (
+#                                str(node.op), ig.type, i.type))
 
             # must convert to list in case the op returns a tuple
             # we won't be able to post-process out the Nones if it does that
@@ -1492,7 +1503,7 @@ class numeric_grad(object):
 
 def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 out_type=None, abs_tol=None,
-                rel_tol=None, mode=None, cast_to_output_type=True):
+                rel_tol=None, mode=None, cast_to_output_type=False):
     """Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:

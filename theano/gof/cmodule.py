@@ -1572,13 +1572,14 @@ class GCC_compiler(object):
                     GCC_compiler.march_flags = []
                     break
 
-        if not "g++" in theano.config.cxx:
+        if ('g++' not in theano.config.cxx and
+            'clang++' not in theano.config.cxx):
             _logger.warn(
                 "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
                 " the g++ compiler. So we disable the compiler optimization"
                 " specific to g++ that tell to compile for a specific CPU."
                 " At worst, this could cause slow down.\n"
-                "         You can add yourself those parameters to the compiler"
+                "         You can add those parameters to the compiler yourself"
                 " via the Theano flag `gcc.cxxflags`."
             )
             detect_march = False
@@ -1836,19 +1837,15 @@ class GCC_compiler(object):
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
-                    # Try to execute the program
-                    try:
-                        out, err, p_ret = output_subprocess_Popen([exe_path])
-                        run_ok = (p_ret == 0)
-                    finally:
-                        os.remove(exe_path)
+                    out, err, p_ret = output_subprocess_Popen([exe_path])
+                    run_ok = (p_ret == 0)
             finally:
                 try:
                     if fd is not None:
                         os.close(fd)
                 finally:
                     os.remove(path)
-
+                    os.remove(exe_path)
         except OSError, e:
             compilation_ok = False
 

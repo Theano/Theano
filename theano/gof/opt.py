@@ -823,6 +823,96 @@ class LocalOptimizer(object):
                 (' ' * level), self.__class__.__name__, id(self))
 
 
+theano.configparser.AddConfigVar('metaopt.verbose',
+        "Enable verbose output for meta optimizers",
+        theano.configparser.BoolParam(False), in_c_key=False)
+
+class LocalMetaOptimizer(LocalOptimizer):
+    """Base class for meta-optimizers that try a set of LocalOptimizers
+    to replace a node and choose the one that executes the fastest"""
+
+    def __init__(self, tracks=None, optimizers=()):
+        self._tracks = tracks
+        self.optimizers = list(optimizers)
+        self.verbose = config.metaopt.verbose
+
+    def register(self, optimizer):
+        self.optimizers.append(optimizer)
+
+    def tracks(self):
+        return self._tracks
+
+    def transform(self, node):
+        # safety check: depending on registration, tracks may have been ignored
+        if self._tracks is not None:
+            if not isinstance(node.op, tuple(self._tracks)):
+                return
+        # first, we need to provide dummy values for all inputs
+        # to the node that are not shared variables anyway
+        givens = {}
+        missing = set()
+        for input in node.inputs:
+            if isinstance(input, theano.compile.SharedVariable):
+                pass
+            elif hasattr(input.tag, 'test_value'):
+                givens[input] = theano.shared(
+                        input.type.filter(input.tag.test_value),
+                        input.name, borrow=True)
+            else:
+                missing.add(input)
+        if missing:
+            givens.update(self.provide_inputs(node, missing))
+            missing.difference_update(givens.keys())
+        # ensure we have data for all input variables that need it
+        if missing:
+            if self.verbose:
+                print ("%s cannot meta-optimize %s, "
+                       "%d of %d input shapes unknown" %
+                       (self.__class__.__name__, node, len(missing), node.nin))
+            return
+        # now we can apply the different optimizations in turn,
+        # compile the resulting subgraphs and time their execution
+        if self.verbose:
+            print ("%s meta-optimizing %s (%d choices):" %
+                   (self.__class__.__name__, node, len(self.optimizers)))
+        timings = []
+        for opt in self.optimizers:
+            outputs = opt.transform(node)
+            if outputs:
+                try:
+                    fn = theano.function([], outputs, givens=givens)
+                    timing = min(self.time_call(fn) for _ in range(3))
+                except Exception as e:
+                    if self.verbose:
+                        print "* %s: exception" % opt, e
+                    continue
+                else:
+                    if self.verbose:
+                        print "* %s: %.5g sec" % (opt, timing)
+                    timings.append((timing, outputs, opt))
+            else:
+                if self.verbose:
+                    print "* %s: not applicable" % opt
+        # finally, we choose the fastest one
+        if timings:
+            timings.sort()
+            if self.verbose:
+                print "= %s" % timings[0][2]
+            return timings[0][1]
+        return
+
+    def provide_inputs(self, node, inputs):
+        """If implemented, returns a dictionary mapping all symbolic variables
+        in ``inputs`` to SharedVariable instances of suitable dummy values. The
+        ``node`` can be inspected to infer required input shapes."""
+        raise NotImplementedError()
+
+    def time_call(self, fn):
+        start = time.time()
+        fn()
+        return time.time() - start
+
+
 class FromFunctionLocalOptimizer(LocalOptimizer):
     """WRITEME"""
     def __init__(self, fn, tracks=None, requirements=()):

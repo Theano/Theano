@@ -1627,7 +1627,7 @@ class SpSum(gof.op.Op):
         return gof.Apply(self, [x], [z])
 
     def perform(self, node, (x,), (z,)):
-        if self.axis == None:
+        if self.axis is None:
             z[0] = numpy.asarray(x.sum())
         else:
             z[0] = numpy.asarray(x.sum(self.axis)).ravel()
@@ -1877,8 +1877,6 @@ class AddSS(gof.op.Op):
         assert x.format in ["csr", "csc"]
         assert y.format in ["csr", "csc"]
         out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
-        if x.type.format != y.type.format:
-            raise NotImplementedError()
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=out_dtype,
@@ -2130,10 +2128,6 @@ class MulSS(gof.op.Op):
         assert x.format in ["csr", "csc"]
         assert y.format in ["csr", "csc"]
         out_dtype = scalar.upcast(x.type.dtype, y.type.dtype)
-        if x.type.format != y.type.format:
-            raise NotImplementedError(
-                    "MulSS not supported for differing types. "
-                    "Got %s and %s." % (str(x.type), str(y.type)))
         return gof.Apply(self, [x, y],
                          [SparseType(dtype=out_dtype,
                                      format=x.type.format
@@ -2244,7 +2238,7 @@ class MulSD(gof.op.Op):
     def grad(self, (x, y), (gz,)):
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_sparse_variable(gz)
-        return y * gz, x * gz
+        return y * gz, dense_from_sparse(x * gz)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
@@ -3715,11 +3709,15 @@ class Dot(gof.op.Op):
         raise NotImplementedError()
 
     def make_node(self, x, y):
-        dtype_out = scalar.upcast(x.type.dtype, y.type.dtype)
+        dtype_out = scalar.upcast(x.dtype, y.dtype)
 
         # Sparse dot product should have at least one sparse variable
         # as input. If the other one is not sparse, it has to be converted
         # into a tensor.
+        if isinstance(x, scipy.sparse.spmatrix):
+            x = as_sparse_variable(x)
+        if isinstance(y, scipy.sparse.spmatrix):
+            y = as_sparse_variable(y)
         x_is_sparse_var = _is_sparse_variable(x)
         y_is_sparse_var = _is_sparse_variable(y)
 

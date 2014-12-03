@@ -9,10 +9,28 @@ import sys
 import theano
 from theano.compat import get_unbound_function
 from theano.compile import optdb
+from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
 from theano.configparser import config, AddConfigVar, StrParam, BoolParam
 import nvcc_compiler
+
+# ignore_newtrees is to speed the optimization as this is the pattern
+# we use for optimization. Otherwise, we can iterate 100s of time on
+# the graph and apply only a few optimizations each time.
+gpu_optimizer = EquilibriumDB(ignore_newtrees=False)
+gpu_seqopt = SequenceDB()
+
+
+def register_opt(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
+                               'gpu', *tags)
+        return local_opt
+    return f
+
+
 
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)

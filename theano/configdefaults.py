@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 
 import theano
@@ -131,20 +132,38 @@ AddConfigVar('mode',
                 'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
         in_c_key=False)
 
-param = StrParam("g++")
+param = "g++"
 
 # Test whether or not g++ is present: disable C code if it is not.
 try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
-    param = StrParam("")
+    param = ""
     rc = 1
+
+# On Mac we test for 'clang++' and use it by default
+if sys.platform == 'darwin':
+    try:
+        rc = call_subprocess_Popen(['clang++', '-v'])
+        param = "clang++"
+    except OSError:
+        pass
+
+# Try to find the full compiler path from the name
+if param != "":
+    import distutils.spawn
+    newp = distutils.spawn.find_executable(param)
+    if newp is not None:
+        param = newp
+    del newp
+    del distutils
+
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             param,
+             StrParam(param),
              in_c_key=False)
 del param
 

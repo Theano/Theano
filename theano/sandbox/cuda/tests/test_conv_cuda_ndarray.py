@@ -35,8 +35,6 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     theano_mode = theano.compile.mode.get_default_mode().including('gpu')
 
-cuda_tensor4 = cuda.CudaNdarrayType([False] * 4)
-
 device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
     cuda.shared_constructor(numpy.zeros(2, dtype='float32'))
@@ -189,13 +187,17 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
     t0 = time.time()
     cpuval = py_conv(npy_img, npy_kern, mode, subsample)
     t1 = time.time()
-    i = cuda_tensor4()
-    k = cuda_tensor4()
+    i = cuda.CudaNdarrayType(
+        broadcastable=[sh == 1 for sh in npy_img.shape])()
+    k = cuda.CudaNdarrayType(
+        broadcastable=[sh == 1 for sh in npy_kern.shape])()
     op = theano.sandbox.cuda.blas.GpuConv(border_mode=mode,
                                           subsample=subsample,
                                           version=version,
                                           verbose=verbose,
                                           kshp=compile_kshp)(i, k)
+    assert [(sh == 1) is br for
+            sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
     f = theano.function([i, k], op, mode=theano_mode)
     if cls is not None:
         assert any([isinstance(node.op, cls)
@@ -905,22 +907,37 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
     npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
     npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
 
-    i = cuda_tensor4()
-    k = cuda_tensor4()
-
     if direction == 'fprop':
+        i = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in npy_img.shape])()
+        k = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in npy_kern.shape])()
+
         cpuval = py_conv(npy_img, npy_kern, 'valid', subsample)
         op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode='valid',
                                                 subsample=subsample)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
         gpuval = f(npy_img, npy_kern[:,:,::-1,::-1])
     elif direction == 'bprop img':
+        i = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in
+                           npy_kern.transpose(1, 0, 2, 3).shape])()
+        k = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in npy_img.shape])()
+
         cpuval = py_conv(npy_img, npy_kern, 'full', subsample)
         op = theano.sandbox.cuda.blas.GpuCorrMM_gradInputs(
             border_mode='valid', subsample=subsample)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
         gpuval = f(npy_kern.transpose(1, 0, 2, 3), npy_img)
     elif direction == 'bprop kern':
+        i = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in
+                           npy_img.transpose(1, 0, 2, 3).shape])()
+        k = cuda.CudaNdarrayType(
+            broadcastable=[sh == 1 for sh in
+                           npy_kern.transpose(1, 0, 2, 3).shape])()
+
         cpuval = py_conv(npy_img, npy_kern, 'valid', subsample)
         op = theano.sandbox.cuda.blas.GpuCorrMM_gradWeights(
             border_mode='valid', subsample=subsample)(i, k)
@@ -971,8 +988,10 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
     npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
 
-    i = cuda_tensor4()
-    k = cuda_tensor4()
+    i = cuda.CudaNdarrayType(
+        broadcastable=[sh == 1 for sh in npy_img.shape])()
+    k = cuda.CudaNdarrayType(
+        broadcastable=[sh == 1 for sh in npy_kern.shape])()
 
     # TODO: also test custom pad values
     corr_op = op(mode, subsample)(i, k)
@@ -1005,13 +1024,16 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
         # skip if the reference implementation can't do it
         pass
 
-    f = theano.function([i, k], outputs, mode=theano_mode)
+    f = theano.function([i, k], outputs, mode=theano_mode.excluding('conv_dnn', 'conv_gemm'))
 
     allvals = f(npy_img, npy_kern)
 
-    for a, b, p in zip(allvals[::2], allvals[1::2],
-                       ('top', 'dtop/dbottom', 'dtop/dweight',
-                        'dtop/dbottom/dweight', 'dtop/dweight/dbottom')):
+    for a, b, oa, ob, p in zip(allvals[::2], allvals[1::2],
+                               outputs[::2], outputs[1::2],
+                               ('top', 'dtop/dbottom', 'dtop/dweight',
+                                'dtop/dbottom/dweight', 'dtop/dweight/dbottom')):
+        assert oa.type.broadcastable[:2] == ob.type.broadcastable[:2]
+
         assert_allclose(a, b, rtol=1e-4)
 
 

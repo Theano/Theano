@@ -25,7 +25,7 @@
 .. note::
 
     As of October 21st, 2014, the default GPU image convolution
-    changed: By default, if :ref:`cuDNN <_libdoc_cuda_dnn>`
+    changed: By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
     is available, we will use it, otherwise we will fall back to using the
     gemm version (slower then cuDNN in most cases, uses more memory, but
     faster than the legacy version we used before).
@@ -45,6 +45,16 @@
     There are two other implementations: An FFT-based convolution integrated
     into Theano, and an implementation by Alex Krizhevsky available via
     Pylearn2. See the documentation below on how to use them.
+
+    As of November 24th, 2014, you can also use a meta-optimizer to
+    automatically choose the fastest implementation for each specific
+    convolution in your graph. For each instance, it will compile and benchmark
+    each applicable implementation of the ones listed below and choose the
+    fastest one. As performance is dependent on input and filter shapes, this
+    only works for operations introduced via nnet.conv2d with fully specified
+    shape information.
+    Enable it via the Theano flag ``optimizer_including=conv_meta``, and
+    optionally set it to verbose mode via the flag `metaopt.verbose=1`.
 
 
 TODO: Give examples on how to use these things! They are pretty complicated.
