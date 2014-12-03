@@ -617,6 +617,16 @@ class ModuleCache(object):
     Older modules will be deleted in ``clear_old``.
     """
 
+    def _get_module(self, name):
+        if name not in self.module_from_name:
+            _logger.debug('loading name %s', name)
+            self.module_from_name[name] = dlimport(name)
+            self.stats[1] += 1
+        else:
+            _logger.debug('returning compiled module from cache %s', name)
+            self.stats[0] += 1
+        return self.module_from_name[name]
+
     def refresh(self, age_thresh_use=None, delete_if_problem=False):
         """Update cache data by walking the cache directory structure.
 
@@ -877,7 +887,146 @@ class ModuleCache(object):
 
         return too_old_to_use
 
-    def module_from_key(self, key, fn=None, keep_lock=False, key_data=None):
+    def _get_from_key(self, key, key_data=None):
+        """
+        Returns a module if the passed-in key is found in the cache
+        and None otherwise.
+
+        May raise ValueError if the key is malformed.
+        """
+        name = None
+        if key is not None:
+            assert key_data is None
+            try:
+                _version, _rest = key
+            except (TypeError, ValueError):
+                raise ValueError(
+                    "Invalid key. key must have form (version, rest)", key)
+            if name in self.entry_from_key:
+                name = self.entry_from_key[key]
+        else:
+            assert key_data is not None
+            name = key_data.get_entry()
+        if name is None:
+            return None
+        return self._get_module(name)
+
+    def _get_from_hash(self, module_hash, key, keep_lock=False):
+        if module_hash in self.module_hash_to_key_data:
+            _logger.debug("Duplicated module! Will re-use the "
+                          "previous one")
+            key_data = self.module_hash_to_key_data[module_hash]
+            module = self._get_from_key(None, key_data)
+            lock_taken = False
+            try:
+                compilelock.get_lock()
+                lock_taken = True
+                key_data.add_key(key, save_pkl=bool(key[0]))
+                key_broken = False
+            except cPickle.PicklingError:
+                key_data.remove_key(key)
+                key_broken = True
+            finally:
+                if lock_taken and not keep_lock:
+                    compilelock.release_lock()
+            if (key[0] and not key_broken and
+                self.check_for_broken_eq):
+                self.check_key(key, key_data.key_pkl)
+            self._update_mappings(key, key_data, module.__file__)
+            return module
+        else:
+            return None
+
+    def _update_mappings(self, key, key_data, name):
+        all_keys = key_data.keys
+        if not all_keys:
+            all_keys = [key]
+        assert key in all_keys
+        for k in all_keys:
+            if k in self.entry_from_key:
+                assert self.entry_from_key[k] == name
+            else:
+                self.entry_from_key[k] = name
+                if key[0]:
+                    self.similar_keys.setdefault(get_safe_part(k),
+                                                 []).append(key)
+
+    def _compile_code(self, compile_steps):
+        """
+        Compiles the passed-in source code.
+
+        This expects that the compile lock is held during the call.
+        """
+        location = None
+        try:
+            location = dlimport_workdir(self.dirname)
+        except OSError, e:
+            _logger.error(e)
+            if e.errno == 31:
+                _logger.error('There are %i files in %s',
+                              len(os.listdir(config.compiledir)),
+                              config.compiledir)
+            raise
+
+        try:
+            while True:
+                try:
+                    # The module should be returned by the last
+                    # step of the compilation.
+                    module = next(compile_steps)
+                except StopIteration:
+                    break
+                name = module.__file__
+                assert name.startswith(location)
+                assert name not in self.module_from_name
+                return module
+        except Exception:
+            _rmtree(location, ignore_if_missing=True,
+                    msg='exception during compilation')
+            raise
+
+    def _add_to_cache(self, module, key, module_hash):
+        """
+        This function expects the compile lock to be held.
+        """
+        name = module.__file__
+        _logger.debug("Adding module to cache %s %s",
+                      key, name)
+        # Changing the hash of the key is not allowed during
+        # compilation. That is the only cause found that makes
+        # the following assert fail.
+        assert key not in self.entry_from_key
+
+        key_pkl = os.path.join(location, 'key.pkl')
+        assert not os.path.exists(key_pkl)
+        key_data = KeyData(
+            keys=set([key]),
+            module_hash=module_hash,
+            key_pkl=key_pkl,
+            entry=name)
+
+        if key[0]:
+            try:
+                key_data.save_pkl()
+                key_broken = False
+            except cPickle.PicklingError:
+                key_broken = True
+                key_data.remove_key(key)
+                key_data.save_pkl()
+            if not key_broken and self.check_for_broken_eq:
+                self.check_key(key, key_pkl)
+            self.loaded_key_pkl.add(key_pkl)
+        elif config.cmodule.warn_no_version:
+            key_flat = flatten(key)
+            ops = [k for k in key_flat if isinstance(k, theano.Op)]
+            _logger.warning("not all the"
+                            " following op(s) implement"
+                            " c_code_cache_version(). This makes them"
+                            " recompiled for each process." + str(ops))
+        self._update_mappings(key, key_data, module)
+        return key_data
+
+    def module_from_key(self, key, fn=None, keep_lock=False):
         """
         :param fn: A callable object that will return an iterable object when
         called, such that the first element in this iterable object is the
@@ -885,235 +1034,53 @@ class ModuleCache(object):
         `fn` is called only if the key is not already in the cache, with
         a single keyword argument `location` that is the path to the directory
         where the module should be compiled.
-
-        :param key_data: If not None, it should be a KeyData object and the
-        key parameter should be None. In this case, we use the info from the
-        KeyData object to recover the module, rather than the key itself. Note
-        that this implies the module already exists (and may or may not have
-        already been loaded).
         """
-        # We should only use one of the two ways to get a module.
-        assert key_data is None or key is None
-        rval = None
-        if key is not None:
-            try:
-                _version, _rest = key
-            except (TypeError, ValueError):
-                raise ValueError(
-                        "Invalid key. key must have form (version, rest)", key)
-        name = None
-        if key is not None and key in self.entry_from_key:
-            # We have seen this key either in this process or previously.
-            name = self.entry_from_key[key]
-        elif key_data is not None:
-            name = key_data.get_entry()
-        if name is not None:
-            # This is an existing module we can recover.
-            if name not in self.module_from_name:
-                _logger.debug('loading name %s', name)
-                self.module_from_name[name] = dlimport(name)
-                self.stats[1] += 1
-            else:
-                self.stats[0] += 1
-            _logger.debug('returning compiled module from cache %s', name)
-            rval = self.module_from_name[name]
-        else:
+        # Is the module in the cache?
+        module = self._get_from_key(key)
+        if module is not None:
+            return module
+
+        # Is the source code already in the cache?
+        compile_steps = fn(location=location).__iter__()
+        src_code = next(compile_steps)
+        module_hash = get_module_hash(src_code, key)
+        module = self._get_from_hash(module_hash, key, keep_lock=keep_lock)
+        if module is not None:
+            return module
+
+        # Compile the module since it's not cached
+        try:
+            # The op has c_code, so take the lock.
+            compilelock.get_lock()
+            lock_taken = True
+            # Maybe somebody else compiled it for us while we
+            # where waiting for the lock. Try to load it again
+            self.refresh()
+            module = self._get_from_key(key)
+            if module is not None:
+                return module
+
+            module = self._get_from_hash(module_hash, key, keep_lock=keep_lock)
+            if module is not None:
+                return module
+
             hash_key = hash(key)
-            key_data = None
-            # We have never seen this key before.
 
-            # We acquire the lock later only if we were able to
-            # generate C code. Otherwise, we would take the lock for ops
-            # that have only a perform().
-            lock_taken = False
-            # This try/finally block ensures that the lock is released once we
-            # are done writing in the cache file or after raising an exception.
-            try:
-                # Embedding two try statements for Python 2.4 compatibility
-                # (cannot do try / except / finally).
-                try:
-                    location = dlimport_workdir(self.dirname)
-                except OSError, e:
-                    _logger.error(e)
-                    if e.errno == 31:
-                        _logger.error('There are %i files in %s',
-                                      len(os.listdir(config.compiledir)),
-                                      config.compiledir)
-                    raise
-                try:
-                    compile_steps = fn(location=location).__iter__()
+            module = self._compile_module(compile_steps)
 
-                    # Check if we already know a module with the same hash.
-                    # If we do, then there is no need to even compile it.
-                    duplicated_module = False
-                    # The first compilation step is to yield the source code.
-                    src_code = next(compile_steps)
-                    module_hash = get_module_hash(src_code, key)
+            # Changing the hash of the key is not allowed during
+            # compilation.
+            assert hash(key) == hash_key
 
-                    # The op has c_code, so take the lock.
-                    compilelock.get_lock()
-                    lock_taken = True
+            key_data = self._add_to_cache(module, key)
+            self.module_hash_to_key_data[module_hash] = key_data
+        finally:
+            # Release lock if needed.
+            if not keep_lock and lock_taken:
+                compilelock.release_lock()
 
-                    if not os.path.exists(location):
-                        # Temporary fix, we should make sure it don't
-                        # get deleted by the clear*() fct.
-                        os.makedirs(location)
-
-                    if module_hash in self.module_hash_to_key_data:
-                        _logger.debug("Duplicated module! Will re-use the "
-                                      "previous one")
-                        duplicated_module = True
-                        # Load the already existing module.
-                        key_data = self.module_hash_to_key_data[module_hash]
-                        # Note that we do not pass the `fn` argument, since it
-                        # should not be used considering that the module should
-                        # already be compiled.
-                        module = self.module_from_key(key=None,
-                                                      key_data=key_data)
-                        name = module.__file__
-                        # Add current key to the set of keys associated to the
-                        # same module. We only save the KeyData object of
-                        # versioned modules.
-                        try:
-                            key_data.add_key(key, save_pkl=bool(_version))
-                            key_broken = False
-                        except cPickle.PicklingError:
-                            # This should only happen if we tried to save the
-                            # pickled file.
-                            assert _version
-                            # The key we are trying to add is broken: we will
-                            # not add it after all.
-                            key_data.remove_key(key)
-                            key_broken = True
-
-                        if (_version and not key_broken and
-                            self.check_for_broken_eq):
-                            self.check_key(key, key_data.key_pkl)
-
-                        # We can delete the work directory.
-                        _rmtree(location, ignore_nocleanup=True,
-                                msg='temporary workdir of duplicated module')
-
-                    else:
-                        # Will fail if there is an error compiling the C code.
-                        # The exception will be caught and the work dir will be
-                        # deleted.
-                        while True:
-                            try:
-                                # The module should be returned by the last
-                                # step of the compilation.
-                                module = next(compile_steps)
-                            except StopIteration:
-                                break
-
-                        # Obtain path to the '.so' module file.
-                        name = module.__file__
-
-                        _logger.debug("Adding module to cache %s %s",
-                                      key, name)
-                        assert name.startswith(location)
-                        assert name not in self.module_from_name
-                        # Changing the hash of the key is not allowed during
-                        # compilation. That is the only cause found that makes
-                        # the following assert fail.
-                        assert hash(key) == hash_key
-                        assert key not in self.entry_from_key
-
-                        key_pkl = os.path.join(location, 'key.pkl')
-                        assert not os.path.exists(key_pkl)
-                        key_data = KeyData(
-                                keys=set([key]),
-                                module_hash=module_hash,
-                                key_pkl=key_pkl,
-                                entry=name)
-
-                        # Note that we only save KeyData objects associated to
-                        # versioned modules. So for unversioned key, the
-                        # `key_pkl` field of the KeyData object will be a
-                        # non-existing file (which does not matter since it
-                        # will not be accessed).
-                        if _version:
-                            try:
-                                key_data.save_pkl()
-                                key_broken = False
-                            except cPickle.PicklingError:
-                                key_broken = True
-                                # Remove key from the KeyData object, to make
-                                # sure we never try to save it again.
-                                # We still keep the KeyData object and save it
-                                # so that the module can be re-used in the
-                                # future.
-                                key_data.keys = set()
-                                key_data.save_pkl()
-
-                            if not key_broken and self.check_for_broken_eq:
-                                self.check_key(key, key_pkl)
-
-                            # Adding the KeyData file to this set means it is a
-                            # versioned module.
-                            self.loaded_key_pkl.add(key_pkl)
-                        elif config.cmodule.warn_no_version:
-                            key_flat = flatten(key)
-                            ops = [k for k in key_flat
-                                   if isinstance(k, theano.Op)]
-                            _logger.warning("not all the"
-                                " following op(s) implement"
-                                " c_code_cache_version(). This makes them"
-                                " recompiled for each process." + str(ops))
-
-                        # Map the new module to its KeyData object. Note that
-                        # we need to do it regardless of whether the key is
-                        # versioned or not if we want to be able to re-use this
-                        # module inside the same process.
-                        self.module_hash_to_key_data[module_hash] = key_data
-
-                except Exception:
-                    # This may happen e.g. when an Op has no C implementation.
-                    # In any case, we do not want to keep around the temporary
-                    # work directory, as it may cause trouble if we create too
-                    # many of these. The 'ignore_if_missing' flag is set just
-                    # in case this directory would have already been deleted.
-                    _rmtree(location, ignore_if_missing=True,
-                            msg=('exception -- '
-                                 'typically means no C implementation'))
-                    raise
-
-            finally:
-                # Release lock if needed.
-                if not keep_lock and lock_taken:
-                    compilelock.release_lock()
-
-            # Update map from key to module name for all keys associated to
-            # this same module.
-            all_keys = key_data.keys
-            if not all_keys:
-                # Should only happen for broken keys.
-                assert key_broken
-                all_keys = [key]
-            else:
-                assert key in key_data.keys
-            for k in all_keys:
-                if k in self.entry_from_key:
-                    # If we had already seen this key, then it should be
-                    # associated to the same module.
-                    assert self.entry_from_key[k] == name
-                else:
-                    self.entry_from_key[k] = name
-                    if _version:
-                        self.similar_keys.setdefault(get_safe_part(k),
-                                                     []).append(key)
-
-            if name in self.module_from_name:
-                # May happen if we are re-using an existing module.
-                assert duplicated_module
-                assert self.module_from_name[name] is module
-            else:
-                self.module_from_name[name] = module
-
-            self.stats[2] += 1
-            rval = module
-        #_logger.debug('stats %s %i', self.stats, sum(self.stats))
-        return rval
+        self.stats[2] += 1
+        return module
 
     def check_key(self, key, key_pkl):
         """
