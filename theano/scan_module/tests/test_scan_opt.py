@@ -160,9 +160,9 @@ class TestPushOutScanOutputDot(object):
         f_opt = theano.function([v, m], T.jacobian(output, v))
 
         default_mode = theano.compile.get_default_mode()
-        default_mode.excluding("scanOp_pushout_output")
+        new_mode = default_mode.excluding("scanOp_pushout_output")
         f_no_opt = theano.function([v, m], T.jacobian(output, v),
-                                   mode=default_mode)
+                                   mode=new_mode)
 
         # Ensure that the optimization was performed correctly in f_opt
         # The inner function of scan should have only one output and it should
@@ -251,8 +251,8 @@ class TestPushOutScanOutputDot(object):
         f_opt = theano.function([a, b], outputs)
 
         default_mode = theano.compile.get_default_mode()
-        default_mode.excluding("scanOp_pushout_output")
-        f_no_opt = theano.function([a, b], outputs, mode=default_mode)
+        new_mode = default_mode.excluding("scanOp_pushout_output")
+        f_no_opt = theano.function([a, b], outputs, mode=new_mode)
 
         # Ensure that the optimization was performed correctly in f_opt
         # The inner function of scan should have only one output and it should
