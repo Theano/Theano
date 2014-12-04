@@ -601,8 +601,6 @@ class DownsampleFactorMaxGradGrad(Op):
             z[0] = theano._asarray(z[0], dtype=x.dtype)
         ggz = z[0]
 
-        ## zz needs to be initialized with -inf for the following to work
-        ggz -= numpy.inf
         #number of pooling output rows
         pr = ggz.shape[-2]
         #number of pooling output cols
