@@ -147,11 +147,12 @@ def test_transinv_to_invtrans():
     Y = tensor.nlinalg.matrix_inverse(X)
     Z = Y.transpose()
     f = theano.function([X], Z)
-    for node in f.maker.fgraph.toposort():
-        if isinstance(node.op, MatrixInverse):
-            assert isinstance(node.inputs[0].owner.op, DimShuffle)
-        if isinstance(node.op, DimShuffle):
-            assert node.inputs[0].name == 'X'
+    if config.mode != 'FAST_COMPILE':
+        for node in f.maker.fgraph.toposort():
+            if isinstance(node.op, MatrixInverse):
+                assert isinstance(node.inputs[0].owner.op, DimShuffle)
+            if isinstance(node.op, DimShuffle):
+                assert node.inputs[0].name == 'X'
 
 
 def test_tag_solve_triangular():
@@ -164,13 +165,12 @@ def test_tag_solve_triangular():
     b1 = solve(L, x)
     b2 = solve(U, x)
     f = theano.function([A,x], b1)
-    for node in f.maker.fgraph.toposort():
-        if isinstance(node.op, Solve):
-            assert node.op.A_structure == 'lower_triangular'
+    if config.mode != 'FAST_COMPILE':
+        for node in f.maker.fgraph.toposort():
+            if isinstance(node.op, Solve):
+                assert node.op.A_structure == 'lower_triangular'
     f = theano.function([A,x], b2)
-    for node in f.maker.fgraph.toposort():
-        if isinstance(node.op, Solve):
-            assert node.op.A_structure == 'upper_triangular'
-
-
-        
+    if config.mode != 'FAST_COMPILE':
+        for node in f.maker.fgraph.toposort():
+            if isinstance(node.op, Solve):
+                assert node.op.A_structure == 'upper_triangular'
