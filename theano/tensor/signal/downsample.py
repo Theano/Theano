@@ -375,7 +375,7 @@ class DownsampleFactorMaxGrad(Op):
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == x[n, k, row_ind, col_ind]):
-                                    gx[n, k, row_ind, col_ind] = gz[n, k, r, c]
+                                    gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
         gx_stg[0] = gx
 
     def infer_shape(self, node, in_shapes):
