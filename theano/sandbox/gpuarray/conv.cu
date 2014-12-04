@@ -154,7 +154,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
-    const float * kern_data_unflipped = cuda_get_ptr(kern);
+    const float * kern_data_unflipped = cuda_get_ptrf(kern);
     int kern_stride_col_unflipped=kern_stride_col;
     int kern_stride_row_unflipped=kern_stride_row;
     if(kern_stride_col_unflipped==-1 && kern_stride_row_unflipped==-kern_wid){
@@ -163,7 +163,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
       kern_stride_row_unflipped=kern_wid;
       kern_flipped=false;
       kern_contiguous_2d_unflipped = true;
-      kern_data_unflipped=&(cuda_get_ptr(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
+      kern_data_unflipped=&(cuda_get_ptrf(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
     //if we remove the restriction
@@ -208,7 +208,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         CONV_PATCH_SPECIAL(THEANO_KERN_WID);
 
          f<<< grid, threads, shared_size>>>
-             (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
+             (cuda_get_ptrf(img), cuda_get_ptrf(kern), cuda_get_ptrf(out),
               img_len, img_wid, kern_len, kern_wid, nkern, nstack);
 
         cudaError_t sts = cudaGetLastError();
@@ -301,7 +301,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
         CONV_PATCH_STACK_SPECIAL(THEANO_KERN_WID);
         f<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
+            (cuda_get_ptrf(img), cuda_get_ptrf(kern), cuda_get_ptrf(out),
               img_len, img_wid, kern_len, kern_wid, 
               out_len, out_wid, nkern, nstack,
               img_stride_col, img_stride_row, img_stride_stack,
@@ -384,7 +384,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
         CONV_ROWS_SPECIAL(THEANO_KERN_WID);
         f<<< grid, threads, shared_size >>>
-            (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
+            (cuda_get_ptrf(img), cuda_get_ptrf(kern), cuda_get_ptrf(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
            img_stride_col, img_stride_row,
            img_stride_stack,img_stride_batch,
@@ -455,9 +455,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         }
 
         f<<< grid, threads, shared_size >>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
+            (cuda_get_ptrf(img),
+             cuda_get_ptrf(kern),
+             cuda_get_ptrf(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
            img_stride_col, img_stride_row,
            img_stride_stack,img_stride_batch,
@@ -542,9 +542,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         CONV_ROWS_STACK2_SPECIAL(THEANO_KERN_WID);
 
         f<<< grid, threads, shared_size >>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
+            (cuda_get_ptrf(img),
+             cuda_get_ptrf(kern),
+             cuda_get_ptrf(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
            img_stride_col, img_stride_row,
            img_stride_stack,img_stride_batch,
@@ -680,7 +680,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                 else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
             CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
-            f<<< grid, threads, shared_size>>>(cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
+            f<<< grid, threads, shared_size>>>(cuda_get_ptrf(img), kern_data_unflipped, cuda_get_ptrf(out),
                                                img_len, img_wid, kern_len, kern_wid,
                                                nkern, nstack,
                                                img_stride_col, img_stride_row, img_stride_stack, img_stride_batch,
@@ -776,13 +776,13 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                 img_len, img_wid,
                 kern_len, kern_wid,
                 out_len, out_wid,
-                cuda_get_ptr(img),
+                cuda_get_ptrf(img),
                 PyGpuArray_STRIDES(img)[0]/4, PyGpuArray_STRIDES(img)[1]/4, 
                 img_stride_row, img_stride_col,
-                cuda_get_ptr(kern),
+                cuda_get_ptrf(kern),
                 PyGpuArray_STRIDES(kern)[0]/4, PyGpuArray_STRIDES(kern)[1]/4,
                 PyGpuArray_STRIDES(kern)[2]/4, PyGpuArray_STRIDES(kern)[3]/4,
-                cuda_get_ptr(out),
+                cuda_get_ptrf(out),
                 PyGpuArray_STRIDES(out)[0]/4, PyGpuArray_STRIDES(out)[1]/4,
                 PyGpuArray_STRIDES(out)[2]/4, PyGpuArray_STRIDES(out)[3]/4,
                 subsample_rows, subsample_cols, initial_reduce_boundary);
@@ -825,7 +825,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                       "%lld %lld %lld %lld\n",
                       nbatch, (unsigned long long)PyGpuArray_DIMS(img)[1],
                       img_len, img_wid,
-                      cuda_get_ptr(img),
+                      cuda_get_ptrf(img),
                       (long long)PyGpuArray_STRIDES(img)[0]/4,
                       (long long)PyGpuArray_STRIDES(img)[1]/4,
                       (long long)PyGpuArray_STRIDES(img)[2]/4,
@@ -834,7 +834,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
               fprintf(stderr, "      kern: %i %i %i %i %p  "
                       "%lld %lld %lld %lld\n",
                       nkern, nstack, kern_len, kern_wid,
-                      cuda_get_ptr(kern),
+                      cuda_get_ptrf(kern),
                       (long long)PyGpuArray_STRIDES(kern)[0]/4,
                       (long long)PyGpuArray_STRIDES(kern)[1]/4,
                       (long long)PyGpuArray_STRIDES(kern)[2]/4,
@@ -845,7 +845,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                       (unsigned long long)PyGpuArray_DIMS(out)[0],
                       (unsigned long long)PyGpuArray_DIMS(out)[1],
                       out_len, out_wid,
-                      cuda_get_ptr(out),
+                      cuda_get_ptrf(out),
                       (long long)PyGpuArray_STRIDES(out)[0]/4,
                       (long long)PyGpuArray_STRIDES(out)[1]/4,
                       (long long)PyGpuArray_STRIDES(out)[2]/4,
@@ -859,17 +859,17 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                 img_len, img_wid,
                 kern_len, kern_wid,
                 out_len, out_wid,
-                cuda_get_ptr(img),
+                cuda_get_ptrf(img),
                 PyGpuArray_STRIDES(img)[0]/4,
                 PyGpuArray_STRIDES(img)[1]/4,
                 PyGpuArray_STRIDES(img)[2]/4,
                 PyGpuArray_STRIDES(img)[3]/4,
-                cuda_get_ptr(kern),
+                cuda_get_ptrf(kern),
                 PyGpuArray_STRIDES(kern)[0]/4,
                 PyGpuArray_STRIDES(kern)[1]/4,
                 PyGpuArray_STRIDES(kern)[2]/4,
                 PyGpuArray_STRIDES(kern)[3]/4,
-                cuda_get_ptr(out),
+                cuda_get_ptrf(out),
                 PyGpuArray_STRIDES(out)[0]/4,
                 PyGpuArray_STRIDES(out)[1]/4,
                 PyGpuArray_STRIDES(out)[2]/4,
@@ -999,7 +999,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
     //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
-    const float * kern_data_unflipped = cuda_get_ptr(kern);
+    const float * kern_data_unflipped = cuda_get_ptrf(kern);
     int kern_stride_col_unflipped=kern_stride_col;
     int kern_stride_row_unflipped=kern_stride_row;
     if(kern_stride_col_unflipped==-1 && kern_stride_row_unflipped==-kern_wid){
@@ -1008,7 +1008,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
       kern_stride_row_unflipped=kern_wid;
       kern_flipped=false;
       kern_contiguous_2d_unflipped = true;
-      kern_data_unflipped=&(cuda_get_ptr(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
+      kern_data_unflipped=&(cuda_get_ptrf(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
     if (verbose>1)
@@ -1121,7 +1121,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         CONV_FULL_PATCH_STACK_PADDED_SPECIAL(THEANO_KERN_WID);
 
         f<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
+            (cuda_get_ptrf(img), kern_data_unflipped, cuda_get_ptrf(out),
               img_len, img_wid, kern_len, kern_wid, nkern, nstack,
               img_stride_col, img_stride_row, img_stride_stack,
               img_stride_batch, kern_stride_col_unflipped, kern_stride_row_unflipped,
@@ -1180,9 +1180,9 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         //TODO assert c_continious for img, kern and out in the 2 inner dimensions.
 
         conv_full_patch<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
+            (cuda_get_ptrf(img),
+             cuda_get_ptrf(kern),
+             cuda_get_ptrf(out),
            img_len, img_wid,
            kern_len, kern_wid,
            nkern, nstack);
@@ -1228,9 +1228,9 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         f = conv_full_load_everything<THEANO_KERN_WID>;
 
         f<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
+            (cuda_get_ptrf(img),
+             cuda_get_ptrf(kern),
+             cuda_get_ptrf(out),
            img_len, img_wid, 
            kern_len, kern_wid,
            nkern, nstack,
@@ -1288,9 +1288,9 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         else if(!img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack<false,false>;
 
         f<<< grid, threads, shared_size>>>(
-                cuda_get_ptr(img),
-                cuda_get_ptr(kern),
-                cuda_get_ptr(out),
+                cuda_get_ptrf(img),
+                cuda_get_ptrf(kern),
+                cuda_get_ptrf(out),
                 img_len, img_wid,
                 kern_len, kern_wid,
                 nkern, nstack,img_stride_col, img_stride_row,
@@ -1336,7 +1336,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                       (unsigned long long)PyGpuArray_DIMS(img)[1],
                       (unsigned long long)PyGpuArray_DIMS(img)[2],
                       (unsigned long long)PyGpuArray_DIMS(img)[3],
-                      cuda_get_ptr(img),
+                      cuda_get_ptrf(img),
                       (long long)PyGpuArray_STRIDES(img)[0]/4,
                       (long long)PyGpuArray_STRIDES(img)[1]/4,
                       (long long)PyGpuArray_STRIDES(img)[2]/4,
@@ -1348,7 +1348,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                       (unsigned long long)PyGpuArray_DIMS(kern)[1],
                       (unsigned long long)PyGpuArray_DIMS(kern)[2],
                       (unsigned long long)PyGpuArray_DIMS(kern)[3],
-                      cuda_get_ptr(kern),
+                      cuda_get_ptrf(kern),
                       (long long)PyGpuArray_STRIDES(kern)[0]/4,
                       (long long)PyGpuArray_STRIDES(kern)[1]/4,
                       (long long)PyGpuArray_STRIDES(kern)[2]/4,
@@ -1361,7 +1361,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                       (unsigned long long)PyGpuArray_DIMS(out)[1],
                       (unsigned long long)PyGpuArray_DIMS(out)[2],
                       (unsigned long long)PyGpuArray_DIMS(out)[3],
-                      cuda_get_ptr(out),
+                      cuda_get_ptrf(out),
                       (long long)PyGpuArray_STRIDES(out)[0]/4,
                       (long long)PyGpuArray_STRIDES(out)[1]/4,
                       (long long)PyGpuArray_STRIDES(out)[2]/4,
@@ -1380,15 +1380,15 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                 PyGpuArray_DIMS(img)[2], PyGpuArray_DIMS(img)[3],
                 PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
                 PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
-                cuda_get_ptr(img), PyGpuArray_STRIDES(img)[0]/4,
+                cuda_get_ptrf(img), PyGpuArray_STRIDES(img)[0]/4,
                 PyGpuArray_STRIDES(img)[1]/4,
                 PyGpuArray_STRIDES(img)[2]/4,
                 PyGpuArray_STRIDES(img)[3]/4,
-                cuda_get_ptr(kern), PyGpuArray_STRIDES(kern)[0]/4,
+                cuda_get_ptrf(kern), PyGpuArray_STRIDES(kern)[0]/4,
                 PyGpuArray_STRIDES(kern)[1]/4,
                 PyGpuArray_STRIDES(kern)[2]/4,
                 PyGpuArray_STRIDES(kern)[3]/4,
-                cuda_get_ptr(out), PyGpuArray_STRIDES(out)[0]/4,
+                cuda_get_ptrf(out), PyGpuArray_STRIDES(out)[0]/4,
                 PyGpuArray_STRIDES(out)[1]/4,
                 PyGpuArray_STRIDES(out)[2]/4,
                 PyGpuArray_STRIDES(out)[3]/4,

@@ -12,6 +12,8 @@ class GpuConv(gof.Op):
     """
     Implement the batched and stacked 2d convolution on the gpu.
     """
+    context_type = gpu_context_type
+
     @staticmethod
     def logical_output_shape_2d(imshp, kshp, mode):
         if mode == 'valid':
@@ -79,6 +81,9 @@ class GpuConv(gof.Op):
         self.imshp = imshp
         self.max_threads_dim0 = max_threads_dim0
         self.context = context
+
+    def get_context(self, node):
+        return self.context
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -151,22 +156,21 @@ class GpuConv(gof.Op):
 
     def c_headers(self):
         return ['<stdio.h>', 'cuda.h',
-                '<gpuarray/extension.h>', '<numpy_compat.h>']
+                '<gpuarray/ext_cuda.h>', '<numpy_compat.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
+        return (0, 22)
 
     def c_init_code(self):
-        return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
+        return ['setup_ext_cuda();']
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
         files = ['conv_kernel.cu', 'conv_full_kernel.cu', 'conv.cu']
-        codes = ["CUdeviceptr (*cuda_get_ptr_raw)(gpudata *g);",
-                 "float* cuda_get_ptr(PyGpuArrayObject * o){return (float*) (cuda_get_ptr_raw(o->ga.data) + o->ga.offset);}",
-                 "const float* cuda_get_ptr(const PyGpuArrayObject * o){return (float*) (cuda_get_ptr_raw(o->ga.data) + o->ga.offset);}"]
+        codes = ["float* cuda_get_ptrf(PyGpuArrayObject * o){return (float*) (cuda_get_ptr(o->ga.data) + o->ga.offset);}",
+                 "const float* cuda_get_ptrf(const PyGpuArrayObject * o){return (float*) (cuda_get_ptr(o->ga.data) + o->ga.offset);}"]
         codes += [open(os.path.join(os.path.split(__file__)[0], f)).read()
                   for f in files]
         return reduce(str.__add__, codes)
@@ -216,6 +220,7 @@ class GpuConv(gof.Op):
         return NULL;
     }
 
+    cuCtxPushCurrent(cuda_get_ctx(%(context)s->ctx));
     // TODO, make out be decref before we alloc out2!
     PyGpuArrayObject * out2 = (PyGpuArrayObject *)PyGpuArray_Conv(
                                                          %(img)s, %(kern)s,
@@ -223,6 +228,7 @@ class GpuConv(gof.Op):
                                                          dx, dy,
                                                          version, verbose,
                                                          %(max_threads_dim0)s);
+    cuCtxPopCurrent(NULL);
     Py_XDECREF(%(out)s);
     %(out)s = out2;
 
