@@ -1282,26 +1282,19 @@ class CLinker(link.Linker):
                 return ((), sig)
         return version, sig
 
+    def get_src_code(self):
+        """
+        Returns the source code for the module represented by this linker.
+        """
+        if not hasattr(self, '_source'):
+            mod = self.build_dynamic_module()
+            self._source = mod.code()
+        return self._source
+
     def compile_cmodule(self, location=None):
         """
-        Compile the module and return it.
-        """
-        # Go through all steps of the compilation process.
-        for step_result in self.compile_cmodule_by_step(location=location):
-            pass
-        # And return the output of the last step, which should be the module
-        # itself.
-        return step_result
-
-    def compile_cmodule_by_step(self, location=None):
-        """
-        This method is a callback for `ModuleCache.module_from_key`.
-
-        It is a generator (thus the 'by step'), so that:
-            - it first yields the module's C code
-            - it last yields the module itself
-            - it may yield other intermediate outputs in-between if needed
-              in the future (but this is not currently the case)
+        This compiles the source code for this linker and returns a
+        loaded module.
         """
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
@@ -1324,48 +1317,46 @@ class CLinker(link.Linker):
             if 'amdlibm' in libs:
                 libs.remove('amdlibm')
         src_code = mod.code()
-        yield src_code
         get_lock()
         try:
             _logger.debug("LOCATION %s", str(location))
-            try:
-                module = c_compiler.compile_str(
-                    module_name=mod.code_hash,
-                    src_code=src_code,
-                    location=location,
-                    include_dirs=self.header_dirs(),
-                    lib_dirs=self.lib_dirs(),
-                    libs=libs,
-                    preargs=preargs)
-            except Exception, e:
-                e.args += (str(self.fgraph),)
-                raise
+            module = c_compiler.compile_str(
+                module_name=mod.code_hash,
+                src_code=mod.code(),
+                location=location,
+                include_dirs=self.header_dirs(),
+                lib_dirs=self.lib_dirs(),
+                libs=libs,
+                preargs=preargs)
+        except Exception, e:
+            e.args += (str(self.fgraph),)
+            raise
         finally:
             release_lock()
-
-        yield module
+        return module
 
     def build_dynamic_module(self):
         """Return a cmodule.DynamicModule instance full of the code
         for our fgraph.
         """
-        self.code_gen()
+        if not hasattr(self, '_mod'):
+            self.code_gen()
 
-        mod = cmodule.DynamicModule()
+            mod = cmodule.DynamicModule()
 
-        # The code of instantiate
-        # the 1 is for error_storage
-        code = self.instantiate_code(1 + len(self.args))
-        instantiate = cmodule.ExtFunction('instantiate', code,
-                                          method=cmodule.METH_VARARGS)
+            # The code of instantiate
+            # the 1 is for error_storage
+            code = self.instantiate_code(1 + len(self.args))
+            instantiate = cmodule.ExtFunction('instantiate', code,
+                                              method=cmodule.METH_VARARGS)
                 #['error_storage'] + argnames,
                 #local_dict = d,
                 #global_dict = {})
 
-        # Static methods that can run and destroy the struct built by
-        # instantiate.
-        if PY3:
-            static = """
+            # Static methods that can run and destroy the struct built by
+            # instantiate.
+            if PY3:
+                static = """
         static int {struct_name}_executor({struct_name} *self) {{
             return self->run();
         }}
@@ -1375,8 +1366,8 @@ class CLinker(link.Linker):
             delete self;
         }}
         """.format(struct_name=self.struct_name)
-        else:
-            static = """
+            else:
+                static = """
         static int %(struct_name)s_executor(%(struct_name)s* self) {
             return self->run();
         }
@@ -1387,17 +1378,17 @@ class CLinker(link.Linker):
         """ % dict(struct_name=self.struct_name)
 
         # We add all the support code, compile args, headers and libs we need.
-        for support_code in self.support_code() + self.c_support_code_apply:
-            mod.add_support_code(support_code)
-        mod.add_support_code(self.struct_code)
-        mod.add_support_code(static)
-        mod.add_function(instantiate)
-        for header in self.headers():
-            mod.add_include(header)
-        for init_code_block in self.init_code() + self.c_init_code_apply:
-            mod.add_init_code(init_code_block)
-
-        return mod
+            for support_code in self.support_code() + self.c_support_code_apply:
+                mod.add_support_code(support_code)
+            mod.add_support_code(self.struct_code)
+            mod.add_support_code(static)
+            mod.add_function(instantiate)
+            for header in self.headers():
+                mod.add_include(header)
+            for init_code_block in self.init_code() + self.c_init_code_apply:
+                mod.add_init_code(init_code_block)
+            self._mod = mod
+        return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
                        keep_lock=False):
@@ -1421,7 +1412,7 @@ class CLinker(link.Linker):
             module = self.compile_cmodule()
         else:
             module = get_module_cache().module_from_key(
-                key=key, fn=self.compile_cmodule_by_step, keep_lock=keep_lock)
+                key=key, lnk=self, keep_lock=keep_lock)
 
         vars = self.inputs + self.outputs + self.orphans
         # List of indices that should be ignored when passing the arguments

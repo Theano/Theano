@@ -995,42 +995,38 @@ class ModuleCache(object):
         self._update_mappings(key, key_data, module.__file__)
         return key_data
 
-    def module_from_key(self, key, fn=None, keep_lock=False):
+    def module_from_key(self, key, lnk=None, keep_lock=False):
         """
-        :param fn: A callable object that will return an iterable object when
-        called, such that the first element in this iterable object is the
-        source code of the module, and the last element is the module itself.
-        `fn` is called only if the key is not already in the cache, with
-        a single keyword argument `location` that is the path to the directory
-        where the module should be compiled.
+        Return a module from the cache, compiling it if necessary.
+
+        :param key: The key object associated with the module. If this
+                    hits a match, we avoid compilation.
+
+        :param lnk: Usually a CLinker instance, but it can be any
+                    object that defines the `get_src_code()` and
+                    `compile_cmodule(location)` functions. The first
+                    one returns the source code of the module to
+                    load/compile and the second performs the actual
+                    compilation.
+
+        :param keep_lock: If True, the compilation lock will not be
+                          released if taken.
         """
         # Is the module in the cache?
         module = self._get_from_key(key)
         if module is not None:
             return module
 
-        location = None
-        nocleanup = False
         lock_taken = False
 
-        try:
-            location = dlimport_workdir(self.dirname)
-        except OSError, e:
-            _logger.error(e)
-            if e.errno == 31:
-                _logger.error('There are %i files in %s',
-                              len(os.listdir(config.compiledir)),
-                              config.compiledir)
-            raise
-        try:
-            # Is the source code already in the cache?
-            compile_steps = fn(location=location).__iter__()
-            src_code = next(compile_steps)
-            module_hash = get_module_hash(src_code, key)
-            module = self._get_from_hash(module_hash, key, keep_lock=keep_lock)
-            if module is not None:
-                return module
+        src_code = lnk.get_src_code()
+        # Is the source code already in the cache?
+        module_hash = get_module_hash(src_code, key)
+        module = self._get_from_hash(module_hash, key, keep_lock=keep_lock)
+        if module is not None:
+            return module
 
+        try:
             # Compile the module since it's not cached
             compilelock.get_lock()
             lock_taken = True
@@ -1039,40 +1035,45 @@ class ModuleCache(object):
 
             # Need no_clean_empty otherwise it deletes the workdir we
             # created above.
-            self.refresh(no_clean_empty=True)
+            self.refresh()
             module = self._get_from_key(key)
             if module is not None:
                 return module
 
-            module = self._get_from_hash(module_hash, key, keep_lock=keep_lock)
+            module = self._get_from_hash(module_hash, key)
             if module is not None:
                 return module
 
             hash_key = hash(key)
 
-            while True:
-                try:
-                    # The module should be returned by the last
-                    # step of the compilation.
-                    module = next(compile_steps)
-                except StopIteration:
-                    break
-            name = module.__file__
-            assert name.startswith(location)
-            assert name not in self.module_from_name
-            self.module_from_name[name] = module
+            nocleanup = False
+            try:
+                location = dlimport_workdir(self.dirname)
+                module = lnk.compile_cmodule(location)
+                name = module.__file__
+                assert name.startswith(location)
+                assert name not in self.module_from_name
+                self.module_from_name[name] = module
+                nocleanup = True
+            except OSError, e:
+                _logger.error(e)
+                if e.errno == 31:
+                    _logger.error('There are %i files in %s',
+                                  len(os.listdir(config.compiledir)),
+                                  config.compiledir)
+                raise
+            finally:
+                if not nocleanup:
+                    _rmtree(location, ignore_if_missing=True,
+                            msg='exception during compilation')
 
             # Changing the hash of the key is not allowed during
             # compilation.
             assert hash(key) == hash_key
-            nocleanup = True
 
             key_data = self._add_to_cache(module, key, module_hash)
             self.module_hash_to_key_data[module_hash] = key_data
         finally:
-            if not nocleanup:
-                _rmtree(location, ignore_if_missing=True,
-                        msg='exception during compilation')
             # Release lock if needed.
             if not keep_lock and lock_taken:
                 compilelock.release_lock()
