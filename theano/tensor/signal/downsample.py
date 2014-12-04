@@ -240,7 +240,9 @@ class DownsampleFactorMax(Op):
                                         st=self.st)(
                                             x, maxout, gz)]
 
-    def c_code_tmp(self, node, name, inp, out, sub):
+    def c_code(self, node, name, inp, out, sub):
+        if self.ds != self.st:
+           raise theano.gof.utils.MethodNotDefined()
         x, = inp
         z, = out
         fail = sub['fail']
