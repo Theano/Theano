@@ -275,8 +275,8 @@ def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
     lr = tensor.fscalar('lr')
 
     conv_op = conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
-    conv_op1 = conv.ConvOp((n_kern, logical_hid_shape[0] / 2,
-         logical_hid_shape[1] / 2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
+    conv_op1 = conv.ConvOp((n_kern, logical_hid_shape[0] // 2,
+         logical_hid_shape[1] // 2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
 
     hid = tensor.tanh(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x')))
     hid1 = tensor.tanh(conv_op1(hid[:, :, ::2, ::2], w1) + b1.dimshuffle((
@@ -366,7 +366,7 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     conv_op = conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern,
                           n_batch, 1, 1, verbose=verbose, version=version)
     conv_op1 = conv.ConvOp(
-        (n_kern, logical_hid_shape[0] / 2, logical_hid_shape[1] / 2),
+        (n_kern, logical_hid_shape[0] // 2, logical_hid_shape[1] // 2),
         shape_kern1[2:], n_kern1, n_batch, 1, 1,verbose=verbose, version=version)
 
     ds_op = downsample.DownsampleFactorMax((2, 2), ignore_border=False)

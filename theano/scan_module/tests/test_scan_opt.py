@@ -202,11 +202,11 @@ class TestPushOutScanOutputDot(object):
 
         # Compile the function twice, once with the optimization and once
         # without
-        f_opt = theano.function([a, b], outputs)
+        opt_mode = mode.including("scan")
+        f_opt = theano.function([a, b], outputs, mode=opt_mode)
 
-        default_mode = theano.compile.get_default_mode()
-        default_mode.excluding("scanOp_pushout_output")
-        f_no_opt = theano.function([a, b], outputs, mode=default_mode)
+        no_opt_mode = mode.excluding("scanOp_pushout_output")
+        f_no_opt = theano.function([a, b], outputs, mode=no_opt_mode)
 
         # Ensure that the optimization was performed correctly in f_opt
         # The inner function of scan should have only one output and it should

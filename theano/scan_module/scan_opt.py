@@ -470,10 +470,10 @@ class PushOutSeqScan(gof.Optimizer):
                         outside_ins = replace_with_out[to_replace.index(x)]
                     new_ord = (0,)
                     for old_ord in nd.op.new_order:
-                        if isinstance(old_ord, int):
-                            new_ord += (old_ord + 1,)
-                        else:
+                        if (old_ord == 'x'):
                             new_ord += (old_ord,)
+                        else:
+                            new_ord += (old_ord + 1,)
                     new_outer = outside_ins.dimshuffle(new_ord)
                     y = nd.outputs[0]
                     y_place_holder = scan_utils.safe_new(y, '_replace')

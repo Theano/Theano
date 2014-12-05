@@ -4,8 +4,6 @@
 language: python
 python:
   - "2.6"
-#  - "2.7"
-#  - "3.2"
 
 # command to install dependencies
 before_install:
@@ -20,25 +18,38 @@ before_install:
 install:
 # We support scipy 0.7.2, but it is not available on conda.
 # So we test with 0.11. Our internal buildbot have 0.7.2.
-  - conda create --yes -q -n py26 python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pip
-  - source activate py26
-  - pip install pydot
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pyparsing=1.5 pip; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pip; fi
+  - source activate pyenv
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps --use-mirrors
 
 # command to run tests
 env:
-  - PART="theano/scan_module/"
-  - PART="theano/sandbox theano/sparse theano/scalar/ theano/tensor/nnet/"
-  - PART="theano/tensor/tests/test_basic.py theano/tensor/signal/ theano/compile/ theano/gof/ theano/misc/ theano/tests/ theano/compat"
-  - PART="-e test_basic.py theano/tensor/tests"
+  - PART="scan_module"
+  - PART="sandbox sparse scalar tensor/nnet"
+  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
+  - PART="-e test_basic.py tensor/tests"
+
+matrix:
+  # Explicitly add one part to be run with Python 3, and a complete run in FAST_COMPILE
+  include:
+    - python: "3.3"
+      env: PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
+    - python: "2.6"
+      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
 
 script:
-  - export THEANO_FLAGS=blas.ldflags="-lblas -lgfortran",warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
+  - export THEANO_FLAGS=$THEANO_FLAGS,blas.ldflags="-lblas -lgfortran",warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
   - python --version
   - uname -a
   - free -m
   - df -h
   - ulimit -a
+  # Move out of Theano so the import will use the installed version
+  - cd ..
+  # Move to the path of the installed version
+  - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - theano-nose -v $PART
   - theano-cache list
