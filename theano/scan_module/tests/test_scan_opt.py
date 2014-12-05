@@ -293,7 +293,8 @@ class TestPushOutSumOfDot():
         dim = 1000
 
         # Weight matrices
-        U = theano.shared(numpy.random.normal(size=(dim, dim), scale=0.0001).astype("float32"))
+        U = theano.shared(numpy.random.normal(size=(dim, dim),
+                                              scale=0.0001).astype(config.floatX))
         U.name = 'U'
         V = theano.shared(U.get_value())
         V.name = 'V'
@@ -301,16 +302,17 @@ class TestPushOutSumOfDot():
         W.name = 'W'
 
         # Variables and their values
-        x = T.ftensor3('x')
-        x_value = numpy.random.normal(size=(seq_len, batch_size, dim), scale=0.0001).astype("float32")
+        x = T.tensor3('x')
+        x_value = numpy.random.normal(size=(seq_len, batch_size, dim),
+                                      scale=0.0001).astype(config.floatX)
 
-        ri = T.ftensor3('ri')
+        ri = T.tensor3('ri')
         ri_value = x_value
 
-        zi = T.ftensor3('zi')
+        zi = T.tensor3('zi')
         zi_value = x_value
 
-        init = T.alloc(numpy.float32(0), batch_size, dim)
+        init = T.alloc(numpy.cast[config.floatX](0), batch_size, dim)
         def rnn_step1(
                 # sequences
                 x, ri, zi,
@@ -367,12 +369,12 @@ class TestPushOutSumOfDot():
         non-zero
         """
 
-        input1 = T.dtensor3()
-        input2 = T.dtensor3()
-        input3 = T.dtensor3()
+        input1 = T.tensor3()
+        input2 = T.tensor3()
+        input3 = T.tensor3()
 
-        W = theano.shared(numpy.random.normal(size=(4, 5)))
-        U = theano.shared(numpy.random.normal(size=(6, 7)))
+        W = theano.shared(numpy.random.normal(size=(4, 5))).astype(config.floatX)
+        U = theano.shared(numpy.random.normal(size=(6, 7))).astype(config.floatX)
 
         def inner_fct(seq1, seq2, seq3, previous_output):
             temp1 = T.dot(seq1, W) + seq3
@@ -406,9 +408,9 @@ class TestPushOutSumOfDot():
         # TODO
 
         # Compare the outputs of the 2 functions
-        input1_value = numpy.random.random((2, 3, 4))
-        input2_value = numpy.random.random((2, 5, 6))
-        input3_value = numpy.random.random((2, 3, 5))
+        input1_value = numpy.random.random((2, 3, 4)).astype(config.floatX)
+        input2_value = numpy.random.random((2, 5, 6)).astype(config.floatX)
+        input3_value = numpy.random.random((2, 3, 5)).astype(config.floatX)
 
         output_opt = f_opt(input1_value, input2_value, input3_value)
         output_no_opt = f_no_opt(input1_value, input2_value, input3_value)
