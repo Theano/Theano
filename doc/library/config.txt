@@ -507,6 +507,14 @@ import theano and print the config variable, as in:
     This can be any compiler binary (full path or not) but things may
     break if the interface if not g++-compatible to some degree.
 
+.. attribute:: config.nvcc.fastmath
+
+    Default: False
+
+    If true, this will enable fastmath mode for compiled cuda code
+    which makes div and sqrt faster at the cost of precision.  This
+    also disables support for denormal numbers.
+
 .. attribute:: optimizer_excluding
 
     Default: ""
