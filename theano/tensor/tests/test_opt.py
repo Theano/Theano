@@ -2490,9 +2490,11 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode)
             # test wrong index
             for i in [dx.shape[0], -dx.shape[0] - 1]:
-                self.assertRaises(AssertionError, f, dx, dy, [i, i])
+                self.assertRaises((AssertionError, IndexError),
+                                  f, dx, dy, [i, i])
             # test wrong shape
-            self.assertRaises(AssertionError, f, dx, dy, [1])
+            self.assertRaises((AssertionError, ValueError),
+                              f, dx, dy, [1])
 
 
 class Test_alloc_zero(unittest.TestCase):
@@ -3305,7 +3307,11 @@ class test_assert(utt.InferShapeTester):
         y = T.scalar()
         f = theano.function([x, y], theano.tensor.opt.assert_op(x, y),
                             mode=mode)
-        f(1, 0)  # Without opt, it should fail.
+        if isinstance(mode, theano.compile.debugmode.DebugMode):
+            # DebugMode will run the original version with the Assert
+            self.assertRaises(AssertionError, f, 1, 0)
+        else:
+            f(1, 0)  # Without opt, it should fail.
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1, topo
         assert topo[0].op == deep_copy_op, topo
