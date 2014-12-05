@@ -157,12 +157,11 @@ class TestPushOutScanOutputDot(object):
 
         # Compile the function twice, once with the optimization and once
         # without
-        f_opt = theano.function([v, m], T.jacobian(output, v))
+        opt_mode = mode.including("scan")
+        f_opt = theano.function([v, m], T.jacobian(output, v), mode=opt_mode)
 
-        default_mode = theano.compile.get_default_mode()
-        new_mode = default_mode.excluding("scanOp_pushout_output")
-        f_no_opt = theano.function([v, m], T.jacobian(output, v),
-                                   mode=new_mode)
+        no_opt_mode = mode.excluding("scanOp_pushout_output")
+        f_no_opt = theano.function([v, m], T.jacobian(output, v), mode=no_opt_mode)
 
         # Ensure that the optimization was performed correctly in f_opt
         # The inner function of scan should have only one output and it should
@@ -248,11 +247,11 @@ class TestPushOutScanOutputDot(object):
 
         # Compile the function twice, once with the optimization and once
         # without
-        f_opt = theano.function([a, b], outputs)
+        opt_mode = mode.including("scan")
+        f_opt = theano.function([a, b], outputs, mode=opt_mode)
 
-        default_mode = theano.compile.get_default_mode()
-        new_mode = default_mode.excluding("scanOp_pushout_output")
-        f_no_opt = theano.function([a, b], outputs, mode=new_mode)
+        no_opt_mode = mode.excluding("scanOp_pushout_output")
+        f_no_opt = theano.function([a, b], outputs, mode=no_opt_mode)
 
         # Ensure that the optimization was performed correctly in f_opt
         # The inner function of scan should have only one output and it should
@@ -332,19 +331,21 @@ class TestPushOutSumOfDot():
 
         # Compile the function twice, once with the optimization and once
         # without
+        opt_mode = mode.including("scan")
         h, _ = theano.scan(rnn_step1, sequences=[x, ri, zi], n_steps=seq_len,
-                           outputs_info=init, name='fpass1')
+                           outputs_info=init, name='fpass1', mode=opt_mode)
         cost = h[-1].sum()
         grad1 = T.grad(cost, [U, V, W])
-        f_opt = theano.function(inputs=[x, ri, zi], outputs=grad1)
+        f_opt = theano.function(inputs=[x, ri, zi], outputs=grad1,
+                                mode=opt_mode)
 
-        default_mode = theano.compile.get_default_mode()
-        new_mode = default_mode.excluding("scanOp_pushout_output")
+        no_opt_mode = mode.excluding("scanOp_pushout_output")
         h, _ = theano.scan(rnn_step1, sequences=[x, ri, zi], n_steps=seq_len,
-                outputs_info=init, name='fpass1', mode=new_mode)
+                outputs_info=init, name='fpass1', mode=no_opt_mode)
         cost = h[-1].sum()
         grad1 = T.grad(cost, [U, V, W])
-        f_no_opt = theano.function(inputs=[x, ri, zi], outputs=grad1, mode=new_mode)
+        f_no_opt = theano.function(inputs=[x, ri, zi], outputs=grad1,
+                                   mode=no_opt_mode)
 
         # Validate that the optimization has been applied
         scan_node_grad = [node for node in f_opt.maker.fgraph.toposort()
@@ -383,21 +384,23 @@ class TestPushOutSumOfDot():
 
         # Compile the function twice, once with the optimization and once
         # without
-        h, _ = theano.scan(inner_fct,
-                sequences=[input1, input2, input3],
-                outputs_info=init)
-        output = h[-1]
-        f_opt = theano.function([input1, input2, input3], output)
-
-        default_mode = theano.compile.get_default_mode()
-        new_mode = default_mode.excluding("scanOp_pushout_output")
+        opt_mode = mode.including("scan")
         h, _ = theano.scan(inner_fct,
                 sequences=[input1, input2, input3],
                 outputs_info=init,
-                mode=new_mode)
+                mode=opt_mode)
+        output = h[-1]
+        f_opt = theano.function([input1, input2, input3], output,
+                                mode=opt_mode)
+
+        no_opt_mode = mode.excluding("scanOp_pushout_output")
+        h, _ = theano.scan(inner_fct,
+                sequences=[input1, input2, input3],
+                outputs_info=init,
+                mode=no_opt_mode)
         output = h[-1]
         f_no_opt = theano.function([input1, input2, input3], output,
-                                    mode=new_mode)
+                                    mode=no_opt_mode)
 
         # Ensure that the optimization has been applied for f_opt
         # TODO
