@@ -493,19 +493,19 @@ import theano and print the config variable, as in:
 
 .. attribute:: cxx
 
+    Default: Full path to g++ if g++ is present. Empty string otherwise.
 
-    Default: 'g++' if g++ is present. Empty string otherwise.
+    Indicates which C++ compiler to use. If empty, no C++ code is
+    compiled.  Theano automatically detects whether g++ is present and
+    disables C++ compilation when it is not.  On darwin systems (Mac
+    OS X), it preferably looks for clang++ and uses that if available.
 
-    Indicates which C++ compiler to use. If empty, no C++ code is compiled.
-    Theano automatically detects whether g++ is present and disables
-    C++ compilation when it is not.
-
-    We print a warning if we detect that g++ is not present. It is
+    We print a warning if we detect that no compiler is present. It is
     recommended to run with C++ compilation as Theano will be much
     slower otherwise.
 
-    Currently only g++ is supported, but supporting other compilers should
-    not be too difficult.
+    This can be any compiler binary (full path or not) but things may
+    break if the interface if not g++-compatible to some degree.
 
 .. attribute:: optimizer_excluding
 
