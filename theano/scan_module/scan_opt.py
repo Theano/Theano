@@ -729,7 +729,8 @@ class PushOutScanOutput(gof.Optimizer):
                                                    # 1 if sitsot_in_idx==0
                     dot_input = nd.inputs[dot_in_idx]
 
-                    if (isinstance(dot_input.owner.op, theano.tensor.Dot) and
+                    if (dot_input.owner is not None and
+                        isinstance(dot_input.owner.op, theano.tensor.Dot) and
                         len(dot_input.clients) == 1 and
                         dot_input.owner.inputs[0].ndim == 2 and
                         dot_input.owner.inputs[1].ndim == 2 and
