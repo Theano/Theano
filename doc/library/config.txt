@@ -1,7 +1,7 @@
 .. _libdoc_config:
 
 =======================================
-:mod:`config` -- Theano Configuration 
+:mod:`config` -- Theano Configuration
 =======================================
 
 .. module:: config
@@ -705,7 +705,7 @@ import theano and print the config variable, as in:
     debugging mechanism, where Theano executes the graph on-the-fly, as it is
     being built. This allows the user to spot errors early on (such as
     dimension mis-match), **before** optimizations are applied.
-   
+
     Theano will execute the graph using the Constants and/or shared variables
     provided by the user. Purely symbolic variables (e.g. x = T.dmatrix()) can be
     augmented with test values, by writing to their ``'tag.test_value'``
@@ -718,7 +718,7 @@ import theano and print the config variable, as in:
         - ``'warn'`` will raise a UserWarning and skip the debug mechanism for
           this Op
         - ``'raise'`` will raise an Exception
-    
+
 .. attribute:: compute_test_value_opt
 
    As ``compute_test_value``, but it is the value used during Theano
@@ -729,18 +729,18 @@ import theano and print the config variable, as in:
 
     Bool value, default: True
 
-    Theano users can use the standard python pickle tools to save a compiled 
-    theano function. When pickling, both graph before and after the optimization 
-    are saved, including shared variables. When set to True, the graph is 
-    reoptimized when being unpickled. Otherwise, skip the graph optimization and 
-    use directly the optimized graph. 
+    Theano users can use the standard python pickle tools to save a compiled
+    theano function. When pickling, both graph before and after the optimization
+    are saved, including shared variables. When set to True, the graph is
+    reoptimized when being unpickled. Otherwise, skip the graph optimization and
+    use directly the optimized graph.
 
 .. attribute:: exception_verbosity
 
     String Value: ``'low'``, ``'high'``.
 
     Default: ``'low'``
-  
+
     If ``'low'``, the text of exceptions will generally refer to apply nodes
     with short names such as ``'Elemwise{add_no_inplace}'``. If ``'high'``,
     some exceptions will also refer to apply nodes with long descriptions like:
