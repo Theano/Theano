@@ -174,8 +174,8 @@ class TestPushOutScanOutputDot(object):
 
         # Ensure that the function compiled with the optimization produces
         # the same results as the function compiled without
-        v_value = numpy.random.random((4))
-        m_value = numpy.random.random((4, 5))
+        v_value = numpy.random.random((4)).astype(config.floatX)
+        m_value = numpy.random.random((4, 5)).astype(config.floatX)
 
         output_opt = f_opt(v_value, m_value)
         output_no_opt = f_no_opt(v_value, m_value)
@@ -218,8 +218,8 @@ class TestPushOutScanOutputDot(object):
 
         # Ensure that the function compiled with the optimization produces
         # the same results as the function compiled without
-        a_value = numpy.random.random((3, 4))
-        b_value = numpy.random.random((4, 5))
+        a_value = numpy.random.random((3, 4)).astype(config.floatX)
+        b_value = numpy.random.random((4, 5)).astype(config.floatX)
 
         output_opt = f_opt(a_value, b_value)
         output_no_opt = f_no_opt(a_value, b_value)
@@ -264,8 +264,8 @@ class TestPushOutScanOutputDot(object):
 
         # Ensure that the function compiled with the optimization produces
         # the same results as the function compiled without
-        a_value = numpy.random.random((3, 4))
-        b_value = numpy.random.random((4, 5))
+        a_value = numpy.random.random((3, 4)).astype(config.floatX)
+        b_value = numpy.random.random((4, 5)).astype(config.floatX)
 
         output_opt = f_opt(a_value, b_value)
         output_no_opt = f_no_opt(a_value, b_value)

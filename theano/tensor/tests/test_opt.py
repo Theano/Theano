@@ -2490,9 +2490,11 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode)
             # test wrong index
             for i in [dx.shape[0], -dx.shape[0] - 1]:
-                self.assertRaises(AssertionError, f, dx, dy, [i, i])
+                self.assertRaises((AssertionError, IndexError),
+                                  f, dx, dy, [i, i])
             # test wrong shape
-            self.assertRaises(AssertionError, f, dx, dy, [1])
+            self.assertRaises((AssertionError, ValueError),
+                              f, dx, dy, [1])
 
 
 class Test_alloc_zero(unittest.TestCase):
@@ -2509,7 +2511,7 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.set_subtensor(x0[:4], y0)
         f = theano.function([x, y], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor) for n in
                           f.maker.fgraph.toposort()])
 
     def test_setsubtensor_allocs1(self):
@@ -2519,7 +2521,7 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.set_subtensor(x0[:4], y0)
         f = theano.function([y], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor) for n in
                           f.maker.fgraph.toposort()])
 
     def test_setsubtensor_allocs1t(self):
@@ -2529,7 +2531,7 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.set_subtensor(x0[:4], y0.T)
         f = theano.function([y], z, mode=mode_opt)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor) for n in
                           f.maker.fgraph.toposort()])
 
     def test_setsubtensor_allocs2(self):
@@ -2548,7 +2550,7 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.inc_subtensor(x[:4], y0)
         f = theano.function([x, y], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor) for n in
                           f.maker.fgraph.toposort()])
 
     def test_incsubtensor_allocs0t(self):
@@ -2557,7 +2559,7 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.inc_subtensor(x[:4], y0.T)
         f = theano.function([x, y], z, mode=mode_opt)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor) for x in
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor) for n in
                           f.maker.fgraph.toposort()])
 
     def test_incsubtensor_allocs1(self):
@@ -2575,8 +2577,8 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.inc_subtensor(x[[0, 1, 2, 3]], y0)
         f = theano.function([x, y], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor1)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.AdvancedIncSubtensor1)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor1_allocs0t(self):
         x = tensor.matrix()
@@ -2584,8 +2586,8 @@ class Test_alloc_zero(unittest.TestCase):
         y0 = tensor.zeros_like(y)
         z = tensor.inc_subtensor(x[[0, 1, 2, 3]], y0.T)
         f = theano.function([x, y], z, mode=mode_opt)
-        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor1)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.AdvancedIncSubtensor1)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor1_allocs1(self):
         x = tensor.matrix()
@@ -2593,44 +2595,44 @@ class Test_alloc_zero(unittest.TestCase):
                                            dtype=config.floatX))
         z = tensor.inc_subtensor(x[[0, 1, 2, 3]], y0)
         f = theano.function([x], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor1)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.AdvancedIncSubtensor1)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs0(self):
         if tensor.inplace_increment is None:
             raise SkipTest('NumPy version >= 1.8 not available')
-        
+
         x = tensor.matrix()
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
         z = tensor.inc_subtensor(x[[[0, 0], [1, 1]], [[0, 1], [0, 1]]], y0)
         f = theano.function([x, y], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.AdvancedIncSubtensor)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs0t(self):
         if tensor.inplace_increment is None:
             raise SkipTest('NumPy version >= 1.8 not available')
-        
+
         x = tensor.matrix()
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
         z = tensor.inc_subtensor(x[[[0, 0], [1, 1]], [[0, 1], [0, 1]]], y0.T)
         f = theano.function([x, y], z, mode=mode_opt)
-        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.AdvancedIncSubtensor)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs1(self):
         if tensor.inplace_increment is None:
             raise SkipTest('NumPy version >= 1.8 not available')
-        
+
         x = tensor.matrix()
         y0 = tensor.constant(numpy.asarray(numpy.zeros_like((2, 2)),
                                            dtype=config.floatX))
         z = tensor.inc_subtensor(x[[[0, 0], [1, 1]], [[0, 1], [0, 1]]], y0)
         f = theano.function([x], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.AdvancedIncSubtensor)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.AdvancedIncSubtensor)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_dot_allocs_0(self):
         v1 = tensor.vector('v1')
@@ -2656,7 +2658,7 @@ class Test_alloc_zero(unittest.TestCase):
                     f = theano.function([_e1[0], _e2[0]], o, mode=self.mode)
                     f(_e1[1], _e2[1])
                     f(_e1[2], _e2[2])
-                    assert numpy.all([not isinstance(x.op, tensor.Dot) for x in
+                    assert numpy.all([not isinstance(n.op, tensor.Dot) for n in
                                       f.maker.fgraph.toposort()])
 
                     #test that we don't remove shape errors
@@ -3305,7 +3307,11 @@ class test_assert(utt.InferShapeTester):
         y = T.scalar()
         f = theano.function([x, y], theano.tensor.opt.assert_op(x, y),
                             mode=mode)
-        f(1, 0)  # Without opt, it should fail.
+        if isinstance(mode, theano.compile.debugmode.DebugMode):
+            # DebugMode will run the original version with the Assert
+            self.assertRaises(AssertionError, f, 1, 0)
+        else:
+            f(1, 0)  # Without opt, it should fail.
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1, topo
         assert topo[0].op == deep_copy_op, topo
