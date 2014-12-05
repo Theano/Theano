@@ -511,9 +511,11 @@ import theano and print the config variable, as in:
 
     Default: False
 
-    If true, this will enable fastmath mode for compiled cuda code
-    which makes div and sqrt faster at the cost of precision.  This
-    also disables support for denormal numbers.
+    If true, this will enable fastmath (`--use_fast_math
+    <http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/#options-for-steering-cuda-compilation>`_)
+    mode for compiled cuda code which makes div and sqrt faster at the
+    cost of precision.  This also disables support for denormal
+    numbers.
 
 .. attribute:: optimizer_excluding
 
