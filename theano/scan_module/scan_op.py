@@ -1427,6 +1427,11 @@ class Scan(PureOp):
         else:
             grad_steps = inputs[0]
 
+        # Restrict the number of grad steps according to
+        # self.truncate_gradient
+        if self.truncate_gradient != -1:
+            grad_steps = tensor.minimum(grad_steps, self.truncate_gradient)
+
         rval = scan_utils.reconstruct_graph(self.inputs,
                                             self.outputs)
         self_inputs = rval[0]
@@ -1652,6 +1657,10 @@ class Scan(PureOp):
         outer_inp_seqs += [x[::-1][:-1] for x in self.outer_sitsot_outs(outs)]
         outer_inp_seqs += [x[::-1] for x in self.outer_nitsot_outs(outs)]
 
+        # Restrict the length of the outer sequences to the number of grad
+        # steps
+        outer_inp_seqs = [seq[:grad_steps] for seq in outer_inp_seqs]
+
         inner_inp_seqs = self.inner_seqs(self_inputs)
         inner_inp_seqs += self.inner_mitmot(self_inputs)
         inner_inp_seqs += self.inner_mitsot(self_inputs)
@@ -1819,9 +1828,6 @@ class Scan(PureOp):
             out_pos += 1
             ins_pos += 1
             n_mitmot_inps += 2
-
-        if self.truncate_gradient != -1:
-            grad_steps = tensor.minimum(grad_steps, self.truncate_gradient)
 
         n_nit_sot = self.n_seqs
         inner_out_nitsot = dC_dinps_t[:self.n_seqs]
