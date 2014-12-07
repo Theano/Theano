@@ -895,19 +895,20 @@ class VM_Linker(link.LocalLinker):
 
         thunks = []
 
-        for idx in range(len(order)):
-            node = order[idx]
-            for ins in node.inputs:
-                if ins.ndim == 0 and storage_map[ins][0]:
-                    # check if input variable ndim = 0
-                    for i in range(idx + 1, len(order)):
-                        for outs in order[i].outputs:
-                            if outs.ndim == 0:
-                                storage_map[outs] = storage_map[ins]
+        if self.allow_gc:
+            for idx in range(len(order)):
+                node = order[idx]
+                for ins in node.inputs:
+                    if ins.ndim == 0 and storage_map[ins][0]:
+                        # check if input variable ndim = 0
+                        for i in range(idx + 1, len(order)):
+                            for outs in order[i].outputs:
+                                if outs.ndim == 0:
+                                    storage_map[outs] = storage_map[ins]
+                                    break
+                                else:
+                                    continue
                                 break
-                            else:
-                                continue
-                            break
 
         for node in order:
             try:
