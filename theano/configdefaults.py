@@ -462,6 +462,14 @@ AddConfigVar('warn.reduce_join',
              BoolParam(warn_default('0.7')),
              in_c_key=False)
 
+AddConfigVar('warn.inc_set_subtensor1',
+             ('Warn if previous versions of Theano (before 0.7) could have '
+              'given incorrect results for inc_subtensor and set_subtensor '
+              'when using some patterns of advanced indexing (indexing with '
+              'one vector or matrix of ints).'),
+             BoolParam(warn_default('0.7')),
+             in_c_key=False)
+
 AddConfigVar('compute_test_value',
         ("If 'True', Theano will run each op at graph build time, using "
          "Constants, SharedVariables and the tag 'test_value' as inputs "
