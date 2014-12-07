@@ -11,7 +11,6 @@ def test_reduce():
 
     config1 = theano.config.profile
     config2 = theano.config.profile_memory
-    config3 = theano.config.profiling.min_peak_memory
     try:
         theano.config.profile = True
         theano.config.profile_memory = True
@@ -37,7 +36,6 @@ def test_reduce():
     finally:
         theano.config.profile = config1
         theano.config.profile_memory = config2
-        theano.config.profiling.min_peak_memory = config3
 
 if __name__ == "__main__":
     test_reduce()
