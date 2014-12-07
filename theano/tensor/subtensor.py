@@ -1830,9 +1830,13 @@ class AdvancedIncSubtensor1(Op):
         # broadcasted to fill all relevant rows of `x`.
         assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
         if y.ndim == x.ndim:
-            assert len(y) == len(idx)
-            for (j, i) in enumerate(idx):
-                x[i] += y[j]
+            if len(y) == 1:
+                for i in idx:
+                    x[i] += y[0]
+            else:
+                assert len(y) == len(idx)
+                for (j, i) in enumerate(idx):
+                    x[i] += y[j]
         else:
             for i in idx:
                 x[i] += y
