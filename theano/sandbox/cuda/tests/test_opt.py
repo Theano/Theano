@@ -203,6 +203,34 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
 
     assert numpy.allclose(numpy.asarray(f()), concat)
 
+
+def test_local_gpu_subtensor():
+    # Test shared forced on CPU.
+    t = tensor._shared(numpy.zeros(20, "float32"))
+    f = theano.function([], t[3:4], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert any([type(node.op) is tensor.Subtensor for node in topo])
+    assert not any([isinstance(node.op, cuda.GpuSubtensor) for node in topo])
+    theano.printing.debugprint(f)
+
+    # Test graph input.
+    t = tensor.fmatrix()
+    f = theano.function([t], t[3:4], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert any([type(node.op) is tensor.Subtensor for node in topo])
+    assert not any([isinstance(node.op, cuda.GpuSubtensor) for node in topo])
+    theano.printing.debugprint(f)
+
+    # Test multiple use of the input
+    # We want the subtensor to be on the GPU to prevent multiple transfer.
+    t = tensor.fmatrix()
+    f = theano.function([t], [t[3:4], t+1], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    theano.printing.debugprint(f)
+    assert not any([type(node.op) is tensor.Subtensor for node in topo])
+    assert any([isinstance(node.op, cuda.GpuSubtensor) for node in topo])
+
+
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
     b = tensor.fmatrix()

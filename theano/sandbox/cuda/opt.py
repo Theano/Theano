@@ -839,6 +839,11 @@ def local_gpu_subtensor(node):
         if (x.owner and
             isinstance(x.owner.op, HostFromGpu) and
             x.dtype == "float32"):
+            gpu_x = x.owner.inputs[0]
+            if gpu_x.owner and isinstance(gpu_x.owner.op, GpuFromHost) and not gpu_x.owner.inputs[0].owner:
+                if len(x.clients) == 1:
+                    return
+
             gpu_x, = x.owner.inputs
             coords = node.inputs[1:]
             return [host_from_gpu(GpuSubtensor(
