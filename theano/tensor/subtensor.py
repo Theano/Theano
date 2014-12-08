@@ -1108,6 +1108,10 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             tolerate_inplace_aliasing=tolerate_inplace_aliasing)
         return x.owner.op(inner_incsubtensor, *x.owner.inputs[1:])
     elif isinstance(x.owner.op, theano.tensor.Reshape):
+        # This case happens when the indices are not arranged as a vector, but
+        # as a higher-dimensional array. This is handled by the subtensor
+        # by flattening this list, taking the subtensor, then reshaping the
+        # result.
         inner_x = x.owner.inputs[0]
         # Try to apply inc_subtensor on inner_x.
         # If it works, there is no need to reshape, as the inc_subtensor
@@ -1831,6 +1835,7 @@ class AdvancedIncSubtensor1(Op):
         assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
         if y.ndim == x.ndim:
             if len(y) == 1:
+                # Allow broadcasting of y[0]
                 for i in idx:
                     x[i] += y[0]
             else:
