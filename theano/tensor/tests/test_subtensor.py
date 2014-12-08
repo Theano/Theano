@@ -1099,7 +1099,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # Test for both vector and matrix as index
         sym_i = (lvector('i'), lmatrix('i'))
         shape_i = ((4,), (4, 2))
-        shape_val = ((3, 1), (3, 1, 1))
+        shape_val = ((3, 4), (3, 4, 1))
 
         # Disable the warning emitted for that case
         orig_warn = config.warn.inc_set_subtensor1
