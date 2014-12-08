@@ -1053,10 +1053,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
         assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
 
-    def test_adv1_inc_sub_notlastdim_1dval(self):
+    def test_adv1_inc_sub_notlastdim_1_2dval_broadcast(self):
         # Test that taking 1-dimensional advanced indexing
         # over a dimension that's not the first (outer-most),
-        # and incrementing/setting a 1D value works.
+        # and incrementing/setting with broadcast
         m = matrix('m')
 
         # Test for both vector and matrix as index
@@ -1090,16 +1090,16 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         finally:
             config.warn.inc_set_subtensor1 = orig_warn
 
-    def test_adv1_inc_sub_notlastdim_2dval(self):
+    def test_adv1_inc_sub_notlastdim_1_2dval_no_broadcast(self):
         # Test that taking 1-dimensional advanced indexing
         # over a dimension that's not the first (outer-most),
-        # and incrementing/setting a 2D value works.
+        # and incrementing/setting without broadcast
         m = matrix('m')
 
         # Test for both vector and matrix as index
         sym_i = (lvector('i'), lmatrix('i'))
         shape_i = ((4,), (4, 2))
-        shape_val = ((3, 4), (3, 4, 1))
+        shape_val = ((3, 4), (3, 4, 2))
 
         # Disable the warning emitted for that case
         orig_warn = config.warn.inc_set_subtensor1
