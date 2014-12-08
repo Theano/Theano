@@ -20,7 +20,8 @@ from theano.gof.python25 import all, any
 from theano.tensor.nnet.conv import ConvOp
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.basic_ops import (
-    host_from_gpu, gpu_from_host, HostFromGpu, GpuSplit,
+    host_from_gpu, gpu_from_host, HostFromGpu, GpuFromHost,
+    GpuSplit,
     gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
 )
 from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
@@ -342,6 +343,21 @@ def local_gpua_split(node):
 @register_opt('fast_compile')
 @op_lifter([tensor.Subtensor])
 def local_gpua_subtensor(node):
+    x = node.inputs[0]
+    if (x.owner and isinstance(x.owner.op, HostFromGpu)):
+        gpu_x = x.owner.inputs[0]
+        if (gpu_x.owner and
+            isinstance(gpu_x.owner.op, GpuFromHost) and
+            # And it is a shared var or an input of the graph.
+            not gpu_x.owner.inputs[0].owner):
+            if len(x.clients) == 1:
+                if any([n == 'output' or any([isinstance(v.type, GpuArrayType)
+                                              for v in n.inputs + n.outputs])
+                        for n,_  in node.outputs[0].clients]):
+                    return
+                else:
+                    return [host_from_gpu(gpu_from_host(node.outputs[0]))]
+
     return GpuSubtensor(node.op.idx_list)
 
 
