@@ -906,9 +906,8 @@ class VM_Linker(link.LocalLinker):
                                 if outs.ndim == 0:
                                     storage_map[outs] = storage_map[ins]
                                     break
-                                else:
-                                    continue
-                                break
+                            else:continue
+                            break
 
         for node in order:
             try:
