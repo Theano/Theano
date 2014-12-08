@@ -1119,8 +1119,13 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         # We also explicitly duplicate y to its broadcasted shape
         # before we partially flatten it to inner_x dimension. This is
         # not strictly needed in all cases, but it is easier this way.
-        expanded_y = alloc(y, *[x.shape[i] for i in range(x.ndim)])
-        flattened_y = expanded_y.flatten(inner_x.ndim)
+        if y.ndim > 0:
+            # This if is needed to prevent some useless warning about
+            # old code bug.
+            expanded_y = alloc(y, *[x.shape[i] for i in range(x.ndim)])
+            flattened_y = expanded_y.flatten(inner_x.ndim)
+        else:
+            flattened_y = y
 
         # Warn if this code path would have produced wrong results in the past
         if config.warn.inc_set_subtensor1:
