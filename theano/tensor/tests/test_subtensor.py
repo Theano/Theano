@@ -1035,15 +1035,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         m = matrix('m')
         i = lmatrix('i')
 
-        # That test actually gave correct results, the warning is
-        # a bit too broad
-        orig_warn = config.warn.inc_set_subtensor1
-        try:
-            config.warn.inc_set_subtensor1 = False
-            m1 = set_subtensor(m[:, i], 0)
-            m2 = inc_subtensor(m[:, i], 1)
-        finally:
-            config.warn.inc_set_subtensor1 = orig_warn
+        m1 = set_subtensor(m[:, i], 0)
+        m2 = inc_subtensor(m[:, i], 1)
 
         f = theano.function([m, i], [m1, m2])
 
