@@ -3,7 +3,7 @@
 
 #include <cudnn.h>
 
-static inline const char *cudnnGetErrorString(cudnnStatus_t err) {
+inline const char *cudnnGetErrorString(cudnnStatus_t err) {
   switch (err) {
   case CUDNN_STATUS_SUCCESS:
     return "The operation completed successfully.";
@@ -26,6 +26,16 @@ static inline const char *cudnnGetErrorString(cudnnStatus_t err) {
   default:
     return "Unknown error code.";
   }
+}
+
+static inline const int cudnnVersionMacro(){
+#ifdef CUDNN_VERSION
+  return CUDNN_VERSION;
+#else
+//CUDNN_VERSION undefined, you probably use cuDNN R1 version
+  return -1;
+#endif
+
 }
 
 #endif

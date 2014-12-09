@@ -271,3 +271,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 [img_val, kern_vals],
                 dnn.GpuDnnConvGradW
             )
+def test_version():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    assert isinstance(cuda.dnn.version(), int)
