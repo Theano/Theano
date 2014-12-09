@@ -284,13 +284,15 @@ class TestPushOutSumOfDot():
         This test case comes from https://github.com/rizar/scan-grad-speed and
         is an example of actual computation done with scan in the context of
         machine translation
+
+        'dim' has been reduced from 1000 to 5 to make the test run faster
         """
 
         # Parameters from an actual machine tranlation run
         batch_size = 80
         seq_len = 50
         n_words = 80 * 50
-        dim = 1000
+        dim = 5
 
         # Weight matrices
         U = theano.shared(numpy.random.normal(size=(dim, dim),
