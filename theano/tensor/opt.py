@@ -2661,6 +2661,76 @@ def local_join_1(node):
         return [tensors[0]]
 
 
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Join])
+def local_join_empty(node):
+    """Join(i, x, y, empty) => Join(i, x, y, empty)
+
+    remove empty inputs to joins.
+    """
+    if not isinstance(node.op, T.Join):
+        return
+    new_inputs = []
+    try:
+        join_idx = get_scalar_constant_value(node.inputs[0])
+    except NotScalarConstantError:
+        return
+    for idx in range(1, len(node.inputs)):
+        inp = node.inputs[idx]
+        # We can not use size == 0,, as this can change shape from 3,0
+        # to 2,0.  This trigger DebugMode error. This happen with
+        # stack(...,[]) as this add a dimshuffle on [], that add a
+        # dimensions with shape 1.
+        if isinstance(inp, theano.Constant) and inp.data.shape[join_idx] == 0:
+            continue
+        new_inputs.append(inp)
+    if len(new_inputs) < len(node.inputs) - 1:
+        if len(new_inputs) == 0:
+            # T.join do not work in that case.
+            return
+        ret = T.join(node.inputs[0], *new_inputs)
+        o = node.outputs[0]
+        if ret.dtype != o.dtype:
+            # Join can upcast some inputs
+            return
+        if ret.type != o.type:
+            assert ret.dtype == o.dtype
+            assert ret.ndim == o.ndim
+            ret = T.patternbroadcast(ret, node.outputs[0].broadcastable)
+        return [ret]
+
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Join])
+def local_join_make_vector(node):
+    """Join(0, make_vector1, make_vector2, ...) => Join(0, make_vector12, ...)
+
+    Merge MakeVector inputs to Join. This can make the join completly
+    disapear with the local_join_1 opt.
+
+    """
+    if not isinstance(node.op, T.Join) or node.outputs[0].ndim != 1:
+        return
+    new_inputs = [node.inputs[1]]
+    for idx in range(2, len(node.inputs)):
+        inp = node.inputs[idx]
+        if (inp.owner and
+            isinstance(inp.owner.op, MakeVector) and
+            new_inputs[-1].owner and
+            isinstance(new_inputs[-1].owner.op, MakeVector) and
+            # MakeVector have a dtype parameter
+            inp.owner.op == new_inputs[-1].owner.op):
+            inps = new_inputs[-1].owner.inputs + inp.owner.inputs
+            new_inputs[-1] = inp.owner.op(*inps)
+        else:
+            new_inputs.append(inp)
+    if len(new_inputs) < len(node.inputs) - 1:
+        ret = T.join(node.inputs[0], *new_inputs)
+        return [ret]
+
+
 ###############
 # Switch opts #
 ###############

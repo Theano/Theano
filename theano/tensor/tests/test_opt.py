@@ -4632,6 +4632,74 @@ def test_local_join_1():
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
 
+def test_local_join_empty():
+    #test for vector, vector, empty to vector
+    empty_vec = numpy.asarray([], dtype=config.floatX)
+    a = tensor.vector('a')
+    s = tensor.join(0, a, a, empty_vec)
+    f = function([a], s, mode=mode_opt)
+    val = f([1])
+    assert numpy.all(val == [1])
+    e = f.maker.fgraph.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 1
+    assert all([not isinstance(n.op, Join) or len(n.inputs) == 3
+                for n in e if isinstance(n.op, Join)])
+    assert f.maker.fgraph.outputs[0].dtype == config.floatX
+
+    #test for matrix join(1,a)
+    empty_mat = numpy.asarray([[]], dtype=config.floatX)
+    m = tensor.matrix('m')
+    s = join(1, empty_mat, m, m, m)
+    f = function([m], s, mode=mode_opt)
+    val = f([[1]])
+    assert numpy.all(val == [[1]])
+    e = f.maker.fgraph.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 1
+    assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
+                for n in e if isinstance(n.op, Join)])
+    assert f.maker.fgraph.outputs[0].dtype == config.floatX
+
+    #test for vector, vector, empty to matrix
+    # We can't optimize this case.
+    s = tensor.stack(a, a, empty_vec)
+    f = function([a], s, mode=mode_opt)
+    val = f([])
+    assert numpy.all(val == [1])
+    e = f.maker.fgraph.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 1
+    assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
+                for n in e if isinstance(n.op, Join)])
+    assert f.maker.fgraph.outputs[0].dtype == config.floatX
+
+    #test for matrix join(0,a)
+    # We can't optimize this case.
+    s = join(0, m, numpy.asarray([[2.]], dtype=config.floatX), m)
+    f = function([m], s, mode=mode_opt)
+    val = f([[1]])
+    assert numpy.all(val == [[1], [2], [1]])
+    e = f.maker.fgraph.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 1
+    assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
+                for n in e if isinstance(n.op, Join)])
+    assert f.maker.fgraph.outputs[0].dtype == config.floatX
+
+
+def test_local_join_make_vector():
+    a, b, c, d, e = tensor.scalars('abcde')
+    v = tensor.vector('v')
+    mv = MakeVector(config.floatX)
+    s = tensor.join(0, mv(a), v, mv(b, c), mv(d, e))
+    f = function([a, b, c, d, e, v], s, mode=mode_opt)
+    theano.printing.debugprint(f)
+    val = f(1, 2, 3, 4, 6, [7, 8])
+    assert numpy.all(val == [1, 7, 8, 2, 3, 4, 6])
+    e = f.maker.fgraph.toposort()
+    assert len([n for n in e if isinstance(n.op, Join)]) == 1
+    assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
+                for n in e if isinstance(n.op, Join)])
+    assert f.maker.fgraph.outputs[0].dtype == config.floatX
+
+
 def test_local_add_specialize():
     # test of non-zero dimension
     a = tensor.vector()
