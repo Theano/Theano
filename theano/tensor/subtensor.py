@@ -1808,15 +1808,30 @@ class AdvancedIncSubtensor1(Op):
 
     def grad(self, inputs, grads):
         g_output, = grads
-        x, y = inputs[:2]
-        idx_list = inputs[2:]
+        x, y, idx_list = inputs
+        if x.dtype in theano.tensor.discrete_dtypes:
+            # The output dtype is the same as x
+            gx = x.zeros_like(dtype=theano.config.floatX)
+            if y.dtype in theano.tensor.discrete_dtypes:
+                gy = y.zeros_like(dtype=theano.config.floatX)
+            else:
+                gy = y.zeros_like()
+        elif x.dtype in theano.tensor.complex_dtypes:
+            raise NotImplementedError("No support for complex grad yet")
+        else:
+            if self.set_instead_of_inc:
+                gx = advanced_set_subtensor1(
+                    g_output,
+                    y.zeros_like(),
+                    idx_list)
+            else:
+                gx = g_output
+            gy = advanced_subtensor1(g_output, idx_list)
 
-        gx = g_output
-        gy = advanced_subtensor1(g_output, *idx_list)
-
-        return [gx, gy] + [DisconnectedType()()] * len(idx_list)
+        return [gx, gy] + [DisconnectedType()()]
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
+advanced_set_subtensor1 = AdvancedIncSubtensor1(set_instead_of_inc=True)
 
 
 def as_index_variable(idx):
