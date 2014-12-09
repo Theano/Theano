@@ -797,7 +797,8 @@ class PushOutScanOutput(gof.Optimizer):
 
             client = outer_var.clients[0][0]
 
-            if (isinstance(client.op, theano.tensor.Subtensor) and
+            if (isinstance(client, gof.Apply) and
+                isinstance(client.op, theano.tensor.Subtensor) and
                 isinstance(client.inputs[1], theano.Constant) and
                 client.inputs[1].ndim == 0 and
                 client.inputs[1].value == -1):
