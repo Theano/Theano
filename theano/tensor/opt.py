@@ -2665,9 +2665,9 @@ def local_join_1(node):
 @register_canonicalize
 @gof.local_optimizer([T.Join])
 def local_join_empty(node):
-    """Join(i, x, y, empty) => Join(i, x, y, empty)
+    """Join(i, x, y, empty) => Join(i, x, y)
 
-    remove empty inputs to joins.
+    remove empty inputs to joins. The empty inputs can be anywhere.
     """
     if not isinstance(node.op, T.Join):
         return
@@ -2688,6 +2688,7 @@ def local_join_empty(node):
     if len(new_inputs) < len(node.inputs) - 1:
         if len(new_inputs) == 0:
             # T.join do not work in that case.
+            # constant folding will take care of this case.
             return
         ret = T.join(node.inputs[0], *new_inputs)
         o = node.outputs[0]
