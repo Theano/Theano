@@ -3,7 +3,7 @@ import os
 import theano
 from theano import Apply, gof, tensor
 from theano.gof import Optimizer, local_optimizer
-from theano.gof.type import CDataType
+from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -119,6 +119,39 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return %s;
 }
 }""" % (error_out,)]
+
+
+class DnnVersion(DnnBase):
+    def c_compiler(self):
+        return NVCC_compiler
+
+    def make_node(self):
+        return Apply(self, [], [Generic()()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        o = outputs[0]
+        return """
+        %(o)s = PyInt_FromLong(cudnnVersionMacro());
+        """ % locals()
+
+    def do_constant_folding(self, node):
+        # Needed as we do not want to cache this information.
+        return False
+
+    def c_code_cache_version(self):
+        # Not needed, but make it clear that we do not want to cache this.
+        return None
+
+
+def version():
+    """
+    return the current cuDNN version we compile with.
+
+    This only check the header version, the the library we link with.
+    """
+    f = theano.function([], DnnVersion()(),
+                        theano.Mode(optimizer=None))
+    return f()
 
 
 class GpuDnnConvDesc(GpuOp):

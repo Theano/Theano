@@ -192,3 +192,9 @@ def test_dnn_tag():
         assert cuda.dnn.dnn_available()
         assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
                     for n in f.maker.fgraph.toposort()])
+
+
+def test_version():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    assert isinstance(cuda.dnn.version(), int)
