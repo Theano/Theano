@@ -38,4 +38,11 @@ static inline const int cudnnVersionMacro(){
 
 }
 
+//some macro to help support cudnn R1 and R2.
+#ifdef  CUDNN_VERSION
+#define cudnnTensor4dDescriptor_t cudnnTensorDescriptor_t
+#define cudnnCreateTensor4dDescriptor cudnnCreateTensorDescriptor
+#define cudnnDestroyTensor4dDescriptor cudnnDestroyTensorDescriptor
+#endif
+
 #endif
