@@ -710,14 +710,22 @@ class GpuDnnPoolDesc(GpuOp):
                  "descriptor: %%s", cudnnGetErrorString(err));
     %(fail)s
   }
-
+#ifndef CUDNN_VERSION
   err = cudnnSetPoolingDescriptor(
   %(desc)s,
   %(mode_flag)s,
   %(wsX)d, %(wsY)d,
   %(stridex)d, %(stridey)d
   );
-
+#else
+  err = cudnnSetPooling2dDescriptor(
+  %(desc)s,
+  %(mode_flag)s,
+  %(wsX)d, %(wsY)d,
+  0, 0,
+  %(stridex)d, %(stridey)d
+  );
+#endif
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
                  cudnnGetErrorString(err));
@@ -729,7 +737,7 @@ class GpuDnnPoolDesc(GpuOp):
            stridey=self.stride[1])
 
     def c_code_cache_version(self):
-        return (1,)
+        return (1, version())
 
 
 class GpuDnnPool(DnnBase):
@@ -805,9 +813,19 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
 %(set_in)s
 
 cudnnPoolingMode_t mode;
-int wsX, wsY, strideX, strideY;
-
-err%(name)s = cudnnGetPoolingDescriptor(%(desc)s, &mode, &wsX, &wsY, &strideX, &strideY);
+int wsX, wsY, vpad, hpad, strideX, strideY;
+#ifndef CUDNN_VERSION
+err%(name)s = cudnnGetPoolingDescriptor(
+        %(desc)s, &mode,
+        &wsX, &wsY,
+        &strideX, &strideY);
+#else
+err%(name)s = cudnnGetPooling2dDescriptor(
+        %(desc)s, &mode,
+        &wsX, &wsY,
+        &vpad, &hpad,
+        &strideX, &strideY);
+#endif
 
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
@@ -827,13 +845,27 @@ if (CudaNdarray_prep_output(&%(out)s, 4, %(out)s_dims) != 0)
 }
 
 %(set_out)s
-
+#ifndef CUDNN_VERSION
 err%(name)s = cudnnPoolingForward(
 _handle,
 %(desc)s,
 %(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
 %(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
 );
+#else
+{
+const float alpha = 1;
+const float beta = 0;
+err%(name)s = cudnnPoolingForward(
+_handle,
+%(desc)s,
+&alpha,
+%(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
+&beta,
+%(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
+);
+}
+#endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
                "GpuDnnPool: error doing cudnnPoolingForward operation: %%s",
@@ -863,7 +895,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return (4,)
+        return (4, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -995,7 +1027,7 @@ if (CudaNdarray_prep_output(&%(output_grad)s, 4,
 }
 
 %(set_out)s
-
+#ifndef CUDNN_VERSION
 err%(name)s = cudnnPoolingBackward(
 _handle,
 %(desc)s,
@@ -1004,6 +1036,22 @@ _handle,
 %(output_desc)s, CudaNdarray_DEV_DATA(%(output)s),
 %(output_grad_desc)s, CudaNdarray_DEV_DATA(%(output_grad)s)
 );
+#else
+{
+const float alpha = 1;
+const float beta = 0;
+err%(name)s = cudnnPoolingBackward(
+_handle,
+%(desc)s,
+&alpha,
+%(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
+%(input_grad_desc)s, CudaNdarray_DEV_DATA(%(input_grad)s),
+%(output_desc)s, CudaNdarray_DEV_DATA(%(output)s),
+&beta,
+%(output_grad_desc)s, CudaNdarray_DEV_DATA(%(output_grad)s)
+);
+}
+#endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
                "GpuDnnPoolGrad: error doing operation: %%s",
@@ -1020,7 +1068,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            output_grad_desc="output_grad"+name)
 
     def c_code_cache_version(self):
-        return (4,)
+        return (4, version())
 
 
 def dnn_pool(img, ws, stride=(1, 1), mode='max'):
