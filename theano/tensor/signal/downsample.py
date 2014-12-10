@@ -119,6 +119,10 @@ class DownsampleFactorMax(Op):
         TODO: why is poolsize an op parameter here?
         """
         self.ds = tuple(ds)
+        if not all([isinstance(d, int) for d in ds]):
+            raise ValueError(
+                "DownsampleFactorMax downsample parameters must be ints."
+                " Got %s" % str(ds))
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
