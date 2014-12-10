@@ -50,12 +50,18 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                 try_run=True, output=True)
 
             dnn_available.avail = comp and run
-            if dnn_available.avail:
-                dnn_available.msg = "cuDNN should work"
-            else:
+            if not dnn_available.avail:
                 dnn_available.msg = (
                     "Theano is not able to use cuDNN. We got this error: \n" +
                     str(err))
+            else:
+                v = version()
+                if isinstance(v, tuple) and v[0] != v[1]:
+                    dnn_available.avail = False
+                    dnn_available.msg = ("Mixed dnn version. The header is"
+                                         " from one version, but we link with"
+                                         " a different version %s" % str(v))
+                    raise RuntimeError(dnn_available.msg)
     return dnn_available.avail
 
 
@@ -131,7 +137,11 @@ class DnnVersion(DnnBase):
     def c_code(self, node, name, inputs, outputs, sub):
         o = outputs[0]
         return """
+        #if CUDNN_VERSION >= 20
+        %(o)s = PyTuple_Pack(2, PyInt_FromLong(cudnnVersionMacro()), PyInt_FromLong(cudnnGetVersion()));
+        #else
         %(o)s = PyInt_FromLong(cudnnVersionMacro());
+        #endif
         """ % locals()
 
     def do_constant_folding(self, node):
