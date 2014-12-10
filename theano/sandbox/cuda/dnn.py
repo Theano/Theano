@@ -159,9 +159,12 @@ def version():
 
     This only check the header version, the the library we link with.
     """
-    f = theano.function([], DnnVersion()(),
-                        theano.Mode(optimizer=None))
-    return f()
+    if version.v is None:
+        f = theano.function([], DnnVersion()(),
+                            theano.Mode(optimizer=None))
+        version.v = f()
+    return version.v
+version.v = None
 
 
 class GpuDnnConvDesc(GpuOp):
