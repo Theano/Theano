@@ -18,6 +18,8 @@ import theano.scalar as scal
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.subtensor import (inc_subtensor, set_subtensor,
+                                     advanced_inc_subtensor1,
+                                     advanced_set_subtensor1,
                                      Subtensor, IncSubtensor,
                                      AdvancedSubtensor1, AdvancedSubtensor,
                                      advanced_subtensor1, inplace_increment,
@@ -518,6 +520,19 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         g_00 = g([0, 0])
         self.assertTrue(g_00.shape == (1, 3))
         self.assertTrue(numpy.allclose(g_00, 2))
+
+        utt.verify_grad(lambda m: m[[1, 3]],
+                        [numpy.random.rand(5, 5).astype(self.dtype)])
+
+        def fun(x, y):
+            return advanced_inc_subtensor1(x, y, [1, 3])
+        utt.verify_grad(fun, [numpy.random.rand(5, 5).astype(self.dtype),
+                              numpy.random.rand(2, 5).astype(self.dtype)])
+
+        def fun(x, y):
+            return advanced_set_subtensor1(x, y, [1, 3])
+        utt.verify_grad(fun, [numpy.random.rand(5, 5).astype(self.dtype),
+                              numpy.random.rand(2, 5).astype(self.dtype)])
 
     def test_adv_sub1_idx_broadcast(self):
         # The idx can be a broadcastable vector.
