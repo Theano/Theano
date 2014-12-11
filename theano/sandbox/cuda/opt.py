@@ -44,7 +44,7 @@ from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
-from theano.sandbox.cuda import gpu_optimizer, register_opt, gpu_seqopt
+from theano.sandbox.cuda import gpu_optimizer, register_opt, gpu_seqopt, GpuOp
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 from theano.tensor import nlinalg
@@ -832,6 +832,11 @@ def local_gpu_subtensor(node):
            isinstance(host_input.owner.op, tensor.Subtensor):
             subt = host_input.owner.op
             x = host_input.owner.inputs[0]
+            if len(x.clients) == 1:
+                # It mean, the input of the subtensor is used only by
+                # the subtensor. We do not want to move the subtensor
+                # to the GPU in that case.
+                return
             coords = host_input.owner.inputs[1:]
             return [GpuSubtensor(subt.idx_list)(gpu_from_host(x), *coords)]
     if isinstance(node.op, tensor.Subtensor):
@@ -839,6 +844,19 @@ def local_gpu_subtensor(node):
         if (x.owner and
             isinstance(x.owner.op, HostFromGpu) and
             x.dtype == "float32"):
+            gpu_x = x.owner.inputs[0]
+            if (gpu_x.owner and
+                isinstance(gpu_x.owner.op, GpuFromHost) and
+                # And it is a shared var or an input of the graph.
+                not gpu_x.owner.inputs[0].owner):
+                if len(x.clients) == 1:
+                    if any([n == 'output' or isinstance(n.op, GpuOp)
+                            for n,_  in node.outputs[0].clients]):
+                        return
+                    else:
+                        return [host_from_gpu(gpu_from_host(node.outputs[0]))]
+                    return
+
             gpu_x, = x.owner.inputs
             coords = node.inputs[1:]
             return [host_from_gpu(GpuSubtensor(
