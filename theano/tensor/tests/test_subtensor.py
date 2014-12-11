@@ -20,6 +20,8 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.subtensor import (inc_subtensor, set_subtensor,
                                      advanced_inc_subtensor1,
                                      advanced_set_subtensor1,
+                                     advanced_inc_subtensor,
+                                     advanced_set_subtensor,
                                      Subtensor, IncSubtensor,
                                      AdvancedSubtensor1, AdvancedSubtensor,
                                      advanced_subtensor1, inplace_increment,
@@ -1380,6 +1382,27 @@ class TestAdvancedSubtensor(unittest.TestCase):
         f2 = theano.function([i, j, k], z)
         cmd = f2(0, 1, 2) == aa[[0, 1, 2], :, 0:2]
         self.assertTrue(cmd.all())
+
+    def test_grad(self):
+        ones = numpy.ones((1, 3), dtype=self.dtype)
+        n = self.shared(ones * 5, broadcastable=(True, False))
+        idx = tensor.lvector()
+        idx2 = tensor.lvector()
+        t = n[idx, idx2]
+        self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor))
+
+        utt.verify_grad(lambda m: m[[1, 3], [2, 4]],
+                        [numpy.random.rand(5, 5).astype(self.dtype)])
+
+        def fun(x, y):
+            return advanced_inc_subtensor(x, y, [1, 3], [2, 4])
+        utt.verify_grad(fun, [numpy.random.rand(5, 5).astype(self.dtype),
+                              numpy.random.rand(2).astype(self.dtype)])
+
+        def fun(x, y):
+            return advanced_set_subtensor(x, y, [1, 3], [2, 4])
+        utt.verify_grad(fun, [numpy.random.rand(5, 5).astype(self.dtype),
+                              numpy.random.rand(2).astype(self.dtype)])
 
 
 class TestInferShape(utt.InferShapeTester):
