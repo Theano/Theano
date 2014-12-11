@@ -2034,9 +2034,13 @@ class AdvancedIncSubtensor(Op):
                     'later, or to the latest development version. '
                     'You may need to clear the cache (theano-cache clear) '
                     'afterwards.')
-
+        new_inputs = []
+        for inp in inputs:
+            if isinstance(inp, (list, tuple)):
+                inp = theano.tensor.as_tensor_variable(inp)
+            new_inputs.append(inp)
         return gof.Apply(op,
-                         (x, y) + inputs,
+                         (x, y) + tuple(new_inputs),
                          [theano.tensor.tensor(
                              dtype=x.type.dtype,
                              broadcastable=x.type.broadcastable)])
@@ -2091,9 +2095,25 @@ class AdvancedIncSubtensor(Op):
         x, y = inpt[:2]
         idxs = inpt[2:]
         outgrad, = output_gradients
-        d_x_wrt_C = outgrad
-        d_y_wrt_C = AdvancedSubtensor()(outgrad, *idxs)
-        return [d_x_wrt_C, d_y_wrt_C] + \
+        if x.dtype in theano.tensor.discrete_dtypes:
+            # The output dtype is the same as x
+            gx = x.zeros_like(dtype=theano.config.floatX)
+            if y.dtype in theano.tensor.discrete_dtypes:
+                gy = y.zeros_like(dtype=theano.config.floatX)
+            else:
+                gy = y.zeros_like()
+        elif x.dtype in theano.tensor.complex_dtypes:
+            raise NotImplementedError("No support for complex grad yet")
+        else:
+            if self.set_instead_of_inc:
+                gx = advanced_set_subtensor(
+                    outgrad,
+                    y.zeros_like(),
+                    *idxs)
+            else:
+                gx = outgrad
+            gy = advanced_subtensor(outgrad, *idxs)
+        return [gx, gy] + \
             [DisconnectedType()() for _ in idxs]
 
     def R_op(self, inputs, eval_points):
@@ -2102,6 +2122,7 @@ class AdvancedIncSubtensor(Op):
         return self.make_node(eval_points[0], eval_points[1],
                               *inputs[2:]).outputs
 advanced_inc_subtensor = AdvancedIncSubtensor()
+advanced_set_subtensor = AdvancedIncSubtensor(set_instead_of_inc=True)
 
 
 def take(a, indices, axis=None, mode='raise'):
