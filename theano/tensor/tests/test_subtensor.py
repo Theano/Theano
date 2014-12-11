@@ -1037,6 +1037,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         m1 = set_subtensor(m[:, i], 0)
         m2 = inc_subtensor(m[:, i], 1)
+
         f = theano.function([m, i], [m1, m2])
 
         m_val = rand(5, 7)
@@ -1051,6 +1052,80 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
         assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
+
+    def test_adv1_inc_sub_notlastdim_1_2dval_broadcast(self):
+        # Test that taking 1-dimensional advanced indexing
+        # over a dimension that's not the first (outer-most),
+        # and incrementing/setting with broadcast
+        m = matrix('m')
+
+        # Test for both vector and matrix as index
+        sym_i = (lvector('i'), lmatrix('i'))
+        shape_i = ((4,), (4, 2))
+        shape_val = ((3, 1), (3, 1, 1))
+
+        # Disable the warning emitted for that case
+        orig_warn = config.warn.inc_set_subtensor1
+        try:
+            config.warn.inc_set_subtensor1 = False
+
+            for i, shp_i, shp_v in zip(sym_i, shape_i, shape_val):
+                sub_m = m[:, i]
+                m1 = set_subtensor(sub_m, numpy.zeros(shp_v))
+                m2 = inc_subtensor(sub_m, numpy.ones(shp_v))
+                f = theano.function([m, i], [m1, m2])
+
+                m_val = rand(3, 5)
+                i_val = randint_ranged(min=0, max=4, shape=shp_i)
+                m1_ref = m_val.copy()
+                m2_ref = m_val.copy()
+
+                m1_val, m2_val = f(m_val, i_val)
+                for idx in i_val.ravel():
+                    m1_ref[:, idx] = 0
+                    m2_ref[:, idx] += 1
+
+                assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
+                assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
+        finally:
+            config.warn.inc_set_subtensor1 = orig_warn
+
+    def test_adv1_inc_sub_notlastdim_1_2dval_no_broadcast(self):
+        # Test that taking 1-dimensional advanced indexing
+        # over a dimension that's not the first (outer-most),
+        # and incrementing/setting without broadcast
+        m = matrix('m')
+
+        # Test for both vector and matrix as index
+        sym_i = (lvector('i'), lmatrix('i'))
+        shape_i = ((4,), (4, 2))
+        shape_val = ((3, 4), (3, 4, 2))
+
+        # Disable the warning emitted for that case
+        orig_warn = config.warn.inc_set_subtensor1
+
+        try:
+            config.warn.inc_set_subtensor1 = False
+            for i, shp_i, shp_v in zip(sym_i, shape_i, shape_val):
+                sub_m = m[:, i]
+                m1 = set_subtensor(sub_m, numpy.zeros(shp_v))
+                m2 = inc_subtensor(sub_m, numpy.ones(shp_v))
+                f = theano.function([m, i], [m1, m2])
+
+                m_val = rand(3, 5)
+                i_val = randint_ranged(min=0, max=4, shape=shp_i)
+                m1_ref = m_val.copy()
+                m2_ref = m_val.copy()
+
+                m1_val, m2_val = f(m_val, i_val)
+                for idx in i_val:
+                    m1_ref[:, idx] = 0
+                    m2_ref[:, idx] += 1
+
+                assert numpy.allclose(m1_val, m1_ref), (m1_val, m1_ref)
+                assert numpy.allclose(m2_val, m2_ref), (m2_val, m2_ref)
+        finally:
+            config.warn.inc_set_subtensor1 = orig_warn
 
 
 class TestIncSubtensor1(unittest.TestCase):
