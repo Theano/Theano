@@ -39,6 +39,11 @@ def hashtype(self):
     return hash(t.__name__) ^ hash(t.__module__)
 
 
+# Object to mark that a parameter is undefined (useful in cases where
+# None is a valid value with defined semantics)
+undef = object()
+
+
 class MethodNotDefined(Exception):
     """
     To be raised by functions defined as part of an interface.
