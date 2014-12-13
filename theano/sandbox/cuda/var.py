@@ -1,5 +1,6 @@
 import copy
 import copy_reg
+import warnings
 
 import numpy
 
@@ -214,31 +215,37 @@ def float32_shared_constructor(value, name=None, strict=False,
     return rval
 
 
-# THIS WORKS But CudaNdarray instances don't compare equal to one
-# another, and what about __hash__ ?  So the unpickled version doesn't
-# equal the pickled version, and the cmodule cache is not happy with
-# the situation.
-def CudaNdarraySharedVariable_unpickler(npa):
-
+def CudaNdarraySharedVariable_unpickler(*npa):
     if config.experimental.unpickle_shared_gpu_on_cpu:
         # directly return numpy array
         warnings.warn(
             "config.experimental.unpickle_shared_gpu_on_cpu is set to True."
             " Unpickling CudaNdarraySharedVariable as TensorSharedVariable."
         )
-        return theano.tensor._shared(numpy.asarray(npa.get_value()),
-                                     borrow=True)
-        return npa
-    return npa
+        cls = theano.tensor.sharedvar.TensorSharedVariable
+        type = theano.tensor.TensorType(
+            dtype=npa[1].dtype, broadcastable=npa[1].broadcastable)
+        return cls(name=npa[0],
+                   type=type,
+                   value=numpy.asarray(npa[2].data),
+                   strict=None)
+    # Mimic what the normal unpickler would do.
+    return CudaNdarraySharedVariable(name=npa[0],
+                                     type=npa[1],
+                                     value=None,
+                                     strict=None,
+                                     container=npa[2])
 
 copy_reg.constructor(CudaNdarraySharedVariable_unpickler)
 
 
 def CudaNdarraySharedVariable_pickler(sh_var):
-    return (CudaNdarraySharedVariable_unpickler, sh_var)
+    return (CudaNdarraySharedVariable_unpickler,
+            (sh_var.name,
+             sh_var.type,
+             sh_var.container))
 
 
-# In case cuda is not imported.
 copy_reg.pickle(CudaNdarraySharedVariable,
                 CudaNdarraySharedVariable_pickler,
                 CudaNdarraySharedVariable_unpickler)
