@@ -315,6 +315,11 @@ AddConfigVar('experimental.unpickle_gpu_on_cpu',
              BoolParam(default=False),
              in_c_key=False)
 
+AddConfigVar('experimental.unpickle_shared_gpu_on_cpu',
+             "...",
+             BoolParam(default=False),
+             in_c_key=False)
+
 AddConfigVar('numpy.seterr_all',
              ("Sets numpy's behaviour for floating-point errors, ",
               "see numpy.seterr. "

@@ -1,10 +1,11 @@
 import copy
+import copy_reg
 
 import numpy
 
 import theano
 from theano import Variable, Constant
-from theano import tensor
+from theano import config, tensor
 from theano.compile import SharedVariable
 
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -211,3 +212,33 @@ def float32_shared_constructor(value, name=None, strict=False,
     rval.get_value_return_ndarray = get_value_return_ndarray
 
     return rval
+
+
+# THIS WORKS But CudaNdarray instances don't compare equal to one
+# another, and what about __hash__ ?  So the unpickled version doesn't
+# equal the pickled version, and the cmodule cache is not happy with
+# the situation.
+def CudaNdarraySharedVariable_unpickler(npa):
+
+    if config.experimental.unpickle_shared_gpu_on_cpu:
+        # directly return numpy array
+        warnings.warn(
+            "config.experimental.unpickle_shared_gpu_on_cpu is set to True."
+            " Unpickling CudaNdarraySharedVariable as TensorSharedVariable."
+        )
+        return theano.tensor._shared(numpy.asarray(npa.get_value()),
+                                     borrow=True)
+        return npa
+    return npa
+
+copy_reg.constructor(CudaNdarraySharedVariable_unpickler)
+
+
+def CudaNdarraySharedVariable_pickler(sh_var):
+    return (CudaNdarraySharedVariable_unpickler, sh_var)
+
+
+# In case cuda is not imported.
+copy_reg.pickle(CudaNdarraySharedVariable,
+                CudaNdarraySharedVariable_pickler,
+                CudaNdarraySharedVariable_unpickler)
