@@ -316,7 +316,16 @@ AddConfigVar('experimental.unpickle_gpu_on_cpu',
              in_c_key=False)
 
 AddConfigVar('experimental.unpickle_shared_gpu_on_cpu',
-             "...",
+             "Allow unpickling of pickled CudaNdarraysSharedVariable as "
+             "TensorSharedVariable. "
+             "This is useful, if you want to load a model saved on GPU "
+             "when no GPU is available. "
+             "This do not solve all problems! It only work if you pickled just "
+             "Theano shared variable. If you pickle graph or function based on "
+             "those shared variable, they won't work correctly. "
+             "Please be aware that this a work around that only work in some condition. "
+             "This flag is experimental and may be removed any time, when "
+             "gpu<>cpu transparency is solved.",
              BoolParam(default=False),
              in_c_key=False)
 
