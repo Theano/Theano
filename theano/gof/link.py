@@ -183,7 +183,7 @@ raise_with_op.print_thunk_trace = False
 class Linker(object):
     """WRITEME"""
 
-    def clone(allow_gc=undef):
+    def clone(self, allow_gc=undef):
         new = copy(self)
         if allow_gc is not undef:
             new.allow_gc = allow_gc
