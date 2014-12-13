@@ -1878,6 +1878,10 @@ def local_useless_inc_subtensor(node):
 @register_canonicalize
 @gof.local_optimizer([AdvancedIncSubtensor1])
 def local_set_to_inc_subtensor(node):
+    """
+    AdvancedIncSubtensor1(x, x[ilist]+other, ilist, set_instead_of_inc=True) ->
+    AdvancedIncSubtensor1(x, other, ilist, set_instead_of_inc=False)
+    """
     if (isinstance(node.op, AdvancedIncSubtensor1) and
         node.op.set_instead_of_inc == True and
         node.inputs[1].owner and
