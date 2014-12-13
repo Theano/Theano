@@ -2703,8 +2703,9 @@ def test_local_set_to_inc_subtensor():
     g = s + 3
     r = theano.tensor.set_subtensor(s, g)
     moder = compile.get_default_mode().excluding('local_set_to_inc_subtensor')
+    modet = compile.get_default_mode().including('local_set_to_inc_subtensor')
     f1 = theano.function([v], r, mode=moder)
-    f2 = theano.function([v], r)
+    f2 = theano.function([v], r, mode=modet)
 
     advi1 = [n for n in f1.maker.fgraph.toposort()
              if isinstance(n.op, tensor.AdvancedIncSubtensor1)]
