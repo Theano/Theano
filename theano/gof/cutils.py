@@ -138,9 +138,10 @@ map_increment(PyArrayMapIterObject *mit, PyObject *op, inplace_map_binop add_inp
 }
 
 
-static PyObject *
+PyObject *
 inplace_increment(PyObject *dummy, PyObject *args)
 {
+fprintf(stderr, "prout1\\n");
     PyObject *arg_a = NULL, *index=NULL, *inc=NULL;
     PyArrayObject *a;
     inplace_map_binop add_inplace = NULL;
@@ -184,6 +185,7 @@ inplace_increment(PyObject *dummy, PyObject *args)
         return NULL;
     }
     mit = (PyArrayMapIterObject *) PyArray_MapIterArray(a, index);
+    Py_INCREF(mit);
     if (mit == NULL) {
         goto fail;
     }
