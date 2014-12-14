@@ -2697,6 +2697,35 @@ def test_local_IncSubtensor_serialize():
                         for inp in a.inputs])
 
 
+def test_local_set_to_inc_subtensor():
+    v = theano.tensor.fmatrix()
+    s = v[[2, 1]]
+    g = s + 3
+    r = theano.tensor.set_subtensor(s, g)
+    moder = compile.get_default_mode().excluding('local_set_to_inc_subtensor')
+    modet = compile.get_default_mode().including('local_set_to_inc_subtensor')
+    f1 = theano.function([v], r, mode=moder)
+    f2 = theano.function([v], r, mode=modet)
+
+    advi1 = [n for n in f1.maker.fgraph.toposort()
+             if isinstance(n.op, tensor.AdvancedIncSubtensor1)]
+
+    advi2 = [n for n in f2.maker.fgraph.toposort()
+             if isinstance(n.op, tensor.AdvancedIncSubtensor1)]
+
+    # We only have SetSubtensor in f1
+    assert all(n.op.set_instead_of_inc for n in advi1)
+    # We don't have any SetSubtensor in f2
+    assert all(not n.op.set_instead_of_inc for n in advi2)
+
+    val = numpy.random.randn(3, 2).astype('float32')
+
+    r1 = f1(val)
+    r2 = f2(val)
+
+    utt.assert_allclose(r1, r2)
+
+
 def test_local_subtensor_of_dot():
     m1 = theano.tensor.matrix()
     m2 = theano.tensor.matrix()
