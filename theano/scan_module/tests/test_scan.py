@@ -434,7 +434,7 @@ class T_Scan(unittest.TestCase):
                              output,
                              updates=updates,
                              allow_input_downcast=True,
-                             mode=mode)
+                             mode=mode_with_gpu)
 
         # get random initial values
         rng = numpy.random.RandomState(utt.fetch_seed())
