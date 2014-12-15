@@ -47,7 +47,6 @@ class Scan(PureOp):
                  inputs,
                  outputs,
                  info,
-                 typeConstructor=None,
                 ):
         """
         :param inputs: inputs of the inner function of scan
@@ -56,21 +55,6 @@ class Scan(PureOp):
             the scan op (like number of different types of
             arguments, name, mode, if it should run on GPU or
             not, etc.)
-        :param typeConstructor: function that constructs an equivalent
-            to Theano TensorType
-
-
-        Note: ``typeConstructor`` had been added to refactor how
-        Theano deals with the GPU. If it runs on the GPU, scan needs
-        to construct certain outputs (those who reside in the GPU
-        memory) as the GPU-specific type.  However we can not import
-        gpu code in this file (as it is in sandbox, and not available
-        on each machine) so the workaround is that the GPU
-        optimization passes to the constructor of this class a
-        function that is able to construct a GPU type. This way the
-        class Scan does not need to be aware of the details for the
-        GPU, it just constructs any tensor using this function (which
-        by default constructs normal tensors).
         """
         if 'gpua' not in info:
             info['gpua'] = False
@@ -87,19 +71,13 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
-        tensorConstructor = lambda broadcastable, dtype: TensorType(
-            broadcastable=broadcastable, dtype=dtype)
-        if typeConstructor is None:
-            typeConstructor = tensorConstructor
 
         while idx < self.n_mit_mot_outs:
             # Not that for mit_mot there are several output slices per
             # output sequence
             o = outputs[idx]
             self.output_types.append(
-                typeConstructor(
-                    broadcastable=(False,) + o.type.broadcastable,
-                    dtype=o.type.dtype))
+                o.type.clone(broadcastable=(False,) + o.type.broadcastable))
 
             idx += len(self.mit_mot_out_slices[jdx])
             jdx += 1
@@ -109,9 +87,7 @@ class Scan(PureOp):
 
         for o in outputs[idx:end]:
             self.output_types.append(
-                typeConstructor(
-                    broadcastable=(False,) + o.type.broadcastable,
-                    dtype=o.type.dtype))
+                o.type.clone(broadcastable=(False,) + o.type.broadcastable))
 
         # shared outputs + possibly the ending condition
         for o in outputs[end:]:
@@ -232,10 +208,9 @@ class Scan(PureOp):
             if rval.ndim == as_var.ndim:
                 rval = as_var.type.filter_variable(rval)
             else:
-                tmp = as_var.type.__class__(
+                tmp = as_var.type.clone(
                     broadcastable=tuple(var.broadcastable[:1])+\
-                                  tuple(as_var.broadcastable),
-                    dtype=as_var.dtype)
+                        tuple(as_var.broadcastable))
                 rval = tmp.filter_variable(rval)
             return rval
 
