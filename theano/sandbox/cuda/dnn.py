@@ -2,6 +2,7 @@ import os
 
 import theano
 from theano import Apply, gof, tensor
+from theano.gradient import DisconnectedType
 from theano.gof import Optimizer, local_optimizer
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
@@ -373,6 +374,7 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc = inputs[2]
+        height, width = inputs[3:] or (-1, -1)
         out, = outputs
 
         checks = []
@@ -425,11 +427,24 @@ cudnnStatus_t err%(name)s;
     out_dims[3] = dd[6];
   }
 #else
-  cudnnGetConvolution2dForwardOutputDim(
+  if (!%(full)d){
+      cudnnGetConvolution2dForwardOutputDim(
         %(desc)s,
         input%(id)d,
         kerns%(id)d,
         &out_dims[0], &out_dims[1],&out_dims[2], &out_dims[3]);
+  }else{
+        int padH, padW, dH, dW, upscalex, upscaley;
+        cudnnConvolutionMode_t mode;
+        cudnnGetConvolution2dDescriptor(
+            %(desc)s, &padW, &padH, &dH, &dW,
+            &upscalex, &upscaley, &mode);
+
+        out_dims[0] = CudaNdarray_HOST_DIMS(%(input2)s)[0];
+        out_dims[1] = CudaNdarray_HOST_DIMS(%(input1)s)[1];
+        out_dims[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(%(input1)s)[2] - 1) * dH + CudaNdarray_HOST_DIMS(%(input2)s)[2] - 2*padH;
+        out_dims[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(%(input1)s)[3] - 1) * dW + CudaNdarray_HOST_DIMS(%(input2)s)[3] - 2*padW;
+  }
 #endif
   if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
     %(fail)s
@@ -475,7 +490,7 @@ _handle,
 }
 #endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
+  PyErr_Format(PyExc_RuntimeError, "%(cls)s, error doing operation: %%s",
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -485,10 +500,13 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            input1_desc=self.conv_inputs[0]+name,
            input2_desc=self.conv_inputs[1]+name,
            output_desc=self.conv_output+name,
+           height=height, width=width,
+           cls=self.__class__.__name__,
+           full=int("GpuDnnConvGradI" == self.__class__.__name__),
            method=self.conv_op, path=self.path_flag, algo=self.algo)
 
     def c_code_cache_version(self):
-        return (8, version())
+        return (9, version())
 
 
 class GpuDnnConv(GpuDnnConvBase):
@@ -533,7 +551,7 @@ class GpuDnnConv(GpuDnnConvBase):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConvGradI()(kerns, top, desc)
+        d_img = GpuDnnConvGradI()(kerns, top, desc, img.shape[-2:])
         d_kerns = GpuDnnConvGradW()(img, top, desc)
 
         return d_img, d_kerns, theano.gradient.DisconnectedType()()
@@ -619,14 +637,14 @@ class GpuDnnConvGradI(GpuDnnConvBase):
 
         d_kerns = GpuDnnConvGradW()(img, top, desc)
         d_top = GpuDnnConv()(img, kerns, desc)
-
-        return d_kerns, d_top, theano.gradient.DisconnectedType()()
+        d_height_width = (DisconnectedType()(),) * 2 if len(inp) == 5 else ()
+        return (d_kerns, d_top, DisconnectedType()()) + d_height_width
 
     def connection_pattern(self, node):
         # not connected to desc
         return [[1], [1], [0]]
 
-    def make_node(self, kern, topgrad, desc):
+    def make_node(self, kern, topgrad, desc, shape=None):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if kern.type.ndim != 4:
@@ -637,11 +655,18 @@ class GpuDnnConvGradI(GpuDnnConvBase):
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
-
+        if shape is None:
+            if not (desc.owner and
+                    isinstance(desc.owner.op, GpuDnnConvDesc) and
+                    desc.owner.op.subsample == (1, 1)):
+                raise ValueError('shape must be given if subsample != (1, 1)')
+            height_width = []
+        else:
+            height_width = [shape[0], shape[1]]
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1],
                          False, False]
-        return Apply(self, [kern, topgrad, desc],
+        return Apply(self, [kern, topgrad, desc] + height_width,
                      [CudaNdarrayType(broadcastable)()])
 
 
