@@ -1093,10 +1093,9 @@ def test_inc_subtensor():
     yval = numpy.asarray([[10, 10, 10], [10, 10, 10], [10, 10, 10]],
                       dtype='float32')
     expr = T.inc_subtensor(x[:, 1:3], y[:, 1:3])
+
     f = theano.function([x, y], expr, mode=mode_with_gpu)
 
-    assert sum([isinstance(node.op, cuda.GpuSubtensor)
-                for node in f.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
                 node.op.set_instead_of_inc==False
                 for node in f.maker.fgraph.toposort()]) == 1
@@ -1114,8 +1113,6 @@ def test_set_subtensor():
                       dtype='float32')
     expr = T.set_subtensor(x[:, 1:3], y[:, 1:3])
     f = theano.function([x, y], expr, mode=mode_with_gpu)
-    assert sum([isinstance(node.op, cuda.GpuSubtensor)
-                for node in f.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
                 node.op.set_instead_of_inc == True
                 for node in f.maker.fgraph.toposort()]) == 1
