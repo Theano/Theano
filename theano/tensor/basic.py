@@ -2403,17 +2403,7 @@ class Alloc(gof.Op):
     This Op is used to replace fill() during optimizations because after shapes
     are lifted, the first argument to fill can often be pruned from the graph.
     """
-    def __init__(self):
-        pass
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, value, *shape):
         v = as_tensor_variable(value)

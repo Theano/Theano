@@ -570,7 +570,7 @@ class Rebroadcast(gof.Op):
 
     def __hash__(self):
         items = sorted(self.axis.iteritems())  # no ambiguity because each item key is unique
-        return hash(type(self)) ^ hash(tuple(items))
+        return hash((type(self), tuple(items)))
 
     def __str__(self):
         if len(self.axis) == 0:
@@ -586,10 +586,9 @@ class Rebroadcast(gof.Op):
     def make_node(self, x):
         if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast non-existent dimension')
-        t = x.type.__class__(dtype=x.type.dtype,
-                             broadcastable=[self.axis.get(i, b)
-                                            for i, b in enumerate(
-                                                x.type.broadcastable)])
+        t = x.type.clone(broadcastable=[self.axis.get(i, b)
+                                        for i, b in enumerate(
+                    x.type.broadcastable)])
         return gof.Apply(self, [x], [t()])
 
     def perform(self, node, inp, out_):

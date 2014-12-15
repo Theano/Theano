@@ -52,6 +52,18 @@ class TensorType(Type):
                 " AdvancedSubtensor1 sparse_grad. Now use"
                 " theano.sparse_grad(a_tensor[an_int_vector]).")
 
+    def clone(self, dtype=None, broadcastable=None):
+        """
+        Return a copy of the type optionally with a new dtype or
+        broadcastable pattern.
+        """
+        if dtype is None:
+            dtype = self.dtype
+        if broadcastable is None:
+            broadcastable = self.broadcastable
+        return self.__class__(dtype, broadcastable, name=self.name,
+                              sparse_grad=self.sparse_grad)
+
     def filter(self, data, strict=False, allow_downcast=None):
         """Convert `data` to something which can be associated to a
         `TensorVariable`.
