@@ -7,6 +7,7 @@ import random
 import socket  # only used for gethostname()
 import time
 import logging
+import contextlib
 
 from theano import config
 from theano.configparser import AddConfigVar, IntParam
@@ -42,6 +43,14 @@ def force_unlock():
     """
     get_lock(min_wait=0, max_wait=0.001, timeout=0)
     release_lock()
+
+
+@contextmanager
+def lock_ctx(lock_dir=None, keep_lock=False, **kw):
+    get_lock(lock_dir=lock_dir, **kw)
+    yield
+    if not keep_lock:
+        release_lock()
 
 
 def get_lock(lock_dir=None, **kw):
