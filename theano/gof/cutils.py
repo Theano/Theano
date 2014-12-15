@@ -184,7 +184,6 @@ inplace_increment(PyObject *dummy, PyObject *args)
         return NULL;
     }
     mit = (PyArrayMapIterObject *) PyArray_MapIterArray(a, index);
-    Py_INCREF(mit);
     if (mit == NULL) {
         goto fail;
     }

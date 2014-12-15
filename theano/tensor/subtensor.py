@@ -1943,7 +1943,6 @@ class AdvancedIncSubtensor1(Op):
                     return NULL;
                 }
                 mit = (PyArrayMapIterObject *) PyArray_MapIterArray(a, index);
-                Py_INCREF(mit); // Should I INCREF here?
                 if (mit == NULL) {
                     goto fail;
                 }
@@ -1962,18 +1961,7 @@ class AdvancedIncSubtensor1(Op):
                 return NULL;
             }
                     #endif
-
-
-                    PyMethodDef CutilsExtMethods[] = {
-                        {"run_cthunk",  run_cthunk, METH_VARARGS|METH_KEYWORDS,
-                        "Run a theano cthunk."},
-                        #if NPY_API_VERSION >= 0x00000008
-                        {"inplace_increment",  inplace_increment,
-                        METH_VARARGS,
-                        "increments a numpy array inplace at the passed indexes."},
-                        #endif
-                        {NULL, NULL, 0, NULL}        /* Sentinel */
-                    };""")
+            """)
 
     def c_code(self, node, name, input_names, output_names, sub):
         x, y, idx = input_names
