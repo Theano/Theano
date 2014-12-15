@@ -83,8 +83,19 @@ def c_set_tensor4d(var, desc, err, fail):
     CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
 );
 if (%(err)s != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%s",
-    cudnnGetErrorString(%(err)s));
+    PyErr_Format(PyExc_RuntimeError,
+    "could not set tensor4d descriptor: %%s"
+    "shapes=%%d %%d %%d %%d strides=%%d %%d %%d %%d",
+    cudnnGetErrorString(%(err)s),
+    CudaNdarray_HOST_DIMS(%(var)s)[0],
+    CudaNdarray_HOST_DIMS(%(var)s)[1],
+    CudaNdarray_HOST_DIMS(%(var)s)[2],
+    CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
+    CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
+    CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
+    );
     %(fail)s
 }
         """ % dict(var=var, err=err, desc=desc, fail=fail)
