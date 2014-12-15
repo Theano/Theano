@@ -716,13 +716,11 @@ def local_scan_to_gpua(node):
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
     info['gpu_hash'] = hash(_cmodule_key)
 
-    nw_op = scan_op.Scan(scan_ins, scan_outs, info,
-                         typeConstructor=GpuArrayType).make_node(*nw_ins)
+    nw_op = scan_op.Scan(scan_ins, scan_outs, info).make_node(*nw_ins)
     return nw_op.outputs
 
 optdb.register('gpua_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(typeConstructor=GpuArrayType,
-                                             gpua_flag=True),
+               scan_opt.ScanInplaceOptimizer(gpua_flag=True),
                75,
                'gpua',
                'fast_run',

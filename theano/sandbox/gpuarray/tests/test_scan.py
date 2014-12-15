@@ -15,6 +15,7 @@ from theano.sandbox.gpuarray.tests.test_basic_ops import mode_with_gpu
 class T_Scan(TestCase):
     def setUp(self):
         utt.seed_rng()
+        super(T_Scan, self).setUp()
 
     def test_one_sequence_one_output_weights_gpu1(self):
         def f_rnn(u_t, x_tm1, W_in, W):
