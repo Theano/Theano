@@ -262,6 +262,15 @@ class GpuDnnConvDesc(GpuOp):
     PyErr_SetString(PyExc_ValueError, "bad border mode");
     %(fail)s
   }
+#if CUDNN_VERSION >= 20
+  err = cudnnSetConvolution2dDescriptor(
+  %(desc)s,
+  pad_h%(name)s,
+  pad_w%(name)s,
+  %(subsx)d, %(subsy)d, 1, 1,
+  %(conv_flag)s
+  );
+#else
   err = cudnnSetConvolutionDescriptorEx(
   %(desc)s,
   *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 0),
@@ -276,7 +285,7 @@ class GpuDnnConvDesc(GpuOp):
   %(subsx)d, %(subsy)d, 1, 1,
   %(conv_flag)s
   );
-
+#endif
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
                  cudnnGetErrorString(err));
@@ -289,7 +298,7 @@ class GpuDnnConvDesc(GpuOp):
            pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (2, version())
 
 
 class GpuDnnConvBase(DnnBase):
@@ -334,7 +343,7 @@ if (kerns%(name)s != NULL) {cudnnDestroyFilterDescriptor(kerns%(name)s);}
 
     def c_set_filter(self, var, desc, err, fail):
         return """
-%(err)s = cudnnSetFilterDescriptor(
+%(err)s = cudnnSetFilter4dDescriptor(
 %(desc)s, CUDNN_DATA_FLOAT,
 CudaNdarray_HOST_DIMS(%(var)s)[0],
 CudaNdarray_HOST_DIMS(%(var)s)[1],
@@ -382,6 +391,7 @@ cudnnStatus_t err%(name)s;
 
 {
   int out_dims[4];
+#ifndef CUDNN_VERSION
   err%(name)s = cudnnGetOutputTensor4dDim(
   %(desc)s, %(path)s,
   &out_dims[0], &out_dims[1],
@@ -403,13 +413,21 @@ cudnnStatus_t err%(name)s;
     out_dims[2] = dd[5];
     out_dims[3] = dd[6];
   }
+#else
+  cudnnGetConvolution2dForwardOutputDim(
+        %(desc)s,
+        input%(id)d,
+        kerns%(id)d,
+        &out_dims[0], &out_dims[1],&out_dims[2], &out_dims[3]);
+        
+#endif
   if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
     %(fail)s
   }
 }
 
 %(set_out)s
-
+#ifndef CUDNN_VERSION
 err%(name)s = %(method)s(
 _handle,
 %(input1_desc)s, CudaNdarray_DEV_DATA(%(input1)s),
@@ -418,6 +436,34 @@ _handle,
 %(output_desc)s, CudaNdarray_DEV_DATA(%(out)s),
 CUDNN_RESULT_NO_ACCUMULATE
 );
+#else
+{
+const float alpha = 1;
+const float beta = 0;
+/*
+cudnnGetConvolutionForwardAlgorithm(
+    _handle,
+    %(input1_desc)s,
+    %(input2_desc)s,
+    %(desc)s,
+    %(output_desc)s,
+    CUDNN_CONVOLUTION_FWD_NO_WORKSPACE, //TODO, config of this
+    0, //TODO, memoryLimitInbytes,
+    cudnnConvolutionFwdAlgo_t
+    );
+    */
+err%(name)s = %(method)s(
+_handle,
+(void*)&alpha,
+%(input1_desc)s, CudaNdarray_DEV_DATA(%(input1)s),
+%(input2_desc)s, CudaNdarray_DEV_DATA(%(input2)s),
+%(desc)s,
+%(algo)s
+    (void*)&beta,
+%(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
+);
+}
+#endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError, "error doing operation: %%s",
                cudnnGetErrorString(err%(name)s));
@@ -429,10 +475,10 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            input1_desc=self.conv_inputs[0]+name,
            input2_desc=self.conv_inputs[1]+name,
            output_desc=self.conv_output+name,
-           method=self.conv_op, path=self.path_flag)
+           method=self.conv_op, path=self.path_flag, algo=self.algo)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (8, version())
 
 
 class GpuDnnConv(GpuDnnConvBase):
@@ -449,6 +495,9 @@ class GpuDnnConv(GpuDnnConvBase):
     conv_types = 'tensor4d', 'filter', 'tensor4d'
     conv_op = 'cudnnConvolutionForward'
     path_flag = 'CUDNN_CONVOLUTION_FWD'
+    algo = """CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM, //TODO: algo,
+    NULL,//TODO, void *workspace,
+    0, //TODO: workspacesize"""
 
     def make_node(self, img, kern, desc):
         img = as_cuda_ndarray_variable(img)
@@ -499,6 +548,7 @@ class GpuDnnConvGradW(GpuDnnConvBase):
     conv_types = 'tensor4d', 'tensor4d', 'filter'
     path_flag = 'CUDNN_CONVOLUTION_WEIGHT_GRAD'
     conv_op = 'cudnnConvolutionBackwardFilter'
+    algo = ""
 
     def grad(self, inp, grads):
         img, top, desc = inp
@@ -549,6 +599,7 @@ class GpuDnnConvGradI(GpuDnnConvBase):
     conv_types = 'filter', 'tensor4d', 'tensor4d'
     path_flag = 'CUDNN_CONVOLUTION_DATA_GRAD'
     conv_op = 'cudnnConvolutionBackwardData'
+    algo = ""
 
     def grad(self, inp, grads):
         kerns, top, desc = inp

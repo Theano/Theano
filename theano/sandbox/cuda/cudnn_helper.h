@@ -43,6 +43,8 @@ static inline const int cudnnVersionMacro(){
 #define cudnnTensor4dDescriptor_t cudnnTensorDescriptor_t
 #define cudnnCreateTensor4dDescriptor cudnnCreateTensorDescriptor
 #define cudnnDestroyTensor4dDescriptor cudnnDestroyTensorDescriptor
+#else
+#define cudnnSetFilter4dDescriptor cudnnSetFilterDescriptor
 #endif
 
 #endif
