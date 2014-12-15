@@ -1833,29 +1833,8 @@ class AdvancedIncSubtensor1(Op):
             #include <Python.h>
             #include "numpy/arrayobject.h"
 
-            extern "C" //{
-            PyObject *
-            run_cthunk(PyObject *self, PyObject *args)
-            {
-            PyObject *py_cthunk = NULL;
-            if(!PyArg_ParseTuple(args,"O",&py_cthunk))
-                return NULL;
-
-            if (!PyCObject_Check(py_cthunk)) {
-                PyErr_SetString(PyExc_ValueError,
-                            "Argument to run_cthunk must be a PyCObject.");
-                return NULL;
-            }
-            void * ptr_addr = PyCObject_AsVoidPtr(py_cthunk);
-            int (*fn)(void*) = (int (*)(void*))(ptr_addr);
-            void* it = PyCObject_GetDesc(py_cthunk);
-            int failure = fn(it);
-
-            return Py_BuildValue("i", failure);
-            }
-
             #if NPY_API_VERSION >= 0x00000008
-            typedef void (*inplace_map_binop)(PyArrayMapIterObject *, PyArrayIterObject *, int f);
+            typedef void (*inplace_map_binop)(PyArrayMapIterObject *, PyArrayIterObject *, int inc_or_set);
             """ + fns + fn_array + type_number_array +
 
             """
