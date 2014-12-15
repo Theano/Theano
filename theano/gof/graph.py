@@ -184,7 +184,8 @@ class Apply(Node):
         :note:
             tags are copied from self to the returned instance.
         """
-        cp = self.__class__(self.op, self.inputs, [output.clone() for output in self.outputs])
+        cp = self.__class__(self.op, self.inputs,
+                            [output.clone() for output in self.outputs])
         cp.tag = copy(self.tag)
         return cp
 

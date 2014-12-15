@@ -322,17 +322,15 @@ class CLinkerOp(CLinkerObject):
         raise utils.MethodNotDefined("c_init_code_apply", type(self),
                                      self.__class__.__name__)
 
-    def c_init_code_struct(self, node, struct_id, sub):
+    def c_init_code_struct(self, node, name, sub):
         """
         Optional: return a code string specific to the apply
         to be inserted in the struct initialization code.
 
         :param node: an Apply instance in the graph being compiled
 
-        :param struct_id: a number that serves to uniquely identify
-                          this code.  The c_code will receive another
-                          sub parameter named struct_id that will
-                          contain this name.
+        :param name: a unique name to distinguish you variables from
+                     those of other nodes.
 
         :param sub: a dictionary of values to substitute in the code.
                     Most notably it contains a 'fail' entry that you
@@ -345,17 +343,15 @@ class CLinkerOp(CLinkerObject):
         raise utils.MethodNotDefined("c_init_code_apply", type(self),
                                      self.__class__.__name__)
 
-    def c_support_code_struct(self, node, struct_id):
+    def c_support_code_struct(self, node, name):
         """Optional: Return utility code for use by an `Op` that will be
         inserted at struct scope, that can be specialized for the
         support of a particular `Apply` node.
 
         :param node: an Apply instance in the graph being compiled
 
-        :param struct_id: a number that serves to uniquely identify
-                          this code.  The c_code will receive another
-                          sub parameter named struct_id that will
-                          contain this name.
+        :param name: a unique name to distinguish you variables from
+                     those of other nodes.
 
         :Exceptions:
          - `MethodNotDefined`: Subclass does not implement this method
@@ -364,17 +360,15 @@ class CLinkerOp(CLinkerObject):
         raise utils.MethodNotDefined("c_support_code_struct",
                 type(self), self.__class__.__name__)
 
-    def c_cleanup_code_struct(self, node, struct_id):
+    def c_cleanup_code_struct(self, node, name):
         """
         Optional: return a code string specific to the apply to be
         inserted in the struct cleanup code.
 
         :param node: an Apply instance in the graph being compiled
 
-        :param struct_id: a number that serves to uniquely identify
-                          this code.  The c_code will receive another
-                          sub parameter named struct_id that will
-                          contain this name.
+        :param name: a unique name to distinguish you variables from
+                     those of other nodes.
 
         :Exceptions:
         - `MethodNotDefined`: the subclass does not override this method

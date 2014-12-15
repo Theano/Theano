@@ -658,7 +658,6 @@ class CLinker(link.Linker):
 
             # Make the CodeBlock for c_code
             sub['id'] = id
-            sub['struct_id'] = id + 1
             sub['fail'] = failure_code(sub)
 
             sub_struct = dict()
@@ -692,7 +691,7 @@ class CLinker(link.Linker):
                     " didn't return a string for c_init_code_apply")
 
             try:
-                struct_init = op.c_init_code_struct(node, id + 1, sub_struct)
+                struct_init = op.c_init_code_struct(node, name, sub_struct)
                 assert isinstance(struct_init, basestring), (
                     str(node.op) +
                     " didn't return a string for c_init_code_struct")
@@ -700,7 +699,7 @@ class CLinker(link.Linker):
                 pass
 
             try:
-                struct_support = op.c_support_code_struct(node, id + 1)
+                struct_support = op.c_support_code_struct(node, name)
                 assert isinstance(struct_support, basestring), (
                     str(node.op) +
                     " didn't return a string for c_support_code_struct")
@@ -708,7 +707,7 @@ class CLinker(link.Linker):
                 pass
 
             try:
-                struct_cleanup = op.c_cleanup_code_struct(node, id + 1)
+                struct_cleanup = op.c_cleanup_code_struct(node, name)
                 assert isinstance(struct_cleanup, basestring), (
                     str(node.op) +
                     " didn't return a string for c_cleanup_code_struct")

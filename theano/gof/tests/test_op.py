@@ -94,20 +94,20 @@ class StructOp(Op):
     def make_node(self, i):
         return Apply(self, [i], [scalar.uint64()])
 
-    def c_support_code_struct(self, node, struct_id):
-        return "npy_uint64 counter%d;" % (struct_id,)
+    def c_support_code_struct(self, node, name):
+        return "npy_uint64 counter%s;" % (name,)
 
-    def c_init_code_struct(self, node, struct_id, sub):
-        return "counter%d = 0;" % (struct_id,)
+    def c_init_code_struct(self, node, name, sub):
+        return "counter%s = 0;" % (name,)
 
     def c_code(self, node, name, input_names, outputs_names, sub):
         return """
-%(out)s = counter%(sid)s;
-counter%(sid)s++;
-""" % dict(out=outputs_names[0], sid=sub['struct_id'])
+%(out)s = counter%(name)s;
+counter%(name)s++;
+""" % dict(out=outputs_names[0], name=name)
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 class TestOp:
