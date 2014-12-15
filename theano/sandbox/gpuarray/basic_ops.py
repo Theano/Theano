@@ -607,7 +607,6 @@ class GpuAlloc(HideC, Alloc):
     def __init__(self, memset_0=False):
         """memset_0 is only an optimized version. True, it mean the
         value is always 0, so the c code call memset as it is faster.
-
         """
         self.memset_0 = memset_0
 
