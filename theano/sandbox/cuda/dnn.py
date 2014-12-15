@@ -306,8 +306,8 @@ class GpuDnnConvBase(DnnBase):
 
     def c_support_code_struct(self, node, name):
         return """
-cudnnTensor4dDescriptor_t input%(name)s;
-cudnnTensor4dDescriptor_t output%(name)s;
+cudnnTensorDescriptor_t input%(name)s;
+cudnnTensorDescriptor_t output%(name)s;
 cudnnFilterDescriptor_t kerns%(name)s;
 """ % dict(name=name)
 
@@ -317,13 +317,13 @@ cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 output%(name)s = NULL;
 kerns%(name)s = NULL;
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(inp): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(out): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -336,8 +336,8 @@ if ((err%(name)s = cudnnCreateFilterDescriptor(&kerns%(name)s)) != CUDNN_STATUS_
 
     def c_cleanup_code_struct(self, node, name):
         return """
-if (input%(name)s != NULL) {cudnnDestroyTensor4dDescriptor(input%(name)s);}
-if (output%(name)s != NULL) {cudnnDestroyTensor4dDescriptor(output%(name)s);}
+if (input%(name)s != NULL) {cudnnDestroyTensorDescriptor(input%(name)s);}
+if (output%(name)s != NULL) {cudnnDestroyTensorDescriptor(output%(name)s);}
 if (kerns%(name)s != NULL) {cudnnDestroyFilterDescriptor(kerns%(name)s);}
 """ % dict(name=name)
 
@@ -419,7 +419,6 @@ cudnnStatus_t err%(name)s;
         input%(id)d,
         kerns%(id)d,
         &out_dims[0], &out_dims[1],&out_dims[2], &out_dims[3]);
-        
 #endif
   if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
     %(fail)s
@@ -814,8 +813,8 @@ class GpuDnnPool(DnnBase):
 
     def c_support_code_struct(self, node, name):
         return """
-cudnnTensor4dDescriptor_t input%(name)s;
-cudnnTensor4dDescriptor_t output%(name)s;
+cudnnTensorDescriptor_t input%(name)s;
+cudnnTensorDescriptor_t output%(name)s;
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
@@ -823,12 +822,12 @@ cudnnTensor4dDescriptor_t output%(name)s;
 cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 output%(name)s = NULL;
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
                "(inp): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
                "(out): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
@@ -837,8 +836,8 @@ if ((err%(name)s = cudnnCreateTensor4dDescriptor(&output%(name)s)) != CUDNN_STAT
 
     def c_cleanup_code_struct(self, node, name):
         return """
-if (input%(name)s != NULL) { cudnnDestroyTensor4dDescriptor(input%(name)s); }
-if (output%(name)s != NULL) { cudnnDestroyTensor4dDescriptor(output%(name)s); }
+if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
+if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -982,10 +981,10 @@ class GpuDnnPoolGrad(DnnBase):
 
     def c_support_code_struct(self, node, name):
         return """
-cudnnTensor4dDescriptor_t input%(name)s;
-cudnnTensor4dDescriptor_t input_grad%(name)s;
-cudnnTensor4dDescriptor_t output%(name)s;
-cudnnTensor4dDescriptor_t output_grad%(name)s;
+cudnnTensorDescriptor_t input%(name)s;
+cudnnTensorDescriptor_t input_grad%(name)s;
+cudnnTensorDescriptor_t output%(name)s;
+cudnnTensorDescriptor_t output_grad%(name)s;
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
@@ -995,25 +994,25 @@ input%(name)s = NULL;
 input_grad%(name)s = NULL;
 output%(name)s = NULL;
 output_grad%(name)s = NULL;
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError,
                "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(input): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&input_grad%(name)s)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(name)s = cudnnCreateTensorDescriptor(&input_grad%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError,
                "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(input_grad): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError,
                "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(output): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&output_grad%(name)s)) != CUDNN_STATUS_SUCCESS) {
+if ((err%(name)s = cudnnCreateTensorDescriptor(&output_grad%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError,
                "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
                "(output_grad): %%s", cudnnGetErrorString(err%(name)s));
@@ -1023,10 +1022,10 @@ if ((err%(name)s = cudnnCreateTensor4dDescriptor(&output_grad%(name)s)) != CUDNN
 
     def c_cleanup_code_struct(self, node, name):
         return """
-if (input%(name)s != NULL) { cudnnDestroyTensor4dDescriptor(input%(name)s); }
-if (input_grad%(name)s != NULL) { cudnnDestroyTensor4dDescriptor(input_grad%(name)s); }
-if (output%(name)s != NULL) { cudnnDestroyTensor4dDescriptor(output%(name)s); }
-if (output_grad%(name)s != NULL) { cudnnDestroyTensor4dDescriptor(output_grad%(name)s); }
+if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
+if (input_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(input_grad%(name)s); }
+if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
+if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -1174,14 +1173,14 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     def _define_tensor4d_desc(self, name, id):
         return """
-cudnnTensor4dDescriptor_t %(id)s_%(name)s;
+cudnnTensorDescriptor_t %(id)s_%(name)s;
 """ % dict(name=name, id=id)
 
     def _init_tensor4d_desc(self, name, id, fail):
         return """
 %(id)s_%(name)s = NULL;
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&%(id)s_%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+if ((err%(name)s = cudnnCreateTensorDescriptor(&%(id)s_%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                ": %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -1190,7 +1189,7 @@ if ((err%(name)s = cudnnCreateTensor4dDescriptor(&%(id)s_%(name)s)) != CUDNN_STA
     def _clean_tensor4d_desc(self, name, id):
         return """
 if(%(id)s_%(name)s!= NULL)
-  cudnnDestroyTensor4dDescriptor(%(id)s_%(name)s);
+  cudnnDestroyTensorDescriptor(%(id)s_%(name)s);
 """ % dict(name=name, id=id)
 
     def c_support_code_struct(self, node, name):
