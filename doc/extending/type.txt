@@ -138,6 +138,16 @@ default values.
         :return: the number of bytes taken by the object described by
             ``shape_info``.
 
+    .. method:: clone(dtype=None, broadcastable=None)
+
+       Optional, for TensorType-alikes.
+
+       Return a copy of the type with a possibly changed value for
+       dtype and broadcastable (if they aren't `None`).
+
+       :param dtype: New dtype for the copy.
+       :param broadcastable: New broadcastable tuple for the copy.
+
     .. method:: may_share_memory(a, b)
 
         Optional to run, but mandatory for DebugMode. Return True if the Python
