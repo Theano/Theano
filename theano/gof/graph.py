@@ -117,7 +117,7 @@ class Apply(Node):
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
     def run_context(self):
-        """Returns the context for the node, or None if no context is set.
+        """Returns the context for the node, or NoContext if no context is set.
         """
         if hasattr(self.op, 'get_context'):
             return self.op.get_context(self)
