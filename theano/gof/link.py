@@ -181,16 +181,20 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
                     shapeinfo = None
                     if hasattr(storage_map[k][0], 'shape'):
                         shapeinfo = storage_map[k][0].shape
-                        detailed_err_msg += "shape: %s, " % str(shapeinfo)
+                        if len(shapeinfo) != 0:
+                            detailed_err_msg += "Shape: %s, " % str(shapeinfo)
+                        else:
+                            detailed_err_msg += "Shape: (1,), "
                     if hasattr(storage_map[k][0], 'dtype'):
                         dtype = storage_map[k][0].dtype
+                        detailed_err_msg += "ElemSize: %s Byte(s)" % numpy.dtype(dtype).itemsize
                         if shapeinfo is None:
-                            detailed_err_msg += "size: %s Byte(s)\n" % numpy.dtype(dtype).itemsize
+                            detailed_err_msg += "\n"
                         else:
-                            detailed_err_msg += "size: %s Byte(s)\n" % (numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo))
+                            detailed_err_msg += ", TotalSize: %s Byte(s)\n" % (numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo))
                     else:
                         bytes = getsizeof(storage_map[k][0])
-                        detailed_err_msg += "elementsize: %s Byte(s)\n" % str(bytes)
+                        detailed_err_msg += "ElemSize: %s Byte(s)\n" % str(bytes)
 
 
     else:
