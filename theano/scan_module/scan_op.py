@@ -1882,6 +1882,7 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
+        info['allow_gc'] = self.allow_gc
 
         outer_inputs = ([grad_steps] +
                         outer_inp_seqs +
@@ -2047,6 +2048,7 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
+        info['allow_gc'] = self.allow_gc
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
         info['destroy_map'] = OrderedDict()
         new_tap_array = []
