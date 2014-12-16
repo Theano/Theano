@@ -40,7 +40,7 @@ matrix:
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
 
 script:
-  - export THEANO_FLAGS=$THEANO_FLAGS,blas.ldflags="-lblas -lgfortran",warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise
+  - export THEANO_FLAGS=$THEANO_FLAGS,blas.ldflags="-lblas -lgfortran",warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
   - python --version
   - uname -a
   - free -m
