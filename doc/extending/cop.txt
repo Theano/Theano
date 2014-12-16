@@ -43,9 +43,6 @@ There are less methods to define for an Op than for a Type:
           that a python exception is set) if your C code needs to
           raise an exception.
 
-       ``sub['struct_id']``
-
-          The integer id passed to the various _struct methods.
 
     .. method:: c_code_cleanup(node, name, input_names, output_names, sub)
 
@@ -99,14 +96,11 @@ There are less methods to define for an Op than for a Type:
        module is initialized, before anything else is executed and is
        specialized for a particular apply of an :ref:`op`.
 
-    .. method:: c_init_code_struct(node, struct_id, sub)
+    .. method:: c_init_code_struct(node, name, sub)
 
        Allows you to specify code that will be inserted in the struct
        constructor of the Op.  This is for code which should be
        executed once per thunk (Apply node, more or less).
-
-       `struct_id` is an integer guaranteed to be unique inside the
-       struct.
 
        `sub` is a dictionary of extras parameters to the
        c_code_init_code_struct method. It contains the following
@@ -131,30 +125,24 @@ There are less methods to define for an Op than for a Type:
        if the code is the same for each apply of an op.  It will be
        inserted at global scope.
 
-    .. method:: c_support_code_struct(node, struct_id)
+    .. method:: c_support_code_struct(node, name)
 
        Allows you to specify helper functions of variables that will
        be specific to one particular thunk.  These are inserted at
        struct scope.
 
-       `struct_id` is an integer guaranteed to be unique inside the
-       struct.
-
        :note:
-         You cannot specify kernels in the code returned by this since
-         that isn't supported by CUDA.  You should place your kernels
-         in :meth:`c_support_code()` or :meth:`c_support_code_apply()`
-         and call them from this code.
+         You cannot specify CUDA kernels in the code returned by this
+         since that isn't supported by CUDA.  You should place your
+         kernels in :meth:`c_support_code()` or
+         :meth:`c_support_code_apply()` and call them from this code.
 
-    .. method:: c_cleanup_code_struct(node, struct_id)
+    .. method:: c_cleanup_code_struct(node, name)
 
        Allows you to specify code that will be inserted in the struct
        destructor of the Op.  This is for cleaninp up allocations and
        stuff like this when the thunk is released (when you "free" a
        compiled function using this op).
-
-       `struct_id` is an integer guaranteed to be unique inside the
-       struct.
 
     .. method:: infer_shape(node, (i0_shapes,i1_shapes,...))
 

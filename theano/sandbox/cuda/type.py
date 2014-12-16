@@ -71,6 +71,11 @@ class CudaNdarrayType(Type):
         self.name = name
         self.dtype_specs()  # error checking is done there
 
+    def clone(self, dtype=None, broadcastable=None):
+        if broadcastable is None:
+            broadcastable = self.broadcastable
+        return self.__class__(broadcastable, name=self.name, dtype=dtype)
+
     def filter(self, data, strict=False, allow_downcast=None):
         return self.filter_inplace(data, None, strict=strict,
                                    allow_downcast=allow_downcast)

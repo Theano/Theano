@@ -28,6 +28,14 @@ class GpuArrayType(Type):
             raise TypeError("Unsupported dtype for %s: %s" %
                             (self.__class__.__name__, self.dtype))
 
+    def clone(self, dtype=None, broadcastable=None):
+        if dtype is None:
+            dtype = self.dtype
+        if broadcastable is None:
+            broadcastable = self.broadcastable
+        return self.__class__(dtype=dtype, broadcastable=broadcastable,
+                              name=self.name)
+
     def __str__(self):
         return "GpuArrayType(%s, %s)" % (self.dtype, self.broadcastable)
 
