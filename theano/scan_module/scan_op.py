@@ -49,7 +49,6 @@ class Scan(PureOp):
                  inputs,
                  outputs,
                  info,
-                 allow_gc=None
                 ):
         """
         :param inputs: inputs of the inner function of scan
@@ -58,13 +57,9 @@ class Scan(PureOp):
             the scan op (like number of different types of
             arguments, name, mode, if it should run on GPU or
             not, etc.)
-        :param allow_gc: Use the gc in the inner function or not
-            (independant of the outer function)
         """
         if 'gpua' not in info:
             info['gpua'] = False
-        if allow_gc is None:
-            allow_gc = config.scan.allow_gc
         # adding properties into self
         self.inputs = inputs
         self.outputs = outputs
@@ -73,7 +68,6 @@ class Scan(PureOp):
         # since info contains all tunable parameters of the op, so for two
         # scan to be equal this tunable parameters should be the same
         self.info = info
-
         # build a list of output types for any Apply node using this op.
         self.output_types = []
         idx = 0
@@ -111,7 +105,7 @@ class Scan(PureOp):
             isinstance(mode_instance, compile.profilemode.ProfileMode)):
             mode_instance = compile.profilemode.ProfileMode(
                 optimizer=mode_instance.provided_optimizer,
-                linker=mode_instance.linker.clone(allow_gc=allow_gc))
+                linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
             compile.profilemode.prof_mode_instance_to_print.append(
                                                     mode_instance)
             self.mode_instance = mode_instance
@@ -122,7 +116,7 @@ class Scan(PureOp):
         else:
             self.mode_instance = type(mode_instance)(
                 optimizer=mode_instance.provided_optimizer,
-                linker=mode_instance.linker.clone(allow_gc=allow_gc))
+                linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
 
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
@@ -456,15 +450,11 @@ class Scan(PureOp):
             if self_in.type != other_in.type:
                 return False
 
-        if not scan_utils.equal_computations(self.outputs,
+        return scan_utils.equal_computations(self.outputs,
                                              other.outputs,
                                              self.inputs,
-                                             other.inputs):
-            return False
+                                             other.inputs)
 
-        # If they do, then they need to match in other small details
-        # like name, mode, etc.
-        return True
 
     def __str__(self):
         if self.gpu:
