@@ -1830,9 +1830,6 @@ class AdvancedIncSubtensor1(Op):
                 "-1000};")
 
         return ("""
-            #include <Python.h>
-            #include "numpy/arrayobject.h"
-
             #if NPY_API_VERSION >= 0x00000008
             typedef void (*inplace_map_binop)(PyArrayMapIterObject *, PyArrayIterObject *, int inc_or_set);
             """ + fns + fn_array + type_number_array +
@@ -1943,6 +1940,9 @@ class AdvancedIncSubtensor1(Op):
             """)
 
     def c_code(self, node, name, input_names, output_names, sub):
+        if float(numpy.__version__[:3]) < 1.75:
+            # This is probably not the best way to do this ...
+            raise NotImplementedError
         x, y, idx = input_names
         out = output_names[0]
         fail = sub['fail']
