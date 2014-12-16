@@ -40,7 +40,8 @@ def scan(fn,
          n_steps=None,
          mode=None,
          name=None,
-         profile=False):
+         profile=False,
+         allow_gc=None):
     """
     Similar to Theano's official scan, this function gives the user more
     control over the scan op, avoiding certain difficulties that arose from
@@ -115,6 +116,8 @@ def scan(fn,
 
     seqs = wrap_into_list(sequences)
     outs_info = wrap_into_list(states)
+    if allow_gc is None:
+        allow_gc = config.scan.allow_gc
 
     # Make sure we get rid of numpy arrays or ints or anything like that
     # passed as inputs to scan
@@ -627,6 +630,7 @@ def scan(fn,
     info['as_while'] = as_while
     info['profile'] = profile
     info['_scan_savemem_visited'] = True
+    info['allow_gc'] = allow_gc
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
