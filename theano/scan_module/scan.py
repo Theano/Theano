@@ -967,6 +967,8 @@ def scan(fn,
     ##
 
     tap_array = mit_sot_tap_array + [[-1] for x in xrange(n_sit_sot)]
+    if allow_gc is None:
+        allow_gc = config.scan.allow_gc
     info = OrderedDict()
 
     info['tap_array'] = tap_array
@@ -985,8 +987,9 @@ def scan(fn,
     info['gpu'] = False
     info['as_while'] = as_while
     info['profile'] = profile
+    info['allow_gc'] = allow_gc
 
-    local_op = scan_op.Scan(inner_inputs, new_outs, info, allow_gc=allow_gc)
+    local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
     ##
     ### Step 8. Compute the outputs using the scan op

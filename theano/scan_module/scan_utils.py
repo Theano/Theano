@@ -654,9 +654,11 @@ def compress_outs(op, not_required, inputs):
     info['truncate_gradient'] = op.info['truncate_gradient']
     info['name'] = op.info['name']
     info['gpu'] = op.info['gpu']
+    info['gpua'] = op.info['gpua']
     info['mode'] = op.info['mode']
     info['as_while'] = op.info['as_while']
     info['profile'] = op.info['profile']
+    info['allow_gc'] = op.info['allow_gc']
 
     op_inputs = op.inputs[:op.n_seqs]
     op_outputs = []
@@ -919,7 +921,7 @@ class scan_args(object):
 
         self.other_info = OrderedDict()
         for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',
-                  'gpu', 'as_while', 'profile'):
+                  'gpu', 'gpua', 'as_while', 'profile', 'allow_gc'):
             if k in info:
                 self.other_info[k] = info[k]
 
