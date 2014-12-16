@@ -3734,6 +3734,7 @@ class T_Scan(unittest.TestCase):
 
         cost = result_outer[-1]
         H = theano.gradient.hessian(cost, W_flat)
+        print >> sys.stderr, "."
         f = theano.function([W_flat], H)
         f(numpy.ones((8,), dtype='float32'))
 
