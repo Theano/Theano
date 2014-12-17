@@ -382,7 +382,14 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc = inputs[2]
-        height, width = inputs[3:] or (-1, -1)
+        if len(inputs) <= 3:
+            height, width = (-1, -1)
+        else:
+            height, width = inputs[3:]
+            height = '(*(npy_%s*)(PyArray_DATA(%s)))' % (
+                node.inputs[3].dtype, height)
+            width = '(*(npy_%s*)(PyArray_DATA(%s)))' % (
+                node.inputs[4].dtype, width)
         out, = outputs
 
         checks = []
@@ -436,24 +443,29 @@ cudnnStatus_t err%(name)s = CUDNN_STATUS_SUCCESS;
   }
 #else
   if (!%(full)d){
-      cudnnGetConvolution2dForwardOutputDim(
+      err%(name)s = cudnnGetConvolution2dForwardOutputDim(
         %(desc)s,
         input%(id)d,
         kerns%(id)d,
         &out_dims[0], &out_dims[1],&out_dims[2], &out_dims[3]);
   }else{
-        int padH, padW, dH, dW, upscalex, upscaley;
-        cudnnConvolutionMode_t mode;
-        cudnnGetConvolution2dDescriptor(
+        int padH=0, padW=0, dH=1, dW=1, upscalex=1, upscaley=1;
+        cudnnConvolutionMode_t mode=CUDNN_CONVOLUTION;
+        err%(name)s = cudnnGetConvolution2dDescriptor(
             %(desc)s, &padW, &padH, &dH, &dW,
             &upscalex, &upscaley, &mode);
-
         out_dims[0] = CudaNdarray_HOST_DIMS(%(input2)s)[0];
         out_dims[1] = CudaNdarray_HOST_DIMS(%(input1)s)[1];
         out_dims[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(%(input1)s)[2] - 1) * dH + CudaNdarray_HOST_DIMS(%(input2)s)[2] - 2*padH;
         out_dims[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(%(input1)s)[3] - 1) * dW + CudaNdarray_HOST_DIMS(%(input2)s)[3] - 2*padW;
   }
 #endif
+  if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError,
+                 "%(cls)s, error while computing the output shape: %%s",
+                 cudnnGetErrorString(err%(name)s));
+    %(fail)s
+  }
   if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
     %(fail)s
   }
@@ -514,7 +526,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            method=self.conv_op, path=self.path_flag, algo=self.algo)
 
     def c_code_cache_version(self):
-        return (9, version())
+        return (10, version())
 
 
 class GpuDnnConv(GpuDnnConvBase):
