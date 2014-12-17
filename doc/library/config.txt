@@ -493,8 +493,8 @@ import theano and print the config variable, as in:
     gpu<>cpu transparency is solved.
 
     Note: to unpickled gpu shared var on CPU see next flag.  The
-          Theano flag device must have the value 'cpu'.  This allow
-          user to always put the flag in there .theanorc and control
+          Theano flag "device" must have the value 'cpu'.  This allows
+          users to always put the flag in their .theanorc and control
           this with the device=gpu flag.
 
 .. attribute:: config.experimental.unpickle_shared_gpu_on_cpu
