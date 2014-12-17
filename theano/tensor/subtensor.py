@@ -1526,36 +1526,46 @@ class IncSubtensor(Op):
         x, y = inputs[:2]
         idx_list = inputs[2:]
 
-        if self.set_instead_of_inc:
-            gx = set_subtensor(
-                Subtensor(idx_list=self.idx_list)(g_output, *idx_list),
-                theano.tensor.zeros_like(y))
+        if x.dtype in theano.tensor.discrete_dtypes:
+            # The output dtype is the same as x
+            gx = x.zeros_like(dtype=theano.config.floatX)
+            if y.dtype in theano.tensor.discrete_dtypes:
+                gy = y.zeros_like(dtype=theano.config.floatX)
+            else:
+                gy = y.zeros_like()
+        elif x.dtype in theano.tensor.complex_dtypes:
+            raise NotImplementedError("No support for complex grad yet")
         else:
-            gx = g_output
-        gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
-        if gy.broadcastable != y.broadcastable:
-            y_dim_added = gy.ndim - y.ndim
-            y_broad = (True,) * y_dim_added + y.broadcastable
-            assert sum(gy.broadcastable) < sum(y_broad)
-            axis_to_sum = []
-            for i in range(gy.ndim):
-                if gy.broadcastable[i] is False and y_broad[i] is True:
-                    axis_to_sum.append(i)
-                elif (gy.broadcastable[i] is True and
-                      y_broad[i] is False):
-                    # This mean that Theano where able to infer that
-                    # gy.shape[i] is 1, so y.shape[i] is 1, but we
-                    # didn't know it. It is fine.
-                    pass
-                else:
-                    assert gy.broadcastable[i] == y_broad[i]
-            gy = gy.sum(axis=axis_to_sum, keepdims=True)
-            if gy.ndim != y.ndim:
-                assert gy.ndim > y.ndim
-                for i in range(y_dim_added):
-                    assert gy.broadcastable[i]
-                gy = gy.dimshuffle(*range(y_dim_added, gy.ndim))
-            assert gy.broadcastable == y.broadcastable
+            if self.set_instead_of_inc:
+                gx = set_subtensor(
+                    Subtensor(idx_list=self.idx_list)(g_output, *idx_list),
+                    theano.tensor.zeros_like(y))
+            else:
+                gx = g_output
+            gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
+            if gy.broadcastable != y.broadcastable:
+                y_dim_added = gy.ndim - y.ndim
+                y_broad = (True,) * y_dim_added + y.broadcastable
+                assert sum(gy.broadcastable) < sum(y_broad)
+                axis_to_sum = []
+                for i in range(gy.ndim):
+                    if gy.broadcastable[i] is False and y_broad[i] is True:
+                        axis_to_sum.append(i)
+                    elif (gy.broadcastable[i] is True and
+                          y_broad[i] is False):
+                        # This mean that Theano where able to infer that
+                        # gy.shape[i] is 1, so y.shape[i] is 1, but we
+                        # didn't know it. It is fine.
+                        pass
+                    else:
+                        assert gy.broadcastable[i] == y_broad[i]
+                gy = gy.sum(axis=axis_to_sum, keepdims=True)
+                if gy.ndim != y.ndim:
+                    assert gy.ndim > y.ndim
+                    for i in range(y_dim_added):
+                        assert gy.broadcastable[i]
+                    gy = gy.dimshuffle(*range(y_dim_added, gy.ndim))
+                assert gy.broadcastable == y.broadcastable
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
@@ -1868,15 +1878,30 @@ class AdvancedIncSubtensor1(Op):
 
     def grad(self, inputs, grads):
         g_output, = grads
-        x, y = inputs[:2]
-        idx_list = inputs[2:]
+        x, y, idx_list = inputs
+        if x.dtype in theano.tensor.discrete_dtypes:
+            # The output dtype is the same as x
+            gx = x.zeros_like(dtype=theano.config.floatX)
+            if y.dtype in theano.tensor.discrete_dtypes:
+                gy = y.zeros_like(dtype=theano.config.floatX)
+            else:
+                gy = y.zeros_like()
+        elif x.dtype in theano.tensor.complex_dtypes:
+            raise NotImplementedError("No support for complex grad yet")
+        else:
+            if self.set_instead_of_inc:
+                gx = advanced_set_subtensor1(
+                    g_output,
+                    y.zeros_like(),
+                    idx_list)
+            else:
+                gx = g_output
+            gy = advanced_subtensor1(g_output, idx_list)
 
-        gx = g_output
-        gy = advanced_subtensor1(g_output, *idx_list)
-
-        return [gx, gy] + [DisconnectedType()()] * len(idx_list)
+        return [gx, gy] + [DisconnectedType()()]
 
 advanced_inc_subtensor1 = AdvancedIncSubtensor1()
+advanced_set_subtensor1 = AdvancedIncSubtensor1(set_instead_of_inc=True)
 
 
 def as_index_variable(idx):
@@ -2079,9 +2104,13 @@ class AdvancedIncSubtensor(Op):
                     'later, or to the latest development version. '
                     'You may need to clear the cache (theano-cache clear) '
                     'afterwards.')
-
+        new_inputs = []
+        for inp in inputs:
+            if isinstance(inp, (list, tuple)):
+                inp = theano.tensor.as_tensor_variable(inp)
+            new_inputs.append(inp)
         return gof.Apply(op,
-                         (x, y) + inputs,
+                         (x, y) + tuple(new_inputs),
                          [theano.tensor.tensor(
                              dtype=x.type.dtype,
                              broadcastable=x.type.broadcastable)])
@@ -2136,9 +2165,25 @@ class AdvancedIncSubtensor(Op):
         x, y = inpt[:2]
         idxs = inpt[2:]
         outgrad, = output_gradients
-        d_x_wrt_C = outgrad
-        d_y_wrt_C = AdvancedSubtensor()(outgrad, *idxs)
-        return [d_x_wrt_C, d_y_wrt_C] + \
+        if x.dtype in theano.tensor.discrete_dtypes:
+            # The output dtype is the same as x
+            gx = x.zeros_like(dtype=theano.config.floatX)
+            if y.dtype in theano.tensor.discrete_dtypes:
+                gy = y.zeros_like(dtype=theano.config.floatX)
+            else:
+                gy = y.zeros_like()
+        elif x.dtype in theano.tensor.complex_dtypes:
+            raise NotImplementedError("No support for complex grad yet")
+        else:
+            if self.set_instead_of_inc:
+                gx = advanced_set_subtensor(
+                    outgrad,
+                    y.zeros_like(),
+                    *idxs)
+            else:
+                gx = outgrad
+            gy = advanced_subtensor(outgrad, *idxs)
+        return [gx, gy] + \
             [DisconnectedType()() for _ in idxs]
 
     def R_op(self, inputs, eval_points):
@@ -2147,6 +2192,7 @@ class AdvancedIncSubtensor(Op):
         return self.make_node(eval_points[0], eval_points[1],
                               *inputs[2:]).outputs
 advanced_inc_subtensor = AdvancedIncSubtensor()
+advanced_set_subtensor = AdvancedIncSubtensor(set_instead_of_inc=True)
 
 
 def take(a, indices, axis=None, mode='raise'):
