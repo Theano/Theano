@@ -4182,6 +4182,7 @@ class ARange(Op):
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, node, i_shapes):
+        # Note start, stop and step can be float numbers.
         start, stop, step = node.inputs
 
         def is_constant_value(var, value):
@@ -4196,8 +4197,16 @@ class ARange(Op):
             if is_constant_value(start, 0):
                 return [(cast(stop, 'int64'),)]
             else:
+                if 'int' in stop.dtype:
+                    stop = cast(stop, 'int64')
+                elif 'int' in start.dtype:
+                    start = cast(start, 'int64')
                 return [(maximum(cast(stop - start, 'int64'), 0),)]
         else:
+            if 'int' in stop.dtype:
+                stop = cast(stop, 'int64')
+            elif 'int' in start.dtype:
+                start = cast(start, 'int64')
             return [(maximum(cast(ceil(cast((stop - start), 'float64')
                                        / step), 'int64'), 0),)]
 
