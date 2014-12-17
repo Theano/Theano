@@ -524,7 +524,7 @@ theano.compile.register_deep_copy_op_c_code(
 # the situation.
 def CudaNdarray_unpickler(npa):
 
-    if config.experimental.unpickle_gpu_on_cpu:
+    if (config.experimental.unpickle_gpu_on_cpu and config.device == 'cpu'):
         # directly return numpy array
         warnings.warn("config.experimental.unpickle_gpu_on_cpu is set to True. Unpickling CudaNdarray as numpy.ndarray")
         return npa

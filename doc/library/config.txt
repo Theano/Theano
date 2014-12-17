@@ -492,7 +492,10 @@ import theano and print the config variable, as in:
     This flag is experimental and may be removed any time, when
     gpu<>cpu transparency is solved.
 
-    Note: to unpickled gpu shared var on CPU see next flag.
+    Note: to unpickled gpu shared var on CPU see next flag.  The
+          Theano flag device must have the value 'cpu'.  This allow
+          user to always put the flag in there .theanorc and control
+          this with the device=gpu flag.
 
 .. attribute:: config.experimental.unpickle_shared_gpu_on_cpu
 
@@ -513,6 +516,13 @@ import theano and print the config variable, as in:
 
     You probably also need to enable the
     experimental.unpickle_gpu_on_cpu flag.
+
+    Note: The Theano flag device must have the value 'cpu'. This allow
+          user to always put the flag in there .theanorc and control
+          this with the device=gpu flag.
+
+    Note: This do not work with MRG_RandomStream, as we store the
+        update to the seed and this is a Theano graph.
 
 .. attribute:: config.cuda.root
 

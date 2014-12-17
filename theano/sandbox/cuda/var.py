@@ -216,7 +216,8 @@ def float32_shared_constructor(value, name=None, strict=False,
 
 
 def CudaNdarraySharedVariable_unpickler(*npa):
-    if config.experimental.unpickle_shared_gpu_on_cpu:
+    if (config.experimental.unpickle_shared_gpu_on_cpu and
+        config.device == 'cpu'):
         # directly return numpy array
         warnings.warn(
             "config.experimental.unpickle_shared_gpu_on_cpu is set to True."
