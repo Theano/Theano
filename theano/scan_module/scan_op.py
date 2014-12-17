@@ -624,7 +624,7 @@ class Scan(PureOp):
 
         # Big ugly hack since we can't get the real value of allow_gc
         # for the englobing function.
-        allow_gc = config.allow_gc
+        allow_gc = config.allow_gc and not self.allow_gc
 
         def rval(p=p, i=node_input_storage, o=node_output_storage, n=node,
                  allow_gc=allow_gc):
