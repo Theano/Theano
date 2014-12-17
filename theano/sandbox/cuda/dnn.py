@@ -363,11 +363,19 @@ CudaNdarray_HOST_DIMS(%(var)s)[2],
 CudaNdarray_HOST_DIMS(%(var)s)[3]
 );
 if (%(err)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not set filter descriptor: %%s",
-               cudnnGetErrorString(%(err)s));
+  PyErr_Format(PyExc_RuntimeError,
+               "%(cls)s: could not set filter descriptor: %%s."
+               " dims= %%d %%d %%d %%d",
+               cudnnGetErrorString(%(err)s),
+               CudaNdarray_HOST_DIMS(%(var)s)[0],
+               CudaNdarray_HOST_DIMS(%(var)s)[1],
+               CudaNdarray_HOST_DIMS(%(var)s)[2],
+               CudaNdarray_HOST_DIMS(%(var)s)[3]);
+
   %(fail)s
 }
-""" % dict(var=var, desc=desc, err=err, fail=fail)
+""" % dict(var=var, desc=desc, err=err, fail=fail,
+           cls=self.__class__.__name__)
 
     def c_set_tensor4d(self, *arg):
         return c_set_tensor4d(*arg)
@@ -396,7 +404,7 @@ if (!CudaNdarray_is_c_contiguous(%s)) {
             sub['fail'])
 
         return """
-cudnnStatus_t err%(name)s;
+cudnnStatus_t err%(name)s = CUDNN_STATUS_SUCCESS;
 
 %(checks)s
 
