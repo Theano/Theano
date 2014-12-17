@@ -1500,6 +1500,7 @@ class ScanMerge(gof.Optimizer):
         info['gpu'] = False
         info['as_while'] = as_while
         info['profile'] = nodes[0].op.profile
+        info['allow_gc'] = nodes[0].op.allow_gc
 
         # We keep the inner_ins and inner_outs of each original node separated.
         # To be able to recombine them in the right order after the clone,

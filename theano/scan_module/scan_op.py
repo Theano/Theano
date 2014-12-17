@@ -22,17 +22,12 @@ import numpy
 import theano
 from theano.compat import exc_message
 from theano.compile import function, Param, Out
-from theano import compile
-from theano import gradient
-from theano.gof.python25 import any, OrderedDict
+from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
-from theano import gof
+from theano.gof.python25 import any, OrderedDict
 from theano.tensor import TensorType
-from theano import tensor
 from theano.tensor.opt import Shape_i
-from theano.gradient import grad_undefined
-from theano.gradient import DisconnectedType
-from theano.gradient import NullType
+from theano.gradient import grad_undefined, DisconnectedType, NullType
 from theano.compile.profiling import ScanProfileStats
 
 from theano.scan_module import scan_utils
@@ -40,6 +35,13 @@ from theano.scan_module.scan_utils import safe_new, forced_replace
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
+
+
+from theano.configparser import AddConfigVar, BoolParam
+
+AddConfigVar('scan.allow_gc',
+             "Allow/disallow gc inside of Scan (default: config.allow_gc)",
+             BoolParam(lambda: config.allow_gc))
 
 
 class Scan(PureOp):
@@ -66,7 +68,6 @@ class Scan(PureOp):
         # since info contains all tunable parameters of the op, so for two
         # scan to be equal this tunable parameters should be the same
         self.info = info
-
         # build a list of output types for any Apply node using this op.
         self.output_types = []
         idx = 0
@@ -104,7 +105,7 @@ class Scan(PureOp):
             isinstance(mode_instance, compile.profilemode.ProfileMode)):
             mode_instance = compile.profilemode.ProfileMode(
                 optimizer=mode_instance.provided_optimizer,
-                linker=mode_instance.provided_linker)
+                linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
             compile.profilemode.prof_mode_instance_to_print.append(
                                                     mode_instance)
             self.mode_instance = mode_instance
@@ -113,7 +114,9 @@ class Scan(PureOp):
             else:
                 self.mode_instance.message = "Scan sub profile"
         else:
-            self.mode_instance = mode_instance
+            self.mode_instance = type(mode_instance)(
+                optimizer=mode_instance.provided_optimizer,
+                linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
 
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
@@ -426,10 +429,10 @@ class Scan(PureOp):
         if not 'destroy_map' in other.info:
             other.info['destroy_map'] = OrderedDict()
         keys_to_check = ['truncate_gradient', 'profile',
-                         'n_seqs', 'tap_array', 'name',
+                         'n_seqs', 'tap_array',
                          'as_while', 'n_mit_sot', 'destroy_map',
                          'n_nit_sot', 'n_shared_outs',
-                         'n_sit_sot', 'gpu', 'n_mit_mot_outs',
+                         'n_sit_sot', 'gpu', 'gpua', 'n_mit_mot_outs',
                          'n_mit_mot', 'mit_mot_out_slices']
         # This are some safety checks ( namely that the inner graph has the
         # same number of inputs and same number of outputs )
@@ -447,15 +450,11 @@ class Scan(PureOp):
             if self_in.type != other_in.type:
                 return False
 
-        if not scan_utils.equal_computations(self.outputs,
+        return scan_utils.equal_computations(self.outputs,
                                              other.outputs,
                                              self.inputs,
-                                             other.inputs):
-            return False
+                                             other.inputs)
 
-        # If they do, then they need to match in other small details
-        # like name, mode, etc.
-        return True
 
     def __str__(self):
         if self.gpu:
@@ -623,10 +622,17 @@ class Scan(PureOp):
             p = self.execute
         # default arguments are stored in the closure of `rval`
 
-        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
+        # Big ugly hack since we can't get the real value of allow_gc
+        # for the englobing function.
+        allow_gc = config.allow_gc and not self.allow_gc
+
+        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node,
+                 allow_gc=allow_gc):
             r = p(n, [x[0] for x in i], o)
             for o in node.outputs:
                 compute_map[o][0] = True
+            if allow_gc:
+                self.fn.free()
             return r
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage
@@ -1876,6 +1882,7 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
+        info['allow_gc'] = self.allow_gc
 
         outer_inputs = ([grad_steps] +
                         outer_inp_seqs +
@@ -2041,6 +2048,7 @@ class Scan(PureOp):
         else:
             info['name'] = None
         info['mode'] = self.mode
+        info['allow_gc'] = self.allow_gc
         info['mit_mot_out_slices'] = self.mit_mot_out_slices * 2
         info['destroy_map'] = OrderedDict()
         new_tap_array = []

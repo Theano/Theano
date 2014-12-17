@@ -9,6 +9,8 @@ from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type
 
+from .utils import MethodNotDefined, undef
+
 __excepthook = sys.excepthook
 
 
@@ -180,6 +182,12 @@ raise_with_op.print_thunk_trace = False
 
 class Linker(object):
     """WRITEME"""
+
+    def clone(self, allow_gc=undef):
+        new = copy(self)
+        if allow_gc is not undef:
+            new.allow_gc = allow_gc
+        return new
 
     def make_thunk(self):
         """
@@ -688,6 +696,11 @@ class WrapLinker(Linker):
             linkers=[copy(l) for l in self.linkers],
             wrapper=self.wrapper)
         return other
+
+    def clone(allow_gc=undef):
+        return self.__class__(
+            linkers=[l.clone(allow_gc=allow_gc)],
+            wrapper=self.wrapper)
 
     def accept(self, fgraph, no_recycling=None):
         """
