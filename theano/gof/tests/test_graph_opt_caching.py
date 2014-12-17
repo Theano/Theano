@@ -6,10 +6,8 @@ floatX = 'float32'
 import theano
 import theano.tensor as T
 
-
-
 def test_graph_opt_caching():
-    opt_db_file = theano.config.compiledir+'/optimized_graphs.pkl'
+    opt_db_file = theano.config.compiledir+'/*.pkl'
     os.system('rm %s'%opt_db_file)
     
     mode = theano.config.mode

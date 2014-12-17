@@ -978,7 +978,10 @@ class FunctionMaker(object):
         import os.path
 
         graph_db_file = os.path.join(theano.config.compiledir, 'optimized_graphs.pkl')
-
+        # how many splits 
+        n_files = 10
+        
+        
         # the inputs, outputs, and size of the graph to be optimized
         inputs_new = [inp.variable for inp in inputs]
         outputs_new = [out.variable for out in outputs]
@@ -986,8 +989,41 @@ class FunctionMaker(object):
         need_optimize = False
         get_lock()
         key = None
+
+        def dump_pkl(obj, path):
+            f = open(path, 'wb')
+            try:
+                cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+            finally:
+                f.close()
+                
+        def load_pkl(path):
+            f = open(path, 'rb')
+            try:
+                rval = cPickle.load(f)
+            finally:
+                f.close()
+            return rval
+          
         #Beginning of cache optimizations.
+        def load_idx_file():
+            f = os.path.join(theano.config.compiledir, 'idx.pkl')
+            # load the file the contains a list of graph_db file paths
+            if not os.path.isfile(f):
+                print 'creating graph opt db idx file in %s'%f
+                graph_db_idx = {}
+                for i in range(n_files):
+                    f_sub = os.path.join(theano.config.compiledir,'graph_db_part_%i.pkl'%i)
+                    graph_db_idx[i] = f_sub
+                    dump_pkl({},f_sub)
+                dump_pkl(graph_db_idx,f)
+            graph_db_idx = load_pkl(f)
+            return graph_db_idx
+
+        graph_db_idx = load_idx_file()
+        
         def load_graph_db():
+            # This makes sense when graph_db is a single big file. This does not scale.
             if os.path.isfile(graph_db_file):
                 print 'graph_db already exists'
             else:
@@ -1020,6 +1056,13 @@ class FunctionMaker(object):
                 
             return graph_db
 
+        def load_graph_db_with_heuristics():
+            # load a smaller graph_db file according to the graph size
+            graph_size = len(self.fgraph.apply_nodes)
+            db_to_load = graph_db_idx[graph_size % n_files]
+            db = load_pkl(db_to_load)
+            return db, db_to_load
+        
         def find_same_graph_in_db(graph_db):
             # If found_graph_in_db is None, then need to optimize.
             # Otherwise, return the graph found.
@@ -1060,7 +1103,6 @@ class FunctionMaker(object):
                     flags = []
                     for output_new, output_old, i in zip(
                             outputs_new, outputs_old, range(len(outputs_new))):
-                        print 'loop through outputs node for both graphs'
                         graph_old.variables = set(gof.graph.variables(
                             graph_old.inputs, graph_old.outputs))
 
@@ -1110,7 +1152,6 @@ class FunctionMaker(object):
                     is_same = all(flags)
                     if is_same:
                         # found the match
-                        print 'found a match'
                         # now check the timestamp
                         current_time = time.time()
                         patience = gof.cmodule.ModuleCache.age_thresh_del
@@ -1118,20 +1159,22 @@ class FunctionMaker(object):
                             print 'optimized graph outdated, need reoptimize!'
                             found_graph_in_db = None
                         else:
-                            print 'no need to optimize'
                             found_graph_in_db = graph_optimized
                         break
             return found_graph_in_db
                    
-        graph_db = load_graph_db()
-        print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
+        #graph_db = load_graph_db()
+        import ipdb; ipdb.set_trace()
+        graph_db, db_path = load_graph_db_with_heuristics()
+        print 'loaded graph_db from %s, size=%d' % (db_path, len(graph_db))
         found_graph = find_same_graph_in_db(graph_db)
         if found_graph:
+            print 'found a match'
             self.fgraph = found_graph
             optimizer_profile = None
         else:
             # this is a brand new graph, optimize it, save it to graph_db
-            print 'optimizing the graph and put it in graph_db'
+            print 'match not found, optimizing the graph and put it in %s'%db_path
             self.fgraph.variables = set(gof.graph.variables(
                 self.fgraph.inputs, self.fgraph.outputs))
             #check_integrity parameters was added to ignore 
@@ -1141,12 +1184,7 @@ class FunctionMaker(object):
             before_opt = self.fgraph.clone(check_integrity=False)
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt:[self.fgraph, time.time()]})
-            f = open(graph_db_file, 'wb')
-            try:
-                cPickle.dump(graph_db, f, -1)
-            finally:
-                f.close()
-            print 'new graph saved into graph_db'
+            dump_pkl(graph_db, db_path)
         release_lock()
         return optimizer_profile
                 
