@@ -5101,8 +5101,7 @@ class TestARange(unittest.TestCase):
             mode = 'FAST_RUN'
         mode = compile.mode.get_mode(mode).excluding('fusion')
         f = function([start, stop, step], out.shape, mode=mode)
-        assert len(f.maker.fgraph.toposort()) == 7
-#7 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{float64}}(Elemwise{sub,no_inplace}.0), Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{float64}}.0, step), Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{TrueDiv{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Cast{int64}}(Elemwise{Ceil{output_types_preference=transfer_type{0}}}[(0, 0)].0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
+        assert len(f.maker.fgraph.toposort()) == 8
 
         if config.cast_policy == 'custom':
             assert out.dtype == start.type.dtype
@@ -5138,6 +5137,9 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(10, 2) == len(numpy.arange(10, 2)))
         assert numpy.all(f(10, 2) == len(numpy.arange(10, 2)))
         assert numpy.all(f(0, 0) == len(numpy.arange(0, 0)))
+        assert numpy.all(f(-64, 64) == len(numpy.arange(-64, 64)))
+        assert arange(-64, 64).shape.eval() == [128]
+        assert arange(-64, 64, 2).shape.eval() == [64]
 
         out = arange(0, stop, 1)
         f = function([stop], out.shape, mode=mode)
