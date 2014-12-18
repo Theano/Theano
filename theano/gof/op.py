@@ -17,6 +17,7 @@ import logging
 import numpy
 import os
 import sys
+import re
 import warnings
 
 import theano
@@ -973,6 +974,32 @@ int main( int argc, const char* argv[] )
                                                 compute_map, no_recycling)
 
 
+def simple_meth(tag):
+    def f(self):
+        if tag in self.code_sections:
+            return self.code_sections[tag]
+        else:
+            raise utils.MethodNotDefined(
+                'c_' + tag, type(self), type(self).__name__)
+    f.__name__ = 'c_' + tag
+    return f
+
+
+def apply_meth(tag):
+    def f(self, node, name):
+        if tag in self.code_sections:
+            code = self.code_sections[tag]
+
+            define_macros, undef_macros = self.get_c_macros(node, name)
+            return os.linesep.join([define_macros, code,
+                                    undef_macros])
+        else:
+            raise utils.MethodNotDefined(
+                'c_' + tag, type(self), type(self).__name__)
+    f.__name__ = 'c_' + tag
+    return f
+
+
 class COp(Op):
     """ Class to allow an op to have an external C implementation.
 
@@ -981,118 +1008,85 @@ class COp(Op):
     the C implementation and the name of the function, in that file, to call
     to perform the computations for the op.
     """
+    section_re = re.compile(r'^#section ([a-zA-Z0-9_]+)$', re.MULTILINE)
+    # This is the set of allowed markers
+    SECTIONS = set([
+            'init_code', 'init_code_apply', 'init_code_struct',
+            'support_code', 'support_code_apply', 'support_code_struct',
+            'cleanup_code_struct',
+            'code', 'code_cleanup'])
 
-    def __init__(self, func_file, func_name):
+    @classmethod
+    def get_path(cls, f):
+        """
+        Convert a path relative to the location of the class file into
+        an aboslute path. Paths that are already absolute are passed
+        through unchanged.
+        """
+        if not os.path.isabs(f):
+            class_file = inspect.getfile(cls)
+            class_dir = os.path.dirname(class_file)
+            f = os.path.realpath(os.path.join(class_dir, f))
+        return f
 
-        self.func_file = func_file
+    def __init__(self, func_files, func_name=None):
+        """
+        Sections are loaded from files in order with sections in later
+        files overriding sections in previous files.
+        """
+        if not isinstance(func_files, list):
+            func_files = [func_files]
+
+        self.func_files = [self.get_path(f) for f in func_files]
         self.func_name = func_name
 
-        # Define the markers that can be used to delimit sections in the
-        # external C code
-        self.support_code_marker = "THEANO_SUPPORT_CODE_SECTION"
-        self.apply_code_marker = "THEANO_APPLY_CODE_SECTION"
-        self.c_code_markers = [self.support_code_marker,
-                               self.apply_code_marker]
+        self.load_c_code()
 
-        # Load the external C code
-        try:
-            # Attempt to find the file self.func_file in the folder where the
-            # concrete type of the COp instance is defined
+        if len(self.code_sections) == 0:
+            raise ValueError("No sections where defined in C files")
 
-            # Get the name of the folder where the concrete type of the COp is
-            # defined
-            path_concrete_type = inspect.getfile(self.__class__)
-            folder_concrete_type = os.path.dirname(path_concrete_type)
+        if self.func_name is not None:
+            if 'op_code' in self.code_sections:
+                # maybe a warning instead (and clearing the key)
+                raise ValueError('Cannot have an "op_code" section and '
+                                 'specify the func_name')
+            if 'op_code_cleanup' in self.code_sections:
+                # maybe a warning instead (and clearing the key)
+                raise ValueError('Cannot have an "op_code_cleanup" section '
+                                 'and specify the func_name')
 
-            # Try to open the file from there
-            f = open(os.path.join(folder_concrete_type, self.func_file), "r")
-            self.func_code = f.read()
-            f.close()
+    def load_c_code(self):
+        self.func_codes = []
+        for func_file in self.func_files:
+            with open(func_file, 'r') as f:
+                self.func_codes.append(f.read())
 
-        except IOError:
-
-            # Add information to the exception message to inform the user
-            # on the locations in which the class COp will look for the
-            # specified file
-            message = ("The path to the external C implementation should "
-                       "be given as a relative path from the folder "
-                       "where the Op is defined. ")
-
-            # Can't update the exception's message by modifying e.args
-            # because IOErrors don't use their attribute args to generate
-            # their error message
-            e.strerror = message + e.strerror
-            raise e
-
-        # Separate the contents of the file in sections and validate that at
-        # lest one of the necessary code sections has been defined
-        self.code_sections = self.parse_external_c_code(self.func_code)
-
-        if sum([marker in self.code_sections.keys()
-               for marker in self.c_code_markers]) == 0:
-
-            raise(RuntimeError, "The provided C implementation does not "
-                  "define a support code section or a support code apply "
-                  "section.")
-
-    def parse_external_c_code(self, code):
-
-        # Obtain the positions of the C code markers used in the C code
-        positions = [(code.index(marker), marker)
-                     for marker in self.c_code_markers if marker in code]
-
-        # Go over the markers in their order of occurence and extract
-        # the C code they concern
-        positions.sort()
-        code_sections = {}
-
-        for i in range(len(positions)):
-
-            marker_start, marker = positions[i]
-
-            if i < len(positions) - 1:
-                # This is not the last section in the code : extract the code
-                # between the beginning of the current marker and the
-                # beginning of the next one.
-                next_marker_start = positions[i+1][0]
-                section = code[marker_start: next_marker_start]
-            else:
-                # This is the last section in the code : extract the remaining
-                # C code
-                section = code[marker_start:]
-
-            cleaned_section = section.replace(marker, "")
-            code_sections[marker] = cleaned_section
-
-        return code_sections
+        self.code_sections = dict()
+        for i, code in enumerate(self.func_codes):
+            split = self.section_re.split(code)
+            if split[0].strip() != '':
+                raise ValueError('Stray code before first #section '
+                                 'statement (in file %s): %s' %
+                                 (self.func_files[i], split[0]))
+            n = 1
+            while n < len(split):
+                if split[n] not in self.SECTIONS:
+                    raise ValueError("Unknown section type (in file %s): %s" %
+                                     (self.fun_files[i], split[n]))
+                if split[n] not in self.code_sections:
+                    self.code_sections[split[n]] = ""
+                self.code_sections[split[n]] += split[n+1]
+                n += 2
 
     def c_code_cache_version(self):
-        return hash(self.func_code)
+        return hash(tuple(self.func_codes))
 
-    def c_support_code(self):
-
-        if self.support_code_marker in self.code_sections:
-            return self.code_sections[self.support_code_marker]
-        else:
-            raise utils.MethodNotDefined("c_support_code",
-                type(self), self.__class__.__name__)
-
-    def c_support_code_apply(self, node, name):
-
-        if self.apply_code_marker in self.code_sections:
-            apply_code = self.code_sections[self.apply_code_marker]
-
-            if hasattr(self, 'check_inputs') and self.check_inputs == False:
-                return apply_code
-            else:
-                define_macros, undef_macros = self.get_c_macros(node, name)
-                return os.linesep.join([define_macros, apply_code,
-                                        undef_macros])
-
-        else:
-            raise utils.MethodNotDefined("c_support_code_apply",
-                type(self), self.__class__.__name__)
-
+    c_init_code = simple_meth('init_code')
+    c_init_code_apply = apply_meth('init_code_apply')
+    c_support_code = simple_meth('support_code')
+    c_support_code_apply = apply_meth('support_code_apply')
+    c_support_code_struct = apply_meth('support_code_struct')
+    c_cleanup_code_struct = apply_meth('cleanup_code_struct')
 
     def format_c_function_args(self, inp, out):
         # Generate an string containing the arguments sent to the external C
@@ -1100,73 +1094,149 @@ class COp(Op):
         # "input0, input1, input2, &output0, &output1"
         return ", ".join(list(inp) + ["&%s" % o for o in out])
 
-    def get_c_macros(self, node, name):
+    def get_c_macros(self, node, name, check_input=None):
+        define_template = "#define %s %s"
+        undef_template = "#undef %s"
+        define_macros = []
+        undef_macros = []
 
-        define_template = "#define %s %s" + os.linesep
-        undef_template = "#undef %s" + os.linesep
-        define_macros = ""
-        undef_macros = ""
+        if check_input is None:
+            check_input = getattr(self, 'check_input', True)
 
-        # Extract the various properties of the input and output variables
-        variables = node.inputs + node.outputs
-        variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
-                          ["OUTPUT_%i" % i for i in range(len(node.inputs))])
-        variable_dtypes_names = [v.dtype for v in variables]
-        variable_dtypes = [numpy.dtype(d) for d in variable_dtypes_names]
-        variable_typenums = [d.num for d in variable_dtypes]
-        variable_itemsizes = [d.itemsize for d in variable_dtypes]
+        if check_input:
+            # Extract the various properties of the input and output variables
+            variables = node.inputs + node.outputs
+            variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
+                              ["OUTPUT_%i" % i for i in range(len(node.inputs))])
 
-        # Generate dtype macros
-        for i in range(len(variables)):
-            macro_name = "DTYPE_" + variable_names[i]
-            macro_value = "npy_" + variable_dtypes_names[i]
+            # Generate dtype macros
+            for i, v in enumerate(variables):
+                if not hasattr(v, 'dtype'):
+                    continue
+                vname = variable_names[i]
 
-            define_macros += define_template % (macro_name, macro_value)
-            undef_macros += undef_template % macro_name
+                macro_name = "DTYPE_" + vname
+                macro_value = "npy_" + v.dtype
 
-        # Generate typenum macros
-        for i in range(len(variables)):
-            macro_name = "TYPENUM_" + variable_names[i]
-            macro_value = variable_typenums[i]
+                define_macros.append(define_template % (macro_name, macro_value))
+                undef_macros.append(undef_template % macro_name)
 
-            define_macros += define_template % (macro_name, macro_value)
-            undef_macros += undef_template % macro_name
+                d = numpy.dtype(v.dtype)
 
-        # Generate itemsize macros
-        for i in range(len(variables)):
-            macro_name = "ITEMSIZE_" + variable_names[i]
-            macro_value = variable_itemsizes[i]
+                macro_name = "TYPENUM_" + vname
+                macro_value = d.num
 
-            define_macros += define_template % (macro_name, macro_value)
-            undef_macros += undef_template % macro_name
+                define_macros.append(define_template % (macro_name, macro_value))
+                undef_macros.append(undef_template % macro_name)
+
+                macro_name = "ITEMSIZE_" + vname
+                macro_value = d.itemsize
+
+                define_macros.append(define_template % (macro_name, macro_value))
+                undef_macros.append(undef_template % macro_name)
 
         # Generate a macro to mark code as being apply-specific
-        define_macros += define_template % ("APPLY_SPECIFIC(str)",
-                                            "str##_%s" % name)
-        undef_macros += undef_template % "APPLY_SPECIFIC"
+        define_macros.append(define_template % ("APPLY_SPECIFIC(str)",
+                                                "str##_%s" % name))
+        undef_macros.append(undef_template % "APPLY_SPECIFIC")
 
-        return define_macros, undef_macros
+        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+
+    def _lquote_macro(self, txt):
+        res = []
+        spl = txt.split('\n')
+        for l in spl[:-1]:
+            res.append(l + ' \\')
+        res.append(spl[-1])
+        return os.linesep.join(res)
+
+    def get_sub_macros(self, sub):
+        define_macros = []
+        undef_macros = []
+        define_macros.append("#define FAIL %s" %
+                            (self._lquote_macro(sub['fail']),))
+        undef_macros.append("#undef FAIL")
+        if 'context' in sub:
+            define_macros.append("#define CONTEXT %s" % (sub['context'],))
+            undef_macos.append("#undef CONTEXT")
+
+        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+
+    def get_io_macros(self, inputs, outputs):
+        define_macros = []
+        undef_macros = []
+
+        for i, inp in enumerate(inputs):
+            define_macros.append("#define INPUT_%d %s" (i, inp))
+            undef_macros.append("#undef INPUT_%d", (i,))
+
+        for i, out in enumerate(outputs):
+            define_macros.append("#define OUTPUT_%d %s" (i, inp))
+            undef_macros.append("#undef OUTPUT_%d", (i,))
+
+    def c_init_code_struct(self, node, name, sub):
+        if 'init_code_struct' in self.code_sections:
+            op_code = self.code_sections['init_code_struct']
+
+            def_macros, undef_macros = self.get_c_macros(node, name)
+            def_sub, undef_sub = self.get_sub_macros(sub)
+
+            return os.linesep.join([def_macros, def_sub,
+                                    op_code,
+                                    undef_sub, undef_macros])
+        else:
+            raise utils.MethodNotDefined(
+                'c_init_code_struct', type(self), type(self).__name__)
+
 
     def c_code(self, node, name, inp, out, sub):
+        if self.func_name is not None:
+            assert 'code' not in self.code_sections
+            func_name = self.func_name
+            func_args = self.format_c_function_args(inp, out)
+            fail = sub['fail']
 
-        func_name = self.func_name
-        func_args = self.format_c_function_args(inp, out)
-        fail = sub['fail']
+            define_macros, undef_macros = self.get_c_macros(node, name,
+                                                            check_input=False)
 
-        # Generate the code to define/undefine the C macros
-        define_macros, undef_macros = self.get_c_macros(node, name)
+            # Generate the C code
+            return """
+%(define_macros)s
+{
+  if (%(func_name)s(%(func_args)s) != 0) {
+    %(fail)s
+  }
+}
+%(undef_macros)s
+""" % dict(func_name=self.func_name, fail=sub['fail'],
+           func_args=self.format_c_function_args(inp, out),
+           define_macros=define_macros, undef_macros=undef_macros)
+        else:
+            if 'code' in self.code_sections:
+                op_code = self.code_sections['code']
 
-        # Generate the C code
-        c_code = """
-        %(define_macros)s
-        {
-            int result = %(func_name)s(%(func_args)s);
-            if (result != 0)
-            {
-                %(fail)s;
-            }
-        }
-        %(undef_macros)s
-        """ % locals()
+                def_macros, undef_macros = self.get_c_macros(node, name)
+                def_sub, undef_sub = self.get_sub_macros(sub)
+                def_io, undef_io = self.get_io_macros(inp, out)
 
-        return c_code
+                return os.linesep.join([def_macros, def_sub, def_io,
+                                        op_code,
+                                        undef_io, undef_sub, undef_macros])
+            else:
+                raise utils.MethodNotDefined(
+                    'c_code', type(self), type(self).__name__)
+
+    def c_code_cleanup(self, node, name, inputs, outputs, sub):
+        if 'code_cleanup' in self.code_sections:
+            op_code = self.code_sections['code_cleanup']
+
+            def_macros, undef_macros = self.get_c_macros(node, name)
+            def_sub, undef_sub = self.get_sub_macros(sub)
+            def_io, undef_io = self.get_io_macros(inp, out)
+
+            return os.linesep.join([def_macros, def_sub, def_io,
+                                    op_code,
+                                    undef_io, undef_sub, undef_macros])
+        else:
+            raise utils.MethodNotDefined(
+                'c_code_cleanup', type(self), type(self).__name__)
