@@ -388,7 +388,7 @@ class DownsampleFactorMaxGrad(Op):
         ggx, = grads
         if self.st != self.ds:
             return [theano.gradient.grad_not_implemented(self, 0, x),
-                    theano.gradient.grad_not_implemented(self, 1, maxout)
+                    theano.gradient.grad_not_implemented(self, 1, maxout),
                     theano.gradient.grad_not_implemented(self, 2, gz)]
         return [theano.tensor.zeros_like(x),
                 theano.tensor.zeros_like(maxout),
