@@ -82,6 +82,7 @@ get_scalar_type.cache = {}
 
 
 def as_scalar(x, name=None):
+    from ..tensor import TensorType, scalar_from_tensor
     if isinstance(x, gof.Apply):
         if len(x.outputs) != 1:
             raise ValueError("It is ambiguous which output of a multi-output"
@@ -89,9 +90,12 @@ def as_scalar(x, name=None):
         else:
             x = x.outputs[0]
     if isinstance(x, Variable):
-        if not isinstance(x.type, Scalar):
+        if isinstance(x.type, Scalar):
+            return x
+        elif isinstance(x.type, TensorType) and x.ndim == 0:
+            return scalar_from_tensor(x)
+        else:
             raise TypeError("Variable type field must be a Scalar.", x, x.type)
-        return x
     try:
         return constant(x)
     except TypeError:
