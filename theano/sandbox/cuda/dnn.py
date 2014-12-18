@@ -2,8 +2,9 @@ import os
 
 import theano
 from theano import Apply, gof, tensor
+from theano.scalar import as_scalar
 from theano.gradient import DisconnectedType
-from theano.gof import Optimizer, local_optimizer
+from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
@@ -102,13 +103,16 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
 
-class DnnBase(GpuOp):
+class DnnBase(GpuOp, COp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
     """
     # dnn does not know about broadcasting, so we do not need to assert
     # the input broadcasting pattern.
     check_broadcast = False
+
+    def __init__(self):
+        COp.__init__(self, "dnn_base.c")
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -118,11 +122,6 @@ class DnnBase(GpuOp):
 
     def c_libraries(self):
         return ['cudnn']
-
-    def c_support_code(self):
-        return """
-cudnnHandle_t _handle = NULL;
-"""
 
     def c_init_code(self):
         if PY3:
@@ -139,9 +138,15 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 }""" % (error_out,)]
 
 
-class DnnVersion(DnnBase):
+class DnnVersion(GpuOp):
     def c_compiler(self):
         return NVCC_compiler
+
+    def c_headers(self):
+        return ['cudnn.h']
+
+    def c_libraries(self):
+        return ['cudnn']
 
     def make_node(self):
         return Apply(self, [], [Generic()()])
@@ -149,10 +154,10 @@ class DnnVersion(DnnBase):
     def c_code(self, node, name, inputs, outputs, sub):
         o = outputs[0]
         return """
-        #if CUDNN_VERSION >= 20
-        %(o)s = PyTuple_Pack(2, PyInt_FromLong(cudnnVersionMacro()), PyInt_FromLong(cudnnGetVersion()));
+        #if defined(CUDNN_VERSION)
+        %(o)s = PyTuple_Pack(2, PyInt_FromLong(CUDNN_VERSION), PyInt_FromLong(cudnnGetVersion()));
         #else
-        %(o)s = PyInt_FromLong(cudnnVersionMacro());
+        %(o)s = PyInt_FromLong(-1);
         #endif
         """ % locals()
 
@@ -274,7 +279,7 @@ class GpuDnnConvDesc(GpuOp):
     PyErr_SetString(PyExc_ValueError, "bad border mode");
     %(fail)s
   }
-#if CUDNN_VERSION >= 20
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 20
   err = cudnnSetConvolution2dDescriptor(
   %(desc)s,
   pad_h%(name)s,
@@ -313,223 +318,7 @@ class GpuDnnConvDesc(GpuOp):
         return (2, version())
 
 
-class GpuDnnConvBase(DnnBase):
-    __props__ = ()
-
-    def c_support_code_struct(self, node, name):
-        return """
-cudnnTensorDescriptor_t input%(name)s;
-cudnnTensorDescriptor_t output%(name)s;
-cudnnFilterDescriptor_t kerns%(name)s;
-""" % dict(name=name)
-
-    def c_init_code_struct(self, node, name, sub):
-        return """
-cudnnStatus_t err%(name)s;
-input%(name)s = NULL;
-output%(name)s = NULL;
-kerns%(name)s = NULL;
-if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
-               "(inp): %%s", cudnnGetErrorString(err%(name)s));
-  %(fail)s
-}
-if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
-               "(out): %%s", cudnnGetErrorString(err%(name)s));
-  %(fail)s
-}
-if ((err%(name)s = cudnnCreateFilterDescriptor(&kerns%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate filter descriptor: %%s",
-               cudnnGetErrorString(err%(name)s));
-  %(fail)s
-}
-""" % dict(name=name, fail=sub['fail'])
-
-    def c_cleanup_code_struct(self, node, name):
-        return """
-if (input%(name)s != NULL) {cudnnDestroyTensorDescriptor(input%(name)s);}
-if (output%(name)s != NULL) {cudnnDestroyTensorDescriptor(output%(name)s);}
-if (kerns%(name)s != NULL) {cudnnDestroyFilterDescriptor(kerns%(name)s);}
-""" % dict(name=name)
-
-    def c_set_filter(self, var, desc, err, fail):
-        return """
-%(err)s = cudnnSetFilter4dDescriptor(
-%(desc)s, CUDNN_DATA_FLOAT,
-CudaNdarray_HOST_DIMS(%(var)s)[0],
-CudaNdarray_HOST_DIMS(%(var)s)[1],
-CudaNdarray_HOST_DIMS(%(var)s)[2],
-CudaNdarray_HOST_DIMS(%(var)s)[3]
-);
-if (%(err)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError,
-               "%(cls)s: could not set filter descriptor: %%s."
-               " dims= %%d %%d %%d %%d",
-               cudnnGetErrorString(%(err)s),
-               CudaNdarray_HOST_DIMS(%(var)s)[0],
-               CudaNdarray_HOST_DIMS(%(var)s)[1],
-               CudaNdarray_HOST_DIMS(%(var)s)[2],
-               CudaNdarray_HOST_DIMS(%(var)s)[3]);
-
-  %(fail)s
-}
-""" % dict(var=var, desc=desc, err=err, fail=fail,
-           cls=self.__class__.__name__)
-
-    def c_set_tensor4d(self, *arg):
-        return c_set_tensor4d(*arg)
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        desc = inputs[2]
-        if len(inputs) <= 3:
-            height, width = (-1, -1)
-        else:
-            height, width = inputs[3:]
-            height = '(*(npy_%s*)(PyArray_DATA(%s)))' % (
-                node.inputs[3].dtype, height)
-            width = '(*(npy_%s*)(PyArray_DATA(%s)))' % (
-                node.inputs[4].dtype, width)
-        out, = outputs
-
-        checks = []
-        for v in inputs[:2]:
-            checks.append("""
-if (!CudaNdarray_is_c_contiguous(%s)) {
-  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
-  %s
-}
-""" % (v, sub['fail']))
-
-        sets = []
-        for p, v, d in zip(inputs[:2], self.conv_inputs, self.conv_types[:2]):
-            sets.append(getattr(self, 'c_set_'+d)(p, v + name,
-                                                  'err' + name, sub['fail']))
-
-        set_out = getattr(self, 'c_set_' + self.conv_types[2])(
-            out, self.conv_output + name, 'err' + name,
-            sub['fail'])
-
-        return """
-cudnnStatus_t err%(name)s = CUDNN_STATUS_SUCCESS;
-
-%(checks)s
-
-%(sets)s
-
-{
-  int out_dims[4];
-#ifndef CUDNN_VERSION
-  err%(name)s = cudnnGetOutputTensor4dDim(
-  %(desc)s, %(path)s,
-  &out_dims[0], &out_dims[1],
-  &out_dims[2], &out_dims[3]
-  );
-  if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not get output sizes: %%s",
-                 cudnnGetErrorString(err%(name)s));
-    %(fail)s
-  }
-  // workaround for cudnn R1 bug
-  if (%(path)s == CUDNN_CONVOLUTION_WEIGHT_GRAD &&
-      (out_dims[0] != CudaNdarray_HOST_DIMS(%(input2)s)[1] ||
-       out_dims[1] != CudaNdarray_HOST_DIMS(%(input1)s)[1])) {
-    out_dims[0] = CudaNdarray_HOST_DIMS(%(input2)s)[1];
-    out_dims[1] = CudaNdarray_HOST_DIMS(%(input1)s)[1];
-    // This is a horrible hack that is unfortulately necessary
-    int *dd = (int *)%(desc)s;
-    out_dims[2] = dd[5];
-    out_dims[3] = dd[6];
-  }
-#else
-  if (!%(full)d){
-      err%(name)s = cudnnGetConvolution2dForwardOutputDim(
-        %(desc)s,
-        input%(id)d,
-        kerns%(id)d,
-        &out_dims[0], &out_dims[1],&out_dims[2], &out_dims[3]);
-  }else{
-        int padH=0, padW=0, dH=1, dW=1, upscalex=1, upscaley=1;
-        cudnnConvolutionMode_t mode=CUDNN_CONVOLUTION;
-        err%(name)s = cudnnGetConvolution2dDescriptor(
-            %(desc)s, &padW, &padH, &dH, &dW,
-            &upscalex, &upscaley, &mode);
-        out_dims[0] = CudaNdarray_HOST_DIMS(%(input2)s)[0];
-        out_dims[1] = CudaNdarray_HOST_DIMS(%(input1)s)[1];
-        out_dims[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(%(input1)s)[2] - 1) * dH + CudaNdarray_HOST_DIMS(%(input2)s)[2] - 2*padH;
-        out_dims[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(%(input1)s)[3] - 1) * dW + CudaNdarray_HOST_DIMS(%(input2)s)[3] - 2*padW;
-  }
-#endif
-  if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError,
-                 "%(cls)s, error while computing the output shape: %%s",
-                 cudnnGetErrorString(err%(name)s));
-    %(fail)s
-  }
-  if (CudaNdarray_prep_output(&%(out)s, 4, out_dims) != 0) {
-    %(fail)s
-  }
-}
-
-%(set_out)s
-#ifndef CUDNN_VERSION
-err%(name)s = %(method)s(
-_handle,
-%(input1_desc)s, CudaNdarray_DEV_DATA(%(input1)s),
-%(input2_desc)s, CudaNdarray_DEV_DATA(%(input2)s),
-%(desc)s,
-%(output_desc)s, CudaNdarray_DEV_DATA(%(out)s),
-CUDNN_RESULT_NO_ACCUMULATE
-);
-#else
-{
-const float alpha = 1;
-const float beta = 0;
-/*
-cudnnGetConvolutionForwardAlgorithm(
-    _handle,
-    %(input1_desc)s,
-    %(input2_desc)s,
-    %(desc)s,
-    %(output_desc)s,
-    CUDNN_CONVOLUTION_FWD_NO_WORKSPACE, //TODO, config of this
-    0, //TODO, memoryLimitInbytes,
-    cudnnConvolutionFwdAlgo_t
-    );
-    */
-err%(name)s = %(method)s(
-_handle,
-(void*)&alpha,
-%(input1_desc)s, CudaNdarray_DEV_DATA(%(input1)s),
-%(input2_desc)s, CudaNdarray_DEV_DATA(%(input2)s),
-%(desc)s,
-%(algo)s
-    (void*)&beta,
-%(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
-);
-}
-#endif
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "%(cls)s, error doing operation: %%s",
-               cudnnGetErrorString(err%(name)s));
-  %(fail)s
-}
-""" % dict(out=out, desc=desc, fail=sub['fail'],
-           name=name, checks='\n'.join(checks), sets='\n'.join(sets),
-           set_out=set_out, input1=inputs[0], input2=inputs[1],
-           input1_desc=self.conv_inputs[0]+name,
-           input2_desc=self.conv_inputs[1]+name,
-           output_desc=self.conv_output+name,
-           height=height, width=width,
-           cls=self.__class__.__name__,
-           full=int("GpuDnnConvGradI" == self.__class__.__name__),
-           method=self.conv_op, path=self.path_flag, algo=self.algo)
-
-    def c_code_cache_version(self):
-        return (10, version())
-
-
-class GpuDnnConv(GpuDnnConvBase):
+class GpuDnnConv(DnnBase, COp):
     """
     The forward convolution.
 
@@ -538,14 +327,11 @@ class GpuDnnConv(GpuDnnConvBase):
     :param descr: the convolution descriptor
 
     """
-    conv_inputs = 'input', 'kerns'
-    conv_output = 'output'
-    conv_types = 'tensor4d', 'filter', 'tensor4d'
-    conv_op = 'cudnnConvolutionForward'
-    path_flag = 'CUDNN_CONVOLUTION_FWD'
-    algo = """CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM, //TODO: algo,
-    NULL,//TODO, void *workspace,
-    0, //TODO: workspacesize"""
+    __props__ = ()
+
+    def __init__(self):
+        COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
+                     "APPLY_SPECIFIC(conv_fwd)")
 
     def make_node(self, img, kern, desc):
         img = as_cuda_ndarray_variable(img)
@@ -571,8 +357,10 @@ class GpuDnnConv(GpuDnnConvBase):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConvGradI()(kerns, top, desc, img.shape[-2:])
-        d_kerns = GpuDnnConvGradW()(img, top, desc)
+        d_img = GpuDnnConvGradI()(kerns, top, desc,
+                                  img.shape[2], img.shape[3])
+        d_kerns = GpuDnnConvGradW()(img, top, desc,
+                                    kerns.shape[2], kerns.shape[3])
 
         return d_img, d_kerns, theano.gradient.DisconnectedType()()
 
@@ -603,7 +391,7 @@ class GpuDnnConv(GpuDnnConvBase):
         )]
 
 
-class GpuDnnConvGradW(GpuDnnConvBase):
+class GpuDnnConvGradW(DnnBase, COp):
     """
     The convolution gradient with respect to the weights.
 
@@ -612,30 +400,30 @@ class GpuDnnConvGradW(GpuDnnConvBase):
     :param descr: the convolution descriptor
 
     """
+    __props__ = ()
 
-    conv_inputs = 'input', 'output',
-    conv_output = 'kerns'
-    conv_types = 'tensor4d', 'tensor4d', 'filter'
-    path_flag = 'CUDNN_CONVOLUTION_WEIGHT_GRAD'
-    conv_op = 'cudnnConvolutionBackwardFilter'
-    algo = ""
+    def __init__(self):
+        COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
+                     "APPLY_SPECIFIC(conv_gw)")
 
     def grad(self, inp, grads):
-        img, top, desc = inp
+        img, top, desc, h, w = inp
         kerns, = grads
 
         kerns = gpu_contiguous(kerns)
 
-        d_img = GpuDnnConvGradI()(kerns, top, desc)
+        d_img = GpuDnnConvGradI()(kerns, top, desc,
+                                  img.shape[2], img.shape[3])
         d_top = GpuDnnConv()(img, kerns, desc)
 
-        return d_img, d_top, theano.gradient.DisconnectedType()()
+        return (d_img, d_top, DisconnectedType()(), DisconnectedType()(),
+                DisconnectedType()())
 
     def connection_pattern(self, node):
-        # not connected to desc
-        return [[1], [1], [0]]
+        # not connected to desc, h, w
+        return [[1], [1], [0], [0], [0]]
 
-    def make_node(self, img, topgrad, desc):
+    def make_node(self, img, topgrad, desc, h, w):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if img.type.ndim != 4:
@@ -647,10 +435,14 @@ class GpuDnnConvGradW(GpuDnnConvBase):
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
+        h = as_scalar(h)
+        w = as_scalar(w)
+
         broadcastable = [topgrad.type.broadcastable[1],
                          img.type.broadcastable[1],
                          False, False]
-        return Apply(self, [img, topgrad, desc],
+
+        return Apply(self, [img, topgrad, desc, h, w],
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
@@ -678,7 +470,7 @@ class GpuDnnConvGradW(GpuDnnConvBase):
         )]
 
 
-class GpuDnnConvGradI(GpuDnnConvBase):
+class GpuDnnConvGradI(DnnBase, COp):
     """
     The convolution gradient with respect to the inputs.
 
@@ -687,30 +479,29 @@ class GpuDnnConvGradI(GpuDnnConvBase):
     :param descr: the convolution descriptor
 
     """
+    __props__ = ()
 
-    conv_inputs = 'kerns', 'output',
-    conv_output = 'input'
-    conv_types = 'filter', 'tensor4d', 'tensor4d'
-    path_flag = 'CUDNN_CONVOLUTION_DATA_GRAD'
-    conv_op = 'cudnnConvolutionBackwardData'
-    algo = ""
+    def __init__(self):
+        COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
+                     "APPLY_SPECIFIC(conv_gi)")
 
     def grad(self, inp, grads):
-        kerns, top, desc = inp
+        kerns, top, desc, h, w = inp
         img, = grads
 
         img = gpu_contiguous(img)
 
-        d_kerns = GpuDnnConvGradW()(img, top, desc)
+        d_kerns = GpuDnnConvGradW()(img, top, desc,
+                                    kerns.shape[2], kerns.shape[3])
         d_top = GpuDnnConv()(img, kerns, desc)
-        d_height_width = (DisconnectedType()(),) * 2 if len(inp) == 5 else ()
-        return (d_kerns, d_top, DisconnectedType()()) + d_height_width
+        return (d_kerns, d_top, DisconnectedType()(), DisconnectedType()(),
+                DisconnectedType()())
 
     def connection_pattern(self, node):
-        # not connected to desc
-        return [[1], [1], [0]]
+        # not connected to desc, h, w
+        return [[1], [1], [0], [0], [0]]
 
-    def make_node(self, kern, topgrad, desc, shape=None):
+    def make_node(self, kern, topgrad, desc, h, w):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if kern.type.ndim != 4:
@@ -721,18 +512,15 @@ class GpuDnnConvGradI(GpuDnnConvBase):
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
-        if shape is None:
-            if not (desc.owner and
-                    isinstance(desc.owner.op, GpuDnnConvDesc) and
-                    desc.owner.op.subsample == (1, 1)):
-                raise ValueError('shape must be given if subsample != (1, 1)')
-            height_width = []
-        else:
-            height_width = [shape[0], shape[1]]
+
+        h = as_scalar(h)
+        w = as_scalar(w)
+
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1],
                          False, False]
-        return Apply(self, [kern, topgrad, desc] + height_width,
+
+        return Apply(self, [kern, topgrad, desc, h, w],
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
@@ -802,7 +590,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                                     img.shape[3] - kerns.shape[3] + 1)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross')(img.shape, shape)
-        conv = GpuDnnConvGradW()(img, kerns, desc)
+        conv = GpuDnnConvGradW()(img, kerns, desc, shape[2], shape[3])
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
 
     elif (border_mode == 'full' and subsample == (1, 1) and
@@ -818,7 +606,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                                     img.shape[3] + kerns.shape[3] - 1)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(shape, kerns.shape)
-        return GpuDnnConvGradI()(kerns, img, desc)
+        return GpuDnnConvGradI()(kerns, img, desc, shape[2], shape[3])
 
     # Standard case: We use GpuDnnConv with suitable padding.
     img = gpu_contiguous(img)
@@ -1402,8 +1190,7 @@ if (%(algo)d == 1)
 cudnnSoftmaxMode_t mode%(name)s = CUDNN_SOFTMAX_MODE_CHANNEL;
 if (%(mode)d == 1)
   mode%(name)s = CUDNN_SOFTMAX_MODE_INSTANCE;
-""" % dict(name=name,
-           tensor_format=tensor_format, mode=mode, algo=algo)
+""" % dict(name=name, tensor_format=tensor_format, mode=mode, algo=algo)
 
         # Validate the input and build the input variables.
         for input_idx, input_name in enumerate(self.softmax_inputs):
@@ -1466,13 +1253,13 @@ const float alpha = 1.;
 const float beta = 0.;
 err%(name)s = cudnnSoftmaxForward(
   _handle,
-  algo%(id)d,
-  mode%(id)d,
+  algo%(name)s,
+  mode%(name)s,
   (void*) &alpha,
-  softmax_input_%(id)d,
+  softmax_input_%(name)s,
   CudaNdarray_DEV_DATA(%(ins)s),
   (void*) &beta,
-  softmax_output_%(id)d,
+  softmax_output_%(name)s,
   CudaNdarray_DEV_DATA(%(outs)s)
 );
 }
@@ -1520,15 +1307,15 @@ const float alpha = 1.;
 const float beta = 0.;
 err%(name)s = cudnnSoftmaxBackward(
   _handle,
-  algo%(id)d,
-  mode%(id)d,
+  algo%(name)s,
+  mode%(name)s,
   (void*) &alpha,
-  %(name1)s_%(id)d,
+  %(name1)s_%(name)s,
   CudaNdarray_DEV_DATA(%(ins1)s),
-  %(name0)s_%(id)d,
+  %(name0)s_%(name)s,
   CudaNdarray_DEV_DATA(%(ins0)s),
   (void*) &beta,
-  softmax_output_%(id)d,
+  softmax_output_%(name)s,
   CudaNdarray_DEV_DATA(%(outs)s)
 );
 }
