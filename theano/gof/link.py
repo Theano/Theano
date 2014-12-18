@@ -1,8 +1,10 @@
 """WRITEME"""
 from copy import copy, deepcopy
+from sys import getsizeof
 import StringIO
 import sys
 import traceback
+import numpy
 
 import theano
 from theano.gof import utils
@@ -58,7 +60,7 @@ sys.excepthook = thunk_hook
 
 
 # TODO: Make this work with linker defined schedule
-def raise_with_op(node, thunk=None, exc_info=None):
+def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     """
     Re-raise an exception while annotating the exception object with
     debug info.
@@ -71,6 +73,9 @@ def raise_with_op(node, thunk=None, exc_info=None):
         A tuple containing the exception type, exception object and
         associated traceback, as would be returned by a call to
         `sys.exc_info()` (which is done if `None` is passed).
+    storage_map: dict, optional
+        storage map of the theano function that resulted in the
+        raised exception.
 
     Notes
     -----
@@ -162,16 +167,44 @@ def raise_with_op(node, thunk=None, exc_info=None):
             " Theano optimizations can be disabled with 'optimizer=None'.")
 
     if theano.config.exception_verbosity == 'high':
+
         f = StringIO.StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n"
         detailed_err_msg += f.getvalue()
 
+        # Prints output_map
+        if storage_map is not None:
+            detailed_err_msg += "\nStorage map footprint:\n"
+            for k in storage_map.keys():
+                if storage_map[k][0] is not None:
+                    detailed_err_msg += " - " + str(k) + ", "
+                    shapeinfo = None
+                    if hasattr(storage_map[k][0], 'shape'):
+                        shapeinfo = storage_map[k][0].shape
+                        if len(shapeinfo) != 0:
+                            detailed_err_msg += "Shape: %s, " % str(shapeinfo)
+                        else:
+                            detailed_err_msg += "Shape: (1,), "
+                    if hasattr(storage_map[k][0], 'dtype'):
+                        dtype = storage_map[k][0].dtype
+                        detailed_err_msg += "ElemSize: %s Byte(s)" % numpy.dtype(dtype).itemsize
+                        if shapeinfo is None:
+                            detailed_err_msg += "\n"
+                        else:
+                            detailed_err_msg += ", TotalSize: %s Byte(s)\n" % (numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo))
+                    else:
+                        bytes = getsizeof(storage_map[k][0])
+                        detailed_err_msg += "ElemSize: %s Byte(s)\n" % str(bytes)
+
+
     else:
         hints.append(
             "HINT: Use the Theano flag 'exception_verbosity=high'"
-            " for a debugprint of this apply node.")
+            " for a debugprint and storage map footprint of this apply node.")
+
+
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
