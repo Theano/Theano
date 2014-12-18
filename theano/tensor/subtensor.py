@@ -1940,8 +1940,8 @@ class AdvancedIncSubtensor1(Op):
             """)
 
     def c_code(self, node, name, input_names, output_names, sub):
-        if float(numpy.__version__[:3]) < 1.75:
-            # This is probably not the best way to do this ...
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        if bool(numpy_ver < [1, 8]):
             raise NotImplementedError
         x, y, idx = input_names
         out = output_names[0]
@@ -1970,6 +1970,7 @@ class AdvancedIncSubtensor1(Op):
         }
         PyObject *arglist = Py_BuildValue("OOOi",%(out)s, %(idx)s, %(y)s, %(inc_or_set)d);
         inplace_increment(NULL, arglist);
+        Py_XDECREF(arglist);
         """ % locals()
 
     def perform(self, node, inp, out_):
