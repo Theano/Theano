@@ -1206,7 +1206,7 @@ class ModuleCache(object):
         rename them with the '.delete.me' extension, to mark them to be deleted
         next time we clear the cache.
         """
-        with compilelock.lock_ctx()
+        with compilelock.lock_ctx():
             for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
                              'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
@@ -1315,7 +1315,7 @@ class ModuleCache(object):
 
     def _on_atexit(self):
         # Note: no need to call refresh() since it is called by clear_old().
-        with compilelock.lock_ctx()
+        with compilelock.lock_ctx():
             self.clear_old()
             self.clear_unversioned()
         _logger.debug('Time spent checking keys: %s',
