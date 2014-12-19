@@ -29,8 +29,8 @@ def max_pool_2d(input, ds, ignore_border=False):
     :param input: input images. Max pooling will be done over the 2 last
         dimensions.
     :type ds: tuple of length 2
-    :param ds: factor by which to downscale (vertical ds, horizontal ds). 
-        (2,2) will halve the image in each dimension. 
+    :param ds: factor by which to downscale (vertical ds, horizontal ds).
+        (2,2) will halve the image in each dimension.
     :param ignore_border: boolean value. When True, (5,5) input with ds=(2,2)
         will generate a (2,2) output. (3,3) otherwise.
     """
@@ -68,7 +68,7 @@ class DownsampleFactorMax(Op):
     """
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False):
+    def out_shape(imgshape, ds, ignore_border=False, st=None):
         """Return the shape of the output from this op, for input of given
         shape and flags.
 
@@ -78,7 +78,12 @@ class DownsampleFactorMax(Op):
             scalar Theano variable.
 
         :param ds: downsample factor over rows and columns
+                   this parameter indicates the size of the pooling region
         :type ds: list or tuple of two ints
+
+        :param st: the stride size. This is the distance between the pooling
+                   regions. If it's set to None, in which case it equlas ds.
+        :type st: list or tuple of two ints
 
         :param ignore_border: if ds doesn't divide imgshape, do we include an
             extra row/col of partial downsampling (False) or ignore it (True).
@@ -92,24 +97,57 @@ class DownsampleFactorMax(Op):
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '
                             '(rows, cols)')
-        r, c = imgshape[-2:]
-        rval = list(imgshape[:-2]) + [r // ds[0], c // ds[1]]
 
-        if not ignore_border:
+        if st is None:
+            st = ds
+        r, c = imgshape[-2:]
+
+        if ignore_border:
+            out_r = (r - ds[0]) // st[0] + 1
+            out_c = (c - ds[1]) // st[1] + 1
             if isinstance(r, theano.Variable):
-                rval[-2] = tensor.switch(r % ds[0], rval[-2] + 1, rval[-2])
-            elif r % ds[0]:
-                rval[-2] += 1
+                nr = tensor.maximum(out_r, 0)
+            else:
+                nr = numpy.maximum(out_r, 0)
             if isinstance(c, theano.Variable):
-                rval[-1] = tensor.switch(c % ds[1], rval[-1] + 1, rval[-1])
-            elif c % ds[1]:
-                rval[-1] += 1
+                nc = tensor.maximum(out_c, 0)
+            else:
+                nc = numpy.maximum(out_c, 0)
+        else:
+            if isinstance(r, theano.Variable):
+                nr = tensor.switch(tensor.ge(st[0], ds[0]),
+                                   (r - 1) // st[0] + 1,
+                                   tensor.maximum(0, (r - 1 - ds[0])
+                                                  // st[0] + 1) + 1)
+            elif st[0] >= ds[0]:
+                nr = (r - 1) // st[0] + 1
+            else:
+                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
+
+            if isinstance(c, theano.Variable):
+                nc = tensor.switch(tensor.ge(st[1], ds[1]),
+                                   (c - 1) // st[1] + 1,
+                                   tensor.maximum(0, (c - 1 - ds[1])
+                                                  // st[1] + 1) + 1)
+            elif st[1] >= ds[1]:
+                nc = (c - 1) // st[1] + 1
+            else:
+                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
+
+        rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
-    def __init__(self, ds, ignore_border=False):
+    def __init__(self, ds, ignore_border=False, st=None):
         """
-        :param ds: downsample factor over rows and columns
+        :param ds: downsample factor over rows and column.
+                   ds indicates the pool region size.
         :type ds: list or tuple of two ints
+
+        : param st: stride size, which is the number of shifts
+            over rows/cols to get the the next pool region.
+            if st is None, it is considered equal to ds
+            (no overlap on pooling regions)
+        : type st: list or tuple of two ints
 
         :param ignore_border: if ds doesn't divide imgshape, do we include
             an extra row/col of partial downsampling (False) or
@@ -123,19 +161,24 @@ class DownsampleFactorMax(Op):
             raise ValueError(
                 "DownsampleFactorMax downsample parameters must be ints."
                 " Got %s" % str(ds))
+        if st is None:
+            st = ds
+        self.st = tuple(st)
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.ds == other.ds and
+                self.st == other.st and
                 self.ignore_border == other.ignore_border)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+        return hash(type(self)) ^ hash(self.ds) ^ \
+            hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
-                              self.ds, self.ignore_border)
+        return '%s{%s,%s,%s}' % (self.__class__.__name__,
+                                 self.ds, self.st, self.ignore_border)
 
     def make_node(self, x):
         if x.type.ndim != 4:
@@ -151,46 +194,57 @@ class DownsampleFactorMax(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMax requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border)
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
-                                              self.ignore_border))
+                                              self.ignore_border, self.st))
             z[0] = theano._asarray(z[0], dtype=x.dtype)
         zz = z[0]
 
         ## zz needs to be initialized with -inf for the following to work
         zz -= numpy.inf
+        #number of pooling output rows
+        pr = zz.shape[-2]
+        #number of pooling output cols
+        pc = zz.shape[-1]
         ds0, ds1 = self.ds
-        if self.ignore_border:
-            x_usable2 = (x.shape[2] // ds0 * ds0)
-        else:
-            x_usable2 = x.shape[2]
-        if self.ignore_border:
-            x_usable3 = (x.shape[3] // ds1 * ds1)
-        else:
-            x_usable3 = x.shape[3]
+        st0, st1 = self.st
+        img_rows = x.shape[-2]
+        img_cols = x.shape[-1]
+
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
-                for i in xrange(x_usable2):
-                    zi = i / ds0
-                    for j in xrange(x_usable3):
-                        zj = j / ds1
-                        zz[n, k, zi, zj] = __builtin__.max(zz[n, k, zi, zj],
-                                                           x[n, k, i, j])
+                for r in xrange(pr):
+                    row_st = r * st0
+                    row_end = __builtin__.min(row_st + ds0, img_rows)
+                    for c in xrange(pc):
+                        col_st = c * st1
+                        col_end = __builtin__.min(col_st + ds1, img_cols)
+                        for row_ind in xrange(row_st, row_end):
+                            for col_ind in xrange(col_st, col_end):
+                                zz[n, k, r, c] = \
+                                    __builtin__.max(zz[n, k, r, c],
+                                                    x[n, k, row_ind, col_ind])
 
     def infer_shape(self, node, in_shapes):
-        shp = self.out_shape(in_shapes[0], self.ds, self.ignore_border)
+        shp = self.out_shape(in_shapes[0], self.ds,
+                             self.ignore_border, self.st)
         return [shp]
 
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         maxout = self(x)
+        if self.st != self.ds:
+            return [theano.gradient.grad_not_implemented(self, 0, x)]
         return [DownsampleFactorMaxGrad(self.ds,
-                                        ignore_border=self.ignore_border)(
+                                        ignore_border=self.ignore_border,
+                                        st=self.st)(
                                             x, maxout, gz)]
 
     def c_code(self, node, name, inp, out, sub):
+        if self.ds != self.st:
+           raise theano.gof.utils.MethodNotDefined()
         x, = inp
         z, = out
         fail = sub['fail']
@@ -268,21 +322,26 @@ class DownsampleFactorMax(Op):
 
 class DownsampleFactorMaxGrad(Op):
 
-    def __init__(self, ds, ignore_border):
+    def __init__(self, ds, ignore_border, st=None):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
+        if st is None:
+            st = ds
+        self.st = tuple(st)
 
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.ds == other.ds and
+                self.st == other.st and
                 self.ignore_border == other.ignore_border)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+        return hash(type(self)) ^ hash(self.ds) ^ \
+            hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
-                              self.ds, self.ignore_border)
+        return '%s{%s,%s,%s}' % (self.__class__.__name__,
+                                 self.ds, self.st, self.ignore_border)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -298,22 +357,27 @@ class DownsampleFactorMaxGrad(Op):
         gx_stg, = out
         gx = numpy.zeros_like(x)
 
+        #number of pooling output rows
+        pr = maxout.shape[-2]
+        #number of pooling output cols
+        pc = maxout.shape[-1]
         ds0, ds1 = self.ds
-        shape2 = (x.shape[2] // ds0 * ds0)
-        if not self.ignore_border:
-            shape2 = x.shape[2]
-        shape3 = (x.shape[3] // ds1 * ds1)
-        if not self.ignore_border:
-            shape3 = x.shape[3]
+        st0, st1 = self.st
+        img_rows = x.shape[-2]
+        img_cols = x.shape[-1]
+
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
-                for i in xrange(shape2):
-                    zi = i // ds0
-                    for j in xrange(shape3):
-                        zj = j // ds1
-                        if (maxout[n, k, zi, zj] == x[n, k, i, j]):
-                            gx[n, k, i, j] = gz[n, k, zi, zj]
-                        # No else clause needed as it is allocated with zeros
+                for r in xrange(pr):
+                    row_st = r * st0
+                    row_end = __builtin__.min(row_st + ds0, img_rows)
+                    for c in xrange(pc):
+                        col_st = c * st1
+                        col_end = __builtin__.min(col_st + ds1, img_cols)
+                        for row_ind in xrange(row_st, row_end):
+                            for col_ind in xrange(col_st, col_end):
+                                if (maxout[n, k, r, c] == x[n, k, row_ind, col_ind]):
+                                    gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
         gx_stg[0] = gx
 
     def infer_shape(self, node, in_shapes):
@@ -322,10 +386,14 @@ class DownsampleFactorMaxGrad(Op):
     def grad(self, inp, grads):
         x, maxout, gz = inp
         ggx, = grads
+        if self.st != self.ds:
+            return [theano.gradient.grad_not_implemented(self, 0, x),
+                    theano.gradient.grad_not_implemented(self, 1, maxout),
+                    theano.gradient.grad_not_implemented(self, 2, gz)]
         return [theano.tensor.zeros_like(x),
                 theano.tensor.zeros_like(maxout),
                 DownsampleFactorMaxGradGrad(
-                    self.ds, ignore_border=self.ignore_border)(x, maxout, ggx)]
+                    self.ds, ignore_border=self.ignore_border, st=self.st)(x, maxout, ggx)]
 
     def c_code(self, node, name, inp, out, sub):
         x, z, gz = inp
@@ -426,7 +494,7 @@ class DownsampleFactorMaxGrad(Op):
 class DownsampleFactorMaxGradGrad(Op):
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False):
+    def out_shape(imgshape, ds, ignore_border=False, st=None):
         """Return the shape of the output from this op, for input of given
         shape and flags.
 
@@ -436,11 +504,15 @@ class DownsampleFactorMaxGradGrad(Op):
             scalar Theano variable.
 
         :param ds: downsample factor over rows and columns
+                   this parameter indicates the size of the pooling region
         :type ds: list or tuple of two ints
 
-        :param ignore_border: if ds doesn't divide imgshape, do we include
-            an extra row/col of partial downsampling (False) or ignore
-            it (True).
+        :param st: the stride size. This is the distance between the pooling
+                   regions. If it's set to None, in which case it equlas ds.
+        :type st: list or tuple of two ints
+
+        :param ignore_border: if ds doesn't divide imgshape, do we include an
+            extra row/col of partial downsampling (False) or ignore it (True).
         :type ignore_border: bool
 
         :rtype: list
@@ -451,35 +523,66 @@ class DownsampleFactorMaxGradGrad(Op):
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '
                             '(rows, cols)')
-        r, c = imgshape[-2:]
-        rval = list(imgshape[:-2]) + [r // ds[0], c // ds[1]]
 
-        if not ignore_border:
+        if st is None:
+            st = ds
+        r, c = imgshape[-2:]
+
+        if ignore_border:
+            out_r = (r - ds[0]) // st[0] + 1
+            out_c = (c - ds[1]) // st[1] + 1
             if isinstance(r, theano.Variable):
-                rval[-2] = tensor.switch(r % ds[0], rval[-2] + 1, rval[-2])
-            elif r % ds[0]:
-                rval[-2] += 1
+                nr = tensor.maximum(out_r, 0)
+            else:
+                nr = numpy.maximum(out_r, 0)
             if isinstance(c, theano.Variable):
-                rval[-1] = tensor.switch(c % ds[1], rval[-1] + 1, rval[-1])
-            elif c % ds[1]:
-                rval[-1] += 1
+                nc = tensor.maximum(out_c, 0)
+            else:
+                nc = numpy.maximum(out_c, 0)
+        else:
+            if isinstance(r, theano.Variable):
+                nr = tensor.switch(tensor.ge(st[0], ds[0]),
+                                   (r - 1) // st[0] + 1,
+                                   tensor.maximum(0, (r - 1 - ds[0])
+                                                  // st[0] + 1) + 1)
+            elif st[0] >= ds[0]:
+                nr = (r - 1) // st[0] + 1
+            else:
+                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
+
+            if isinstance(c, theano.Variable):
+                nc = tensor.switch(tensor.ge(st[1], ds[1]),
+                                   (c - 1) // st[1] + 1,
+                                   tensor.maximum(0, (c - 1 - ds[1])
+                                                  // st[1] + 1) + 1)
+            elif st[1] >= ds[1]:
+                nc = (c - 1) // st[1] + 1
+            else:
+                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
+
+        rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
-    def __init__(self, ds, ignore_border):
+    def __init__(self, ds, ignore_border, st=None):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
+        if st is None:
+            st = ds
+        self.st = tuple(st)
 
     def __eq__(self, other):
         return (type(self) == type(other)
                 and self.ds == other.ds
+                and self.st == other.st
                 and self.ignore_border == other.ignore_border)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+        return hash(type(self)) ^ hash(self.ds) ^ \
+            hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__, self.ds,
-                              self.ignore_border)
+        return '%s{%s,%s,%s}' % (self.__class__.__name__,
+                                 self.ds, self.st, self.ignore_border)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -491,38 +594,40 @@ class DownsampleFactorMaxGradGrad(Op):
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, inp, out):
-
         x, maxout, ggx = inp
         z, = out
 
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border)
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.zeros(
-                self.out_shape(x.shape, self.ds, self.ignore_border))
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
+                                              self.ignore_border, self.st))
             z[0] = theano._asarray(z[0], dtype=x.dtype)
         ggz = z[0]
 
+        #number of pooling output rows
+        pr = ggz.shape[-2]
+        #number of pooling output cols
+        pc = ggz.shape[-1]
         ds0, ds1 = self.ds
-        if self.ignore_border:
-            x_usable2 = (x.shape[2] // ds0 * ds0)
-        else:
-            x_usable2 = x.shape[2]
-        if self.ignore_border:
-            x_usable3 = (x.shape[3] // ds1 * ds1)
-        else:
-            x_usable3 = x.shape[3]
+        st0, st1 = self.st
+        img_rows = x.shape[-2]
+        img_cols = x.shape[-1]
 
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
-                for i in xrange(x_usable2):
-                    zi = i // ds0
-                    for j in xrange(x_usable3):
-                        zj = j // ds1
-                        if (maxout[n, k, zi, zj] == x[n, k, i, j]):
-                            ggz[n, k, zi, zj] = ggx[n, k, i, j]
+                for r in xrange(pr):
+                    row_st = r * st0
+                    row_end = __builtin__.min(row_st + ds0, img_rows)
+                    for c in xrange(pc):
+                        col_st = c * st1
+                        col_end = __builtin__.min(col_st + ds1, img_cols)
+                        for row_ind in xrange(row_st, row_end):
+                            for col_ind in xrange(col_st, col_end):
+                                if (maxout[n, k, r, c] == x[n, k, row_ind, col_ind]):
+                                    ggz[n, k, r, c] = ggx[n, k, row_ind, col_ind]
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
