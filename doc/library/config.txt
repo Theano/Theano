@@ -514,8 +514,7 @@ import theano and print the config variable, as in:
     condition.  This flag is experimental and may be removed any time,
     when gpu<>cpu transparency is solved.
 
-    You probably also need to enable the
-    experimental.unpickle_gpu_on_cpu flag.
+    You also need to enable the experimental.unpickle_gpu_on_cpu flag.
 
     Note: The Theano flag device must have the value 'cpu'. This allow
           user to always put the flag in there .theanorc and control

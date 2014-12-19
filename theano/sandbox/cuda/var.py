@@ -219,6 +219,11 @@ def CudaNdarraySharedVariable_unpickler(*npa):
     if (config.experimental.unpickle_shared_gpu_on_cpu and
         config.device == 'cpu'):
         # directly return numpy array
+        if not config.experimental.unpickle_gpu_on_cpu:
+            raise Exception(
+                "When unpickling with unpickle_shared_gpu_on_cpu, "
+                "unpickle_gpu_on_cpu must be also True. Otherwise, "
+                "there could be aliasing problems between shared variables.")
         warnings.warn(
             "config.experimental.unpickle_shared_gpu_on_cpu is set to True."
             " Unpickling CudaNdarraySharedVariable as TensorSharedVariable."

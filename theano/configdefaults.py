@@ -317,8 +317,8 @@ AddConfigVar('experimental.unpickle_gpu_on_cpu',
              in_c_key=False)
 
 AddConfigVar('experimental.unpickle_shared_gpu_on_cpu',
-             "Allow unpickling of pickled CudaNdarraySharedVariable as "
-             "TensorSharedVariable. "
+             "When True, allow unpickling of pickled CudaNdarraySharedVariable"
+             " as TensorSharedVariable. "
              "This is useful, if you want to load a model saved on GPU "
              "when no GPU is available. "
              "This do not solve all problems! It only works if you pickled "
