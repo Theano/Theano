@@ -1003,6 +1003,7 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     def __init__(self, tensor_format, algo, mode):
         assert(tensor_format in ('bc01', 'b01c'))
+        DnnBase.__init__(self)
         self.tensor_format = tensor_format
 
         assert(algo in ('fast', 'accurate'))
