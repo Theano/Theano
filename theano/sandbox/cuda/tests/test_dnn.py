@@ -274,4 +274,4 @@ class TestDnnInferShapes(utt.InferShapeTester):
 def test_version():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    assert isinstance(cuda.dnn.version(), int)
+    assert isinstance(cuda.dnn.version(), (int, tuple))
