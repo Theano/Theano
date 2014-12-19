@@ -836,14 +836,15 @@ this new version of the VectorTimesVector op :
         class doesn't change anything here.
 
 *       External C code : the external C code implements the various
-        functions associated with the op.  associated with the op.
-        Writing this C code involves a few subtleties which deserve
-        their own respective sections.
+        functions associated with the op.  Writing this C code
+        involves a few subtleties which deserve their own respective
+        sections.
 
 Main function
 -------------
 
-If you pass a function name to the ``__init__()`` method of the ``COp`` class, it must respect the following constraints:
+If you pass a function name to the ``__init__()`` method of the
+``COp`` class, it must respect the following constraints:
 
 *       It must return an int. The value of that int indicates whether
         the op could perform its task or not. A value of 0 indicates
@@ -852,13 +853,16 @@ If you pass a function name to the ``__init__()`` method of the ``COp`` class, i
         must set a python exception indicating the details of the
         problem.
 
-*       It must receive one argument for each input to the op followed by one
-        pointer to an argument for each output of the op.
+*       It must receive one argument for each input to the op followed
+        by one pointer to an argument for each output of the op.  The
+        types for the argument is dependant on the Types (that is
+        theano Types) of your inputs and outputs.
 
-For example, the main C function of an op that takes two arrays as
-inputs and returns both their sum and the difference between them
-would have four parameters (two for the op's inputs and two for its
-outputs) and it's signature would look something like this :
+For example, the main C function of an op that takes two TensorTypes
+(which has ``PyArrayObject *`` as its C type) as inputs and returns
+both their sum and the difference between them would have four
+parameters (two for the op's inputs and two for its outputs) and it's
+signature would look something like this :
 
 .. code-block:: c
 
@@ -870,7 +874,7 @@ Macros
 
 For certain section tags, your C code can benefit from a number of
 pre-defined macros.  These section tags have no macros: ``init_code``,
-``c_support_code``. All other tags will have the support macros
+``support_code``. All other tags will have the support macros
 discussed below.
 
 *      ``APPLY_SPECIFIC(str)`` which will automatically append a name
@@ -905,7 +909,7 @@ In the same way, the macros ``DTYPE_OUTPUT_{i}``,
 every output 'i' of the op.
 
 In addition to these macros, the ``init_code_struct``, ``code``, and
-``code_cleanup`` also have the following macros:
+``code_cleanup`` section tags also have the following macros:
 
 *     ``FAIL`` : Code to insert at error points.  A python exception
       should be set prior to this code.  An invocation look like this:
