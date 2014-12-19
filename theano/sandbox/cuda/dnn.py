@@ -1029,13 +1029,13 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     def _define_tensor4d_desc(self, name, id):
         return """
-cudnnTensor4dDescriptor_t %(name)s_%(id)s;
+cudnnTensor4dDescriptor_t %(id)s_%(name)s;
 """ % dict(name=name, id=id)
 
     def _init_tensor4d_desc(self, name, id, fail):
         return """
-%(name)s_%(id)s = NULL;
-if ((err%(name)s = cudnnCreateTensor4dDescriptor(&%(name)s_%(id)s)) != CUDNN_STATUS_SUCCESS) {
+%(id)s_%(name)s = NULL;
+if ((err%(name)s = cudnnCreateTensor4dDescriptor(&%(id)s_%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
                ": %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
@@ -1044,14 +1044,14 @@ if ((err%(name)s = cudnnCreateTensor4dDescriptor(&%(name)s_%(id)s)) != CUDNN_STA
 
     def _clean_tensor4d_desc(self, name, id):
         return """
-if(%(name)s_%(name)s!= NULL)
-  cudnnDestroyTensor4dDescriptor(%(name)s_%(id)s);
+if(%(id)s_%(name)s!= NULL)
+  cudnnDestroyTensor4dDescriptor(%(id)s_%(name)s);
 """ % dict(name=name, id=id)
 
     def c_support_code_struct(self, node, name):
         result = ''
-        for name in self.tensor_4d_descs:
-            result += self._define_tensor4d_desc(name, name)
+        for id in self.tensor_4d_descs:
+            result += self._define_tensor4d_desc(name, id)
         return result
 
     def c_init_code_struct(self, node, name, sub):
@@ -1059,14 +1059,14 @@ if(%(name)s_%(name)s!= NULL)
 cudnnStatus_t err%(name)s;
 """ % dict(name=name)
 
-        for name in self.tensor_4d_descs:
-            result += self._init_tensor4d_desc(name, name, sub['fail'])
+        for id in self.tensor_4d_descs:
+            result += self._init_tensor4d_desc(name, id, sub['fail'])
         return result
 
     def c_cleanup_code_struct(self, node, name):
         result = ''
-        for name in self.tensor_4d_descs:
-            result += self._clean_tensor4d_desc(name, name)
+        for id in self.tensor_4d_descs:
+            result += self._clean_tensor4d_desc(name, id)
         return result
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -1107,54 +1107,8 @@ if (%(mode)d == 1)
 
         # Validate the input and build the input variables.
         for input_idx, input_name in enumerate(self.softmax_inputs):
-            result += """
-if (!CudaNdarray_is_c_contiguous(%(ins)s)) {
-  PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
-  %(fail)s
-}
-
-err%(name)s = cudnnSetTensor4dDescriptor(
-  %(input_name)s_%(name)s,
-  format%(name)s,
-  CUDNN_DATA_FLOAT,
-  CudaNdarray_HOST_DIMS(%(ins)s)[0],
-  CudaNdarray_HOST_DIMS(%(ins)s)[1],
-  CudaNdarray_HOST_DIMS(%(ins)s)[2],
-  CudaNdarray_HOST_DIMS(%(ins)s)[3]
-);
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not set tensor4d descriptor: %%%%s",
-               cudnnGetErrorString(err%(name)s));
-  %(fail)s
-}
-""" % dict(name=name, input_name=input_name,
-           ins=ins[input_idx], fail=sub['fail'])
-
-        # Build and prepare the output variable.
-        result += """
-if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
-{
-  %(fail)s
-}
-
-err%(name)s = cudnnSetTensor4dDescriptor(
-  softmax_output_%(name)s,
-  format%(name)s,
-  CUDNN_DATA_FLOAT,
-  CudaNdarray_HOST_DIMS(%(outs)s)[0],
-  CudaNdarray_HOST_DIMS(%(outs)s)[1],
-  CudaNdarray_HOST_DIMS(%(outs)s)[2],
-  CudaNdarray_HOST_DIMS(%(outs)s)[3]
-);
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not set out descriptor: %%%%s",
-               cudnnGetErrorString(err%(name)s));
-  %(fail)s
-}
-"""
-
-        # Add on a call to the method that does the actual work.
-        result += self.method()
+            result += c_set_tensor4d(ins[input_idx], input_name + "_" + name,
+                                     "err" + name, sub['fail'])
 
         subs = dict(ins=ins[-1], outs=outs, fail=sub['fail'],
                     name=name)
@@ -1163,7 +1117,21 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
             subs['name%d' % idx] = softmax_input
             subs['ins%d' % idx] = inputs[idx]
 
-        return result % subs
+        # Build and prepare the output variable.
+        result += """
+if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
+{
+  %(fail)s
+}
+""" % subs
+        result += c_set_tensor4d(outs,
+                                 "softmax_output_" + name,
+                                 "err" + name, sub['fail'])
+
+        # Add on a call to the method that does the actual work.
+        result += self.method() % subs
+
+        return result
 
     def c_code_cache_version(self):
         return (0, 6)
