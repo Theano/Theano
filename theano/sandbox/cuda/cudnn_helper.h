@@ -3,6 +3,12 @@
 
 #include <cudnn.h>
 
+#ifndef CUDNN_VERSION
+#include <assert.h>
+
+// Here we define the R2 API in terms of functions in the R1 interface
+// This is only for what we use
+
 static inline const char *cudnnGetErrorString(cudnnStatus_t err) {
   switch (err) {
   case CUDNN_STATUS_SUCCESS:
@@ -27,5 +33,119 @@ static inline const char *cudnnGetErrorString(cudnnStatus_t err) {
     return "Unknown error code.";
   }
 }
+
+// some macros to help support cudnn R1 while using R2 code.
+#define cudnnCreateTensorDescriptor cudnnCreateTensor4dDescriptor
+#define cudnnDestroyTensorDescriptor cudnnDestroyTensor4dDescriptor
+#define cudnnSetFilter4dDescriptor cudnnSetFilterDescriptor
+
+typedef cudnnTensor4dDescriptor_t cudnnTensorDescriptor_t;
+
+static inline cudnnStatus_t
+cudnnGetConvolution2dForwardOutputDim(
+  const cudnnConvolutionDescriptor_t convDesc,
+  const cudnnTensorDescriptor_t inputTensorDesc,
+  const cudnnFilterDescriptor_t filterDesc,
+  int *n,
+  int *c,
+  int *h,
+  int *w) {
+  return cudnnGetOutputTensor4dDim(convDesc, CUDNN_CONVOLUTION_FWD,
+				   n, c, h, w);
+}
+
+typedef int cudnnConvolutionFwdAlgo_t;
+typedef int cudnnConvolutionFwdPreference_t;
+
+#define CUDNN_CONVOLUTION_FWD_NO_WORKSPACE 0
+
+static inline cudnnStatus_t
+cudnnGetConvolutionForwardAlgorithm(
+  cudnnHandle_t handle,
+  const cudnnTensorDescriptor_t srcDesc,
+  const cudnnFilterDescriptor_t filterDesc,
+  const cudnnConvolutionDescriptor_t convDesc,
+  const cudnnTensorDescriptor_t destDesc,
+  cudnnConvolutionFwdPreference_t preference,
+  size_t memoryLimitInbytes,
+  cudnnConvolutionFwdAlgo_t *algo) {
+  *algo = 0;
+  return CUDNN_STATUS_SUCCESS;
+}
+
+static inline cudnnStatus_t
+cudnnConvolutionForward_v2(
+  cudnnHandle_t handle,
+  const void *alpha,
+  const cudnnTensorDescriptor_t srcDesc,
+  const void *srcData,
+  const cudnnFilterDescriptor_t filterDesc,
+  const void *filterData,
+  const cudnnConvolutionDescriptor_t convDesc,
+  cudnnConvolutionFwdAlgo_t algo,
+  void *workSpace,
+  size_t workSpaceSizeInBytes,
+  const void *beta,
+  const cudnnTensorDescriptor_t destDesc,
+  void *destData) {
+  assert(*(float *)alpha == 1.0);
+  assert(*(float *)beta == 0.0);
+  return cudnnConvolutionForward(handle, srcDesc, srcData,
+				 filterDesc, filterData,
+				 convDesc, destDesc, destData,
+				 CUDNN_RESULT_NO_ACCUMULATE);
+}
+#define cudnnConvolutionForward cudnnConvolutionForward_v2
+
+static inline cudnnStatus_t
+cudnnConvolutionBackwardFilter_v2(
+  cudnnHandle_t	handle,
+  const void *alpha,
+  const cudnnTensorDescriptor_t srcDesc,
+  const void *srcData,
+  const cudnnTensorDescriptor_t diffDesc,
+  const void *diffData,
+  const cudnnConvolutionDescriptor_t convDesc,
+  const void *beta,
+  const cudnnFilterDescriptor_t gradDesc,
+  void *gradData) {
+  assert(*(float *)alpha == 1.0);
+  assert(*(float *)beta == 0.0);
+  return cudnnConvolutionBackwardFilter(handle, srcDesc, srcData,
+					diffDesc, diffData,
+					convDesc, gradDesc, gradData,
+					CUDNN_RESULT_NO_ACCUMULATE);
+}
+
+#define cudnnConvolutionBackwardFilter cudnnConvolutionBackwardFilter_v2
+
+static inline cudnnStatus_t
+cudnnConvolutionBackwardData_v2(
+  cudnnHandle_t	handle,
+  const void *alpha,
+  const cudnnFilterDescriptor_t filterDesc,
+  const void *filterData,
+  const cudnnTensorDescriptor_t diffDesc,
+  const void *diffData,
+  const cudnnConvolutionDescriptor_t convDesc,
+  const void *beta,
+  const cudnnTensorDescriptor_t gradDesc,
+  void *gradData) {
+  assert(*(float *)alpha == 1.0);
+  assert(*(float *)beta == 0.0);
+  return cudnnConvolutionBackwardData(handle,
+				      (cudnnFilterDescriptor_t)filterDesc,
+				      filterData,
+				      (cudnnTensorDescriptor_t)diffDesc,
+				      diffData,
+				      (cudnnConvolutionDescriptor_t)convDesc,
+				      (cudnnTensorDescriptor_t)gradDesc,
+				      gradData,
+				      CUDNN_RESULT_NO_ACCUMULATE);
+}
+
+#define cudnnConvolutionBackwardData cudnnConvolutionBackwardData_v2
+
+#endif
 
 #endif
