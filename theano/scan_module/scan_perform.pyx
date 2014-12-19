@@ -337,7 +337,7 @@ def perform(
                 # this is a new vm-provided function
                 # the C VM needs this because the exception manipulation
                 # done by raise_with_op is not implemented in C.
-                gof.vm.raise_with_op(fn.nodes[fn.position_of_error])
+                gof.link.raise_with_op(fn.nodes[fn.position_of_error])
             else:
                 # old-style linkers raise their own exceptions
                 raise
