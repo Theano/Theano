@@ -13,8 +13,7 @@ if os.path.exists(os.path.join(config.compiledir, 'cutils_ext.so')):
     os.remove(os.path.join(config.compiledir, 'cutils_ext.so'))
 
 
-def compile_cutils():
-    """Do just the compilation of cutils_ext"""
+def compile_cutils_code():
 
     types = ['npy_' + t for t in ['int8', 'int16', 'int32', 'int64', 'int128',
         'int256', 'uint8', 'uint16', 'uint32', 'uint64', 'uint128', 'uint256',
@@ -26,7 +25,7 @@ def compile_cutils():
 
     inplace_map_template = """
     #if defined(%(typen)s)
-    static void %(type)s_inplace_add(PyArrayMapIterObject *mit, PyArrayIterObject *it)
+    static void %(type)s_inplace_add(PyArrayMapIterObject *mit, PyArrayIterObject *it, int inc_or_set)
     {
         int index = mit->size;
         while (index--) {
@@ -39,10 +38,10 @@ def compile_cutils():
     #endif
     """
 
-    floatadd = "((%(type)s*)mit->dataptr)[0] = ((%(type)s*)mit->dataptr)[0] + ((%(type)s*)it->dataptr)[0];"
+    floatadd = "((%(type)s*)mit->dataptr)[0] = inc_or_set * ((%(type)s*)mit->dataptr)[0] + ((%(type)s*)it->dataptr)[0];"
     complexadd = """
-    ((%(type)s*)mit->dataptr)[0].real = ((%(type)s*)mit->dataptr)[0].real + ((%(type)s*)it->dataptr)[0].real;
-    ((%(type)s*)mit->dataptr)[0].imag = ((%(type)s*)mit->dataptr)[0].imag + ((%(type)s*)it->dataptr)[0].imag;
+    ((%(type)s*)mit->dataptr)[0].real = inc_or_set * ((%(type)s*)mit->dataptr)[0].real + ((%(type)s*)it->dataptr)[0].real;
+    ((%(type)s*)mit->dataptr)[0].imag = inc_or_set * ((%(type)s*)mit->dataptr)[0].imag + ((%(type)s*)it->dataptr)[0].imag;
     """
 
     fns = ''.join([inplace_map_template % {'type': t, 'typen': t.upper(),
@@ -72,37 +71,13 @@ def compile_cutils():
             "-1000};")
 
     code = ("""
-        #include <Python.h>
-        #include "numpy/arrayobject.h"
-
-        extern "C"{
-        static PyObject *
-        run_cthunk(PyObject *self, PyObject *args)
-        {
-          PyObject *py_cthunk = NULL;
-          if(!PyArg_ParseTuple(args,"O",&py_cthunk))
-            return NULL;
-
-          if (!PyCObject_Check(py_cthunk)) {
-            PyErr_SetString(PyExc_ValueError,
-                           "Argument to run_cthunk must be a PyCObject.");
-            return NULL;
-          }
-          void * ptr_addr = PyCObject_AsVoidPtr(py_cthunk);
-          int (*fn)(void*) = (int (*)(void*))(ptr_addr);
-          void* it = PyCObject_GetDesc(py_cthunk);
-          int failure = fn(it);
-
-          return Py_BuildValue("i", failure);
-        }
-
         #if NPY_API_VERSION >= 0x00000008
-        typedef void (*inplace_map_binop)(PyArrayMapIterObject *, PyArrayIterObject *);
+        typedef void (*inplace_map_binop)(PyArrayMapIterObject *, PyArrayIterObject *, int inc_or_set);
         """ + fns + fn_array + type_number_array +
 
 """
 static int
-map_increment(PyArrayMapIterObject *mit, PyObject *op, inplace_map_binop add_inplace)
+map_increment(PyArrayMapIterObject *mit, PyObject *op, inplace_map_binop add_inplace, int inc_or_set)
 {
     PyArrayObject *arr = NULL;
     PyArrayIterObject *it;
@@ -130,7 +105,7 @@ map_increment(PyArrayMapIterObject *mit, PyObject *op, inplace_map_binop add_inp
         return -1;
     }
 
-    (*add_inplace)(mit, it);
+    (*add_inplace)(mit, it, inc_or_set);
 
     Py_DECREF(arr);
     Py_DECREF(it);
@@ -142,19 +117,20 @@ static PyObject *
 inplace_increment(PyObject *dummy, PyObject *args)
 {
     PyObject *arg_a = NULL, *index=NULL, *inc=NULL;
+    int inc_or_set = 1;
     PyArrayObject *a;
     inplace_map_binop add_inplace = NULL;
     int type_number = -1;
-    int i =0;
+    int i = 0;
     PyArrayMapIterObject * mit;
 
-    if (!PyArg_ParseTuple(args, "OOO", &arg_a, &index,
-            &inc)) {
+    if (!PyArg_ParseTuple(args, "OOO|i", &arg_a, &index,
+            &inc, &inc_or_set)) {
         return NULL;
     }
     if (!PyArray_Check(arg_a)) {
-         PyErr_SetString(PyExc_ValueError, "needs an ndarray as first argument");
-         return NULL;
+        PyErr_SetString(PyExc_ValueError, "needs an ndarray as first argument");
+        return NULL;
     }
 
     a = (PyArrayObject *) arg_a;
@@ -187,7 +163,7 @@ inplace_increment(PyObject *dummy, PyObject *args)
     if (mit == NULL) {
         goto fail;
     }
-    if (map_increment(mit, inc, add_inplace) != 0) {
+    if (map_increment(mit, inc, add_inplace, inc_or_set) != 0) {
         goto fail;
     }
 
@@ -202,9 +178,40 @@ fail:
     return NULL;
 }
         #endif
+""")
 
+    return code
 
-        static PyMethodDef CutilsExtMethods[] = {
+def compile_cutils():
+    """Do just the compilation of cutils_ext"""
+    code = ("""
+        #include <Python.h>
+        #include "numpy/arrayobject.h"
+
+        extern "C"{
+        static PyObject *
+        run_cthunk(PyObject *self, PyObject *args)
+        {
+          PyObject *py_cthunk = NULL;
+          if(!PyArg_ParseTuple(args,"O",&py_cthunk))
+            return NULL;
+
+          if (!PyCObject_Check(py_cthunk)) {
+            PyErr_SetString(PyExc_ValueError,
+                           "Argument to run_cthunk must be a PyCObject.");
+            return NULL;
+          }
+          void * ptr_addr = PyCObject_AsVoidPtr(py_cthunk);
+          int (*fn)(void*) = (int (*)(void*))(ptr_addr);
+          void* it = PyCObject_GetDesc(py_cthunk);
+          int failure = fn(it);
+
+          return Py_BuildValue("i", failure);
+         }""")
+
+    code += compile_cutils_code()
+
+    code += ("""static PyMethodDef CutilsExtMethods[] = {
             {"run_cthunk",  run_cthunk, METH_VARARGS|METH_KEYWORDS,
              "Run a theano cthunk."},
             #if NPY_API_VERSION >= 0x00000008
@@ -214,7 +221,6 @@ fail:
             #endif
             {NULL, NULL, 0, NULL}        /* Sentinel */
         };""")
-
     if PY3:
         # This is not the most efficient code, but it is written this way to
         # highlight the changes needed to make 2.x code compile under python 3.
