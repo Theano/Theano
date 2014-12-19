@@ -2145,7 +2145,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                             // this is effectively:
                             // gx[image_row][image_col][x_row][x_col]
                             //   = (my_z == x[image_row][image_col][
-                            //                x_row][x  _col]) ? my_gz : 0.0f;
+                            //                x_row][x_col]) ? my_gz : 0.0f;
                             gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3]
                                = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 +
                                             x_col*xS3]) ? my_gz : 0.0f;
@@ -2162,28 +2162,17 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
     """
+    __props__ = ('ds', 'ignore_border')
+    
     def __init__(self, ds, ignore_border):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ds == other.ds and
-                self.ignore_border == other.ignore_border)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
-
-    def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
-                              self.ds,
-                              self.ignore_border)
-
     def make_node(self, x, z, gx):
-        return Apply(self, [x, z, gx], [z.type()])
+        return Apply(self, [x, z, gx], [x.type()])
 
-    #def c_code_cache_version(self):
-    #    return (1,)
+    def c_code_cache_version(self):
+        return (1,)
 
     def c_code(self, node, nodename, inp, out, sub):
         x, z, gx = inp
@@ -2196,7 +2185,7 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             || %(z)s->nd != 4
             || %(gx)s->nd != 4)
         {
-            PyErr_SetString(PyExc_ValueError, "rank error");
+            PyErr_SetString(PyExc_ValueError, "GpuDownsampleFactorMaxGradGrad: rank error");
             %(fail)s;
         }
         if ((NULL == %(gz)s)
