@@ -4182,6 +4182,7 @@ class ARange(Op):
         return Apply(self, inputs, outputs)
 
     def infer_shape(self, node, i_shapes):
+        # Note start, stop and step can be float numbers.
         start, stop, step = node.inputs
 
         def is_constant_value(var, value):
@@ -4192,12 +4193,27 @@ class ARange(Op):
                 pass
             return False
 
+        def upcast(var):
+            if ('int' in var.dtype and
+                # We do not want to cast uint64 to int64 as this can
+                # loose information. If we upcast uint64 with int64,
+                # this give float64. This is safer then checking for
+                # uint64 in case we support [u]int128 or other in the
+                # future.
+                scal.upcast(var.dtype, 'int64') == 'int64'):
+                return cast(var, 'int64')
+            return var
+
         if is_constant_value(step, 1):
             if is_constant_value(start, 0):
                 return [(cast(stop, 'int64'),)]
             else:
+                stop = upcast(stop)
+                start = upcast(start)
                 return [(maximum(cast(stop - start, 'int64'), 0),)]
         else:
+            stop = upcast(stop)
+            start = upcast(start)
             return [(maximum(cast(ceil(cast((stop - start), 'float64')
                                        / step), 'int64'), 0),)]
 
