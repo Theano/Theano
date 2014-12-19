@@ -4153,7 +4153,7 @@ def tile(x, reps, ndim=None):
     y = y.dimshuffle(*shuffle_ind)
     new_shapes = [sh*reps[i] for i, sh in enumerate(shape)]
     y = y.reshape(new_shapes)
-    
+
     return y
 
 
