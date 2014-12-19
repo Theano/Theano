@@ -4831,22 +4831,36 @@ def test_tile():
     x_ = rng.randn(2, 4, 3).astype(config.floatX)
     assert numpy.all(f(x_) == numpy.tile(x_, (2, 3, 4)))
 
+    # Test the four-dimensional case.
+    x = tensor4()
+    f = function([x], tile(x, (2, 3, 4, 6)))
+    x_ = rng.randn(2, 4, 3, 5).astype(config.floatX)
+    assert numpy.all(f(x_) == numpy.tile(x_, (2, 3, 4, 6)))
+
 
 # XXX: It turns out that almost no cases of the tile gradient actually work.
 # This is a test that should pass if the proper implementation is filled in.
-def test_tile_grad_3d():
-    # N.B.: we should also use verify_grad in this test.
-    raise SkipTest()  # Remove me when this is implemented.
+def test_tile_grad():
+
+    def grad_tile(x, reps, np_x):
+        y = tile(x, reps)
+        z = y.sum()
+        g = theano.function([x], grad(z, x))
+        grad_res = g(np_x)
+        # The gradient should be the product of the tiling dimensions
+        # (since the gradients are additive through the tiling operation)
+        assert numpy.all(grad_res == numpy.prod(reps))
+
     rng = numpy.random.RandomState(utt.fetch_seed())
-    w = rng.randn(3, 4, 2)
-    w_tiled = numpy.tile(w, (2, 3, 4))
-    x = tensor.tensor3()
-    c = (as_tensor_variable(w_tiled) * tile(x,  (2, 3, 4))).sum()
-    f = function([x], grad(c, x))
-    x_ = rng.randn(3, 4, 2)
-    # The gradient should be w, multiplied by its tiling dimensions (since
-    # the gradients are additive through the tiling operation)
-    assert numpy.all(f(x_) == 2 * 3 * 4 * w)
+
+    # test vector
+    grad_tile(vector('x'), [3], rng.randn(5))
+    # test matrix
+    grad_tile(matrix('x'), [3, 4], rng.randn(2, 3))
+    # test tensor3
+    grad_tile(tensor3('x'), [3, 4, 5], rng.randn(2, 4, 3))
+    # test tensor4
+    grad_tile(tensor4('x'), [3, 4, 5, 6], rng.randn(2, 4, 3, 5))
 
 
 class TestARange(unittest.TestCase):
@@ -6863,30 +6877,31 @@ class TestInferShape(utt.InferShapeTester):
         #                        [Reshape(ndim)(adtens4, aivec)],
         #                        [adtens4_val, [1, 3, 10, 4]], Reshape)
 
-        # Tile
-        advec = dvector()
-        advec_val = rand(5)
-        aivec_val = [3]
-        ndim = 1
-        self._compile_and_check([advec],
-                                [tile(advec, aivec_val, ndim)],
-                                [advec_val], Tile)
+        # Tile op is depricated
+        
+        # advec = dvector()
+        # advec_val = rand(5)
+        # aivec_val = [3]
+        # ndim = 1
+        # self._compile_and_check([advec],
+        #                         [tile(advec, aivec_val, ndim)],
+        #                         [advec_val], Tile)
 
-        admat = dmatrix()
-        admat_val = rand(2, 4)
-        aivec_val = [2, 3]
-        ndim = None
-        self._compile_and_check([admat],
-                                [tile(admat, aivec_val)],
-                                [admat_val], Tile)
+        # admat = dmatrix()
+        # admat_val = rand(2, 4)
+        # aivec_val = [2, 3]
+        # ndim = None
+        # self._compile_and_check([admat],
+        #                         [tile(admat, aivec_val)],
+        #                         [admat_val], Tile)
 
-        adtens4 = dtensor4()
-        adtens4_val = rand(2, 4, 3, 5)
-        aivec_val = [2, 3, 1, 4]
-        ndim = 4
-        self._compile_and_check([adtens4],
-                                [tile(adtens4, aivec_val, ndim)],
-                                [adtens4_val], Tile)
+        # adtens4 = dtensor4()
+        # adtens4_val = rand(2, 4, 3, 5)
+        # aivec_val = [2, 3, 1, 4]
+        # ndim = 4
+        # self._compile_and_check([adtens4],
+        #                         [tile(adtens4, aivec_val, ndim)],
+        #                         [adtens4_val], Tile)
 
 class TestTensorInstanceMethods(unittest.TestCase):
     def setUp(self):

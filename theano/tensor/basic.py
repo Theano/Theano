@@ -4057,6 +4057,9 @@ class Tile(Op):
     <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
     """
     def __init__(self, ndim):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
         self.ndim = ndim
 
     def __eq__(self, other):
@@ -4139,18 +4142,19 @@ def tile(x, reps, ndim=None):
         raise ValueError("if specified, ndim must be equal to both x.ndim and "
                          "len(reps)")
 
-    if not hasattr(tile, 'op'):
-        tile.op = {}
-
     if ndim is None:
         ndim = len(reps)
-
-    # backport
-    # ndim = len(reps) if ndim is None else ndim
-    # not sure if len(shp) is going to work.
-    if ndim not in tile.op:
-        tile.op[ndim] = Tile(ndim)
-    return tile.op[ndim](x, reps)
+    reps = list(reps)
+    shape = [x.shape[i] for i in xrange(ndim)]
+    alloc_shape = reps + shape
+    y = alloc(x, *alloc_shape)
+    shuffle_ind = numpy.arange(ndim*2).reshape(2, ndim)
+    shuffle_ind = shuffle_ind.transpose().flatten()
+    y = y.dimshuffle(*shuffle_ind)
+    new_shapes = [sh*reps[i] for i, sh in enumerate(shape)]
+    y = y.reshape(new_shapes)
+    
+    return y
 
 
 class ARange(Op):
