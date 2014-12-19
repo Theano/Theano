@@ -170,6 +170,12 @@ class Scan(PureOp):
             self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             self._hash_inner_graph = hash(self._cmodule_key)
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if "allow_gc" not in self.__dict__:
+            self.allow_gc = True
+            self.info['allow_gc'] = True
+
     def make_node(self, *inputs):
         """
         Conventions:

@@ -798,12 +798,12 @@ class PushOutScanOutput(gof.Optimizer):
             client = outer_var.clients[0][0]
 
             if (client != 'output' and
-                isinstance(client.op, theano.tensor.Subtensor) and
-                isinstance(client.inputs[1], theano.Constant) and
-                client.inputs[1].ndim == 0 and
-                client.inputs[1].value == -1):
-
-                return True
+                isinstance(client.op, theano.tensor.Subtensor)):
+                lst = theano.tensor.subtensor.get_idx_list(
+                    client.inputs, client.op.idx_list)
+                if (len(lst) == 1 and
+                    theano.tensor.extract_constant(lst[0]) == -1):
+                    return True
 
         return False
 
