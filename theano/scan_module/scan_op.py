@@ -1875,13 +1875,27 @@ class Scan(PureOp):
                 type_outs.append('disconnected')
             else:
                 type_outs.append('connected')
+
         inner_inp_sitsot = dC_dXtm1s[ins_pos - self.n_seqs:]
-        outer_inp_sitsot = [
-            tensor.zeros([grad_steps + 1] +
-                         [x.shape[i] for i in xrange(x.ndim)],
-                         dtype=y.dtype)
-            for y, x in zip(inner_inp_sitsot,
-                            self.outer_non_seqs(inputs))]
+        outer_inp_sitsot = []
+        for _idx, y in enumerate(inner_inp_sitsot):
+            x = self.outer_non_seqs(inputs)[_idx]
+            if isinstance(y.type, NullType):
+                # Cannot use dC_dXtm1s.dtype, so we use floatX instead.
+                outer_inp_sitsot.append(
+                    tensor.zeros([grad_steps + 1] +
+                                 [x.shape[i] for i in xrange(x.ndim)],
+                                 dtype=theano.config.floatX))
+                # replace y by a zero tensor of the right shape
+                inner_inp_sitsot[_idx] = tensor.zeros(
+                    diff_inputs[ins_pos + _idx].shape,
+                    dtype=theano.config.floatX)
+
+            else:
+                outer_inp_sitsot.append(
+                    tensor.zeros([grad_steps + 1] +
+                                 [x.shape[i] for i in xrange(x.ndim)],
+                                 dtype=y.dtype))
 
         n_sitsot_outs = len(outer_inp_sitsot)
         new_tap_array = mitmot_inp_taps + [[-1] for k in
