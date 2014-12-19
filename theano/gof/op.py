@@ -1009,6 +1009,7 @@ class COp(Op):
     to perform the computations for the op.
     """
     section_re = re.compile(r'^#section ([a-zA-Z0-9_]+)$', re.MULTILINE)
+    backward_re = re.compile(r'^THEANO_(APPLY|SUPPORT)_CODE_SECTION$', re.MULTILINE)
     # This is the set of allowed markers
     SECTIONS = set([
             'init_code', 'init_code_apply', 'init_code_struct',
@@ -1063,6 +1064,18 @@ class COp(Op):
 
         self.code_sections = dict()
         for i, code in enumerate(self.func_codes):
+            if ('THEANO_APPLY_CODE_SECTION' in code or
+                'THEANO_SUPPORT_CODE_SECTION' in code):
+                # This is backward compat code that will go away in a while
+                split = self.backward_re.split(code)
+                n = 1
+                while n < len(split):
+                    if split[n] == 'APPLY':
+                        self.code_sections['support_code_apply'] = split[n+1]
+                    elif split[n] == 'SUPPORT':
+                        self.code_sections['support_code'] = split[n+1]
+                    n += 2
+                continue
             split = self.section_re.split(code)
             if split[0].strip() != '':
                 raise ValueError('Stray code before first #section '
