@@ -5101,7 +5101,7 @@ class TestARange(unittest.TestCase):
             mode = 'FAST_RUN'
         mode = compile.mode.get_mode(mode).excluding('fusion')
         f = function([start, stop, step], out.shape, mode=mode)
-        assert len(f.maker.fgraph.toposort()) == 8
+        assert len(f.maker.fgraph.toposort()) == 9
 
         if config.cast_policy == 'custom':
             assert out.dtype == start.type.dtype
@@ -5122,7 +5122,7 @@ class TestARange(unittest.TestCase):
 
         out = arange(start, stop, 1)
         f = function([start, stop], out.shape, mode=mode)
-        assert len(f.maker.fgraph.toposort()) == 4
+        assert len(f.maker.fgraph.toposort()) == 5
 #4 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{int64}}(Elemwise{sub,no_inplace}.0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
         if config.cast_policy == 'custom':
             assert out.dtype == start.type.dtype
