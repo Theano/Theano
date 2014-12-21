@@ -911,6 +911,7 @@ class VM_Linker(link.LocalLinker):
 
                 idx_o = 0
                 for out in node.output:
+                    ins = None
                     if dmap and idx_o in dmap:
                         idx_v = dmap[idx_o]
                         assert len(idx_v) == 1, "Here we only support the possibility to destroy one input"
@@ -936,8 +937,7 @@ class VM_Linker(link.LocalLinker):
                             for i in range(idx + 1, len(order)):
                                 for outs in order[i].outputs:
                                     if outs.ndim == 0:
-                                        reuse_list.append(outs)
-                                        reallocated_ins.add(ins)
+                                        reuse_outs.append(outs)
                         elif ins in view_of:
                             origin = view_of[ins]
                             viewed_by[origin].remove(ins)
@@ -948,8 +948,13 @@ class VM_Linker(link.LocalLinker):
                                 for i in range(idx + 1, len(order)):
                                     for outs in order[i].outputs:
                                         if outs.ndim == 0:
-                                            reuse_list.append(outs)
-                                            reallocated_ins.add(ins)
+                                            reuse_outs.append(outs)
+
+                        if reuse_outs:
+                            # if reusable output variable exists
+                            reallocated_ins.add(ins)
+
+
 
         for node in order:
             try:
