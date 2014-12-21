@@ -1101,8 +1101,8 @@ class ProfileStats(object):
         print >> file, "(For values in brackets, it's for linker = c|py"
 
         print >> file,  "---"
-#        print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
-#            round(max_sum_size / 1024))
+        # print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
+        # round(max_sum_size / 1024))
         print >> file,  "    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
             new_max_node_memory_size[0] / 1024.)), int(round(
                 max_node_memory_size[0] / 1024.)))
