@@ -345,6 +345,24 @@ class BatchedComplexDotOp(ScikitsCudaOp):
         thunk.lazy = False
 
         return thunk
+        
+    def grad(self, inputs, output_grads):
+        bx = inputs[0]
+        by = inputs[1]
+        bx = T.opt.Assert("Gradient only fit for elementwise multiplication")(bx, T.eq(bx.shape[1], 1))
+        bx = T.opt.Assert("Gradient only fit for elementwise multiplication")(bx, T.eq(bx.shape[2], 1))
+        by = T.opt.Assert("Gradient only fit for elementwise multiplication")(by, T.eq(bx.shape[1], 1))
+        by = T.opt.Assert("Gradient only fit for elementwise multiplication")(by, T.eq(bx.shape[2], 1))
+        z = output_grads[0]
+        '''flip z'''
+        z = z[:,:,:,::-1]
+        '''do multiplication'''
+        result1 = batched_complex_dot(z,by)
+        result2 = batched_complex_dot(z,bx)
+        '''flip z'''
+        result1 = result1[:,:,:,::-1]
+        result2 = result2[:,:,:,::-1]
+        return [result1,result2] #
 
 
 cufft = CuFFTOp()
