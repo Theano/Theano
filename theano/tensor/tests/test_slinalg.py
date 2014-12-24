@@ -190,7 +190,7 @@ class test_Solve(utt.InferShapeTester):
                                                dtype=config.floatX)],
                                 self.op_class,
                                 warn=False)
-        
+
     def test_solve_correctness(self):
         if not imported_scipy:
             raise SkipTest("Scipy needed for the Cholesky op.")
@@ -263,7 +263,7 @@ def test_expm_grad_2():
         raise SkipTest("Scipy needed for the expm op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
     A = rng.randn(5, 5).astype(config.floatX)
-    w =  (rng.randn(5).astype(config.floatX))**2
+    w = (rng.randn(5).astype(config.floatX))**2
     A = (numpy.diag(w**0.5)).dot(A + A.T).dot(numpy.diag(w**(-0.5)))
     assert not numpy.allclose(A, A.T)
 

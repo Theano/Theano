@@ -410,6 +410,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 [img_val, img_grad_val, out_val],
                 dnn.GpuDnnPoolGrad
             )
+
+
 def test_version():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
