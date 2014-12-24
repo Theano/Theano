@@ -291,7 +291,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 subsample=params[1],
                 conv_mode=params[2]
             )(temp_img.shape, shape)
-            conv_grad_w = dnn.GpuDnnConvGradW()(temp_img, temp_kerns, desc)
+            conv_grad_w = dnn.GpuDnnConvGradW()(
+                temp_img,
+                temp_kerns,
+                desc,
+                shape[2],
+                shape[3]
+            )
             self._compile_and_check(
                 [temp_img, temp_kerns],
                 [conv_grad_w],
@@ -328,7 +334,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 subsample=params[1],
                 conv_mode=params[2]
             )(shape, temp_kerns.shape)
-            conv_grad_i = dnn.GpuDnnConvGradI()(temp_kerns, img, desc)
+            conv_grad_i = dnn.GpuDnnConvGradI()(
+                temp_kerns,
+                img,
+                desc,
+                shape[2],
+                shape[3]
+            )
             self._compile_and_check(
                 [temp_kerns, img],
                 [conv_grad_i],
