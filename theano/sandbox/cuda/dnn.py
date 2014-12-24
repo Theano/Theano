@@ -377,12 +377,20 @@ class GpuDnnConv(DnnBase, COp):
         kw = shape[1][3]  # Width of each filter
         padh = 0
         padw = 0
-
+        if (
+            not node.inputs[2].owner
+            or not isinstance(node.inputs[2].owner.op, GpuDnnConvDesc)
+        ):
+            raise theano.tensor.basic.ShareError("case not implemented and probably not needed")
         desc = node.inputs[2].owner.op
         sh, sw = desc.subsample
         if desc.border_mode == 'full':
             padh = kh - 1
             padw = kw - 1
+        elif isinstance(desc.border_mode, tuple):
+            padh, padw = self.border_mode
+        else:
+            assert desc.border_mode == 'valid'
 
         return [(
             b, nb,
@@ -450,23 +458,33 @@ class GpuDnnConvGradW(DnnBase, COp):
         w = shape[0][3]  # Width of input feature maps
         kh = shape[1][2]  # Height of each filter
         kw = shape[1][3]  # Width of each filter
+        out3 = kh
+        out4 = kw
 
         desc = node.inputs[2].owner.op
         sh, sw = desc.subsample
+
+        # We don't have the information necessary, namely the weight size so
+        # we cannot infer the shape
+        if sh != 1 or sw != 1:
+            raise ShapeError(
+                'Unable to infer shape for stride (%d, %d)' % (sh, sw)
+            )
+
         if desc.border_mode == 'full':
-            kh = 2 - h + (kh - 1) * sh
-            kw = 2 - w + (kw - 1) * sw
+            out3 = 2 - h + (kh - 1) * sh
+            out4 = 2 - w + (kw - 1) * sw
         else:
             # border_mode is 'valid'
             assert(desc.border_mode == 'valid')
-            kh = h - (kh - 1) * sh
-            kw = w - (kw - 1) * sw
+            out3 = h - (kh - 1) * sh
+            out4 = w - (kw - 1) * sw
 
         return [(
             shape[1][1],
             shape[0][1],
-            kh,
-            kw
+            out3,
+            out4
         )]
 
 
@@ -524,26 +542,35 @@ class GpuDnnConvGradI(DnnBase, COp):
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
-        b = shape[0][0]  # Number of inputs
-        h = shape[0][2]  # Height of input feature maps
-        w = shape[0][3]  # Width of input feature maps
-        nb = shape[1][0]  # Number of output feature maps
-        kh = shape[1][2]  # Height of each filter
-        kw = shape[1][3]  # Width of each filter
         padh = 0
         padw = 0
 
         desc = node.inputs[2].owner.op
         sh, sw = desc.subsample
+
+        # We don't have the information necessary, namely the image size so
+        # we cannot infer the shape
+        if sh != 1 or sw != 1:
+            raise ShapeError(
+                'Unable to infer shape for stride (%d, %d)' % (sh, sw)
+            )
+
         if desc.border_mode == 'full':
-            padh = h - 1
-            padw = w - 1
+            padh = shape[0][2] - 1
+            padw = shape[0][3] - 1
+        elif isinstance(desc.border_mode, tuple):
+            padh, padw = self.border_mode
+        else:
+            assert desc.border_mode == 'valid'
+
+        out2 = (shape[1][2] - 1) * sh + shape[0][2] - 2*padh
+        out3 = (shape[1][3] - 1) * sw + shape[0][3] - 2*padw
 
         return [(
             shape[1][0],
             shape[0][1],
-            (kh - 1) * sh + h - 2*padh,
-            (kw - 1) * sw + w - 2*padw
+            out2,
+            out3
         )]
 
 
@@ -725,29 +752,15 @@ class GpuDnnPool(DnnBase):
                      [img.type()])
 
     def infer_shape(self, node, shape):
-        n = shape[0][0]  # Number of inputs
-        h = shape[0][2]  # Height of input feature maps
-        w = shape[0][3]  # Width of input feature maps
-        nb = shape[1][0]  # Number of output feature maps
-        kh = shape[1][2]  # Height of each filter
-        kw = shape[1][3]  # Width of each filter
-        padh = 0
-        padw = 0
-        sh = 1
-        sw = 1
-
-        desc = node.inputs[2].owner.op
-        if desc.border_mode == 'full':
-            padh = kh - 1
-            padw = kw - 1
-            sh = desc.stride[0]
-            sw = desc.stride[1]
-
-        return (
-            b, nb,
-            (h + 2*padh - kh)/sh + 1,
-            (w + 2*padw - kw)/sw + 1
-        )
+        desc = node.inputs[1].owner.op
+        kh, kw = desc.ws
+        sh, sw = desc.stride
+        return [(
+            shape[0][0],
+            shape[0][1],
+            (shape[0][2] - kh)/sh + 1,
+            (shape[0][3] - kw)/sw + 1
+        )]
 
     def c_support_code_struct(self, node, name):
         return """
@@ -1058,6 +1071,9 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
     def c_code_cache_version(self):
         return (4, version())
 
+    def infer_shape(self, node, shape):
+        return [shape[0]]
+
 
 def dnn_pool(img, ws, stride=(1, 1), mode='max'):
     """
@@ -1111,10 +1127,10 @@ class GpuDnnSoftmaxBase(DnnBase):
         self.tensor_4d_descs.append('softmax_output')
 
     def infer_shape(self, node, shape):
-        if isinstance(shape, list):
+        if self.direction == 'forward':
             return [shape[0]]
         else:
-            return shape*2
+            return [shape[1]]
 
     def _define_tensor4d_desc(self, name, id):
         return """
@@ -1229,6 +1245,7 @@ if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
 
 
 class GpuDnnSoftmax(GpuDnnSoftmaxBase):
+    direction = 'forward'
     softmax_inputs = ['softmax_input']
 
     def make_node(self, x):
@@ -1279,6 +1296,7 @@ err%(name)s = cudnnSoftmaxForward(
 
 
 class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
+    direction = 'backward'
     softmax_inputs = ['softmax_gout', 'softmax_input']
 
     def make_node(self, dy, sm):

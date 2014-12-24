@@ -248,7 +248,7 @@ class InferShapeTester(unittest.TestCase):
         numeric_outputs = outputs_function(*numeric_inputs)
         numeric_shapes = shapes_function(*numeric_inputs)
         for out, shape in zip(numeric_outputs, numeric_shapes):
-            assert numpy.all(out.shape == shape)
+            assert numpy.all(out.shape == shape), (out.shape, shape)
 
 
 def str_diagnostic(expected, value, rtol, atol):
