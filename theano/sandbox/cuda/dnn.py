@@ -388,7 +388,7 @@ class GpuDnnConv(DnnBase, COp):
             padh = kh - 1
             padw = kw - 1
         elif isinstance(desc.border_mode, tuple):
-            padh, padw = self.border_mode
+            padh, padw = desc.border_mode
         else:
             assert desc.border_mode == 'valid'
 
@@ -559,7 +559,7 @@ class GpuDnnConvGradI(DnnBase, COp):
             padh = shape[0][2] - 1
             padw = shape[0][3] - 1
         elif isinstance(desc.border_mode, tuple):
-            padh, padw = self.border_mode
+            padh, padw = desc.border_mode
         else:
             assert desc.border_mode == 'valid'
 
