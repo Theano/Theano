@@ -897,7 +897,6 @@ class VM_Linker(link.LocalLinker):
             for var in fgraph.variables:
                 viewed_by[var] = []
             view_of = {}
-            dependencies = fgraph.profile.dependencies
 
             for idx in range(len(order)):
                 node = order[idx]
@@ -906,7 +905,7 @@ class VM_Linker(link.LocalLinker):
                 reallocated_ins = set([])
 
                 idx_o = 0
-                for out in node.output:
+                for out in node.outputs:
                     ins = None
                     if dmap and idx_o in dmap:
                         idx_v = dmap[idx_o]
@@ -926,7 +925,7 @@ class VM_Linker(link.LocalLinker):
 
                 for ins in node.inputs:
                     assert not (ins in view_of and viewed_by[ins])
-                    if (ins.ndim == 0 and storage_map[ins][0] and ins not in fgraph.outputs and ins.owner and dependencies[ins]):
+                    if (ins.ndim == 0 and storage_map[ins][0] and ins not in fgraph.outputs and ins.owner):
                         reuse_outs = []
                         if ins not in view_of and not viewed_by.get(ins, []):
                             # where gc
@@ -951,6 +950,7 @@ class VM_Linker(link.LocalLinker):
                             reallocated_ins.add(ins)
 
 
+        import pdb; pdb.set_trace()
 
         for node in order:
             try:
