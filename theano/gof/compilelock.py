@@ -7,7 +7,8 @@ import random
 import socket  # only used for gethostname()
 import time
 import logging
-import contextlib
+
+from contextlib import contextmanager
 
 from theano import config
 from theano.configparser import AddConfigVar, IntParam
