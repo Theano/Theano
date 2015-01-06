@@ -1641,7 +1641,7 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
     
         def dimshuffled_alloc(i):
             return (isinstance(i.owner.op, DimShuffleOP) and
-                         i.owner.inputs[0].owner and \
+                         i.owner.inputs[0].owner and
                              isinstance(i.owner.inputs[0].owner.op, AllocOP))
     
         # At least one input must have an owner that is either a AllocOP or a
@@ -1699,8 +1699,8 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
                 if (theano.config.experimental.local_alloc_elemwise_assert
                     and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
                     assert_op = assert_(assert_op,
-                                        *[T.eq(i.shape[idx], cmp_op.shape[idx])\
-                                              for idx in xrange(i.type.ndim) \
+                                        *[T.eq(i.shape[idx], cmp_op.shape[idx])
+                                              for idx in xrange(i.type.ndim)
                                               if not i.type.broadcastable[idx]])
                 new_i.append(i.owner.inputs[0])
     
