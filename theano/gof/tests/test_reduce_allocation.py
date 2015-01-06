@@ -19,7 +19,7 @@ def test_reduce():
         x = T.scalar('x')
         y = T.scalar('y')
 
-        z = ifelse(T.lt(3. * x, y), 3., 4.)
+        z = 5*y + x**2 + y**3 - 4*x
 
         p = theano.ProfileStats(False)
 
@@ -27,6 +27,8 @@ def test_reduce():
             m = "FAST_RUN"
         else:
             m = None
+
+        m=theano.compile.get_mode(m).excluding('fusion', 'inplace')
 
         f = theano.function([x, y], z, profile=p, name="test_profiling",
                             mode=m)
