@@ -294,6 +294,25 @@ class ProfileStats(object):
             rval[node.op] += t
         return rval
 
+    def fill_node_total_time(self, node, total_times):
+        """node -> fill total time icluding its parents (returns nothing)"""
+        # timing is stored by node, we compute total time on demand
+        total = self.apply_time[node]
+        for parent in node.get_parents():
+            if parent.owner in self.apply_time.keys():
+                if parent.owner not in total_times.keys():
+                    self.fill_node_total_time(parent.owner, total_times)
+                total += total_times[parent.owner]
+        total_times[node] = total
+
+    def compute_total_times(self):
+        """dict op -> total time icluding the time for parents"""
+        rval = {}
+        for node in self.apply_time.keys():
+            if node not in rval:
+                self.fill_node_total_time(node, rval)
+        return rval
+
     def op_callcount(self):
         """dict op -> total number of thunk calls"""
         # timing is stored by node, we compute timing by Op on demand

@@ -81,6 +81,7 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = file
     done = dict()
     results_to_print = []
+    profile_list = []
     order = []
     if isinstance(obj, (list, tuple)):
         lobj = obj
@@ -89,32 +90,57 @@ def debugprint(obj, depth=-1, print_type=False,
     for obj in lobj:
         if isinstance(obj, gof.Variable):
             results_to_print.append(obj)
+            profile_list.append(None)
         elif isinstance(obj, gof.Apply):
             results_to_print.extend(obj.outputs)
+            profile_list.extend([None for item in obj.outputs])
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
+            profile_list.extend([obj.profile for item in obj.maker.fgraph.outputs])
             order = obj.maker.fgraph.toposort()
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
+            profile_list.extend([None for item in obj.outputs])
             order = obj.toposort()
         elif isinstance(obj, (int, long, float, numpy.ndarray)):
             print obj
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
+            profile_list.append(None)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
 
     scan_ops = []
-    for r in results_to_print:
+    for r, p in zip(results_to_print, profile_list):
         # Add the parent scan op to the list as well
         if (hasattr(r.owner, 'op') and
             isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
             scan_ops.append(r)
 
+        if p != None:
+            print >> file, """
+Timing Info
+-----------
+--> <time> <% time> - <total time> <% total time>'
+
+<time>         computation time for this node
+<% time>       fraction of total computation time for this node
+<total time>   time for this node + total times for this node's ancestors
+<% total time> total time for this node over total computation time
+
+N.B.: 
+* Times include the node time and the function overhead.
+* <total time> and <% total time> may over-count computation times
+  if inputs to a node share a common ancestor and should be viewed as a
+  loose upper bound. Their intended use is to help rule out potential nodes
+  to remove when optimizing a graph because their <total time> is very low.
+"""
+
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
-                             scan_ops=scan_ops, stop_on_name=stop_on_name)
+                             scan_ops=scan_ops, stop_on_name=stop_on_name,
+                             profile=p)
     if len(scan_ops) > 0:
         print >> file, ""
         new_prefix = ' >'
