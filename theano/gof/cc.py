@@ -1282,15 +1282,6 @@ class CLinker(link.Linker):
                 return ((), sig)
         return version, sig
 
-    def get_src_code(self):
-        """
-        Returns the source code for the module represented by this linker.
-        """
-        if not hasattr(self, '_source'):
-            mod = self.build_dynamic_module()
-            self._source = mod.code()
-        return self._source
-
     def compile_cmodule(self, location=None):
         """
         This compiles the source code for this linker and returns a
@@ -1298,7 +1289,7 @@ class CLinker(link.Linker):
         """
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
-        mod = self.build_dynamic_module()
+        mod = self.get_dynamic_module()
         c_compiler = self.c_compiler()
         libs = self.libraries()
         preargs = self.compile_args()
@@ -1335,9 +1326,12 @@ class CLinker(link.Linker):
             release_lock()
         return module
 
-    def build_dynamic_module(self):
+    def get_dynamic_module(self):
         """Return a cmodule.DynamicModule instance full of the code
         for our fgraph.
+
+        This method is cached on the first call so it can be called
+        multiple times without penalty.
         """
         if not hasattr(self, '_mod'):
             self.code_gen()

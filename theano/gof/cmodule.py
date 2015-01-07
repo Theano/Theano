@@ -618,6 +618,9 @@ class ModuleCache(object):
     """
 
     def _get_module(self, name):
+        """
+        Fetch a compiled module from the loaded cache or the disk.
+        """
         if name not in self.module_from_name:
             _logger.debug('loading name %s', name)
             self.module_from_name[name] = dlimport(name)
@@ -688,7 +691,7 @@ class ModuleCache(object):
                                         key_pkl)
                     rmtree(root, ignore_nocleanup=True,
                            msg="missing module file", level=logging.INFO)
-                continue
+                    continue
                 if (time_now - last_access_time(entry)) < age_thresh_use:
                     _logger.debug('refresh adding %s', key_pkl)
 
@@ -725,7 +728,7 @@ class ModuleCache(object):
                             # not yet been imported (e.g. when running two
                             # different Theano-based scripts). They are not
                             # necessarily broken, but we cannot load them
-                            # here.
+                            # now. They will be loaded later if needed.
                             pass
                         continue
 
@@ -762,7 +765,7 @@ class ModuleCache(object):
                             rmtree(root, ignore_nocleanup=True,
                                    msg='module file path mismatch',
                                    level=logging.INFO)
-                        continue
+                            continue
 
                     # Find unversioned keys from other processes.
                     # TODO: check if this can happen at all
@@ -923,8 +926,6 @@ class ModuleCache(object):
 
     def _get_from_hash(self, module_hash, key, keep_lock=False):
         if module_hash in self.module_hash_to_key_data:
-            _logger.debug("Duplicated module! Will re-use the "
-                          "previous one")
             key_data = self.module_hash_to_key_data[module_hash]
             module = self._get_from_key(None, key_data)
             with compilelock.lock_ctx(keep_lock=keep_lock):
