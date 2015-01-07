@@ -1,5 +1,6 @@
 import operator
 import sys
+import unittest
 
 import numpy
 # Skip test if cuda_ndarray is not available.
@@ -84,6 +85,74 @@ def test_gpualloc():
                         mode=mode_with_gpu.excluding("local_elemwise_alloc"))
     l = f.maker.fgraph.toposort()
     assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
+
+
+class Test_local_elemwise_alloc(unittest.TestCase):
+    dtype = config.floatX
+
+    def setUp(self):
+        self.vec = tensor.vector('vec', dtype=theano.config.floatX)
+        self.mat = tensor.matrix('mat', dtype=theano.config.floatX)
+        self.tens = tensor.tensor3('tens', dtype=theano.config.floatX)
+
+        self.alloc_wo_dep = basic_ops.gpu_alloc(self.vec, 2)
+        self.alloc_w_dep = basic_ops.gpu_alloc(self.vec, *self.vec.shape)
+
+    def _verify_alloc_count(self, f, count):
+        assert(
+            sum([isinstance(elem.op, basic_ops.GpuAlloc)
+                 for elem in f.maker.fgraph.toposort()
+                 if elem.op is not None]) == count
+        )
+
+    def _verify_assert_count(self, f, count):
+        assert(
+            sum([isinstance(elem.op, tensor.opt.Assert)
+                 for elem in f.maker.fgraph.toposort()
+                 if elem.op is not None]) == count
+        )
+
+    def test_remove_alloc_wo_dimshuffle(self):
+        # No optimization on alloc
+        from theano.printing import debugprint as dp
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_wo_dep + self.mat,
+            mode='FAST_COMPILE'
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on alloc with assert
+        """
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_wo_dep + self.mat,
+            mode=mode_with_gpu
+        )
+        import ipdb; ipdb.set_trace()
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 1)
+        """
+
+        # No optimization on alloc without assert
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_w_dep + self.mat,
+            mode='FAST_COMPILE'
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on alloc without assert
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_w_dep + self. mat,
+            mode=mode_with_gpu
+        )
+        import ipdb; ipdb.set_trace()
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 0)
 
 
 def test_alloc_memset_0():

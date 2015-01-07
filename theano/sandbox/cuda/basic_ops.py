@@ -313,6 +313,13 @@ class GpuDimShuffle(GpuOp):
                                      " dimension.",
                                      (input_broadcastable, new_order))
 
+        # this is the list of the original dimensions that we keep
+        self.shuffle = [x for x in new_order if x != 'x']
+
+        # list of dimensions of the output that are broadcastable and were not
+        # in the original input
+        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
+
         self.view_map = {0: [0]}
 
         self._rehash()
@@ -485,6 +492,17 @@ class GpuDimShuffle(GpuOp):
 
     def c_code_cache_version(self):
         return (1, 0)
+
+    def infer_shape(self, node, shapes):
+        ishp, = shapes
+        # transpose
+        rval = [ishp[i] for i in self.shuffle]
+
+        # augment
+        for augm in self.augment:
+            rval.insert(augm, 1)
+        return [rval]
+
 
 
 class GpuCAReduce(GpuOp):
