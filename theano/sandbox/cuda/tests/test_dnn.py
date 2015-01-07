@@ -3,6 +3,7 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
+from itertools import product
 
 import theano
 from theano.compat.six import StringIO
@@ -12,7 +13,8 @@ import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs, neibs2images
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
-
+import theano.sandbox.cuda.dnn as dnn
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -192,6 +194,222 @@ def test_dnn_tag():
         assert cuda.dnn.dnn_available()
         assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
                     for n in f.maker.fgraph.toposort()])
+
+
+class TestDnnInferShapes(utt.InferShapeTester):
+    def setUp(self):
+        super(TestDnnInferShapes, self).setUp()
+
+    def test_softmax(self):
+        t = T.tensor4('t')
+        rand_tensor = numpy.asarray(
+            numpy.random.rand(5, 4, 3, 2),
+            dtype=theano.config.floatX
+        )
+        self._compile_and_check(
+            [t],
+            [dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(t)],
+            [rand_tensor],
+            dnn.GpuDnnSoftmax
+        )
+
+        self._compile_and_check(
+            [t],
+            [
+                T.grad(
+                    dnn.GpuDnnSoftmax(
+                        'bc01',
+                        'accurate',
+                        'channel'
+                    )(t).mean(),
+                    t
+                )
+            ],
+            [rand_tensor],
+            dnn.GpuDnnSoftmaxGrad
+        )
+
+    def test_conv(self):
+        img = T.tensor4('img')
+        kerns = T.tensor4('kerns')
+        img_val = numpy.asarray(
+            numpy.random.rand(3, 4, 5, 6),
+            dtype=theano.config.floatX
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(3, 4, 5, 6),
+            dtype=theano.config.floatX
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1), (2, 2)],
+            ['conv', 'cross']
+        ):
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(img.shape, kerns.shape)
+            conv = dnn.GpuDnnConv()(img_val, kern_vals, desc)
+            self._compile_and_check(
+                [img, kerns],
+                [conv],
+                [img_val, kern_vals],
+                dnn.GpuDnnConv
+            )
+
+    def test_conv_gradw(self):
+        img = T.tensor4('img')
+        kerns = T.tensor4('kerns')
+        img_val = numpy.asarray(
+            numpy.random.rand(3, 4, 5, 6),
+            dtype=theano.config.floatX
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(3, 4, 5, 6),
+            dtype=theano.config.floatX
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1)],  # strides besides (1, 1)
+            ['conv', 'cross']
+        ):
+            temp_img = img.dimshuffle(1, 0, 2, 3)
+            temp_kerns = kerns
+            if params[2] == 'conv':
+                temp_kerns = temp_kerns[:, :, ::-1, ::-1]
+            temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
+            shape = theano.tensor.stack(
+                temp_kerns.shape[1], temp_img.shape[1],
+                temp_img.shape[2] - temp_kerns.shape[2] + 1,
+                temp_img.shape[3] - temp_kerns.shape[3] + 1
+            )
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(temp_img.shape, shape)
+            conv_grad_w = dnn.GpuDnnConvGradW()(
+                temp_img,
+                temp_kerns,
+                desc,
+                shape[2],
+                shape[3]
+            )
+            self._compile_and_check(
+                [temp_img, temp_kerns],
+                [conv_grad_w],
+                [img_val, kern_vals],
+                dnn.GpuDnnConvGradW
+            )
+
+    def test_conv_gradi(self):
+        img = T.tensor4('img')
+        kerns = T.tensor4('kerns')
+        img_val = numpy.asarray(
+            numpy.random.rand(3, 4, 5, 6),
+            dtype=theano.config.floatX
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(3, 4, 5, 6),
+            dtype=theano.config.floatX
+        )
+
+        for params in product(
+            ['valid'],  # Should this work for 'full'?
+            [(1, 1)],
+            ['conv', 'cross']
+        ):
+            print params
+            temp_kerns = kerns.dimshuffle(1, 0, 2, 3)
+            shape = theano.tensor.stack(
+                img.shape[0], temp_kerns.shape[1],
+                img.shape[2] + temp_kerns.shape[2] - 1,
+                img.shape[3] + temp_kerns.shape[3] - 1
+            )
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(shape, temp_kerns.shape)
+            conv_grad_i = dnn.GpuDnnConvGradI()(
+                temp_kerns,
+                img,
+                desc,
+                shape[2],
+                shape[3]
+            )
+            self._compile_and_check(
+                [temp_kerns, img],
+                [conv_grad_i],
+                [kern_vals, img_val],
+                dnn.GpuDnnConvGradI
+            )
+
+    def test_pool(self):
+        img = T.tensor4('img')
+        img_val = numpy.asarray(
+            numpy.random.rand(2, 3, 4, 5),
+            dtype=theano.config.floatX
+        )
+        for params in product(
+            [(1, 1), (2, 2), (3, 3)],
+            [(1, 1), (2, 2), (3, 3)],
+            ['max', 'average']
+        ):
+            desc = dnn.GpuDnnPoolDesc(
+                ws=params[0],
+                stride=params[1],
+                mode=params[2]
+            )()
+            self._compile_and_check(
+                [img],
+                [dnn.GpuDnnPool()(img, desc)],
+                [img_val],
+                dnn.GpuDnnPool
+            )
+
+    def test_pool_grad(self):
+        img = T.tensor4('img')
+        img_grad = T.tensor4('img_grad')
+        out = T.tensor4('out')
+        img_val = numpy.asarray(
+            numpy.random.rand(2, 3, 4, 5),
+            dtype=theano.config.floatX
+        )
+        img_grad_val = numpy.asarray(
+            numpy.random.rand(2, 3, 4, 5),
+            dtype=theano.config.floatX
+        )
+        out_val = numpy.asarray(
+            numpy.random.rand(2, 3, 4, 5),
+            dtype=theano.config.floatX
+        )
+
+        for params in product(
+            [(1, 1), (2, 2), (3, 3)],
+            [(1, 1), (2, 2), (3, 3)],
+            ['max', 'average']
+        ):
+            desc = dnn.GpuDnnPoolDesc(
+                ws=params[0],
+                stride=params[1],
+                mode=params[2]
+            )()
+            pool_grad = dnn.GpuDnnPoolGrad()(
+                    img,
+                    out,
+                    img_grad,
+                    desc
+                )
+            self._compile_and_check(
+                [img, img_grad, out],
+                [pool_grad],
+                [img_val, img_grad_val, out_val],
+                dnn.GpuDnnPoolGrad
+            )
 
 
 def test_version():
