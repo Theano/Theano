@@ -1606,136 +1606,141 @@ compile.optdb['specialize'].register('local_remove_all_assert',
                                      local_remove_all_assert,
                                      use_db_name_as_tag=False)
 
-@register_specialize("local_alloc_elemwise")
-@gof.local_optimizer([T.Elemwise])
-def local_elemwise_alloc(node):
-    """
-    elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
-      -> elemwise(x, y.TensorType(BROADCAST CONDITION))
-
-    elemwise(dimshuffle(alloc(x, shp)),... ,y.TensorType(BROADCAST CONDITION))
-      -> elemwise(x.dimshuffle(...), y.TensorType(BROADCAST CONDITION))
-
-    BROADCAST CONDITION: the condition is that the one input that are
-    not to be optimized to have the same broadcast pattern as the
-    output
-
-         We can change the alloc by a dimshuffle as the elemwise
-         already have the shape info.  The dimshuffle will be faster
-         to exec
-    """
-    if not isinstance(node.op, T.Elemwise):
-        return False
-
-    if len(node.outputs) > 1:
-        # Ensure all outputs have the same broadcast pattern
-        # This is a supposition that I'm not sure is always true.
-        assert all([o.type.broadcastable ==
-                    node.outputs[0].type.broadcastable for o in
-                    node.outputs[1:]])
-
-    # The broadcast pattern of the ouptut must match the broadcast pattern of
-    # at least one of the inputs.
-    if not any([i.type.broadcastable ==
-        node.outputs[0].type.broadcastable for i in node.inputs]):
-        return False
-
-    def dimshuffled_alloc(i):
-        return (isinstance(i.owner.op, T.DimShuffle) and
-                     i.owner.inputs[0].owner and \
-                         isinstance(i.owner.inputs[0].owner.op, T.Alloc))
-
-    # At least one input must have an owner that is either a T.Alloc or a
-    # T.DimShuffle with an owner that is a T.Alloc -- otherwise there is
-    # nothing to optimize.
-    if not any([i.owner
-                and (isinstance(i.owner.op, T.Alloc) or dimshuffled_alloc(i))
-                for i in node.inputs]):
-        return False
-
-    ## Search for input that we can use as a baseline for the dimensions.
-    assert_op_idx = -1
-    for idx, i in enumerate(node.inputs):
-        if i.type.broadcastable == node.outputs[0].type.broadcastable:
-            # Prefer an input that is not a T.Alloc nor a T.DimShuffle of a
-            # T.Alloc so that all allocs can be optimized.
-            if not (i.owner
-                    and (isinstance(i.owner.op, T.Alloc)
-                         or dimshuffled_alloc(i))):
-                assert_op_idx = idx
-                break
-
-    # It may be the case that only T.Allocs and T.DimShuffle of T.Allocs exist.
-    if assert_op_idx < 0:
-        # We want to optimize as many allocs as possible. When there is more
-        # than one then do all but one.
-        # number of inputs with alloc or dimshuffle alloc
-        l2 = [i for i in node.inputs
-              if (i.owner and (isinstance(i.owner.op, T.Alloc)
-                         or dimshuffled_alloc(i)))]
-        # If only 1 alloc or dimshuffle alloc, it is the one we will use for the shape
-        # So no alloc would be removed.
-        if len(l2) > 1:
-            # l containt inputs with alloc or dimshuffle alloc only.
-            # Its length will always be at least one, as we checked that before
-            l = [idx for idx, i in enumerate(node.inputs)
-                 if i.type.broadcastable == node.outputs[0].type.broadcastable]
-            assert_op_idx = l[0]  # The first one is as good as any to use.
-        else:
-            # Nothing would be optimized!
+def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
+    def local_elemwise_alloc(node):
+        """
+        elemwise(alloc(x, shp), ..., y.TensorType(BROADCAST CONDITION))
+          -> elemwise(x, y.TensorType(BROADCAST CONDITION))
+    
+        elemwise(dimshuffle(alloc(x, shp)),... ,y.TensorType(BROADCAST CONDITION))
+          -> elemwise(x.dimshuffle(...), y.TensorType(BROADCAST CONDITION))
+    
+        BROADCAST CONDITION: the condition is that the one input that are
+        not to be optimized to have the same broadcast pattern as the
+        output
+    
+             We can change the alloc by a dimshuffle as the elemwise
+             already have the shape info.  The dimshuffle will be faster
+             to exec
+        """
+        if not isinstance(node.op, ElemwiseOP):
             return False
-
-    assert_op = node.inputs[assert_op_idx]
-    cmp_op = assert_op
-    new_i = []
-
-    for i in node.inputs:
-        # Remove alloc
-        if (i.owner and isinstance(i.owner.op, T.Alloc)
-            and i.owner.inputs[0].type != i.owner.outputs[0].type):
-            # when i.owner.inputs[0].type == i.owner.outputs[0].type we
-            # will remove that alloc later
-
-            assert i.type.ndim == cmp_op.ndim
-            if (theano.config.experimental.local_alloc_elemwise_assert
-                and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
-                assert_op = assert_(assert_op,
-                                    *[T.eq(i.shape[idx], cmp_op.shape[idx])\
-                                          for idx in xrange(i.type.ndim) \
+    
+        if len(node.outputs) > 1:
+            # Ensure all outputs have the same broadcast pattern
+            # This is a supposition that I'm not sure is always true.
+            assert all([o.type.broadcastable ==
+                        node.outputs[0].type.broadcastable for o in
+                        node.outputs[1:]])
+    
+        # The broadcast pattern of the ouptut must match the broadcast pattern of
+        # at least one of the inputs.
+        if not any([i.type.broadcastable ==
+            node.outputs[0].type.broadcastable for i in node.inputs]):
+            return False
+    
+        def dimshuffled_alloc(i):
+            return (isinstance(i.owner.op, DimShuffleOP) and
+                         i.owner.inputs[0].owner and
+                             isinstance(i.owner.inputs[0].owner.op, AllocOP))
+    
+        # At least one input must have an owner that is either a AllocOP or a
+        # DimShuffleOP with an owner that is a AllocOP -- otherwise there is
+        # nothing to optimize.
+        if not any([i.owner
+                    and (isinstance(i.owner.op, AllocOP) or dimshuffled_alloc(i))
+                    for i in node.inputs]):
+            return False
+    
+        ## Search for input that we can use as a baseline for the dimensions.
+        assert_op_idx = -1
+        for idx, i in enumerate(node.inputs):
+            if i.type.broadcastable == node.outputs[0].type.broadcastable:
+                # Prefer an input that is not a AllocOP nor a DimShuffleOP of a
+                # AllocOP so that all allocs can be optimized.
+                if not (i.owner
+                        and (isinstance(i.owner.op, AllocOP)
+                             or dimshuffled_alloc(i))):
+                    assert_op_idx = idx
+                    break
+    
+        # It may be the case that only AllocOP and DimShuffleOP of AllocOP exist.
+        if assert_op_idx < 0:
+            # We want to optimize as many allocs as possible. When there is more
+            # than one then do all but one.
+            # number of inputs with alloc or dimshuffle alloc
+            l2 = [i for i in node.inputs
+                  if (i.owner and (isinstance(i.owner.op, AllocOP)
+                             or dimshuffled_alloc(i)))]
+            # If only 1 alloc or dimshuffle alloc, it is the one we will use for the shape
+            # So no alloc would be removed.
+            if len(l2) > 1:
+                # l containt inputs with alloc or dimshuffle alloc only.
+                # Its length will always be at least one, as we checked that before
+                l = [idx for idx, i in enumerate(node.inputs)
+                     if i.type.broadcastable == node.outputs[0].type.broadcastable]
+                assert_op_idx = l[0]  # The first one is as good as any to use.
+            else:
+                # Nothing would be optimized!
+                return False
+    
+        assert_op = node.inputs[assert_op_idx]
+        cmp_op = assert_op
+        new_i = []
+    
+        for i in node.inputs:
+            # Remove alloc
+            if (i.owner and isinstance(i.owner.op, AllocOP)
+                and i.owner.inputs[0].type != i.owner.outputs[0].type):
+                # when i.owner.inputs[0].type == i.owner.outputs[0].type we
+                # will remove that alloc later
+    
+                assert i.type.ndim == cmp_op.ndim
+                if (theano.config.experimental.local_alloc_elemwise_assert
+                    and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
+                    assert_op = assert_(assert_op,
+                                        *[T.eq(i.shape[idx], cmp_op.shape[idx])
+                                              for idx in xrange(i.type.ndim)
+                                              if not i.type.broadcastable[idx]])
+                new_i.append(i.owner.inputs[0])
+    
+            # Remove Alloc in DimShuffle
+            elif i.owner and dimshuffled_alloc(i):
+                assert i.type.ndim == cmp_op.type.ndim
+                if (theano.config.experimental.local_alloc_elemwise_assert
+                    and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
+                    assert_op = assert_(assert_op,
+                                        *[T.eq(i.shape[idx], cmp_op.shape[idx])
+                                          for idx in xrange(i.type.ndim)
                                           if not i.type.broadcastable[idx]])
-            new_i.append(i.owner.inputs[0])
+                alloc_input = i.owner.inputs[0].owner.inputs[0]
+                if alloc_input.ndim != i.owner.inputs[0].ndim:
+                    # The alloc can add dimension to the value
+                    # We add a dimshuffle to add them.
+                    # We let later optimization merge the multiple dimshuffle
+                    nb_dim_to_add = i.owner.inputs[0].ndim - alloc_input.ndim
+                    alloc_input = alloc_input.dimshuffle(['x'] * nb_dim_to_add +
+                                                         range(alloc_input.ndim))
+    
+                # We need to keep the dimshuffle. It could swap axes or
+                # add dimensions anywhere.
+                new_i.append(i.owner.op(alloc_input))
+            else:
+                new_i.append(i)
+        new_i[assert_op_idx] = assert_op
+    
+        return node.op(*new_i, return_list=True)
 
-        # Remove Alloc in DimShuffle
-        elif i.owner and dimshuffled_alloc(i):
-            assert i.type.ndim == cmp_op.type.ndim
-            if (theano.config.experimental.local_alloc_elemwise_assert
-                and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
-                assert_op = assert_(assert_op,
-                                    *[T.eq(i.shape[idx], cmp_op.shape[idx])
-                                      for idx in xrange(i.type.ndim)
-                                      if not i.type.broadcastable[idx]])
-            alloc_input = i.owner.inputs[0].owner.inputs[0]
-            if alloc_input.ndim != i.owner.inputs[0].ndim:
-                # The alloc can add dimension to the value
-                # We add a dimshuffle to add them.
-                # We let later optimization merge the multiple dimshuffle
-                nb_dim_to_add = i.owner.inputs[0].ndim - alloc_input.ndim
-                alloc_input = alloc_input.dimshuffle(['x'] * nb_dim_to_add +
-                                                     range(alloc_input.ndim))
-
-            # We need to keep the dimshuffle. It could swap axes or
-            # add dimensions anywhere.
-            new_i.append(i.owner.op(alloc_input))
-        else:
-            new_i.append(i)
-    new_i[assert_op_idx] = assert_op
-
-    return node.op(*new_i, return_list=True)
-
+    return local_elemwise_alloc
+    
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, optimize all inputs when possible -- currently when all inputs have
 # an alloc all but one is optimized.
 
+local_elemwise_alloc = register_specialize(gof.local_optimizer([T.Elemwise])(
+    local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)
+))
+        
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
                                  "DEPRECATED: If True, enable the experimental"
                                  " optimization local_alloc_elemwise."
