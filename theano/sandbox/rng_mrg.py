@@ -1007,7 +1007,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return (3, self.GpuKernelBase_version)
 
 
-def guess_n_streams(size, warn=True):
+def guess_n_streams(size, warn=False):
     """
     Return a guess at a good number of streams.
 
@@ -1128,7 +1128,7 @@ class MRG_RandomStreams(object):
         return rval
 
     def n_streams(self, size):
-        return guess_n_streams(size, warn=True)
+        return guess_n_streams(size)
 
     def pretty_return(self, node_rstate, new_rstate, sample):
         sample.rstate = node_rstate
