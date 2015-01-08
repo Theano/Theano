@@ -1811,6 +1811,9 @@ class AdvancedIncSubtensor1(Op):
         Py_XDECREF(arglist);
         """ % locals()
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
         x, y, idx = inp
