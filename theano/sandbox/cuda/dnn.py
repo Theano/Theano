@@ -8,6 +8,7 @@ from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
 from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.basic import ShapeError
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
