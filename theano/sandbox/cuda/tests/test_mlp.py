@@ -397,7 +397,9 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
         # Check that GpuConv is used
         topo = train.maker.fgraph.toposort()
         conv_ops = (tcn.blas.GpuConv,
-                    tcn.dnn.GpuDnnConvBase,
+                    tcn.dnn.GpuDnnConv,
+                    tcn.dnn.GpuDnnConvGradI,
+                    tcn.dnn.GpuDnnConvGradW,
                     tcn.blas.BaseGpuCorrMM)
 
         assert len([n for n in topo if isinstance(n.op, conv_ops)]) > 0
