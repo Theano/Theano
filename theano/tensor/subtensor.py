@@ -1,5 +1,6 @@
 from copy import copy
 from itertools import izip
+import os
 import sys
 from textwrap import dedent
 import warnings
@@ -1823,6 +1824,68 @@ class AdvancedIncSubtensor1(Op):
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
+    def copy_of_x(self, x):
+        """
+            :param x: a string giving the name of a C variable
+                pointing to an array
+
+            :return: C code expression to make a copy of x
+
+            Base class uses PyArrayObject *, subclasses may override for
+            different types of arrays.
+        """
+        # Parameters of PyArrary_FromAny are:
+        # array
+        # dtype: we pass NULL to say any dtype is acceptable, so the existing
+        #        dtype will be copied
+        # min_depth: we pass 0 to have this parameter ignored
+        # max_depth: we pass 0 to have this parameter ignored
+        # requirements: here we pass NPY_ARRAY_ENSURECOPY to force a copy
+        # context: this is almost always NULL, I'm not sure what it's used for
+        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
+                NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
+
+    def c_support_code(self):
+        from theano.gof.cutils import compile_cutils_code
+        return compile_cutils_code()
+
+    def c_code(self, node, name, input_names, output_names, sub):
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        if bool(numpy_ver < [1, 8]):
+            raise NotImplementedError
+        x, y, idx = input_names
+        out = output_names[0]
+        fail = sub['fail']
+        inc_or_set = 1 - self.set_instead_of_inc
+        if self.inplace:  # convert bool to int
+            inplace = 1
+        else:
+            inplace = 0
+        copy_of_x = self.copy_of_x(x)
+
+        return """
+        if (%(inplace)s)
+        {
+            if (%(x)s != %(out)s)
+            {
+                Py_XDECREF(%(out)s);
+                Py_INCREF(%(x)s);
+                %(out)s = %(x)s;
+            }
+        }
+        else
+        {
+            Py_XDECREF(%(out)s);
+            %(out)s = %(copy_of_x)s;
+        }
+        PyObject *arglist = Py_BuildValue("OOOi",%(out)s, %(idx)s, %(y)s, %(inc_or_set)d);
+        inplace_increment(NULL, arglist);
+        Py_XDECREF(arglist);
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
+
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
         x, y, idx = inp
@@ -1832,6 +1895,7 @@ class AdvancedIncSubtensor1(Op):
         # In Numpy, x[idx] += y doesn't work if the same index is present
         # many times: it does it only once. Is it a bug? In any case, for
         # this reason we implement our own 'inc' iteration.
+
         if self.set_instead_of_inc:
             x[idx] = y
         else:
