@@ -1282,6 +1282,10 @@ class CLinker(link.Linker):
                 return ((), sig)
         return version, sig
 
+    def get_src_code(self):
+        mod = self.get_dynamic_module()
+        return mod.code()
+
     def compile_cmodule(self, location=None):
         """
         This compiles the source code for this linker and returns a
