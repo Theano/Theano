@@ -1694,7 +1694,8 @@ class GCC_compiler(object):
                                  GCC_compiler.march_flags)
 
         #Add the detected -march=native equivalent flags
-        cxxflags.extend(GCC_compiler.march_flags)
+        if GCC_compiler.march_flags:
+            cxxflags.extend(GCC_compiler.march_flags)
 
         #NumPy 1.7 Deprecate the old API. I updated most of the places
         #to use the new API, but not everywhere. When finished, enable
