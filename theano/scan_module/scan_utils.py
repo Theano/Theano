@@ -64,14 +64,6 @@ def safe_new(x, tag='', dtype=None):
             nw_x = x.type()
         nw_x.name = nw_name
         return nw_x
-    else:
-        try:
-            x = tensor.as_tensor_variable(x)
-        except TypeError:
-            # This could happen for example for random states, and I really
-            # want to avoid the convoluted logic that checks for cuda
-            # ndarrays
-            pass
     nw_x = x.type()
     if dtype and nw_x.dtype != dtype:
         nw_x = nw_x.astype(dtype).type()
