@@ -1732,15 +1732,16 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
         return node.op(*new_i, return_list=True)
 
     return local_elemwise_alloc
-    
+
 #TODO, global optimizer that lift the assert to the beginning of the graph.
 #TODO, optimize all inputs when possible -- currently when all inputs have
 # an alloc all but one is optimized.
 
-local_elemwise_alloc = register_specialize(gof.local_optimizer([T.Elemwise])(
-    local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)
-))
-        
+local_elemwise_alloc = register_specialize(
+    gof.local_optimizer([T.Elemwise])(
+        local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)),
+    'local_alloc_elemwise')
+
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
                                  "DEPRECATED: If True, enable the experimental"
                                  " optimization local_alloc_elemwise."
