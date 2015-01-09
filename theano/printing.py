@@ -157,7 +157,7 @@ N.B.:
                 # If the op was compiled, print the optimized version.
                 outputs = s.owner.op.fn.maker.fgraph.outputs
             else:
-                outputs = s.owner.op.output
+                outputs = s.owner.op.outputs
             for idx, i in enumerate(outputs):
                 if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
                     if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):

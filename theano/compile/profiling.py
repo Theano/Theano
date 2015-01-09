@@ -667,14 +667,15 @@ class ProfileStats(object):
                         v = out.type.get_size(sh)
                         sum_dense += v
                     else:
-                        v = 'Unknown'
+                        v = 0  # 'Unknown'
                 else:
-                    v = 'Variable isnt created'
+                    v = 0  # 'Variable isnt created'
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
                 fct_shapes[node.fgraph][node].append(sh)
             node_mem[node] = sum_dense
+        del v
 
         # Find the function that used the most of that statistic
         max_sum_size = 0
