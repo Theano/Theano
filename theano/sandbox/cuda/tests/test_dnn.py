@@ -201,10 +201,10 @@ class TestDnnInferShapes(utt.InferShapeTester):
         super(TestDnnInferShapes, self).setUp()
 
     def test_softmax(self):
-        t = T.tensor4('t')
+        t = T.ftensor4('t')
         rand_tensor = numpy.asarray(
             numpy.random.rand(5, 4, 3, 2),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         self._compile_and_check(
             [t],
@@ -230,15 +230,15 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
     def test_conv(self):
-        img = T.tensor4('img')
-        kerns = T.tensor4('kerns')
+        img = T.ftensor4('img')
+        kerns = T.ftensor4('kerns')
         img_val = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         kern_vals = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
 
         for params in product(
@@ -260,15 +260,15 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv_gradw(self):
-        img = T.tensor4('img')
-        kerns = T.tensor4('kerns')
+        img = T.ftensor4('img')
+        kerns = T.ftensor4('kerns')
         img_val = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         kern_vals = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
 
         for params in product(
@@ -306,15 +306,15 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv_gradi(self):
-        img = T.tensor4('img')
-        kerns = T.tensor4('kerns')
+        img = T.ftensor4('img')
+        kerns = T.ftensor4('kerns')
         img_val = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         kern_vals = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
 
         for params in product(
@@ -349,10 +349,10 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_pool(self):
-        img = T.tensor4('img')
+        img = T.ftensor4('img')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
@@ -372,20 +372,20 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_pool_grad(self):
-        img = T.tensor4('img')
-        img_grad = T.tensor4('img_grad')
-        out = T.tensor4('out')
+        img = T.ftensor4('img')
+        img_grad = T.ftensor4('img_grad')
+        out = T.ftensor4('out')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         img_grad_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
         out_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
-            dtype=theano.config.floatX
+            dtype='float32'
         )
 
         for params in product(
