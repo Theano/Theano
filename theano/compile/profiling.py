@@ -667,9 +667,9 @@ class ProfileStats(object):
                         v = out.type.get_size(sh)
                         sum_dense += v
                     else:
-                        v = 'Unknown'
+                        v = 0  # 'Unknown'
                 else:
-                    v = 'Variable isnt created'
+                    v = 0  # 'Variable isnt created'
 
                 var_mem[out] = v
                 fct_memory[node.fgraph][node].append(v)
