@@ -40,8 +40,8 @@ _logger = logging.getLogger('theano.scan_module.scan_op')
 from theano.configparser import AddConfigVar, BoolParam
 
 AddConfigVar('scan.allow_gc',
-             "Allow/disallow gc inside of Scan (default: config.allow_gc)",
-             BoolParam(lambda: config.allow_gc))
+             "Allow/disallow gc inside of Scan (default: True)",
+             BoolParam(True))
 
 
 class Scan(PureOp):
