@@ -1,0 +1,902 @@
+\documentclass[utf8x,xcolor=pdftex,dvipsnames,table]{beamer}
+\usetheme{Malmoe}  % Now it's a beamer presentation with the lisa theme!
+\setbeamertemplate{footline}[page number]
+\usecolortheme{beaver}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage[utf8x]{inputenc}
+%\logo{\includegraphics[width=.8in]{UdeM_NoirBleu_logo_Marie_crop}}
+\usepackage{listings}
+
+\newcommand{\superscript}[1]{\ensuremath{^{\textrm{#1}}}}
+
+\mode<presentation>
+
+\title{Theano and LSTM for Sentiment Analysis}
+
+\author{%
+\footnotesize
+Frédéric Bastien \newline
+Département d'Informatique et de Recherche Opérationnelle \newline
+Université de Montréal \newline
+Montréal, Canada \newline
+\texttt{bastienf@iro.umontreal.ca} \newline \newline
+}
+
+\date{Next.ML 2015}
+
+\setbeamertemplate{navigation symbols}{}
+\begin{document}
+
+\begin{frame}[plain]
+ \titlepage
+ \vspace{-5em}
+ \includegraphics[width=1in]{../hpcs2011_tutorial/pics/lisabook_logo_text_3.png}
+ \hfill
+ \includegraphics[width=.8in]{../hpcs2011_tutorial/pics/UdeM_NoirBleu_logo_Marie_crop}
+\end{frame}
+
+\section{Introduction}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
+
+\begin{frame}{High level}\setcounter{page}{1}
+  Python <- \{NumPy/SciPy/libgpuarray\} <- Theano <- Pylearn2
+  \begin{itemize}
+  \item Python: OO coding language
+  \item Numpy: $n$-dimensional array object and scientific computing toolbox
+  \item SciPy: sparse matrix objects and more scientific computing functionality
+  \item libgpuarray: GPU $n$-dimensional array object in C for CUDA and OpenCL
+  \item Theano: compiler/symbolic graph manipulation
+  \item Pylearn2: machine learning framework
+  \end{itemize}
+\end{frame}
+
+%% \begin{frame}{Others}
+%%   \begin{itemize}
+%%   \item IPython: Advanced python shell
+%%   \item IPython notebook: web-based interactive computational environment where you can combine code execution, text, mathematics, plots and rich media into a single document
+%%   \item matplotlib: one of the many plotting library
+%%  \item PyTables: hdf5 container with extra functionality
+%%  \item pandas: other data structure
+%%  \item ...
+%%   \end{itemize}
+%% \end{frame}
+
+\begin{frame}{Python}
+  \begin{itemize}
+  \item General-purpose high-level OO interpreted language
+  \item Emphasizes code readability
+  \item Comprehensive standard library
+  \item Dynamic type and memory management
+  \item Slow execution
+  \item Easily extensible with C
+  \item Popular in {\em web development}\ and {\em scientific communities}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{NumPy/SciPy}
+  \begin{itemize}
+  \item Python floats are full-fledged objects on the heap
+      \begin{itemize}
+      \item Not suitable for high-performance computing!
+      \end{itemize}
+
+  \item NumPy provides an $n$-dimensional numeric array in Python
+      \begin{itemize}
+      \item Perfect for high-performance computing
+      \item Slices of arrays are views (no copying)
+      \end{itemize}
+
+  \item NumPy provides
+      \begin{itemize}
+      \item Elementwise computations
+      \item Linear algebra, Fourier transforms
+      \item Pseudorandom number generators (many distributions)
+      \end{itemize}
+
+  \item SciPy provides lots more, including
+      \begin{itemize}
+      \item Sparse matrices
+      \item More linear algebra
+      \item Solvers and optimization algorithms
+      \item Matlab-compatible I/O
+      \item I/O and signal processing for images and audio
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What's missing?}
+  \begin{itemize}
+    \item Non-lazy evaluation (required by Python) hurts performance
+    \item Bound to the CPU
+    \item Lacks symbolic or automatic differentiation
+    \item No automatic speed and stability optimization
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Goal of the stack}
+\begin{center}
+\begin{bf}Fast to develop\end{bf}\newline \bigskip
+\begin{bf}Fast to run\end{bf}\newline \bigskip
+\hspace{-2.5cm}
+\includegraphics[width=0.35\textwidth]{../omlw2014/road-runner-1.jpg}
+\end{center}
+\end{frame}
+
+
+\section{Theano}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{Description}
+  \begin{itemize}
+    \item Mathematical symbolic expression compiler
+    \item Expressions mimic NumPy's syntax and semantics
+    \item Dynamic C/CUDA code generation
+    \begin{itemize}
+      \item C/C++, CUDA, OpenCL, PyCUDA, Cython, Numba, \ldots
+    \end{itemize}
+    \item Efficient symbolic differentiation
+    %\begin{itemize}
+    %  \item Derivatives of functions with one or many inputs.
+    %  \item Computation of the Jacobian, Hessian, R and L op.
+    %\end{itemize}
+    \item Speed and stability optimizations
+    \begin{itemize}
+      \item Gives the right answer for ``$\log (1 + x)$'' even if $x$ is really tiny.
+    \end{itemize}
+    \item Extensive unit-testing and self-verification
+    %\begin{itemize}
+    %  \item Detects and diagnoses many types of errors
+    %\end{itemize}
+    \item Works on Linux, OS X and Windows
+    \item Transparent use of a GPU
+    \begin{itemize}
+      \item {\tt float32} only for now (libgpuarray provides much more)
+      \item Limited support on Windows
+    \end{itemize}
+
+%    \item Statically typed and purely functional
+    \item Sparse operations (CPU only)
+  \end{itemize}
+\end{frame}
+
+%% \begin{frame}{Why scripting for GPUs?}
+%%   \begin{bf}They complement each other\end{bf}
+
+%%   GPUs are everything that high level languages are not
+
+%%   \begin{itemize}
+%%     \item Highly parallel
+%%     \item Very architecture-sensitive
+%%     \item Built for maximum FP/memory throughput
+%%     \item So hard to program that meta-programming is easier
+%%   \end{itemize}
+
+%%   \begin{bf}Best of both worlds:\end{bf} easily scripted code which invokes high-performance GPU kernels.
+
+%%   \begin{bf}Theano C code generation removes overhead\end{bf} of
+%%   function calls between Python and C by launching many C functions at once.
+
+%% \end{frame}
+
+\begin{frame}{Overview of Library}
+  Theano is many things
+  \begin{itemize}
+  \item Language
+  \item Compiler
+  \item Python library
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Project status?}
+  \begin{itemize}
+    \item Mature: Theano has been developed and used since January 2008 (7 yrs old)
+    \item Driven hundreads research papers
+    \item Good user documentation
+    \item Active mailing list with participants from outside our lab
+    \item Core technology for a few Silicon-Valley start-ups
+    \item Many contributors (some from outside our lab)
+    \item Used to teach many university classes
+    \item Has been used for research at big compagnies
+  \end{itemize}
+  Theano: \url{deeplearning.net/software/theano/}
+
+  Deep Learning Tutorials: \url{deeplearning.net/tutorial/}
+\end{frame}
+
+
+\begin{frame}{Overview}
+  Theano language:
+  \begin{itemize}
+  \item Operations on scalar, vector, matrix, tensor, and sparse variables
+  \item Linear algebra
+  \item Element-wise nonlinearities
+  \item Convolution
+  \item Extensible
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Theano}
+
+  High-level domain-specific language tailored to numeric computation.
+
+  \begin{itemize}
+    \item Syntax as close to NumPy as possible
+    \item Compiles most common expressions to C for CPU and/or GPU
+    \item Limited expressivity means more opportunities optimizations
+    \begin{itemize}
+      \item No subroutines -> global optimization
+      \item Strongly typed -> compiles to C
+      \item Array oriented -> easy parallelism
+      \item Support for looping and branching in expressions
+    \end{itemize}
+    \item Automatic speed and stability optimizations
+    \item Can reuse other technologies for best performance.
+    \begin{itemize}
+      \item BLAS, SciPy, Cython, Numba, PyCUDA, CUDA
+    \end{itemize}
+    \item Automatic differentiation and R op
+    \item Sparse matrices
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Overview}
+  Using Theano:
+  \begin{itemize}
+  \item define expression $f(x,y) = x + y$
+  \item compile expression
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+int f(int x, int y){
+  return x + y;
+}
+\end{lstlisting}
+
+  \item execute expression
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+>>> f(1, 2)
+3
+\end{lstlisting}
+  \end{itemize}
+\end{frame}
+
+
+\subsection{Building}
+\begin{frame}{Building expressions}
+  \begin{itemize}
+  \item Scalars
+  \item Vectors
+  \item Matrices
+  \item Tensors
+  \item Reduction
+  \item Dimshuffle
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Scalar math}
+  Using Theano:
+  \begin{itemize}
+  \item define expression $f(x,y) = x + y$
+  \item compile expression
+  \end{itemize}
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+from theano import tensor as T
+x = T.scalar()
+y = T.scalar()
+z = x+y
+w = z*x
+a = T.sqrt(w)
+b = T.exp(a)
+c = a ** b
+d = T.log(c)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Vector math}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+from theano import tensor as T
+x = T.vector()
+y = T.vector()
+# Scalar math applied elementwise
+a = x * y
+# Vector dot product
+b = T.dot(x, y)
+# Broadcasting
+c = a + b
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Matrix math}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+from theano import tensor as T
+x = T.matrix()
+y = T.matrix()
+a = T.vector()
+# Matrix-matrix product
+b = T.dot(x, y)
+# Matrix-vector product
+c = T.dot(x, a)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Tensors}
+  Using Theano:
+  \begin{itemize}
+  \item define expression $f(x,y) = x + y$
+  \item compile expression
+    \begin{itemize}
+    \item Dimensionality defined by length of ``broadcastable'' argument
+    \item Can add (or do other elemwise op) on two
+      tensors with same dimensionality
+    \item Duplicate tensors along broadcastable axes to
+      make size match
+    \end{itemize}
+  \end{itemize}
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+from theano import tensor as T
+tensor3 = T.TensorType(
+    broadcastable=(False, False, False),
+    dtype='float32')
+x = tensor3()
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Reductions}
+  Using Theano:
+  \begin{itemize}
+  \item define expression $f(x,y) = x + y$
+  \item compile expression
+  \end{itemize}
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+from theano import tensor as T
+tensor3 = T.TensorType(
+    broadcastable=(False, False, False),
+    dtype='float32')
+x = tensor3()
+total = x.sum()
+marginals = x.sum(axis=(0, 2))
+mx = x.max(axis=1)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Dimshuffle}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+from theano import tensor as T
+tensor3 = T.TensorType(broadcastable=(False, False, False), dtype=''float32'')
+x = tensor3()
+y = x.dimshuffle((2, 1, 0))
+a = T.matrix()
+b = a.T
+# Same as b
+c = a.dimshuffle((0, 1))
+# Adding to larger tensor
+d = a.dimshuffle((0, 1, ``x''))
+e = a + d
+\end{lstlisting}
+\end{frame}
+
+\subsection{Compiling/Running}
+\begin{frame}{Compiling and running expression}
+  \begin{itemize}
+  \item theano.function
+  \item shared variables and updates
+  \item compilation modes
+  \item compilation for GPU
+  \item optimizations
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{theano.function}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+>>> from theano import tensor as T
+>>> x = T.scalar()
+>>> y = T.scalar()
+>>> from theano import function
+>>> # first arg is list of SYMBOLIC inputs
+>>> # second arg is SYMBOLIC output
+>>> f = function([x, y], x + y)
+>>> # Call it with NUMERICAL values
+>>> # Get a NUMERICAL output
+>>> f(1., 2.)
+array(3.0)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Shared variables}
+  \begin{itemize}
+  \item It’s hard to do much with purely functional programming
+  \item ``shared variables'' add just a little bit of imperative programming
+  \item A “shared variable” is a buffer that stores a numerical value for a Theano variable
+  \item Can write to as many shared variables as you want, once each, at the end of the function
+  \item  Modify outside Theano function with get\_value() and set\_value() methods.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Shared variable example}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+>>> from theano import shared
+>>> x = shared(0.)
+>>> from theano.compat.python2x import OrderedDict
+>>> updates = OrderedDict()
+>>> updates[x] = x + 1
+>>> f = function([], updates=updates)
+>>> f()
+>>> x.get\_value()
+1.0
+>>> x.set\_value(100.)
+>>> f()
+>>> x.get\_value()
+101.0
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Which dict?}
+  \begin{itemize}
+  \item Use theano.compat.python2x.OrderedDict
+  \item Not collections.OrderedDict
+  \begin{itemize}
+  \item This isn’t available in older versions of python,
+and will limit the portability of your code
+  \end{itemize}
+  \item Not \{\} aka dict
+  \begin{itemize}
+  \item The iteration order of this built-in class is not
+    deterministic (thanks, Python!) so if Theano
+    accepted this, the same script could compile
+    different C programs each time you run it
+  \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Compilation modes}
+  \begin{itemize}
+  \item Can compile in different modes to get different kinds of programs
+  \item Can specify these modes very precisely with arguments to theano.function
+  \item Can use a few quick presets with environment variable flags
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Example preset compilation modes}
+  \begin{itemize}
+  \item FAST\_RUN: default. Spends a lot of time on
+compilation to get an executable that runs
+fast.
+  \item FAST\_COMPILE: Doesn’t spend much time
+compiling. Executable usually uses python
+instead of compiled C code. Runs slow.
+  \item DEBUG\_MODE: Adds lots of checks.
+Raises error messages in situations other
+modes regard as fine.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Compilation for GPU}
+  \begin{itemize}
+  \item Theano current back-end only supports 32 bit on GPU
+  \item CUDA supports 64 bit, but is slow in gamer card
+  \item T.fscalar, T.fvector, T.fmatrix are all 32 bit
+  \item T.scalar, T.vector, T.matrix resolve to 32 bit or 64 bit depending on theano’s floatX flag
+  \item floatX is float64 by default, set it to float32
+  \item Set device flag to gpu (or a specific gpu, like gpu0)
+  \end{itemize}
+\end{frame}
+
+\subsection{Modifying expressions}
+\begin{frame}{Modifying expressions}
+  \begin{itemize}
+  \item The grad method
+  \item Variable nodes
+  \item Types
+  \item Ops
+  \item Apply nodes
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The grad method}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+>>> x = T.scalar('x')
+>>> y = 2. * x
+>>> g = T.grad(y, x)
+>>> from theano.printing import min_informative_str
+>>> print min_informative_str(g)
+A. Elemwise{mul}
+ B. Elemwise{second,no_inplace}
+  C. Elemwise{mul,no_inplace}
+   D. TensorConstant{2.0}
+   E. x
+  F. TensorConstant{1.0}
+ <D>
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Theano Variables}
+  \begin{itemize}
+  \item A Variable is a theano expression
+  \item Can come from T.scalar, T.matrix, etc.
+  \item Can come from doing operations on other Variables
+  \item Every Variable has a type field, identifying its Type \newline
+    e.g. TensorType((True, False), ‘float32’)
+  \item Variables can be thought of as nodes in a graph
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Ops}
+
+  \begin{itemize}
+  \item  An Op is any class that describes a
+mathematical function of some variables
+  \item Can call the op on some variables to get a
+new variable or variables
+  \item An Op class can supply other forms of
+information about the function, such as its
+derivatives
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Apply nodes}
+  \begin{itemize}
+  \item The Apply class is a specific instance of an application of an Op
+  \item Notable fields:
+    \begin{itemize}
+    \item op: The Op to be applied
+    \item inputs: The Variables to be used as input
+    \item outputs: The Variables produced
+    \end{itemize}
+  \item Variable.owner identifies the Apply that created the variable
+  \item Variable and Apply instances are nodes and owner/
+    inputs/outputs identify edges in a Theano graph
+  \end{itemize}
+\end{frame}
+
+\subsection{Debugging}
+\begin{frame}{Debugging}
+  \begin{itemize}
+  \item DEBUG\_MODE
+  \item Error message
+  \item theano.printing.debugprint
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Error message: code}
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+import numpy as np
+import theano
+import theano.tensor as T
+x = T.vector()
+y = T.vector()
+z = x + x
+z = z + y
+f = theano.function([x, y], z)
+f(np.ones((2,)), np.ones((3,)))
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Error message: 1st part}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+Traceback (most recent call last):
+[...]
+ValueError: Input dimension mis-match.
+    (input[0].shape[0] = 3, input[1].shape[0] = 2)
+Apply node that caused the error:
+   Elemwise{add,no_inplace}(<TensorType(float64, vector)>,
+                            <TensorType(float64, vector)>,
+                            <TensorType(float64, vector)>)
+Inputs types: [TensorType(float64, vector),
+               TensorType(float64, vector),
+               TensorType(float64, vector)]
+Inputs shapes: [(3,), (2,), (2,)]
+Inputs strides: [(8,), (8,), (8,)]
+Inputs scalar values: ['not scalar', 'not scalar', 'not scalar']
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Error message: 2st part}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+HINT: Re-running with most Theano optimization
+disabled could give you a back-traces when this
+node was created. This can be done with by setting
+the Theano flags optimizer=fast_compile
+HINT: Use the Theano flag 'exception_verbosity=high'
+for a debugprint of this apply node.
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Error message: exception\_verbosity=high}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+Debugprint of the apply node:
+Elemwise{add,no_inplace} [@A] <TensorType(float64, vector)> ''
+ |<TensorType(float64, vector)> [@B] <TensorType(float64, vector)>
+ |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
+ |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
+
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Error message: optimizer=fast\_compile}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+Backtrace when the node is created:
+  File "test.py", line 7, in <module>
+    z = z + y
+  File "/home/nouiz/src/Theano/theano/tensor/var.py", line 122, in __add__
+    return theano.tensor.basic.add(self, other)
+
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Error message: Traceback}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+Traceback (most recent call last):
+  File "test.py", line 9, in <module>
+    f(np.ones((2,)), np.ones((3,)))
+  File "/u/bastienf/repos/theano/compile/function_module.py",
+       line 589, in __call__
+    self.fn.thunks[self.fn.position_of_error])
+  File "/u/bastienf/repos/theano/compile/function_module.py",
+       line 579, in __call__
+    outputs = self.fn()
+
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{debugprint}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+>>> from theano.printing import debugprint
+>>> debugprint(a)
+Elemwise{mul,no_inplace} [@A] ''
+ |TensorConstant{2.0} [@B]
+ |Elemwise{add,no_inplace} [@C] 'z'
+   |<TensorType(float64, scalar)> [@D]
+   |<TensorType(float64, scalar)> [@E]
+\end{lstlisting}
+\end{frame}
+
+%% \begin{frame}{Pylearn2}
+
+%%   Machine Learning library aimed at researchers
+
+%%   \begin{itemize}
+%%     \item Built on top of Theano, for fast execution and use of GPU
+%%     \item Easy to try variants of implemented algorithms, and to extend them (using Theano)
+%%     \item Very modular, each component of the library can be used in isolation
+%%     \item Experiments can be specified through a YAML config file, or by a Python script
+%%     \item Scripts for visualizing weights, plot monitored values
+%%   \end{itemize}
+%% \end{frame}
+
+
+%% \begin{frame}{libgpuarray}
+%%   Goal: A common GPU $n$-dimensional array that can be reused by all projects, support for both CUDA and OpenCL.
+%%   \newline \newline
+%%   Motivation:
+%%   \begin{itemize}
+%%   \item Currently there are at least 6 different GPU arrays in Python
+%%     \begin{itemize}
+%%     \item CudaNdarray (Theano), GPUArray (pycuda), CUDAMatrix (cudamat), GPUArray (pyopencl), Clyther, Copperhead, ...
+%%     \item There are even more if we include other languages.
+%%     \end{itemize}
+%%   \item They are incompatible
+%%     \begin{itemize}
+%%     \item None have the same properties and interface
+%%     \end{itemize}
+%%   \item All of them implement a subset of numpy.ndarray properties
+%%   \item This is the new GPU backend on Theano
+%%   \end{itemize}
+%% \end{frame}
+
+
+%% \begin{frame}{Project status?}
+%%   \begin{itemize}
+%%   \item Usable directly, but not all implementation available.
+%%   \item Multiple GPUs works.
+%%   \item Is the next GPU array container for Theano and is working.
+%%     \begin{itemize}
+%%     \item Not all Theano implementations available now.
+%%     \item OpenCL misses more implementations.
+%%     \item Multiple GPUs: supported in libgpuarray
+%%     \item Multiple GPUs: close to get integrated in Theano.
+%%     \end{itemize}
+%%   \item Web site: \url{http://deeplearning.net/software/libgpuarray/}
+%%   \end{itemize}
+%% \end{frame}
+
+%% \section{libgpuarray}
+%% \begin{frame}
+%%   \tableofcontents[currentsection]
+%% \end{frame}
+%% %TODO, make much shorter
+%% \begin{frame}{libgpuarray: Design Goals}
+%%   \begin{itemize}
+%%   \item Have the base object in C to allow collaboration with more projects.
+%%     \begin{itemize}
+%%     \item We want people from C, C++, ruby, R, \ldots all use the same base GPU ndarray.
+%%     \end{itemize}
+%%   \item Be compatible with CUDA and OpenCL.
+%%   \item Not too simple, (don’t support just matrix).
+%%   \item Support all dtype.
+%%   \item Allow strided views.
+%%   \item But still easy to develop new code that support only a few memory layout.
+%%     \begin{itemize}
+%%     \item This ease the development of new code.
+%%     \end{itemize}
+%%   \end{itemize}
+%% \end{frame}
+
+% The following does not work with lstset, for some reason
+%\begin{frame}{Simple example}
+\begin{frame}[fragile]
+  \frametitle{Simple example}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+import theano
+# declare symbolic variable
+a = theano.tensor.vector("a")
+# build symbolic expression
+b = a + a ** 10
+# compile function
+f = theano.function([a], b)
+print f([0, 1, 2])
+# prints `array([0, 2, 1026])`
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Simple example: graph optimization}
+\center
+\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_unoptimized.png}
+\hspace{0.1\textwidth}
+\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_optimized.png}
+%Symbolic programming = *Paradigm shift*: people need to use it to understand it.
+
+\end{frame}
+
+
+\section{RNN}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\section{LSTM}
+\begin{frame}
+  \tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}{Conclusion}
+Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
+\begin{bf}Fast to develop\end{bf}\newline
+\begin{bf}Fast to run\end{bf}\newline
+\end{frame}
+
+\section{Exercices}
+\begin{frame}{Exercices}
+  Work through the ``01\_buildbing\_expressions'' directory now.
+  Available at ``git~clone~https://github.com/nouiz/ccw\_tutorial\_theano.git''.
+\end{frame}
+
+
+\begin{frame}{Acknowledgments}
+\begin{itemize}
+\item All people working or having worked at the LISA lab.
+\item All Theano/Pylearn 2 users/contributors
+\item Compute Canada, RQCHP, NSERC, and Canada Research Chairs for providing funds or access to compute resources.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\begin{center}
+\Huge
+Questions?
+\end{center}
+\end{frame}
+
+
+\end{document}
