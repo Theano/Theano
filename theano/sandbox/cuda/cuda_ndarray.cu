@@ -2731,13 +2731,13 @@ CudaNdarray_get_dev_data(CudaNdarray *self, void *closure)
 {
     float * p =  CudaNdarray_DEV_DATA(self);
     //printf("get_dev_data %p %li \n", p, (long int)p );
-    return PyInt_FromLong((long int) CudaNdarray_DEV_DATA(self));
+    return PyInt_FromSize_t((size_t) CudaNdarray_DEV_DATA(self));
 }
 
 static int
 CudaNdarray_set_dev_data(CudaNdarray *self, PyObject *value, void *closure)
 {
-    long int newdevdata = PyInt_AsLong(value);
+    Py_ssize_t newdevdata = PyInt_AsSsize_t(value);
     //printf("set_dev_data %p %li \n",(float*)newdevdata ,newdevdata);
     if (PyErr_Occurred())
     {
