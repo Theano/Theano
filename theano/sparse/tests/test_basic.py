@@ -2103,7 +2103,6 @@ class Test_getitem(unittest.TestCase):
 
         verify_grad_sparse(op_with_fixed_index, x_val)
 
-
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')
         for format in sparse_formats:
