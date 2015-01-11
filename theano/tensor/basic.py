@@ -4059,6 +4059,9 @@ class Tile(Op):
     <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
     """
     def __init__(self, ndim):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
         self.ndim = ndim
 
     def __eq__(self, other):
