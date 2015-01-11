@@ -369,7 +369,7 @@ class _tensor_py_operators:
         axis = None
         for i, arg in enumerate(args):
             try:
-                if arg != numpy.newaxis:
+                if arg is not numpy.newaxis:
                     theano.tensor.subtensor.Subtensor.convert(arg)
             except theano.tensor.subtensor.AdvancedIndexingError:
                 if advanced:
