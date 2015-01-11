@@ -210,7 +210,7 @@ If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 If you want the bleeding-edge without developing the code you can use pip for
 this with the command line below. Note that it will also try to install Theano's dependencies 
-(like numpy and scipy), but not upgrade them. If you wish to upgrade them,
+(like NumPy and SciPy), but not upgrade them. If you wish to upgrade them,
 remove the ``--no-deps`` switch to it, but go see a previous warning before doing this.
 
 .. code-block:: bash
@@ -365,7 +365,7 @@ There are many ways to configure BLAS for Theano. This is done with the Theano
 flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
 installation information in NumPy, accessible via
 ``numpy.distutils.__config__.show()``.  You can tell theano to use a different
-version of BLAS, in case you did not compile numpy with a fast BLAS or if numpy
+version of BLAS, in case you did not compile NumPy with a fast BLAS or if NumPy
 was compiled with a static library of BLAS (the latter is not supported in
 Theano).
 
@@ -412,7 +412,7 @@ that we use.
 3) Install the ATLAS library. ATLAS is an open source optimized version of
 BLAS. You can install a precompiled version on most OSes, but if you're willing
 to invest the time, you can compile it to have a faster version (we have seen
-speed-ups of up to 3x, especialy on more recent computers, against the
+speed-ups of up to 3×, especially on more recent computers, against the
 precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu,
 ``sudo apt-get install libatlas-base-dev libatlas-base`` or
 ``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the
@@ -544,7 +544,7 @@ If you are affiliated with a university (as student or employee), you can
 download the installer for free.
 
 EPD installation includes in particular Python (and the development headers),
-numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
 necessary for it to work) and the MKL implementation of blas. The Mac OS and
 Linux version do not include g++.
 
@@ -570,14 +570,14 @@ terminal excute this command:
     $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 See the section `install_bleeding_edge`_ for more
-information on the bleading edge version.
+information on the bleeding edge version.
 
 Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
 
 .. note::
 
    If you use the trunk or version 0.6 or later of Theano, we try to
-   automaticaly link with the EPD blas version.  Due to Mac OS
+   automatically link with the EPD blas version.  Due to Mac OS
    peculiarities, we need a user intervention to do it.  We detect
    if the user did the modification and if not, we tell him how to do
    it.
@@ -593,7 +593,7 @@ will also be optimized as we will reuse the faster BLAS version
 automatically.
 
 Anaconda installation includes in particular Python (and the development headers),
-numpy, scipy, nose, sphinx, pip, and a acceptable BLAS version. The Mac OS and
+NumPy, SciPy, nose, sphinx, pip, and a acceptable BLAS version. The Mac OS and
 Linux version do not include g++.
 
 After installing Anaconda, in a terminal execute this command to
@@ -611,21 +611,21 @@ To install the missing Theano optional dependency (pydot):
 
 If you want the bleeding edge version, `download
 and install git <http://git-scm.com/downloads>`_. Then in a
-terminal excute this command:
+terminal execute this command:
 
 .. code-block:: bash
 
     $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 See the section `install_bleeding_edge`_ for more
-information on the bleading edge version.
+information on the bleeding edge version.
 
 Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
 
 .. note::
 
    If you use the trunk or a version after 0.6rc3 of Theano, we try to
-   automaticaly link with the python library.  Due to Mac OS
+   automatically link with the python library.  Due to Mac OS
    peculiarities, we need a user intervention to do it.  We detect
    if the user did the modification and if not, we tell him how to do
    it.
@@ -789,7 +789,7 @@ try the following.
   command on ``.so`` files found under your ``~/.theano`` directory. This will
   list shared libraries dependencies, and may help identify incompatibilities.
 
-Please infom us if you have trouble installing and running Theano on your Mac.
+Please inform us if you have trouble installing and running Theano on your Mac.
 We would be especially interested in dependencies that we missed listing,
 alternate installation steps, GPU instructions, as well as tests that fail on
 your platform (use the ``theano-users@googlegroups.com`` mailing list, but
@@ -816,11 +816,11 @@ If you are affiliated with a university (as student or employee), you can
 download the installation for free.
 
 EPD installation includes in particular Python (and the development headers),
-numpy, scipy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
 necessary for it to work), g++, and the MKL
 implementation of blas.
 
-If you want to use the iPython shell, you should first try to import numpy
+If you want to use the iPython shell, you should first try to import NumPy
 in it::
 
     C:\Users\user>ipython
@@ -978,14 +978,14 @@ MinGW, but this has not been tested yet.
   After unpacking its source code (you may use `7-zip
   <http://www.7-zip.org/>`__), you can build and install it from within
   its code directory by running the following command (either from a Windows
-  command prompot or an MSYS shell):
+  command prompt or an MSYS shell):
 
     .. code-block:: bash
 
         python setup.py install
 
 At this point, whether you installed Python(x,y) or individual components, you
-should have MinGW, Python, Numpy, Scipy and Nose installed.
+should have MinGW, Python, Numpy, SciPy and Nose installed.
 
 
 Installing Theano
@@ -1069,7 +1069,7 @@ Command lines listed below are assumed to be run in a Windows prompt
 used within an MSYS Shell (not available if you only installed Python(x,y)).
 
 - The first option is to navigate to the
-  `Theano github page <http://github.com/Theano/Theano>`__ and click the ``ZIP``
+  `Theano GitHub page <http://github.com/Theano/Theano>`__ and click the ``ZIP``
   button in the top-left corner to download a zip file with the latest
   development version. Unzip this file where you want Theano to be
   installed, then rename the unzipped folder to ``Theano``.
@@ -1173,7 +1173,7 @@ Editing code in Visual Studio
 
 You will find a Visual Studio solution file (``Theano.sln``) in the root of
 the Theano repository. Note that this project file may not be kept up-to-date
-and is not officiallly supported by the core Theano developers: it is provided
+and is not officially supported by the core Theano developers: it is provided
 for convenience only.
 Also, be aware that it will not make Theano use Visual Studio to compile C
 files: it is only meant to provide an easy way to edit Theano code within
@@ -1189,7 +1189,7 @@ MKL library included in EPD, so you should not need to compile your own BLAS.
 
    The instructions below have not been tested in a Windows 64 bit environment.
 
-If you want a faster and/or multithreaded BLAS library, you can
+If you want a faster and/or multi-threaded BLAS library, you can
 compile OpenBLAS (ATLAS may work too, but was not tested, and is
 usually reported to be slower and more difficult to compile -- especially
 on Windows).
