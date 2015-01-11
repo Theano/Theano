@@ -4047,6 +4047,8 @@ def flatten(x, outdim=1):
 
 class Tile(Op):
     """
+    DEPRECATED: use tile() instead.
+    
     Construct an array by repeating the input x according to reps pattern.
 
     Tiles its input according to reps. The length of reps is the number of
@@ -4057,9 +4059,6 @@ class Tile(Op):
     <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
     """
     def __init__(self, ndim):
-        warnings.warn((
-            "Tile op is deprecated, use tile function instead."),
-                      stacklevel=3)
         self.ndim = ndim
 
     def __eq__(self, other):
@@ -4072,6 +4071,9 @@ class Tile(Op):
         return self.__class__.__name__ + "{ndim=%d}" % self.ndim
 
     def make_node(self, x, reps):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
         x = as_tensor_variable(x)
         reps = as_tensor_variable(reps)
         return gof.Apply(self, [x, reps], [tensor(x.type.dtype, [False] *
