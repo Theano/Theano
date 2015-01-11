@@ -1223,7 +1223,7 @@ class GetItem2d(gof.op.Op):
                 # If start or stop or step are None, make them a Generic 
                 # constant. Else, they should be converted to Tensor Variables
                 # of dimension 1 and int/uint dtype.
-                if ind.step is  None:
+                if ind.step is  None or ind.step == 1:
                     step = generic_None
                 else:
                     if not isinstance(step, gof.Variable):
