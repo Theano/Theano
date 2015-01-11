@@ -137,7 +137,7 @@ def get_canonical_form_slice(theslice, length):
         # in the generic case below.
         if step == 1:
             is_start_0 = (
-                start in [None, 0] or
+                start is None or start == 0 or
                 (is_start_constant and is_length_constant and
                  start < 0 and start + length <= 0))
             is_stop_length = (
