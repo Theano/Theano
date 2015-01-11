@@ -1232,7 +1232,7 @@ class GetItem2d(gof.op.Op):
                             tensor.discrete_dtypes):
                         raise ValueError((
                             "Impossible to index into a sparse matrix with "
-                            "slice where start=%s" % step),
+                            "slice where step=%s" % step),
                             step.ndim, step.dtype)                    
 
                 if start is None:
