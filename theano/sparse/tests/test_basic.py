@@ -2103,6 +2103,7 @@ class Test_getitem(unittest.TestCase):
 
         verify_grad_sparse(op_with_fixed_index, x_val)
 
+
     def test_GetItem2D(self):
         sparse_formats = ('csc', 'csr')
         for format in sparse_formats:
@@ -2111,21 +2112,25 @@ class Test_getitem(unittest.TestCase):
             b = theano.tensor.iscalar('b')
             c = theano.tensor.iscalar('c')
             d = theano.tensor.iscalar('d')
+            e = theano.tensor.iscalar('e')
+            f = theano.tensor.iscalar('f')
 
             # index
             m = 1
             n = 5
             p = 10
             q = 15
+            j = 2
+            k = 3
 
             vx = as_sparse_format(self.rng.binomial(1, 0.5, (100, 97)),
                                   format).astype(theano.config.floatX)
             #mode_no_debug = theano.compile.mode.get_default_mode()
             #if isinstance(mode_no_debug, theano.compile.DebugMode):
             #    mode_no_debug = 'FAST_RUN'
-            f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
-            r1 = f1(vx, m, n, p, q)
-            t1 = vx[m:n, p:q]
+            f1 = theano.function([x, a, b, c, d, e, f], x[a:b:e, c:d:f])
+            r1 = f1(vx, m, n, p, q, j, k)
+            t1 = vx[m:n:j, p:q:k]
             assert r1.shape == t1.shape
             assert numpy.all(t1.toarray() == r1.toarray())
 
@@ -2161,31 +2166,31 @@ class Test_getitem(unittest.TestCase):
             assert numpy.all(r7.toarray() == t7.toarray())
             """
 
-            f4 = theano.function([x, a, b], x[a:b])
-            r4 = f4(vx, m, n)
-            t4 = vx[m:n]
+            f4 = theano.function([x, a, b, e], x[a:b:e])
+            r4 = f4(vx, m, n, j)
+            t4 = vx[m:n:j]
             assert r4.shape == t4.shape
             assert numpy.all(t4.toarray() == r4.toarray())
             #-----------------------------------------------------------
             # test cases using int indexing instead of theano variable
 
-            f6 = theano.function([x], x[1:10, 10:20])
+            f6 = theano.function([x], x[1:10:1, 10:20:2])
             r6 = f6(vx)
-            t6 = vx[1:10, 10:20]
+            t6 = vx[1:10:1, 10:20:2]
             assert r6.shape == t6.shape
             assert numpy.all(r6.toarray() == t6.toarray())
 
             #----------------------------------------------------------
             # test cases with indexing both with theano variable and int
-            f8 = theano.function([x, a, b], x[a:b, 10:20])
-            r8 = f8(vx, m, n)
-            t8 = vx[m:n, 10:20]
+            f8 = theano.function([x, a, b, e], x[a:b:e, 10:20:1])
+            r8 = f8(vx, m, n, j)
+            t8 = vx[m:n:j, 10:20:1]
             assert r8.shape == t8.shape
             assert numpy.all(r8.toarray() == t8.toarray())
 
-            f9 = theano.function([x, a, b], x[1:a, 1:b])
+            f9 = theano.function([x, a, b], x[1:a:2, 1:b:2])
             r9 = f9(vx, p, q)
-            t9 = vx[1:p, 1:q]
+            t9 = vx[1:p:2, 1:q:2]
             assert r9.shape == t9.shape
             assert numpy.all(r9.toarray() == t9.toarray())
 
@@ -2219,12 +2224,12 @@ class Test_getitem(unittest.TestCase):
             self.assertRaises(NotImplementedError,
                               x.__getitem__, (slice(a, b), c))
 
-            # x[a:b:step, c:d] is not accepted because scipy silently drops
-            # the step (!)
-            self.assertRaises(ValueError,
-                              x.__getitem__, (slice(a, b, -1), slice(c, d)))
-            self.assertRaises(ValueError,
-                              x.__getitem__, (slice(a, b), slice(c, d, 2)))
+            # # x[a:b:step, c:d] is not accepted because scipy silently drops
+            # # the step (!)
+            # self.assertRaises(ValueError,
+            #                   x.__getitem__, (slice(a, b, -1), slice(c, d)))
+            # self.assertRaises(ValueError,
+            #                   x.__getitem__, (slice(a, b), slice(c, d, 2)))
 
             # Advanced indexing is not supported
             self.assertRaises(ValueError,
