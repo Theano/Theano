@@ -49,6 +49,35 @@ These instructions were written for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04,
 Installation steps
 ~~~~~~~~~~~~~~~~~~
 
+Ubuntu 14.04:
+
+The following will set up Theano from source packages in a Virtual Environment
+on an Ubuntu 14.04 machine.
+
+.. code-block: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip \
+    python-nose g++ libopenblas-dev git libblas-dev liblapack-dev fortran-compiler
+    # Configure openblas as our BLAS of record...
+    update-alternatives --list libblas.so.3 | grep openblas
+    sudo update-alternatives --set libblas.so.3 $(update-alternatives --list libblas.so.3 | grep openblas)
+    virtualenv -p python2.7 theano-env
+    source theano-env/bin/activate
+    # Theano setup.py won't pull in Numpy, so 
+    # scipy dependency installation will fail
+    pip install numpy
+    
+    # Bleeding edge installation (Theano from git):
+    git clone git://github.com/Theano/Theano.git
+    cd Theano 
+    python setup.py develop 
+    cd ..
+    
+    # Installation of current release:
+    pip install Theano
+    
+    python -c "import theano; theano.test()"
+
 Ubuntu 11.10/12.04/12.10/13.04/13.10:
  1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git``
  2) ``sudo pip install Theano``
