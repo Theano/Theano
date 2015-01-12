@@ -51,8 +51,13 @@ Installation steps
 
 Ubuntu 14.04:
 
-The following will set up Theano from source packages in a Virtual Environment
-on an Ubuntu 14.04 machine.
+The following will set up Theano from source packages in a `Virtual Environment`_
+on an Ubuntu 14.04 machine. Setting up Theano in a Virtual Environment allows 
+you to have different working environments for different projects. If you would
+prefer not to use a Virtual Environment, you will need to use `--user` flags 
+to `pip` to install into user-writable directories.
+
+.. _`Virtual Environment`: https://virtualenv.pypa.io/en/latest/
 
 .. code-block: bash
 
@@ -61,22 +66,28 @@ on an Ubuntu 14.04 machine.
     # Configure openblas as our BLAS of record...
     update-alternatives --list libblas.so.3 | grep openblas
     sudo update-alternatives --set libblas.so.3 $(update-alternatives --list libblas.so.3 | grep openblas)
+    
+    # Setup and then activate the working virtualenv
     virtualenv -p python2.7 theano-env
     source theano-env/bin/activate
+    
     # Theano setup.py won't pull in Numpy, so 
     # scipy dependency installation will fail
     pip install numpy
-    
+    # Installation of current release:
+    pip install Theano
+    python -c "import theano; theano.test()"
+
+If you would like, instead, to install the bleeding edge Theano (from github), replace
+the `pip install Theano` command with:
+
+.. code-block: bash
+
     # Bleeding edge installation (Theano from git):
     git clone git://github.com/Theano/Theano.git
     cd Theano 
     python setup.py develop 
     cd ..
-    
-    # Installation of current release:
-    pip install Theano
-    
-    python -c "import theano; theano.test()"
 
 Ubuntu 11.10/12.04/12.10/13.04/13.10:
  1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git``
