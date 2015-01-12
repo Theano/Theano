@@ -37,6 +37,8 @@ period for running processes.""",
                       allow_override=False),
              in_c_key=False)
 
+hostname = socket.gethostname()
+
 
 def force_unlock():
     """
@@ -212,7 +214,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                         other_host = read_owner.split('_')[2]
                     except IndexError:
                         other_host = ()  # make sure it isn't equal to any host
-                    if other_host == socket.gethostname():
+                    if other_host == hostname:
                         try:
                             os.kill(int(read_owner.split('_')[0]), 0)
                         except OSError:
@@ -305,7 +307,7 @@ def refresh_lock(lock_file):
     unique_id = '%s_%s_%s' % (
         os.getpid(),
         ''.join([str(random.randint(0, 9)) for i in range(10)]),
-        socket.gethostname())
+        hostname)
     lock_write = open(lock_file, 'w')
     lock_write.write(unique_id + '\n')
     lock_write.close()
