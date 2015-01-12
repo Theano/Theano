@@ -217,10 +217,9 @@ class Scan(PureOp):
             if rval.ndim == as_var.ndim:
                 rval = as_var.type.filter_variable(rval)
             else:
-                tmp = as_var.type.__class__(
-                    broadcastable=tuple(var.broadcastable[:1])+\
-                                  tuple(as_var.broadcastable),
-                    dtype=as_var.dtype)
+                tmp = as_var.type.clone(
+                    broadcastable=(tuple(var.broadcastable[:1]) +
+                                   tuple(as_var.broadcastable)))
                 rval = tmp.filter_variable(rval)
             return rval
 
@@ -493,11 +492,11 @@ class Scan(PureOp):
         return aux_txt
 
     def __hash__(self):
-        return (hash(type(self)) ^
-                # and a hash representing the inner graph using the
-                # CLinker.cmodule_key_
-                self._hash_inner_graph ^
-                scan_utils.hash_listsDictsTuples(self.info))
+        return hash((type(self),
+                     # and a hash representing the inner graph using the
+                     # CLinker.cmodule_key_
+                     self._hash_inner_graph,
+                     scan_utils.hash_listsDictsTuples(self.info)))
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
