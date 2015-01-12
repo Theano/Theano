@@ -10,6 +10,8 @@ __docformat__ = "restructuredtext en"
 
 
 from copy import copy
+from itertools import count
+
 
 import theano
 import warnings
@@ -31,6 +33,11 @@ class Node(utils.object2):
     Variable.owner / Apply.inputs and its children
     via Variable.clients / Apply.outputs.
     """
+
+    _count = count(0)
+
+    def __init__(self):
+        self.auto_name = 'auto_' + str(self._count.next())
 
     def get_parents(self):
         """ Return a list of the parents of this node.
@@ -86,6 +93,8 @@ class Apply(Node):
             exception will be raised.
 
         """
+        super(Apply, self).__init__()
+
         self.op = op
         self.inputs = []
         self.tag = utils.scratchpad()
@@ -334,6 +343,8 @@ class Variable(Node):
         :param name: a string for pretty-printing and debugging
 
         """
+        super(Variable, self).__init__()
+
         self.tag = utils.scratchpad()
         self.type = type
         if owner is not None and not isinstance(owner, Apply):

@@ -3,10 +3,12 @@ import unittest
 
 from theano import tensor
 from theano.gof.graph import (
-        Apply, as_string, clone, general_toposort, inputs, io_toposort,
+        Node, Apply, as_string, clone, general_toposort, inputs, io_toposort,
         is_same_graph, Variable)
 from theano.gof.op import Op
 from theano.gof.type import Type
+from itertools import count
+
 
 
 def as_variable(x):
@@ -47,7 +49,6 @@ class MyOp(Op):
         return self.__class__.__name__
 
 MyOp = MyOp()
-
 
 ##########
 # inputs #
@@ -311,3 +312,19 @@ class TestEval(unittest.TestCase):
                 "variable must have cache after eval")
         self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),
                 "temporary functions must not be serialized")
+
+
+################
+# autoname     #
+################
+class TestAutoName:
+
+    def test_auto_name(self):
+        ## Re-init counter
+        Node._count = count(0)
+        r1, r2 = MyVariable(1), MyVariable(2)
+        node = MyOp.make_node(r1, r2)
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+        assert node.auto_name == "auto_3"
+
