@@ -24,6 +24,7 @@ AddConfigVar('compile.wait',
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
 
+
 def _timeout_default():
     return config.compile.wait * 24
 
@@ -131,6 +132,7 @@ def set_lock_status(use_lock):
 # This is because None is a valid input for timeout
 notset = object()
 
+
 def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
     """
     Obtain lock access by creating a given temporary directory (whose base will
@@ -220,7 +222,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                         except OSError:
                             other_dead = True
                         except AttributeError:
-                            pass #os.kill does not exist on windows
+                            pass  # os.kill does not exist on windows
                 except Exception:
                     read_owner = 'failure'
                 if other_dead:
