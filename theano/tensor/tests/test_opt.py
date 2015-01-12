@@ -3062,6 +3062,21 @@ class Test_local_useless_alloc(unittest.TestCase):
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         assert tensor.Alloc not in op_classes
 
+    def test2(self):
+        # Test that alloc never gets instantiated during optimization
+        mode = mode_opt.excluding('local_useless_alloc')
+
+        x = tensor.matrix('x')
+        y = tensor.tile(x, (1,)*2)
+
+        # The optimization 'locall_fill_to_alloc' should call tensor.alloc,
+        # which should return x and not alloc(x, ...)
+        f = function([x], [y], mode=mode)
+        op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
+        print op_classes
+        
+        assert tensor.Alloc not in op_classes
+
 
 class test_shapeoptimizer(unittest.TestCase):
     def setUp(self):
