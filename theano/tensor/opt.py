@@ -1935,11 +1935,11 @@ def local_useless_subtensor(node):
                 # If idx is not a slice, this means we remove this dimension
                 # from the output, so the subtensor is not useless
                 return False
-            if idx.start not in [0, None]:
+            if idx.start is not None and idx.start != 0:
                 # If the start of the slice is different from 0, or is a
                 # variable, then we assume the subtensor is not useless
                 return False
-            if idx.step not in [1, None]:
+            if idx.step is not None and idx.step != 1:
                 # If we are going backwards, or skipping elements, then this
                 # is not a useless subtensor
                 return False
@@ -2543,9 +2543,9 @@ def local_setsubtensor_of_constants(node):
         except NotScalarConstantError:
             pass
 
-        if (replace_x == replace_y and
-            replace_x is not None and
-            replace_y is not None):
+        if (replace_x is not None and
+            replace_y is not None and
+            replace_x == replace_y):
             return [x]
         else:
             return False
