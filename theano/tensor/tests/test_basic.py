@@ -6879,12 +6879,13 @@ class TestInferShape(utt.InferShapeTester):
         #                        [Reshape(ndim)(adtens4, aivec)],
         #                        [adtens4_val, [1, 3, 10, 4]], Reshape)
 
+        # Tile op is deprecated and tile function no more uses it
+        # we'll test the op directly
         advec = dvector()
         advec_val = rand(5)
         aivec_val = [3]
         ndim = 1
         self._compile_and_check([advec],
-                                #[tile(advec, aivec_val, ndim)],
                                 [Tile(ndim)(advec, aivec_val)],
                                 [advec_val], Tile)
 
@@ -6893,7 +6894,6 @@ class TestInferShape(utt.InferShapeTester):
         aivec_val = [2, 3]
         ndim = 2
         self._compile_and_check([admat],
-                                #[tile(admat, aivec_val)],
                                 [Tile(ndim)(admat, aivec_val)],
                                 [admat_val], Tile)
 
@@ -6902,7 +6902,6 @@ class TestInferShape(utt.InferShapeTester):
         aivec_val = [2, 3, 1, 4]
         ndim = 4
         self._compile_and_check([adtens4],
-                                #[tile(adtens4, aivec_val, ndim)],
                                 [Tile(ndim)(adtens4, aivec_val)],
                                 [adtens4_val], Tile)
 
