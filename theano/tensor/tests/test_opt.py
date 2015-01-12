@@ -1724,7 +1724,7 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog) == 1
         assert isinstance(prog[0].op, theano.compile.ops.DeepCopyOp)
         assert f(0, 1, 2) == 0
-    
+
     def test_slice_idx_stop(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -1736,7 +1736,7 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog[0].inputs) == 2
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 1
-    
+
     def test_slice_idx_step(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -1748,7 +1748,7 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog[0].inputs) == 2
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 2
-    
+
     def test_AdvancedSubtensor1_idx(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -3425,7 +3425,7 @@ class T_Tile(unittest.TestCase):
         # replace it with a DimShuffle to add the extra parameter.
         # But it isn't supported for now, so assert that we raise an
         # error.
-        
+
         self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
         # If the repeat parameter is shorter then m.ndim, it should
         # pad tot he left the repeat patter with 1. It is not supported for now.
@@ -3433,7 +3433,7 @@ class T_Tile(unittest.TestCase):
         #topo = f.maker.fgraph.toposort()
         #assert len(topo) == 1
         #assert isinstance(topo[0].op, DimShuffe)
-        
+
         self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
         #f = theano.function([var], T.tile(m, (1,)*(m.ndim-1)))
         #topo = f.maker.fgraph.toposort()
