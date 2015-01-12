@@ -412,7 +412,7 @@ that we use.
 3) Install the ATLAS library. ATLAS is an open source optimized version of
 BLAS. You can install a precompiled version on most OSes, but if you're willing
 to invest the time, you can compile it to have a faster version (we have seen
-speed-ups of up to 3×, especially on more recent computers, against the
+speed-ups of up to 3x, especially on more recent computers, against the
 precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu,
 ``sudo apt-get install libatlas-base-dev libatlas-base`` or
 ``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the
