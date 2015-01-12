@@ -218,6 +218,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                         other_host = ()  # make sure it isn't equal to any host
                     if other_host == hostname:
                         try:
+                            # Just check if the other process still exist.
                             os.kill(int(read_owner.split('_')[0]), 0)
                         except OSError:
                             other_dead = True
