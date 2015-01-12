@@ -475,11 +475,15 @@ class GpuDnnConvGradW(DnnBase, COp):
         if desc.border_mode == 'full':
             out3 = 2 - h + (kh - 1) * sh
             out4 = 2 - w + (kw - 1) * sw
-        else:
-            # border_mode is 'valid'
-            assert(desc.border_mode == 'valid')
+        elif desc.border_mode == 'valid':
             out3 = h - (kh - 1) * sh
             out4 = w - (kw - 1) * sw
+        else:
+            assert isinstance(desc.border_mode, tuple)
+            assert len(desc.border_mode) == 2
+            assert isinstance(desc.border_mode[0], int)
+            assert isinstance(desc.border_mode[1], int)
+            raise ShapeError('Not implemented')
 
         return [(
             shape[1][1],
@@ -561,8 +565,14 @@ class GpuDnnConvGradI(DnnBase, COp):
             padw = shape[0][3] - 1
         elif isinstance(desc.border_mode, tuple):
             padh, padw = desc.border_mode
+        elif desc.border_mode == 'valid':
+            pass
         else:
-            assert desc.border_mode == 'valid'
+            assert isinstance(desc.border_mode, tuple)
+            assert len(desc.border_mode) == 2
+            assert isinstance(desc.border_mode[0], int)
+            assert isinstance(desc.border_mode[1], int)
+            raise ShapeError('Not implemented')
 
         out2 = (shape[1][2] - 1) * sh + shape[0][2] - 2*padh
         out3 = (shape[1][3] - 1) * sw + shape[0][3] - 2*padw
