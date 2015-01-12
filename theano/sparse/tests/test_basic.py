@@ -2103,6 +2103,177 @@ class Test_getitem(unittest.TestCase):
 
         verify_grad_sparse(op_with_fixed_index, x_val)
 
+import time
+import unittest
+
+from nose.plugins.skip import SkipTest
+import numpy
+try:
+    import scipy.sparse as sp
+    import scipy.sparse
+    from scipy.sparse import csr_matrix
+except ImportError:
+    pass  # The variable enable_sparse will be used to disable the test file.
+
+import theano
+from theano import tensor
+from theano import sparse
+from theano import compile, config, gof
+from theano.sparse import enable_sparse
+from theano.gof.python25 import all, any, product
+from theano.gof.python25 import product as itertools_product
+from theano.tensor.basic import _allclose
+
+if not enable_sparse:
+    raise SkipTest('Optional package SciPy not installed')
+
+from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
+from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
+from theano.sparse import (
+    verify_grad_sparse, as_sparse_variable,
+    CSC, CSM, CSMProperties, csm_properties,
+    SparseType, CSMGrad,
+    StructuredDot,
+    StructuredDotGradCSC, StructuredDotGradCSR,
+    AddSS, AddSD, MulSS, MulSD, Transpose, Neg, Remove0,
+    add, mul, structured_dot, transpose,
+    csc_from_dense, csr_from_dense, dense_from_sparse,
+    Dot, Usmm, sp_ones_like, GetItemScalar, GetItemList, GetItem2Lists,
+    SparseFromDense,
+    Cast, cast, HStack, VStack, AddSSData, add_s_s_data,
+    structured_minimum, structured_maximum, structured_add,
+    mul_s_v, structured_add_s_v,
+    SamplingDot, sampling_dot,
+    Diag, diag, SquareDiagonal, square_diagonal,
+    EnsureSortedIndices, ensure_sorted_indices, clean,
+    ConstructSparseFromList, construct_sparse_from_list,
+    TrueDot, true_dot, eq, neq, le, ge, gt, lt)
+
+# Probability distributions are currently tested in test_sp2.py
+#from theano.sparse import (
+#    Poisson, poisson, Binomial, Multinomial, multinomial)
+
+from theano.sparse.opt import (StructuredDotCSC, UsmmCscDense, CSMGradC)
+
+from theano.tests import unittest_tools as utt
+
+
+def as_sparse_format(data, format):
+    if format == 'csc':
+        return scipy.sparse.csc_matrix(data)
+    elif format == 'csr':
+        return scipy.sparse.csr_matrix(data)
+    else:
+        raise NotImplementedError()
+
+
+def eval_outputs(outputs):
+    return compile.function([], outputs)()[0]
+
+
+def random_lil(shape, dtype, nnz):
+    rval = sp.lil_matrix(shape, dtype=dtype)
+    huge = 2 ** 30
+    for k in range(nnz):
+        # set non-zeros in random locations (row x, col y)
+        idx = numpy.random.random_integers(huge, size=2) % shape
+        value = numpy.random.rand()
+        #if dtype *int*, value will always be zeros!
+        if "int" in dtype:
+            value = int(value * 100)
+        # The call to tuple is needed as scipy 0.13.1 do not support
+        # ndarray with lenght 2 as idx tuple.
+        rval.__setitem__(
+            tuple(idx),
+            value)
+    return rval
+
+
+def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
+                         explicit_zero=False, unsorted_indices=False):
+    """Return a tuple containing everything needed to
+    perform a test.
+
+    If `out_dtype` is `None`, theano.config.floatX is
+    used.
+
+    :param format: Sparse format.
+    :param shape: Shape of data.
+    :param n: Number of variable.
+    :param out_dtype: dtype of output.
+    :param p: Sparsity proportion.
+    :param gap: Tuple for the range of the random sample. When
+                length is 1, it is assumed to be the exclusive
+                max, when `gap` = (`a`, `b`) it provide a sample
+                from [a, b[. If `None` is used, it provide [0, 1]
+                for float dtypes and [0, 50[ for integer dtypes.
+    :param explicit_zero: When True, we add explicit zero in the
+                          returned sparse matrix
+    :param unsorted_indices: when True, we make sure there is
+                             unsorted indices in the returned
+                             sparse matrix.
+    :return: (variable, data) where both `variable`
+             and `data` are list.
+
+    :note: explicit_zero and unsorted_indices was added in Theano 0.6rc4
+    """
+
+    if out_dtype is None:
+        out_dtype = theano.config.floatX
+
+    assert 0 <= p and p <= 1
+    assert len(shape) == 2
+    assert out_dtype in sparse.all_dtypes
+    assert gap is None or isinstance(gap, (tuple, list))
+    if gap is not None and out_dtype.startswith('u'):
+        assert gap[0] >= 0
+
+    def _rand():
+        where = numpy.random.binomial(1, p, size=shape).astype('int8')
+
+        if out_dtype in sparse.discrete_dtypes:
+            if not gap:
+                value = numpy.random.randint(50, size=shape)
+            elif len(gap) == 2:
+                value = numpy.random.randint(gap[0], gap[1], size=shape)
+            else:
+                value = numpy.random.randint(gap[0], size=shape)
+        else:
+            if not gap:
+                value = numpy.random.random(shape)
+            elif len(gap) == 2:
+                a, b = gap
+                value = a + numpy.random.random(shape) * (b - a)
+            else:
+                value = numpy.random.random(shape) * gap[0]
+        return (where * value).astype(out_dtype)
+
+    variable = [getattr(theano.sparse, format + '_matrix')(dtype=out_dtype)
+                for k in range(n)]
+    data = [getattr(scipy.sparse, format + '_matrix')(_rand(), dtype=out_dtype)
+            for k in range(n)]
+    if unsorted_indices:
+        for idx in range(n):
+            d = data[idx]
+            d = d[range(d.shape[0])]
+            assert not d.has_sorted_indices
+            data[idx] = d
+    if explicit_zero:
+        for idx in range(n):
+            assert data[idx].nnz > 1, (
+                "can't make a sparse matrix with explicit 0")
+            d_idx = numpy.random.randint(data[idx].nnz)
+            data[idx].data[d_idx] = 0
+
+    #numpy 1.5.0 with scipy 0.9.0 have scipy.sparse.XXX_matrix return
+    #typenum 10(ulonglong) instead of 8(uint64) event if they are the same!
+    #Theano don't like ulonglong type_num
+    dtype = numpy.dtype(out_dtype)  # Convert into dtype object.
+    if data[0].dtype.num != dtype.num and dtype.str == data[0].dtype.str:
+        data[0].data = theano._asarray(data[0].data, out_dtype)
+    assert data[0].dtype.num == dtype.num
+    return (variable, data)
+
     def test_GetItem2D(self):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
         assert scipy_ver >= [0, 11]
@@ -2136,11 +2307,15 @@ class Test_getitem(unittest.TestCase):
             #mode_no_debug = theano.compile.mode.get_default_mode()
             #if isinstance(mode_no_debug, theano.compile.DebugMode):
             #    mode_no_debug = 'FAST_RUN'
-            f1 = theano.function([x, a, b, c, d, e, f], x[a:b:e, c:d:f])
-            r1 = f1(vx, m, n, p, q, j, k)
-            t1 = vx[m:n:j, p:q:k]
-            assert r1.shape == t1.shape
-            assert numpy.all(t1.toarray() == r1.toarray())
+            if is_supported_version:
+                f1 = theano.function([x, a, b, c, d, e, f], x[a:b:e, c:d:f])
+                r1 = f1(vx, m, n, p, q, j, k)
+            else:
+                f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
+                r1 = f1(vx, m, n, p, q)
+                t1 = vx[m:n, p:q]
+                assert r1.shape == t1.shape
+                assert numpy.all(t1.toarray() == r1.toarray())
 
             """
             Important: based on a discussion with both Fred and James
@@ -2173,12 +2348,18 @@ class Test_getitem(unittest.TestCase):
             assert r7.shape == t7.shape
             assert numpy.all(r7.toarray() == t7.toarray())
             """
-
-            f4 = theano.function([x, a, b, e], x[a:b:e])
-            r4 = f4(vx, m, n, j)
-            t4 = vx[m:n:j]
-            assert r4.shape == t4.shape
-            assert numpy.all(t4.toarray() == r4.toarray())
+            if is_supported_version:
+                f4 = theano.function([x, a, b, e], x[a:b:e])
+                r4 = f4(vx, m, n, j)
+                t4 = vx[m:n:j]
+                assert r4.shape == t4.shape
+                assert numpy.all(t4.toarray() == r4.toarray())
+            else:
+                f4 = theano.function([x, a, b], x[a:b])
+                r4 = f4(vx, m, n)
+                t4 = vx[m:n]
+                assert r4.shape == t4.shape
+                assert numpy.all(t4.toarray() == r4.toarray())
 
             #-----------------------------------------------------------
             # test cases using int indexing instead of theano variable
@@ -2190,9 +2371,14 @@ class Test_getitem(unittest.TestCase):
 
             #----------------------------------------------------------
             # test cases with indexing both with theano variable and int
-            f8 = theano.function([x, a, b, e], x[a:b:e, 10:20:1])
-            r8 = f8(vx, m, n, j)
-            t8 = vx[m:n:j, 10:20:1]
+            if is_supported_version:
+                f8 = theano.function([x, a, b, e], x[a:b:e, 10:20:1])
+                r8 = f8(vx, m, n, j)
+                t8 = vx[m:n:j, 10:20:1]
+            else:
+                f8 = theano.function([x, a, b], x[a:b, 10:20])
+                r8 = f8(vx, m, n)
+                t8 = vx[m:n, 10:20]
             assert r8.shape == t8.shape
             assert numpy.all(r8.toarray() == t8.toarray())
 

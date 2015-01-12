@@ -1205,8 +1205,8 @@ class GetItem2d(gof.op.Op):
 # the Subtensor.infer_shape.
 #    def infer_shape(self, node, i0_shapes):
 #        return i0_shapes
-
     def make_node(self, x, index):
+        scipy_ver = [ int(n) for n in scipy.__version__.split('.')[:2]]
         x = as_sparse_variable(x)
         assert x.format in ["csr", "csc"]
         assert len(index) in [1, 2]
@@ -1223,6 +1223,10 @@ class GetItem2d(gof.op.Op):
                 # If start or stop or step are None, make them a Generic 
                 # constant. Else, they should be converted to Tensor Variables
                 # of dimension 1 and int/uint dtype.
+                if scipy_ver < [0, 14] and ind.step != None:
+                    raise ValueError(
+                        'Slice with step is not support with current'
+                        ' version of Scipy.')
                 if ind.step is  None or ind.step == 1:
                     step = generic_None
                 else:
