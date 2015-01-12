@@ -51,6 +51,7 @@ from theano.tensor import (
         join,
         Subtensor,
         TensorType,
+        Tile,
         )
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
@@ -3401,40 +3402,43 @@ def test_local_mul_specialize():
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert nodes == [T.mul]
 
-# Tile op is deprecated
 
-# class T_Tile(unittest.TestCase):
-#     def test_local_useless_tile(self):
-#         v = T.vector()
-#         m = T.matrix()
-#         mode = None
-#         if theano.config.mode == "FAST_COMPILE":
-#             mode = "FAST_RUN"
-#         for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
-#             # Currently, only a repeat patter == ndim is supported.
-#             for ndim in [var.ndim]:  # range(1, var.ndim):
-#                 f = theano.function([var], T.tile(var, (1,)*ndim), mode=mode)
-#                 topo = f.maker.fgraph.toposort()
-#                 assert len(topo) == 1
-#                 assert isinstance(topo[0].op, compile.DeepCopyOp)
-#                 f(data)
+class T_Tile(unittest.TestCase):
+    def test_local_useless_tile(self):
+        # Tile op is deprecated and tile function no more uses it
+        # we'll test the op directly
+        v = T.vector()
+        m = T.matrix()
+        mode = None
+        if theano.config.mode == "FAST_COMPILE":
+            mode = "FAST_RUN"
+        for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
+            # Currently, only a repeat patter == ndim is supported.
+            for ndim in [var.ndim]:  # range(1, var.ndim):
+                f = theano.function([var], Tile(ndim)(var, (1,)*ndim), mode=mode)
+                topo = f.maker.fgraph.toposort()
+                assert len(topo) == 1
+                assert isinstance(topo[0].op, compile.DeepCopyOp)
+                f(data)
 
-#         # If the repeat parameter is longer then v.ndim, we must
-#         # replace it with a DimShuffle to add the extra parameter.
-#         # But it isn't supported for now, so assert that we raise an
-#         # error.
-#         self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
-#         # If the repeat parameter is shorter then m.ndim, it should
-#         # pad tot he left the repeat patter with 1. It is not supported for now.
-#         #f = theano.function([var], T.tile(v, (1,)*(v.ndim+1)))
-#         #topo = f.maker.fgraph.toposort()
-#         #assert len(topo) == 1
-#         #assert isinstance(topo[0].op, DimShuffe)
-#         self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
-#         #f = theano.function([var], T.tile(m, (1,)*(m.ndim-1)))
-#         #topo = f.maker.fgraph.toposort()
-#         #assert len(topo) == 1
-#         #assert isinstance(topo[0].op, compile.DeepCopyOp)
+        # If the repeat parameter is longer then v.ndim, we must
+        # replace it with a DimShuffle to add the extra parameter.
+        # But it isn't supported for now, so assert that we raise an
+        # error.
+        
+        self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
+        # If the repeat parameter is shorter then m.ndim, it should
+        # pad tot he left the repeat patter with 1. It is not supported for now.
+        #f = theano.function([var], T.tile(v, (1,)*(v.ndim+1)))
+        #topo = f.maker.fgraph.toposort()
+        #assert len(topo) == 1
+        #assert isinstance(topo[0].op, DimShuffe)
+        
+        self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
+        #f = theano.function([var], T.tile(m, (1,)*(m.ndim-1)))
+        #topo = f.maker.fgraph.toposort()
+        #assert len(topo) == 1
+        #assert isinstance(topo[0].op, compile.DeepCopyOp)
 
 
 def speed_local_pow_specialize_range():
