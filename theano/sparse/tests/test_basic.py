@@ -2139,12 +2139,13 @@ class Test_getitem(unittest.TestCase):
             if is_supported_version:
                 f1 = theano.function([x, a, b, c, d, e, f], x[a:b:e, c:d:f])
                 r1 = f1(vx, m, n, p, q, j, k)
+                t1 = vx[m:n:j, p:q:k]
             else:
                 f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
                 r1 = f1(vx, m, n, p, q)
                 t1 = vx[m:n, p:q]
-                assert r1.shape == t1.shape
-                assert numpy.all(t1.toarray() == r1.toarray())
+            assert r1.shape == t1.shape
+            assert numpy.all(t1.toarray() == r1.toarray())
 
             """
             Important: based on a discussion with both Fred and James
@@ -2181,14 +2182,12 @@ class Test_getitem(unittest.TestCase):
                 f4 = theano.function([x, a, b, e], x[a:b:e])
                 r4 = f4(vx, m, n, j)
                 t4 = vx[m:n:j]
-                assert r4.shape == t4.shape
-                assert numpy.all(t4.toarray() == r4.toarray())
             else:
                 f4 = theano.function([x, a, b], x[a:b])
                 r4 = f4(vx, m, n)
                 t4 = vx[m:n]
-                assert r4.shape == t4.shape
-                assert numpy.all(t4.toarray() == r4.toarray())
+            assert r4.shape == t4.shape
+            assert numpy.all(t4.toarray() == r4.toarray())
 
             #-----------------------------------------------------------
             # test cases using int indexing instead of theano variable
