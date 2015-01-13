@@ -462,37 +462,11 @@ class GpuDnnConvGradW(DnnBase, COp):
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
-        h = shape[0][2]  # Height of input feature maps
-        w = shape[0][3]  # Width of input feature maps
-        kh = shape[1][2]  # Height of each filter
-        kw = shape[1][3]  # Width of each filter
-        out3 = kh
-        out4 = kw
-
-        desc = node.inputs[2].owner.op
-        sh, sw = desc.subsample
-
-        # We don't have the information necessary, namely the weight size so
-        # we cannot infer the shape
-        if sh != 1 or sw != 1:
-            raise ShapeError(
-                'Unable to infer shape for stride (%d, %d)' % (sh, sw)
-            )
-
-        if desc.border_mode == 'full':
-            out3 = 2 - h + (kh - 1) * sh
-            out4 = 2 - w + (kw - 1) * sw
-        else:
-            # border_mode is 'valid'
-            assert(desc.border_mode == 'valid')
-            out3 = h - (kh - 1) * sh
-            out4 = w - (kw - 1) * sw
-
         return [(
             shape[1][1],
             shape[0][1],
-            out3,
-            out4
+            node.inputs[3],
+            node.inputs[4]
         )]
 
 
@@ -550,35 +524,11 @@ class GpuDnnConvGradI(DnnBase, COp):
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
-        padh = 0
-        padw = 0
-
-        desc = node.inputs[2].owner.op
-        sh, sw = desc.subsample
-
-        # We don't have the information necessary, namely the image size so
-        # we cannot infer the shape
-        if sh != 1 or sw != 1:
-            raise ShapeError(
-                'Unable to infer shape for stride (%d, %d)' % (sh, sw)
-            )
-
-        if desc.border_mode == 'full':
-            padh = shape[0][2] - 1
-            padw = shape[0][3] - 1
-        elif isinstance(desc.border_mode, tuple):
-            padh, padw = desc.border_mode
-        else:
-            assert desc.border_mode == 'valid'
-
-        out2 = (shape[1][2] - 1) * sh + shape[0][2] - 2*padh
-        out3 = (shape[1][3] - 1) * sw + shape[0][3] - 2*padw
-
         return [(
             shape[1][0],
             shape[0][1],
-            out2,
-            out3
+            node.inputs[3],
+            node.inputs[4]
         )]
 
 
