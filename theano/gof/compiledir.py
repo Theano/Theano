@@ -64,8 +64,87 @@ compiledir_format_dict = {
         "gxx_version": gcc_version_str.replace(" ", "_"),
         "hostname": socket.gethostname(),
         }
+
+
+def short_platform(r=None, p=None):
+    """Return a safe shorter version of platform.platform().
+
+    The old default Theano compiledir used platform.platform in
+    it. This use the platform.version() as a substring. This is too
+    specific as it contain the full kernel number and package
+    version. This cause the compiledir to change each time there is a
+    new linux kernel update. This function remove the part of platform
+    that are too precise.
+
+    If we have something else then expected, we do nothing. So this
+    should be safe on other OS.
+
+    Some example if we use platform.platform() direction. On the same
+    OS, with just some kernel updates.
+
+    compiledir_Linux-2.6.32-504.el6.x86_64-x86_64-with-redhat-6.6-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.29.2.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.23.3.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.20.3.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.17.1.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.11.2.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.23.2.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.6.2.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.6.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.2.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.14.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.14.1.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.5.2.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.13.1.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.13.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.7.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.4.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+
+    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We
+    keep ``X.Y`` and don't keep less important digit in the part
+    before ``-`` and we remove the leading digit after the first
+    ``-``.
+
+    If the information don't fit that pattern, we do not modify
+    platform.
+
+    """
+    if r is None:
+        r = platform.release()
+    if p is None:
+        p = platform.platform()
+    sp = r.split('-')
+    if len(sp) < 2:
+        return p
+
+    # For the split before the first -, we remove all learning digit:
+    kernel_version = sp[0].split('.')
+    if len(kernel_version) <= 2:
+        # kernel version should always have at least 3 number.
+        # If not, it use another semantic, so don't change it.
+        return p
+    sp[0] = '.'.join(kernel_version[:2])
+
+    # For the split after the first -, we remove leading non-digit value.
+    rest = sp[1].split('.')
+    while len(rest):
+        if rest[0].isdigit():
+            del rest[0]
+        else:
+            break
+    sp[1] = '.'.join(rest)
+
+    # For sp[2:], we don't change anything.
+    sr = '-'.join(sp)
+    p = p.replace(r, sr)
+
+    return p
+compiledir_format_dict['short_platform'] = short_platform()
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
-default_compiledir_format = ("compiledir_%(platform)s-%(processor)s-"
+default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
                              "%(python_version)s-%(python_bitwidth)s")
 
 AddConfigVar("compiledir_format",
