@@ -2104,6 +2104,10 @@ class Test_getitem(unittest.TestCase):
         verify_grad_sparse(op_with_fixed_index, x_val)
 
     def test_GetItem2D(self):
+        scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
+        assert scipy_ver >= [0, 11]
+        is_supported_version = bool(scipy_ver >= [0, 14])
+
         sparse_formats = ('csc', 'csr')
         for format in sparse_formats:
             x = theano.sparse.matrix(format, name='x')
@@ -2111,21 +2115,35 @@ class Test_getitem(unittest.TestCase):
             b = theano.tensor.iscalar('b')
             c = theano.tensor.iscalar('c')
             d = theano.tensor.iscalar('d')
+            e = theano.tensor.iscalar('e')
+            f = theano.tensor.iscalar('f')
 
             # index
             m = 1
             n = 5
             p = 10
             q = 15
+            if is_supported_version:
+                j = 2
+                k = 3
+            else:
+                j = None
+                k = None
 
             vx = as_sparse_format(self.rng.binomial(1, 0.5, (100, 97)),
-                                  format).astype(theano.config.floatX)
+                                      format).astype(theano.config.floatX)
+
             #mode_no_debug = theano.compile.mode.get_default_mode()
             #if isinstance(mode_no_debug, theano.compile.DebugMode):
             #    mode_no_debug = 'FAST_RUN'
-            f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
-            r1 = f1(vx, m, n, p, q)
-            t1 = vx[m:n, p:q]
+            if is_supported_version:
+                f1 = theano.function([x, a, b, c, d, e, f], x[a:b:e, c:d:f])
+                r1 = f1(vx, m, n, p, q, j, k)
+                t1 = vx[m:n:j, p:q:k]
+            else:
+                f1 = theano.function([x, a, b, c, d], x[a:b, c:d])
+                r1 = f1(vx, m, n, p, q)
+                t1 = vx[m:n, p:q]
             assert r1.shape == t1.shape
             assert numpy.all(t1.toarray() == r1.toarray())
 
@@ -2160,32 +2178,41 @@ class Test_getitem(unittest.TestCase):
             assert r7.shape == t7.shape
             assert numpy.all(r7.toarray() == t7.toarray())
             """
-
-            f4 = theano.function([x, a, b], x[a:b])
-            r4 = f4(vx, m, n)
-            t4 = vx[m:n]
+            if is_supported_version:
+                f4 = theano.function([x, a, b, e], x[a:b:e])
+                r4 = f4(vx, m, n, j)
+                t4 = vx[m:n:j]
+            else:
+                f4 = theano.function([x, a, b], x[a:b])
+                r4 = f4(vx, m, n)
+                t4 = vx[m:n]
             assert r4.shape == t4.shape
             assert numpy.all(t4.toarray() == r4.toarray())
+
             #-----------------------------------------------------------
             # test cases using int indexing instead of theano variable
-
-            f6 = theano.function([x], x[1:10, 10:20])
+            f6 = theano.function([x], x[1:10:j, 10:20:k])
             r6 = f6(vx)
-            t6 = vx[1:10, 10:20]
+            t6 = vx[1:10:j, 10:20:k]
             assert r6.shape == t6.shape
             assert numpy.all(r6.toarray() == t6.toarray())
 
             #----------------------------------------------------------
             # test cases with indexing both with theano variable and int
-            f8 = theano.function([x, a, b], x[a:b, 10:20])
-            r8 = f8(vx, m, n)
-            t8 = vx[m:n, 10:20]
+            if is_supported_version:
+                f8 = theano.function([x, a, b, e], x[a:b:e, 10:20:1])
+                r8 = f8(vx, m, n, j)
+                t8 = vx[m:n:j, 10:20:1]
+            else:
+                f8 = theano.function([x, a, b], x[a:b, 10:20])
+                r8 = f8(vx, m, n)
+                t8 = vx[m:n, 10:20]
             assert r8.shape == t8.shape
             assert numpy.all(r8.toarray() == t8.toarray())
 
-            f9 = theano.function([x, a, b], x[1:a, 1:b])
+            f9 = theano.function([x, a, b], x[1:a:j, 1:b:k])
             r9 = f9(vx, p, q)
-            t9 = vx[1:p, 1:q]
+            t9 = vx[1:p:j, 1:q:k]
             assert r9.shape == t9.shape
             assert numpy.all(r9.toarray() == t9.toarray())
 
@@ -2221,11 +2248,14 @@ class Test_getitem(unittest.TestCase):
 
             # x[a:b:step, c:d] is not accepted because scipy silently drops
             # the step (!)
-            self.assertRaises(ValueError,
-                              x.__getitem__, (slice(a, b, -1), slice(c, d)))
-            self.assertRaises(ValueError,
-                              x.__getitem__, (slice(a, b), slice(c, d, 2)))
-
+            if not is_supported_version:
+                self.assertRaises(ValueError,
+                                  x.__getitem__, (slice(a, b, -1), slice(c, d)))
+                self.assertRaises(ValueError,
+                                  x.__getitem__, (slice(a, b), slice(c, d, 2)))
+            else:
+                raise SkipTest("Slicing with step is supported.")
+                
             # Advanced indexing is not supported
             self.assertRaises(ValueError,
                               x.__getitem__,
