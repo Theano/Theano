@@ -921,7 +921,7 @@ class VM_Linker(link.LocalLinker):
                         origin = view_of.get(ins, ins)
                         view_of[out] = origin
                         viewed_by[origin].append(out)
-                idx_o += 1                        
+                    idx_o += 1                        
 
                 for ins in node.inputs:
                     assert not (ins in view_of and viewed_by[ins])
@@ -931,7 +931,7 @@ class VM_Linker(link.LocalLinker):
                             # where gc
                             for i in range(idx + 1, len(order)):
                                 for outs in order[i].outputs:
-                                    if outs.ndim == 0:
+                                    if outs.ndim == 0 and out not in viewed_by.values():
                                         reuse_outs.append(outs)
                         elif ins in view_of:
                             origin = view_of[ins]
@@ -942,15 +942,12 @@ class VM_Linker(link.LocalLinker):
                                 #where gc
                                 for i in range(idx + 1, len(order)):
                                     for outs in order[i].outputs:
-                                        if outs.ndim == 0:
+                                        if outs.ndim == 0 and out not in viewed_by.values():
                                             reuse_outs.append(outs)
 
                         if reuse_outs:
                             # if reusable output variable exists
                             reallocated_ins.add(ins)
-
-
-        import pdb; pdb.set_trace()
 
         for node in order:
             try:
