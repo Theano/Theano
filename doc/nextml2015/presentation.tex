@@ -166,62 +166,6 @@ Montréal, Canada \newline
   \end{itemize}
 \end{frame}
 
-%% \begin{frame}{Why scripting for GPUs?}
-%%   \begin{bf}They complement each other\end{bf}
-
-%%   GPUs are everything that high level languages are not
-
-%%   \begin{itemize}
-%%     \item Highly parallel
-%%     \item Very architecture-sensitive
-%%     \item Built for maximum FP/memory throughput
-%%     \item So hard to program that meta-programming is easier
-%%   \end{itemize}
-
-%%   \begin{bf}Best of both worlds:\end{bf} easily scripted code which invokes high-performance GPU kernels.
-
-%%   \begin{bf}Theano C code generation removes overhead\end{bf} of
-%%   function calls between Python and C by launching many C functions at once.
-
-%% \end{frame}
-
-\begin{frame}{Overview of Library}
-  Theano is many things
-  \begin{itemize}
-  \item Language
-  \item Compiler
-  \item Python library
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Project status?}
-  \begin{itemize}
-    \item Mature: Theano has been developed and used since January 2008 (7 yrs old)
-    \item Driven hundreads research papers
-    \item Good user documentation
-    \item Active mailing list with participants from outside our lab
-    \item Core technology for a few Silicon-Valley start-ups
-    \item Many contributors (some from outside our lab)
-    \item Used to teach many university classes
-    \item Has been used for research at big compagnies
-  \end{itemize}
-  Theano: \url{deeplearning.net/software/theano/}
-
-  Deep Learning Tutorials: \url{deeplearning.net/tutorial/}
-\end{frame}
-
-
-\begin{frame}{Overview}
-  Theano language:
-  \begin{itemize}
-  \item Operations on scalar, vector, matrix, tensor, and sparse variables
-  \item Linear algebra
-  \item Element-wise nonlinearities
-  \item Convolution
-  \item Extensible
-  \end{itemize}
-\end{frame}
-
 \begin{frame}{Theano}
 
   High-level domain-specific language tailored to numeric computation.
@@ -243,6 +187,63 @@ Montréal, Canada \newline
     \end{itemize}
     \item Automatic differentiation and R op
     \item Sparse matrices
+  \end{itemize}
+\end{frame}
+
+
+
+%% \begin{frame}{Why scripting for GPUs?}
+%%   \begin{bf}They complement each other\end{bf}
+
+%%   GPUs are everything that high level languages are not
+
+%%   \begin{itemize}
+%%     \item Highly parallel
+%%     \item Very architecture-sensitive
+%%     \item Built for maximum FP/memory throughput
+%%     \item So hard to program that meta-programming is easier
+%%   \end{itemize}
+
+%%   \begin{bf}Best of both worlds:\end{bf} easily scripted code which invokes high-performance GPU kernels.
+
+%%   \begin{bf}Theano C code generation removes overhead\end{bf} of
+%%   function calls between Python and C by launching many C functions at once.
+
+%% \end{frame}
+
+\begin{frame}{Project status?}
+  \begin{itemize}
+    \item Mature: Theano has been developed and used since January 2008 (7 yrs old)
+    \item Driven hundreads research papers
+    \item Good user documentation
+    \item Active mailing list with participants from outside our lab
+    \item Core technology for a few Silicon-Valley start-ups
+    \item Many contributors (some from outside our lab)
+    \item Used to teach many university classes
+    \item Has been used for research at big compagnies
+  \end{itemize}
+  Theano: \url{deeplearning.net/software/theano/}
+
+  Deep Learning Tutorials: \url{deeplearning.net/tutorial/}
+\end{frame}
+
+
+\begin{frame}{Overview of Library}
+  Theano is many things
+  \begin{itemize}
+  \item Language
+  \item Compiler
+  \item Python library
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Overview Language}
+  \begin{itemize}
+  \item Operations on scalar, vector, matrix, tensor, and sparse variables
+  \item Linear algebra
+  \item Element-wise nonlinearities
+  \item Convolution
+  \item Extensible
   \end{itemize}
 \end{frame}
 
@@ -538,6 +539,7 @@ modes regard as fine.
   \item T.scalar, T.vector, T.matrix resolve to 32 bit or 64 bit depending on theano’s floatX flag
   \item floatX is float64 by default, set it to float32
   \item Set device flag to gpu (or a specific gpu, like gpu0)
+  \item flag: warn\_float64={'ignore', 'warn', 'raise', 'pdb'}
   \end{itemize}
 \end{frame}
 
@@ -859,6 +861,115 @@ print f([0, 1, 2])
 
 \end{frame}
 
+\begin{frame}
+  \frametitle{Scan}
+Allow looping (for, map, while)
+Allow recursion (reduce)
+Allow recursion with dependency on many of the previous time step
+Optimize some cases live moving computation outside of scan.
+
+When not to use scan:
+
+If only needed for ``vectorization'' or ``broadcasting''. tensor and
+numpy.ndarray support them natively. This will be much better.
+
+You do a fixed number of iteration that is very small (2,3). You are probably better to just unroll the graph to do it.
+
+The Scan grad is Backpropagation\_through\_time(BPTT)
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Scan Example1: Computing tanh(v.dot(W) + b) * d where b is binomial}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+import theano
+import theano.tensor as T
+import numpy as np
+
+# define tensor variables
+X = T.matrix("X")
+W = T.matrix("W")
+b_sym = T.vector("b_sym")
+
+# define shared random stream
+trng = T.shared_randomstreams.RandomStreams(1234)
+d=trng.binomial(size=W[1].shape)
+
+results, updates = theano.scan(lambda v: T.tanh(T.dot(v, W) + b_sym) * d, sequences=X)
+compute_with_bnoise = theano.function(inputs=[X, W, b_sym], outputs=[results],
+                          updates=updates, allow_input_downcast=True)
+x = np.eye(10, 2, dtype=theano.config.floatX)
+w = np.ones((2, 2), dtype=theano.config.floatX)
+b = np.ones((2), dtype=theano.config.floatX)
+
+print compute_with_bnoise(x, w, b)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Scan Example2: Computing pow(A, k)}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+import theano
+import theano.tensor as T
+theano.config.warn.subtensor_merge_bug = False
+
+k = T.iscalar("k")
+A = T.vector("A")
+
+def inner_fct(prior_result, B):
+    return prior_result * B
+
+# Symbolic description of the result
+result, updates = theano.scan(fn=inner_fct,
+                            outputs_info=T.ones_like(A),
+                            non_sequences=A, n_steps=k)
+
+# Scan has provided us with A ** 1 through A ** k.  Keep only the last
+# value. Scan notices this and does not waste memory saving them.
+final_result = result[-1]
+
+power = theano.function(inputs=[A, k], outputs=final_result,
+                      updates=updates)
+
+print power(range(10), 2)
+#[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Scan signature}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+result, updates = theano.scan(fn=inner_fct,
+                            outputs_info=T.ones_like(A),
+                            non_sequences=A, n_steps=k)
+\end{lstlisting}
+
+\begin{itemize}
+\item updates are needed if there is random number generated in the
+\item Just pass them to the call theano.function(..., updates=updates)
+\item The innfer function of scan take argument like this:
+
+
+\item scan: sequence, outputs\_info, nonsequence
+\end{itemize}
+
+\end{frame}
+
 
 \section{RNN}
 \begin{frame}
@@ -878,8 +989,25 @@ Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
 
 \section{Exercices}
 \begin{frame}{Exercices}
-  Work through the ``01\_buildbing\_expressions'' directory now.
-  Available at ``git~clone~https://github.com/nouiz/ccw\_tutorial\_theano.git''.
+\begin{itemize}
+  \item Theano exercice: Work through the ``01\_buildbing\_expressions'',
+    ``02\_compiling\_and\_running'',
+    ``03\_modifying'' and/or ``04\_debugging''
+    directory now.
+
+    Available at ``git~clone~https://github.com/abergeron/ccw\_tutorial\_theano.git''.
+
+  \item Scan exercices: \url{http://deeplearning.net/software/theano/tutorial/loop.html\#exercise}
+
+  \item Modif LSTM: Add the V\_o parameter and use it.
+  \item Modif LSTM: Add to have 2 LSTM layers. The new one take the
+    input in the reverse order. Then you concatenate the mean of the
+    outputs of both LSTM to the logistic regression. (No solutions provided)
+\end{itemize}
+
+Deep Learning Tutorial on LSTM: \url{http://deeplearning.net/tutorial/lstm.html}
+
+(It have the papers
 \end{frame}
 
 
