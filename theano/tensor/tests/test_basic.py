@@ -4838,8 +4838,6 @@ def test_tile():
     assert numpy.all(f(x_) == numpy.tile(x_, (2, 3, 4, 6)))
 
 
-# XXX: It turns out that almost no cases of the tile gradient actually work.
-# This is a test that should pass if the proper implementation is filled in.
 def test_tile_grad():
 
     def grad_tile(x, reps, np_x):
