@@ -145,6 +145,7 @@ We use the IMDB dataset.
 \end{frame}
 
 \begin{frame}{Description}
+TODO, merge with next slides
   \begin{itemize}
     \item Mathematical symbolic expression compiler
     \item Expressions mimic NumPy's syntax and semantics
@@ -386,7 +387,7 @@ from theano import tensor as T
 tensor3 = T.TensorType(
     broadcastable=(False, False, False),
     dtype='float32')
-x = tensor3()
+x = T.tensor3()
 \end{lstlisting}
 \end{frame}
 
@@ -430,9 +431,29 @@ b = a.T
 # Same as b
 c = a.dimshuffle((0, 1))
 # Adding to larger tensor
-d = a.dimshuffle((0, 1, ``x''))
+d = a.dimshuffle((0, 1, 'x'))
 e = a + d
 \end{lstlisting}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Indexing}
+  As NumPy!
+
+  \begin{itemize}
+  \item This mean all slices, index selection return view:
+    \begin{itemize}
+    \item a\_tensor[startstopstep, N] # return a view
+    \item a\_tensor[-1] # reverse the vector, return a view
+    \end{itemize}
+  \item Advanced indexing as NumPy:
+    \begin{itemize}
+    \item This mean it can use vector/tensor of indices to use.
+    \item this create a copy
+    \item This can be mixed with slicing/index selection.
+    \item GPU Support only this case: a\_tensor[an\_index\_vector]
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \subsection{Compiling/Running}
@@ -493,11 +514,11 @@ array(3.0)
 >>> updates[x] = x + 1
 >>> f = function([], updates=updates)
 >>> f()
->>> x.get\_value()
+>>> x.get_value()
 1.0
->>> x.set\_value(100.)
+>>> x.set_value(100.)
 >>> f()
->>> x.get\_value()
+>>> x.get_value()
 101.0
 \end{lstlisting}
 \end{frame}
@@ -539,6 +560,7 @@ instead of compiled C code. Runs slow.
   \item DEBUG\_MODE: Adds lots of checks.
 Raises error messages in situations other
 modes regard as fine.
+  \item optimizer=fast\_compile: as mode=FAST\_COMPILE, but with C code.
   \end{itemize}
 \end{frame}
 
@@ -558,10 +580,12 @@ modes regard as fine.
 \begin{frame}{Modifying expressions}
   \begin{itemize}
   \item The grad method
-  \item Variable nodes
-  \item Types
-  \item Ops
-  \item Apply nodes
+  \item Others
+
+%  \item Variable nodes
+%  \item Types
+%  \item Ops
+%  \item Apply nodes
   \end{itemize}
 \end{frame}
 
@@ -576,56 +600,66 @@ modes regard as fine.
 >>> x = T.scalar('x')
 >>> y = 2. * x
 >>> g = T.grad(y, x)
->>> from theano.printing import min_informative_str
->>> print min_informative_str(g)
-A. Elemwise{mul}
- B. Elemwise{second,no_inplace}
-  C. Elemwise{mul,no_inplace}
-   D. TensorConstant{2.0}
-   E. x
-  F. TensorConstant{1.0}
- <D>
+>>> theano.printing.debugprint(g)
+Elemwise{mul} [@A] ''
+ |Elemwise{second,no_inplace} [@B] ''
+ | |Elemwise{mul,no_inplace} [@C] ''
+ | | |TensorConstant{2.0} [@D]
+ | | |x [@E]
+ | |TensorConstant{1.0} [@F]
+ |TensorConstant{2.0} [@D]
 \end{lstlisting}
 \end{frame}
 
-\begin{frame}{Theano Variables}
+%% \begin{frame}{Theano Variables}
+%%   \begin{itemize}
+%%   \item A Variable is a theano expression
+%%   \item Can come from T.scalar, T.matrix, etc.
+%%   \item Can come from doing operations on other Variables
+%%   \item Every Variable has a type field, identifying its Type \newline
+%%     e.g. TensorType((True, False), ‘float32’)
+%%   \item Variables can be thought of as nodes in a graph
+%%   \end{itemize}
+%% \end{frame}
+
+%% \begin{frame}{Ops}
+
+%%   \begin{itemize}
+%%   \item  An Op is any class that describes a
+%% mathematical function of some variables
+%%   \item Can call the op on some variables to get a
+%% new variable or variables
+%%   \item An Op class can supply other forms of
+%% information about the function, such as its
+%% derivatives
+%%   \end{itemize}
+%% \end{frame}
+
+%% \begin{frame}{Apply nodes}
+%%   \begin{itemize}
+%%   \item The Apply class is a specific instance of an application of an Op
+%%   \item Notable fields:
+%%     \begin{itemize}
+%%     \item op: The Op to be applied
+%%     \item inputs: The Variables to be used as input
+%%     \item outputs: The Variables produced
+%%     \end{itemize}
+%%   \item Variable.owner identifies the Apply that created the variable
+%%   \item Variable and Apply instances are nodes and owner/
+%%     inputs/outputs identify edges in a Theano graph
+%%   \end{itemize}
+%% \end{frame}
+
+\begin{frame}{Others}
   \begin{itemize}
-  \item A Variable is a theano expression
-  \item Can come from T.scalar, T.matrix, etc.
-  \item Can come from doing operations on other Variables
-  \item Every Variable has a type field, identifying its Type \newline
-    e.g. TensorType((True, False), ‘float32’)
-  \item Variables can be thought of as nodes in a graph
+  \item R\_op, L\_op for hessian free
+  \item hessian
+  \item jacobian
+  \item you can navigate the graph if you need
+      (go from the result of computation to its input, recursively)
   \end{itemize}
 \end{frame}
-
-\begin{frame}{Ops}
-
-  \begin{itemize}
-  \item  An Op is any class that describes a
-mathematical function of some variables
-  \item Can call the op on some variables to get a
-new variable or variables
-  \item An Op class can supply other forms of
-information about the function, such as its
-derivatives
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Apply nodes}
-  \begin{itemize}
-  \item The Apply class is a specific instance of an application of an Op
-  \item Notable fields:
-    \begin{itemize}
-    \item op: The Op to be applied
-    \item inputs: The Variables to be used as input
-    \item outputs: The Variables produced
-    \end{itemize}
-  \item Variable.owner identifies the Apply that created the variable
-  \item Variable and Apply instances are nodes and owner/
-    inputs/outputs identify edges in a Theano graph
-  \end{itemize}
-\end{frame}
+%TODO place somewhere a computation graph example.
 
 \subsection{Debugging}
 \begin{frame}{Debugging}
