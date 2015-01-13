@@ -987,6 +987,16 @@ result, updates = theano.scan(fn=inner_fct,
   \tableofcontents[currentsection]
 \end{frame}
 
+\begin{frame}
+  \frametitle{Recurrent Neural Network Overview}
+\begin{itemize}
+\item RNN is a class of neural network that allow to work with sequence of variable sizes.
+\item It do so, by reusing weights at each element of the sequence.
+\item It create an internal state that allow to exhibit dynamic temporal behavior.
+\end{itemize}
+%\includegraphics[width=0.35\textwidth]{../images/File_Elman_srnn.png} TODO
+\end{frame}
+
 \section{LSTM}
 \begin{frame}
   \tableofcontents[currentsection]
@@ -994,7 +1004,7 @@ result, updates = theano.scan(fn=inner_fct,
 
 \begin{frame}
   \frametitle{Motivation}
-RNN gradient signal can end up being multiplied a large number of times (as many as the number of timesteps
+RNN gradient signal end up being multiplied a large number of times (as many as the number of timesteps
 This means that, the magnitude of weights in the transition matrix can have a strong impact on the learning process.
 \begin{itemize}
 \item \begin{bf}vanishing gradients\end{bf}
@@ -1006,18 +1016,82 @@ This means that, the magnitude of weights in the transition matrix can have a st
 \begin{frame}
   \frametitle{History}
 \begin{itemize}
-\item Original version introduced in 1997 by Hochreiter, S., & Schmidhuber, J.
-\item Forget gate introduced in 2000 by Gers, F. A., Schmidhuber, J., & Cummins, F.
-\item All people use know use Forget gate.
+\item Original version introduced in 1997 by Hochreiter, S., \& Schmidhuber, J.
+\item Forget gate introduced in 2000 by Gers, F. A., Schmidhuber, J., \& Cummins, F.
+\item All people we know use forget gate now.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{LSTM overview}
+\includegraphics[width=0.75\textwidth]{../images/lstm.png}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{LSTM cell}
+\includegraphics[width=0.75\textwidth]{../images/lstm_memorycell.png}
+\end{frame}
+
+\begin{frame}
+  \frametitle{LSTM math}
+\begin{itemize}
+\item The equations below describe how a layer of memory cells is updated at every timestep t. In these equations :
+
+    $x_t$ is the input to the memory cell layer at time t
+    $W_i$, $W_f$, $W_c$, $W_o$, $U_i$, $U_f$, $U_c$, $U_o$ and $V_o$ are weight matrices
+    $b_i$, $b_f$, $b_c$ and $b_o$ are bias vectors
+
+First, we compute the values for $i_t$, the input gate, and $\widetilde{C_t}$ the candidate value for the states of the memory cells at time t :
+
+(1)$i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)$
+
+(2)$\widetilde{C_t} = tanh(W_c x_t + U_c h_{t-1} + b_c)$
+
+Second, we compute the value for $f_t$, the activation of the memory cells’ forget gates at time t :
+
+(3)$f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f)$
+
+Given the value of the input gate activation $i_t$, the forget gate activation $f_t$ and the candidate state value $\widetilde{C_t}$, we can compute $C_t$ the memory cells’ new state at time $t$ :
+
+(4)$C_t = i_t * \widetilde{C_t} + f_t * C_{t-1}$
+
+With the new state of the memory cells, we can compute the value of their output gates and, subsequently, their outputs :
+
+(5)$o_t = \sigma(W_o x_t + U_o h_{t-1} + V_o C_t + b_1)$
+
+(6)$h_t = o_t * tanh(C_t)$
+
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Tutorial LSTM}
+\begin{itemize}
+\item The model we used in this tutorial is a variation of the standard LSTM model. In this variant, the activation of a cell’s output gate does not depend on the memory cell’s state $C_t$. This allows us to perform part of the computation more efficiently (see the implementation note, below, for details). This means that, in the variant we have implemented, there is no matrix $V_o$ and equation (5) is replaced by equation (7) :
+
+(7)$o_t = \sigma(W_o x_t + U_o h_{t-1} + b_1)$
+
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Implementation Note}
+\begin{itemize}
+\item Implementation note : In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
+
+$z = \sigma(W x_t + U h_{t-1} + b)$
+
+The result is then sliced to obtain the pre-nonlinearity activations for i, f, $\widetilde{C_t}$, and o and the non-linearities are then applied independently for each.
 \end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{}
 \begin{itemize}
+\item a
 \end{itemize}
 \end{frame}
-
 
 \begin{frame}{Conclusion}
 Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
@@ -1054,7 +1128,7 @@ Deep Learning Tutorial on LSTM: \url{http://deeplearning.net/tutorial/lstm.html}
 \begin{frame}{Acknowledgments}
 \begin{itemize}
 \item All people working or having worked at the LISA lab.
-\item All Theano/Pylearn 2 users/contributors
+\item All Theano users/contributors
 \item Compute Canada, RQCHP, NSERC, and Canada Research Chairs for providing funds or access to compute resources.
 \end{itemize}
 \end{frame}
