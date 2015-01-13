@@ -38,6 +38,17 @@ Montréal, Canada \newline
 
 \section{Introduction}
 \begin{frame}
+  \frametitle{Task}
+
+LSTM Networks for Sentiment Analysis
+
+This is a classification task where we need to tell if the review was
+positive or negative.
+
+We use the IMDB dataset.
+\end{frame}
+
+\begin{frame}
   \tableofcontents[currentsection]
 \end{frame}
 
@@ -981,6 +992,33 @@ result, updates = theano.scan(fn=inner_fct,
   \tableofcontents[currentsection]
 \end{frame}
 
+\begin{frame}
+  \frametitle{Motivation}
+RNN gradient signal can end up being multiplied a large number of times (as many as the number of timesteps
+This means that, the magnitude of weights in the transition matrix can have a strong impact on the learning process.
+\begin{itemize}
+\item \begin{bf}vanishing gradients\end{bf}
+ If the weights in this matrix are small (or, more formally, if the leading eigenvalue of the weight matrix is smaller than 1.0).
+\item \begin{bf}exploding gradients\end{bf} If the weights in this matrix are large (or, again, more formally, if the leading eigenvalue of the weight matrix is larger than 1.0),
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{History}
+\begin{itemize}
+\item Original version introduced in 1997 by Hochreiter, S., & Schmidhuber, J.
+\item Forget gate introduced in 2000 by Gers, F. A., Schmidhuber, J., & Cummins, F.
+\item All people use know use Forget gate.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{}
+\begin{itemize}
+\end{itemize}
+\end{frame}
+
+
 \begin{frame}{Conclusion}
 Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
 \begin{bf}Fast to develop\end{bf}\newline
@@ -1000,6 +1038,8 @@ Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
   \item Scan exercices: \url{http://deeplearning.net/software/theano/tutorial/loop.html\#exercise}
 
   \item Modif LSTM: Add the V\_o parameter and use it.
+  \item Modif LSTM: Reverse the input sequence and try it like that:
+        Sutskever-NIPS2014 (No solutions provided)
   \item Modif LSTM: Add to have 2 LSTM layers. The new one take the
     input in the reverse order. Then you concatenate the mean of the
     outputs of both LSTM to the logistic regression. (No solutions provided)
