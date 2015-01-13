@@ -3420,8 +3420,8 @@ def test_local_mul_specialize():
 
 class T_Tile(unittest.TestCase):
     def test_local_useless_tile(self):
-        # Tile op is deprecated and tile function no more uses it
-        # we'll test the op directly
+        # Tile op is deprecated so the tile function doesn't use it
+        # anymore, we'll test here the op directly
         v = T.vector()
         m = T.matrix()
         mode = None

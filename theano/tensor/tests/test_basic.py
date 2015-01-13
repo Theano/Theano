@@ -6879,8 +6879,8 @@ class TestInferShape(utt.InferShapeTester):
         #                        [Reshape(ndim)(adtens4, aivec)],
         #                        [adtens4_val, [1, 3, 10, 4]], Reshape)
 
-        # Tile op is deprecated and tile function no more uses it
-        # we'll test the op directly
+        # Tile op is deprecated so the tile function doesn't use it
+        # anymore, we'll test here the op directly
         advec = dvector()
         advec_val = rand(5)
         aivec_val = [3]
