@@ -1,20 +1,38 @@
 .. _install_ubuntu:
 
-Easy Installation of an optimized Theano on Ubuntu
-==================================================
+Easy Installation of an Optimized Theano on Current Ubuntu
+==========================================================
 
-These instructions were written for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04,
-13.10 and 14.04.
+For Ubuntu 11.10 through 14.04:
+
+.. code-block: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
+    sudo pip install Theano
+
+For Ubuntu 11.04:
+
+.. code-block: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
+    sudo pip install Theano
 
 .. note::
 
-    It is possible to have a faster installation of Theano than the one these
-    instructions will provide, but this will make the installation more
-    complicated and/or may require that you buy software. This is a simple set
-    of installation instructions that will leave you with a relatively
-    well-optimized version that uses only free software. With more work or by
-    investing money (i.e. buying a license to a proprietary BLAS
-    implementation), it is possible to gain further performance.
+    If you have error that contain "gfortran" in it, like this one:
+
+        ImportError: ('/home/Nick/.theano/compiledir_Linux-2.6.35-31-generic-x86_64-with-Ubuntu-10.10-maverick--2.6.6/tmpIhWJaI/0c99c52c82f7ddc775109a06ca04b360.so: undefined symbol: _gfortran_st_write_done'
+
+    The problem is probably that NumPy is linked with a different blas
+    then then one currently available (probably ATLAS). There is 2
+    possible fixes:
+
+    1) Uninstall ATLAS and install OpenBLAS.
+    2) Use the Theano flag "blas.ldflags=-lblas -lgfortran"
+
+    1) is better as OpenBLAS is faster then ATLAS and NumPy is
+    probably already linked with it. So you won't need any other
+    change in Theano files or Theano configuration.
 
 .. note::
 
@@ -45,40 +63,33 @@ These instructions were written for Ubuntu 11.04, 11.10, 12.04, 12.10, 13.04,
    The development version of Theano supports Python 3.3 and
    probably supports Python 3.2, but we do not test on it.
 
+    
+Bleeding Edge Installs
+----------------------
 
-Installation steps
-~~~~~~~~~~~~~~~~~~
+If you would like, instead, to install the bleeding edge Theano (from github) 
+such that you can edit and contribute to Theano, replace the `pip install Theano` 
+command with:
 
-Ubuntu 11.10/12.04/12.10/13.04/13.10:
- 1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git``
- 2) ``sudo pip install Theano``
+.. code-block: bash
 
- If the packages ``libatlas3gf-base`` or ``libatlas-dev`` are already installed, there will be problems as they conflict with ``libopenblas-dev``.
- If you see NumPy errors, the simplest is to remove ``libopenblas-dev`` and its dependency ``libopenblas-base`` like this: ``sudo apt-get remove libopenblas-base``.
- The ideal would be that you remove ``libatlas3gf-base`` and ``libatlas-dev``,
- but you will need to reinstall python-numpy, python-scipy and all other packages that used it.
- OpenBLAS is faster then ATLAS most of the time and it allows to control the number of threads used during the execution.
+    git clone git://github.com/Theano/Theano.git
+    cd Theano 
+    python setup.py develop --user
+    cd ..
 
-Ubuntu 11.04:
- 1) ``sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev``
- 2) ``sudo pip install Theano``
+VirtualEnv
+----------
+    
+If you would like to install Theano in a VirtualEnv, you will want to pass the 
+`--system-site-packages` flag when creating the VirtualEnv so that it will pick up 
+the system-provided `Numpy` and `SciPy`.
 
-.. note::
-
-    If you have error that contain "gfortran" in it, like this one:
-
-        ImportError: ('/home/Nick/.theano/compiledir_Linux-2.6.35-31-generic-x86_64-with-Ubuntu-10.10-maverick--2.6.6/tmpIhWJaI/0c99c52c82f7ddc775109a06ca04b360.so: undefined symbol: _gfortran_st_write_done'
-
-    The problem is probably that NumPy is linked with a different blas
-    then then one currently available (probably ATLAS). There is 2
-    possible fixes:
-
-    1) Uninstall ATLAS and install OpenBLAS.
-    2) Use the Theano flag "blas.ldflags=-lblas -lgfortran"
-
-    1) is better as OpenBLAS is faster then ATLAS and NumPy is
-    probably already linked with it. So you won't need any other
-    change in Theano files or Theano configuration.
+.. code-block: bash
+    
+    virtualenv --system-site-packages -p python2.7 theano-env
+    source theano-env/bin/activate
+    pip install Theano
 
 
 Test the newly installed packages
@@ -121,6 +132,15 @@ Theano should link to a parallel version of Blas and use all cores
 when possible. By default it should use all cores. Set the environment
 variable "OMP_NUM_THREADS=N" to specify to use N threads.
 
+.. note::
+
+    It is possible to have a faster installation of Theano than the one these
+    instructions provide, but this will make the installation more
+    complicated and/or may require that you buy software. This is a simple set
+    of installation instructions that will leave you with a relatively
+    well-optimized version that uses only free software. With more work or by
+    investing money (i.e. buying a license to a proprietary BLAS
+    implementation), it is possible to gain further performance.
 
 Updating Theano
 ~~~~~~~~~~~~~~~
@@ -141,15 +161,23 @@ system package, you can run this:
     sudo pip install --upgrade theano
 
 
-Bleeding edge
-~~~~~~~~~~~~~
+Updating Bleeding Edge Installs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Do like in the section "Updating Theano", but use
-``git+git://github.com/Theano/Theano.git`` instead of ``theano``.
+Change to the Theano directory and run:
+
+.. code-block: bash
+    
+    git pull
 
 
 Manual Openblas instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. comment::
+
+    I believe this is outdated, my machine seems to be using 8 threads 
+    happily with the binary openblas...
 
 The openblas included in Ubuntu is limited to 2 threads. If you want
 to use more cores at the same time, you will need to compile it
