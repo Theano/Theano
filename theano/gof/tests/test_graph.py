@@ -1,13 +1,23 @@
 import pickle
 import unittest
+import numpy
+from itertools import count
 
-from theano import tensor
+
+from theano import (
+      clone, sparse,
+      shared, tensor)
 from theano.gof.graph import (
-        Node, Apply, as_string, clone, general_toposort, inputs, io_toposort,
+        Node, Apply, Constant,
+        as_string, clone, general_toposort, inputs, io_toposort,
         is_same_graph, Variable)
 from theano.gof.op import Op
 from theano.gof.type import Type
-from itertools import count
+from theano.tensor.var import TensorVariable
+from theano.sandbox.cuda.var import (
+        CudaNdarrayVariable, CudaNdarrayConstant, CudaNdarraySharedVariable)
+
+
 
 
 
@@ -321,10 +331,78 @@ class TestAutoName:
 
     def test_auto_name(self):
         ## Re-init counter
-        Node._count = count(0)
+        Variable.__count__ = count(0)
         r1, r2 = MyVariable(1), MyVariable(2)
-        node = MyOp.make_node(r1, r2)
         assert r1.auto_name == "auto_0"
         assert r2.auto_name == "auto_1"
-        assert node.auto_name == "auto_3"
+
+    def test_constant(self):
+        ## Re-init counter
+        Variable.__count__ = count(0)
+        r1 = tensor.constant(1.5)
+        r2 = tensor.constant(1.5)
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+
+    def test_tensorvariable(self):
+        ## Re-init counter
+        Variable.__count__ = count(0)
+        r1 = tensor.TensorType(dtype='int32', broadcastable=())('myvar')
+        r2 = tensor.TensorVariable(tensor.TensorType(dtype='int32',
+                                                     broadcastable=()))
+        r3 = shared(numpy.random.randn(3,4))
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+        assert r3.auto_name == "auto_2"
+
+    def test_sparsevariable(self):
+        ## Re-init counter
+        Variable.__count__ = count(0)
+        r1 = sparse.csc_matrix(name='x', dtype='float32')
+        r2 = sparse.dense_from_sparse(r1)
+        r3 = sparse.csc_from_dense(r2)
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+        assert r3.auto_name == "auto_2"
+
+    def test_cudandarrayvariable(self):
+        ## Re-init counter
+        Variable.__count__ = count(0)
+        mytype = tensor.TensorType(dtype='int32', broadcastable=())
+        r1 = CudaNdarrayVariable(type='int32')
+        r2 = CudaNdarrayVariable(type='int32')
+        r3 = CudaNdarrayConstant(type=mytype,
+                                 data=1)
+        r4 = CudaNdarraySharedVariable(name='x', type=mytype,
+                                       value=1, strict=False)
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+        assert r3.auto_name == "auto_2"
+        assert r4.auto_name == "auto_3"
+
+    def test_cudandarrayvariable(self):
+        ## Re-init counter
+        Variable.__count__ = count(0)
+        mytype = tensor.TensorType(dtype='int32', broadcastable=())
+        r1 = tensor.shared_randomstreams.RandomStateSharedVariable(name='x',
+                                                                   type=mytype,
+                                                                   value=1,
+                                                                   strict=False)
+        r2 = tensor.shared_randomstreams.RandomStateSharedVariable(name='x',
+                                                                   type=mytype,
+                                                                   value=1,
+                                                                   strict=False)
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+
+
+    def test_clone(self):
+        ## Re-init counter
+        Variable.__count__ = count(0)
+        r1 = MyVariable(1)
+        r2 = r1.clone()
+        assert r1.auto_name == "auto_0"
+        assert r2.auto_name == "auto_1"
+
+
 
