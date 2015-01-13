@@ -161,15 +161,14 @@ system package, you can run this:
     sudo pip install --upgrade theano
 
 
-Bleeding edge
-~~~~~~~~~~~~~
+Updating Bleeding Edge Installs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Change to the Theano directory and run:
 
 .. code-block: bash
     
     git pull
-    python setup.py develop --user
 
 
 Manual Openblas instruction
