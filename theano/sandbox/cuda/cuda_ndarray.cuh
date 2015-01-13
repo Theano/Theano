@@ -19,6 +19,7 @@
 #define PyString_AsString PyUnicode_AsUTF8
 #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
 #define PyString_Size PyUnicode_GET_SIZE
+#define PyInt_FromSize_t PyLong_FromSize_t
 
 // Python 3 expects a PyObject* as the first argument to PySlice_GetIndicesEx().
 #define SLICE_CAST(x) (x)
