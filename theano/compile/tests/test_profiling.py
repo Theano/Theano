@@ -14,6 +14,9 @@ from theano.ifelse import ifelse
 
 
 class Test_profiling(unittest.TestCase):
+    """
+    Test of Theano profiling with min_peak_memory=True
+    """
 
     def test_profiling(self):
 
