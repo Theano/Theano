@@ -149,6 +149,13 @@ class DnnVersion(GpuOp):
     def c_libraries(self):
         return ['cudnn']
 
+    def c_support_code(self):
+        return """
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_FromLong PyLong_FromLong
+#endif
+"""
+
     def make_node(self):
         return Apply(self, [], [Generic()()])
 
