@@ -85,7 +85,7 @@ is like a programming language in the sense that you have to
 
 It is good to think of ``theano.function`` as the interface to a
 compiler which builds a callable object from a purely symbolic graph.
-One of theano's most important features is that ``theano.function``
+One of Theano's most important features is that ``theano.function``
 can optimize a graph and even compile some or all of it into native
 machine instructions.
 

@@ -199,6 +199,7 @@ def test_dnn_tag():
 class TestDnnInferShapes(utt.InferShapeTester):
     def setUp(self):
         super(TestDnnInferShapes, self).setUp()
+        self.mode = mode_with_gpu
 
     def test_softmax(self):
         t = T.ftensor4('t')

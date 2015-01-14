@@ -1205,8 +1205,8 @@ class GetItem2d(gof.op.Op):
 # the Subtensor.infer_shape.
 #    def infer_shape(self, node, i0_shapes):
 #        return i0_shapes
-
     def make_node(self, x, index):
+        scipy_ver = [ int(n) for n in scipy.__version__.split('.')[:2]]
         x = as_sparse_variable(x)
         assert x.format in ["csr", "csc"]
         assert len(index) in [1, 2]
@@ -1219,15 +1219,26 @@ class GetItem2d(gof.op.Op):
                 # in case of slice is written in theano variable
                 start = ind.start
                 stop = ind.stop
-                if ind.step is not None:
-                    raise ValueError((
-                        "Using a slice with non-default step when "
-                        "indexing into a sparse matrix is not supported. "),
-                        ind, ind.step)
+                step = ind.step
+                # If start or stop or step are None, make them a Generic 
+                # constant. Else, they should be converted to Tensor Variables
+                # of dimension 1 and int/uint dtype.
+                if scipy_ver < [0, 14] and ind.step != None:
+                    raise ValueError(
+                        'Slice with step is not support with current'
+                        ' version of Scipy.')
+                if ind.step is  None or ind.step == 1:
+                    step = generic_None
+                else:
+                    if not isinstance(step, gof.Variable):
+                        step = tensor.as_tensor_variable(step)
+                    if not (step.ndim == 0 and step.dtype in
+                            tensor.discrete_dtypes):
+                        raise ValueError((
+                            "Impossible to index into a sparse matrix with "
+                            "slice where step=%s" % step),
+                            step.ndim, step.dtype)                    
 
-                # If start or stop are None, make them a Generic constant
-                # Else, they should be converted to Tensor Variables of
-                # dimension 1 and int/uint dtype.
                 if start is None:
                     start = generic_None
                 else:
@@ -1262,15 +1273,15 @@ class GetItem2d(gof.op.Op):
                 raise ValueError((
                     'Advanced indexing is not implemented for sparse '
                     'matrices. Argument not supported: %s' % ind))
-            input_op += [start, stop]
+            input_op += [start, stop, step]
         if len(index) == 1:
-            input_op += [generic_None, generic_None]
+            input_op += [generic_None, generic_None, generic_None]
 
         return gof.Apply(self, input_op, [x.type()])
 
-    def perform(self, node, (x, start1, stop1, start2, stop2), (out, )):
+    def perform(self, node, (x, start1, stop1, step1, start2, stop2, step2), (out, )):
         assert _is_sparse(x)
-        out[0] = x[start1:stop1, start2:stop2]
+        out[0] = x[start1:stop1:step1, start2:stop2:step2]
 
     def __str__(self):
         return self.__class__.__name__

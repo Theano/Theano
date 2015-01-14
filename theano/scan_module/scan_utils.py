@@ -46,6 +46,7 @@ def safe_new(x, tag='', dtype=None):
         nw_name = x.name + tag
     else:
         nw_name = None
+
     if isinstance(x, theano.Constant):
         if dtype and x.dtype != dtype:
             casted_x = x.astype(dtype)
@@ -54,28 +55,14 @@ def safe_new(x, tag='', dtype=None):
             return nwx
         else:
             return x.clone()
-    # Note, as_tensor_variable will convert the Scalar into a
-    # TensorScalar that will require a ScalarFromTensor op,
-    # making the pushout optimization fail
-    elif isinstance(x, scalar.ScalarVariable):
-        if dtype:
-            nw_x = scalar.get_scalar_type(dtype=dtype)()
-        else:
-            nw_x = x.type()
-        nw_x.name = nw_name
-        return nw_x
-    else:
-        try:
-            x = tensor.as_tensor_variable(x)
-        except TypeError:
-            # This could happen for example for random states, and I really
-            # want to avoid the convoluted logic that checks for cuda
-            # ndarrays
-            pass
+
+    # at this point we should only have Variables
+    assert isinstance(x, theano.Variable)
     nw_x = x.type()
     if dtype and nw_x.dtype != dtype:
         nw_x = nw_x.astype(dtype).type()
     nw_x.name = nw_name
+
     # Preserve test values so that the 'compute_test_value' option can be used.
     # The test value is deep-copied to ensure there can be no interactions
     # between test values, due to inplace operations for instance. This may
@@ -815,7 +802,7 @@ class scan_args(object):
     def __init__(self, outer_inputs, outer_outputs,
                  _inner_inputs, _inner_outputs, info):
         self.n_steps = outer_inputs[0]
-        rval = reconstruct_graph(_inner_inputs, _inner_outputs, '_merge')
+        rval = reconstruct_graph(_inner_inputs, _inner_outputs, '')
         if info['as_while']:
             self.cond = [rval[1][-1]]
             inner_outputs = rval[1][:-1]
@@ -918,6 +905,9 @@ class scan_args(object):
         self.inner_out_shared = inner_outputs[q:q + n_shared_outs]
         p += n_shared_outs
         q += n_shared_outs
+
+        assert p == len(outer_outputs)
+        assert q == len(inner_outputs)
 
         self.other_info = OrderedDict()
         for k in ('truncate_gradient', 'name', 'mode', 'destroy_map',

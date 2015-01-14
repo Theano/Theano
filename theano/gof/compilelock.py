@@ -24,6 +24,7 @@ AddConfigVar('compile.wait',
              IntParam(5, lambda i: i > 0, allow_override=False),
              in_c_key=False)
 
+
 def _timeout_default():
     return config.compile.wait * 24
 
@@ -36,6 +37,8 @@ period for running processes.""",
              IntParam(_timeout_default, lambda i: i >= 0,
                       allow_override=False),
              in_c_key=False)
+
+hostname = socket.gethostname()
 
 
 def force_unlock():
@@ -129,6 +132,7 @@ def set_lock_status(use_lock):
 # This is because None is a valid input for timeout
 notset = object()
 
+
 def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
     """
     Obtain lock access by creating a given temporary directory (whose base will
@@ -212,13 +216,14 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                         other_host = read_owner.split('_')[2]
                     except IndexError:
                         other_host = ()  # make sure it isn't equal to any host
-                    if other_host == socket.gethostname():
+                    if other_host == hostname:
                         try:
+                            # Just check if the other process still exist.
                             os.kill(int(read_owner.split('_')[0]), 0)
                         except OSError:
                             other_dead = True
                         except AttributeError:
-                            pass #os.kill does not exist on windows
+                            pass  # os.kill does not exist on windows
                 except Exception:
                     read_owner = 'failure'
                 if other_dead:
@@ -305,7 +310,7 @@ def refresh_lock(lock_file):
     unique_id = '%s_%s_%s' % (
         os.getpid(),
         ''.join([str(random.randint(0, 9)) for i in range(10)]),
-        socket.gethostname())
+        hostname)
     lock_write = open(lock_file, 'w')
     lock_write.write(unique_id + '\n')
     lock_write.close()
