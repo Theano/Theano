@@ -5551,3 +5551,10 @@ else:
 # the graph to make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
     'fast_compile', 'fast_run', name='remove_consider_constant')
+
+
+@register_canonicalize
+@gof.local_optimizer([theano.gradient.GradClip])
+def local_grad_clip(node):
+    if isinstance(node.op, theano.gradient.GradClip):
+        return node.inputs
