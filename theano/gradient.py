@@ -1888,3 +1888,46 @@ def consider_constant(x):
     .. versionadded:: 0.6.1
     """
     return consider_constant_(x)
+
+
+class GradClip(theano.compile.ViewOp):
+    # See doc in user fct grad_clip
+    __props__ = ()
+    def __init__(self, clip_lower_bound, clip_upper_bound):
+        # We do not put those member in __eq__ or __hash__
+        # as they do not influence the perform of this op.
+        self.clip_lower_bound = clip_lower_bound
+        self.clip_upper_bound = clip_upper_bound
+        assert(self.clip_upper_bound >= self.clip_lower_bound)
+
+    def grad(self, args, g_outs):
+        return [theano.tensor.clip(g_out, self.clip_lower_bound,
+                                   self.clip_upper_bound)
+                for g_out in g_outs]
+
+def grad_clip(x, lower_bound, upper_bound):
+    """
+    This op do a view in the forward, but clip the gradient.
+
+    This is an elemwise operation.
+
+    :param x: the variable we want its gradient inputs clipped
+    :param lower_bound: The lower bound of the gradient value
+    :param upper_bound: The upper bound of the gradient value.
+    
+    :examples:
+
+        x = theano.tensor.scalar()
+
+        z = theano.tensor.grad(grad_clip(x)**2, x)
+        z2 = theano.tensor.grad(x**2, x)
+
+        f = theano.function([x], outputs = [z, z2])
+
+        print f(2.0)  # output (1.0, 4.0)
+
+    :note: We register an opt in tensor/opt.py that remove the GradClip.
+       So it have 0 cost in the forward and only do work in the grad.
+
+    """
+    return GradClip(lower_bound, upper_bound)(x)

@@ -3,6 +3,9 @@
 # UNIT TEST
 #
 import unittest
+
+import numpy as np
+
 import theano
 from theano import gof
 from theano.tests import unittest_tools as utt
@@ -10,7 +13,6 @@ from theano.tests import unittest_tools as utt
 from theano import gradient
 from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
-import numpy as np
 from theano.gof.null_type import NullType
 
 one = theano.tensor.as_tensor_variable(1.)
@@ -640,6 +642,22 @@ class TestConsiderConstant(unittest.TestCase):
 
             assert np.allclose(f(a), f2(a))
 
+
+def test_grad_clip():
+    x = theano.tensor.scalar()
+
+    z = theano.tensor.grad(gradient.grad_clip(x, -1, 1)**2, x)
+    z2 = theano.tensor.grad(x**2, x)
+
+    f = theano.function([x], outputs=[z, z2])
+
+    if theano.config.mode != "FAST_COMPILE":
+        topo = f.maker.fgraph.toposort()
+        assert not any([isinstance(node.op, gradient.GradClip)
+                        for node in topo])
+    out = f(2.)
+    assert np.allclose(out, (1, 4))
+    assert not np.allclose(out[0], out[1])
 
 if __name__ == '__main__':
     unittest.main()
