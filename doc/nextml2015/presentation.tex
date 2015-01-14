@@ -264,7 +264,6 @@ int f(int x, int y){
   Using Theano:
   \begin{itemize}
   \item define SYMBOLIC expression $f(x,y) = x + y$
-  \item compile expression
   \end{itemize}
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
@@ -276,7 +275,11 @@ from theano import tensor as T
 x = T.scalar()
 y = T.scalar()
 z = x+y
-f = theano.function([x, y], z)
+w = z*x
+a = T.sqrt(w)
+b = T.exp(a)
+c = a ** b
+d = T.log(c)
 \end{lstlisting}
 \end{frame}
 
@@ -1013,7 +1016,8 @@ result, updates = theano.scan(
 \item It does so, by reusing weights for each element of the sequence.
 \item It creates an internal state that allows to exhibit dynamic temporal behavior.
 \end{itemize}
-%\includegraphics[width=0.35\textwidth]{../images/File_Elman_srnn.png} TODO
+Image from wikipedia by Fyedernoggersnodden
+\includegraphics[width=0.35\textwidth]{../images/Elman_srnn.png}
 \end{frame}
 
 \section{LSTM}
@@ -1133,14 +1137,15 @@ The result is then sliced to obtain the pre-nonlinearity activations for i, f, $
 \item Take out any operation that does not have to be inside "scan".
       Theano does many cases, but not all.
 \item Rescale (clip) the L2 norm of the gradient, if necessary.
-\item You can use weight noise or dropout at the output of the recurrent layer for regularization.
+\item You can use weight noise (try first with $dot(U_c+noise, h_{t-1})$).
+\item You can use dropout at the output of the recurrent layer.
 \end{itemize}
 \end{frame}
 
 \section{Exercices}
 \begin{frame}{Exercices}
 \begin{itemize}
-  \item Theano exercice: Work through the ``0[1-4]*'' directory exercices:
+  \item Theano exercice: Work through the ``0[1-4]*'' exercices (directory):
 
     Available at ``git~clone~https://github.com/abergeron/ccw\_tutorial\_theano.git''.
 
