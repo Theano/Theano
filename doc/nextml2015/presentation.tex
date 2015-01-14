@@ -1023,8 +1023,8 @@ result, updates = theano.scan(
 
 \begin{frame}
   \frametitle{Motivation}
-RNN gradient signal end up being multiplied a large number of times (as many as the number of timesteps
-This means that, the magnitude of weights in the transition matrix can have a strong impact on the learning process.
+RNN gradient signal end up being multiplied a large number of times (as many as the number of timesteps).
+This means that, the magnitude of the weights in the transition matrix can have a strong impact on the learning process.
 \begin{itemize}
 \item \begin{bf}vanishing gradients\end{bf}
  If the weights in this matrix are small (or, more formally, if the leading eigenvalue of the weight matrix is smaller than 1.0).
