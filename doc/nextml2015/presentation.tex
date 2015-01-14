@@ -855,21 +855,27 @@ print f([0, 1, 2])
 
 \end{frame}
 
+\subsection{Scan}
 \begin{frame}
   \frametitle{Scan}
-Allow looping (for, map, while)
-Allow recursion (reduce)
-Allow recursion with dependency on many of the previous time step
-Optimize some cases live moving computation outside of scan.
+\begin{itemize}
+\item Allow looping (for, map, while)
+\item Allow recursion (reduce)
+\item Allow recursion with dependency on many of the previous time step
+\item Optimize some cases like moving computation outside of scan.
+\item The Scan grad is done via Backpropagation\_through\_time(BPTT)
+\end{itemize}
+\end{frame}
 
-When not to use scan:
+\begin{frame}{When not to use scan}
+\begin{itemize}
+\item If only needed for ``vectorization'' or ``broadcasting''. tensor
+  and numpy.ndarray support them natively. This will be much better.
 
-If only needed for ``vectorization'' or ``broadcasting''. tensor and
-numpy.ndarray support them natively. This will be much better.
+\item You do a fixed number of iteration that is very small (2,3). You
+  are probably better to just unroll the graph to do it.
 
-You do a fixed number of iteration that is very small (2,3). You are probably better to just unroll the graph to do it.
-
-The Scan grad is Backpropagation\_through\_time(BPTT)
+\end{itemize}
 \end{frame}
 
 
@@ -1069,6 +1075,17 @@ The result is then sliced to obtain the pre-nonlinearity activations for i, f, $
 \end{itemize}
 \end{frame}
 
+\begin{frame}{LSTM Tips For Training}
+\begin{itemize}
+\item Do use use SGD, but use something like adagrad or rmsprop.
+\item Initialize any recurrent weights as orthogonal matrices (orth\_weights). This helps optimization.
+\item Take out any operation that does not have to be inside "scan".
+      Theano do many cases, but not all.
+\item Rescale (clip) the L2 norm of the gradient, if necessary.
+\item You can use weight noise or dropout at the output of the recurrent layer for regularization.
+\end{itemize}
+\end{frame}
+
 \begin{frame}
   \frametitle{}
 \begin{itemize}
@@ -1076,19 +1093,10 @@ The result is then sliced to obtain the pre-nonlinearity activations for i, f, $
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Conclusion}
-Theano/Pylearn2/libgpuarry provide an environment for machine learning that is:
-\begin{bf}Fast to develop\end{bf}\newline
-\begin{bf}Fast to run\end{bf}\newline
-\end{frame}
-
 \section{Exercices}
 \begin{frame}{Exercices}
 \begin{itemize}
-  \item Theano exercice: Work through the ``01\_buildbing\_expressions'',
-    ``02\_compiling\_and\_running'',
-    ``03\_modifying'' and/or ``04\_debugging''
-    directory now.
+  \item Theano exercice: Work through the ``0[1-4]*'' directory exercices:
 
     Available at ``git~clone~https://github.com/abergeron/ccw\_tutorial\_theano.git''.
 
