@@ -1052,36 +1052,56 @@ This means that, the magnitude of the weights in the transition matrix can have 
 \includegraphics[width=0.75\textwidth]{../images/lstm_memorycell.png}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[allowframebreaks]
   \frametitle{LSTM math}
-\begin{itemize}
-\item The equations below describe how a layer of memory cells is updated at every timestep t. In these equations :
+The equations on the next slide describe how a layer of memory cells is updated at every timestep t.
 
-    $x_t$ is the input to the memory cell layer at time t
-    $W_i$, $W_f$, $W_c$, $W_o$, $U_i$, $U_f$, $U_c$, $U_o$ and $V_o$ are weight matrices
-    $b_i$, $b_f$, $b_c$ and $b_o$ are bias vectors
+In these equations :
+
+% 'm' has no special meaning here except being a size reference for the length of the label (and the spacing before the descriptions
+\begin{description}[m]
+\item[$x_t$] \hfill \\
+is the input to the memory cell layer at time t
+\item[$W_i$, $W_f$, $W_c$, $W_o$, $U_i$, $U_f$, $U_c$, $U_o$ and $V_o$] \hfill \\
+ are weight matrices
+\item[$b_i$, $b_f$, $b_c$ and $b_o$] \hfill \\
+are bias vectors
+\end{description}
+
+\framebreak
 
 First, we compute the values for $i_t$, the input gate, and $\widetilde{C_t}$ the candidate value for the states of the memory cells at time t :
 
-(1)$i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)$
-
-(2)$\widetilde{C_t} = tanh(W_c x_t + U_c h_{t-1} + b_c)$
+\begin{equation}
+i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)
+\end{equation}
+\begin{equation}
+\widetilde{C_t} = tanh(W_c x_t + U_c h_{t-1} + b_c)
+\end{equation}
 
 Second, we compute the value for $f_t$, the activation of the memory cells’ forget gates at time t :
 
-(3)$f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f)$
+\begin{equation}
+f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f)
+\end{equation}
+
+\framebreak
 
 Given the value of the input gate activation $i_t$, the forget gate activation $f_t$ and the candidate state value $\widetilde{C_t}$, we can compute $C_t$ the memory cells’ new state at time $t$ :
 
-(4)$C_t = i_t * \widetilde{C_t} + f_t * C_{t-1}$
+\begin{equation}
+C_t = i_t * \widetilde{C_t} + f_t * C_{t-1}
+\end{equation}
 
 With the new state of the memory cells, we can compute the value of their output gates and, subsequently, their outputs :
 
-(5)$o_t = \sigma(W_o x_t + U_o h_{t-1} + V_o C_t + b_1)$
+\begin{equation}
+o_t = \sigma(W_o x_t + U_o h_{t-1} + V_o C_t + b_1)
+\end{equation}
+\begin{equation}
+h_t = o_t * tanh(C_t)
+\end{equation}
 
-(6)$h_t = o_t * tanh(C_t)$
-
-\end{itemize}
 \end{frame}
 
 \begin{frame}
