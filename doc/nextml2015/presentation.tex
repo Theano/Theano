@@ -687,6 +687,8 @@ for a debugprint of this apply node.
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
+        basicstyle=\scriptsize,
+        xleftmargin=-1em
         }
 \begin{lstlisting}
 Debugprint of the apply node:
@@ -694,7 +696,6 @@ Elemwise{add,no_inplace} [@A] <TensorType(float64, vector)> ''
  |<TensorType(float64, vector)> [@B] <TensorType(float64, vector)>
  |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
  |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
-
 \end{lstlisting}
 \end{frame}
 
