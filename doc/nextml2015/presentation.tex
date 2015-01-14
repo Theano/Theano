@@ -1128,10 +1128,10 @@ The result is then sliced to obtain the pre-nonlinearity activations for i, f, $
 
 \begin{frame}{LSTM Tips For Training}
 \begin{itemize}
-\item Do use use SGD, but use something like adagrad or rmsprop.
+\item Do not use SGD, but use something like adagrad or rmsprop.
 \item Initialize any recurrent weights as orthogonal matrices (orth\_weights). This helps optimization.
 \item Take out any operation that does not have to be inside "scan".
-      Theano do many cases, but not all.
+      Theano does many cases, but not all.
 \item Rescale (clip) the L2 norm of the gradient, if necessary.
 \item You can use weight noise or dropout at the output of the recurrent layer for regularization.
 \end{itemize}
