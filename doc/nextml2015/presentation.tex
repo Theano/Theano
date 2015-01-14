@@ -1116,13 +1116,14 @@ o_t = \sigma(W_o x_t + U_o h_{t-1} + b_1)
 
 \begin{frame}
   \frametitle{Implementation Note}
-\begin{itemize}
-\item Implementation note : In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
-
-$z = \sigma(W x_t + U h_{t-1} + b)$
+Implementation note : In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
+\vspace{-1em}
+\begin{equation*}
+z = \sigma(W x_t + U h_{t-1} + b)
+\end{equation*}
+\vspace{-2em} % don't remove the blank line
 
 The result is then sliced to obtain the pre-nonlinearity activations for i, f, $\widetilde{C_t}$, and o and the non-linearities are then applied independently for each.
-\end{itemize}
 \end{frame}
 
 \begin{frame}{LSTM Tips For Training}
