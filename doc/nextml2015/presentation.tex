@@ -194,7 +194,7 @@ We use the IMDB dataset.
 \begin{frame}{Project status?}
   \begin{itemize}
     \item Mature: Theano has been developed and used since January 2008 (7 yrs old)
-    \item Driven hundreads research papers
+    \item Driven hundreds research papers
     \item Good user documentation
     \item Active mailing list with participants from outside our lab
     \item Core technology for a few Silicon-Valley start-ups
@@ -271,15 +271,12 @@ int f(int x, int y){
         stringstyle=\color{violet},
         }
 \begin{lstlisting}
+import theano
 from theano import tensor as T
 x = T.scalar()
 y = T.scalar()
 z = x+y
-w = z*x
-a = T.sqrt(w)
-b = T.exp(a)
-c = a ** b
-d = T.log(c)
+f = theano.function([x, y], z)
 \end{lstlisting}
 \end{frame}
 
@@ -646,6 +643,7 @@ f(np.ones((2,)), np.ones((3,)))
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
+        basicstyle=\scriptsize
         }
 \begin{lstlisting}
 Traceback (most recent call last):
@@ -671,6 +669,7 @@ Inputs scalar values: ['not scalar', 'not scalar', 'not scalar']
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
+        basicstyle=\footnotesize
         }
 \begin{lstlisting}
 HINT: Re-running with most Theano optimization
@@ -688,6 +687,8 @@ for a debugprint of this apply node.
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
+        basicstyle=\scriptsize,
+        xleftmargin=-1em
         }
 \begin{lstlisting}
 Debugprint of the apply node:
@@ -695,7 +696,6 @@ Elemwise{add,no_inplace} [@A] <TensorType(float64, vector)> ''
  |<TensorType(float64, vector)> [@B] <TensorType(float64, vector)>
  |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
  |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
-
 \end{lstlisting}
 \end{frame}
 
@@ -720,6 +720,8 @@ Backtrace when the node is created:
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
+        basicstyle=\footnotesize,
+        xleftmargin=-1em
         }
 \begin{lstlisting}
 Traceback (most recent call last):
@@ -880,12 +882,13 @@ print f([0, 1, 2])
 \end{frame}
 
 
-\begin{frame}[fragile]
+\begin{frame}[fragile,allowframebreaks]
   \frametitle{Scan Example1: Computing tanh(v.dot(W) + b) * d where b is binomial}
 
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
+        basicstyle=\footnotesize
         }
 \begin{lstlisting}
 import theano
@@ -987,9 +990,11 @@ result, updates = theano.scan(
 \end{lstlisting}
 
 \begin{itemize}
-\item Updates are needed if there is random number generated in the
-\item Just pass them to the call theano.function(..., updates=updates)
-\item The innfer function of scan take argument like this:
+\item Updates are needed if there are random numbers generated in the inner function
+\begin{itemize}
+\item Pass them to the call theano.function(..., updates=updates)
+\end{itemize}
+\item The inner function of scan takes arguments like this:
    scan: sequences, outputs\_info, non sequences
 \end{itemize}
 
@@ -1004,9 +1009,9 @@ result, updates = theano.scan(
 \begin{frame}
   \frametitle{Recurrent Neural Network Overview}
 \begin{itemize}
-\item RNN is a class of neural network that allow to work with sequence of variable sizes.
-\item It do so, by reusing weights at each element of the sequence.
-\item It create an internal state that allow to exhibit dynamic temporal behavior.
+\item RNN is a class of neural network that allows to work with sequences of variable sizes.
+\item It does so, by reusing weights for each element of the sequence.
+\item It creates an internal state that allows to exhibit dynamic temporal behavior.
 \end{itemize}
 %\includegraphics[width=0.35\textwidth]{../images/File_Elman_srnn.png} TODO
 \end{frame}
@@ -1018,8 +1023,8 @@ result, updates = theano.scan(
 
 \begin{frame}
   \frametitle{Motivation}
-RNN gradient signal end up being multiplied a large number of times (as many as the number of timesteps
-This means that, the magnitude of weights in the transition matrix can have a strong impact on the learning process.
+RNN gradient signal end up being multiplied a large number of times (as many as the number of timesteps).
+This means that, the magnitude of the weights in the transition matrix can have a strong impact on the learning process.
 \begin{itemize}
 \item \begin{bf}vanishing gradients\end{bf}
  If the weights in this matrix are small (or, more formally, if the leading eigenvalue of the weight matrix is smaller than 1.0).
@@ -1047,74 +1052,88 @@ This means that, the magnitude of weights in the transition matrix can have a st
 \includegraphics[width=0.75\textwidth]{../images/lstm_memorycell.png}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[allowframebreaks]
   \frametitle{LSTM math}
-\begin{itemize}
-\item The equations below describe how a layer of memory cells is updated at every timestep t. In these equations :
+The equations on the next slide describe how a layer of memory cells is updated at every timestep t.
 
-    $x_t$ is the input to the memory cell layer at time t
-    $W_i$, $W_f$, $W_c$, $W_o$, $U_i$, $U_f$, $U_c$, $U_o$ and $V_o$ are weight matrices
-    $b_i$, $b_f$, $b_c$ and $b_o$ are bias vectors
+In these equations :
+
+% 'm' has no special meaning here except being a size reference for the length of the label (and the spacing before the descriptions
+\begin{description}[m]
+\item[$x_t$] \hfill \\
+is the input to the memory cell layer at time t
+\item[$W_i$, $W_f$, $W_c$, $W_o$, $U_i$, $U_f$, $U_c$, $U_o$ and $V_o$] \hfill \\
+ are weight matrices
+\item[$b_i$, $b_f$, $b_c$ and $b_o$] \hfill \\
+are bias vectors
+\end{description}
+
+\framebreak
 
 First, we compute the values for $i_t$, the input gate, and $\widetilde{C_t}$ the candidate value for the states of the memory cells at time t :
 
-(1)$i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)$
-
-(2)$\widetilde{C_t} = tanh(W_c x_t + U_c h_{t-1} + b_c)$
+\begin{equation}
+i_t = \sigma(W_i x_t + U_i h_{t-1} + b_i)
+\end{equation}
+\begin{equation}
+\widetilde{C_t} = tanh(W_c x_t + U_c h_{t-1} + b_c)
+\end{equation}
 
 Second, we compute the value for $f_t$, the activation of the memory cells’ forget gates at time t :
 
-(3)$f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f)$
+\begin{equation}
+f_t = \sigma(W_f x_t + U_f h_{t-1} + b_f)
+\end{equation}
+
+\framebreak
 
 Given the value of the input gate activation $i_t$, the forget gate activation $f_t$ and the candidate state value $\widetilde{C_t}$, we can compute $C_t$ the memory cells’ new state at time $t$ :
 
-(4)$C_t = i_t * \widetilde{C_t} + f_t * C_{t-1}$
+\begin{equation}
+C_t = i_t * \widetilde{C_t} + f_t * C_{t-1}
+\end{equation}
 
 With the new state of the memory cells, we can compute the value of their output gates and, subsequently, their outputs :
 
-(5)$o_t = \sigma(W_o x_t + U_o h_{t-1} + V_o C_t + b_1)$
+\begin{equation}
+o_t = \sigma(W_o x_t + U_o h_{t-1} + V_o C_t + b_1)
+\end{equation}
+\begin{equation}
+h_t = o_t * tanh(C_t)
+\end{equation}
 
-(6)$h_t = o_t * tanh(C_t)$
-
-\end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Tutorial LSTM}
-\begin{itemize}
-\item The model we used in this tutorial is a variation of the standard LSTM model. In this variant, the activation of a cell’s output gate does not depend on the memory cell’s state $C_t$. This allows us to perform part of the computation more efficiently (see the implementation note, below, for details). This means that, in the variant we have implemented, there is no matrix $V_o$ and equation (5) is replaced by equation (7) :
+The model we used in this tutorial is a variation of the standard LSTM model. In this variant, the activation of a cell’s output gate does not depend on the memory cell’s state $C_t$. This allows us to perform part of the computation more efficiently (see the implementation note, below, for details). This means that, in the variant we have implemented, there is no matrix $V_o$ and equation (5) is replaced by equation (7) :
 
-(7)$o_t = \sigma(W_o x_t + U_o h_{t-1} + b_1)$
+\begin{equation}
+o_t = \sigma(W_o x_t + U_o h_{t-1} + b_1)
+\end{equation}
 
-\end{itemize}
 \end{frame}
 
 \begin{frame}
   \frametitle{Implementation Note}
-\begin{itemize}
-\item Implementation note : In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
-
-$z = \sigma(W x_t + U h_{t-1} + b)$
+Implementation note : In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
+\vspace{-1em}
+\begin{equation*}
+z = \sigma(W x_t + U h_{t-1} + b)
+\end{equation*}
+\vspace{-2em} % don't remove the blank line
 
 The result is then sliced to obtain the pre-nonlinearity activations for i, f, $\widetilde{C_t}$, and o and the non-linearities are then applied independently for each.
-\end{itemize}
 \end{frame}
 
 \begin{frame}{LSTM Tips For Training}
 \begin{itemize}
-\item Do use use SGD, but use something like adagrad or rmsprop.
+\item Do not use SGD, but use something like adagrad or rmsprop.
 \item Initialize any recurrent weights as orthogonal matrices (orth\_weights). This helps optimization.
 \item Take out any operation that does not have to be inside "scan".
-      Theano do many cases, but not all.
+      Theano does many cases, but not all.
 \item Rescale (clip) the L2 norm of the gradient, if necessary.
 \item You can use weight noise or dropout at the output of the recurrent layer for regularization.
-\end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{}
-\begin{itemize}
-\item a
 \end{itemize}
 \end{frame}
 
@@ -1134,6 +1153,8 @@ The result is then sliced to obtain the pre-nonlinearity activations for i, f, $
     input in the reverse order. Then you concatenate the mean of the
     outputs of both LSTM to the logistic regression. (No solutions provided)
 \end{itemize}
+
+% I don't know how to fix this frame since it seems incomplete.
 
 Deep Learning Tutorial on LSTM: \url{http://deeplearning.net/tutorial/lstm.html}
 
