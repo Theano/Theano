@@ -862,15 +862,16 @@ print f([0, 1, 2])
 \item Allow looping (for, map, while)
 \item Allow recursion (reduce)
 \item Allow recursion with dependency on many of the previous time step
-\item Optimize some cases like moving computation outside of scan.
-\item The Scan grad is done via Backpropagation\_through\_time(BPTT)
+\item Optimize some cases like moving computation outside of scan
+\item The Scan grad is done via Backpropagation Through Time(BPTT)
 \end{itemize}
 \end{frame}
 
 \begin{frame}{When not to use scan}
 \begin{itemize}
-\item If only needed for ``vectorization'' or ``broadcasting''. tensor
-  and numpy.ndarray support them natively. This will be much better.
+\item If you only need for ``vectorization'' or
+  ``broadcasting''. tensor and numpy.ndarray support them
+  natively. This will be much better for that use case.
 
 \item You do a fixed number of iteration that is very small (2,3). You
   are probably better to just unroll the graph to do it.
@@ -892,22 +893,36 @@ import theano.tensor as T
 import numpy as np
 
 # define tensor variables
-X = T.matrix("X")
 W = T.matrix("W")
+X = T.matrix("X")
 b_sym = T.vector("b_sym")
 
 # define shared random stream
 trng = T.shared_randomstreams.RandomStreams(1234)
 d=trng.binomial(size=W[1].shape)
+\end{lstlisting}
+\end{frame}
 
-results, updates = theano.scan(lambda v: T.tanh(T.dot(v, W) + b_sym) * d, sequences=X)
-compute_with_bnoise = theano.function(inputs=[X, W, b_sym], outputs=[results],
-                          updates=updates, allow_input_downcast=True)
+
+\begin{frame}[fragile]
+  \frametitle{Scan Example1: Computing tanh(v.dot(W) + b) * d where d is binomial (2)}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+results, updates = theano.scan(
+    lambda v: T.tanh(T.dot(v, W) + b_sym) * d,
+    sequences=X)
+f = theano.function(inputs=[X, W, b_sym],
+                    outputs=[results],
+                    updates=updates)
 x = np.eye(10, 2, dtype=theano.config.floatX)
 w = np.ones((2, 2), dtype=theano.config.floatX)
 b = np.ones((2), dtype=theano.config.floatX)
 
-print compute_with_bnoise(x, w, b)
+print f(x, w, b)
 \end{lstlisting}
 \end{frame}
 
@@ -928,19 +943,28 @@ A = T.vector("A")
 
 def inner_fct(prior_result, B):
     return prior_result * B
+\end{lstlisting}
+\end{frame}
 
-# Symbolic description of the result
-result, updates = theano.scan(fn=inner_fct,
-                            outputs_info=T.ones_like(A),
-                            non_sequences=A, n_steps=k)
+\begin{frame}[fragile]
+  \frametitle{Scan Example2: Computing pow(A, k) (2)}
 
-# Scan has provided us with A ** 1 through A ** k.  Keep only the last
-# value. Scan notices this and does not waste memory saving them.
-final_result = result[-1]
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+result, updates = theano.scan(
+    fn=inner_fct,
+    outputs_info=T.ones_like(A),
+    non_sequences=A, n_steps=k)
 
-power = theano.function(inputs=[A, k], outputs=final_result,
+# Scan provide us with A ** 1 through A ** k.
+# Keep only the last value. Scan optimize memory.
+final = result[-1]
+
+power = theano.function(inputs=[A, k], outputs=final,
                       updates=updates)
-
 print power(range(10), 2)
 #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
 \end{lstlisting}
@@ -954,18 +978,19 @@ print power(range(10), 2)
         stringstyle=\color{violet},
         }
 \begin{lstlisting}
-result, updates = theano.scan(fn=inner_fct,
-                            outputs_info=T.ones_like(A),
-                            non_sequences=A, n_steps=k)
+result, updates = theano.scan(
+    fn=inner_fct,
+    sequences=[]
+    outputs_info=[T.ones_like(A)],
+    non_sequences=A,
+    n_steps=k)
 \end{lstlisting}
 
 \begin{itemize}
-\item updates are needed if there is random number generated in the
+\item Updates are needed if there is random number generated in the
 \item Just pass them to the call theano.function(..., updates=updates)
 \item The innfer function of scan take argument like this:
-
-
-\item scan: sequence, outputs\_info, nonsequence
+   scan: sequences, outputs\_info, non sequences
 \end{itemize}
 
 \end{frame}
