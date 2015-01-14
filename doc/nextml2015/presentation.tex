@@ -21,6 +21,8 @@ Département d'Informatique et de Recherche Opérationnelle \newline
 Université de Montréal \newline
 Montréal, Canada \newline
 \texttt{bastienf@iro.umontreal.ca} \newline \newline
+Presentation prepared with Pierre-Luc Carrier, KyungHyun Cho and \newline
+ Çağlar Gülçehre
 }
 
 \date{Next.ML 2015}
@@ -39,8 +41,6 @@ Montréal, Canada \newline
 \section{Introduction}
 \begin{frame}
   \frametitle{Task}
-
-LSTM Networks for Sentiment Analysis
 
 This is a classification task where we need to tell if the review was
 positive or negative.
@@ -61,7 +61,7 @@ We use the IMDB dataset.
   \item SciPy: sparse matrix objects and more scientific computing functionality
   \item libgpuarray: GPU $n$-dimensional array object in C for CUDA and OpenCL
   \item Theano: compiler/symbolic graph manipulation
-  \item Pylearn2: machine learning framework
+  \item Pylearn2: machine learning framework for researchers
   \end{itemize}
 \end{frame}
 
@@ -145,42 +145,8 @@ We use the IMDB dataset.
 \end{frame}
 
 \begin{frame}{Description}
-TODO, merge with next slides
-  \begin{itemize}
-    \item Mathematical symbolic expression compiler
-    \item Expressions mimic NumPy's syntax and semantics
-    \item Dynamic C/CUDA code generation
-    \begin{itemize}
-      \item C/C++, CUDA, OpenCL, PyCUDA, Cython, Numba, \ldots
-    \end{itemize}
-    \item Efficient symbolic differentiation
-    %\begin{itemize}
-    %  \item Derivatives of functions with one or many inputs.
-    %  \item Computation of the Jacobian, Hessian, R and L op.
-    %\end{itemize}
-    \item Speed and stability optimizations
-    \begin{itemize}
-      \item Gives the right answer for ``$\log (1 + x)$'' even if $x$ is really tiny.
-    \end{itemize}
-    \item Extensive unit-testing and self-verification
-    %\begin{itemize}
-    %  \item Detects and diagnoses many types of errors
-    %\end{itemize}
-    \item Works on Linux, OS X and Windows
-    \item Transparent use of a GPU
-    \begin{itemize}
-      \item {\tt float32} only for now (libgpuarray provides much more)
-      \item Limited support on Windows
-    \end{itemize}
 
-%    \item Statically typed and purely functional
-    \item Sparse operations (CPU only)
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Theano}
-
-  High-level domain-specific language tailored to numeric computation.
+  High-level domain-specific language for numeric computation.
 
   \begin{itemize}
     \item Syntax as close to NumPy as possible
@@ -195,10 +161,12 @@ TODO, merge with next slides
     \item Automatic speed and stability optimizations
     \item Can reuse other technologies for best performance.
     \begin{itemize}
-      \item BLAS, SciPy, Cython, Numba, PyCUDA, CUDA
+      \item BLAS, SciPy, Cython, Numba, PyCUDA, CUDA, ...
     \end{itemize}
     \item Automatic differentiation and R op
-    \item Sparse matrices
+    \item Sparse matrices (CPU only)
+    \item Extensive unit-testing and self-verification
+    \item Works on Linux, OS X and Windows
   \end{itemize}
 \end{frame}
 
@@ -240,14 +208,14 @@ TODO, merge with next slides
 \end{frame}
 
 
-\begin{frame}{Overview of Library}
-  Theano is many things
-  \begin{itemize}
-  \item Language
-  \item Compiler
-  \item Python library
-  \end{itemize}
-\end{frame}
+%% \begin{frame}{Overview of Library}
+%%   Theano is many things
+%%   \begin{itemize}
+%%   \item Language
+%%   \item Compiler
+%%   \item Python library
+%%   \end{itemize}
+%% \end{frame}
 
 \begin{frame}{Overview Language}
   \begin{itemize}
@@ -255,6 +223,9 @@ TODO, merge with next slides
   \item Linear algebra
   \item Element-wise nonlinearities
   \item Convolution
+  \item Indexing, slicing and advanced indexing.
+  \item Reduction
+  \item Dimshuffle (n-dim transpose)
   \item Extensible
   \end{itemize}
 \end{frame}
@@ -288,24 +259,11 @@ int f(int x, int y){
   \end{itemize}
 \end{frame}
 
-
-\subsection{Building}
-\begin{frame}{Building expressions}
-  \begin{itemize}
-  \item Scalars
-  \item Vectors
-  \item Matrices
-  \item Tensors
-  \item Reduction
-  \item Dimshuffle
-  \end{itemize}
-\end{frame}
-
 \begin{frame}[fragile]
   \frametitle{Scalar math}
   Using Theano:
   \begin{itemize}
-  \item define expression $f(x,y) = x + y$
+  \item define SYMBOLIC expression $f(x,y) = x + y$
   \item compile expression
   \end{itemize}
 \lstset{language=Python,
@@ -340,7 +298,7 @@ y = T.vector()
 a = x * y
 # Vector dot product
 b = T.dot(x, y)
-# Broadcasting
+# Broadcasting (as NumPy, very powerful)
 c = a + b
 \end{lstlisting}
 \end{frame}
@@ -368,15 +326,10 @@ c = T.dot(x, a)
   \frametitle{Tensors}
   Using Theano:
   \begin{itemize}
-  \item define expression $f(x,y) = x + y$
-  \item compile expression
-    \begin{itemize}
-    \item Dimensionality defined by length of ``broadcastable'' argument
-    \item Can add (or do other elemwise op) on two
-      tensors with same dimensionality
-    \item Duplicate tensors along broadcastable axes to
-      make size match
-    \end{itemize}
+  \item Dimensionality defined by length of ``broadcastable'' argument
+  \item Can add (or do other elemwise op) on two
+    tensors with same dimensionality
+  \item Duplicate tensors along broadcastable axes to make size match
   \end{itemize}
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
@@ -393,11 +346,6 @@ x = T.tensor3()
 
 \begin{frame}[fragile]
   \frametitle{Reductions}
-  Using Theano:
-  \begin{itemize}
-  \item define expression $f(x,y) = x + y$
-  \item compile expression
-  \end{itemize}
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
@@ -423,7 +371,8 @@ mx = x.max(axis=1)
         }
 \begin{lstlisting}
 from theano import tensor as T
-tensor3 = T.TensorType(broadcastable=(False, False, False), dtype=''float32'')
+tensor3 = T.TensorType(
+    broadcastable=(False, False, False))
 x = tensor3()
 y = x.dimshuffle((2, 1, 0))
 a = T.matrix()
@@ -436,24 +385,27 @@ e = a + d
 \end{lstlisting}
 \end{frame}
 
-\begin{frame}
+\begin{frame}[fragile]
   \frametitle{Indexing}
   As NumPy!
+  This mean all slices, index selection return view
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+# return views
+a_tensor[int]
+a_tensor[int, int]
+a_tensor[start:stop:step, start:stop:step]
+a_tensor[::-1] # reverse the first dimension
 
-  \begin{itemize}
-  \item This mean all slices, index selection return view:
-    \begin{itemize}
-    \item a\_tensor[startstopstep, N] \# return a view
-    \item a\_tensor[-1] \# reverse the vector, return a view
-    \end{itemize}
-  \item Advanced indexing as NumPy:
-    \begin{itemize}
-    \item This mean it can use vector/tensor of indices to use.
-    \item this create a copy
-    \item This can be mixed with slicing/index selection.
-    \item GPU Support only this case: a\_tensor[an\_index\_vector]
-    \end{itemize}
-  \end{itemize}
+# Advanced indexing, return copy
+a_tensor[an_index_vector] # Supported on GPU.
+a_tensor[an_index_vector, an_index_vector]
+a_tensor[int, an_index_vector]
+a_tensor[an_index_tensor, ...]
+\end{lstlisting}
 \end{frame}
 
 \subsection{Compiling/Running}
