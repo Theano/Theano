@@ -990,9 +990,11 @@ result, updates = theano.scan(
 \end{lstlisting}
 
 \begin{itemize}
-\item Updates are needed if there is random number generated in the
-\item Just pass them to the call theano.function(..., updates=updates)
-\item The innfer function of scan take argument like this:
+\item Updates are needed if there are random numbers generated in the inner function
+\begin{itemize}
+\item Pass them to the call theano.function(..., updates=updates)
+\end{itemize}
+\item The inner function of scan takes arguments like this:
    scan: sequences, outputs\_info, non sequences
 \end{itemize}
 
