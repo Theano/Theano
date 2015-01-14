@@ -480,8 +480,7 @@ array(3.0)
   \item Use theano.compat.python2x.OrderedDict
   \item Not collections.OrderedDict
   \begin{itemize}
-  \item This isn’t available in older versions of python,
-and will limit the portability of your code
+  \item This isn’t available in older versions of python
   \end{itemize}
   \item Not \{\} aka dict
   \begin{itemize}
@@ -503,28 +502,27 @@ and will limit the portability of your code
 
 \begin{frame}{Example preset compilation modes}
   \begin{itemize}
-  \item FAST\_RUN: default. Spends a lot of time on
-compilation to get an executable that runs
-fast.
-  \item FAST\_COMPILE: Doesn’t spend much time
-compiling. Executable usually uses python
-instead of compiled C code. Runs slow.
+  \item FAST\_RUN: default. Fastest execution, slowest compilation
+  \item FAST\_COMPILE: Fastest compilation, slowest execution. No C code.
   \item DEBUG\_MODE: Adds lots of checks.
 Raises error messages in situations other
 modes regard as fine.
   \item optimizer=fast\_compile: as mode=FAST\_COMPILE, but with C code.
+  \item theano.function(..., mode=``FAST\_COMPILE'')
+  \item THEANO\_FLAGS=mode=FAST\_COMPILE python script.py
   \end{itemize}
 \end{frame}
 
 \begin{frame}{Compilation for GPU}
   \begin{itemize}
   \item Theano current back-end only supports 32 bit on GPU
+  \item libgpuarray (new-backend) support all dtype
   \item CUDA supports 64 bit, but is slow in gamer card
   \item T.fscalar, T.fvector, T.fmatrix are all 32 bit
   \item T.scalar, T.vector, T.matrix resolve to 32 bit or 64 bit depending on theano’s floatX flag
   \item floatX is float64 by default, set it to float32
   \item Set device flag to gpu (or a specific gpu, like gpu0)
-  \item flag: warn\_float64={'ignore', 'warn', 'raise', 'pdb'}
+  \item Flag: warn\_float64={'ignore', 'warn', 'raise', 'pdb'}
   \end{itemize}
 \end{frame}
 
@@ -552,6 +550,7 @@ modes regard as fine.
 >>> x = T.scalar('x')
 >>> y = 2. * x
 >>> g = T.grad(y, x)
+# Print the not optimized graph
 >>> theano.printing.debugprint(g)
 Elemwise{mul} [@A] ''
  |Elemwise{second,no_inplace} [@B] ''
@@ -711,8 +710,6 @@ Elemwise{add,no_inplace} [@A] <TensorType(float64, vector)> ''
 Backtrace when the node is created:
   File "test.py", line 7, in <module>
     z = z + y
-  File "/home/nouiz/src/Theano/theano/tensor/var.py", line 122, in __add__
-    return theano.tensor.basic.add(self, other)
 
 \end{lstlisting}
 \end{frame}
