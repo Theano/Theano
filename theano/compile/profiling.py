@@ -573,8 +573,7 @@ class ProfileStats(object):
                 self.apply_callcount[a]))
         del topos
 
-        atimes.sort()
-        atimes.reverse()
+        atimes.sort(reverse=True, key=lambda t: (t[1], t[3]))
         tot = 0
         for (f, t, a, nd_id, nb_call) in atimes[:N]:
             tot += t
