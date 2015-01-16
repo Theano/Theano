@@ -10,6 +10,8 @@ __docformat__ = "restructuredtext en"
 
 
 from copy import copy
+from itertools import count
+
 
 import theano
 import warnings
@@ -31,7 +33,6 @@ class Node(utils.object2):
     Variable.owner / Apply.inputs and its children
     via Variable.clients / Apply.outputs.
     """
-
     def get_parents(self):
         """ Return a list of the parents of this node.
         Should return a copy--i.e., modifying the return
@@ -314,9 +315,10 @@ class Variable(Node):
 
     `compile.function` uses each `Apply` instance's `inputs` attribute
     together with each Variable's `owner` field to determine which inputs are necessary to compute the function's outputs.
-
     """
     #__slots__ = ['type', 'owner', 'index', 'name']
+    __count__ = count(0)
+
     def __init__(self, type, owner=None, index=None, name=None):
         """Initialize type, owner, index, name.
 
@@ -334,6 +336,8 @@ class Variable(Node):
         :param name: a string for pretty-printing and debugging
 
         """
+        super(Variable, self).__init__()
+
         self.tag = utils.scratchpad()
         self.type = type
         if owner is not None and not isinstance(owner, Apply):
@@ -345,6 +349,7 @@ class Variable(Node):
         if name is not None and not isinstance(name, basestring):
             raise TypeError("name must be a string", name)
         self.name = name
+        self.auto_name = 'auto_' + str(next(self.__count__))
 
     def __str__(self):
         """WRITEME"""
