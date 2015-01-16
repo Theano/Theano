@@ -610,7 +610,6 @@ Elemwise{mul} [@A] ''
       (go from the result of computation to its input, recursively)
   \end{itemize}
 \end{frame}
-%TODO place somewhere a computation graph example.
 
 \subsection{Debugging}
 \begin{frame}{Debugging}
@@ -983,7 +982,10 @@ result, updates = theano.scan(
 \begin{itemize}
 \item RNN is a class of neural network that allows to work with sequences of variable sizes.
 \item It does so, by reusing weights for each element of the sequence.
-\item It creates an internal state that allows to exhibit dynamic temporal behavior.
+\item One layer have recurrent connection to itself with a time delay.
+  \begin{itemize}
+  \item This create an internal state that allows to exhibit dynamic temporal behavior.
+  \end{itemize}
 \end{itemize}
 Image from wikipedia by Fyedernoggersnodden
 \includegraphics[width=0.35\textwidth]{../images/Elman_srnn.png}
