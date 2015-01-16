@@ -21,7 +21,7 @@ Département d'Informatique et de Recherche Opérationnelle \newline
 Université de Montréal \newline
 Montréal, Canada \newline
 \texttt{bastienf@iro.umontreal.ca} \newline \newline
-Presentation prepared with Pierre-Luc Carrier, KyungHyun Cho and \newline
+Presentation prepared with Pierre Luc Carrier, KyungHyun Cho and \newline
  Çağlar Gülçehre
 }
 
@@ -42,7 +42,7 @@ Presentation prepared with Pierre-Luc Carrier, KyungHyun Cho and \newline
 \begin{frame}
   \frametitle{Task}
 
-This is a classification task where we need to tell if the review was
+This is a classification task where we need to tell if the movie review was
 positive or negative.
 
 We use the IMDB dataset.
@@ -151,7 +151,7 @@ We use the IMDB dataset.
   \begin{itemize}
     \item Syntax as close to NumPy as possible
     \item Compiles most common expressions to C for CPU and/or GPU
-    \item Limited expressivity means more opportunities optimizations
+    \item Limited expressivity means more opportunities for optimizations
     \begin{itemize}
       \item No subroutines -> global optimization
       \item Strongly typed -> compiles to C
@@ -445,7 +445,7 @@ array(3.0)
   \begin{itemize}
   \item It’s hard to do much with purely functional programming
   \item ``shared variables'' add just a little bit of imperative programming
-  \item A “shared variable” is a buffer that stores a numerical value for a Theano variable
+  \item A ``shared variable'' is a buffer that stores a numerical value for a Theano variable
   \item Can write to as many shared variables as you want, once each, at the end of the function
   \item  Modify outside Theano function with get\_value() and set\_value() methods.
   \end{itemize}
@@ -517,7 +517,7 @@ modes regard as fine.
   \begin{itemize}
   \item Theano current back-end only supports 32 bit on GPU
   \item libgpuarray (new-backend) support all dtype
-  \item CUDA supports 64 bit, but is slow in gamer card
+  \item CUDA supports 64 bit, but is slow on gamer GPUs
   \item T.fscalar, T.fvector, T.fmatrix are all 32 bit
   \item T.scalar, T.vector, T.matrix resolve to 32 bit or 64 bit depending on theano’s floatX flag
   \item floatX is float64 by default, set it to float32
@@ -864,9 +864,9 @@ print f([0, 1, 2])
 \begin{frame}
   \frametitle{Scan}
 \begin{itemize}
-\item Allow looping (for, map, while)
-\item Allow recursion (reduce)
-\item Allow recursion with dependency on many of the previous time step
+\item Allows looping (for, map, while)
+\item Allows recursion (reduce)
+\item Allows recursion with dependency on many of the previous time steps
 \item Optimize some cases like moving computation outside of scan
 \item The Scan grad is done via Backpropagation Through Time(BPTT)
 \end{itemize}
@@ -874,11 +874,11 @@ print f([0, 1, 2])
 
 \begin{frame}{When not to use scan}
 \begin{itemize}
-\item If you only need for ``vectorization'' or
+\item If you only need it for ``vectorization'' or
   ``broadcasting''. tensor and numpy.ndarray support them
   natively. This will be much better for that use case.
 
-\item You do a fixed number of iteration that is very small (2,3). You
+\item If you do a fixed number of iteration that is very small (2,3). You
   are probably better to just unroll the graph to do it.
 
 \end{itemize}
@@ -1120,7 +1120,7 @@ o_t = \sigma(W_o x_t + U_o h_{t-1} + b_1)
 
 \begin{frame}
   \frametitle{Implementation Note}
-Implementation note : In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
+In the code included this tutorial, the equations (1), (2), (3) and (7) are performed in parallel to make the computation more efficient. This is possible because none of these equations rely on a result produced by the other ones. It is achieved by concatenating the four matrices $W_*$ into a single weight matrix W and performing the same concatenation on the weight matrices $U_*$ to produce the matrix U and the bias vectors $b_*$ to produce the vector b. Then, the pre-nonlinearity activations can be computed with :
 \vspace{-1em}
 \begin{equation*}
 z = \sigma(W x_t + U h_{t-1} + b)
