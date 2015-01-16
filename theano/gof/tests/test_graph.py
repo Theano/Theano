@@ -380,7 +380,7 @@ class TestAutoName:
         assert r3.auto_name == "auto_2"
         assert r4.auto_name == "auto_3"
 
-    def test_cudandarrayvariable(self):
+    def test_randomvariable(self):
         ## Re-init counter
         Variable.__count__ = count(0)
         mytype = tensor.TensorType(dtype='int32', broadcastable=())
