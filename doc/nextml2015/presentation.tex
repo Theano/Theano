@@ -394,14 +394,14 @@ e = a + d
         stringstyle=\color{violet},
         }
 \begin{lstlisting}
-# return views
+# return views, supported on GPU
 a_tensor[int]
 a_tensor[int, int]
 a_tensor[start:stop:step, start:stop:step]
 a_tensor[::-1] # reverse the first dimension
 
 # Advanced indexing, return copy
-a_tensor[an_index_vector] # Supported on GPU.
+a_tensor[an_index_vector] # Supported on GPU
 a_tensor[an_index_vector, an_index_vector]
 a_tensor[int, an_index_vector]
 a_tensor[an_index_tensor, ...]
