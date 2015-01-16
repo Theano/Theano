@@ -78,6 +78,8 @@ def _is_dense(x):
 def _kmap_eq(a, b):
     if a is None and b is None:
         return True
+    if a is None or b is None:
+        return False
     return numpy.all(a == b)
 
 
