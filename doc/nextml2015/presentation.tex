@@ -42,8 +42,8 @@ Presentation prepared with Pierre Luc Carrier, KyungHyun Cho and \newline
 \begin{frame}
   \frametitle{Task}
 
-This is a classification task where we need to tell if the movie review was
-positive or negative.
+This is a classification task where, given a review of a movie, we
+need to establish whether the movie review is positive or negative.
 
 We use the IMDB dataset.
 \end{frame}
@@ -975,8 +975,7 @@ result, updates = theano.scan(
   \frametitle{Recurrent Neural Network Overview}
 \begin{itemize}
 \item RNN is a class of neural network that allows to work with sequences of variable sizes.
-\item It does so, by reusing weights for each element of the sequence.
-\item One layer have recurrent connection to itself with a time delay.
+\item Some layers have recurrent connections to themselves with a time delay.
   \begin{itemize}
   \item This create an internal state that allows to exhibit dynamic temporal behavior.
   \end{itemize}
