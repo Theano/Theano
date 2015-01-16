@@ -207,6 +207,37 @@ We use the IMDB dataset.
   Deep Learning Tutorials: \url{deeplearning.net/tutorial/}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Simple example}
+
+\lstset{language=Python,
+        commentstyle=\itshape\color{blue},
+        stringstyle=\color{violet},
+        }
+\begin{lstlisting}
+import theano
+# declare symbolic variable
+a = theano.tensor.vector("a")
+
+# build symbolic expression
+b = a + a ** 10
+
+# compile function
+f = theano.function([a], b)
+
+# Execute with numerical value
+print f([0, 1, 2])
+# prints `array([0, 2, 1026])`
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Simple example}
+\center
+\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_unoptimized.png}
+\hspace{0.1\textwidth}
+\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_optimized.png}
+\end{frame}
+
 
 %% \begin{frame}{Overview of Library}
 %%   Theano is many things
@@ -232,39 +263,8 @@ We use the IMDB dataset.
 
 
 \begin{frame}[fragile]
-  \frametitle{Overview}
-  Using Theano:
-  \begin{itemize}
-  \item define expression $f(x,y) = x + y$
-  \item compile expression
-\lstset{language=Python,
-        commentstyle=\itshape\color{blue},
-        stringstyle=\color{violet},
-        }
-\begin{lstlisting}
-int f(int x, int y){
-  return x + y;
-}
-\end{lstlisting}
-
-  \item execute expression
-\lstset{language=Python,
-        commentstyle=\itshape\color{blue},
-        stringstyle=\color{violet},
-        }
-\begin{lstlisting}
->>> f(1, 2)
-3
-\end{lstlisting}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}[fragile]
   \frametitle{Scalar math}
-  Using Theano:
-  \begin{itemize}
-  \item define SYMBOLIC expression $f(x,y) = x + y$
-  \end{itemize}
+Some example of scalar operations:
 \lstset{language=Python,
         commentstyle=\itshape\color{blue},
         stringstyle=\color{violet},
@@ -828,37 +828,6 @@ Elemwise{mul,no_inplace} [@A] ''
 %%     \end{itemize}
 %%   \end{itemize}
 %% \end{frame}
-
-% The following does not work with lstset, for some reason
-%\begin{frame}{Simple example}
-\begin{frame}[fragile]
-  \frametitle{Simple example}
-
-\lstset{language=Python,
-        commentstyle=\itshape\color{blue},
-        stringstyle=\color{violet},
-        }
-\begin{lstlisting}
-import theano
-# declare symbolic variable
-a = theano.tensor.vector("a")
-# build symbolic expression
-b = a + a ** 10
-# compile function
-f = theano.function([a], b)
-print f([0, 1, 2])
-# prints `array([0, 2, 1026])`
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}{Simple example: graph optimization}
-\center
-\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_unoptimized.png}
-\hspace{0.1\textwidth}
-\includegraphics[width=0.35\textwidth]{../hpcs2011_tutorial/pics/f_optimized.png}
-%Symbolic programming = *Paradigm shift*: people need to use it to understand it.
-
-\end{frame}
 
 \subsection{Scan}
 \begin{frame}
