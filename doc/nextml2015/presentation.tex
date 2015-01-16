@@ -551,15 +551,9 @@ modes regard as fine.
 >>> y = 2. * x
 >>> g = T.grad(y, x)
 # Print the not optimized graph
->>> theano.printing.debugprint(g)
-Elemwise{mul} [@A] ''
- |Elemwise{second,no_inplace} [@B] ''
- | |Elemwise{mul,no_inplace} [@C] ''
- | | |TensorConstant{2.0} [@D]
- | | |x [@E]
- | |TensorConstant{1.0} [@F]
- |TensorConstant{2.0} [@D]
+>>> theano.printing.pydotprint(g)
 \end{lstlisting}
+\includegraphics[width=0.75\textwidth]{theano_grad.png}
 \end{frame}
 
 %% \begin{frame}{Theano Variables}
