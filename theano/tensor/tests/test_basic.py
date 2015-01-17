@@ -1224,7 +1224,6 @@ RoundHalfToEvenTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
 
-
 RoundHalfToEvenInplaceTester = makeBroadcastTester(
     op=inplace.round_half_to_even_inplace,
     expected=lambda a: numpy.asarray(numpy.round(a), a.dtype),
@@ -1241,6 +1240,7 @@ RoundHalfAwayFromZeroTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_empty_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
     #_good_broadcast_unary_normal_float)
+
 RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(
     op=inplace.round_half_away_from_zero_inplace,
     expected=lambda a:theano.scalar.basic.round_half_away_from_zero_vec(a),
@@ -1252,6 +1252,7 @@ SqrTester = makeBroadcastTester(op=tensor.sqr,
                                 expected=numpy.square,
                                 good=_good_broadcast_unary_normal,
                                 grad=_grad_broadcast_unary_normal)
+
 SqrInplaceTester = makeBroadcastTester(op=inplace.sqr_inplace,
                                        expected=numpy.square,
                                        good=_good_broadcast_unary_normal,
