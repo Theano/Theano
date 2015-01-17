@@ -1099,6 +1099,10 @@ _grad_broadcast_unary_normal = dict(
         #empty = [numpy.asarray([])] # XXX: should this be included?
         )
 
+_grad_broadcast_unary_normal_no_complex_no_corner_case = copymod(
+        _grad_broadcast_unary_normal_no_complex,
+        without=['corner_case'])
+
 _grad_broadcast_unary_abs1_no_complex = dict(
         normal=[numpy.asarray(rand_ranged(-1, 1, (2, 3)), dtype=floatX)],
         )
@@ -1216,13 +1220,16 @@ TruncTester = makeBroadcastTester(
 
 RoundHalfToEvenTester = makeBroadcastTester(
     op=tensor.round_half_to_even,
-    expected=numpy.round,
-    good=_good_broadcast_unary_normal_float_no_complex)
-# TODO: Why complex are accepted in the next one?
+    expected=lambda a: numpy.asarray(numpy.round(a), a.dtype),
+    good=_good_broadcast_unary_normal_float_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
+
+
 RoundHalfToEvenInplaceTester = makeBroadcastTester(
     op=inplace.round_half_to_even_inplace,
-    expected=numpy.round,
-    good=_good_broadcast_unary_normal_float,
+    expected=lambda a: numpy.asarray(numpy.round(a), a.dtype),
+    good=_good_broadcast_unary_normal_float_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex_no_corner_case,
     inplace=True)
 
 #numpy.vectorize don't handle correctly empty ndarray.
@@ -1230,13 +1237,15 @@ RoundHalfToEvenInplaceTester = makeBroadcastTester(
 #This happen in float32 mode.
 RoundHalfAwayFromZeroTester = makeBroadcastTester(
     op=tensor.round_half_away_from_zero,
-    expected=theano.scalar.basic.round_half_away_from_zero_vec,
-    good=_good_broadcast_unary_normal_float_no_empty_no_complex)
+    expected=lambda a:theano.scalar.basic.round_half_away_from_zero_vec(a),
+    good=_good_broadcast_unary_normal_float_no_empty_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
     #_good_broadcast_unary_normal_float)
 RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(
     op=inplace.round_half_away_from_zero_inplace,
-    expected=theano.scalar.basic.round_half_away_from_zero_vec,
+    expected=lambda a:theano.scalar.basic.round_half_away_from_zero_vec(a),
     good=_good_broadcast_unary_normal_float_no_empty_no_complex,
+    grad=_grad_broadcast_unary_normal_no_complex_no_corner_case,
     inplace=True)
 
 SqrTester = makeBroadcastTester(op=tensor.sqr,
