@@ -1890,7 +1890,7 @@ def consider_constant(x):
     return consider_constant_(x)
 
 
-class GradClip(theano.compile.ViewOp):
+class GradClip(ViewOp):
     # See doc in user fct grad_clip
     __props__ = ()
     def __init__(self, clip_lower_bound, clip_upper_bound):
