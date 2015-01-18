@@ -1919,7 +1919,7 @@ def grad_clip(x, lower_bound, upper_bound):
 
         x = theano.tensor.scalar()
 
-        z = theano.tensor.grad(grad_clip(x)**2, x)
+        z = theano.tensor.grad(grad_clip(x, -1, 1)**2, x)
         z2 = theano.tensor.grad(x**2, x)
 
         f = theano.function([x], outputs = [z, z2])
