@@ -3069,13 +3069,16 @@ class Test_local_useless_alloc(unittest.TestCase):
         x = tensor.matrix('x')
         y = tensor.tile(x, (1,)*2)
 
-        # This is currently failing. Once the proper optimization is
-        # implemented, we should not see tensor.Alloc in op_classes
         f = function([x], [y], mode=mode)
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         print op_classes
-        
-        assert tensor.Alloc not in op_classes, 'Right now the test is failing.'
+
+        # We are supposed to test if tensr.Alloc is not in op_classes,
+        # but since the proper proper optimization is not currently
+        # implemented it will fail. Once the correct optimization is in place,
+        # we have to change the following we should not see tensor.Alloc
+        # in op_classes and we have to change the assert.
+        assert tensor.Alloc in op_classes
 
 
 class test_shapeoptimizer(unittest.TestCase):
