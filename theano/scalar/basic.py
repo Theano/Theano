@@ -3108,7 +3108,8 @@ class Composite(ScalarOp):
                 for i, r in enumerate(self.fgraph.variables):
                     if r not in io and len(r.clients) > 1:
                         r.name = 't%i' % i
-                rval = "Composite{%s}" % pprint(self.fgraph.outputs[0])
+                rval = "Composite{%s}" % ', '.join([pprint(output) for output
+                                                    in self.fgraph.outputs])
         self.name = rval
 
     def init_fgraph(self):

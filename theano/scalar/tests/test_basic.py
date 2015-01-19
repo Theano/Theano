@@ -146,6 +146,17 @@ class test_composite(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0, 3.0) == [6.0, 7.0, 0.5]
 
+    def test_composite_printing(self):
+        x, y, z = floats('xyz')
+        e0 = x + y + z
+        e1 = x + y * z
+        e2 = x / y
+        C = Composite([x, y, z], [e0, e1, e2])
+        c = C.make_node(x, y, z)
+        g = FunctionGraph([x, y, z], c.outputs)
+        fn = gof.DualLinker().accept(g).make_function()
+        assert str(g) == '[*1 -> Composite{((i0 + i1) + i2), (i0 + (i1 * i2)), (i0 / i1)}(x, y, z), *1::1, *1::2]'
+
     def test_make_node_continue_graph(self):
         # This is a test for a bug (now fixed) that disabled the
         # local_gpu_elemwise_0 optimization and printed an
