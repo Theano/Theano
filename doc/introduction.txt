@@ -195,11 +195,13 @@ Here is the state of that vision as of December 3th, 2013 (after Theano release
   * How to have `DebugMode` check it? Right now, DebugMode checks the computation non-lazily.
 
 * SIMD parallelism on the CPU comes from the compiler.
-* Multi-core parallelism is only supported by Conv2d(not by default).
+* Multi-core parallelism support limited.
   If the external BLAS implementation supports it,
-  there are also, gemm, gemv and ger that are parallelized.
+  many dot are parallelized via gemm, gemv and ger.
+  Also, element-wise operation are supported. See :ref:`tut_multi_cores`.
+
 * No multi-node support.
-* Many, but not all NumPy functions/aliases are implemented.
+* Most, but not all NumPy functions/aliases are implemented.
   * https://github.com/Theano/Theano/issues/1080
 * Wrapping an existing Python function in easy and documented.
 * We know how to separate the shared variable memory

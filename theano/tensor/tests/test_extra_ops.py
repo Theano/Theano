@@ -286,6 +286,20 @@ class SqueezeTester(utt.InferShapeTester):
 
             utt.verify_grad(self.op, [data])
 
+    def test_var_interface(self):
+        # same as test_op, but use a_theano_var.squeeze.
+        for shape, broadcast in zip(self.shape_list, self.broadcast_list):
+            data = numpy.random.random(size=shape).astype(theano.config.floatX)
+            variable = tensor.TensorType(theano.config.floatX, broadcast)()
+
+            f = theano.function([variable], variable.squeeze())
+
+            expected = numpy.squeeze(data)
+            tested = f(data)
+
+            assert tested.shape == expected.shape
+            assert numpy.allclose(tested, expected)
+
 
 class TestRepeatOp(utt.InferShapeTester):
     def _possible_axis(self, ndim):
