@@ -3075,7 +3075,7 @@ class Test_local_useless_alloc(unittest.TestCase):
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         print op_classes
         
-        assert tensor.Alloc not in op_classes
+        assert tensor.Alloc not in op_classes, 'Right now the test is failing.'
 
 
 class test_shapeoptimizer(unittest.TestCase):
