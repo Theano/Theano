@@ -276,6 +276,15 @@ expression that evaluates to a tensor of same shape and dtype.
 
 .. _using_random_numbers:
 
+
+.. note::
+
+    Theano shared variable broadcast pattern default to False for each
+    dimensions. Shared variable size can change over time, so we can't
+    use the shape to find the broadcastable pattern. If you want a
+    different pattern, just pass it as a parameter
+    ``theano.shared(..., broadcastable=(True, False))``
+
 Using Random Numbers
 ====================
 
