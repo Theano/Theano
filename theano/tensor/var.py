@@ -585,7 +585,19 @@ class _tensor_py_operators:
 
     def choose(self, a, choices, out=None, mode='raise'):
         """Construct an array from an index array and a set of arrays to choose from."""
-        return theano.tensor.basic.choose(self, a, choices, out=None, mode='raise')
+        return theano.tensor.basic.choose(self, a, choices, out=None,
+                                          mode='raise')
+
+    def squeeze(self):
+        """Remove broadcastable dimensions from
+        the shape of an array.
+
+        It returns the input array, but with the
+        broadcastable dimensions removed. This is
+        always `x` itself or a view into `x`.
+        """
+        return theano.tensor.extra_ops.squeeze(self)
+
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""
