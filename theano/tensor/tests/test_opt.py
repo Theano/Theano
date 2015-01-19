@@ -3069,8 +3069,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         x = tensor.matrix('x')
         y = tensor.tile(x, (1,)*2)
 
-        # The optimization 'locall_fill_to_alloc' should call tensor.alloc,
-        # which should return x and not alloc(x, ...)
+        # This is currently failing. Once the proper optimization is
+        # implemented, we should not see tensor.Alloc in op_classes
         f = function([x], [y], mode=mode)
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         print op_classes
