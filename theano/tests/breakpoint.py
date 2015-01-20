@@ -48,7 +48,8 @@ class PdbBreakpoint(Op):
         # as the individual error values
         breakpointOp = PdbBreakpoint("MSE too high")
         condition = T.gt(mse.sum(), 100)
-        mse, _, _ = breakpointOp(condition, mse, input, target)
+        mse, monitored_input, monitored_target = breakpointOp(condition, mse,
+                                                              input, target)
 
         # Compile the theano function
         fct = theano.function([input, target], mse)
