@@ -241,6 +241,9 @@ class DownsampleFactorMax(Op):
                                             x, maxout, gz)]
 
     def c_code(self, node, name, inp, out, sub):
+        "No implementation is currently for the case where
+        the stride size and the pooling size are different.
+        An exception is raised for such a case."
         if self.ds != self.st:
            raise theano.gof.utils.MethodNotDefined()
         x, = inp
