@@ -189,7 +189,9 @@ class TestConv3dFFT(unittest.TestCase):
         conv_fft = conv_fft.dimshuffle(0, 2, 3, 4, 1)
 
         f_ref = theano.function([], conv_ref)
-        f_fft = theano.function([], conv_fft, mode=mode_with_gpu)
+        mode = mode_with_gpu
+        mode.check_py = False
+        f_fft = theano.function([], conv_fft, mode=mode)
 
         res_ref = f_ref()
         res_fft = f_fft()
@@ -252,6 +254,7 @@ class TestConv3dFFT(unittest.TestCase):
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1,1,1))
         mode = mode_with_gpu.including('conv3d_fft')
+        mode.check_py = False
 
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
@@ -282,6 +285,7 @@ class TestConv3dFFT(unittest.TestCase):
                                              WShape=filters_shape,
                                              d=(1,1,1))
         mode = mode_with_gpu.including('convgrad3d_fft')
+        mode.check_py = False
 
         f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)

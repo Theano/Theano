@@ -172,6 +172,7 @@ class TestCorr3DMM(unittest.TestCase):
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1, 1, 1))
         mode = mode_with_gpu.including('conv3d_gemm')
+        mode.check_py = False
 
         f_ref = theano.function([], conv)
         f_gemm = theano.function([], conv, mode=mode)
