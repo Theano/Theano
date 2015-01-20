@@ -364,8 +364,7 @@ class ProfileStats(object):
                    class_call.get(clas, 0),
                    class_apply.get(clas, 0))
                   for clas, t in class_time.items()]
-        otimes.sort()
-        otimes.reverse()
+        otimes.sort(key=lambda t: (t[1], t[4], t[5]), reverse=True)
         tot = 0
         print >> file, 'Class'
         print >> file, '---'
@@ -447,8 +446,7 @@ class ProfileStats(object):
                    op_call.get(op, 0),
                    op_apply.get(op, 0))
                   for op, t in op_time.items()]
-        otimes.sort()
-        otimes.reverse()
+        otimes.sort(key=lambda t: (t[1], t[4], t[5]), reverse=True)
         tot = 0
         print >> file, 'Ops'
         print >> file, '---'
@@ -1152,8 +1150,7 @@ class ProfileStats(object):
                          " <Apply node>")
         print >> file, ""
         items = node_mem.items()
-        items.sort(key=lambda a: a[1])
-        items.reverse()
+        items.sort(key=lambda a: a[1], reverse=True)
         for idx, (node, node_outputs_size) in enumerate(items[:N]):
             code = ['c'] * len(node.outputs)
             for out, inp in getattr(node.op, 'destroy_map', {}).iteritems():
@@ -1258,8 +1255,7 @@ if 0:  # old code still to be ported from ProfileMode
         print '\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>'
         sotimes = [(t * 100 / local_time, t, a, sop_c[a],
                     sop_call[a], sop_op[a]) for a, t in sop_time.items()]
-        sotimes.sort()
-        sotimes.reverse()
+        sotimes.sort(key=lambda t: (t[1], t[4], t[5]), reverse=True)
         tot = 0
         for f, t, a, ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
             if nb_call == 0:
