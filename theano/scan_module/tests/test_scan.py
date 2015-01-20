@@ -1906,7 +1906,7 @@ class T_Scan(unittest.TestCase):
         cost = ((0.5 * ((y - t) ** 2.0).mean())
                 + (0.5 * (y.std() - t.std()) ** 2.0))
 
-        gparams = T.grad(cost, params)
+        gparams = theano.grad(cost, params)
         updates = [(param, param - gparam * learning_rate)
                    for param, gparam in zip(params, gparams)]
         learn_rnn_fn = theano.function(inputs=[x, t],
