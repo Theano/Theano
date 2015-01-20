@@ -584,8 +584,30 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         # the full convolution as the backward pass of a valid convolution.
         # We just need to set up a suitable 'fake' valid convolution.
         img = gpu_contiguous(img)
+        cv = None
+        if (kerns.owner and
+            isinstance(kerns.owner.op, theano.sandbox.cuda.GpuFromHost) and
+            kerns.owner.inputs[0].owner and
+            isinstance(kerns.owner.inputs[0].owner.op,
+                       tensor.Subtensor)):
+            sub = kerns.owner.inputs[0].owner
+            d = tensor.subtensor.get_idx_list(sub.inputs, sub.op.idx_list)
+            if (d[0] == slice(None) and
+                d[1] == slice(None) and
+                d[2].start is None and
+                d[2].stop is None and
+                tensor.extract_constant(d[2].step) == -1 and
+                d[3].start is None and
+                d[3].stop is None and
+                tensor.extract_constant(d[3].step) == -1):
+                cv = 'conv' if conv_mode == 'conv' else 'cross'
+                kerns = kerns.owner.inputs[0].owner.inputs[0]
+                import pdb;pdb.set_trace()
+        if cv is None:
+            conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
+        else:
+            conv_mode = cv
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
-        conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         shape = theano.tensor.stack(img.shape[0], kerns.shape[1],
                                     img.shape[2] + kerns.shape[2] - 1,
                                     img.shape[3] + kerns.shape[3] - 1)
