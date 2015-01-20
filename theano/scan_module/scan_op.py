@@ -1720,9 +1720,12 @@ class Scan(PureOp):
 
         offset = self.n_mit_mot
         for idx in xrange(self.n_mit_sot):
+            if isinstance(dC_douts[idx + offset].type, DisconnectedType):
+                outer_inp_mitmot.append(outs[idx + offset].zeros_like())
+            else:
+                outer_inp_mitmot.append(dC_douts[idx + offset][::-1])
             mitmot_inp_taps.append([])
             mitmot_out_taps.append([])
-            outer_inp_mitmot.append(dC_douts[idx + offset][::-1])
             idx_tap = idx + self.n_mit_mot
             inner_inp_mitmot.append(dC_dXts[out_pos])
             out_pos += 1
