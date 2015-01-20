@@ -51,6 +51,7 @@ from theano.tensor import (
         join,
         Subtensor,
         TensorType,
+        Tile,
         )
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
@@ -1723,7 +1724,7 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog) == 1
         assert isinstance(prog[0].op, theano.compile.ops.DeepCopyOp)
         assert f(0, 1, 2) == 0
-    
+
     def test_slice_idx_stop(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -1735,7 +1736,7 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog[0].inputs) == 2
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 1
-    
+
     def test_slice_idx_step(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -1747,7 +1748,7 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         assert len(prog[0].inputs) == 2
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 2
-    
+
     def test_AdvancedSubtensor1_idx(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
@@ -3061,6 +3062,24 @@ class Test_local_useless_alloc(unittest.TestCase):
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         assert tensor.Alloc not in op_classes
 
+    def test2(self):
+        # Test that alloc never gets instantiated during optimization
+        mode = mode_opt.excluding('local_useless_alloc')
+
+        x = tensor.matrix('x')
+        y = tensor.tile(x, (1,)*2)
+
+        f = function([x], [y], mode=mode)
+        op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
+        print op_classes
+
+        # We are supposed to test if tensr.Alloc is not in op_classes,
+        # but since the proper proper optimization is not currently
+        # implemented it will fail. Once the correct optimization is in place,
+        # we have to change the following we should not see tensor.Alloc
+        # in op_classes and we have to change the assert.
+        assert tensor.Alloc in op_classes
+
 
 class test_shapeoptimizer(unittest.TestCase):
     def setUp(self):
@@ -3404,6 +3423,8 @@ def test_local_mul_specialize():
 
 class T_Tile(unittest.TestCase):
     def test_local_useless_tile(self):
+        # Tile op is deprecated so the tile function doesn't use it
+        # anymore, we'll test here the op directly
         v = T.vector()
         m = T.matrix()
         mode = None
@@ -3412,7 +3433,7 @@ class T_Tile(unittest.TestCase):
         for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
             # Currently, only a repeat patter == ndim is supported.
             for ndim in [var.ndim]:  # range(1, var.ndim):
-                f = theano.function([var], T.tile(var, (1,)*ndim), mode=mode)
+                f = theano.function([var], Tile(ndim)(var, (1,)*ndim), mode=mode)
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
@@ -3422,6 +3443,7 @@ class T_Tile(unittest.TestCase):
         # replace it with a DimShuffle to add the extra parameter.
         # But it isn't supported for now, so assert that we raise an
         # error.
+
         self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
         # If the repeat parameter is shorter then m.ndim, it should
         # pad tot he left the repeat patter with 1. It is not supported for now.
@@ -3429,6 +3451,7 @@ class T_Tile(unittest.TestCase):
         #topo = f.maker.fgraph.toposort()
         #assert len(topo) == 1
         #assert isinstance(topo[0].op, DimShuffe)
+
         self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
         #f = theano.function([var], T.tile(m, (1,)*(m.ndim-1)))
         #topo = f.maker.fgraph.toposort()

@@ -4047,6 +4047,8 @@ def flatten(x, outdim=1):
 
 class Tile(Op):
     """
+    DEPRECATED: use tile() instead.
+    
     Construct an array by repeating the input x according to reps pattern.
 
     Tiles its input according to reps. The length of reps is the number of
@@ -4069,6 +4071,9 @@ class Tile(Op):
         return self.__class__.__name__ + "{ndim=%d}" % self.ndim
 
     def make_node(self, x, reps):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
         x = as_tensor_variable(x)
         reps = as_tensor_variable(reps)
         return gof.Apply(self, [x, reps], [tensor(x.type.dtype, [False] *
@@ -4139,18 +4144,19 @@ def tile(x, reps, ndim=None):
         raise ValueError("if specified, ndim must be equal to both x.ndim and "
                          "len(reps)")
 
-    if not hasattr(tile, 'op'):
-        tile.op = {}
-
     if ndim is None:
         ndim = len(reps)
+    reps = list(reps)
+    shape = [x.shape[i] for i in xrange(ndim)]
+    alloc_shape = reps + shape
+    y = alloc(x, *alloc_shape)
+    shuffle_ind = numpy.arange(ndim*2).reshape(2, ndim)
+    shuffle_ind = shuffle_ind.transpose().flatten()
+    y = y.dimshuffle(*shuffle_ind)
+    new_shapes = [sh*reps[i] for i, sh in enumerate(shape)]
+    y = y.reshape(new_shapes)
 
-    # backport
-    # ndim = len(reps) if ndim is None else ndim
-    # not sure if len(shp) is going to work.
-    if ndim not in tile.op:
-        tile.op[ndim] = Tile(ndim)
-    return tile.op[ndim](x, reps)
+    return y
 
 
 class ARange(Op):
