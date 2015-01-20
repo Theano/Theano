@@ -3,6 +3,7 @@ import pdb
 import theano
 import theano.tensor as T
 from theano.gof import Op, Apply
+from theano.gradient import DisconnectedType
 
 class PdbBreakpoint(Op):
     """
@@ -90,8 +91,7 @@ class PdbBreakpoint(Op):
             output_storage[i][0] = monitored[i]
 
     def grad(self, inputs, output_gradients):
-        return ([inputs[0].zeros_like().astype(theano.config.floatX)] +
-                output_gradients)
+        return ([DisconnectedType()] + output_gradients)
 
     def infer_shape(self, inputs, input_shapes):
         # Return the shape of every input but the condition
