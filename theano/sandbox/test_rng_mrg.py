@@ -322,7 +322,8 @@ def test_GPU_nstreams_limit():
         if theano.config.mode == "FAST_COMPILE":
             mode = "FAST_RUN"
         else:
-            mode = None
+            mode = theano.compile.get_default_mode()
+            mode.check_py = False
         out = R.uniform(size=size, nstreams=nstreams, dtype='float32')
         f = theano.function([], out, mode=mode)
         return f()
