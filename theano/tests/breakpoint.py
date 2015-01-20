@@ -83,7 +83,8 @@ class PdbBreakpoint(Op):
         if condition:
             print "-------------------------------------------------"
             print "Conditional breakpoint %s activated" % self.name
-            print "The monitored variables are stored in 'monitored'"
+            print "The monitored variables are stored in, in order,"
+            print "in the list variable 'monitored'"
             print "-------------------------------------------------"
             pdb.set_trace()
 
@@ -94,5 +95,5 @@ class PdbBreakpoint(Op):
         return ([DisconnectedType()] + output_gradients)
 
     def infer_shape(self, inputs, input_shapes):
-        # Return the shape of every input but the condition
+        # Return the shape of every input but the condition (first input)
         return input_shapes[1:]
