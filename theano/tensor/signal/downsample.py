@@ -235,8 +235,6 @@ class DownsampleFactorMax(Op):
         x, = inp
         gz, = grads
         maxout = self(x)
-        if self.st != self.ds:
-            return [theano.gradient.grad_not_implemented(self, 0, x)]
         return [DownsampleFactorMaxGrad(self.ds,
                                         ignore_border=self.ignore_border,
                                         st=self.st)(
@@ -386,16 +384,14 @@ class DownsampleFactorMaxGrad(Op):
     def grad(self, inp, grads):
         x, maxout, gz = inp
         ggx, = grads
-        if self.st != self.ds:
-            return [theano.gradient.grad_not_implemented(self, 0, x),
-                    theano.gradient.grad_not_implemented(self, 1, maxout),
-                    theano.gradient.grad_not_implemented(self, 2, gz)]
         return [theano.tensor.zeros_like(x),
                 theano.tensor.zeros_like(maxout),
                 DownsampleFactorMaxGradGrad(
                     self.ds, ignore_border=self.ignore_border, st=self.st)(x, maxout, ggx)]
 
     def c_code(self, node, name, inp, out, sub):
+        if self.ds != self.st:
+           raise theano.gof.utils.MethodNotDefined()
         x, z, gz = inp
         gx, = out
         fail = sub['fail']
