@@ -145,11 +145,18 @@ class GpuKernelBase(object):
         return """static GpuKernel %(kname)s;""" % dict(kname=k.objvar)
 
     def c_support_code_apply(self, node, name):
+        ceil_intdiv = """
+        template <typename T>
+        static T ceil_intdiv(T a, T b)
+        {
+            return (a/b) + ((a % b) ? 1: 0);
+        }
+        """
         kernels = self.gpu_kernels(node, name)
         bins = '\n'.join(self._generate_kernel_bin(k) for k in kernels)
         codes = '\n'.join(self._generate_kernel_code(k) for k in kernels)
         vars = '\n'.join(self._generate_kernel_vars(k) for k in kernels)
-        return '\n'.join([bins, codes, vars])
+        return '\n'.join([ceil_intdiv, bins, codes, vars])
 
     def _generate_kernel_init(self, k, err):
         if PY3:
