@@ -1074,7 +1074,7 @@ h_t = o_t * tanh(C_t)
 
 \begin{frame}
   \frametitle{Tutorial LSTM}
-The model we used in this tutorial is a variation of the standard LSTM model. In this variant, the activation of a cell’s output gate does not depend on the memory cell’s state $C_t$. This allows us to perform part of the computation more efficiently (see the implementation note, below, for details). This means that, in the variant we have implemented, there is no matrix $V_o$ and equation (5) is replaced by equation (7) :
+The model we used in this tutorial is a variation of the standard LSTM model. In this variant, the activation of a cell’s output gate does not depend on the memory cell’s state $C_t$. This allows us to perform part of the computation more efficiently (see next slide, for details). This means that, in the variant we have implemented, there is no matrix $V_o$ and equation (5) is replaced by equation (7) :
 
 \begin{equation}
 o_t = \sigma(W_o x_t + U_o h_{t-1} + b_1)
