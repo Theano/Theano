@@ -894,9 +894,10 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
             raise TypeError('img must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
-        if self.subsample != (1, 1) or self.pad == "half":
+        if self.subsample != (1, 1) or self.border_mode == "half":
             if shape is None:
-                raise ValueError('shape must be given if subsample != (1, 1) or pad == "half"')
+                raise ValueError('shape must be given if subsample != (1, 1)'
+                                 ' or border_mode == "half"')
             height_width = [shape[0], shape[1]]
         else:
             height_width = []
@@ -916,9 +917,9 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
         bottom, top = inp[:2]
         weights, = grads
         weights = gpu_contiguous(weights)
-        d_bottom = GpuCorrMM_gradInputs(self.border_mode, self.subsample, self.pad)(
+        d_bottom = GpuCorrMM_gradInputs(self.border_mode, self.subsample)(
                 weights, top, bottom.shape[-2:])
-        d_top = GpuCorrMM(self.border_mode, self.subsample, self.pad)(
+        d_top = GpuCorrMM(self.border_mode, self.subsample)(
                 bottom, weights)
         d_height_width = (theano.gradient.DisconnectedType()(),) * 2 if len(inp) == 4 else ()
         return (d_bottom, d_top) + d_height_width
@@ -970,9 +971,9 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         weights, top = inp[:2]
         bottom, = grads
         bottom = gpu_contiguous(bottom)
-        d_weights = GpuCorrMM_gradWeights(self.border_mode, self.subsample, self.pad)(
+        d_weights = GpuCorrMM_gradWeights(self.border_mode, self.subsample)(
                 bottom, top, weights.shape[-2:])
-        d_top = GpuCorrMM(self.border_mode, self.subsample, self.pad)(
+        d_top = GpuCorrMM(self.border_mode, self.subsample)(
                 bottom, weights)
         d_height_width = (theano.gradient.DisconnectedType()(),) * 2 if len(inp) == 4 else ()
         return (d_weights, d_top) + d_height_width
