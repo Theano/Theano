@@ -23,6 +23,10 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 def dnn_available():
     if dnn_available.avail is None:
+        if not theano.sandbox.cuda.cuda_available:
+            dnn_available.msg = "CUDA not available"
+            dnn_available.avail = False
+            return False
         dev = theano.sandbox.cuda.active_device_number()
         if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
             dnn_available.msg = "Device not supported by cuDNN"

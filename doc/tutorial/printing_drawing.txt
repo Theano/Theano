@@ -14,6 +14,16 @@ compilation.  These two functions print expression graphs in different ways:
 Theano also provides :func:`pydotprint` that creates a *png* image of the function.
 You can read about them in :ref:`libdoc_printing`.
 
+.. note::
+
+
+    When printing Theano functions, they can sometimes be hard to
+    read.  To help with this, you can disable some Theano optimizations
+    by using the Theano flag:
+    ``optimizer_excluding=fusion:inplace``. Do not use this during
+    real job execution, as this will make the graph slower and use more
+    memory.
+
 Consider again the logistic regression but notice the additional printing instuctions. 
 The following output depicts the pre- and post- compilation graphs.
 
