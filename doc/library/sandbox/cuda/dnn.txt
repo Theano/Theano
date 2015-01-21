@@ -40,6 +40,14 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
     currently does not allow all options supported by cuDNN ops. So it is
     possible that you will need to call them manually.
 
+.. note::
+
+    CUDNN R1 and R2 tell that for the following 2 operations, the
+    reproducibility is not guarantee: `cudnnConvolutionBackwardFilter`
+    and `cudnnConvolutionBackwardData`. Those correspond to the
+    gradient again the weights and the gradient of the
+    convolution. They are used sometimes in the forward when they give
+    speed up.
 
 Functions
 =========

@@ -8,6 +8,12 @@
 
     This is not in the released version 0.6.0, but will be in the next release (0.7 or 0.6.1).
 
+.. note::
+
+    This work, but isn't well integrated with the test of Theano. If
+    you want speed, you are probably better by padding to a dense
+    tensor.
+
 This is a type that represents a list in Theano. All elements must have
 the same Theano type. Here is an example::
 
