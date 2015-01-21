@@ -666,7 +666,7 @@ class ModuleCache(object):
         # Go through directories in alphabetical order to ensure consistent
         # behavior.
         subdirs = sorted(os.listdir(self.dirname))
-        files, root = None, None  # To make sure the del wor
+        files, root = None, None  # To make sure the "del" below works
         for root in subdirs:
             root = os.path.join(self.dirname, root)
             key_pkl = os.path.join(root, 'key.pkl')
