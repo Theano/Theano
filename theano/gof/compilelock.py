@@ -101,7 +101,14 @@ def get_lock(lock_dir=None, **kw):
             if now - get_lock.start_time > config.compile.timeout/2:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
                 _logger.info('Refreshing lock %s', str(lockpath))
-                refresh_lock(lockpath)
+                try:
+                    refresh_lock(lockpath)
+                except Exception:
+                    while get_lock.lock_is_enabled:
+                        release_lock()
+                    _logger.info('Refreshing lock failed, we release the'
+                                 ' lock before raising again the exception')
+                    raise
                 get_lock.start_time = now
     get_lock.n_lock += 1
 
