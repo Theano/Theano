@@ -101,14 +101,7 @@ def get_lock(lock_dir=None, **kw):
             if now - get_lock.start_time > config.compile.timeout/2:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
                 _logger.info('Refreshing lock %s', str(lockpath))
-                try:
-                    refresh_lock(lockpath)
-                except Exception:
-                    while get_lock.lock_is_enabled:
-                        release_lock()
-                    _logger.info('Refreshing lock failed, we release the'
-                                 ' lock before raising again the exception')
-                    raise
+                refresh_lock(lockpath)
                 get_lock.start_time = now
     get_lock.n_lock += 1
 
@@ -318,9 +311,20 @@ def refresh_lock(lock_file):
         os.getpid(),
         ''.join([str(random.randint(0, 9)) for i in range(10)]),
         hostname)
-    lock_write = open(lock_file, 'w')
-    lock_write.write(unique_id + '\n')
-    lock_write.close()
+    try:
+        lock_write = open(lock_file, 'w')
+        lock_write.write(unique_id + '\n')
+        lock_write.close()
+    except Exception:
+        # In some strange case, this happen.  To prevent all tests
+        # from failing, we release the lock, but as there is a
+        # problem, we still keep the original exception.
+        # This way, only 1 test would fail.
+        while get_lock.lock_is_enabled:
+            release_lock()
+        _logger.warn('Refreshing lock failed, we release the'
+                     ' lock before raising again the exception')
+        raise
     return unique_id
 
 
