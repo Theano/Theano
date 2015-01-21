@@ -42,12 +42,12 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-    CUDNN R1 and R2 tell that for the following 2 operations, the
-    reproducibility is not guarantee: `cudnnConvolutionBackwardFilter`
-    and `cudnnConvolutionBackwardData`. Those correspond to the
-    gradient again the weights and the gradient of the
-    convolution. They are used sometimes in the forward when they give
-    speed up.
+    The documentation of CUDNN R1 and R2 tells that, for the following
+    2 operations, the reproducibility is not guaranteed:
+    `cudnnConvolutionBackwardFilter` and `cudnnConvolutionBackwardData`.
+    Those correspond to the gradient wrt the weights and the gradient wrt the
+    input of the convolution. They are also used sometimes in the forward 
+    pass, when they give a speed up.
 
 Functions
 =========
