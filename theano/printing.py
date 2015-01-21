@@ -32,6 +32,7 @@ from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
 
 _logger = logging.getLogger("theano.printing")
+VALID_ASSOC = set(['left', 'right', 'either'])
 
 
 def debugprint(obj, depth=-1, print_type=False,
@@ -268,13 +269,13 @@ class PrinterState(gof.utils.scratchpad):
             props = {}
         return PrinterState(self, **dict(props, **more_props))
 
-
 class OperatorPrinter:
 
     def __init__(self, operator, precedence, assoc='left'):
         self.operator = operator
         self.precedence = precedence
         self.assoc = assoc
+        assert self.assoc in VALID_ASSOC
 
     def process(self, output, pstate):
         pprinter = pstate.pprinter
