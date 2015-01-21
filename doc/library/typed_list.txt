@@ -10,8 +10,8 @@
 
 .. note::
 
-    This work, but isn't well integrated with the test of Theano. If
-    you want speed, you are probably better by padding to a dense
+    This works, but is not well integrated with the rest of Theano. If
+    speed is important, it is probably better to pad to a dense
     tensor.
 
 This is a type that represents a list in Theano. All elements must have
