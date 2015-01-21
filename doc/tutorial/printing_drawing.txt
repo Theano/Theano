@@ -16,10 +16,10 @@ You can read about them in :ref:`libdoc_printing`.
 
 .. note::
 
-    For all printing of Theano function, sometimes they can be hard to
-    read.  To help on that, you can disable some Theano optimization
-    by using that Theano flag:
-    ``optimizer_excluding=fusion:inplace``. Do not use that during
+    When printing Theano functions, they can sometimes be hard to
+    read.  To help, you can disable some Theano optimizations
+    by using the Theano flag:
+    ``optimizer_excluding=fusion:inplace``. Do not use this during
     real job execution, as this make the graph slower and use more
     memory.
 
