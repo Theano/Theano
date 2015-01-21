@@ -2175,7 +2175,7 @@ pprint.assign(neg, printing.OperatorPrinter('-', 0, 'either'))
 pprint.assign(true_div, printing.OperatorPrinter('/', -1, 'left'))
 pprint.assign(int_div, printing.OperatorPrinter('//', -1, 'left'))
 pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
-pprint.assign(mod, printing.OperatorPrinter('%', -1, 'lef'))
+pprint.assign(mod, printing.OperatorPrinter('%', -1, 'left'))
 
 class Inv(UnaryScalarOp):
     """ multiplicative inverse. Also called reciprocal"""
