@@ -991,8 +991,13 @@ Image from wikipedia by Fyedernoggersnodden
 
 \begin{frame}
   \frametitle{Motivation}
-RNN gradient signal end up being multiplied a large number of times (as many as the number of timesteps).
-This means that, the magnitude of the weights in the transition matrix can have a strong impact on the learning process.
+
+The RNN gradient signal ends up being multiplied a large number of
+times (up to as many as the number of timesteps) by the transition
+matrix (the matrix containing the weights of the recurrent
+connections.  This means that, the magnitude of the weights in the
+transition matrix can have a strong impact on the learning process.
+
 \begin{itemize}
 \item \begin{bf}vanishing gradients\end{bf}
  If the weights in this matrix are small (or, more formally, if the leading eigenvalue of the weight matrix is smaller than 1.0).
