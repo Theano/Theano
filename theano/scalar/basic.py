@@ -2175,7 +2175,7 @@ pprint.assign(neg, printing.OperatorPrinter('-', 0, 'either'))
 pprint.assign(true_div, printing.OperatorPrinter('/', -1, 'left'))
 pprint.assign(int_div, printing.OperatorPrinter('//', -1, 'left'))
 pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
-pprint.assign(mod, printing.OperatorPrinter('%', -1, 'lef'))
+pprint.assign(mod, printing.OperatorPrinter('%', -1, 'left'))
 
 class Inv(UnaryScalarOp):
     """ multiplicative inverse. Also called reciprocal"""
@@ -3109,8 +3109,10 @@ class Composite(ScalarOp):
                 for i, r in enumerate(self.fgraph.variables):
                     if r not in io and len(r.clients) > 1:
                         r.name = 't%i' % i
-                rval = "Composite{%s}" % ', '.join([pprint(output) for output
-                                                    in self.fgraph.outputs])
+                rval = "Composite{%s}" % 'MMM'
+                print pprint(self.fgraph.outputs)
+                #', '.join([pprint(output) for output
+                #                                    in self.fgraph.outputs])
         self.name = rval
 
     def init_fgraph(self):
