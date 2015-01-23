@@ -1,13 +1,12 @@
 # After changing this file, check it on:
 # http://lint.travis-ci.org/
-
+sudo: false
 language: python
 python:
   - "2.6"
 
 # command to install dependencies
 before_install:
-  - sudo apt-get install -q libatlas3gf-base libatlas-dev liblapack-dev gfortran
 # Install miniconda to avoid compiling scipy
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
@@ -18,8 +17,8 @@ before_install:
 install:
 # We support scipy 0.7.2, but it is not available on conda.
 # So we test with 0.11. Our internal buildbot have 0.7.2.
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pyparsing=1.5 pip; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pip; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv mkl python=2.6 numpy=1.6 scipy=0.11 nose=1.1 pyparsing=1.5 pip; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pip; fi
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps --use-mirrors
@@ -40,7 +39,7 @@ matrix:
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
 
 script:
-  - export THEANO_FLAGS=$THEANO_FLAGS,blas.ldflags="-lblas -lgfortran",warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
+  - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
   - python --version
   - uname -a
   - free -m
