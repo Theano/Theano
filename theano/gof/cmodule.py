@@ -674,9 +674,8 @@ class ModuleCache(object):
                 continue
             if not os.path.isdir(root):
                 continue
-            # Some sub directory we do not want the cache to mess
-            # with.  This can cause problems with multiple process.
-            if os.path.split(root)[1] in ["lock_dir"]:
+            # Never clean/remove lock_dir
+            if 'lock_dir' in root:
                 continue
             files = os.listdir(root)
             if not files or 'delete.me' in files:
