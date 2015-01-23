@@ -377,7 +377,35 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                     [images],
                                     Images2Neibs
                                     )
+        f = self._compile_and_check([x],
+                                    [images2neibs(
+                                        x, neib_shape=(2,3),
+                                        mode='valid')],
+                                    [images],
+                                    Images2Neibs
+                                    )
         shape = (100, 40, 5, 5)
+        images = numpy.ones(shape).astype('float32')
+        x = T.ftensor4()
+        f = self._compile_and_check([x],
+                                    [images2neibs(
+                                        x, neib_shape=(2,2),
+                                        mode='ignore_borders')],
+                                    [images],
+                                    Images2Neibs
+                                    )
+        shape = (100, 40, 5, 5)
+        images = numpy.ones(shape).astype('float32')
+        x = T.ftensor4()
+        f = self._compile_and_check([x],
+                                    [images2neibs(
+                                        x, neib_shape=(2,3),
+                                        mode='ignore_borders')],
+                                    [images],
+                                    Images2Neibs
+                                    )
+
+        shape = (100, 40, 6, 6)
         images = numpy.ones(shape).astype('float32')
         x = T.ftensor4()
         f = self._compile_and_check([x],
@@ -397,6 +425,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                     [images],
                                     Images2Neibs
                                     )
+        
 
 if __name__ == '__main__':
     unittest.main()

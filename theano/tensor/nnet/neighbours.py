@@ -85,9 +85,6 @@ class Images2Neibs(Op):
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
 
-        self.neib_shape = neib_shape
-        self.neib_step = neib_step
-        
         return Apply(self, [ten4, neib_shape, neib_step],
                      [T.matrix(dtype=ten4.type.dtype)])
 
@@ -219,8 +216,8 @@ class Images2Neibs(Op):
                 return (a // b) + 1
             else:
                 return a // b
-        c, d = self.neib_shape
-        step_x, step_y = self.neib_step
+        c, d = node.inputs[1]
+        step_x, step_y = node.inputs[2]
         if self.mode == 'wrap_centered':
             grid_c = CEIL_INTDIV(in_shape[2], step_x)
             grid_d = CEIL_INTDIV(in_shape[3], step_y)
