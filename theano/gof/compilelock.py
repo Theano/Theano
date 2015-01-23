@@ -311,9 +311,20 @@ def refresh_lock(lock_file):
         os.getpid(),
         ''.join([str(random.randint(0, 9)) for i in range(10)]),
         hostname)
-    lock_write = open(lock_file, 'w')
-    lock_write.write(unique_id + '\n')
-    lock_write.close()
+    try:
+        lock_write = open(lock_file, 'w')
+        lock_write.write(unique_id + '\n')
+        lock_write.close()
+    except Exception:
+        # In some strange case, this happen.  To prevent all tests
+        # from failing, we release the lock, but as there is a
+        # problem, we still keep the original exception.
+        # This way, only 1 test would fail.
+        while get_lock.lock_is_enabled:
+            release_lock()
+        _logger.warn('Refreshing lock failed, we release the'
+                     ' lock before raising again the exception')
+        raise
     return unique_id
 
 
