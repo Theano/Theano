@@ -1,52 +1,22 @@
 import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import GpuOp, CudaNdarray
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.tensor import as_tensor_variable
 from scikits.cuda import cula
+try:
+    from scikits.cuda import cula
+    scikits_cuda_available = True
+except ImportError:
+    scikits_cuda_available = False
 
-
-def cula_gpu_solve(A, b, trans='N'):
-    cula.culaInitialize()
-    A_shape = A.shape
-    b_shape = b.shape
-
-    assert(len(A_shape) == 2)
-    assert(len(b_shape) == 2)
-
-    import string
-
-    if trans in ['T', 'C']:
-        l, n = A_shape
-        m, k = b_shape
-    elif trans in ['N']:
-        n, l = A_shape
-        k, m = b_shape
-    else:
-        raise ValueError('Invalid value for trans')
-
-    if n != k:
-        raise ValueError('A and b must be aligned.')
-
-    if trans == 'n':
-        lda = max(1, n)
-    else:
-        lda = max(1, l)
-
-    ldb = max(1, k)
-
-    # construct pointer arrays needed for culaDeviceSgels
-    # Cula requires you to pass a pointer for A and b.
-    A_ptr = A.gpudata
-    b_ptr = b.gpudata
-
-    cula.culaDeviceSgels(trans, n, l, m, A_ptr, lda, b_ptr, ldb)
-    return A, b
+import numpy
 
 class GpuSolve(GpuOp):
     """
-    Cula Gpu solver OP.
+    CULA GPU solver OP.
+
     """
     def __init__(self, trans='N'):
         self.trans = trans
@@ -59,7 +29,7 @@ class GpuSolve(GpuOp):
         return hash(type(self))
 
     def output_type(self, inp):
-        return cuda.CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
+        return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
 
     def make_node(self, inp1, inp2):
         inp1 = gpu_contiguous(as_cuda_ndarray_variable(inp1))
@@ -71,32 +41,58 @@ class GpuSolve(GpuOp):
         assert inp2.ndim == 2
         return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, no_recycling=[]):
         from theano.misc.pycuda_utils import to_gpuarray
+
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
         def thunk():
-            input_shape = inputs[0][0].shape
-
+            input_shape = inputs[1][0].shape
             #size of the matrices to invert
-            size = input_shape[1]
-
             z = outputs[0]
-
-            if z[0] is None or z[0].shape != input_shape:
-                z[0] = cuda.CudaNdarray.zeros(input_shape)
-
             #Matrix
             A = inputs[0][0]
 
             #Solution vectors
-            b = inputs[0][1]
+            b = inputs[1][0]
 
             A_pycuda = to_gpuarray(A)
             b_pycuda = to_gpuarray(b)
 
-            cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
+            def cula_gpu_solve(A, b):
+
+                cula.culaInitialize()
+                A_shape = A.shape
+                b_shape = b.shape
+                assert(len(A_shape) == 2)
+                assert(len(b_shape) == 2)
+
+                if A_shape[0] != A_shape[1]:
+                    raise ValueError('Coefficient matrix should be a square matrix.')
+
+                n = A_shape[0]
+                nrhs = b_shape[1]
+                #Create the integer pivot vector to store the indices for
+                #permutation matrix.
+                ipiv = CudaNdarray.zeros((n,))
+                ipiv = to_gpuarray(ipiv)
+
+                import string
+                lda = max(1, n)
+                ldb = max(1, n)
+
+                # construct pointer arrays needed for culaDeviceSgels
+                # Cula requires you to pass a pointer for A and b.
+                A_ptr = A.gpudata
+                b_ptr = b.gpudata
+                ipiv_ptr = ipiv.gpudata
+
+                cula.culaDeviceSgesv(n, nrhs, A_ptr, lda, ipiv_ptr, b_ptr, ldb)
+                return A, b
+
+            A, b = cula_gpu_solve(A_pycuda, b_pycuda)
+            z[0] = b
 
         thunk.inputs = inputs
         thunk.outputs = outputs
