@@ -426,5 +426,5 @@ def computeR(W, b, d, H, Rshape=None):
     return R
 
 
-from Conv3D import conv3D
-from ConvGrad3D import convGrad3D
+from theano.tensor.nnet.Conv3D import conv3D
+from theano.tensor.nnet.ConvGrad3D import convGrad3D

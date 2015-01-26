@@ -276,5 +276,5 @@ class ConvGrad3D(theano.Op):
 
 convGrad3D = ConvGrad3D()
 
-from Conv3D import conv3D
-from ConvTransp3D import convTransp3D
+from theano.tensor.nnet.Conv3D import conv3D
+from theano.tensor.nnet.ConvTransp3D import convTransp3D
