@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import copy
 
 import numpy
 import theano
@@ -322,8 +323,8 @@ def test_GPU_nstreams_limit():
         if theano.config.mode == "FAST_COMPILE":
             mode = "FAST_RUN"
         else:
-            mode = theano.compile.get_default_mode()
-            mode.check_py = False
+            mode = copy.copy(theano.compile.get_default_mode())
+            mode.check_py_code = False
         out = R.uniform(size=size, nstreams=nstreams, dtype='float32')
         f = theano.function([], out, mode=mode)
         return f()
