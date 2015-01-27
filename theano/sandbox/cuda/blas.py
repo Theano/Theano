@@ -516,6 +516,7 @@ class BaseGpuCorrMM(GpuOp):
 
     """
     check_broadcast = False
+    __props__ = ('border_mode', 'subsample')
 
     def __init__(self, border_mode="valid", subsample=(1, 1), pad=(0, 0)):
         if pad != (0, 0):
@@ -546,16 +547,6 @@ class BaseGpuCorrMM(GpuOp):
         if self.border_mode != 'valid':
             return self.border_mode
         return (0, 0)
-
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and self.border_mode == other.border_mode \
-            and self.subsample == other.subsample
-
-    def __hash__(self):
-        return hash(type(self)) \
-            ^ hash(self.border_mode) \
-            ^ hash(self.subsample)
 
     def __str__(self):
         return '%s{%s, %s}' % (
@@ -988,6 +979,7 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
 class BaseGpuCorr3dMM(GpuOp):
     """Base class for `GpuCorr3dMM`, `GpuCorr3dMM_gradWeights` and
     `GpuCorr3dMM_gradInputs`. Cannot be used directly."""
+    __props__ = ('border_mode', 'subsample', 'pad')
 
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
@@ -1001,18 +993,6 @@ class BaseGpuCorr3dMM(GpuOp):
         if (pad not in ("half", "full")) and (len(pad) != 3):
             raise ValueError("pad must be 'half', 'full', or have three elements")
         self.pad = pad
-
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and self.border_mode == other.border_mode \
-            and self.subsample == other.subsample \
-            and self.pad == other.pad
-
-    def __hash__(self):
-        return hash(type(self)) \
-            ^ hash(self.border_mode) \
-            ^ hash(self.subsample) \
-            ^ hash(self.pad)
 
     def __str__(self):
         return '%s{%s, %s, pad=%r}' % (

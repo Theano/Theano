@@ -667,16 +667,15 @@ class ModuleCache(object):
         # behavior.
         subdirs = sorted(os.listdir(self.dirname))
         files, root = None, None  # To make sure the "del" below works
-        for root in subdirs:
-            root = os.path.join(self.dirname, root)
+        for subdirs_elem in subdirs:
+            # Never clean/remove lock_dir
+            if subdirs_elem == 'lock_dir':
+                continue
+            root = os.path.join(self.dirname, subdirs_elem)
             key_pkl = os.path.join(root, 'key.pkl')
             if key_pkl in self.loaded_key_pkl:
                 continue
             if not os.path.isdir(root):
-                continue
-            # Some sub directory we do not want the cache to mess
-            # with.  This can cause problems with multiple process.
-            if os.path.split(root)[1] in ["lock_dir"]:
                 continue
             files = os.listdir(root)
             if not files or 'delete.me' in files:
