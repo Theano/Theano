@@ -1814,15 +1814,11 @@ gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
                'fast_run', 'inplace', 'gpu_inplace')
 
-gpu_local_elemwise_alloc = tensor.opt.register_specialize_device(
-    gof.local_optimizer([GpuElemwise])(
-        tensor.opt.local_elemwise_alloc_op(
-            GpuElemwise,
-            GpuAlloc,
-            GpuDimShuffle
-        )
-    )
+gpu_elemwise_alloc = gof.local_optimizer([GpuElemwise])(
+    tensor.opt.local_elemwise_alloc_op(GpuElemwise, GpuAlloc, GpuDimShuffle)
 )
+register_opt()(gpu_elemwise_alloc)
+tensor.opt.register_specialize_device(gpu_elemwise_alloc)
 
 @register_opt()
 @local_optimizer([tensor.alloc])

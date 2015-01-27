@@ -124,7 +124,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self._verify_assert_count(func, 0)
 
         # Optimization on alloc with assert
-        """
         func = theano.function(
             [self.vec, self.mat],
             self.alloc_wo_dep + self.mat,
@@ -133,7 +132,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         import ipdb; ipdb.set_trace()
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
-        """
 
         # No optimization on alloc without assert
         func = theano.function(
