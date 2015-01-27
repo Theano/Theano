@@ -84,7 +84,7 @@ class PdbBreakpoint(Op):
         if condition:
             print "-------------------------------------------------"
             print "Conditional breakpoint %s activated" % self.name
-            print "The monitored variables are stored in, in order,"
+            print "The monitored variables are stored, in order,"
             print "in the list variable 'monitored'"
             print "-------------------------------------------------"
             pdb.set_trace()
