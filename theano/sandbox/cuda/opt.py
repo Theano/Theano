@@ -1814,6 +1814,7 @@ gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
                'fast_run', 'inplace', 'gpu_inplace')
 
+tensor.opt.register_specialize_device(tensor.opt.local_shape_to_shape_i)
 gpu_elemwise_alloc = gof.local_optimizer([GpuElemwise])(
     tensor.opt.local_elemwise_alloc_op(GpuElemwise, GpuAlloc, GpuDimShuffle)
 )

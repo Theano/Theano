@@ -129,7 +129,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
             self.alloc_wo_dep + self.mat,
             mode=mode_with_gpu
         )
-        import ipdb; ipdb.set_trace()
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
 
@@ -143,14 +142,119 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self._verify_assert_count(func, 0)
 
         # Optimization on alloc without assert
+        temp_val = theano.config.experimental.local_alloc_elemwise_assert
+        theano.config.experimental.local_alloc_elemwise_assert = False
         func = theano.function(
             [self.vec, self.mat],
             self.alloc_w_dep + self. mat,
             mode=mode_with_gpu
         )
-        import ipdb; ipdb.set_trace()
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 0)
+        theano.config.experimental.local_alloc_elemwise_assert = temp_val
+
+    def test_remove_alloc_w_dimshuffle(self):
+        # No optimization on dimshuffle with assert
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_wo_dep.dimshuffle(0, 'x') + self.mat,
+            mode='FAST_COMPILE'
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on dimshuffle with assert
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_wo_dep.dimshuffle(0, 'x') + self.mat,
+            mode=mode_with_gpu
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 1)
+
+        # No optimization on dimshuffle without assert
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_w_dep.dimshuffle(0, 'x') + self.mat,
+            mode='FAST_COMPILE'
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on dimshuffle without assert
+        temp_val = theano.config.experimental.local_alloc_elemwise_assert
+        theano.config.experimental.local_alloc_elemwise_assert = False
+        func = theano.function(
+            [self.vec, self.mat],
+            self.alloc_w_dep + self. mat,
+            mode=mode_with_gpu
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 0)
+        theano.config.experimental.local_alloc_elemwise_assert = temp_val
+
+    def test_multi_input_single_alloc(self):
+        # No optimization on dimshuffle with assert
+        tv = basic_ops.gpu_alloc(self.vec, 5)
+        tm = basic_ops.gpu_alloc(self.mat, 5, 5)
+        func = theano.function(
+            [self.vec, self.mat],
+            tv + tm,
+            mode='FAST_COMPILE'
+        )
+        self._verify_alloc_count(func, 2)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on dimshuffle with assert
+        func = theano.function(
+            [self.vec, self.mat],
+            tv + tm,
+            mode=mode_with_gpu
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 1)
+
+        # No optimization on dimshuffle without assert
+        s = tensor.iscalar('s')
+        #tv = tensor.alloc(self.vec, s, s)
+        #tm = tensor.alloc(self.mat, 5, 5, 5)
+        tv = basic_ops.gpu_alloc(self.vec, s)
+        tm = basic_ops.gpu_alloc(self.mat, 5, 5)
+        func = theano.function(
+            [self.vec, self.mat, s],
+            tv + tm,
+            mode='FAST_COMPILE'
+        )
+        self._verify_alloc_count(func, 2)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on dimshuffle without assert
+        temp_val = theano.config.experimental.local_alloc_elemwise_assert
+        theano.config.experimental.local_alloc_elemwise_assert = False
+        func = theano.function(
+            [self.vec, self.mat, s],
+            tv + tm,
+            mode=mode_with_gpu
+        )
+        self._verify_alloc_count(func, 1)
+        self._verify_assert_count(func, 0)
+        theano.config.experimental.local_alloc_elemwise_assert = temp_val
+
+    def test_error(self):
+        t3fft = theano.tensor.tensor(dtype=self.dtype,
+                                     broadcastable=(False, False, True))
+        row = theano.tensor.row(dtype=self.dtype)
+        o = basic_ops.gpu_alloc(row, 5, 5).dimshuffle(0, 1, 'x') + t3fft
+        func = theano.function(
+            [t3fft, row],
+            o,
+            mode=mode_with_gpu
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 1)
+        d = numpy.random.rand(5, 5, 1).astype(self.dtype)
+        r = numpy.random.rand(1, 5).astype(self.dtype)
+        func(d, r)
 
 
 def test_alloc_memset_0():
