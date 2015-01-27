@@ -15,7 +15,7 @@ class TestPdbBreakpoint:
                             (self.input1 - self.input2).transpose())
 
         # Declare the conditional breakpoint 
-        self.breakpointOp = PdbBreakpoint("Sum of output to high")
+        self.breakpointOp = PdbBreakpoint("Sum of output too high")
         self.condition = T.gt(self.output.sum(), 100)
         (self.monitored_input1,
          self.monitored_input2,
