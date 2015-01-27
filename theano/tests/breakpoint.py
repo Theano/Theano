@@ -61,7 +61,7 @@ class PdbBreakpoint(Op):
 
     """
 
-    __props__ = ()
+    __props__ = ("name",)
 
     def __init__(self, name):
         self.name = name
