@@ -72,6 +72,11 @@ class PdbBreakpoint(Op):
         # is should be evaluated)
         assert (condition.ndim == 0)
 
+        # Build the op's view_map; every output i is a view of the input i+1.
+        self.view_map = {}
+        for i in range(len(monitored_vars)):
+            self.view_map[i] = [i+1]
+
         # Build the Apply node
         inputs = [condition] + list(monitored_vars)
         outputs = [inp.type.make_variable() for inp in monitored_vars]
