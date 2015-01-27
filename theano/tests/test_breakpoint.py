@@ -16,7 +16,7 @@ class TestPdbBreakpoint:
 
         # Declare the conditional breakpoint
         self.breakpointOp = PdbBreakpoint("Sum of output too high")
-        self.condition = T.gt(self.output.sum(), 100)
+        self.condition = T.gt(self.output.sum(), 1000)
         (self.monitored_input1,
          self.monitored_input2,
          self.monitored_output) = self.breakpointOp(self.condition,
