@@ -516,7 +516,7 @@ class BaseGpuCorrMM(GpuOp):
 
     """
     check_broadcast = False
-    __props__ ('border_mode', 'subsample')
+    __props__ = ('border_mode', 'subsample')
 
     def __init__(self, border_mode="valid", subsample=(1, 1), pad=(0, 0)):
         if pad != (0, 0):
