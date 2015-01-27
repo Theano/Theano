@@ -80,7 +80,7 @@ class Images2Neibs(Op):
             neib_step = neib_shape
         else:
             neib_step = T.as_tensor_variable(neib_step)
-        
+
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
@@ -211,16 +211,11 @@ class Images2Neibs(Op):
                                 
     def infer_shape(self, node, input_shape):
         in_shape = input_shape[0]
-        def CEIL_INTDIV(a, b):
-            if a % b:
-                return (a // b) + 1
-            else:
-                return a // b
         c, d = node.inputs[1]
         step_x, step_y = node.inputs[2]
         if self.mode == 'wrap_centered':
-            grid_c = CEIL_INTDIV(in_shape[2], step_x)
-            grid_d = CEIL_INTDIV(in_shape[3], step_y)
+            grid_c = T.ceil_intdiv(in_shape[2], step_x)
+            grid_d = T.ceil_intdiv(in_shape[3], step_y)
         elif self.mode == 'valid':
             grid_c = 1 + ((in_shape[2] - c) // step_x)
             grid_d = 1 + ((in_shape[3] - d) // step_y)
