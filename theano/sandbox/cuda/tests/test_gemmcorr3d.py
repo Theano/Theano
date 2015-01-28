@@ -1,5 +1,6 @@
 import unittest
 import numpy
+import copy
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -172,8 +173,11 @@ class TestCorr3DMM(unittest.TestCase):
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1, 1, 1))
         mode = mode_with_gpu.including('conv3d_gemm')
+        mode.check_py_code = False
+        ref_mode = copy.copy(theano.compile.get_default_mode())
+        ref_mode.check_py_code = False
 
-        f_ref = theano.function([], conv)
+        f_ref = theano.function([], conv, mode=ref_mode)
         f_gemm = theano.function([], conv, mode=mode)
 
         # make sure we inserted the gemm trickery
