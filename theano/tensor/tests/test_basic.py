@@ -5892,12 +5892,13 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
-                                numpy_version = numpy.__version__.split('.')[:2]
+                                numpy_version = [int(v) for v in
+                                                 numpy.__version__.split('.')[:2]]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
                                     b_type == 'float32' and
                                     combo == ('scalar', 'array') and
-                                    bool(numpy_version >= ['1', '6']) and
+                                    bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtypes == ['complex64',
                                                      'complex64']):
