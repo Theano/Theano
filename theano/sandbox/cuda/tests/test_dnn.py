@@ -202,6 +202,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         self.mode = mode_with_gpu
 
     def test_softmax(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         t = T.ftensor4('t')
         rand_tensor = numpy.asarray(
             numpy.random.rand(5, 4, 3, 2),
@@ -231,6 +233,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
     def test_conv(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         img_val = numpy.asarray(
@@ -261,6 +265,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv_gradw(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         img_val = numpy.asarray(
@@ -307,6 +313,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv_gradi(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         img_val = numpy.asarray(
@@ -350,6 +358,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_pool(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
@@ -373,6 +383,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_pool_grad(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         img_grad = T.ftensor4('img_grad')
         out = T.ftensor4('out')
