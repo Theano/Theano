@@ -623,6 +623,10 @@ def pydotprint(fct, outfile=None,
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
     HostFromGpu).
 
+    For edges, they are black by default. If a node returns a view
+    of an input, we put the corresponding input edge in blue. If it
+    returns a destroyed input, we put the corresponding edge in red.
+
     .. note::
 
         Since October 20th, 2014, this print the inner function of all
@@ -800,6 +804,9 @@ def pydotprint(fct, outfile=None,
 
     # Update the inputs that have an update function
     input_update = {}
+    # Here outputs can be the original list, as we should not change
+    # it, we must copy it.
+    outputs = list(outputs)
     if isinstance(fct, Function):
         for i in reversed(fct.maker.expanded_inputs):
             if i.update is not None:
@@ -838,6 +845,13 @@ def pydotprint(fct, outfile=None,
                 label = str(id) + ' ' + label
             if len(label) > max_label_size:
                 label = label[:max_label_size - 3] + '...'
+            param = {}
+            if hasattr(node.op, 'view_map') and id in reduce(
+                list.__add__, node.op.view_map.values(), []):
+                param['color'] = 'blue'
+            elif hasattr(node.op, 'destroy_map') and id in reduce(
+                list.__add__, node.op.destroy_map.values(), []):
+                param['color'] = 'red'
             if var.owner is None:
                 if high_contrast:
                     g.add_node(pd.Node(varstr,
@@ -846,12 +860,12 @@ def pydotprint(fct, outfile=None,
                                        shape=var_shape))
                 else:
                     g.add_node(pd.Node(varstr, color='green', shape=var_shape))
-                g.add_edge(pd.Edge(varstr, astr, label=label))
+                g.add_edge(pd.Edge(varstr, astr, label=label, **param))
             elif var.name or not compact:
-                g.add_edge(pd.Edge(varstr, astr, label=label))
+                g.add_edge(pd.Edge(varstr, astr, label=label, **param))
             else:
                 # no name, so we don't make a var ellipse
-                g.add_edge(pd.Edge(apply_name(var.owner), astr, label=label))
+                g.add_edge(pd.Edge(apply_name(var.owner), astr, label=label, **param))
 
         for id, var in enumerate(node.outputs):
             varstr = var_name(var)

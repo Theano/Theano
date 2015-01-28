@@ -21,6 +21,7 @@ Montreal).
 News
 ====
 
+* We support `cuDNN <http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html>`_ if it is installed by the user.
 * Open Machine Learning Workshop 2014 `presentation <omlw2014/omlw_presentation.pdf>`_.
 
 * Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
