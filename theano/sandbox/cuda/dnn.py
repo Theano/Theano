@@ -48,20 +48,24 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
-
-            comp, run, out, err = gof.cmodule.GCC_compiler.try_flags(
+            # Do not run here the test program. It would run on the
+            # default gpu, not the one selected by the user. If mixed
+            # GPU are installed or if the GPUs are configured in
+            # exclusive mode, this cause bad detection.
+            comp, out, err = gof.cmodule.GCC_compiler.try_flags(
                 ["-l", "cudnn", "-I" + os.path.dirname(__file__),
                  "-I" + os.path.join(theano.config.cuda.root, 'include'),
                  "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
                 preambule=preambule, body=body,
-                try_run=True, output=True)
+                try_run=False, output=True)
 
-            dnn_available.avail = comp and run
+            dnn_available.avail = comp
             if not dnn_available.avail:
                 dnn_available.msg = (
-                    "Theano is not able to use cuDNN. We got this error: \n" +
+                    "Theano can not compile with cuDNN. We got this error:\n" +
                     str(err))
             else:
+                # If we can compile, check that we can import and run.
                 v = version()
                 if isinstance(v, tuple) and v[0] != v[1]:
                     dnn_available.avail = False
@@ -183,11 +187,18 @@ class DnnVersion(GpuOp):
 
 
 def version():
-    """
-    return the current cuDNN version we compile with.
+    """return the current cuDNN version we compile with.
 
-    This only check the header version, the the library we link with.
+    This return a tuple with the header version and the library
+    version we link with. For older cudnn version without version
+    information, we return -1.
+
     """
+    if not dnn_available():
+        raise Exception(
+            "We can't determine the cudnn version as it is not available",
+            dnn_available.msg)
+
     if version.v is None:
         f = theano.function([], DnnVersion()(),
                             theano.Mode(optimizer=None))
