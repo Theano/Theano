@@ -83,7 +83,7 @@ class PdbBreakpoint(Op):
 
         # Build the Apply node
         inputs = [condition] + list(monitored_vars)
-        outputs = [inp.type.make_variable() for inp in monitored_vars]
+        outputs = [inp.type() for inp in monitored_vars]
         return Apply(op=self, inputs=inputs, outputs=outputs)
 
     def perform(self, node, inputs, output_storage):
