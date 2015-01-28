@@ -804,6 +804,9 @@ def pydotprint(fct, outfile=None,
 
     # Update the inputs that have an update function
     input_update = {}
+    # Here outputs can be the original list, as we should not change
+    # it, we must copy it.
+    outputs = list(outputs)
     if isinstance(fct, Function):
         for i in reversed(fct.maker.expanded_inputs):
             if i.update is not None:
