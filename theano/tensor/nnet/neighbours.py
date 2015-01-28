@@ -208,7 +208,24 @@ class Images2Neibs(Op):
                                 z_col = j + d * i
 
                                 z[0][z_row, z_col] = ten4[n, s, ten4_2, ten4_3]
-
+                                
+    def infer_shape(self, node, input_shape):
+        in_shape = input_shape[0]
+        c, d = node.inputs[1]
+        step_x, step_y = node.inputs[2]
+        if self.mode == 'wrap_centered':
+            grid_c = T.ceil_intdiv(in_shape[2], step_x)
+            grid_d = T.ceil_intdiv(in_shape[3], step_y)
+        elif self.mode == 'valid':
+            grid_c = 1 + ((in_shape[2] - c) // step_x)
+            grid_d = 1 + ((in_shape[3] - d) // step_y)
+        elif self.mode == 'ignore_borders':
+            grid_c = 1 + ((in_shape[2] - c) // step_x)
+            grid_d = 1 + ((in_shape[3] - d) // step_y)
+        z_dim0 = grid_c * grid_d * in_shape[1] * in_shape[0]
+        z_dim1 = c * d
+        return [(z_dim0, z_dim1)]
+    
     def c_code(self, node, name, inp, out, sub):
         ten4, neib_shape, neib_step = inp
         z, = out
