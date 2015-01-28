@@ -367,12 +367,12 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             f()
 
     def test_infer_shape(self):
-        shape = (100, 40, 6, 6)
+        shape = (100, 40, 6, 3)
         images = numpy.ones(shape).astype('float32')
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,2),
+                                        x, neib_shape=(2,1),
                                         mode='valid')],
                                     [images],
                                     Images2Neibs
@@ -384,17 +384,17 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                     [images],
                                     Images2Neibs
                                     )
-        shape = (100, 40, 5, 5)
+        shape = (100, 40, 5, 4)
         images = numpy.ones(shape).astype('float32')
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,2),
+                                        x, neib_shape=(2,1),
                                         mode='ignore_borders')],
                                     [images],
                                     Images2Neibs
                                     )
-        shape = (100, 40, 5, 5)
+        shape = (100, 40, 5, 3)
         images = numpy.ones(shape).astype('float32')
         x = T.ftensor4()
         f = self._compile_and_check([x],
@@ -405,7 +405,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                     Images2Neibs
                                     )
 
-        shape = (100, 40, 6, 6)
+        shape = (100, 40, 6, 7)
         images = numpy.ones(shape).astype('float32')
         x = T.ftensor4()
         f = self._compile_and_check([x],
@@ -415,7 +415,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                                     [images],
                                     Images2Neibs
                                     )
-        shape = (100, 40, 5, 5)
+        shape = (100, 40, 5, 10)
         images = numpy.ones(shape).astype('float32')
         x = T.ftensor4()
         f = self._compile_and_check([x],
