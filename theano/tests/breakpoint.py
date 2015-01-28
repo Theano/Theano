@@ -68,6 +68,10 @@ class PdbBreakpoint(Op):
 
     def make_node(self, condition, *monitored_vars):
 
+        # Ensure that condition is a theano tensor
+        if not isinstance(condition, theano.Variable):
+            condition = theano.tensor.as_tensor_variable(condition)
+
         # Validate that the condition is a scalar (else it is not obvious how
         # is should be evaluated)
         assert (condition.ndim == 0)
