@@ -623,9 +623,9 @@ def pydotprint(fct, outfile=None,
     red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
     HostFromGpu).
 
-    For edge's, they black by default. If a node return a view
-    of an input, we put the corresponding input edge in blue. If we
-    return a destroyed inputs, we put the corresponding edge in red.
+    For edges, they are black by default. If a node returns a view
+    of an input, we put the corresponding input edge in blue. If it
+    returns a destroyed input, we put the corresponding edge in red.
 
     .. note::
 
