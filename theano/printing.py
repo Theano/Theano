@@ -847,10 +847,10 @@ def pydotprint(fct, outfile=None,
                 label = label[:max_label_size - 3] + '...'
             param = {}
             if hasattr(node.op, 'view_map') and id in reduce(
-                list.__add__, node.op.view_map.values()):
+                list.__add__, node.op.view_map.values(), []):
                 param['color'] = 'blue'
             elif hasattr(node.op, 'destroy_map') and id in reduce(
-                list.__add__, node.op.destroy_map.values()):
+                list.__add__, node.op.destroy_map.values(), []):
                 param['color'] = 'red'
             if var.owner is None:
                 if high_contrast:
