@@ -1062,12 +1062,35 @@ class COp(Op):
             with open(func_file, 'r') as f:
                 self.func_codes.append(f.read())
 
+        # If both the old section markers and the new section markers are
+        # present, raise an error because we don't know which ones to follow.
+        old_markers_present = False
+        new_markers_present = False
+        for code in self.func_codes:
+            if self.backward_re.search(code):
+                old_markers_present = True
+            if self.section_re.search(code):
+                new_markers_present = True
+
+        if old_markers_present and new_markers_present:
+            raise ValueError('Both the new and the old syntax for '
+                             'identifying code sections are present in the '
+                             'provided C code. These two syntaxes should not '
+                             'be used at the same times')
+
         self.code_sections = dict()
         for i, code in enumerate(self.func_codes):
-            if ('THEANO_APPLY_CODE_SECTION' in code or
-                'THEANO_SUPPORT_CODE_SECTION' in code):
+            if self.backward_re.search(code):
                 # This is backward compat code that will go away in a while
+
+                # Check for code outside of the supported sections
                 split = self.backward_re.split(code)
+                if split[0].strip() != '':
+                    raise ValueError('Stray code before first section '
+                                     'marker (in file %s): %s' %
+                                     (self.func_files[i], split[0]))
+
+                # Separate the code into the proper sections
                 n = 1
                 while n < len(split):
                     if split[n] == 'APPLY':
@@ -1076,20 +1099,30 @@ class COp(Op):
                         self.code_sections['support_code'] = split[n+1]
                     n += 2
                 continue
-            split = self.section_re.split(code)
-            if split[0].strip() != '':
-                raise ValueError('Stray code before first #section '
-                                 'statement (in file %s): %s' %
-                                 (self.func_files[i], split[0]))
-            n = 1
-            while n < len(split):
-                if split[n] not in self.SECTIONS:
-                    raise ValueError("Unknown section type (in file %s): %s" %
-                                     (self.fun_files[i], split[n]))
-                if split[n] not in self.code_sections:
-                    self.code_sections[split[n]] = ""
-                self.code_sections[split[n]] += split[n+1]
-                n += 2
+
+            elif self.section_re.search(code):
+
+                # Check for code outside of the supported sections
+                split = self.section_re.split(code)
+                if split[0].strip() != '':
+                    raise ValueError('Stray code before first #section '
+                                     'statement (in file %s): %s' %
+                                     (self.func_files[i], split[0]))
+
+                # Separate the code into the proper sections
+                n = 1
+                while n < len(split):
+                    if split[n] not in self.SECTIONS:
+                        raise ValueError("Unknown section type (in file %s): %s" %
+                                         (self.fun_files[i], split[n]))
+                    if split[n] not in self.code_sections:
+                        self.code_sections[split[n]] = ""
+                    self.code_sections[split[n]] += split[n+1]
+                    n += 2
+
+            else:
+                raise ValueError("No valid section marker was found in file "
+                                 "%s" % self.func_files[i])
 
     def c_code_cache_version(self):
         return hash(tuple(self.func_codes))
