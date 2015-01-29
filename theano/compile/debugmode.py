@@ -585,7 +585,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         already_printed = a in done  # get_id_str put it in the dict
         id_str = get_id_str(a)
 
-        if profile == None:
+        if profile == None or a not in profile.apply_time:
             if len(a.outputs) == 1:
                 print >> file, '%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
                                                               id_str,
