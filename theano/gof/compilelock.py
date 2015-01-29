@@ -97,6 +97,13 @@ def get_lock(lock_dir=None, **kw):
             # every 'config.compile.timeout / 2' seconds to ensure
             # no one else tries to override our lock after their
             # 'config.compile.timeout' timeout period.
+            if get_lock.start_time is None:
+                # This should not happen. So if this happen, clean up
+                # the lock state and raise an error.
+                while get_lock.n_lock > 0:
+                    release_lock()
+                raise Exception("For some unknow reason, the lock was already taken,"
+                                " but no start time was registered.")
             now = time.time()
             if now - get_lock.start_time > config.compile.timeout/2:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
