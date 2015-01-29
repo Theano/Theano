@@ -2819,7 +2819,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
             self.alloc_wo_dep + self.mat,
             mode=self.fast_run_mode
         )
-        from theano.printing import debugprint as dp
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
 
@@ -2846,7 +2845,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         func = function(
             [self.vec, self.tens],
             self.alloc_wo_dep.dimshuffle(0, 1, 'x') + self.tens,
-            #T.alloc(self.vec, 2, 2).dimshuffle(0, 1, 'x') + self.tens,
             mode=self.fast_compile_mode
         )
         self._verify_alloc_count(func, 1)
@@ -2855,7 +2853,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         # Optimization on dimshuffle with assert
         func = function(
             [self.vec, self.tens],
-            #T.alloc(self.vec, 2, 2).dimshuffle(0, 1, 'x') + self.tens,
             self.alloc_wo_dep.dimshuffle(0, 1, 'x') + self.tens,
             mode=self.fast_run_mode
         )
@@ -2891,21 +2888,15 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self._verify_assert_count(func, 0)
 
         # Optimization on dimshuffle with assert
-        temp = self.tv_wo_dep + self.tm_wo_dep,
-        from theano.printing import debugprint as dp
-        import ipdb; ipdb.set_trace()
         func = function(
             [self.vec, self.mat],
-            temp,
+            self.tv_wo_dep + self.tm_wo_dep,
             mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
 
         # No optimization on dimshuffle without assert
-        #s = T.iscalar('s')
-        #tv = T.alloc(self.vec, s, s)
-        #tm = T.alloc(self.mat, 5, 5, 5)
         func = function(
             [self.vec, self.mat, self.s],
             self.tv_w_dep + self.tm_w_dep,
@@ -2926,8 +2917,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
     def test_error(self):
         t3fft = theano.tensor.tensor(dtype=self.dtype,
                                      broadcastable=(False, False, True))
-        #row = theano.tensor.row(dtype=self.dtype)
-        #o = T.alloc(row, 5, 5).dimshuffle(0, 1, 'x') + t3fft
         o = self.o.dimshuffle(0, 1, 'x') + t3fft
         func = function(
             [t3fft, self.row],
