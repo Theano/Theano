@@ -1076,21 +1076,15 @@ class COp(Op):
             raise ValueError('Both the new and the old syntax for '
                              'identifying code sections are present in the '
                              'provided C code. These two syntaxes should not '
-                             'be used at the same times')
+                             'be used at the same time.')
 
         self.code_sections = dict()
         for i, code in enumerate(self.func_codes):
             if self.backward_re.search(code):
                 # This is backward compat code that will go away in a while
 
-                # Check for code outside of the supported sections
-                split = self.backward_re.split(code)
-                if split[0].strip() != '':
-                    raise ValueError('Stray code before first section '
-                                     'marker (in file %s): %s' %
-                                     (self.func_files[i], split[0]))
-
                 # Separate the code into the proper sections
+                split = self.backward_re.split(code)
                 n = 1
                 while n < len(split):
                     if split[n] == 'APPLY':
