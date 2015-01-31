@@ -1,7 +1,53 @@
-import re
+import linecache
 import traceback
+import re
+import sys
 
 from theano import config
+
+
+def simple_extract_stack(f=None, limit=None):
+    """This is traceback.extract_stack from python 2.7 with this
+    change:
+
+    - Comment the update of the cache
+
+    This is because this update cause an call to os.stat to get the
+    line content. This cause too much long on cluster.
+
+    """
+    if f is None:
+        try:
+            raise ZeroDivisionError
+        except ZeroDivisionError:
+            f = sys.exc_info()[2].tb_frame.f_back
+    if limit is None:
+        if hasattr(sys, 'tracebacklimit'):
+            limit = sys.tracebacklimit
+    list = []
+    n = 0
+    while f is not None and (limit is None or n < limit):
+        lineno = f.f_lineno
+        co = f.f_code
+        filename = co.co_filename
+        name = co.co_name
+#        linecache.checkcache(filename)
+        line = linecache.getline(filename, lineno, f.f_globals)
+        if line:
+            line = line.strip()
+        else:
+            line = None
+        list.append((filename, lineno, name, line))
+        f = f.f_back
+        n = n + 1
+    list.reverse()
+    return list
+
+if sys.version_info[:2] != (2, 7):
+    # I enable my version only for 2.7 just to be sure the internal do
+    # not change. If this work with other python version, you can
+    # enable it.
+    simple_extract_stack = traceback.extract_stack
 
 
 def add_tag_trace(thing):
@@ -12,7 +58,7 @@ def add_tag_trace(thing):
     limit = config.traceback.limit
     if limit == -1:
         limit = None
-    tr = traceback.extract_stack(limit=limit)[:-1]
+    tr = simple_extract_stack(limit=limit)[:-1]
     # Different python version use different sementic for
     # limit. python 2.7 include the call to extrack_stack. The -1 get
     # rid of it.  We also want to get rid of the add_tag_trace call.
