@@ -1236,10 +1236,13 @@ class FunctionMaker(object):
         if need_opt:
             compute_test_value_orig = theano.config.compute_test_value
             add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
+            limit_orig = theano.config.traceback.limit
+            # Why we add stack on node when it get done in output var?
             try:
                 # optimize the fgraph
                 theano.config.compute_test_value = theano.config.compute_test_value_opt
                 gof.Op.add_stack_trace_on_call = False
+                theano.config.traceback.limit = 0
                 start_optimizer = time.time()
 
                 # now optimize the graph
@@ -1262,6 +1265,7 @@ class FunctionMaker(object):
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
                 gof.Op.add_stack_trace_on_call = add_stack_trace_on_call_orig
+                theano.config.traceback.limit = limit_orig
         
         # initialize the linker
         if not hasattr(linker, 'accept'):
@@ -1406,7 +1410,17 @@ class FunctionMaker(object):
 
         # Get a function instance
         start_linker = time.time()
-        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage_lists)
+        add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
+        limit_orig = theano.config.traceback.limit
+        try:
+            gof.Op.add_stack_trace_on_call = False
+            theano.config.traceback.limit = 0
+            _fn, _i, _o = self.linker.make_thunk(
+                input_storage=input_storage_lists)
+        finally:
+            gof.Op.add_stack_trace_on_call = add_stack_trace_on_call_orig
+            theano.config.traceback.limit = limit_orig
+
         end_linker = time.time()
 
         linker_time = end_linker - start_linker
