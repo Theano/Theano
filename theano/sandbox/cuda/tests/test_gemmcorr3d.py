@@ -174,10 +174,8 @@ class TestCorr3DMM(unittest.TestCase):
                                          b=bias, d=(1, 1, 1))
         mode = mode_with_gpu.including('conv3d_gemm')
         mode.check_py_code = False
-        ref_mode = copy.copy(theano.compile.get_default_mode())
-        ref_mode.check_py_code = False
 
-        f_ref = theano.function([], conv, mode=ref_mode)
+        f_ref = theano.function([], conv, mode="FAST_RUN")
         f_gemm = theano.function([], conv, mode=mode)
 
         # make sure we inserted the gemm trickery

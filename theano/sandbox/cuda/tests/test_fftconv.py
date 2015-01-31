@@ -189,9 +189,7 @@ class TestConv3dFFT(unittest.TestCase):
                                                           pad_last_dim = pad)
         conv_fft = conv_fft.dimshuffle(0, 2, 3, 4, 1)
 
-        ref_mode = copy.copy(theano.compile.get_default_mode())
-        ref_mode.check_py_code = False
-        f_ref = theano.function([], conv_ref, mode=ref_mode)
+        f_ref = theano.function([], conv_ref, mode="FAST_RUN")
         mode = mode_with_gpu
         mode.check_py_code = False
         f_fft = theano.function([], conv_fft, mode=mode)
@@ -256,12 +254,10 @@ class TestConv3dFFT(unittest.TestCase):
 
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1,1,1))
-        ref_mode = copy.copy(theano.compile.get_default_mode())
-        ref_mode.check_py_code = False
         mode = mode_with_gpu.including('conv3d_fft')
         mode.check_py_code = False
 
-        f_ref = theano.function([], conv, mode=ref_mode)
+        f_ref = theano.function([], conv, mode="FAST_RUN")
         f_fft = theano.function([], conv, mode=mode)
 
         # make sure we inserted the fft trickery
@@ -289,12 +285,10 @@ class TestConv3dFFT(unittest.TestCase):
         conv = theano.tensor.nnet.convGrad3D(V=inputs, dCdH=dCdH,
                                              WShape=filters_shape,
                                              d=(1,1,1))
-        ref_mode = copy.copy(theano.compile.get_default_mode())
-        ref_mode.check_py_code = False
         mode = mode_with_gpu.including('convgrad3d_fft')
         mode.check_py_code = False
 
-        f_ref = theano.function([], conv, mode=ref_mode)
+        f_ref = theano.function([], conv, mode="FAST_RUN")
         f_fft = theano.function([], conv, mode=mode)
 
         # make sure we inserted the fft trickery
