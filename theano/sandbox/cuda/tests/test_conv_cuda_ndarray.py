@@ -365,7 +365,8 @@ def get_valid_shapes():
     return shapes
 
 
-def test_valid_0_2():
+# Disabled as -1 case tested and now not used by default
+def est_valid_0_2():
     seed_rng()
     shapes = get_valid_shapes()
     version = [0, 2]
@@ -429,7 +430,8 @@ def test_valid_1_3_11_12():
         yield t
 
 
-def test_valid_4():
+# Disabled as -1 case tested and now not used by default
+def est_valid_4():
     seed_rng()
     shapes = get_valid_shapes()
     version = [4]
@@ -462,7 +464,8 @@ def test_valid_4():
         yield t
 
 
-def test_valid_5():
+# Disabled as -1 case tested and now not used by default
+def est_valid_5():
     seed_rng()
     shapes = get_valid_shapes()
     version = [5]
@@ -493,7 +496,8 @@ def test_valid_5():
         yield t
 
 
-def test_valid_7_8_13():
+# Disabled as -1 case tested and now not used by default
+def est_valid_7_8_13():
     seed_rng()
     shapes = get_valid_shapes()
     # This is to test the "new" lower shared memory usage.
@@ -527,7 +531,8 @@ def test_valid_7_8_13():
         yield t
 
 
-def test_valid_9_10():
+# Disabled as -1 case tested and now not used by default
+def est_valid_9_10():
     seed_rng()
     shapes = get_valid_shapes()
     version = [9, 10]
@@ -579,7 +584,8 @@ def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
 def test_valid():
     for t in _test_valid(None,
                          mode=theano_mode,
-                         version=[-2, -1, 6]):
+# version -2 and 6 disabled as -1 case tested and now not used by default
+                         version=[-1]):
         yield t
 
 
@@ -697,7 +703,9 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
 def test_full():
     for t in _test_full(None,
                         mode=theano_mode,
-                        version=[-2, -1, 0, 1, 2, 3, 4, 5]):
+# keep only version -1 as default case tested and now not used by default
+#                        version=[-2, -1, 0, 1, 2, 3, 4, 5]):
+                        version=[-1]):
         yield t
 
 
