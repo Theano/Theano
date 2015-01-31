@@ -132,9 +132,9 @@ class NaiveAlgo(object):
         #TODO: What if the scalar_op needs support_code??
         task_code = self.scalar_op.c_code(
             Apply(self.scalar_op,
-                  [scalar.Scalar(dtype=input.type.dtype)()
+                  [scalar.Scalar(dtype=input.type.dtype).make_variable()
                    for input in node.inputs],
-                  [scalar.Scalar(dtype=output.type.dtype)()
+                  [scalar.Scalar(dtype=output.type.dtype).make_variable()
                    for output in node.outputs]),
             nodename + '_scalar_',
             get_str_list_logical_scalar(node),
@@ -253,8 +253,10 @@ class NaiveAlgo(object):
             #TODO: What if the scalar_op needs support_code??
             task_code = self.scalar_op.c_code(
                     Apply(self.scalar_op,
-                        [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                        [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                        [scalar.Scalar(dtype = input.type.dtype).make_variable()
+                         for input in node.inputs],
+                        [scalar.Scalar(dtype = output.type.dtype).make_variable()
+                         for output in node.outputs])
                     , nodename + '_scalar_'
                     , get_str_list_logical_scalar(node, value_str='value0[%i]')
                     , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)]
@@ -389,8 +391,10 @@ class NaiveAlgo(object):
         def task_code(d):
             print >> sio, self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                    [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                    [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                    [scalar.Scalar(dtype = input.type.dtype).make_variable()
+                     for input in node.inputs],
+                    [scalar.Scalar(dtype = output.type.dtype).make_variable()
+                     for output in node.outputs])
                 , nodename + '_scalar_'
                 , ['i%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.inputs)]
                 , ['o%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.outputs)]
@@ -461,8 +465,10 @@ class NaiveAlgo(object):
         #TODO: What if the scalar_op needs support_code??
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                    [scalar.Scalar(dtype = input.type.dtype)() for input in node.inputs],
-                    [scalar.Scalar(dtype = output.type.dtype)() for output in node.outputs])
+                    [scalar.Scalar(dtype = input.type.dtype).make_variable()
+                     for input in node.inputs],
+                    [scalar.Scalar(dtype = output.type.dtype).make_variable()
+                     for output in node.outputs])
                 , nodename + '_scalar_'
                 #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)]
                 , get_str_list_logical_scalar(node, data_str='i%i_data[i]')
