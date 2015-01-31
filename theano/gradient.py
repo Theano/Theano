@@ -21,7 +21,7 @@ import theano
 from theano import gof
 from theano.gof import Variable
 from theano.gof.python25 import OrderedDict
-from theano.gof.null_type import NullType
+from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp
 
@@ -987,7 +987,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                 input_grads = []
                 for connected in inputs_connected:
                     if connected:
-                        input_grads.append(NullType()())
+                        input_grads.append(null_type())
                     else:
                         input_grads.append(disconnected_type())
             else:
