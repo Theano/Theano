@@ -43,10 +43,10 @@ def simple_extract_stack(f=None, limit=None):
     list.reverse()
     return list
 
-if sys.version_info[:2] != (2, 7):
-    # I enable my version only for 2.7 just to be sure the internal do
-    # not change. If this work with other python version, you can
-    # enable it.
+if sys.version_info[:2] <= (3, 2):
+    # I enable my implementation only for some python version just to
+    # be sure the Python internal do not change. If this work with
+    # other python version, you can enable it.
     simple_extract_stack = traceback.extract_stack
 
 
