@@ -1,5 +1,8 @@
 # Skip test if cuda_ndarray is not available.
+import itertools
+
 from nose.plugins.skip import SkipTest
+import numpy as np
 
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available is False:
@@ -14,10 +17,10 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 from theano import tensor as T
-import numpy as np
 import theano
 from theano.tensor.extra_ops import cumsum, CumsumOp
-import itertools
+from theano.tests import unittest_tools as utt
+
 
 class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     mode = mode_with_gpu
@@ -154,7 +157,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             a_shape = [5, 5]
             a_shape[1-shape_axis] = self.max_grid_size1+1
             a = np.random.random(a_shape).astype("float32")
-            assert np.allclose(np.cumsum(a, axis=axis), f(a))
+            utt.assert_allclose(np.cumsum(a, axis=axis), f(a), rtol=5e-5)
 
             # Use recursive cumsum
             a_shape = [3, 3]
