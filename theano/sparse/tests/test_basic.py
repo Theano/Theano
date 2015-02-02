@@ -2105,7 +2105,6 @@ class Test_getitem(unittest.TestCase):
 
     def test_GetItem2D(self):
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
-        assert scipy_ver >= [0, 11]
         is_supported_version = bool(scipy_ver >= [0, 14])
 
         sparse_formats = ('csc', 'csr')
