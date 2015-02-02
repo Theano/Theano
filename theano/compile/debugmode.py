@@ -1593,6 +1593,17 @@ default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk),
                       get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
 
 
+# Debug mode cheats and initializes the linker in a different way in
+# its maker so we can cheat some more by having a linker to satisfy
+# the external requirements of the .linker attribute of a mode
+# 1) it's a class instance
+# 2) it a has a .clone() method
+class _DummyLinker(object):
+    # This is not a real linker anyway
+    def clone(self, allow_gc=None):
+        return self
+
+
 class _Linker(gof.link.LocalLinker):
     """Special debugging linker"""
     def __init__(self, maker, schedule=None):
@@ -2511,7 +2522,7 @@ class DebugMode(Mode):
             check_isfinite=None,
             check_preallocated_output=None,
             require_matching_strides=None,
-            linker=None):
+            linker=_DummyLinker()):
 
         """Initialize member variables.
 
@@ -2521,13 +2532,13 @@ class DebugMode(Mode):
         Mode.requiring() and some other fct to work with DebugMode too.
         """
 
-        if linker is not None and not issubclass(linker, _Linker):
+        if not isinstance(linker, _DummyLinker):
             raise Exception("DebugMode can only use its own linker! You "
                             "should not provide one.", linker)
 
         super(DebugMode, self).__init__(
                 optimizer=optimizer,
-                linker=_Linker)
+                linker=linker)
 
         if stability_patience is not None:
             self.stability_patience = stability_patience
