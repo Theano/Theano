@@ -1814,6 +1814,14 @@ gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
                'fast_run', 'inplace', 'gpu_inplace')
 
+register_opt()(tensor.opt.local_remove_useless_assert)
+
+register_opt()(tensor.opt.local_shape_to_shape_i)
+gpu_elemwise_alloc = gof.local_optimizer([GpuElemwise])(
+    tensor.opt.local_elemwise_alloc_op(GpuElemwise, GpuAlloc, GpuDimShuffle)
+)
+register_opt()(gpu_elemwise_alloc)
+tensor.opt.register_specialize_device(gpu_elemwise_alloc)
 
 @register_opt()
 @local_optimizer([tensor.alloc])
@@ -1841,8 +1849,8 @@ def local_gpualloc(node):
         val = node.inputs[0]
         shp = node.inputs[1:]
         old_out = node.outputs[0]
-        val2 = tensor.shape_padleft(val, len(shp) - val.ndim)
-        new_out = host_from_gpu(gpu_alloc(val2, *shp))
+        new_out = host_from_gpu(gpu_alloc(val, *shp))
+
         # Sigh. it's an annoying thing about theano
         # that you can't add information to the graph.
         # If for some reason it has come to light that

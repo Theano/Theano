@@ -256,9 +256,23 @@ class GpuElemwise(GpuOp):
         _inputs = [as_cuda_ndarray_variable(i) for i in inputs]
         if self.nin > 0 and len(_inputs) != self.nin:
             raise TypeError('Wrong argument count', (self.nin, len(_inputs)))
-        for i in _inputs[1:]:
-            if i.type.ndim != inputs[0].type.ndim:
-                raise TypeError('different ranks among inputs')
+
+        target_length = max([input.type.ndim for input in _inputs])
+
+        args = []
+        for input in _inputs:
+            length = input.type.ndim
+            difference = target_length - length
+            if not difference:
+                args.append(input)
+            else:
+                # TODO: use LComplete instead
+                args.append(GpuDimShuffle(
+                    input.type.broadcastable,
+                    ['x'] * difference + range(length)
+                    )(input))
+        _inputs = args
+
 
         # output is broadcastable only along dimensions where all
         # inputs are broadcastable
@@ -303,7 +317,7 @@ class GpuDimShuffle(GpuOp):
     def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
-        self.new_order = new_order
+        self.new_order = tuple(new_order)
 
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
@@ -312,6 +326,13 @@ class GpuDimShuffle(GpuOp):
                     raise ValueError("You cannot drop a non-broadcastable"
                                      " dimension.",
                                      (input_broadcastable, new_order))
+
+        # this is the list of the original dimensions that we keep
+        self.shuffle = [x for x in new_order if x != 'x']
+
+        # list of dimensions of the output that are broadcastable and were not
+        # in the original input
+        self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
         self.view_map = {0: [0]}
 
@@ -344,8 +365,7 @@ class GpuDimShuffle(GpuOp):
                 # Both case are good.
         ob = []
         if not isinstance(input.type, CudaNdarrayType):
-            raise TypeError("The input of a GpuDimshuffle must"
-                            " be a CudaNdarray")
+            input = as_cuda_ndarray_variable(input)
         for value in self.new_order:
             if value == 'x':
                 ob.append(True)
@@ -485,6 +505,17 @@ class GpuDimShuffle(GpuOp):
 
     def c_code_cache_version(self):
         return (1, 0)
+
+    def infer_shape(self, node, shapes):
+        ishp, = shapes
+        # transpose
+        rval = [ishp[i] for i in self.shuffle]
+
+        # augment
+        for augm in self.augment:
+            rval.insert(augm, 1)
+        return [rval]
+
 
 
 class GpuCAReduce(GpuOp):
@@ -3228,9 +3259,7 @@ class GpuAlloc(GpuOp):
         v = as_cuda_ndarray_variable(value)
         sh = [tensor.as_tensor_variable(s) for s in shape]
         if v.ndim != len(shape):
-            raise TypeError(
-                'GpuAlloc requires value of same dimensions as shape',
-                value, len(shape))
+            value = tensor.shape_padleft(value, len(shape) - v.ndim)
 
         bcast = []
         for s in sh:

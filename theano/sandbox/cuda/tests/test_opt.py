@@ -1,5 +1,6 @@
 import operator
 import sys
+import unittest
 
 import numpy
 # Skip test if cuda_ndarray is not available.
@@ -9,6 +10,7 @@ import theano
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
 import theano.tensor.tests.test_nlinalg
+import theano.tensor.tests.test_opt as test_opt
 
 from theano.tests import unittest_tools as utt
 
@@ -84,6 +86,50 @@ def test_gpualloc():
                         mode=mode_with_gpu.excluding("local_elemwise_alloc"))
     l = f.maker.fgraph.toposort()
     assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
+
+
+class Test_local_elemwise_alloc(test_opt.Test_local_elemwise_alloc):
+    dtype = 'float32'
+
+    def setUp(self):
+        super(Test_local_elemwise_alloc, self).setUp()
+        self.fast_run_mode = mode_with_gpu
+
+        #self.vec = tensor.vector('vec', dtype=dtype)
+        #self.mat = tensor.matrix('mat', dtype=dtype)
+        #self.tens = tensor.tensor3('tens', dtype=dtype)
+
+        #self.alloc_wo_dep = basic_ops.gpu_alloc(self.vec, 2, 2)
+        #self.alloc_w_dep = basic_ops.gpu_alloc(self.vec, *self.mat.shape)
+
+        self.alloc_wo_dep = basic_ops.gpu_alloc(self.vec, 2, 2)
+        self.alloc_w_dep = basic_ops.gpu_alloc(self.vec, *self.mat.shape)
+        self.alloc_w_dep_tens = basic_ops.gpu_alloc(
+            self.vec,
+            self.tens.shape[0],
+            self.tens.shape[1]
+        )
+        self.tv_wo_dep = basic_ops.gpu_alloc(self.vec, 5, 5)
+        self.tm_wo_dep = basic_ops.gpu_alloc(self.mat, 5, 5, 5)
+        self.s = tensor.iscalar('s')
+        self.tv_w_dep = basic_ops.gpu_alloc(self.vec, self.s, self.s)
+        self.tm_w_dep = basic_ops.gpu_alloc(self.mat, 5, 5, 5)
+        self.row = tensor.row(dtype=self.dtype)
+        self.o = basic_ops.gpu_alloc(self.row, 5, 5)
+
+    def _verify_alloc_count(self, f, count):
+        assert(
+            sum([isinstance(elem.op, basic_ops.GpuAlloc)
+                 for elem in f.maker.fgraph.toposort()
+                 if elem.op is not None]) == count
+        )
+
+    def _verify_assert_count(self, f, count):
+        assert(
+            sum([isinstance(elem.op, tensor.opt.Assert)
+                 for elem in f.maker.fgraph.toposort()
+                 if elem.op is not None]) == count
+        )
 
 
 def test_alloc_memset_0():

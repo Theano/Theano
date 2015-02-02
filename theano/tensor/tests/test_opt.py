@@ -2767,12 +2767,27 @@ class Test_local_elemwise_alloc(unittest.TestCase):
     dtype = config.floatX
 
     def setUp(self):
-        self.vec = T.vector('vec', dtype=theano.config.floatX)
-        self.mat = T.matrix('mat', dtype=theano.config.floatX)
-        self.tens = T.tensor3('tens', dtype=theano.config.floatX)
+        self.fast_compile_mode = 'FAST_COMPILE'
+        self.fast_run_mode = 'FAST_RUN'
+
+        self.vec = T.vector('vec', dtype=self.dtype)
+        self.mat = T.matrix('mat', dtype=self.dtype)
+        self.tens = T.tensor3('tens', dtype=self.dtype)
 
         self.alloc_wo_dep = T.alloc(self.vec, 2, 2)
         self.alloc_w_dep = T.alloc(self.vec, *self.mat.shape)
+        self.alloc_w_dep_tens = T.alloc(
+            self.vec,
+            self.tens.shape[0],
+            self.tens.shape[1]
+        )
+        self.tv_wo_dep = T.alloc(self.vec, 5, 5)
+        self.tm_wo_dep = T.alloc(self.mat, 5, 5, 5)
+        self.s = T.iscalar('s')
+        self.tv_w_dep = T.alloc(self.vec, self.s, self.s)
+        self.tm_w_dep = T.alloc(self.mat, 5, 5, 5)
+        self.row = theano.tensor.row(dtype=self.dtype)
+        self.o = T.alloc(self.row, 5, 5)
 
     def _verify_alloc_count(self, f, count):
         assert(
@@ -2793,7 +2808,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         func = function(
             [self.vec, self.mat],
             self.alloc_wo_dep + self.mat,
-            mode='FAST_COMPILE'
+            mode=self.fast_compile_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
@@ -2802,7 +2817,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         func = function(
             [self.vec, self.mat],
             self.alloc_wo_dep + self.mat,
-            mode='FAST_RUN'
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
@@ -2811,7 +2826,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         func = function(
             [self.vec, self.mat],
             self.alloc_w_dep + self.mat,
-            mode='FAST_COMPILE'
+            mode=self.fast_compile_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
@@ -2820,7 +2835,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         func = function(
             [self.vec, self.mat],
             self.alloc_w_dep + self. mat,
-            mode='FAST_RUN'
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 0)
@@ -2829,8 +2844,8 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         # No optimization on dimshuffle with assert
         func = function(
             [self.vec, self.tens],
-            T.alloc(self.vec, 2, 2).dimshuffle(0, 1, 'x') + self.tens,
-            mode='FAST_COMPILE'
+            self.alloc_wo_dep.dimshuffle(0, 1, 'x') + self.tens,
+            mode=self.fast_compile_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
@@ -2838,8 +2853,8 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         # Optimization on dimshuffle with assert
         func = function(
             [self.vec, self.tens],
-            T.alloc(self.vec, 2, 2).dimshuffle(0, 1, 'x') + self.tens,
-            mode='FAST_RUN'
+            self.alloc_wo_dep.dimshuffle(0, 1, 'x') + self.tens,
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
@@ -2847,12 +2862,8 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         # No optimization on dimshuffle without assert
         func = function(
             [self.vec, self.tens],
-            T.alloc(
-                self.vec,
-                self.tens.shape[0],
-                self.tens.shape[1]
-            ).dimshuffle(0, 1, 'x') + self.tens,
-            mode='FAST_COMPILE'
+            self.alloc_w_dep_tens.dimshuffle(0, 1, 'x') + self.tens,
+            mode=self.fast_compile_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
@@ -2860,52 +2871,45 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         # Optimization on dimshuffle without assert
         func = function(
             [self.vec, self.tens],
-            T.alloc(
-                self.vec,
-                self.tens.shape[0],
-                self.tens.shape[1]
-            ).dimshuffle(0, 1, 'x') + self.tens,
-            mode='FAST_RUN'
+            self.alloc_w_dep_tens.dimshuffle(0, 1, 'x') + self.tens,
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 0)
 
     def test_multi_input_single_alloc(self):
-        tv = T.alloc(self.vec, 5, 5)
-        tm = T.alloc(self.mat, 5, 5, 5)
+        # No optimization on dimshuffle with assert
         func = function(
             [self.vec, self.mat],
-            tv + tm,
-            mode='FAST_COMPILE'
+            self.tv_wo_dep + self.tm_wo_dep,
+            mode=self.fast_compile_mode
         )
-
         self._verify_alloc_count(func, 2)
         self._verify_assert_count(func, 0)
 
+        # Optimization on dimshuffle with assert
         func = function(
             [self.vec, self.mat],
-            tv + tm,
-            mode='FAST_RUN'
+            self.tv_wo_dep + self.tm_wo_dep,
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
 
-        s = T.iscalar('s')
-        tv = T.alloc(self.vec, s, s)
-        tm = T.alloc(self.mat, 5, 5, 5)
+        # No optimization on dimshuffle without assert
         func = function(
-            [self.vec, self.mat, s],
-            tv + tm,
-            mode='FAST_COMPILE'
+            [self.vec, self.mat, self.s],
+            self.tv_w_dep + self.tm_w_dep,
+            mode=self.fast_compile_mode
         )
-
         self._verify_alloc_count(func, 2)
         self._verify_assert_count(func, 0)
 
+        # Optimization on dimshuffle without assert
         func = function(
-            [self.vec, self.mat, s],
-            tv + tm,
-            mode='FAST_RUN'
+            [self.vec, self.mat, self.s],
+            self.tv_w_dep + self.tm_w_dep,
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 1)
@@ -2913,12 +2917,11 @@ class Test_local_elemwise_alloc(unittest.TestCase):
     def test_error(self):
         t3fft = theano.tensor.tensor(dtype=self.dtype,
                                      broadcastable=(False, False, True))
-        row = theano.tensor.row(dtype=self.dtype)
-        o = T.alloc(row, 5, 5).dimshuffle(0, 1, 'x') + t3fft
+        o = self.o.dimshuffle(0, 1, 'x') + t3fft
         func = function(
-            [t3fft, row],
+            [t3fft, self.row],
             o,
-            mode='FAST_RUN'
+            mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
