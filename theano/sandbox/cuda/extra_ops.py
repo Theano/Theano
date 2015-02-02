@@ -25,8 +25,9 @@ class GpuCumsum(CumsumOp, GpuOp):
         self.max_grid_size1 = None
         self.max_grid_size2 = None
 
-    def perform(self, node, inp, out):
-        return Op.perform(self, node, inp, out)
+# We must reuse the same method, not reimplement and call it.
+# Otherwise DebugMode will print many warnings.
+    perform = Op.perform
 
     def make_node(self, x):
         assert x.dtype == 'float32'
