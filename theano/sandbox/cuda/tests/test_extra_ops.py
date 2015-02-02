@@ -49,7 +49,8 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
         for axis in [0, None]:
             a = np.random.random((42,)).astype("float32")
-            cumsum_function = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
+            cumsum_function = theano.function([x], cumsum(x, axis=axis),
+                                              mode=self.mode)
 
             slicings = [slice(None, None, None),    # Normal strides
                         slice(None, None, 2),       # Stepped strides
@@ -58,18 +59,21 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
             # Cartesian product of all slicings to test.
             for slicing in itertools.product(slicings, repeat=x.ndim):
-                f = theano.function([x], cumsum(x[slicing], axis=axis), mode=self.mode)
+                f = theano.function([x], cumsum(x[slicing], axis=axis),
+                                    mode=self.mode)
                 assert [n for n in f.maker.fgraph.toposort()
                         if isinstance(n.op, GpuCumsum)]
                 utt.assert_allclose(np.cumsum(a[slicing], axis=axis), f(a))
-                utt.assert_allclose(np.cumsum(a[slicing], axis=axis), cumsum_function(a[slicing]))
+                utt.assert_allclose(np.cumsum(a[slicing], axis=axis),
+                                    cumsum_function(a[slicing]))
 
     def test_Strides2D(self):
         x = T.fmatrix('x')
 
         for axis in [0, 1, None]:
             a = np.random.random((42, 30)).astype("float32")
-            cumsum_function = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
+            cumsum_function = theano.function([x], cumsum(x, axis=axis),
+                                              mode=self.mode)
 
             slicings = [slice(None, None, None),    # Normal strides
                         slice(None, None, 2),       # Stepped strides
@@ -78,18 +82,21 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
             # Cartesian product of all slicings to test.
             for slicing in itertools.product(slicings, repeat=x.ndim):
-                f = theano.function([x], cumsum(x[slicing], axis=axis), mode=self.mode)
+                f = theano.function([x], cumsum(x[slicing], axis=axis),
+                                    mode=self.mode)
                 assert [n for n in f.maker.fgraph.toposort()
                         if isinstance(n.op, GpuCumsum)]
                 utt.assert_allclose(np.cumsum(a[slicing], axis=axis), f(a))
-                utt.assert_allclose(np.cumsum(a[slicing], axis=axis), cumsum_function(a[slicing]))
+                utt.assert_allclose(np.cumsum(a[slicing], axis=axis),
+                                    cumsum_function(a[slicing]))
 
     def test_Strides3D(self):
         x = T.ftensor3('x')
 
         for axis in [0, 1, 2, None]:
             a = np.random.random((42, 30, 25)).astype("float32")
-            cumsum_function = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
+            cumsum_function = theano.function([x], cumsum(x, axis=axis),
+                                              mode=self.mode)
 
             slicings = [slice(None, None, None),    # Normal strides
                         slice(None, None, 2),       # Stepped strides
@@ -98,12 +105,13 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
             # Cartesian product of all slicings to test.
             for slicing in itertools.product(slicings, repeat=x.ndim):
-                f = theano.function([x], cumsum(x[slicing], axis=axis), mode=self.mode)
+                f = theano.function([x], cumsum(x[slicing], axis=axis),
+                                    mode=self.mode)
                 assert [n for n in f.maker.fgraph.toposort()
                         if isinstance(n.op, GpuCumsum)]
                 utt.assert_allclose(np.cumsum(a[slicing], axis=axis), f(a))
-                utt.assert_allclose(np.cumsum(a[slicing], axis=axis), cumsum_function(a[slicing]))
-
+                utt.assert_allclose(np.cumsum(a[slicing], axis=axis),
+                                    cumsum_function(a[slicing]))
 
     def test_GpuCumsum1D(self):
         block_max_size = self.max_threads_dim0 * 2
@@ -197,14 +205,16 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             a_shape[(shape_axis+1) % 3] = self.max_grid_size1+1
             a = np.random.random(a_shape).astype("float32")
             if axis is None:
-                a = np.sign(a-0.5).astype("float32")  # Avoid floating point error
+                # Avoid floating point error
+                a = np.sign(a-0.5).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             a_shape = [5, 5, 5]
             a_shape[(shape_axis+2) % 3] = self.max_grid_size1+1
             a = np.random.random(a_shape).astype("float32")
             if axis is None:
-                a = np.sign(a-0.5).astype("float32")  # Avoid floating point error
+                # Avoid floating point error
+                a = np.sign(a-0.5).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use recursive cumsum (along accumulation axis)
