@@ -63,6 +63,7 @@ from theano.tensor import nlinalg
 from theano.tensor import slinalg
 
 from theano.tensor.nnet.Conv3D import Conv3D
+from theano.tests.breakpoint import PdbBreakpoint
 
 try:
     # We need to be able to import this file even if cuda isn't avail.
@@ -1138,6 +1139,43 @@ def local_gpu_print_op(node):
             new_op = node.op.__class__(global_fn=gpu_print_wrapper)
             new_op.old_op = node.op
             return [host_from_gpu(new_op(gpu_x))]
+    return False
+
+@register_opt()
+@local_optimizer([PdbBreakpoint])
+def local_gpu_pdbbreakpoint_op(node):
+    if isinstance(node.op, PdbBreakpoint):
+
+        old_inputs = node.inputs
+
+        # Obtain the inputs to the new op. The condition (first input) should
+        # be left on the host but the other inputs can be taken from the GPU.
+        new_inputs = old_inputs[:1]
+        for inp in old_inputs[1:]:
+            if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+                # Take the input directly from the gpu
+                new_inputs.append(inp.owner.inputs[0])
+            else:
+                new_inputs.append(inp)
+                
+        # Only proceed further if one of the outputs to the op was a
+        # HostFromGpu
+        if new_inputs[1:] == old_inputs[1:]:
+            return False
+            
+        # Apply the op on the new inputs
+        new_outputs = node.op(*new_inputs)
+
+        # For every output of the new op for which we took the corresponding
+        # input from the GPU instead of the host, we need to transfer the
+        # output back to the host before returning it.
+        for i in range(len(new_outputs)):
+            inp = old_inputs[i + 1]
+            if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
+                new_outputs[i] = host_from_gpu(new_outputs[i])
+
+        return new_outputs
+
     return False
 
 
