@@ -38,3 +38,4 @@ class NullType(Type):
 
     def __str__(self):
         return 'NullType'
+null_type = NullType()

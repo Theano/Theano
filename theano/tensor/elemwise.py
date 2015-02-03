@@ -526,7 +526,8 @@ class Elemwise(OpenMPOp):
         """
         inputs = map(as_tensor_variable, inputs)
         shadow = self.scalar_op.make_node(
-                *[get_scalar_type(dtype=i.type.dtype)() for i in inputs])
+                *[get_scalar_type(dtype=i.type.dtype).make_variable()
+                  for i in inputs])
 
         target_length = max([input.type.ndim for input in inputs])
 
@@ -1029,9 +1030,9 @@ class Elemwise(OpenMPOp):
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                      [get_scalar_type(dtype=input.type.dtype)()
+                      [get_scalar_type(dtype=input.type.dtype).make_variable()
                           for input in node.inputs],
-                      [get_scalar_type(dtype=output.type.dtype)()
+                      [get_scalar_type(dtype=output.type.dtype).make_variable()
                           for output in node.outputs]),
                 nodename + '_scalar_',
                 ["%s_i" % s for s in _inames],
@@ -1182,8 +1183,10 @@ class Elemwise(OpenMPOp):
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
-                [get_scalar_type(dtype=input.type.dtype)() for input in node.inputs],
-                [get_scalar_type(dtype=output.type.dtype)() for output in node.outputs])
+                [get_scalar_type(dtype=input.type.dtype).make_variable()
+                 for input in node.inputs],
+                [get_scalar_type(dtype=output.type.dtype).make_variable()
+                 for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
@@ -1560,9 +1563,9 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         task1_code = self.scalar_op.c_code(
                 Apply(
                     self.scalar_op,
-                    [get_scalar_type(dtype=input.type.dtype)()
+                    [get_scalar_type(dtype=input.type.dtype).make_variable()
                         for input in (node.inputs * 2)],
-                    [get_scalar_type(dtype=output.type.dtype)()
+                    [get_scalar_type(dtype=output.type.dtype).make_variable()
                         for input in node.outputs]),
                 None,
                 ["%s_i" % aname, "%s_i" % inames[0]],
@@ -1612,8 +1615,10 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
-                [get_scalar_type(dtype=input.type.dtype)() for input in node.inputs],
-                [get_scalar_type(dtype=output.type.dtype)() for output in node.outputs])
+                [get_scalar_type(dtype=input.type.dtype).make_variable()
+                 for input in node.inputs],
+                [get_scalar_type(dtype=output.type.dtype).make_variable()
+                 for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
