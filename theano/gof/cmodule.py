@@ -71,6 +71,8 @@ _logger = logging.getLogger("theano.gof.cmodule")
 
 METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"
+# global variable that represent the total time spent in importing module.
+import_time = 0
 
 
 class MissingGXX(Exception):
@@ -282,11 +284,15 @@ def dlimport(fullpath, suffix=None):
     _logger.debug("module_name %s", module_name)
 
     sys.path[0:0] = [workdir]  # insert workdir at beginning (temporarily)
+    global import_time
     try:
         if importlib is not None:
             if hasattr(importlib, "invalidate_caches"):
                 importlib.invalidate_caches()
+        t0 = time.time()
         rval = __import__(module_name, {}, {}, [module_name])
+        t1 = time.time()
+        import_time += t1 - t0
         if not rval:
             raise Exception('__import__ failed', fullpath)
     finally:

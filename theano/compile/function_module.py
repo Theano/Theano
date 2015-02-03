@@ -1410,6 +1410,7 @@ class FunctionMaker(object):
 
         # Get a function instance
         start_linker = time.time()
+        start_import_time = theano.gof.cmodule.import_time
         add_stack_trace_on_call_orig = gof.Op.add_stack_trace_on_call
         limit_orig = theano.config.traceback.limit
         try:
@@ -1428,6 +1429,8 @@ class FunctionMaker(object):
         if self.profile:
             self.profile.linker_time += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
+            import_time = theano.gof.cmodule.import_time - start_import_time
+            self.profile.import_time += import_time
 
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
                 defaults, self.unpack_single, self.return_none, self)
