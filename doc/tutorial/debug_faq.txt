@@ -343,9 +343,16 @@ can be achieved as follows:
 
     import theano
 
+    # This is the current suggested detect_nan implementation to
+    # show you how it work.  That way, you can modify it for your
+    # need.  If you want exactly this method, you can use
+    # ``theano.compile.monitormode.detect_nan`` that will always
+    # contain the current suggested version.
+
     def detect_nan(i, node, fn):
         for output in fn.outputs:
-            if numpy.isnan(output[0]).any():
+            if (not isinstance(numpy.random.RandomState, output[0]) and
+                numpy.isnan(output[0]).any()):
                 print '*** NaN detected ***'
                 theano.printing.debugprint(node)
                 print 'Inputs : %s' % [input[0] for input in fn.inputs]
