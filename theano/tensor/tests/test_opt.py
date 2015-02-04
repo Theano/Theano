@@ -3268,6 +3268,9 @@ class test_shapeoptimizer(unittest.TestCase):
         if sys.version_info[:2] < (2, 5):
             raise SkipTest("Test skipped due to a too old python")
 
+        # This pickle file has undergone manual surgery due to changes
+        # in scan and may or may not run correctly.  It does passes
+        # the test below.
         pkl_filename = os.path.join(os.path.dirname(theano.__file__),
                                     'tensor', 'tests', 'shape_opt_cycle.pkl')
         # Due to incompatibilities between python 2 and 3 in the format
