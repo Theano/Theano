@@ -7,6 +7,7 @@ from theano.gradient import DisconnectedType
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
+from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.basic import ShapeError
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -601,9 +602,10 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         img = gpu_contiguous(img)
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
-        shape = theano.tensor.stack(img.shape[0], kerns.shape[1],
-                                    img.shape[2] + kerns.shape[2] - 1,
-                                    img.shape[3] + kerns.shape[3] - 1)
+
+        shape = theano.tensor.stack(shape_i(img, 0), shape_i(kerns, 1),
+                                    shape_i(img, 2) + shape_i(kerns, 2) - 1,
+                                    shape_i(img, 3) + shape_i(kerns, 3)- 1)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(shape, kerns.shape)
         return GpuDnnConvGradI()(kerns, img, desc, shape[2], shape[3])

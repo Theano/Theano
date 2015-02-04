@@ -387,6 +387,19 @@ class Shape_i(gof.Op):
         return [None]
 
 
+def shape_i(var, i):
+    """This is useful in optimization that need to get the shape. This
+    remove the need of the following shape_feature optimization that
+    convert it. So this speed up optimization and remove Equilibrium
+    max iteration problems.
+
+    """
+    if (hasattr(var, 'fgraph') and
+        hasattr(node.outputs[0].fgraph, 'shape_feature')):
+        return node.outputs[0].fgraph.shape_feature.shape_of[var][i]
+    return Shape_i(i)(var)
+
+
 def register_shape_i_c_code(typ, code, check_input, version=()):
     """ Tell Shape_i how to generate C code for a Theano Type
 
