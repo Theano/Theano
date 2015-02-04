@@ -318,7 +318,8 @@ class Container(object):
         else:
             self.type = r.type
         if name is None:
-            self.name = r.name
+            # Some Type do not have a name field.
+            self.name = getattr(r, 'name', None)
         else:
             self.name = name
 
