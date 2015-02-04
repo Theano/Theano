@@ -205,7 +205,7 @@ if __name__ == "__main__":
         gpu
         K6000/NOECC       0.06s         0.06s
         K40                             0.07s
-        K20m/ECC                0.08s          0.07s
+        K20m/ECC          0.08s 0.08s          0.07s
         K20/NOECC                              0.07s
         M2090                           0.19s
         C2075                                         0.25s
@@ -233,6 +233,7 @@ if __name__ == "__main__":
         GTX 460                                0.37s                0.45s
         GTX 285                         0.42s         0.452s        0.452s        0.40s # cuda 3.0 seems faster? driver version?
         750M                                   0.49s
+        GT 610            2.38s
         GTX 550 Ti                                                  0.57s
         GT 520                                        2.68s                3.06s
         520M                                   2.44s                       3.19s        # with bumblebee on Ubuntu 12.04

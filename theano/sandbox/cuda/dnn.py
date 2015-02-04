@@ -417,8 +417,8 @@ class GpuDnnConv(DnnBase, COp):
 
         return [(
             b, nb,
-            (h + 2*padh - kh)/sh + 1,
-            (w + 2*padw - kw)/sw + 1
+            (h + 2*padh - kh)//sh + 1,
+            (w + 2*padw - kw)//sw + 1
         )]
 
 
@@ -731,8 +731,8 @@ class GpuDnnPool(DnnBase):
         return [(
             shape[0][0],
             shape[0][1],
-            (shape[0][2] - kh)/sh + 1,
-            (shape[0][3] - kw)/sw + 1
+            (shape[0][2] - kh)//sh + 1,
+            (shape[0][3] - kw)//sw + 1
         )]
 
     def c_support_code_struct(self, node, name):

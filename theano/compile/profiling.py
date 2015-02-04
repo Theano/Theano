@@ -104,7 +104,7 @@ def _atexit_print_fn():
         for ps in to_sum[1:]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time",
-                         "validate_time"]:
+                         "validate_time", "import_time"]:
                 setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
 
             # merge dictonary
@@ -193,6 +193,9 @@ class ProfileStats(object):
 
     linker_time = 0.0
     # time spent linking graph (FunctionMaker.create)
+
+    import_time = 0.0
+    # time spent in importing compiled python module.
 
     line_width = config.profiling.output_line_width
 
@@ -640,6 +643,7 @@ class ProfileStats(object):
         print >> file, ('    Theano Linker time (includes C,'
                         ' CUDA code generation/compiling): %es' %
                         self.linker_time)
+        print >> file, '       Import time %es' % self.import_time
         print >> file, ''
 
         # The validation time is a subset of optimizer_time

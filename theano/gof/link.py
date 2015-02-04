@@ -318,7 +318,8 @@ class Container(object):
         else:
             self.type = r.type
         if name is None:
-            self.name = r.name
+            # Some Type do not have a name field.
+            self.name = getattr(r, 'name', None)
         else:
             self.name = name
 
@@ -730,9 +731,9 @@ class WrapLinker(Linker):
             wrapper=self.wrapper)
         return other
 
-    def clone(allow_gc=undef):
+    def clone(self, allow_gc=undef):
         return self.__class__(
-            linkers=[l.clone(allow_gc=allow_gc)],
+            linkers=[l.clone(allow_gc=allow_gc) for l in self.linkers],
             wrapper=self.wrapper)
 
     def accept(self, fgraph, no_recycling=None):
