@@ -413,13 +413,6 @@ class PureOp(object):
 
     """
 
-    add_stack_trace_on_call = True
-    """This class variable governs whether __call__ adds a stack trace to the node it creates.
-
-    The tag trace is meant to connect a node to the line a user typed. It is nice for
-    debugging. It does not make as much sense during optimizations to store this information.
-    """
-
     #############
     # make_node #
     #############
@@ -486,8 +479,6 @@ class PureOp(object):
         """
         return_list = kwargs.pop('return_list', False)
         node = self.make_node(*inputs, **kwargs)
-        if self.add_stack_trace_on_call:
-            self.add_tag_trace(node)
 
         if config.compute_test_value != 'off':
             run_perform = True
