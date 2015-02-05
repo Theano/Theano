@@ -595,3 +595,14 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)
+
+
+class CDataTypeConstant(graph.Constant):
+    def signature(self):
+        # The Op.c_code* methoss can't access the data, so it can't
+        # change the code depending of it. So there is no need to put
+        # it in the signature. Also, under Python 2, PyCObject aren't
+        # pickable. So using the PyCObject in the signature would
+        # disable the c code cache for op that have it as an input.
+        return (self.type,)
+CDataType.Constant = CDataTypeConstant

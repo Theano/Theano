@@ -1331,9 +1331,13 @@ if True:
             border_mode = node.op.border_mode
             subsample = node.op.subsample
             direction_hint = node.op.direction_hint
-            return [dnn_conv(img, kern,
-                             border_mode=border_mode, subsample=subsample,
-                             direction_hint=direction_hint)]
+            rval = dnn_conv(img, kern,
+                            border_mode=border_mode, subsample=subsample,
+                            direction_hint=direction_hint)
+            if node.outputs[0].broadcastable != rval.broadcastable:
+                rval = tensor.patternbroadcast(
+                    rval, node.outputs[0].type.broadcastable)
+            return [rval]
 
     # This optimizer is registered in opt.py as part of the meta-optimizer.
     # It tries exactly the opposite code path of what local_conv_dnn() uses,
@@ -1360,9 +1364,13 @@ if True:
                     direction_hint = 'forward'
                 else:
                     direction_hint = 'bprop weights'
-            return [dnn_conv(img, kern,
-                             border_mode=border_mode, subsample=subsample,
-                             direction_hint=direction_hint)]
+            rval = dnn_conv(img, kern,
+                            border_mode=border_mode, subsample=subsample,
+                            direction_hint=direction_hint)
+            if node.outputs[0].broadcastable != rval.broadcastable:
+                rval = tensor.patternbroadcast(
+                    rval, node.outputs[0].type.broadcastable)
+            return [rval]
 
     @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])

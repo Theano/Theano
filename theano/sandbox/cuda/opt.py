@@ -1148,10 +1148,11 @@ def _gpu_conv_to_fftconv(node):
             (node.op.imshp[0] is not None)):
         kwargs['filter_shape'] = (node.op.nkern, node.op.imshp[0]) + node.op.kshp
     rval = conv2d_fft(node.inputs[0], node.inputs[1], **kwargs)
-    if ('image_shape' in kwargs) or ('filter_shape' in kwargs):
+    if node.outputs[0].broadcastable != rval.broadcastable:
         # With given shape information, conv2d_fft may return a different
         # broadcast pattern than GpuConv. This is forbidden, so we fix it.
-        rval = tensor.patternbroadcast(rval, node.outputs[0].type.broadcastable)
+        rval = tensor.patternbroadcast(
+            rval, node.outputs[0].type.broadcastable)
     return rval
 
 
@@ -1292,7 +1293,11 @@ def local_conv_gemm(node):
         if (border_mode == 'valid'):
             # need to flip the kernel for valid convolution
             kern = kern[:, :, ::-1, ::-1]
-            # call GpuCorrMM or GpuCorrMM_gradWeights
+            # By default use GpuCorrMM
+            rval = GpuCorrMM('valid', subsample, pad)(
+                gpu_contiguous(img), gpu_contiguous(kern))
+
+            # call GpuCorrMM_gradWeights if good
             # (the latter is faster if batchsize * kernelHeight * kernelWidth
             # is larger than inputChannels * outputHeight * outputWidth.
             # GpuConv does not always store information on the batchsize and
@@ -1317,21 +1322,23 @@ def local_conv_gemm(node):
                     # (we need to wrap the result in as_cuda_ndarray_variable,
                     # because we are not allowed to replace a CudaNdarray with
                     # a DimShuffle instance in a graph optimization)
-                    return [theano.sandbox.cuda.as_cuda_ndarray_variable(
-                            GpuCorrMM_gradWeights('valid', subsample, pad)(
+                    rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
+                        GpuCorrMM_gradWeights('valid', subsample, pad)(
                             gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                             gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
-                            ).dimshuffle(1, 0, 2, 3))]
-            # use GpuCorrMM if we did not choose GpuCorrMM_gradWeights above
-            return [GpuCorrMM('valid', subsample, pad)(
-                    gpu_contiguous(img), gpu_contiguous(kern))]
+                        ).dimshuffle(1, 0, 2, 3))
         elif (border_mode == 'full'):
             # need to dimshuffle the kernel for full convolution
             kern = kern.dimshuffle(1, 0, 2, 3)
             # call GpuCorrMM_gradInputs
-            return [GpuCorrMM_gradInputs('valid', subsample, pad)(
-                    gpu_contiguous(kern), gpu_contiguous(img))]
-
+            rval = GpuCorrMM_gradInputs('valid', subsample, pad)(
+                    gpu_contiguous(kern), gpu_contiguous(img))
+        if node.outputs[0].broadcastable != rval.broadcastable:
+            # With given shape information, conv2d_fft may return a different
+            # broadcast pattern than GpuConv. This is forbidden, so we fix it.
+            rval = tensor.patternbroadcast(
+                rval, node.outputs[0].type.broadcastable)
+        return [rval]
 
 # First we register the optimizer that moves convolutions to the GPU.
 register_opt()(local_gpu_conv)

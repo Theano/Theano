@@ -948,16 +948,17 @@ class ModuleCache(object):
             if (key[0] and not key_broken and
                 self.check_for_broken_eq):
                 self.check_key(key, key_data.key_pkl)
-            self._update_mappings(key, key_data, module.__file__)
+            self._update_mappings(key, key_data, module.__file__, check_in_keys=not key_broken)
             return module
         else:
             return None
 
-    def _update_mappings(self, key, key_data, name):
+    def _update_mappings(self, key, key_data, name, check_in_keys):
         all_keys = key_data.keys
         if not all_keys:
             all_keys = [key]
-        assert key in all_keys
+        if check_in_keys:
+            assert key in all_keys
         for k in all_keys:
             if k in self.entry_from_key:
                 assert self.entry_from_key[k] == name
@@ -988,10 +989,10 @@ class ModuleCache(object):
             key_pkl=key_pkl,
             entry=name)
 
+        key_broken = False
         if key[0]:
             try:
                 key_data.save_pkl()
-                key_broken = False
             except cPickle.PicklingError:
                 key_broken = True
                 key_data.remove_key(key)
@@ -1006,7 +1007,7 @@ class ModuleCache(object):
                             " following op(s) implement"
                             " c_code_cache_version(). This makes them"
                             " recompiled for each process." + str(ops))
-        self._update_mappings(key, key_data, module.__file__)
+        self._update_mappings(key, key_data, module.__file__, not key_broken)
         return key_data
 
     def module_from_key(self, key, lnk=None, keep_lock=False):
