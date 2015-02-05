@@ -273,7 +273,7 @@ def test_downsample():
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a)),
-                        mode=mode_with_gpu)
+                        mode=mode_with_gpu.excluding('cudnn'))
                 f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)),
                         mode=mode_without_gpu)
                 assert any([isinstance(node.op,
@@ -295,7 +295,7 @@ def test_downsample():
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
                             a),
-                        mode=mode_with_gpu)
+                        mode=mode_with_gpu.excluding('cudnn'))
                 g2 = pfunc(
                         [],
                         tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
