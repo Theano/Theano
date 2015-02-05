@@ -4852,13 +4852,15 @@ def test_tile_grad():
     rng = numpy.random.RandomState(utt.fetch_seed())
 
     # test vector
-    grad_tile(vector('x'), [3], rng.randn(5))
+    grad_tile(vector('x'), [3], rng.randn(5).astype(config.floatX))
     # test matrix
-    grad_tile(matrix('x'), [3, 4], rng.randn(2, 3))
+    grad_tile(matrix('x'), [3, 4], rng.randn(2, 3).astype(config.floatX))
     # test tensor3
-    grad_tile(tensor3('x'), [3, 4, 5], rng.randn(2, 4, 3))
+    grad_tile(tensor3('x'), [3, 4, 5],
+              rng.randn(2, 4, 3).astype(config.floatX))
     # test tensor4
-    grad_tile(tensor4('x'), [3, 4, 5, 6], rng.randn(2, 4, 3, 5))
+    grad_tile(tensor4('x'), [3, 4, 5, 6],
+              rng.randn(2, 4, 3, 5).astype(config.floatX))
 
 
 class TestARange(unittest.TestCase):

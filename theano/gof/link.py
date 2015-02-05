@@ -101,7 +101,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         # print a simple traceback from KeyboardInterrupt
         raise exc_type, exc_value, exc_trace
     try:
-        trace = node.tag.trace
+        trace = node.outputs[0].tag.trace
     except AttributeError:
         try:
             trace = node.op.tag.trace
@@ -113,11 +113,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         exc_value.__applynode_index__ = node.fgraph.toposort().index(node)
     else:
         exc_value.__applynode_index__ = None
-
-    # nose and unittest catch the exception and do not run th thunk_hook
-    # so it can be useful to just blurt out errors right here
-    if raise_with_op.print_thunk_trace:
-        log_thunk_trace(exc_value)
 
     hints = []
     detailed_err_msg = "\nApply node that caused the error: " + str(node)
@@ -151,7 +146,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             " have the inputs shapes and strides printed.")
 
     # Print node backtrace
-    tr = getattr(node.tag, 'trace', None)
+    tr = getattr(node.outputs[0].tag, 'trace', None)
     if tr:
         sio = StringIO.StringIO()
         traceback.print_list(tr, sio)
@@ -209,8 +204,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
     raise exc_type, exc_value, exc_trace
-
-raise_with_op.print_thunk_trace = False
 
 
 class Linker(object):
