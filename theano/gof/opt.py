@@ -898,14 +898,7 @@ class LocalMetaOptimizer(LocalOptimizer):
             timings.sort()
             if self.verbose:
                 print "= %s" % timings[0][2]
-            ret = timings[0][1]
-            for i in range(len(ret)):
-                if ret[i].type != node.outputs[i].type:
-                    # If the type is different, it is probably due to
-                    # the broadcast pattern. Try to fix that.
-                    ret[i] = theano.tensor.patternbroadcast(
-                        ret[i], node.outputs[i].broadcastable)
-            return ret
+            return timings[0][1]
         return
 
     def provide_inputs(self, node, inputs):
