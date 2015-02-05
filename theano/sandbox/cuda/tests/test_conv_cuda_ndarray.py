@@ -365,198 +365,6 @@ def get_valid_shapes():
     return shapes
 
 
-def test_valid_0_2():
-    seed_rng()
-    shapes = get_valid_shapes()
-    version = [0, 2]
-    verbose = 0
-
-    random = True
-    print_ = False
-    ones = False
-    if ones:
-        random = False
-    shapes2 = []
-
-    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
-                                                  numpy.asarray(kshape[2:]) +
-                                                  numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
-            continue
-        if ishape[1] > 1:
-            continue
-        if ((numpy.prod(ishape[2:]) + numpy.prod(kshape[2:])) * 4 >
-            (16 * 1024 - 150)):
-            continue
-        if subshape == (1, 1):
-            shapes2.append((ishape, kshape, subshape, istride, kstride))
-    shapes = shapes2
-
-    for t in exec_conv(version, shapes, verbose, random, 'valid',
-                       print_=print_, ones=ones, rtol=1.1e-5):
-        yield t
-
-
-def test_valid_1_3_11_12():
-    seed_rng()
-    shapes = get_valid_shapes()
-    version = [1, 3, 11, 12]
-    verbose = 0
-
-    random = True
-    print_ = False
-    ones = False
-    if ones:
-        random = False
-    shapes2 = []
-
-    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
-                                                  numpy.asarray(kshape[2:]) +
-                                                  numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
-            continue
-        if ((numpy.prod(ishape[2:]) + numpy.prod(kshape[2:])) * 4 >
-            (16 * 1024 - 150)):
-            continue
-        if subshape == (1, 1):
-            shapes2.append((ishape, kshape, subshape, istride, kstride))
-    shapes = shapes2
-
-    for t in exec_conv(version, shapes, verbose, random, 'valid',
-                       print_=print_, ones=ones, rtol=1.1e-5):
-        yield t
-
-
-def test_valid_4():
-    seed_rng()
-    shapes = get_valid_shapes()
-    version = [4]
-    verbose = 0
-
-    random = True
-    print_ = False
-    ones = False
-    if ones:
-        random = False
-    shapes2 = []
-
-    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
-                                                  numpy.asarray(kshape[2:]) +
-                                                  numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
-            continue
-        if ishape[1] > 1:
-            continue
-        if ((kshape[2] * ishape[3] * 4 + numpy.prod(kshape[2:]) * 4) >
-            (16 * 1024 - 150)):
-            continue
-        if subshape == (1, 1):
-            shapes2.append((ishape, kshape, subshape, istride, kstride))
-    shapes = shapes2
-
-    for t in exec_conv(version, shapes, verbose, random, 'valid',
-                       print_=print_, ones=ones, rtol=1.1e-5):
-        yield t
-
-
-def test_valid_5():
-    seed_rng()
-    shapes = get_valid_shapes()
-    version = [5]
-    verbose = 0
-
-    random = True
-    print_ = False
-    ones = False
-    if ones:
-        random = False
-    shapes2 = []
-
-    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
-                                                  numpy.asarray(kshape[2:]) +
-                                                  numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
-            continue
-        if ((kshape[2] * ishape[3] * 4 + numpy.prod(kshape[2:]) * 4) >
-            (16 * 1024 - 150)):
-            continue
-        if subshape == (1, 1):
-            shapes2.append((ishape, kshape, subshape, istride, kstride))
-    shapes = shapes2
-
-    for t in exec_conv(version, shapes, verbose, random, 'valid',
-                       print_=print_, ones=ones, rtol=1.1e-5):
-        yield t
-
-
-def test_valid_7_8_13():
-    seed_rng()
-    shapes = get_valid_shapes()
-    # This is to test the "new" lower shared memory usage.
-    shapes.append(((10, 30, 60, 60), (20, 30, 40, 40),
-                   (1, 1), (1, 1), (1, 1)))
-    version = [7, 8, 13]
-    verbose = 0
-
-    random = True
-    print_ = False
-    ones = False
-    if ones:
-        random = False
-    shapes2 = []
-
-    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
-                                                  numpy.asarray(kshape[2:]) +
-                                                  numpy.asarray([1, 1]))
-        if oshape[2] * oshape[3] > device_prop['maxThreadsDim0']:
-            continue
-        if max(numpy.prod(ishape[2:]) * 4 + 2 * kshape[3] * 4,
-               oshape[2] * oshape[3] * 4 * 2) > (16 * 1024 - 150):
-            continue
-        if subshape == (1, 1):
-            shapes2.append((ishape, kshape, subshape, istride, kstride))
-    shapes = shapes2
-
-    for t in exec_conv(version, shapes, verbose, random, 'valid',
-                       print_=print_, ones=ones, rtol=1.1e-5):
-        yield t
-
-
-def test_valid_9_10():
-    seed_rng()
-    shapes = get_valid_shapes()
-    version = [9, 10]
-    verbose = 0
-
-    random = True
-    print_ = False
-    ones = False
-    if ones:
-        random = False
-    shapes2 = []
-
-    for id, (ishape, kshape, subshape, istride, kstride) in enumerate(shapes):
-        oshape = [ishape[0]] + [kshape[0]] + list(numpy.asarray(ishape[2:]) -
-                                                  numpy.asarray(kshape[2:]) +
-                                                  numpy.asarray([1, 1]))
-        if oshape[3] > device_prop['maxThreadsDim0']:
-            continue
-        if (kshape[3] * 4 + ishape[3]) > (16 * 1024 - 150):
-            continue
-        if subshape == (1, 1):
-            shapes2.append((ishape, kshape, subshape, istride, kstride))
-    shapes = shapes2
-
-    for t in exec_conv(version, shapes, verbose, random, 'valid',
-                       print_=print_, ones=ones, rtol=1.1e-5):
-        yield t
-
-
 def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
     seed_rng()
     shapes = get_valid_shapes()
@@ -579,7 +387,7 @@ def _test_valid(cls, mode=None, extra_shapes=[], version=[-1]):
 def test_valid():
     for t in _test_valid(None,
                          mode=theano_mode,
-                         version=[-2, -1, 6]):
+                         version=[-1]):
         yield t
 
 
@@ -697,7 +505,7 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
 def test_full():
     for t in _test_full(None,
                         mode=theano_mode,
-                        version=[-2, -1, 0, 1, 2, 3, 4, 5]):
+                        version=[-1]):
         yield t
 
 
