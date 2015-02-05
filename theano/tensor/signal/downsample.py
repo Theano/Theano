@@ -19,7 +19,7 @@ def max_pool2D(*args, **kwargs):
     return max_pool_2d(*args, **kwargs)
 
 
-def max_pool_2d(input, ds, ignore_border=False):
+def max_pool_2d(input, ds, ignore_border=False, st=None):
     """
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
@@ -31,8 +31,15 @@ def max_pool_2d(input, ds, ignore_border=False):
     :type ds: tuple of length 2
     :param ds: factor by which to downscale (vertical ds, horizontal ds).
         (2,2) will halve the image in each dimension.
-    :param ignore_border: boolean value. When True, (5,5) input with ds=(2,2)
+    :type ignore_border: bool
+    :param ignore_border: When True, (5,5) input with ds=(2,2)
         will generate a (2,2) output. (3,3) otherwise.
+    :type st: tuple of lenght 2
+    :param st: stride size, which is the number of shifts
+        over rows/cols to get the the next pool region.
+        if st is None, it is considered equal to ds
+        (no overlap on pooling regions)
+
     """
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
@@ -51,7 +58,7 @@ def max_pool_2d(input, ds, ignore_border=False):
     input_4D = tensor.reshape(input, new_shape, ndim=4)
 
     # downsample mini-batch of images
-    op = DownsampleFactorMax(ds, ignore_border)
+    op = DownsampleFactorMax(ds, ignore_border, st=st)
     output = op(input_4D)
 
     # restore to original shape
@@ -66,6 +73,7 @@ class DownsampleFactorMax(Op):
     regions.
 
     """
+    __props__ = ('ds', 'ignore_border', 'st')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None):
@@ -143,18 +151,17 @@ class DownsampleFactorMax(Op):
                    ds indicates the pool region size.
         :type ds: list or tuple of two ints
 
+        :param ignore_border: if ds doesn't divide imgshape, do we include
+            an extra row/col of partial downsampling (False) or
+            ignore it (True).
+        :type ignore_border: bool
+
         : param st: stride size, which is the number of shifts
             over rows/cols to get the the next pool region.
             if st is None, it is considered equal to ds
             (no overlap on pooling regions)
         : type st: list or tuple of two ints
 
-        :param ignore_border: if ds doesn't divide imgshape, do we include
-            an extra row/col of partial downsampling (False) or
-            ignore it (True).
-        :type ignore_border: bool
-
-        TODO: why is poolsize an op parameter here?
         """
         self.ds = tuple(ds)
         if not all([isinstance(d, int) for d in ds]):
@@ -165,16 +172,6 @@ class DownsampleFactorMax(Op):
             st = ds
         self.st = tuple(st)
         self.ignore_border = ignore_border
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ds == other.ds and
-                self.st == other.st and
-                self.ignore_border == other.ignore_border)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ \
-            hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
         return '%s{%s,%s,%s}' % (self.__class__.__name__,
@@ -321,6 +318,7 @@ class DownsampleFactorMax(Op):
 
 
 class DownsampleFactorMaxGrad(Op):
+    __props__ = ('ds', 'ignore_border', 'st')
 
     def __init__(self, ds, ignore_border, st=None):
         self.ds = tuple(ds)
@@ -328,16 +326,6 @@ class DownsampleFactorMaxGrad(Op):
         if st is None:
             st = ds
         self.st = tuple(st)
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ds == other.ds and
-                self.st == other.st and
-                self.ignore_border == other.ignore_border)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ \
-            hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
         return '%s{%s,%s,%s}' % (self.__class__.__name__,
