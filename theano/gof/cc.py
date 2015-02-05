@@ -1198,7 +1198,14 @@ class CLinker(link.Linker):
             # It is important that a variable (i)
             # yield a 'position' that reflects its role in code_gen()
             if isinstance(i, graph.Constant):  # orphans
-                if id(i) not in constant_ids:
+                if isinstance(i.type, theano.gof.type.CDataType):
+                    # The Op can't access the data, so it can't change
+                    # the code depending of it. So there is no need to
+                    # put it in the signature. Also, under pytyon 2,
+                    # PyCObject aren't pickable. So this putting it in
+                    # the key would disable the cache for this module.
+                    isig = "PyCObject"
+                elif id(i) not in constant_ids:
                     isig = (i.signature(), topological_pos, i_idx)
                     # If the Theano constant provides a strong hash
                     # (no collision for transpose, 2, 1, 0, -1, -2,
