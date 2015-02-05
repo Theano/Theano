@@ -948,7 +948,7 @@ class ModuleCache(object):
             if (key[0] and not key_broken and
                 self.check_for_broken_eq):
                 self.check_key(key, key_data.key_pkl)
-            self._update_mappings(key, key_data, module.__file__)
+                self._update_mappings(key, key_data, module.__file__)
             return module
         else:
             return None
