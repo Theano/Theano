@@ -1541,6 +1541,18 @@ class GpuConv(GpuOp):
                         to enable them.
         """
         self.border_mode = border_mode
+        if version != -1:
+            raise Exception(
+                """GpuConv with version!=-1 is disabled as we do not
+                test it anymore. It probably work, so you probably can
+                just comment this error and use it. But we want to
+                make sure you know about that. Also, this Op is pretty
+                slow and isn't used by default anymore. We strongly
+                suggest to use GpuCorrMM that is much faster and
+                implement all the functionality (at a cost of some
+                extra memory usage). If you can use cuDNN, that is
+                even better.
+                """)
         self.subsample = subsample
         if logical_img_hw is not None:
             h, w = logical_img_hw
