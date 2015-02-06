@@ -21,7 +21,7 @@ from theano.tensor.nnet.conv import ConvOp
 
 from .type import GpuArrayType, GpuArrayConstant, get_context
 from .basic_ops import (
-    host_from_gpu, GpuFromHost, GpuFromGpu, GpuSplit,
+    host_from_gpu, HostFromGpu, GpuFromHost, GpuFromGpu, GpuSplit,
     GpuAlloc, GpuReshape, GpuEye, GpuJoin, as_gpuarray_variable
 )
 from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer

@@ -375,7 +375,7 @@ def test_gpu_contiguous():
     i = T.iscalar('i')
     i.tag.context = test_ctx
     a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
-    sl = a[::i]
+    sl = a.T[::i]
     sl.tag.context = test_ctx
     f = theano.function([a, i], gpu_contiguous(sl),
                         mode=mode_with_gpu)
@@ -383,7 +383,7 @@ def test_gpu_contiguous():
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
     assert f(a_val, 1).flags.c_contiguous
     assert f(a_val, 2).flags.c_contiguous
-    assert f(a_val, 2).flags.c_contiguous
+    assert f(a_val, -1).flags.c_contiguous
 
 
 class G_reshape(GPUMixin, test_basic.T_reshape):

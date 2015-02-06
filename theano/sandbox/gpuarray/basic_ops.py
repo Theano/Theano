@@ -180,8 +180,9 @@ class GpuKernelBase(object):
             o = []
         return o + ['gpuarray/types.h']
 
-    def _generate_kernel_bin(self, k):
-        gk = gpuarray.GpuKernel(k.code, k.name, k.params, **k.flags)
+    def _generate_kernel_bin(self, k, ctx):
+        gk = gpuarray.GpuKernel(k.code, k.name, k.params, context=ctx,
+                                **k.flags)
         bin = gk._binary
         bcode = ','.join(hex(ord(c)) for c in bin)
         return ("""static const char %(bname)s[] = { %(bcode)s };""" %
@@ -194,7 +195,7 @@ class GpuKernelBase(object):
                 dict(cname=k.codevar, code=code))
 
     def _generate_kernel_vars(self, k):
-        return """static GpuKernel %(kname)s;""" % dict(kname=k.objvar)
+        return """GpuKernel %(kname)s;""" % dict(kname=k.objvar)
 
     def c_support_code_apply(self, node, name):
         kernels = self.gpu_kernels(node, name)
@@ -202,42 +203,55 @@ class GpuKernelBase(object):
         bins = '\n'.join(self._generate_kernel_bin(k, ctx)
                          for k in kernels)
         codes = '\n'.join(self._generate_kernel_code(k) for k in kernels)
-        vars = '\n'.join(self._generate_kernel_vars(k) for k in kernels)
-        return '\n'.join([bins, codes, vars])
+        return '\n'.join([bins, codes])
 
-    def _generate_kernel_init(self, k, err):
-        if PY3:
-            error_out = "NULL"
-        else:
-            error_out = ""
+
+    def c_support_code_struct(self, node, name):
+        kernels = self.gpu_kernels(node, name)
+        return '\n'.join(self._generate_kernel_vars(k) for k in kernels)
+
+    def _generate_zeros(self, k):
+        return """memset(&%(v)s, 0, sizeof(%(v)s));""" % dict(v=k.objvar)
+
+    def _generate_kernel_init(self, k, fail, ctx):
         return """{
+  int err;
   int types[%(numargs)u] = {%(types)s};
   const char *bcode = %(bvar)s;
   size_t sz = sizeof(%(bvar)s);
-  PyGpuContextObject *c = pygpu_default_context();
-  if (GpuKernel_init(&%(ovar)s, c->ops, c->ctx, 1, &bcode, &sz, "%(kname)s",
-                     %(numargs)u, types, GA_USE_BINARY) != GA_NO_ERROR) {
-    if ((%(err)s = GpuKernel_init(&%(ovar)s, c->ops, c->ctx, 1, &%(cname)s,
-                                  NULL, "%(kname)s", %(numargs)u, types,
-                                  %(flags)s)) != GA_NO_ERROR) {
-      PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   %(err)s, Gpu_error(c->ops, c->ctx, %(err)s));
-      return %(error_out)s;
+  if (GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1, &bcode, &sz,
+                     "%(kname)s", %(numargs)u, types, GA_USE_BINARY)
+      != GA_NO_ERROR) {
+    if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1,
+                                  &%(cname)s, NULL, "%(kname)s", %(numargs)u,
+                                  types, %(flags)s)) != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
+                     err, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, err));
+        %(fail)s
     }
   }
 }""" % dict(numargs=len(k.params), types=k._get_c_types(), bvar=k.binvar,
-            ovar=k.objvar, kname=k.name, err=err, cname=k.codevar,
-            flags=k._get_c_flags(), error_out=error_out)
+            ovar=k.objvar, kname=k.name, cname=k.codevar,
+            flags=k._get_c_flags(), fail=fail, ctx=ctx)
 
-    def c_init_code_apply(self, node, name):
-        err = 'err_' + name
+    def c_init_code_struct(self, node, name, sub):
+        ctx = sub['context']
         kernels = self.gpu_kernels(node, name)
-        inits ='\n'.join(self._generate_kernel_init(k, err) for k in kernels)
-        return ("int %(err)s;\n" % dict(err=err)) + inits
+        inits_0 = '\n'.join(self._generate_zeros(k) for k in kernels)
+        inits ='\n'.join(self._generate_kernel_init(k, sub['fail'], ctx)
+                         for k in kernels)
+        return '\n'.join([inits_0, inits])
+
+    def _generate_kernel_cleanup(self, k):
+        return """GpuKernel_clear(&%(ovar)s);""" % dict(ovar=k.objvar)
+
+    def c_cleanup_code_struct(self, node, name):
+        kernels = self.gpu_kernels(node, name)
+        cleanups = '\n'.join(self._generate_kernel_cleanup(k) for k in kernels)
+        return cleanups
 
     def _GpuKernelBase_version(self):
-        ctx = gpuarray.get_default_context()
-        return (2, ctx.kind, ctx.devname)
+        return (2,0,6)
 
     GpuKernelBase_version = property(_GpuKernelBase_version)
 
@@ -1053,6 +1067,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         n, m = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
         kname = self.gpu_kernels(node, name)[0].objvar
