@@ -1158,21 +1158,21 @@ if(dim_zz[1] != %(self_outshp1)s!=0){
 }
 
 // Check the size of the filter (sometimes constant in the graph)
-if(kerns_dim[1] != %(self_imshp0)s!=0){
+if(kerns_dim[1] %% %(self_imshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
             "the filter stack size (%%ld) at run time is different than at"
             " build time (%%ld) for the ConvOp.",
             (long)kerns_dim[1], (long)%(self_imshp0)s);
     %(fail)s;
 }
-if(kerns_dim[2] != %(self_kshp0)s!=0){
+if(kerns_dim[2] %% %(self_kshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
             "the number of rows in the filter (%%ld) at run time is different"
             " than at build time (%%ld) for the ConvOp.",
             (long)kerns_dim[2], (long)%(self_kshp0)s);
     %(fail)s;
 }
-if(kerns_dim[3] != %(self_kshp1)s!=0){
+if(kerns_dim[3] %% %(self_kshp1)s!=0){
     PyErr_Format(PyExc_ValueError,
             "the number of columns in the filter (%%ld) at run time is"
             " different than at build time (%%ld) for the ConvOp.",
