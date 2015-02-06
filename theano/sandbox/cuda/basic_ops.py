@@ -3231,7 +3231,7 @@ gpu_join = GpuJoin()
 
 class GpuSplit(tensor.Split, GpuOp):
     def make_node(self, x, axis, splits):
-        assert isinstance(x.type, CudaNdarrayType)
+        x = as_cuda_ndarray_variable(x)
         node = tensor.Split.make_node(self, x, axis, splits)
         outs = [CudaNdarrayType(dtype=o.dtype,
                                 broadcastable=o.type.broadcastable)()
