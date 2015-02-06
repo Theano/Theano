@@ -46,7 +46,7 @@ from theano.gof.fg import \
     CachedConstantError, InconsistencyError, MissingInputError, FunctionGraph
 
 from theano.gof.destroyhandler import \
-    DestroyHandler
+    DestroyHandler, NoOutputFromInplace
 
 from theano.gof.graph import \
     Apply, Variable, Constant, view_roots
