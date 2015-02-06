@@ -162,7 +162,9 @@ class AddDestroyHandler(gof.Optimizer):
 class AddNoOutputFromInplace(gof.Optimizer):
     """This optimizer adds to the fgraph a feature that will prevent outputs
     of a fgraph to be created by performing inplace operations on intermediary
-    variables.
+    variables. This is useful when the outputs of the fgraph are preallocated
+    to prevent useless copying of the data. Currently, scan preallocates its
+    outputs
     """
     def add_requirements(self, fgraph):
         super(AddNoOutputFromInplace, self).add_requirements(fgraph)
