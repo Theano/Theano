@@ -556,8 +556,8 @@ def _test_subsample(cls, mode, version_valid=[-1], version_full=[-1]):
 
 def test_subsample():
     for t in _test_subsample(None, theano_mode,
-                             version_valid=[-2, -1, 1, 3, 11, 12],
-                             version_full=[-2, -1]):
+                             version_valid=[-1],
+                             version_full=[-1]):
         yield t
 
 
