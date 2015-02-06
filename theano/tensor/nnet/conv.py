@@ -964,7 +964,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (12, self.openmp, blas.blas_header_version())
+        return (13, self.openmp, blas.blas_header_version())
 
     def c_support_code(self):
         return """
@@ -1158,21 +1158,21 @@ if(dim_zz[1] != %(self_outshp1)s!=0){
 }
 
 // Check the size of the filter (sometimes constant in the graph)
-if(kerns_dim[1] %% %(self_imshp0)s!=0){
+if(kerns_dim[1] != %(self_imshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
             "the filter stack size (%%ld) at run time is different than at"
             " build time (%%ld) for the ConvOp.",
             (long)kerns_dim[1], (long)%(self_imshp0)s);
     %(fail)s;
 }
-if(kerns_dim[2] %% %(self_kshp0)s!=0){
+if(kerns_dim[2] != %(self_kshp0)s!=0){
     PyErr_Format(PyExc_ValueError,
             "the number of rows in the filter (%%ld) at run time is different"
             " than at build time (%%ld) for the ConvOp.",
             (long)kerns_dim[2], (long)%(self_kshp0)s);
     %(fail)s;
 }
-if(kerns_dim[3] %% %(self_kshp1)s!=0){
+if(kerns_dim[3] != %(self_kshp1)s!=0){
     PyErr_Format(PyExc_ValueError,
             "the number of columns in the filter (%%ld) at run time is"
             " different than at build time (%%ld) for the ConvOp.",
@@ -1194,7 +1194,15 @@ if(kerns_dim[3] %% %(self_kshp1)s!=0){
     dim_zz[1] = (int)ceil((dim_im[1]-dim_ker1+1)/float(%(self_dy)s));
   }
 """ % d
-            d["assert_size"] = ""
+            d["assert_size"] = """
+// Check the stack size of the filter and images are equals
+if(kerns_dim[1] != img2d_dim[1]){
+    PyErr_Format(PyExc_ValueError,
+            "the filter stack size (%%ld) and image stack size (%%ld) differ",
+            (long)kerns_dim[1], (long)img2d_dim[1]);
+    %(fail)s;
+}
+            """ % sub
 
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
