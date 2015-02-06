@@ -1285,16 +1285,11 @@ def local_conv_gemm(node):
         img, kern = node.inputs
         border_mode = node.op.border_mode
         subsample = node.op.subsample
-        pad = (0,0)
-        if (border_mode == 'full') and (subsample != (1,1)):
-            # need to simulate this via a padded valid convolution
-            pad = 'full'
-            border_mode = 'valid'
-        if (border_mode == 'valid'):
+        if (border_mode == 'valid') or (subsample != (1,1)):
             # need to flip the kernel for valid convolution
             kern = kern[:, :, ::-1, ::-1]
             # By default use GpuCorrMM
-            rval = GpuCorrMM('valid', subsample, pad)(
+            rval = GpuCorrMM(border_mode, subsample)(
                 gpu_contiguous(img), gpu_contiguous(kern))
 
             # call GpuCorrMM_gradWeights if good
@@ -1323,7 +1318,7 @@ def local_conv_gemm(node):
                     # because we are not allowed to replace a CudaNdarray with
                     # a DimShuffle instance in a graph optimization)
                     rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
-                        GpuCorrMM_gradWeights('valid', subsample, pad)(
+                        GpuCorrMM_gradWeights(border_mode, subsample)(
                             gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                             gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
                         ).dimshuffle(1, 0, 2, 3))
@@ -1331,7 +1326,7 @@ def local_conv_gemm(node):
             # need to dimshuffle the kernel for full convolution
             kern = kern.dimshuffle(1, 0, 2, 3)
             # call GpuCorrMM_gradInputs
-            rval = GpuCorrMM_gradInputs('valid', subsample, pad)(
+            rval = GpuCorrMM_gradInputs('valid', subsample)(
                     gpu_contiguous(kern), gpu_contiguous(img))
         if node.outputs[0].broadcastable != rval.broadcastable:
             # With given shape information, conv2d_fft may return a different
