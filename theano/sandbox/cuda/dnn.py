@@ -576,6 +576,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
+    fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1,1) and
         direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
@@ -602,13 +603,14 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         img = gpu_contiguous(img)
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
-
-        shape = theano.tensor.stack(shape_i(img, 0), shape_i(kerns, 1),
-                                    shape_i(img, 2) + shape_i(kerns, 2) - 1,
-                                    shape_i(img, 3) + shape_i(kerns, 3)- 1)
+        shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
+        shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
+        shape = theano.tensor.stack(shape_i(img, 0, fgraph),
+                                    shape_i(kerns, 1, fgraph),
+                                    shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(shape, kerns.shape)
-        return GpuDnnConvGradI()(kerns, img, desc, shape[2], shape[3])
+        return GpuDnnConvGradI()(kerns, img, desc, shape2, shape3)
 
     # Standard case: We use GpuDnnConv with suitable padding.
     img = gpu_contiguous(img)
