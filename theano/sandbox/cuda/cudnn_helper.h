@@ -152,7 +152,7 @@ cudnnConvolutionBackwardData_v2(
 
 // r2 rc1 and rc2 do not have the same macro defined
 // I didn't checked if this the right combination, but as we do not wrap the padding interface, it is fine for now.
-# define CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING 1
+# define CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING ((cudnnPoolingMode_t)1)
 
 #endif
 
