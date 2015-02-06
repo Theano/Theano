@@ -1411,9 +1411,11 @@ class ConvMetaOptimizer(LocalCudaMetaOptimizer):
 # TODO: Use var.type.filter when cuda_ndarray.filter supports non-strict casts
 #                        var.type.filter(numpy.random.randn(*shape),
 #                                        allow_downcast=True),
-                        numpy.require(numpy.random.randn(*shape),
-                                      dtype=var.dtype),
-                        var.name, borrow=True)
+                    numpy.require(numpy.random.randn(*shape),
+                                  dtype=var.dtype),
+                    var.name,
+                    broadcastable=var.broadcastable,
+                    borrow=True)
         # return mapping
         return result
 

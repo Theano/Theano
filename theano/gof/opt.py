@@ -856,8 +856,10 @@ class LocalMetaOptimizer(LocalOptimizer):
                 pass
             elif hasattr(input.tag, 'test_value'):
                 givens[input] = theano.shared(
-                        input.type.filter(input.tag.test_value),
-                        input.name, borrow=True)
+                    input.type.filter(input.tag.test_value),
+                    input.name,
+                    broadcastable=input.broadcastable,
+                    borrow=True)
             else:
                 missing.add(input)
         if missing:
