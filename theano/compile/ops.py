@@ -4,6 +4,7 @@ and Ops building class (:class:`FromFunctionOp`) and decorator
 
 """
 import copy
+import cPickle
 import warnings
 
 import theano
@@ -491,16 +492,19 @@ class FromFunctionOp(gof.Op):
         try:
             obj = load_back(mod, name)
         except (ImportError, KeyError, AttributeError):
-            raise PicklingError("Can't pickle as_op(), not found as %s.%s" %
-                                (mod, name))
+            raise cPickle.PicklingError(
+                "Can't pickle as_op(), not found as %s.%s" %
+                (mod, name))
         else:
             if obj is not self:
-                raise PicklingError("Can't pickle as_op(), not the object "
-                                    "at %s.%s" % (mod, name))
+                raise cPickle.PicklingError(
+                    "Can't pickle as_op(), not the object "
+                    "at %s.%s" % (mod, name))
         return load_back, (mod, name)
 
     def _infer_shape(self, node, input_shapes):
         return self.__infer_shape(node, input_shapes)
+
 
 def as_op(itypes, otypes, infer_shape=None):
     """
