@@ -4,6 +4,7 @@ and Ops building class (:class:`FromFunctionOp`) and decorator
 
 """
 import copy
+import cPickle
 import warnings
 
 import theano
@@ -387,17 +388,34 @@ class Shape_i(gof.Op):
         return [None]
 
 
-def shape_i(var, i):
-    """This is useful in optimization that need to get the shape. This
+def shape_i(var, i, fgraph=None):
+    """Equivalent of var.shape[i], but apply if possible the shape
+    feature optimization
+
+    This is useful in optimization that need to get the shape. This
     remove the need of the following shape_feature optimization that
     convert it. So this speed up optimization and remove Equilibrium
     max iteration problems.
 
+    :param var: the variable we want to take the shape of
+    :param i: The shape dimensions we want
+    :param fgraph: optional. If var.fgraph do not exist, the fgraph that
+        have the shape_feature to introduce var in to get the optimized shape.
+
     """
-    if (hasattr(var, 'fgraph') and
-        hasattr(node.outputs[0].fgraph, 'shape_feature')):
-        return node.outputs[0].fgraph.shape_feature.shape_of[var][i]
-    return Shape_i(i)(var)
+    if fgraph is None and hasattr(var, 'fgraph'):
+        fgraph = var.fgraph
+    if fgraph and hasattr(fgraph, 'shape_feature'):
+        if var not in fgraph.shape_feature.shape_of:
+            # If var isn't in the ShapeFeature, add it.
+            fgraph.shape_feature.on_import(fgraph, var.owner,
+                                           'gof.ops.shape_i')
+        return fgraph.shape_feature.shape_of[var][i]
+
+    # If we are not able to use the shape feature, we should not put
+    # Shape_i in the graph. Otherwise, the shape feature optimization
+    # won't get applied.
+    return var.shape[i]
 
 
 def register_shape_i_c_code(typ, code, check_input, version=()):
@@ -474,16 +492,19 @@ class FromFunctionOp(gof.Op):
         try:
             obj = load_back(mod, name)
         except (ImportError, KeyError, AttributeError):
-            raise PicklingError("Can't pickle as_op(), not found as %s.%s" %
-                                (mod, name))
+            raise cPickle.PicklingError(
+                "Can't pickle as_op(), not found as %s.%s" %
+                (mod, name))
         else:
             if obj is not self:
-                raise PicklingError("Can't pickle as_op(), not the object "
-                                    "at %s.%s" % (mod, name))
+                raise cPickle.PicklingError(
+                    "Can't pickle as_op(), not the object "
+                    "at %s.%s" % (mod, name))
         return load_back, (mod, name)
 
     def _infer_shape(self, node, input_shapes):
         return self.__infer_shape(node, input_shapes)
+
 
 def as_op(itypes, otypes, infer_shape=None):
     """

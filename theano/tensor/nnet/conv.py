@@ -964,7 +964,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (12, self.openmp, blas.blas_header_version())
+        return (13, self.openmp, blas.blas_header_version())
 
     def c_support_code(self):
         return """
@@ -1194,7 +1194,15 @@ if(kerns_dim[3] %% %(self_kshp1)s!=0){
     dim_zz[1] = (int)ceil((dim_im[1]-dim_ker1+1)/float(%(self_dy)s));
   }
 """ % d
-            d["assert_size"] = ""
+            d["assert_size"] = """
+// Check the stack size of the filter and images are equals
+if(kerns_dim[1] != img2d_dim[1]){
+    PyErr_Format(PyExc_ValueError,
+            "the filter stack size (%%ld) and image stack size (%%ld) differ",
+            (long)kerns_dim[1], (long)img2d_dim[1]);
+    %(fail)s;
+}
+            """ % sub
 
         if self.kshp_logical_top_aligned:
             d["self_kshp_logical_offset_r"] = 0
