@@ -662,7 +662,7 @@ class GpuDnnPoolDesc(GpuOp):
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
         elif self.mode == "average":
-            mode_flag = 'CUDNN_POOLING_AVERAGE'
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
         else:
             raise NotImplementedError("Unsupported pooling model.")
 
