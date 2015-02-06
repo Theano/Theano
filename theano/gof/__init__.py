@@ -46,7 +46,7 @@ from theano.gof.fg import \
     CachedConstantError, InconsistencyError, MissingInputError, FunctionGraph
 
 from theano.gof.destroyhandler import \
-    DestroyHandler, NoOutputFromInplace
+    DestroyHandler
 
 from theano.gof.graph import \
     Apply, Variable, Constant, view_roots
@@ -74,7 +74,7 @@ from theano.gof.optdb import \
 from theano.gof.toolbox import \
     Feature, \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder,\
-    PrintListener, ReplacementDidntRemovedError
+    PrintListener, ReplacementDidntRemovedError, NoOutputFromInplace
 
 from theano.gof.type import \
     Type, Generic, generic

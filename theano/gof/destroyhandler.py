@@ -7,7 +7,6 @@ import toolbox
 import graph
 from theano.gof.python25 import deque
 from theano.gof.python25 import OrderedDict
-from theano.gof.toolbox import Feature
 from theano.misc.ordered_set import OrderedSet
 
 from fg import InconsistencyError
@@ -1027,23 +1026,3 @@ class DestroyHandler(toolbox.Bookkeeper):
                         rval[app] = root_clients
 
         return rval
-
-
-class NoOutputFromInplace(Feature):
-
-    def __init__(self):
-        pass
-
-    def validate(self, fgraph):
-        if not hasattr(fgraph, 'destroyers'):
-            return True
-        for out in list(fgraph.outputs):
-            # Validate that the node that produces the output does not produce
-            # it by modifying something else inplace.
-            node = out.owner
-            op = node.op
-            out_idx = node.outputs.index(out)
-            if hasattr(op, 'destroy_map') and out_idx in op.destroy_map.keys():
-                raise InconsistencyError(
-                    "Trying to produce an output ", out,
-                     " by modifying another variable inplace")
