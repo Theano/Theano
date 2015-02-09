@@ -14,19 +14,17 @@ import theano
 from theano import gof
 from theano.compat import get_unbound_function
 from theano.compat.six import StringIO
-from theano.gof import FunctionGraph,graph, utils, link, ops_with_inner_function
+from theano.gof import (FunctionGraph, graph, utils, link,
+                        ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
 from theano.gof.python25 import all, any, product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
-        StrParam)
-from theano.compile.function_module import (FunctionMaker,
-        Function,
-        infer_reuse_pattern,
-        SymbolicInputKit,
-        SymbolicOutput,
-        Supervisor,
-        std_fgraph)
+                                 StrParam)
+from theano.compile.function_module import (
+    FunctionMaker, Function, infer_reuse_pattern,
+    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph
+    )
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
@@ -1694,9 +1692,16 @@ class _Linker(gof.link.LocalLinker):
             if ((self.maker.mode.check_py_code or thunks_c[-1] is None) and
                 node.op.perform.func_code != gof.op.PureOp.perform.func_code):
                 p = node.op.perform
-                thunk = (lambda p=p, i=node_input_storage,
-                         o=node_output_storage,
-                         n=node: p(n, [x[0] for x in i], o))
+                ctx = node.run_context()
+                if ctx is graph.NoContext:
+                    thunk = (lambda p=p, i=node_input_storage,
+                             o=node_output_storage,
+                             n=node: p(n, [x[0] for x in i], o))
+                else:
+                    ctx_val = node.context_type.filter(ctx)
+                    thunk = (lambda p=p, i=node_input_storage,
+                             o=node_output_storage, ctx=ctx_val,
+                             n=node: p(n, [x[0] for x in i], o, ctx))
                 thunk.inputs = node_input_storage
                 thunk.outputs = node_output_storage
                 thunk.perform = p

@@ -23,6 +23,7 @@ from theano.misc.ordered_set import OrderedSet
 is_same_graph_with_merge = None
 equal_computations = None
 
+NoContext = object()
 
 class Node(utils.object2):
     """A Node in a theano graph.
@@ -115,6 +116,13 @@ class Apply(Node):
                 self.outputs.append(output)
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
+
+    def run_context(self):
+        """Returns the context for the node, or NoContext if no context is set.
+        """
+        if hasattr(self.op, 'get_context'):
+            return self.op.get_context(self)
+        return NoContext
 
     def default_output(self):
         """Returns the default output for this node.
@@ -237,6 +245,8 @@ class Apply(Node):
 
     nout = property(lambda self: len(self.outputs), doc='same as len(self.outputs)')
     """property: Number of outputs"""
+
+    context_type = property(lambda self: self.op.context_type, doc='type to use for the context')
 
 
 class Variable(Node):

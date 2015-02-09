@@ -43,6 +43,12 @@ There are less methods to define for an Op than for a Type:
           that a python exception is set) if your C code needs to
           raise an exception.
 
+       ``sub['context']``
+
+          (optional) The name of the variable which holds the context
+          for the node.  This will only appear if the op has requested
+          a context by having a :meth:`get_context()` method that return
+          something other than None.
 
     .. method:: c_code_cleanup(node, name, input_names, output_names, sub)
 
@@ -111,6 +117,13 @@ There are less methods to define for an Op than for a Type:
           A string of code that you should execute (after ensuring
           that a python exception is set) if your C code needs to
           raise an exception.
+
+       ``sub['context']``
+
+          (optional) The name of the variable which holds the context
+          for the node.  This will only appear if the op has requested
+          a context by having a :meth:`get_context()` method that return
+          something other than None.
 
     .. method:: c_support_code()
 
@@ -185,6 +198,19 @@ There are less methods to define for an Op than for a Type:
        and disk access. Particularly useful when the file system load
        is high or when theano compilation directory is shared by many
        process (like on a network file server on a cluster).
+
+    .. method:: get_context(node)
+
+       (optional) If defined, should return the runtime context the op
+       needs.  This context will be passed to the C code through the
+       variable named in `sub['context']`.  The variable is also
+       available for use in the code returned by
+       :meth:`c_init_code_struct`.  If it returns `None` this is
+       considered the same as if the method was not defined.
+
+       If this method is defined and does not return `None`, then the
+       Op *must* have a `context_type` property with the Type to use
+       for the context variable.
 
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides

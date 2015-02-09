@@ -733,13 +733,24 @@ class Op(utils.object2, PureOp, CLinkerOp):
         # condition: either there was no c_code, or it failed
 
         p = node.op.perform
-        # default arguments are stored in the closure of `rval`
 
-        def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
-            r = p(n, [x[0] for x in i], o)
-            for o in node.outputs:
-                compute_map[o][0] = True
-            return r
+        ctx = node.run_context()
+
+        if ctx is graph.NoContext:
+            # default arguments are stored in the closure of `rval`
+            def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
+                r = p(n, [x[0] for x in i], o)
+                for o in node.outputs:
+                    compute_map[o][0] = True
+                return r
+        else:
+            ctx_val = node.context_type.filter(ctx)
+            def rval(p=p, i=node_input_storage, o=node_output_storage, n=node,
+                     ctx=ctx_val):
+                r = p(n, [x[0] for x in i], o, ctx)
+                for o in node.outputs:
+                    compute_map[o][0] = True
+                return r
 
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage
