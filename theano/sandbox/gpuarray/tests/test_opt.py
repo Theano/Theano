@@ -170,14 +170,14 @@ def test_local_gpu_elemwise_careduce():
 def test_local_gpu_subtensor():
     # Test shared forced on CPU.
     t = tensor._shared(numpy.zeros(20, "float32"))
-    f = theano.function([], t[3:4], mode=mode_with_gpu)
+    f = theano.function([], (t+1)[3:4], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
 
     # Test graph input.
     t = tensor.fmatrix()
-    f = theano.function([t], t[3:4], mode=mode_with_gpu)
+    f = theano.function([t], (t+1)[3:4], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])

@@ -6,11 +6,11 @@ import theano
 from theano.tests import unittest_tools as utt
 import theano.sandbox.rng_mrg
 
-from ..basic_ops import gpu_from_host, GpuFromHost, HostFromGpu
+from ..basic_ops import GpuFromHost, HostFromGpu
 
 from ..elemwise import GpuElemwise
 
-from .test_basic_ops import mode_with_gpu
+from .test_basic_ops import mode_with_gpu, test_ctx
 
 class T_Scan(TestCase):
     def setUp(self):
@@ -36,7 +36,7 @@ class T_Scan(TestCase):
                                       go_backwards=False,
                                       mode=mode)
 
-        output = gpu_from_host(output)
+        output = GpuFromHost(test_ctx)(output)
         f2 = theano.function([u, x0, W_in, W],
                              output,
                              updates=updates,
@@ -97,6 +97,7 @@ class T_Scan(TestCase):
             return u_t * W_in + x_tm1 * W
 
         u = theano.tensor.fvector('u')
+        u.tag.context = test_ctx
         x0 = theano.tensor.fscalar('x0')
         W_in = theano.tensor.fscalar('win')
         W = theano.tensor.fscalar('w')
@@ -159,6 +160,7 @@ class T_Scan(TestCase):
                     theano.tensor.cast(u_t + x_tm1, 'int64'))
 
         u = theano.tensor.fvector('u')
+        u.tag.context = test_ctx
         x0 = theano.tensor.fscalar('x0')
         W_in = theano.tensor.fscalar('win')
         W = theano.tensor.fscalar('w')
@@ -218,6 +220,9 @@ class T_Scan(TestCase):
         v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
                                 dtype='float32')
         vsample = theano.shared(v_vsample)
+        # The variable is supposed to be on CPU, but the test should
+        # run on GPU
+        vsample.tag.context = test_ctx
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
                                 utt.fetch_seed())
 
