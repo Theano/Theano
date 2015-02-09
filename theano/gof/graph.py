@@ -794,7 +794,7 @@ def io_toposort(inputs, outputs, orderings=None):
     """WRITEME
 
     inputs: a list or tuple of Variable instances
-    outputs: a list or tuple of Variable instances
+    outputs: a list or tuple of Apply instances
 
     orderings: a dictionary
                 key: Apply instance
