@@ -260,6 +260,13 @@ class TensorType(Type):
         return type(self) == type(other) and other.dtype == self.dtype \
             and other.broadcastable == self.broadcastable
 
+    def compat_with(self, other):
+        return (type(self) == type(other) and
+                self.dtype == other.dtype and
+                self.ndim == other.ndim and
+                all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                     other.broadcastable)))
+
     @staticmethod
     def may_share_memory(a, b):
         # This is a method of TensorType, so both a and b should be ndarrays

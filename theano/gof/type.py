@@ -395,6 +395,13 @@ class Type(object2, PureType, CLinkerType):
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
     """
+    def compat_with(self, other):
+        """
+        Returns True iff the other type is compatible with this type
+        (in the sense of graph replacements).  This is simple equality
+        for most types, which is the default implementation.
+        """
+        return self == other
 
 
 class SingletonType(Type):

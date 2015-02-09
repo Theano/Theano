@@ -411,7 +411,7 @@ class FunctionGraph(utils.object2):
         """WRITEME
         Changes node.inputs[i] to new_r.
 
-        new_r.type == old_r.type must be True, where old_r is the
+        old_r.type.compat_with(new_r.type) must be True, where old_r is the
         current value of node.inputs[i] which we want to replace.
 
         For each feature that has a 'on_change_input' method, calls:
@@ -420,7 +420,7 @@ class FunctionGraph(utils.object2):
         # TODO: ERROR HANDLING FOR LISTENERS (should it complete the change or revert it?)
         if node == 'output':
             r = self.outputs[i]
-            if not r.type == new_r.type:
+            if not r.type.compat_with(new_r.type):
                 raise TypeError("The type of the replacement must be the"
                                 " same as the type of the original Variable.",
                                 r, new_r)
@@ -430,7 +430,7 @@ class FunctionGraph(utils.object2):
                 raise Exception("Cannot operate on %s because it does not"
                                 " belong to this FunctionGraph" % node)
             r = node.inputs[i]
-            if not r.type == new_r.type:
+            if not r.type.compat_with(new_r.type):
                 raise TypeError("The type of the replacement must be the"
                                 " same as the type of the original Variable.",
                                 r, new_r)
@@ -463,8 +463,8 @@ class FunctionGraph(utils.object2):
             print reason, r, new_r
         if r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong to this FunctionGraph" % r, str(reason))
-        if not r.type == new_r.type:
-            raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
+        if not r.type.compat_with(new_r.type):
+            raise TypeError("The type of the replacement must be compatible with the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
         if r not in self.variables:
             # this variable isn't in the graph... don't raise an exception here, just return silently
             # because it makes it easier to implement some optimizations for multiple-output ops

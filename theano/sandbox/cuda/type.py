@@ -232,6 +232,12 @@ class CudaNdarrayType(Type):
         return (type(self) == type(other) and
                 other.broadcastable == self.broadcastable)
 
+    def compat_with(self, other):
+        return (type(self) == type(other) and
+                self.ndim == other.ndim and
+                all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                     other.broadcastable)))
+
     def __hash__(self):
         """Hash equal for same kinds of CudaNdarrayType"""
         return hash(type(self)) ^ hash(self.broadcastable)

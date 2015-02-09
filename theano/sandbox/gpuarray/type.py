@@ -212,6 +212,14 @@ class GpuArrayType(Type):
                 self.broadcastable == other.broadcastable and
                 self.context == other.context)
 
+    def compat_with(self, other):
+        return (type(self) == type(other) and
+                self.typecode == other.typecode and
+                self.context == other.context and
+                self.ndim == other.ndim and
+                all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                     other.broadcastable)))
+
     def __hash__(self):
         return hash((type(self), self.typecode, self.broadcastable,
                      self.context))
