@@ -800,7 +800,7 @@ class WrapLinker(Linker):
                 try:
                     wrapper(i, node, *thunks)
                 except Exception:
-                    raise_with_op(node, thunk)
+                    raise_with_op(node, *thunks)
         f.thunk_groups = thunk_groups
 
         return f, inputs0, outputs0
