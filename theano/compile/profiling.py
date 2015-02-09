@@ -199,6 +199,11 @@ class ProfileStats(object):
 
     line_width = config.profiling.output_line_width
 
+    nb_nodes = -1
+    # The number of nodes in the graph. We need the infomartion
+    # separatly in case we print the profile when the function wasn't
+    # executed or if there is lazy operation in the graph.
+
     optimizer_profile = None
     # None or tuple (the optimizer, the profile it returned)
 
@@ -637,7 +642,7 @@ class ProfileStats(object):
                 print >> file, '  Time in thunks: %es (%.3f%%)' % (
                     local_time, 100 * local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
-        print >> file, '    Number of Apply nodes: %s' % len(self.apply_time)
+        print >> file, '    Number of Apply nodes: %d' % self.nb_nodes
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
         print >> file, '       Theano validate time: %es' % self.validate_time
         print >> file, ('    Theano Linker time (includes C,'
