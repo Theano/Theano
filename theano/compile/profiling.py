@@ -654,6 +654,9 @@ class ProfileStats(object):
         # The validation time is a subset of optimizer_time
         assert self.validate_time < self.optimizer_time
 
+    def summary_globals(self, file):
+        print >> file, 'Time in all call to theano.grad() %es' % theano.gradient.grad_time
+
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
         fct_shapes = {}  # fgraph->dict(node->[outputs shapes]))
@@ -1209,6 +1212,7 @@ class ProfileStats(object):
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_apply_to_print=20):
         self.summary_function(file)
+        self.summary_globals(file)
         local_time = sum(self.apply_time.values())
         if local_time > 0:
             self.summary_class(file, n_ops_to_print)

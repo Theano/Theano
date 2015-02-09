@@ -10,6 +10,7 @@ __docformat__ = "restructuredtext en"
 import __builtin__
 from itertools import izip
 import logging
+import time
 import warnings
 _logger = logging.getLogger('theano.gradient')
 
@@ -35,6 +36,8 @@ from theano.compile import ViewOp
 tensor = None
 
 _msg_retType = 'op.grad(...) returned a non-list'
+
+grad_time = 0
 
 
 def format_as(use_list, use_tuple, outputs):
@@ -412,6 +415,7 @@ def grad(cost, wrt, consider_constant=None,
              or Variable in all cases.
 
     """
+    t0 = time.time()
     global tensor
     if tensor is None:
         from theano import tensor
@@ -556,7 +560,11 @@ def grad(cost, wrt, consider_constant=None,
         rval = tuple(rval)
     elif not using_list:
         rval, = rval
+    t1 = time.time()
+    global grad_time
+    grad_time = t1 - t0
     return rval
+
 
 def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     '''
