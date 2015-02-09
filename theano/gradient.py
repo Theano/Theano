@@ -487,14 +487,14 @@ def grad(cost, wrt, consider_constant=None,
 
         if not hasattr(g_var, 'type'):
             raise TypeError('output grads must be theano variables.'
-                'Ambiguous whether %s should be made into tensor'
-                ' or sparse theano variable' % str(type(g_var)))
+                            'Ambiguous whether %s should be made into tensor'
+                            ' or sparse theano variable' % str(type(g_var)))
 
         if (not isinstance(g_var.type, (NullType, DisconnectedType)) and
             'float' not in str(g_var.type.dtype)):
             raise TypeError("Gradients must always be NullType, "
-                    "DisconnectedType, or continuous, but grad was "
-                    "given a known_grad of type "+str(g_var.type))
+                            "DisconnectedType, or continuous, but grad was "
+                            "given a known_grad of type "+str(g_var.type))
 
         # DO NOT check that these gradients are equal to 0 if var is int
         # The gradient is allowed to be non-zero on var in that case
@@ -503,12 +503,11 @@ def grad(cost, wrt, consider_constant=None,
 
         grad_dict[var] = g_var
 
-
     def handle_disconnected(var):
             message = ("grad method was asked to compute the gradient "
-                    "with respect to a variable that is not part of "
-                    "the computational graph of the cost, or is used "
-                    "only by a non-differentiable operator: %s" % var)
+                       "with respect to a variable that is not part of "
+                       "the computational graph of the cost, or is used "
+                       "only by a non-differentiable operator: %s" % var)
             if disconnected_inputs == 'ignore':
                 pass
             elif disconnected_inputs == 'warn':
@@ -517,9 +516,8 @@ def grad(cost, wrt, consider_constant=None,
                 raise DisconnectedInputError(message)
             else:
                 raise ValueError("Invalid value for keyword "
-                        "'disconnected_inputs', valid values are "
-                        "'ignore', 'warn' and 'raise'.")
-
+                                 "'disconnected_inputs', valid values are "
+                                 "'ignore', 'warn' and 'raise'.")
 
     # variables that do not influence the cost have zero gradient.
     # if wrt is such a variable, populate the grad_dict with this info
@@ -544,7 +542,7 @@ def grad(cost, wrt, consider_constant=None,
             assert g.type.dtype in tensor.float_dtypes
 
     rval = _populate_grad_dict(var_to_app_to_idx,
-            grad_dict, wrt, cost_name)
+                               grad_dict, wrt, cost_name)
 
     for i in xrange(len(rval)):
         if isinstance(rval[i].type, DisconnectedType):
@@ -573,7 +571,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     symbolic digraph.  In other words, computes gradients for a
     subgraph of the symbolic theano function. Ignores all disconnected
     inputs.
-    
+
     This can be useful when one needs to perform the gradient descent
     iteratively (e.g. one layer at a time in an MLP), or when a
     particular operation is not differentiable in theano
@@ -588,7 +586,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     process, to variables, could then be fed into another
     subgraph_grad as `start` with any other `cost` (e.g. weight
     decay).
-    
+
     In an MLP, we could use subgraph_grad to iteratively backpropagate:
 
     .. code-block:: python
@@ -619,13 +617,13 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     :type wrt: list of variables
     :param wrt:
       Gradients are computed with respect to `wrt`.
-    
+
     :type end: list of variables
     :param end:
       Theano variables at which to end gradient descent (they are
       considered constant in theano.grad).  For convenience, the
       gradients with respect to these variables are also returned.
-    
+
     :type start: dictionary of variables
     :param start:
       If not None, a dictionary mapping variables to their
@@ -633,9 +631,9 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
       are known. These are used to compute the gradients backwards up
       to the variables in `end` (they are used as known_grad in
       theano.grad).
-    
+
     :type cost: scalar (0-dimensional) variable
-    :param cost: 
+    :param cost:
       Additional costs for which to compute the gradients.  For
       example, these could be weight decay, an l1 constraint, MSE,
       NLL, etc. May optionally be None if start is provided.  Warning
@@ -655,10 +653,10 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
       When True, additionally returns the list of gradients from
       `start` and of `cost`, respectively, with respect to `wrt` (not
       `end`).
-    
+
     :rtype: Tuple of 2 or 4 Lists of Variables
-    
-    :return: Returns lists of gradients with respect to `wrt` and `end`, 
+
+    :return: Returns lists of gradients with respect to `wrt` and `end`,
             respectively.
 
     .. versionadded:: 0.6.1
@@ -668,20 +666,20 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     assert isinstance(wrt, list)
     if start is not None:
         assert isinstance(start, dict)
-        
+
     params = list(set(wrt + end))
-    
+
     start_grads = None
     cost_grads = None
     if start is not None:
         start_grads = list(
             theano.grad(
-                cost=None, wrt=params, known_grads=start, 
-                consider_constant=end, 
+                cost=None, wrt=params, known_grads=start,
+                consider_constant=end,
                 disconnected_inputs='ignore'
             )
         )
-        
+
     if cost is not None:
         cost_grads = list(
             theano.grad(
@@ -690,7 +688,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
                 disconnected_inputs='ignore'
             )
         )
-                        
+
     grads = None
     if start is None:
         grads = cost_grads
@@ -699,17 +697,17 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
         if cost_grads is not None:
             for i in range(len(grads)):
                 grads[i] += cost_grads[i]
-    
+
     pgrads = OrderedDict(zip(params, grads))
     # separate wrt from end grads:
     wrt_grads = list(pgrads[k] for k in wrt)
     end_grads = list(pgrads[k] for k in end)
-   
-    
+
     if details:
         return wrt_grads, end_grads, start_grads, cost_grads
-    
+
     return wrt_grads, end_grads
+
 
 def _node_to_pattern(node):
     """ given an apply node, obtain its connection pattern
@@ -722,30 +720,31 @@ def _node_to_pattern(node):
         connection_pattern = node.op.connection_pattern(node)
 
         if not isinstance(connection_pattern, list):
-            raise TypeError("Op.connection_pattern should return " + \
-                    ("list of list of bool, but for Op=%s" % node.op) +\
-                    "got %s with type %s." % (connection_pattern,
-                        type(connection_pattern)))
+            raise TypeError(
+                "Op.connection_pattern should return " +
+                ("list of list of bool, but for Op=%s" % node.op) +
+                "got %s with type %s." % (connection_pattern,
+                                          type(connection_pattern)))
         if len(connection_pattern) != len(node.inputs):
-            raise ValueError('%s.connection_pattern should have %d' %
-                    (node.op, len(node.inputs)) + ' rows but has %d.' %
-                    len(connection_pattern))
+            raise ValueError(
+                '%s.connection_pattern should have %d' %
+                (node.op, len(node.inputs)) + ' rows but has %d.' %
+                len(connection_pattern))
         for ii, output_pattern in enumerate(connection_pattern):
             if not isinstance(output_pattern, list):
-                raise TypeError('%s.connection_pattern should return' %
-                        node.op + ' a list of lists, but element %d' % ii\
-                        + 'is %s of type %s.' % (output_pattern,
-                            type(output_pattern)))
+                raise TypeError(
+                    '%s.connection_pattern should return' %
+                    node.op + ' a list of lists, but element %d' % ii
+                    + 'is %s of type %s.' % (output_pattern,
+                                             type(output_pattern)))
     else:
-        connection_pattern = \
-            [[True for output in node.outputs]
-                    for ipt in node.inputs]
+        connection_pattern = [[True for output in node.outputs]
+                              for ipt in node.inputs]
     assert isinstance(connection_pattern, list)
     assert len(connection_pattern) == len(node.inputs)
     for ii in xrange(len(node.inputs)):
         assert isinstance(connection_pattern[ii], list)
-        assert len(connection_pattern[ii]) == \
-                len(node.outputs)
+        assert len(connection_pattern[ii]) == len(node.outputs)
     return connection_pattern
 
 
@@ -800,7 +799,7 @@ def _populate_var_to_app_to_idx(outputs, wrt, consider_constant):
             iter(consider_constant)
         except TypeError:
             raise TypeError('consider_constant must be an iterable collection,'
-                    ' got ' + str(type(consider_constant)))
+                            ' got ' + str(type(consider_constant)))
         for elem in consider_constant:
             if not isinstance(elem, gof.Variable):
                 raise TypeError('Elements of consider_constant must be '
@@ -959,26 +958,27 @@ def _populate_grad_dict(var_to_app_to_idx,
 
             # list of bools indicating if each input is connected to the cost
             inputs_connected = [
-                    (True in [input_to_output and output_to_cost for
-                        input_to_output, output_to_cost in
-                        zip(input_to_outputs, outputs_connected)]) for
-                        input_to_outputs in connection_pattern
-                    ]
+                (True in [input_to_output and output_to_cost for
+                          input_to_output, output_to_cost in
+                          zip(input_to_outputs, outputs_connected)]) for
+                input_to_outputs in connection_pattern
+            ]
 
             #List of bools indicating if each output is an integer dtype
             output_is_int = [hasattr(output.type, 'dtype') and
-                    output.type.dtype in theano.tensor.discrete_dtypes
-                    for output in node.outputs]
+                             output.type.dtype in theano.tensor.discrete_dtypes
+                             for output in node.outputs]
 
             #List of bools indicating if each output is NullType
             ograd_is_nan = [isinstance(output.type, NullType)
-                    for output in output_grads]
+                            for output in output_grads]
 
             # List of bools indicating if each input only has NullType outputs
-            only_connected_to_nan = [(True not in
-                [in_to_out and out_to_cost and not out_nan
-                    for in_to_out, out_to_cost, out_nan in
-                    zip(in_to_outs, outputs_connected, ograd_is_nan)])
+            only_connected_to_nan = [
+                (True not in
+                 [in_to_out and out_to_cost and not out_nan
+                  for in_to_out, out_to_cost, out_nan in
+                  zip(in_to_outs, outputs_connected, ograd_is_nan)])
                 for in_to_outs in connection_pattern]
 
             if True not in inputs_connected:
@@ -1020,8 +1020,6 @@ def _populate_grad_dict(var_to_app_to_idx,
                     return var
 
                 inputs = [try_to_copy_if_needed(ipt) for ipt in inputs]
-
-
 
                 # Build a list of output gradients with the same dtype as
                 # the corresponding output variable.
@@ -1116,10 +1114,11 @@ def _populate_grad_dict(var_to_app_to_idx,
             # Do type checking on the result
 
             # List of bools indicating if each input only has integer outputs
-            only_connected_to_int = [(True not in
-                [in_to_out and out_to_cost and not out_int
-                    for in_to_out, out_to_cost, out_int in
-                    zip(in_to_outs, outputs_connected, output_is_int)])
+            only_connected_to_int = [
+                (True not in
+                 [in_to_out and out_to_cost and not out_int
+                  for in_to_out, out_to_cost, out_int in
+                  zip(in_to_outs, outputs_connected, output_is_int)])
                 for in_to_outs in connection_pattern]
 
             for i, term in enumerate(input_grads):
@@ -1130,13 +1129,14 @@ def _populate_grad_dict(var_to_app_to_idx,
                     # used to mean undefined, zero, or disconnected.
                     # We therefore don't allow it because its usage has become
                     # so muddied.
-                    raise TypeError(('%s.grad returned None for' +
-                             ' a gradient term, '
-                            'this is prohibited. Instead of None,'
-                            'return zeros_like(input), disconnected_type(),'
-                            ' or a NullType variable such as those made with '
-                            'the grad_undefined or grad_unimplemented helper '
-                            'functions.') % node.op)
+                    raise TypeError(
+                        ('%s.grad returned None for' +
+                         ' a gradient term, '
+                         'this is prohibited. Instead of None,'
+                         'return zeros_like(input), disconnected_type(),'
+                         ' or a NullType variable such as those made with '
+                         'the grad_undefined or grad_unimplemented helper '
+                         'functions.') % node.op)
 
                 # Check that the gradient term for this input has the right shape
                 if hasattr(term, 'shape'):
@@ -1145,18 +1145,18 @@ def _populate_grad_dict(var_to_app_to_idx,
                         i_shape = orig_ipt_v.shape
                         t_shape = term_v.shape
                         if i_shape != t_shape:
-                            raise ValueError("%s.grad returned object of "
-                                    "shape %s as gradient term on input %d "
-                                    "of shape %s" % (node.op, t_shape, i,
-                                        i_shape))
+                            raise ValueError(
+                                "%s.grad returned object of "
+                                "shape %s as gradient term on input %d "
+                                "of shape %s" % (node.op, t_shape, i, i_shape))
 
                 if not isinstance(term.type,
-                        (NullType, DisconnectedType)):
+                                  (NullType, DisconnectedType)):
                     if term.type.dtype not in theano.tensor.float_dtypes:
                         raise TypeError(str(node.op) + '.grad illegally '
-                                ' returned an integer-valued variable.'
-                                ' (Input index %d, dtype %s)' % (i,
-                                    term.type.dtype))
+                                        ' returned an integer-valued variable.'
+                                        ' (Input index %d, dtype %s)' % (
+                                            i, term.type.dtype))
 
                     if only_connected_to_nan[i]:
                         assert isinstance(term.type, NullType)
@@ -1241,23 +1241,25 @@ def _populate_grad_dict(var_to_app_to_idx,
                         term = access_term_cache(node)[idx]
 
                         if not isinstance(term, gof.Variable):
-                            raise TypeError("%s.grad returned %s, expected"
-                                    " Variable instance." % (str(node.op),
-                                                             type(term)))
+                            raise TypeError(
+                                "%s.grad returned %s, expected"
+                                " Variable instance." % (str(node.op),
+                                                         type(term)))
 
                         if isinstance(term.type, NullType):
                             raise NullTypeGradError("tensor.grad "
-                                "encountered a NaN. " +
-                                    term.type.why_null)
+                                                    "encountered a NaN. " +
+                                                    term.type.why_null)
 
                         #Don't try to sum up DisconnectedType placeholders
                         if isinstance(term.type, DisconnectedType):
                             continue
 
                         if hasattr(var, 'ndim') and term.ndim != var.ndim:
-                            raise ValueError(("%s.grad returned a term with"
-                                " %d dimensions, but %d are required.") % (
-                                    str(node.op), term.ndim, var.ndim))
+                            raise ValueError(
+                                ("%s.grad returned a term with"
+                                 " %d dimensions, but %d are required.") % (
+                                     str(node.op), term.ndim, var.ndim))
 
                         terms.append(term)
 
@@ -1569,12 +1571,13 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     for i, p in enumerate(pt):
         if p.dtype not in ('float32', 'float64'):
-            raise TypeError(('verify_grad can work only with floating point '
-                'inputs, but input %i has dtype "%s".') % (i, p.dtype))
+            raise TypeError(
+                ('verify_grad can work only with floating point '
+                 'inputs, but input %i has dtype "%s".') % (i, p.dtype))
 
     _type_tol = dict(  # relative error tolerances for different types
-            float32=1e-2,
-            float64=1e-4)
+        float32=1e-2,
+        float64=1e-4)
 
     if abs_tol is None:
         abs_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
@@ -1601,7 +1604,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                                  on_unused_input='ignore')
         return f
 
-    tensor_pt = [TensorType(
+    tensor_pt = [
+        TensorType(
             as_tensor_variable(p).dtype,
             as_tensor_variable(p).broadcastable)(name='input %i' % i)
         for i, p in enumerate(pt)]
@@ -1620,9 +1624,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     o_fn_out = o_fn(*[p.copy() for p in pt])
 
     if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
-        raise TypeError('It seems like you are trying to use verify_grad '
-                'on an op or a function which outputs a list: there should'
-                ' be a single (array-like) output instead')
+        raise TypeError(
+            'It seems like you are trying to use verify_grad '
+            'on an op or a function which outputs a list: there should'
+            ' be a single (array-like) output instead')
 
     # random_projection should not have elements too small,
     # otherwise too much precision is lost in numerical gradient
