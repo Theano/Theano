@@ -937,6 +937,7 @@ class VM_Linker(link.LocalLinker):
             viewed_by[var] = []
         view_of = {}
         reallocated_info = {}
+        dependencies = getattr(fgraph.profile, 'dependencies', {})
 
         for idx in range(len(order)):
             node = order[idx]
@@ -967,7 +968,9 @@ class VM_Linker(link.LocalLinker):
 
             for ins in node.inputs:
                 assert not (ins in view_of and viewed_by[ins])
-                if (ins.ndim == 0 and not storage_map[ins][0] and ins not in fgraph.outputs and ins.owner):
+                if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] 
+                    and ins not in fgraph.outputs and ins.owner 
+                    and dependencies.get(ins, None)):
                     # Constant Memory cannot be changed, Constant storage_map
                     # has a value here
                     reuse_outs = []
