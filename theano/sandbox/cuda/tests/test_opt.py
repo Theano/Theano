@@ -294,7 +294,7 @@ def test_local_gpu_subtensor():
 def test_local_split():
     """ Test that the GpuSplit op is being applied and works """
     # Construct symbolic split
-    x = tensor.vector()
+    x = tensor.fvector()
     splits = tensor.lvector()
     ra, rb, rc = tensor.split(x, splits, n_splits=3, axis=0)
     # Compile function to use CPU
