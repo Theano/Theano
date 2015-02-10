@@ -171,7 +171,7 @@ class Loop(VM):
     """
 
     def __init__(self, nodes, thunks, pre_call_clear, reallocated_info):
-        super(LoopGC, self).__init__(nodes, thunks, pre_call_clear)
+        super(Loop, self).__init__(nodes, thunks, pre_call_clear)
         self.reallocated_info = reallocated_info
 
     def __call__(self):
