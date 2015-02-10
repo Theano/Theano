@@ -560,7 +560,7 @@ def grad(cost, wrt, consider_constant=None,
         rval, = rval
     t1 = time.time()
     global grad_time
-    grad_time = t1 - t0
+    grad_time += t1 - t0
     return rval
 
 
