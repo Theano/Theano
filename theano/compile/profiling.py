@@ -199,6 +199,11 @@ class ProfileStats(object):
 
     line_width = config.profiling.output_line_width
 
+    nb_nodes = -1
+    # The number of nodes in the graph. We need the infomartion
+    # separatly in case we print the profile when the function wasn't
+    # executed or if there is lazy operation in the graph.
+
     optimizer_profile = None
     # None or tuple (the optimizer, the profile it returned)
 
@@ -637,7 +642,7 @@ class ProfileStats(object):
                 print >> file, '  Time in thunks: %es (%.3f%%)' % (
                     local_time, 100 * local_time / self.fct_call_time)
         print >> file, '  Total compile time: %es' % self.compile_time
-        print >> file, '    Number of Apply nodes: %s' % len(self.apply_time)
+        print >> file, '    Number of Apply nodes: %d' % self.nb_nodes
         print >> file, '    Theano Optimizer time: %es' % self.optimizer_time
         print >> file, '       Theano validate time: %es' % self.validate_time
         print >> file, ('    Theano Linker time (includes C,'
@@ -648,6 +653,9 @@ class ProfileStats(object):
 
         # The validation time is a subset of optimizer_time
         assert self.validate_time < self.optimizer_time
+
+    def summary_globals(self, file):
+        print >> file, 'Time in all call to theano.grad() %es' % theano.gradient.grad_time
 
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
@@ -1204,6 +1212,7 @@ class ProfileStats(object):
     def summary(self, file=sys.stderr, n_ops_to_print=20,
                 n_apply_to_print=20):
         self.summary_function(file)
+        self.summary_globals(file)
         local_time = sum(self.apply_time.values())
         if local_time > 0:
             self.summary_class(file, n_ops_to_print)

@@ -1559,6 +1559,7 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     t2 = time.time()
     if profile:
         profile.compile_time += t2 - t1
+        profile.nb_nodes = len(fn.maker.fgraph.apply_nodes)
 
     fn.name = name
     fn.maker.fgraph.name = name
