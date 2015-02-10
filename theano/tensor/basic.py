@@ -3213,7 +3213,7 @@ class Split(Op):
         for i in xrange(self.len_splits):
             upper_idx = lower_idx + splits[i]
             general_key[axis] = slice(lower_idx, upper_idx, None)
-            outputs[i][0] = x.__getitem__(general_key).copy()
+            outputs[i][0] = x.__getitem__(tuple(general_key)).copy()
             lower_idx = upper_idx
 
     def infer_shape(self, node, in_shapes):

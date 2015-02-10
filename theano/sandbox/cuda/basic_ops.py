@@ -3229,6 +3229,16 @@ class GpuJoin(tensor.Join, GpuOp):
 gpu_join = GpuJoin()
 
 
+class GpuSplit(tensor.Split, GpuOp):
+    def make_node(self, x, axis, splits):
+        x = as_cuda_ndarray_variable(x)
+        node = tensor.Split.make_node(self, x, axis, splits)
+        outs = [CudaNdarrayType(dtype=o.dtype,
+                                broadcastable=o.type.broadcastable)()
+                for o in node.outputs]
+        return Apply(self, [x] + node.inputs[1:], outs)
+
+
 class GpuAlloc(GpuOp):
     """Implement Alloc on the gpu.
 

@@ -24,7 +24,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
-    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape)
+    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit)
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
@@ -296,6 +296,25 @@ def local_gpu_elemwise_1(node):
                 if not gpu_elemwise:
                     return False
                 return [gpu_elemwise.outputs[0]]
+    return False
+
+
+@register_opt()
+@local_optimizer([tensor.Split, gpu_from_host])
+def local_gpu_split(node):
+    if isinstance(node.op, tensor.Split):
+        input = node.inputs[0]
+        if input.owner and isinstance(input.owner.op, HostFromGpu):
+            new_op = GpuSplit(node.op.len_splits)
+            split_res = new_op(gpu_from_host(input), *node.inputs[1:])
+            return [host_from_gpu(o) for o in split_res]
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op, tensor.Split):
+            split_node = host_input.owner
+            new_op = GpuSplit(split_node.op.len_splits)
+            return [new_op(gpu_from_host(split_node.inputs[0]),
+                           *split_node.inputs[1:])[host_input.index]]
     return False
 
 

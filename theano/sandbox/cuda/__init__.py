@@ -288,7 +288,7 @@ if cuda_available:
             GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
             GpuSubtensor, GpuIncSubtensor,
             GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
-            GpuFlatten, GpuShape, GpuAlloc,
+            GpuFlatten, GpuShape, GpuAlloc, GpuSplit,
             GpuJoin, fscalar, fvector, fmatrix, frow, fcol,
             ftensor3, ftensor4,
             scalar, vector, matrix, row, col,
