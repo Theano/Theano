@@ -170,6 +170,7 @@ def test_local_gpu_elemwise_careduce():
 def test_local_gpu_subtensor():
     # Test shared forced on CPU.
     t = tensor._shared(numpy.zeros(20, "float32"))
+    t.tag.context = test_ctx
     f = theano.function([], (t+1)[3:4], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
@@ -177,6 +178,7 @@ def test_local_gpu_subtensor():
 
     # Test graph input.
     t = tensor.fmatrix()
+    t.tag.context = test_ctx
     f = theano.function([t], (t+1)[3:4], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
@@ -185,6 +187,7 @@ def test_local_gpu_subtensor():
     # Test multiple use of the input
     # We want the subtensor to be on the GPU to prevent multiple transfer.
     t = tensor.fmatrix()
+    t.tag.context = test_ctx
     f = theano.function([t], [t[3:4], t+1], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
@@ -193,6 +196,7 @@ def test_local_gpu_subtensor():
     # Test multiple use of the input + input as output
     # We want the subtensor to be on the GPU to prevent multiple transfer.
     t = tensor.fmatrix()
+    t.tag.context = test_ctx
     f = theano.function([t], [t[3:4], t+1, t], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
@@ -201,6 +205,7 @@ def test_local_gpu_subtensor():
     # Test shared forced on CPU end we do computation on the output of
     # the subtensor.
     t = tensor._shared(numpy.zeros(20, "float32"))
+    t.tag.context = test_ctx
     f = theano.function([], t[3:4]+1, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
