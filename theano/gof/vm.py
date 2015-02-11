@@ -999,7 +999,7 @@ class VM_Linker(link.LocalLinker):
                                         reuse_out = out
                                         pre_allocated.add(out)
 
-                    if reuse_outs:
+                    if reuse_out:
                         reallocated_info[ins] = [storage_map[ins], storage_map[reuse_out]]
 
         for node in order:
