@@ -923,9 +923,9 @@ class VM_Linker(link.LocalLinker):
         thunks = []
 
         # Collect Reallocation Info
-        compute_map = defaultdict(lambda: [0])
+        compute_map_re = defaultdict(lambda: [0])
         for var in fgraph.inputs:
-            compute_map[var][0] = 1
+            compute_map_re[var][0] = 1
 
         viewed_by = {}
         for var in fgraph.variables:
@@ -943,7 +943,7 @@ class VM_Linker(link.LocalLinker):
             idx_o = 0
             for out in node.outputs:
                 for var in node.outputs:
-                    compute_map[var][0] = 1
+                    compute_map_re[var][0] = 1
                 ins = None
                 if dmap and idx_o in dmap:
                     idx_v = dmap[idx_o]
@@ -968,7 +968,7 @@ class VM_Linker(link.LocalLinker):
                 if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] 
                     and ins not in fgraph.outputs and ins.owner 
                     and dependencies.get(ins, None)
-                    and all([compute_map[v][0] for v in dependencies[ins]])):
+                    and all([compute_map_re[v][0] for v in dependencies.get(ins, []])])):
                     # Constant Memory cannot be changed, Constant storage_map
                     # has a value here
                     reuse_out = None
@@ -978,7 +978,7 @@ class VM_Linker(link.LocalLinker):
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if out.ndim == 0 and out not in pre_allocated:
+                                if getattr(out, 'ndim', None) == 0 and out not in pre_allocated:
                                     reuse_out = out
                                     pre_allocated.add(out)
                     elif ins in view_of:
@@ -992,7 +992,7 @@ class VM_Linker(link.LocalLinker):
                                 if reuse_out:
                                     break
                                 for out in order[i].outputs:
-                                    if out.ndim == 0 and out not in pre_allocated:
+                                    if getattr(out, 'ndim', None) == 0 and out not in pre_allocated:
                                         reuse_out = out
                                         pre_allocated.add(out)
 
