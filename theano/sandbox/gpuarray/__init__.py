@@ -43,15 +43,56 @@ def init_dev(dev):
 
 init_dev.device = None
 
+
+def use(device,
+        force=False,
+        default_to_move_computation_to_gpu=True,
+        move_shared_to_gpu=True, # cuda name: move_shared_float32_to_gpu
+#        enable_cuda=True,
+#        test_driver=True
+):
+    init_dev(device)
+    if default_to_move_computation_to_gpu:
+        optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
+    if move_shared_to_gpu:
+        theano.compile.shared_constructor(gpuarray_shared_constructor)
+
+    if force:
+        try:
+            import pdb;pdb.set_trace()
+            cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5, 5))
+        except (Exception, NameError), e:
+            # NameError when no gpu present as cuda_ndarray is not loaded.
+            e.args += ("ERROR: GPU forced but failed. ",)
+            raise
+
+
 if pygpu:
     try:
         if (config.device.startswith('cuda') or
             config.device.startswith('opencl')):
-            init_dev(config.device)
-            import theano.compile
-            theano.compile.shared_constructor(gpuarray_shared_constructor)
-            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
+            use(device=config.device, force=config.force_device)
+#            init_dev(config.device)
+#            theano.compile.shared_constructor(gpuarray_shared_constructor)
+#            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
         elif config.gpuarray.init_device != '':
+            assert config.device == "cpu", (
+                "We can use the Theano flag init_gpu_device"
+                " only when the Theano flag device=='cpu'")
+            _logger.warning(
+        ("GPU device %s will be initialized, and used if a GPU is "
+         "needed. "
+         "However, no computation, nor shared variables, will be implicitly "
+         "moved to that device. If you want that behavior, use the 'device' "
+         "flag instead."),
+          config.init_gpu_device)
+            use(device=config.init_gpu_device,
+                force=config.force_device,
+                default_to_move_computation_to_gpu=False,
+                move_shared_to_gpu=False,
+                #enable_cuda=False
+            )
+
             init_dev(config.gpuarray.init_device)
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
