@@ -971,7 +971,7 @@ class VM_Linker(link.LocalLinker):
                 assert not (ins in view_of and viewed_by[ins])
                 if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] 
                     and ins not in fgraph.outputs and ins.owner 
-                    and all([compute_map_re[v][0] for v in dependencies.get(ins, []])])):
+                    and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])):
                     # Constant Memory cannot be changed, Constant storage_map
                     # has a value here
                     reuse_out = None
