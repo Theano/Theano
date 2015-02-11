@@ -27,12 +27,12 @@ from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu').excluding('cudnn')
+    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode(
-            'FAST_RUN').excluding('gpu').excluding('cudnn')
+            'FAST_RUN').excluding('gpu')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu').excluding('cudnn')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu').excluding('cudnn')
+    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 #The CPU tests already compare C/Py, so we only check C/GPU
 mode_with_gpu = copy.copy(mode_with_gpu)
