@@ -1777,7 +1777,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_inplace_elemwise case0: Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
                     Py_XDECREF(new_other);
@@ -1810,7 +1810,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_inplace_elemwise case1: Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
                     Py_XDECREF(new_other);
@@ -1848,7 +1848,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_inplace_elemwise case2: Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
                     Py_XDECREF(new_other);
@@ -1889,7 +1889,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_inplace_elemwise case3: Cuda error: %s: %s.\n",
                         "k3",
                         cudaGetErrorString(err));
                     Py_XDECREF(new_other);
@@ -1934,7 +1934,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s.\n",
+                        "CudaNdarray_inplace_elemwise case4: Cuda error: %s: %s.\n",
                         "k4",
                         cudaGetErrorString(err));
                     Py_XDECREF(new_other);
@@ -1980,7 +1980,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                     {
                         PyErr_Format(
                             PyExc_RuntimeError,
-                            "Cuda error: %s: %s. n_block=(%ld,%ld) n_threads=%ld\n",
+                            "CudaNdarray_inplace_elemwise case5: Cuda error: %s: %s. n_block=(%ld,%ld) n_threads=%ld\n",
                             "k5 with loop over k4",
                             cudaGetErrorString(err),
                             (long) n_blocks.x, (long) n_blocks.y, (long) n_threads.x);
@@ -2040,7 +2040,7 @@ CudaNdarray_inplace_elemwise(PyObject* py_self, PyObject * py_other, operator_t 
                 {
                     PyErr_Format(
                         PyExc_RuntimeError,
-                        "Cuda error: %s: %s. n_blocks=(%ld, %ld, %ld) n_threads=(%ld)\n",
+                        "CudaNdarray_inplace_elemwise case6: Cuda error: %s: %s. n_blocks=(%ld, %ld, %ld) n_threads=(%ld)\n",
                         "k6",
                         cudaGetErrorString(err),
                         (long) n_blocks.x, (long) n_blocks.y, (long) n_blocks.z,
