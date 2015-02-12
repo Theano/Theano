@@ -965,9 +965,9 @@ class VM_Linker(link.LocalLinker):
 
             for ins in node.inputs:
                 assert not (ins in view_of and viewed_by[ins])
-                if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] 
-                    and ins not in fgraph.outputs and ins.owner 
-                    and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])):
+                if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
+                        and ins not in fgraph.outputs and ins.owner
+                        and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])):
                     # Constant Memory cannot be changed, Constant storage_map
                     # has a value here
                     reuse_out = None
@@ -982,7 +982,8 @@ class VM_Linker(link.LocalLinker):
                                     pre_allocated.add(out)
                     elif ins in view_of:
                         origin = view_of[ins]
-                        viewed_by[origin].remove(ins)
+                        if ins in viewed_by[origin]:
+                            viewed_by[origin].remove(ins)
                         if (not viewed_by[origin] and
                                 origin not in fgraph.inputs and
                                 not isinstance(origin, theano.Constant)):
