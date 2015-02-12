@@ -1082,7 +1082,7 @@ class GpuDnnSoftmaxBase(DnnBase):
     :param algo: 'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
     :param mode: 'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spationali location '01' per
+        be computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
     """
 
@@ -1229,7 +1229,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     :param algo: 'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
     :param mode: 'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spationali location '01' per
+        be computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
     """
     direction = 'forward'
@@ -1290,7 +1290,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     :param algo: 'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
     :param mode: 'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spationali location '01' per
+        be computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
     """
     direction = 'backward'
