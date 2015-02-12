@@ -1078,11 +1078,11 @@ class GpuDnnSoftmaxBase(DnnBase):
     """
     Op for the cuDNN Softmax.
 
-    :param tensor_format: Whether the data format is 'bc01' or 'b01c'
+    :param tensor_format: Whether the data format is 'bc01' or 'b01c'.
     :param algo: 'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
     :param mode: 'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spationali location '01' per
+        be computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
     """
 
@@ -1222,6 +1222,16 @@ if (CudaNdarray_prep_output(&%(outs)s, 4, CudaNdarray_HOST_DIMS(%(ins)s)) != 0)
 
 
 class GpuDnnSoftmax(GpuDnnSoftmaxBase):
+    """
+    Op for the cuDNN Softmax.
+
+    :param tensor_format: Whether the data format is 'bc01' or 'b01c'.
+    :param algo: 'fast' or 'accurate' indicating whether computations should be
+        optimized for speed or accuracy respectively.
+    :param mode: 'instance' or 'channel' indicating whether the softmax should
+        be computed per image across 'c01' or per spatial location '01' per
+        image across 'c'.
+    """
     direction = 'forward'
     softmax_inputs = ['softmax_input']
 
@@ -1273,6 +1283,16 @@ err%(name)s = cudnnSoftmaxForward(
 
 
 class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
+    """
+    Op for the cuDNN SoftmaxGrad.
+
+    :param tensor_format: Whether the data format is 'bc01' or 'b01c'.
+    :param algo: 'fast' or 'accurate' indicating whether computations should be
+        optimized for speed or accuracy respectively.
+    :param mode: 'instance' or 'channel' indicating whether the softmax should
+        be computed per image across 'c01' or per spatial location '01' per
+        image across 'c'.
+    """
     direction = 'backward'
     softmax_inputs = ['softmax_gout', 'softmax_input']
 
