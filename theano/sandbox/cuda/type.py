@@ -232,11 +232,12 @@ class CudaNdarrayType(Type):
         return (type(self) == type(other) and
                 other.broadcastable == self.broadcastable)
 
-    def compat_with(self, other):
-        return (type(self) == type(other) and
-                self.ndim == other.ndim and
-                all(sb == ob or ob for sb, ob in zip(self.broadcastable,
-                                                     other.broadcastable)))
+    def replace_variable(self, var):
+        if (type(self) == type(var.type) and
+            self.ndim == var.type.ndim and
+            all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                 var.type.broadcastable))):
+            return theano.tensor.patternbroadcast(var, self.broadcastable)
 
     def __hash__(self):
         """Hash equal for same kinds of CudaNdarrayType"""

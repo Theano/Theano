@@ -212,13 +212,14 @@ class GpuArrayType(Type):
                 self.broadcastable == other.broadcastable and
                 self.context == other.context)
 
-    def compat_with(self, other):
-        return (type(self) == type(other) and
-                self.typecode == other.typecode and
-                self.context == other.context and
-                self.ndim == other.ndim and
-                all(sb == ob or ob for sb, ob in zip(self.broadcastable,
-                                                     other.broadcastable)))
+    def replace_variable(self, var):
+        if (type(self) == type(var.type) and
+            self.typecode == var.type.typecode and
+            self.context == var.type.context and
+            self.ndim == var.type.ndim and
+            all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                 var.type.broadcastable))):
+            return theano.tensor.patternbroadcast(var, self.broadcastable)
 
     def __hash__(self):
         return hash((type(self), self.typecode, self.broadcastable,
