@@ -50,12 +50,16 @@ if sys.version_info[:2] > (3, 4):
     simple_extract_stack = traceback.extract_stack
 
 
-def add_tag_trace(thing):
+def add_tag_trace(thing, limit=None):
     """Add tag.trace to an node or variable.
 
     The argument is returned after being affected (inplace).
+    :param thing: the object where we add .tag.trace
+    :param limit: The limit of the stack size.
+        If None use, config.traceback.limit
     """
-    limit = config.traceback.limit
+    if limit is None:
+        limit = config.traceback.limit
     if limit == -1:
         limit = None
     tr = simple_extract_stack(limit=limit)[:-1]

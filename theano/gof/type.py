@@ -307,8 +307,7 @@ class PureType(object):
     def make_constant(self, value, name=None):
         return self.Constant(type=self, data=value, name=name)
 
-
-    def __call__(self, name = None):
+    def __call__(self, name=None, limit=None):
         """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
@@ -316,7 +315,7 @@ class PureType(object):
             A pretty string for printing and debugging.
 
         """
-        return utils.add_tag_trace(self.make_variable(name))
+        return utils.add_tag_trace(self.make_variable(name), limit=limit)
 
     def values_eq(self, a, b):
         """
