@@ -31,7 +31,7 @@
     faster than the legacy version we used before).
 
     Both cuDNN and the gemm version can be disabled using the Theano flags
-    ``optimizer_excluding=conv_dnn`` and ``optimizer_excluding=conv_gemm``,
+    ``optimizer_excluding=cudnn`` and ``optimizer_excluding=conv_gemm``,
     respectively. In this case, we will fall back to using the legacy
     convolution code, which is slower, but does not require extra memory.
     To verify that cuDNN is used, you can supply the Theano flag
