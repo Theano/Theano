@@ -107,5 +107,4 @@ class Test_profiling(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    Test_profiling.test_profiling()
-    Test_profiling.test_ifelse()
+    unittest.main()
