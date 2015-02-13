@@ -455,7 +455,7 @@ class PureOp(object):
             except Exception, e:
                 # Better error message.
                 detailed_err_msg = (
-                    "For compute_test_value, one input test value do not"
+                    "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
                 tr = getattr(v.tag, 'trace', None)
                 if tr:
