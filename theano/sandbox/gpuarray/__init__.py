@@ -53,7 +53,7 @@ if pygpu:
             init_dev(config.gpuarray.init_device, None)
         if config.contexts != '':
             for n, d in (c.split('->') for c in config.contexts.split(';')):
-                init_dev(d, n)
+                init_dev(d.strip(), n.strip())
                 # TODO: figure out what to do with the optimizations
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
