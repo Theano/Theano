@@ -1220,13 +1220,13 @@ TruncTester = makeBroadcastTester(
 
 RoundHalfToEvenTester = makeBroadcastTester(
     op=tensor.round_half_to_even,
-    expected=lambda a: numpy.asarray(numpy.round(a), a.dtype),
+    expected= numpy.round,
     good=_good_broadcast_unary_normal_float_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
 
 RoundHalfToEvenInplaceTester = makeBroadcastTester(
     op=inplace.round_half_to_even_inplace,
-    expected=lambda a: numpy.asarray(numpy.round(a), a.dtype),
+    expected= numpy.round,
     good=_good_broadcast_unary_normal_float_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case,
     inplace=True)
