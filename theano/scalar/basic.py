@@ -2058,6 +2058,14 @@ class RoundHalfToEven(UnaryScalarOp):
     def impl(self, x):
         return numpy.round(x)
 
+    def grad(self, (x,), (gz,)):
+        rval = x.zeros_like()
+
+        if rval.type.dtype in discrete_types:
+            rval = rval.astype(theano.config.floatX)
+
+        return [rval]
+
     def c_code___(self, node, name, (x, ), (z, ), sub):
         typ = node.outputs[0].type.dtype
         if not typ in ['float32', 'float64']:
@@ -2140,8 +2148,15 @@ class RoundHalfAwayFromZero(UnaryScalarOp):
     See http://en.wikipedia.org/wiki/Rounding for more detail
     """
     def impl(self, x):
-
         return round_half_away_from_zero_vec(x)
+
+    def grad(self, (x,), (gz,)):
+        rval = x.zeros_like()
+
+        if rval.type.dtype in discrete_types:
+            rval = rval.astype(theano.config.floatX)
+
+        return [rval]
 
     def c_code(self, node, name, (x, ), (z, ), sub):
         if node.outputs[0].type.dtype in ['float32', 'float64']:
