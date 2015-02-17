@@ -14,42 +14,32 @@ class Test_reallocation(unittest.TestCase):
 
     def test_reallocation(self):
 
-        pre_config = theano.config.allow_gc
+        x = T.scalar('x')
+        y = T.scalar('y')
 
-        try:
-            theano.config.allow_gc = False
+        z = T.tanh(3*x + y) + T.cosh(x + 5*y)
 
-            x = T.scalar('x')
-            y = T.scalar('y')
+        m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
+        m = m.excluding('fusion', 'inplace')
 
-            z = T.tanh(x + y) + T.cosh(x + y)
+        f = theano.function([x, y], z, name="test_reduce_memory",
+                            mode=m)
 
-            if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
-                m = "FAST_RUN"
-            else:
-                m = None
+        output = f(1, 2)
+        storage_map = f.fn.storage_map
 
-            m = theano.compile.get_mode(m).excluding('fusion', 'inplace')
-
-            f = theano.function([x, y], z, name="test_reduce_memory",
-                                mode=m)
-
-            output = f(1, 2)
-            storage_map = f.fn.storage_map
-
-            def check_storage(storage_map):
-                for i in storage_map.keys():
+        def check_storage(storage_map):
+            from theano.tensor.var import TensorConstant
+            for i in storage_map.keys(): 
+                if not isinstance(i, TensorConstant):
                     keys_copy = storage_map.keys()[:]
                     keys_copy.remove(i)
                     for o in keys_copy:
-                        if storage_map[i][0] == storage_map[o][0]:
-                            return True
-                return False
+                        if storage_map[i][0] and storage_map[i][0] == storage_map[o][0]:
+                            return [True, storage_map[o][0]]
+            return [False, None]
 
-            assert check_storage(storage_map)
-
-        finally:
-            theano.config.allow_gc = pre_config
+        assert check_storage(storage_map)[0]
 
 if __name__ == "__main__":
     unittest.main()
