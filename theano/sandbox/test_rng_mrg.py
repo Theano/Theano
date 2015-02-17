@@ -90,7 +90,7 @@ def test_consistency_randomstreams():
     for use_cuda in test_use_cuda:
         #print 'use_cuda =', use_cuda
         samples = []
-        rng = MRG_RandomStreams(seed=seed, use_cuda=False)
+        rng = MRG_RandomStreams(seed=seed, use_cuda=use_cuda)
         for i in range(n_streams):
             stream_samples = []
             u = rng.uniform(size=(n_substreams,), nstreams=n_substreams)
