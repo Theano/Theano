@@ -174,15 +174,16 @@ def test_gpuspecifyshape():
     assert not numpy.any([isinstance(x.op, cuda.HostFromGpu) for x in l])
 
 
-
 def test_softmax():
     x = tensor.fmatrix()
 
-    f = theano.function([x],tensor.nnet.nnet.Softmax()(x), mode=mode_with_gpu)
-    f2 = theano.function([x],tensor.nnet.nnet.Softmax()(x), mode=mode_without_gpu)
-    assert isinstance(f.maker.fgraph.toposort()[1].op,cuda.nnet.GpuSoftmax)
-    xv=numpy.random.rand(7,8).astype('float32')
-    assert numpy.allclose(f(xv),f2(xv))
+    f = theano.function([x], tensor.nnet.nnet.Softmax()(x),
+                        mode=mode_with_gpu.excluding('cudnn'))
+    f2 = theano.function([x], tensor.nnet.nnet.Softmax()(x),
+                         mode=mode_without_gpu)
+    assert isinstance(f.maker.fgraph.toposort()[1].op, cuda.nnet.GpuSoftmax)
+    xv = numpy.random.rand(7, 8).astype('float32')
+    assert numpy.allclose(f(xv), f2(xv))
 
 
 def test_softmax_with_bias():
