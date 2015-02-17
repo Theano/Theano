@@ -992,6 +992,9 @@ class VM_Linker(link.LocalLinker):
                     if reuse_out:
                         reallocated_info[ins] = [storage_map[ins], storage_map[reuse_out]]
 
+        for pair in reallocated_info.values():
+            pair[1] = pair[0]
+
         for node in order:
             try:
                 thunks.append(node.op.make_thunk(node,
