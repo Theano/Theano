@@ -31,6 +31,7 @@ else:
 
 
 def pool_2d_i2n(input, ds=(2, 2), strides=None,
+                ignore_border=True,
                 pool_function=T.max, mode='ignore_borders'):
     if strides is None:
         strides = ds
@@ -58,27 +59,28 @@ def test_pooling():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()
-
-    for func in (T.max, T.mean):
-        for ws in (2, 4, 5):
+    for func, ignore_border in product(
+        (T.max, T.mean), (False, True)):
+        for ws in (4, 2, 5):
             for stride in (2, 3):
                 if stride > ws:
                     continue
-                if ws == stride and func is T.max:
+                if func is T.max:
                     # We will check that the opt introduced it.
-                    out1 = max_pool_2d(x, (ws, ws), ignore_border=True)
+                    out1 = max_pool_2d(x, (ws, ws),
+                                       st=(stride, stride),
+                                       ignore_border=ignore_border)
                 else:
                     out1 = cuda.dnn.dnn_pool(
                         x, ws=(ws, ws),
                         stride=(stride, stride),
+                        ignore_border=ignore_border,
                         mode='max' if func is T.max else "average")
-                out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
-                                   pool_function=func)
 
                 f1 = theano.function([x], out1, mode=mode_with_gpu)
                 assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                             for node in f1.maker.fgraph.apply_nodes])
-                f2 = theano.function([x], out2, mode=mode_with_gpu)
+                f2 = theano.function([x], out1, mode=mode_without_gpu)
                 assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                                 for node in f2.maker.fgraph.apply_nodes])
                 for shp in [(1, 10, 100, 100),
@@ -102,41 +104,51 @@ def test_pooling():
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return max_pool_2d(x, (ws, ws), ignore_border=True)
+                return max_pool_2d(x, (ws, ws), ignore_border=ignore_border)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
                                                     mode=mode_with_gpu)
             # Confirm that the opt would have inserted it.
-            f = theano.function([x], theano.grad(fn(x).sum(), x),
-                                mode=mode_with_gpu)
-            assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
-                        for node in f.maker.fgraph.toposort()])
+            fg = theano.function([x], theano.grad(fn(x).sum(), x),
+                                 mode=mode_with_gpu)
+            if ignore_border:
+                assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
+                            for node in fg.maker.fgraph.toposort()])
+            else:
+                assert not any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
+                                for node in fg.maker.fgraph.toposort()])
 
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
                     x, ws=(ws, ws),
                     stride=(stride, stride),
+                    ignore_border=ignore_border,
                     mode='max' if func is T.max else "average")
                 return dnn_op
-            theano.tests.unittest_tools.verify_grad(fn, [data],
-                                                    cast_to_output_type=False,
-                                                    mode=mode_with_gpu)
-            # Confirm that we get the good op.
-            f = theano.function([x], theano.grad(fn(x).sum(), x),
-                                mode=mode_with_gpu)
-            assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
-                        for node in f.maker.fgraph.toposort()])
-            g_out = f(data)
+            try:
+                theano.tests.unittest_tools.verify_grad(
+                    fn, [data],
+                    cast_to_output_type=False,
+                    mode=mode_with_gpu)
+                # Confirm that we get the good op.
+                fg = theano.function([x], theano.grad(fn(x).sum(), x),
+                                     mode=mode_with_gpu)
+                assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
+                            for node in fg.maker.fgraph.toposort()])
+                g_out = fg(data)
+                assert ignore_border
+            except NotImplementedError:
+                assert not ignore_border
 
-            if func is T.max:
+            if func is T.max and ignore_border:
                 # Compare again the CPU result
-                out = max_pool_2d(x, (ws, ws), ignore_border=True)
-                f = theano.function([x], theano.grad(out.sum(), x),
-                                    mode=mode_without_gpu)
+                out = max_pool_2d(x, (ws, ws), ignore_border=ignore_border)
+                fc = theano.function([x], theano.grad(out.sum(), x),
+                                     mode=mode_without_gpu)
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
-                            for node in f.maker.fgraph.toposort()])
-                c_out = f(data)
+                            for node in fc.maker.fgraph.toposort()])
+                c_out = fc(data)
                 assert numpy.allclose(c_out, g_out)
 
 
