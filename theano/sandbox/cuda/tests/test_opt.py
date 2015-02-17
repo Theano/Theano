@@ -314,7 +314,7 @@ def test_local_split():
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
     b = tensor.fmatrix()
-    f = theano.function([b], theano.printing.Print()(b)*2,  mode=mode_with_gpu)
+    f = theano.function([b], theano.printing.Print()(b)*2, mode=mode_with_gpu)
     # theano.printing.debugprint(f)
     # print f.maker.fgraph.toposort()
 #[GpuFromHost(<TensorType(float32, matrix)>), <theano.printing.Print object at 0x3581210>(GpuFromHost.0), GpuElemwise{mul}(CudaNdarray{[[ 2.]]}, <theano.printing.Print object at 0x3581210>.0), HostFromGpu(GpuElemwise{mul}.0)]
