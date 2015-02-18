@@ -1,4 +1,10 @@
 #! /usr/bin/env python
+"""
+This file compare the runtime of two independent dot products on one
+and two GPU to measure the speedup.
+
+This should be 2x if the GPUs are equivalent.
+"""
 import time
 
 import numpy
@@ -15,16 +21,16 @@ def main(dev1, dev2):
     print "ctx1", ctx1.devname
     print "ctx2", ctx2.devname
 
-    reg_context('gpu1', ctx1, dev1)
-    reg_context('gpu2', ctx2, dev2)
+    reg_context('ctx1', ctx1)
+    reg_context('ctx2', ctx2)
 
-    val1a = shared(numpy.random.randn(1024, 1024).astype('float32'), context='gpu1')
-    val1b = shared(numpy.random.randn(1024, 1024).astype('float32'), context='gpu1')
-    val1c = shared(numpy.random.randn(1024, 1024).astype('float32'), context='gpu1')
-    val1d = shared(numpy.random.randn(1024, 1024).astype('float32'), context='gpu1')
+    val1a = shared(numpy.random.randn(1024, 1024).astype('float32'), context='ctx1')
+    val1b = shared(numpy.random.randn(1024, 1024).astype('float32'), context='ctx1')
+    val1c = shared(numpy.random.randn(1024, 1024).astype('float32'), context='ctx1')
+    val1d = shared(numpy.random.randn(1024, 1024).astype('float32'), context='ctx1')
 
-    val2a = shared(numpy.random.randn(1024, 1024).astype('float32'), context='gpu2')
-    val2b = shared(numpy.random.randn(1024, 1024).astype('float32'), context='gpu2')
+    val2a = shared(numpy.random.randn(1024, 1024).astype('float32'), context='ctx2')
+    val2b = shared(numpy.random.randn(1024, 1024).astype('float32'), context='ctx2')
 
     f1 = theano.function([], [gpu_dot22(val1a, val1b), gpu_dot22(val1c, val1d)])
     f2 = theano.function([], [gpu_dot22(val1a, val1b), gpu_dot22(val2a, val2b)])

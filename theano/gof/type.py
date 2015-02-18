@@ -397,7 +397,7 @@ class Type(object2, PureType, CLinkerType):
     """
     def replace_variable(self, var):
         """
-        Patch variable so that its type with match self, if possible.
+        Patch variable so that its type will match self, if possible.
 
         If the variable can't be converted, this should return None.
 

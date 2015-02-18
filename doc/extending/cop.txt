@@ -205,8 +205,8 @@ There are less methods to define for an Op than for a Type:
        needs.  This context will be passed to the C code through the
        variable named in `sub['context']`.  The variable is also
        available for use in the code returned by
-       :meth:`c_init_code_struct`.  If it returns `None` this is
-       considered the same as if the method was not defined.
+       :meth:`c_init_code_struct`.  If it returns `graph.NoContext`
+       this is considered the same as if the method was not defined.
 
        If this method is defined and does not return
        `graph.NoContext`, then the Op *must* have a `context_type`
