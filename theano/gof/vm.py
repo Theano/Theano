@@ -953,7 +953,8 @@ class VM_Linker(link.LocalLinker):
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if getattr(out, 'ndim', None) == 0 and out not in pre_allocated:
+                                if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
+                                    and ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
                     elif ins in view_of:
@@ -968,7 +969,8 @@ class VM_Linker(link.LocalLinker):
                                 if reuse_out:
                                     break
                                 for out in order[i].outputs:
-                                    if getattr(out, 'ndim', None) == 0 and out not in pre_allocated:
+                                    if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated 
+                                        and ins.type == out.type):
                                         reuse_out = out
                                         pre_allocated.add(out)
 
@@ -976,7 +978,7 @@ class VM_Linker(link.LocalLinker):
                         reallocated_info[ins] = [ins, reuse_out]
 
         for pair in reallocated_info.values():
-            storage_map[pair[1]] = storage_map[pair[0]]
+            storage_map[pair[1]][0] = storage_map[pair[0]][0]
 
         for node in order:
             try:
