@@ -416,5 +416,5 @@ class NoOutputFromInplace(Feature):
                     "efficiency reasons for scan) that outputs of the graph",
                     "be prevented from being the result of inplace ",
                     "operations. This has prevented output ", out, " from ",
-                    "being the computed by modifying another variable ",
+                    "being computed by modifying another variable ",
                     "inplace.")
