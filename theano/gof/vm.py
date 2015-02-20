@@ -976,8 +976,14 @@ class VM_Linker(link.LocalLinker):
                     if reuse_out:
                         reallocated_info[ins] = [ins, reuse_out]
 
-        for pair in reallocated_info.values():
-            storage_map[pair[1]][0] = storage_map[pair[0]][0]
+        lazy = self.lazy
+        if lazy is None:
+            lazy = config.vm.lazy
+        if lazy is None:
+            lazy = not all([(not th.lazy) for th in thunks])
+        if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
+            for pair in reallocated_info.values():
+                storage_map[pair[1]] = storage_map[pair[0]]
 
         for node in order:
             try:
