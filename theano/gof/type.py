@@ -416,6 +416,19 @@ class SingletonType(Type):
     def __str__(self):
         return self.__class__.__name__
 
+    # even if we try to make a singleton, this do not always work.  So
+    # we compare the type. See test_type_other.test_none_Constant for
+    # an exmple. So we need to implement __eq__ and __hash__
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if type(self) is type(other):
+            return True
+        return False
+
+    def __hash__(self):
+        return hash(type(self))
+
 
 class Generic(SingletonType):
     """
