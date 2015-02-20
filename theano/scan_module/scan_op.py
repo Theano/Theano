@@ -535,7 +535,7 @@ class Scan(PureOp):
                   self.n_sit_sot +
                   self.n_nit_sot)
         wrapped_inputs = [Param(x, borrow=True) for x in self.inputs]
-        wrapped_outputs = [Out(x, borrow=True) for x in
+        wrapped_outputs = [Out(x, borrow=(x not in self.inputs)) for x in
                            self.outputs[:slices]]
         wrapped_outputs += self.outputs[slices:]
         profile = None
