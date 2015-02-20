@@ -1721,7 +1721,9 @@ def test_local_useless_subtensor():
                       ([0, 0], False),
                       ([0, 0, 1], False),
                       (T.arange(2), True),
-                      (T.arange(2, -1), False),
+                      (T.arange(0, 2), True),
+                      (T.arange(0, 2, 2), False),
+                      (T.arange(0, 2, -1), False),
                       (T.arange(1, 2), False)):
         f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
         #theano.printing.debugprint(f)
