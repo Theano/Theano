@@ -22,10 +22,6 @@ except ImportError:
 
 from .type import GpuArrayType, gpu_context_type, get_context
 
-# This is a marker to indicate that any context is acceptable
-# It should never be registered as a context name
-AnyContext = object()
-
 def as_gpuarray_variable(x, context):
     # This is needed to lower the number of useless transfer
     # introduced during optimization.  This speed up optimization and

@@ -344,8 +344,8 @@ class _operators(_tensor_py_operators):
         return host_from_gpu(self)
 
     def _as_GpuArrayVariable(self, ctx):
-        from .basic_ops import AnyContext, GpuFromGpu
-        if ctx is AnyContext or self.type.context == ctx:
+        from .basic_ops import GpuFromGpu
+        if self.type.context == ctx:
             return self
         else:
             return GpuFromGpu(ctx)(self)
