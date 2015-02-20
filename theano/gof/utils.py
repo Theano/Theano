@@ -50,16 +50,18 @@ if sys.version_info[:2] > (3, 4):
     simple_extract_stack = traceback.extract_stack
 
 
-def add_tag_trace(thing, limit=None):
+def add_tag_trace(thing, user_line=1):
     """Add tag.trace to an node or variable.
 
     The argument is returned after being affected (inplace).
     :param thing: the object where we add .tag.trace
-    :param limit: The limit of the stack size.
-        If None use, config.traceback.limit
+    :param user_line: The max number of user line to keep.
+
+    :note: we alse use config.traceback.limit for the maximum number
+        of stack level we look.
+
     """
-    if limit is None:
-        limit = config.traceback.limit
+    limit = config.traceback.limit
     if limit == -1:
         limit = None
     tr = simple_extract_stack(limit=limit)[:-1]
@@ -72,14 +74,21 @@ def add_tag_trace(thing, limit=None):
         file_path = tr[-1][0]
         rm = False
         for p in ["theano/tensor/",
-                  "theano/gof/"]:
+                  "theano/gof/",
+                  "theano/scalar/basic.py",
+                  "theano/sandbox/",
+                  "theano/scan_module/",
+                  "theano/sparse/",
+                  "theano/typed_list/",
+        ]:
             if p in file_path:
                 tr = tr[:-1]
                 rm = True
                 break
         if not rm:
             break
-
+    if len(tr) > user_line:
+        tr = tr[:user_line]
     thing.tag.trace = tr
     return thing
 

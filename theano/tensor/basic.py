@@ -744,12 +744,7 @@ def get_scalar_constant_value(orig_v, elemwise=True):
 
 def tensor(*args, **kwargs):
     name = kwargs.pop('name', None)
-    # This add an indirection to the normal call stack. So raise the
-    # limit to keep the good user line.
-    limit = config.traceback.limit
-    if limit != -1:
-        limit += 1
-    return TensorType(*args, **kwargs)(name=name, limit=limit)
+    return TensorType(*args, **kwargs)(name=name)
 
 
 def _multi(*fns):
