@@ -1920,7 +1920,10 @@ def local_set_to_inc_subtensor(node):
 @gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_useless_subtensor(node):
     """
-    Remove Subtensor if it takes the full input
+    Remove Subtensor/AdvancedSubtensor1 if it takes the full input. In the
+    AdvancedSubtensor1 case, the full input is taken when the indices are
+    equivalent to `arange(0, input.shape[0], 1)` using either an explicit
+    list/vector or the ARange op.
     """
     # This optimization needs ShapeOpt and fgraph.shape_feature
     if not hasattr(node.fgraph, 'shape_feature'):
