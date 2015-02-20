@@ -152,7 +152,7 @@ class InputToGpuOptimizer(Optimizer):
                 continue
 
             try:
-                # This will fail is there is no default context
+                # This will fail if there is no default context
                 ctx = getattr(input.tag, 'context', None)
                 new_input = host_from_gpu(GpuFromHost(ctx)(input))
                 fgraph.replace_validate(input, new_input,
@@ -356,7 +356,6 @@ def max_inputs_to_GpuElemwise(node):
 
     return max_nb_inputs
 
-# TODO: This is broken: doesn't transfer the context
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,
     max_inputs_to_GpuElemwise,
@@ -365,7 +364,6 @@ optdb.register('gpua_elemwise_fusion',
                tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion), 71.00,
                'fast_run', 'fusion', 'local_elemwise_fusion', 'gpuarray')
 
-# TODO: This is broken: doesn't transfer the context
 inplace_gpu_elemwise_opt = tensor.opt.inplace_elemwise_optimizer_op(
     GpuElemwise)
 optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,

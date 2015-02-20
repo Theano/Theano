@@ -576,9 +576,6 @@ class CudaFromGpu(Op):
     __props__ = ()
     view_map = {0: [0]}
 
-    def __str__(self):
-        return 'CudaFromGpu'
-
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
         if not isinstance(x.type, GpuArrayType):
