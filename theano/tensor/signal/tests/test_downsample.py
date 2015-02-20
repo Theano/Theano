@@ -217,7 +217,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (3, 3), (5, 3))
         stridesizes = ((1, 1), (3, 3), (5, 7))
-        imval = rng.rand(1, 1, 16, 16)
+        imval = rng.rand(1, 2, 16, 16)
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True, False]:
@@ -240,7 +240,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for indx in numpy.arange(len(maxpoolshps)):
             imvsize = imvsizs[indx]
-            imval = rng.rand(1, 1, imvsize[0], imvsize[1])
+            imval = rng.rand(1, 2, imvsize[0], imvsize[1])
             stride = stridesizes[indx]
             maxpoolshp = maxpoolshps[indx]
             for ignore_border in [True, False]:
@@ -280,7 +280,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (3, 3), (5, 3))
         stridesizes = ((1, 1), (3, 3), (5, 7))
-        imval = rng.rand(1, 1, 16, 16)
+        imval = rng.rand(1, 2, 16, 16)
 
         for maxpoolshp in maxpoolshps:
             for ignore_border in [True, False]:
@@ -313,7 +313,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for indx in numpy.arange(len(maxpoolshps)):
             imvsize = imvsizs[indx]
-            imval = rng.rand(1, 1, imvsize[0], imvsize[1])
+            imval = rng.rand(1, 2, imvsize[0], imvsize[1])
             stride = stridesizes[indx]
             maxpoolshp = maxpoolshps[indx]
             for ignore_border in [True, False]:
