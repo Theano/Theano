@@ -129,5 +129,5 @@ none_type_t = NoneTypeT()
 
 # This is a variable instance. It can be used only once per fgraph.
 # So use NoneConst.clone() before using it in a Theano graph.
-# Use NoneConst.equal(x) to check if two variable are NoneConst.
-NoneConst = Constant(NoneTypeT(), None, name='NoneConst')
+# Use NoneConst.equals(x) to check if two variable are NoneConst.
+NoneConst = Constant(none_type_t, None, name='NoneConst')
