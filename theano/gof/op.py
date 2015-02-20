@@ -16,8 +16,10 @@ import inspect
 import logging
 import numpy
 import os
-import sys
 import re
+import StringIO
+import sys
+import traceback
 import warnings
 
 import theano
@@ -448,7 +450,31 @@ class PureOp(object):
             return v.get_value(borrow=True, return_internal_type=True)
         elif isinstance(v, graph.Variable) and hasattr(v.tag, 'test_value'):
             # ensure that the test value is correct
-            return v.type.filter(v.tag.test_value)
+            try:
+                ret = v.type.filter(v.tag.test_value)
+            except Exception, e:
+                # Better error message.
+                detailed_err_msg = (
+                    "For compute_test_value, one input test value does not"
+                    " have the requested type.\n")
+                tr = getattr(v.tag, 'trace', None)
+                if tr:
+                    sio = StringIO.StringIO()
+                    traceback.print_list(tr, sio)
+                    tr = sio.getvalue()
+                    detailed_err_msg += (
+                        " \nBacktrace when that variable is created:\n")
+                    detailed_err_msg += str(tr)
+                detailed_err_msg += (
+                    "\nThe error when converting the test value to that"
+                    " variable type:")
+                # We need to only have 1 args and it should be of type
+                # string.  Otherwise, it print the tuple and so the
+                # new line do not get printed.
+                args = (detailed_err_msg,) + tuple(str(arg) for arg in e.args)
+                e.args = ("\n".join(args),)
+                raise
+            return ret
 
         raise AttributeError('%s has no test value' % v)
 

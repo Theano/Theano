@@ -744,7 +744,7 @@ def get_scalar_constant_value(orig_v, elemwise=True):
 
 def tensor(*args, **kwargs):
     name = kwargs.pop('name', None)
-    return TensorType(*args, **kwargs).make_variable(name=name)
+    return TensorType(*args, **kwargs)(name=name)
 
 
 def _multi(*fns):

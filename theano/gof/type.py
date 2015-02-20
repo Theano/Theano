@@ -307,8 +307,7 @@ class PureType(object):
     def make_constant(self, value, name=None):
         return self.Constant(type=self, data=value, name=name)
 
-
-    def __call__(self, name = None):
+    def __call__(self, name=None):
         """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
