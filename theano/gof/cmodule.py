@@ -1777,6 +1777,7 @@ class GCC_compiler(object):
         flags = list(flags)
         compilation_ok = True
         run_ok = False
+        out, err = None, None
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]

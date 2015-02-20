@@ -43,6 +43,10 @@ def max_pool_2d(input, ds, ignore_border=False, st=None):
     """
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
+    if input.ndim == 4:
+        op = DownsampleFactorMax(ds, ignore_border, st=st)
+        output = op(input)
+        return output
 
     # extract image dimensions
     img_shape = input.shape[-2:]
