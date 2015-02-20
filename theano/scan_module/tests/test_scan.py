@@ -1911,9 +1911,11 @@ class T_Scan(unittest.TestCase):
                    for param, gparam in zip(params, gparams)]
         learn_rnn_fn = theano.function(inputs=[x, t],
                                        outputs=cost,
-                                       updates=updates)
+                                       updates=updates,
+                                       mode="FAST_RUN")
         eval_rnn_fn = theano.function(inputs=[x],
-                                      outputs=y)
+                                      outputs=y,
+                                      mode="FAST_RUN")
 
         # artificial data
         x_v = numpy.arange(0., 100., 0.21, dtype=theano.config.floatX)
