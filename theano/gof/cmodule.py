@@ -1438,9 +1438,22 @@ def std_lib_dirs_and_libs():
             #sys.base_prefix support only one case
             libdir = os.path.join(sys.prefix, 'libs')
 
-            for f, lib in [('libpython27.a', 'libpython 1.2'),
-                           ('libmsvcr90.a', 'mingw 4.5.2')]:
+            for f, lib in [('libpython27.a', 'libpython 1.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
+                    print ("Your Python version is from Canopy. " +
+                           "You need to install the package '" + lib +
+                           "' from Canopy package manager."
+                           )
+            libdirs = [
+                # Used in older Canopy
+                os.path.join(sys.prefix, 'libs'),
+                # Used in newer Canopy
+                os.path.join(sys.prefix,
+                             'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
+            for f, lib in [('libmsvcr90.a',
+                            'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
+                if not any([os.path.exists(os.path.join(libdir, f))
+                            for libdir in libdirs]):
                     print ("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
