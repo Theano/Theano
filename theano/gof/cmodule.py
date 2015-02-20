@@ -1411,6 +1411,10 @@ def std_include_dirs():
 
 
 def std_lib_dirs_and_libs():
+    # We cache the results as on Windows, this trigger file access and
+    # this method is called many times.
+    if std_lib_dirs_and_libs.data is not None:
+        return std_lib_dirs_and_libs.data
     python_inc = distutils.sysconfig.get_python_inc()
     if sys.platform == 'win32':
         # Obtain the library name from the Python version instead of the
@@ -1459,17 +1463,18 @@ def std_lib_dirs_and_libs():
                            "' from Canopy package manager."
                            )
             python_lib_dirs.insert(0, libdir)
-
-        return [libname], python_lib_dirs
+        std_lib_dirs_and_libs.data = [libname], python_lib_dirs
 
     # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
     # makes it unnecessary.
     elif sys.platform == 'darwin':
-        return [], []
+        std_lib_dirs_and_libs.data = [], []
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-        return [libname], []
+        std_lib_dirs_and_libs.data = [libname], []
+    return std_lib_dirs_and_libs.data
+std_lib_dirs_and_libs.data = None
 
 
 def std_libs():
