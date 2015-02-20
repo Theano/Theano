@@ -1992,7 +1992,7 @@ def local_useless_subtensor(node):
         try:
             length = get_scalar_constant_value(shape_of[node.inputs[0]][0])
         except NotScalarConstantError:
-            pass
+            return False
         
         # get index (which must be a vector by definition)
         idx = node.inputs[1]
