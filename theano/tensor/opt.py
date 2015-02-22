@@ -2591,6 +2591,23 @@ def local_adv_sub1_adv_inc_sub1(node):
     return [T.cast(y, node.outputs[0].dtype)]
 
 
+@register_specialize
+@register_stabilize
+@register_canonicalize
+@gof.local_optimizer([IncSubtensor, AdvancedIncSubtensor1])
+def local_useless_incsubtensor_alloc(node):
+    """
+    Replaces an (Advanced)IncSubtensor(1) where the increment is an alloc of a
+    fully broadcastable scalar by one that increments directly by the scalar.
+    """
+    if isinstance(node.op, (IncSubtensor, AdvancedIncSubtensor1)):
+        inc = node.inputs[1]
+        if isinstance(inc.owner.op, T.Alloc):
+            inc = inc.owner.inputs[0]
+            if all(inc.broadcastable):
+                return [node.op(node.inputs[0], inc, node.inputs[2])]
+
+
 ####################
 # Rebroadcast opts #
 ####################
