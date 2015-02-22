@@ -2602,7 +2602,7 @@ def local_useless_incsubtensor_alloc(node):
     """
     if isinstance(node.op, (IncSubtensor, AdvancedIncSubtensor1)):
         inc = node.inputs[1]
-        if isinstance(inc.owner.op, T.Alloc):
+        if inc.owner is not None and isinstance(inc.owner.op, T.Alloc):
             inc = inc.owner.inputs[0]
             if all(inc.broadcastable):
                 return [node.op(node.inputs[0], inc, node.inputs[2])]
