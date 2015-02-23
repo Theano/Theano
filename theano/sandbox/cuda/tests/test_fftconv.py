@@ -133,7 +133,6 @@ class TestConv2dFFT(unittest.TestCase):
 
         mode = mode_with_gpu.including('conv_fft_valid')
 
-        f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
 
         # make sure we that no CuFFTOp has been inserted
@@ -157,7 +156,6 @@ class TestConv2dFFT(unittest.TestCase):
 
         mode = mode_with_gpu.including('conv_fft_full')
 
-        f_ref = theano.function([], conv)
         f_fft = theano.function([], conv, mode=mode)
 
         # make sure we that no CuFFTOp has been inserted
