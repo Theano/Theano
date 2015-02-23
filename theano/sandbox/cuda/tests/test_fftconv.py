@@ -1,6 +1,5 @@
 import unittest
 import numpy
-import copy
 
 import theano
 from theano.tests import unittest_tools as utt
