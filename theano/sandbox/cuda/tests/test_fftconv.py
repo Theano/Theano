@@ -273,7 +273,7 @@ class TestConv3dFFT(unittest.TestCase):
 
     def test_opt_convgrad3d_fft(self):
         inputs_shape = (2, 17, 15, 16, 1)
-        filters_shape = (10, 3, 7, 4, 1)
+        filters_shape = (10, 6, 7, 4, 1)
         dCdH_shape = (inputs_shape[0],
                       inputs_shape[1] - filters_shape[1] + 1,
                       inputs_shape[2] - filters_shape[2] + 1,
