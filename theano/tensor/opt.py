@@ -2594,13 +2594,17 @@ def local_adv_sub1_adv_inc_sub1(node):
 @register_specialize
 @register_stabilize
 @register_canonicalize
-@gof.local_optimizer([IncSubtensor, AdvancedIncSubtensor1])
+@gof.local_optimizer([IncSubtensor,
+                      AdvancedIncSubtensor,
+                      AdvancedIncSubtensor1])
 def local_useless_incsubtensor_alloc(node):
     """
     Replaces an (Advanced)IncSubtensor(1) where the increment is an alloc of a
     fully broadcastable scalar by one that increments directly by the scalar.
     """
-    if isinstance(node.op, (IncSubtensor, AdvancedIncSubtensor1)):
+    if isinstance(node.op, (IncSubtensor,
+                            AdvancedIncSubtensor,
+                            AdvancedIncSubtensor1)):
         inc = node.inputs[1]
         if inc.owner is not None and isinstance(inc.owner.op, T.Alloc):
             inc = inc.owner.inputs[0]
