@@ -311,8 +311,11 @@ def test_downsample():
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
                     tensor.as_tensor_variable(a))**2).sum(), a), a, a)
-                gg = pfunc([], ggf, mode=mode_with_gpu)
-                gg2 = pfunc([], ggf, mode=mode_without_gpu)
+                
+                ref_mode = copy.copy(theano.compile.get_default_mode())
+                ref_mode.check_py_code = False
+                gg = pfunc([], ggf, mode=ref_mode)
+                gg2 = pfunc([], ggf, mode=ref_mode)
                 
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMaxGradGrad)
