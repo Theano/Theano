@@ -272,9 +272,13 @@ class TestConv3dFFT(unittest.TestCase):
         utt.assert_allclose(res_ref, res_fft)
 
     def test_opt_convgrad3d_fft(self):
-        inputs_shape = (16, 20, 32, 16, 1)
-        filters_shape = (10, 6, 12, 4, 1)
-        dCdH_shape = (16, 15, 21, 13, 10)
+        inputs_shape = (2, 17, 15, 16, 1)
+        filters_shape = (10, 3, 7, 4, 1)
+        dCdH_shape = (inputs_shape[0],
+                      inputs_shape[1] - filters_shape[1] + 1,
+                      inputs_shape[2] - filters_shape[2] + 1,
+                      inputs_shape[3] - filters_shape[3] + 1,
+                      filters_shape[0])
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
@@ -302,8 +306,8 @@ class TestConv3dFFT(unittest.TestCase):
         utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
 
     def test_opt_convtransp3d_fft(self):
-        inputs_shape = (16, 15, 21, 12, 10)
-        filters_shape = (10, 6, 12, 4, 1)
+        inputs_shape = (2, 9, 16, 12, 10)
+        filters_shape = (10, 3, 8, 4, 1)
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
