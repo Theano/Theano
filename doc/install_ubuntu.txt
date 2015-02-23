@@ -5,14 +5,14 @@ Easy Installation of an Optimized Theano on Current Ubuntu
 
 For Ubuntu 11.10 through 14.04:
 
-.. code-block: bash
+.. code-block:: bash
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
     sudo pip install Theano
 
 For Ubuntu 11.04:
 
-.. code-block: bash
+.. code-block:: bash
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
     sudo pip install Theano
@@ -71,7 +71,7 @@ If you would like, instead, to install the bleeding edge Theano (from github)
 such that you can edit and contribute to Theano, replace the `pip install Theano` 
 command with:
 
-.. code-block: bash
+.. code-block:: bash
 
     git clone git://github.com/Theano/Theano.git
     cd Theano 
@@ -85,7 +85,7 @@ If you would like to install Theano in a VirtualEnv, you will want to pass the
 `--system-site-packages` flag when creating the VirtualEnv so that it will pick up 
 the system-provided `Numpy` and `SciPy`.
 
-.. code-block: bash
+.. code-block:: bash
     
     virtualenv --system-site-packages -p python2.7 theano-env
     source theano-env/bin/activate
@@ -166,7 +166,7 @@ Updating Bleeding Edge Installs
 
 Change to the Theano directory and run:
 
-.. code-block: bash
+.. code-block:: bash
     
     git pull
 
