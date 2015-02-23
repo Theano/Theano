@@ -313,8 +313,8 @@ def local_gpu_split(node):
         if host_input.owner and isinstance(host_input.owner.op, tensor.Split):
             split_node = host_input.owner
             new_op = GpuSplit(split_node.op.len_splits)
-            return [new_op(gpu_from_host(split_node.inputs[0]),
-                           *split_node.inputs[1:])]
+            return new_op(gpu_from_host(split_node.inputs[0]),
+                          *split_node.inputs[1:])
     return False
 
 
