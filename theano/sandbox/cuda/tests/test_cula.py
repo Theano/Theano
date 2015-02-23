@@ -35,7 +35,7 @@ class TestCula(unittest.TestCase):
         solver = cula.gpu_solve(A, b)
         fn = theano.function([A, b], [solver])
         res = fn(A_val, b_val)
-        res[0].get(x_res)
+        x_res = numpy.array(res[0])
         utt.assert_allclose(x_res, x_val)
 
     def test_diag_solve(self):

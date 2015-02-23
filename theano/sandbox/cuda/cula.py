@@ -91,7 +91,7 @@ class GpuSolve(GpuOp):
                 cula.culaDeviceSgesv(n, nrhs, A_ptr, lda, ipiv_ptr, b_ptr, ldb)
                 return A, b
 
-            A, b = cula_gpu_solve(A_pycuda, b_pycuda)
+            A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda)
             z[0] = b
 
         thunk.inputs = inputs
