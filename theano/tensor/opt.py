@@ -2605,7 +2605,7 @@ def local_useless_incsubtensor_alloc(node):
         if inc.owner is not None and isinstance(inc.owner.op, T.Alloc):
             inc = inc.owner.inputs[0]
             if all(inc.broadcastable):
-                return [node.op(node.inputs[0], inc, node.inputs[2])]
+                return [node.op(node.inputs[0], inc, *node.inputs[2:])]
 
 
 ####################
