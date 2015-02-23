@@ -86,7 +86,6 @@ class TestConv2dFFT(unittest.TestCase):
         assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
                    for n in topo) == 2, topo
 
-
         res_ref = f_ref()
         res_fft = f_fft()
 
@@ -130,7 +129,8 @@ class TestConv2dFFT(unittest.TestCase):
         inputs = shared(inputs_val)
         filters = shared(filters_val)
 
-        conv = theano.tensor.nnet.conv.conv2d(inputs, filters, version='no_fft')
+        conv = theano.tensor.nnet.conv.conv2d(inputs, filters,
+                                              version='no_fft')
 
         mode = mode_with_gpu.including('conv_fft_valid')
 
@@ -178,15 +178,16 @@ class TestConv3dFFT(unittest.TestCase):
         bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
         # Flip filter as conv3D compute correlation
-        filters_flip = filters[:,::-1,::-1,::-1,:]
-        #filters_flip = filters
+        filters_flip = filters[:, ::-1, ::-1, ::-1, :]
+        # filters_flip = filters
         conv_ref = theano.tensor.nnet.conv3D(V=inputs, W=filters_flip,
-                                             b=bias, d=(1,1,1))
+                                             b=bias, d=(1, 1, 1))
 
-        conv_fft = theano.sandbox.cuda.fftconv.conv3d_fft(inputs.dimshuffle(0, 4, 1, 2, 3),
-                                                          filters.dimshuffle(0, 4, 1, 2, 3),
-                                                          border_mode = "valid",
-                                                          pad_last_dim = pad)
+        conv_fft = theano.sandbox.cuda.fftconv.conv3d_fft(
+            inputs.dimshuffle(0, 4, 1, 2, 3),
+            filters.dimshuffle(0, 4, 1, 2, 3),
+            border_mode="valid",
+            pad_last_dim=pad)
         conv_fft = conv_fft.dimshuffle(0, 2, 3, 4, 1)
 
         f_ref = theano.function([], conv_ref, mode="FAST_RUN")
@@ -198,8 +199,6 @@ class TestConv3dFFT(unittest.TestCase):
         res_fft = f_fft()
         utt.assert_allclose(res_ref, res_fft,  rtol=1e-05, atol=1e-05)
 
-
-
     def run_conv_full(self, inputs_shape, filters_shape, pad=False):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -208,14 +207,15 @@ class TestConv3dFFT(unittest.TestCase):
         filters = shared(filters_val)
         bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
 
-        conv_ref = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1,1,1),
-                                                   H=inputs)
+        conv_ref = theano.tensor.nnet.convTransp3D(
+            W=filters, b=bias, d=(1, 1, 1),
+            H=inputs)
 
         filters = filters.dimshuffle(4, 0, 1, 2, 3)
         inputs = inputs.dimshuffle(0, 4, 1, 2, 3)
         conv_fft = theano.sandbox.cuda.fftconv.conv3d_fft(inputs, filters,
-                                                          border_mode = "full",
-                                                          pad_last_dim = pad)
+                                                          border_mode="full",
+                                                          pad_last_dim=pad)
         conv_fft = conv_fft.dimshuffle(0, 2, 3, 4, 1)
 
         f_ref = theano.function([], conv_ref)
@@ -233,6 +233,7 @@ class TestConv3dFFT(unittest.TestCase):
         self.run_conv_valid(inputs_shape=(16, 20, 32, 15, 1),
                             filters_shape=(10, 6, 12, 4, 1),
                             pad=True)
+
     def test_full(self):
         self.run_conv_full(inputs_shape=(16, 15, 21, 16, 10),
                            filters_shape=(10, 6, 12, 4, 1),
@@ -253,7 +254,7 @@ class TestConv3dFFT(unittest.TestCase):
         bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
-                                         b=bias, d=(1,1,1))
+                                         b=bias, d=(1, 1, 1))
         mode = mode_with_gpu.including('conv3d_fft')
         mode.check_py_code = False
 
@@ -264,7 +265,6 @@ class TestConv3dFFT(unittest.TestCase):
         topo = f_fft.maker.fgraph.toposort()
         assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
                    for n in topo) == 2
-
 
         res_ref = f_ref()
         res_fft = f_fft()
@@ -284,7 +284,7 @@ class TestConv3dFFT(unittest.TestCase):
 
         conv = theano.tensor.nnet.convGrad3D(V=inputs, dCdH=dCdH,
                                              WShape=filters_shape,
-                                             d=(1,1,1))
+                                             d=(1, 1, 1))
         mode = mode_with_gpu.including('convgrad3d_fft')
         mode.check_py_code = False
 
@@ -296,12 +296,10 @@ class TestConv3dFFT(unittest.TestCase):
         assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
                    for n in topo) == 2
 
-
         res_ref = f_ref()
         res_fft = f_fft()
 
         utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
-
 
     def test_opt_convtransp3d_fft(self):
         inputs_shape = (16, 15, 21, 12, 10)
@@ -314,7 +312,7 @@ class TestConv3dFFT(unittest.TestCase):
         inputs = shared(inputs_val)
         filters = shared(filters_val)
 
-        conv = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1,1,1),
+        conv = theano.tensor.nnet.convTransp3D(W=filters, b=bias, d=(1, 1, 1),
                                                H=inputs)
         mode = mode_with_gpu.including('convtransp3d_fft')
 
@@ -326,9 +324,7 @@ class TestConv3dFFT(unittest.TestCase):
         assert sum(isinstance(n.op, theano.sandbox.cuda.fftconv.CuFFTOp)
                    for n in topo) == 2
 
-
         res_ref = f_ref()
         res_fft = f_fft()
 
         utt.assert_allclose(res_ref, res_fft, rtol=1e-04, atol=1e-04)
-
