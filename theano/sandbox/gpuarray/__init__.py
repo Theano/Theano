@@ -27,36 +27,39 @@ AddConfigVar('gpuarray.sync',
 
 # This is for documentation not to depend on the availability of pygpu
 from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
-                  GpuArraySharedVariable, gpuarray_shared_constructor)
+                  GpuArraySharedVariable, gpuarray_shared_constructor,
+                  reg_context)
 import opt
 
 
-def init_dev(dev):
+def init_dev(dev, name):
     global pygpu_activated
     context = pygpu.init(dev)
-    pygpu.set_default_context(context)
+    reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
-        print >> sys.stderr, "Using device %s: %s" % (dev, context.devname)
-    # remember the active device
-    init_dev.device = dev
+        print >> sys.stderr, "Mapped name %r to device %s: %s" % (name, dev, context.devname)
 
-init_dev.device = None
 
 if pygpu:
     try:
         if (config.device.startswith('cuda') or
             config.device.startswith('opencl')):
-            init_dev(config.device)
+            init_dev(config.device, None)
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
         elif config.gpuarray.init_device != '':
-            init_dev(config.gpuarray.init_device)
+            init_dev(config.gpuarray.init_device, None)
+        if config.contexts != '':
+            for n, d in (c.split('->') for c in config.contexts.split(';')):
+                init_dev(d.strip(), n.strip())
+                # TODO: figure out what to do with the optimizations
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
 else:
     if (config.gpuarray.init_device != '' or
+        config.contexts != '' or
         config.device.startswith('opencl') or
         config.device.startswith('cuda')):
         error("pygpu was configured but could not be imported", exc_info=True)

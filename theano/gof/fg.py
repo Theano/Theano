@@ -411,7 +411,7 @@ class FunctionGraph(utils.object2):
         """WRITEME
         Changes node.inputs[i] to new_r.
 
-        new_r.type == old_r.type must be True, where old_r is the
+        old_r.type == new_r.type must be True, where old_r is the
         current value of node.inputs[i] which we want to replace.
 
         For each feature that has a 'on_change_input' method, calls:
@@ -463,8 +463,12 @@ class FunctionGraph(utils.object2):
             print reason, r, new_r
         if r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong to this FunctionGraph" % r, str(reason))
-        if not r.type == new_r.type:
-            raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
+        if r.type != new_r.type:
+            new_r2 = r.type.replace_variable(new_r)
+            # We still make sure that the type converts correctly
+            if new_r2 is None or new_r2.type != r.type:
+                raise TypeError("The type of the replacement must be compatible with the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
+            new_r = new_r2
         if r not in self.variables:
             # this variable isn't in the graph... don't raise an exception here, just return silently
             # because it makes it easier to implement some optimizations for multiple-output ops

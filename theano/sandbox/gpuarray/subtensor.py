@@ -14,18 +14,19 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
-from theano.sandbox.gpuarray.elemwise import GpuElemwise
-from theano.sandbox.gpuarray.comp import NVCC_compiler
+from .type import GpuArrayType, get_context
+from .basic_ops import as_gpuarray_variable, HideC, infer_context
+from .elemwise import GpuElemwise
+from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
+        x = as_gpuarray_variable(x, infer_context(x))
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
-                             broadcastable=rval.outputs[0].type.broadcastable)
-        x = as_gpuarray_variable(x)
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context=x.type.context)
         return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
 
     def perform(self, node, inputs, out_):
@@ -173,8 +174,9 @@ class GpuIncSubtensor(IncSubtensor):
         return self.iadd_node.op.c_init_code()
 
     def make_node(self, x, y, *inputs):
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        ctx = infer_context(x, y)
+        x = as_gpuarray_variable(x, ctx)
+        y = as_gpuarray_variable(y, ctx)
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
         op = copy.copy(self)
         ret = gof.Apply(op, [x, y] + rval.inputs[2:], [x.type()])
@@ -185,8 +187,10 @@ class GpuIncSubtensor(IncSubtensor):
         # We store a iadd_node in the op that contain the info needed
         # for the inplace add.
         cop = theano.tensor.inplace.add_inplace
-        gop = GpuElemwise(cop.scalar_op, copy.copy(cop.inplace_pattern),
-                          "Gpu" + cop.name, cop.nfunc_spec)
+        gop = GpuElemwise(cop.scalar_op,
+                          inplace_pattern=copy.copy(cop.inplace_pattern),
+                          name="Gpu" + cop.name, nfunc_spec=cop.nfunc_spec,
+                          context=node.inputs[1].type.context)
         y = node.inputs[1]
         xview = y.type()
         iadd_node = gop(xview, y).owner
@@ -220,7 +224,7 @@ class GpuIncSubtensor(IncSubtensor):
                 #sub_x += y
                 pygpu.elemwise.ielemwise2(sub_x, '+', y,  broadcast=False)
             else:
-                #sub_x += -sub_x + y
+                #sub_x = y
                 x.__setitem__(cdata, y)
         else:
             # scalar case
@@ -287,7 +291,7 @@ class GpuIncSubtensor(IncSubtensor):
                                   %(view_ndim)s,
                                   dims,
                                   xview_strides,
-                                  pygpu_default_context(),
+                                  %(x)s->context,
                                   1,
                                   (PyObject *)%(x)s,
                                   (PyObject *)&PyGpuArrayType);
@@ -308,7 +312,7 @@ class GpuIncSubtensor(IncSubtensor):
             returns a C code expression to copy source into view, and
             return 0 on success
         """
-        return """GpuArray_move(&%(view)s->ga, &%(source)s->ga)""" % locals()
+        return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
     def c_support_code_apply(self, node, nodename):
         gop = self.iadd_node.op
@@ -322,7 +326,7 @@ class GpuIncSubtensor(IncSubtensor):
         #def c_code(self, node, name, inputs, outputs, sub):
         inputs = ["dst", "src"]
         outputs = ["ret"]
-        sub = {"fail": "return NULL;"}
+        sub = {"fail": "return NULL;", 'context': 'src->context'}
         ret += gop.c_code(self.iadd_node, sub_name, inputs, outputs, sub)
         ret += """
             return dst;
@@ -351,7 +355,7 @@ class GpuIncSubtensor(IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (0,)
+        return parent_version + elemwise_version + (3,)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
@@ -359,8 +363,9 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     Implement AdvancedIncSubtensor1 on the gpu.
     """
     def make_node(self, x, y, ilist):
-        x_ = as_gpuarray_variable(x)
-        y_ = as_gpuarray_variable(y)
+        ctx = infer_context(x, y)
+        x_ = as_gpuarray_variable(x, ctx)
+        y_ = as_gpuarray_variable(y, ctx)
         ilist_ = tensor.as_tensor_variable(ilist)
 
         assert x_.type.dtype == y_.type.dtype
@@ -442,30 +447,43 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     only avail on compute capability 2.0 and more recent.
     """
 
-    def __init__(self, inplace=False, set_instead_of_inc=False):
-        # The python implementation in the parent class is not applicable here
+    def __init__(self, inplace=False, set_instead_of_inc=False, context=None):
         GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
+        self.context = context
+
+    def clone_inplace(self):
+        return GpuAdvancedIncSubtensor1_dev20(
+            inplace=True,
+            set_instead_of_inc=self.set_instead_of_inc,
+            context=self.context)
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.context == other.context and
+                GpuAdvancedIncSubtensor1.__eq__(self, other))
+
+    def __hash__(self):
+        return (hash((type(self), self.context)) ^
+                GpuAdvancedIncSubtensor1.__hash__(self))
 
     def make_node(self, x, y, ilist):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
         the index are of type long.
         """
-        x_ = as_gpuarray_variable(x)
-        y_ = as_gpuarray_variable(y)
-        ilist_ = as_gpuarray_variable(ilist)
+        ctx = infer_context(x, y, ilist)
+        x_ = as_gpuarray_variable(x, ctx)
+        y_ = as_gpuarray_variable(y, ctx)
+        ilist_ = as_gpuarray_variable(ilist, ctx)
 
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
         if ilist_.type.dtype[:3] not in ('int', 'uin'):
             raise TypeError('index must be integers')
-        if ilist_.type.broadcastable != (False,):
+        if ilist_.ndim != 1:
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
-        if x_.type.broadcastable[0]:
-            # the caller should have made a copy of x len(ilist) times
-            raise TypeError('cannot index into a broadcastable dimension')
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
@@ -477,15 +495,14 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_init_code(self):
         return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
-        active_device_no = theano.sandbox.cuda.active_device_number()
-        device_properties = theano.sandbox.cuda.device_properties
-        compute_capability = device_properties(active_device_no)['major']
+        # this next line is a dirty hack
+        compute_capability = int(get_context(self.context).bin_id[3])
         if ((self.set_instead_of_inc) or
             (node.inputs[0].ndim != node.inputs[1].ndim) or
             (node.inputs[0].ndim != 2) or

@@ -394,6 +394,19 @@ class Type(object2, PureType, CLinkerType):
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
     """
+    def replace_variable(self, var):
+        """
+        Patch variable so that its type will match self, if possible.
+
+        If the variable can't be converted, this should return None.
+
+        This must not convert between completely unrelated types (like
+        TensorType and Scalar), but should rather be reserved for
+        minor detail like broadcastable pattern difference.
+
+        The default implementation will not patch anything.
+        """
+        return None
 
 
 class SingletonType(Type):

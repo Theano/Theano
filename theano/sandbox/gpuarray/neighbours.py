@@ -2,6 +2,7 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.gof import local_optimizer
+from theano.gof.utils import MethodNotDefined
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
@@ -11,25 +12,35 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable,
-                                               host_from_gpu, gpu_from_host)
-from theano.sandbox.gpuarray.opt import register_opt as register_gpu_opt
-from theano.sandbox.gpuarray.opt import op_lifter as op_lifter
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.comp import NVCC_compiler
+from .basic_ops import (HideC, as_gpuarray_variable,
+                        host_from_gpu, GpuFromHost)
+from .opt import op_lifter, register_opt as register_gpu_opt
+from .type import GpuArrayType, gpu_context_type
+from .comp import NVCC_compiler
 
 
-class GpuImages2Neibs(Images2Neibs, Op):
-    def __init__(self, mode='valid'):
+class GpuImages2Neibs(HideC, Images2Neibs):
+    context_type = gpu_context_type
+
+    def __init__(self, mode='valid', context=None):
         if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
                                       " and wrap_centered"
                                       " have been implemented for the op"
                                       " GpuImages2Neibs")
         self.mode = mode
+        self.context = context
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.context == other.context and
+                Images2Neibs.__eq__(self, other))
+
+    def __hash__(self):
+        return hash((type(self), self.context)) ^ Images2Neibs.__hash__(self)
 
     def make_node(self, ten4, neib_shape, neib_step):
-        ten4 = as_gpuarray_variable(ten4)
+        ten4 = as_gpuarray_variable(ten4, self.context)
         neib_shape = T.as_tensor_variable(neib_shape)
         neib_step = T.as_tensor_variable(neib_step)
 
@@ -41,17 +52,24 @@ class GpuImages2Neibs(Images2Neibs, Op):
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),
-                                   dtype=ten4.type.dtype)()])
+                                   dtype=ten4.type.dtype,
+                                   context=self.context)()])
+
+    def get_context(self, node):
+        return self.context
+
+    def perform(self, node, inp, out, ctx):
+        raise MethodNotDefined()
 
     def c_code_cache_version(self):
-        return (9,1)
+        return (9,2)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
-        return NVCC_compiler
+        return NVCC_compiler(self.context)
 
     def c_init_code(self):
         return ['setup_ext_cuda();']
@@ -220,6 +238,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
         ten4, neib_shape, neib_step = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         mode = self.mode
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(z)s->ga);" % dict(z=z)
@@ -340,7 +359,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                 dims[0] = z_dim0;
                 dims[1] = z_dim1;
                 %(z)s = pygpu_empty(2, dims, %(typecode_z)s,
-                                    GA_C_ORDER, pygpu_default_context(),
+                                    GA_C_ORDER, %(ctx)s,
                                     Py_None);
                 if (!%(z)s)
                 {
@@ -441,8 +460,8 @@ class GpuImages2Neibs(Images2Neibs, Op):
         """ % locals()
 
 @op_lifter([Images2Neibs])
-def use_gpu_images2neibs(node):
+def use_gpu_images2neibs(node, context):
     if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
-        return GpuImages2Neibs(node.op.mode)
+        return GpuImages2Neibs(node.op.mode, context=context)
 
 register_gpu_opt()(use_gpu_images2neibs)

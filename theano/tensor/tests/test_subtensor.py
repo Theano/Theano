@@ -49,6 +49,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  adv_incsub1=tensor.AdvancedIncSubtensor1,
                  mode=None,
                  dtype=theano.config.floatX,
+                 type=tensor.TensorType,
                  ignore_topo=DeepCopyOp):
         self.shared = shared
         self.sub = sub
@@ -59,6 +60,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             mode = theano.compile.mode.get_default_mode()
         self.mode = mode
         self.dtype = dtype
+        self.type = type
         self.ignore_topo = ignore_topo
         self.fast_compile = theano.config.mode == 'FAST_COMPILE'
         self.ops = (sub, inc_sub, adv_sub1, adv_incsub1)
@@ -88,8 +90,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         Subtensor.debug = False
         utt.seed_rng()
 
-    def eval_output_and_check(self, t, list=False):
-        f = inplace_func([], t, mode=self.mode)
+    def eval_output_and_check(self, t, list=False, mode=None):
+        if mode is None:
+            mode = self.mode
+        f = inplace_func([], t, mode=mode)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
@@ -167,12 +171,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones((), dtype=self.dtype))
         t = self.sub([])(n)
         self.assertTrue(isinstance(t.owner.op, Subtensor))
-        mode = self.mode
-        self.mode = mode.excluding("local_useless_subtensor")
-        try:
-            self.eval_output_and_check(t)
-        finally:
-            self.mode = mode
+        self.eval_output_and_check(
+            t, mode=self.mode.excluding("local_useless_subtensor"))
 
     def test1_err_invalid(self):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
@@ -884,17 +884,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         """
         Test increment and set with broadcast
         """
-
-        X = tensor.matrix(dtype=self.dtype)
+        X = self.shared(numpy.ones((9, 9)).astype(self.dtype))
         y = set_subtensor(X[1::, 1::],  0)
-        f = self.function([X], [y],
+        f = self.function([], [y],
                           op=self.inc_sub,
                           N=1)
+        out = f()
 
-        x_ = numpy.ones((9, 9))
-        out = f(x_.astype('float32'))
-
-        res = x_.copy()
+        res = numpy.ones((9, 9))
         res[1::, 1::] = 0
         assert numpy.allclose(out, res)
 
@@ -925,9 +922,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         # Symbolic variable to be incremented.
                         # We create a new one every time in order not to
                         # have duplicated variables in the function's inputs
-                        data_var = tensor.tensor(
-                                broadcastable=[False] * data_n_dims,
-                                dtype=self.dtype)
+                        data_var = self.type(
+                            broadcastable=[False] * data_n_dims,
+                            dtype=self.dtype)()
                         # Symbolic variable with rows to be incremented.
                         idx_var = theano.tensor.vector(dtype='int64')
                         n_to_inc = rng.randint(data_shape[0])
@@ -935,9 +932,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         idx_num = rng.randint(0, data_shape[0], n_to_inc)
                         idx_num = idx_num.astype('int64')
                         # Symbolic variable with increment value.
-                        inc_var = tensor.tensor(
-                                broadcastable=[False] * inc_n_dims,
-                                dtype=self.dtype)
+                        inc_var = self.type(
+                            broadcastable=[False] * inc_n_dims,
+                            dtype=self.dtype)()
                         # Trick for the case where `inc_shape` is the same as
                         # `data_shape`: what we actually want is the first
                         # shape element to be equal to the number of rows to

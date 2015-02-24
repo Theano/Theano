@@ -1781,6 +1781,11 @@ class AdvancedIncSubtensor1(Op):
         if inplace:
             self.destroy_map = {0: [0]}
 
+    def clone_inplace(self):
+        return self.__class__(
+            inplace=True,
+            set_instead_of_inc=self.set_instead_of_inc)
+
     def __hash__(self):
         return hash((type(self), self.inplace, self.set_instead_of_inc))
 

@@ -5,14 +5,15 @@ import numpy
 import theano
 from theano.compile import DeepCopyOp
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import rand_gpuarray
+from .test_basic_ops import rand_gpuarray, test_ctx, test_ctx_real
 
-from theano.sandbox.gpuarray.type import GpuArrayType
+from ..type import GpuArrayType
 
 
 def test_deep_copy():
     a = rand_gpuarray(20, dtype='float32')
-    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
+    g = GpuArrayType(dtype='float32', broadcastable=(False,),
+                     context=test_ctx)('g')
 
     f = theano.function([g], g)
 
@@ -25,7 +26,8 @@ def test_deep_copy():
 
 def test_values_eq_approx():
     a = rand_gpuarray(20, dtype='float32')
-    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
+    g = GpuArrayType(dtype='float32', broadcastable=(False,),
+                     context=test_ctx)('g')
     assert GpuArrayType.values_eq_approx(a, a)
     b = a.copy()
     b[0] = numpy.asarray(b[0]) + 1.
@@ -37,6 +39,7 @@ def test_values_eq_approx():
 
 def test_specify_shape():
     a = rand_gpuarray(20, dtype='float32')
-    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
+    g = GpuArrayType(dtype='float32', broadcastable=(False,),
+                     context=test_ctx)('g')
     f = theano.function([g], theano.tensor.specify_shape(g, [20]))
     f(a)

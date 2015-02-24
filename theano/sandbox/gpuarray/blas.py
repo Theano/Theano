@@ -1,7 +1,9 @@
 from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
-from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
+
+from .basic_ops import (HideC, as_gpuarray_variable, infer_context)
+from .type import gpu_context_type
 
 try:
     import pygpu
@@ -24,10 +26,11 @@ class BlasOp(HideC):
 
 class GpuGemv(BlasOp, Gemv):
     def make_node(self, y, alpha, A, x, beta):
+        ctx = infer_context(y, A, x)
         res = Gemv.make_node(self, y, alpha, A, x, beta)
-        A = as_gpuarray_variable(A)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        A = as_gpuarray_variable(A, context=ctx)
+        x = as_gpuarray_variable(x, context=ctx)
+        y = as_gpuarray_variable(y, context=ctx)
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
@@ -87,10 +90,11 @@ gpugemv_inplace = GpuGemv(inplace=True)
 
 class GpuGemm(BlasOp, Gemm):
     def make_node(self, C, alpha, A, B, beta):
+        ctx = infer_context(C, A, B)
         res = Gemm.make_node(self, C, alpha, A, B, beta)
-        A = as_gpuarray_variable(A)
-        B = as_gpuarray_variable(B)
-        C = as_gpuarray_variable(C)
+        A = as_gpuarray_variable(A, context=ctx)
+        B = as_gpuarray_variable(B, context=ctx)
+        C = as_gpuarray_variable(C, context=ctx)
         assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
@@ -151,10 +155,11 @@ gpugemm_inplace = GpuGemm(inplace=True)
 
 class GpuGer(BlasOp, Ger):
     def make_node(self, A, alpha, x, y):
+        ctx = infer_context(A, x, y)
         res = Ger.make_node(self, A, alpha, x, y)
-        A = as_gpuarray_variable(A)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        A = as_gpuarray_variable(A, context=ctx)
+        x = as_gpuarray_variable(x, context=ctx)
+        y = as_gpuarray_variable(y, context=ctx)
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
@@ -163,8 +168,8 @@ class GpuGer(BlasOp, Ger):
         inplace = self.destructive
         if inplace and not A.flags.forc:
             inplace = False
-        outputs[0][0] = blas.ger(alpha, x, y, A,
-                                 overwrite_a=inplace)
+        out[0][0] = blas.ger(alpha, x, y, A,
+                             overwrite_a=inplace)
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
@@ -211,17 +216,24 @@ gpuger_inplace = GpuGer(destructive=True)
 
 
 class GpuDot22(BlasOp, Dot22):
+    context_type = gpu_context_type
+
     def make_node(self, x, y):
+        ctx = infer_context(x, y)
         res = Dot22.make_node(self, x, y)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        x = as_gpuarray_variable(x, context=ctx)
+        y = as_gpuarray_variable(y, context=ctx)
         assert x.dtype == y.dtype
         return Apply(self, [x, y], [x.type()])
 
-    def perform(self, node, inputs, outputs):
+    def get_context(self, node):
+        return node.outputs[0].type.context
+
+    def perform(self, node, inputs, outputs, ctx):
         x, y = inputs
 
-        out = pygpu.empty((x.shape[0], y.shape[1]), dtype=x.dtype)
+        out = pygpu.empty((x.shape[0], y.shape[1]), dtype=x.dtype,
+                          context=ctx)
         outputs[0][0] = blas.gemm(1., x, y, 0., out,
                                   overwrite_c=True)
 
@@ -229,7 +241,7 @@ class GpuDot22(BlasOp, Dot22):
         dtype = node.inputs[0].dtype
         typecode = pygpu.gpuarray.dtype_to_typecode(dtype)
         vars = dict(A=inputs[0], B=inputs[1], dtype=dtype, out=outputs[0],
-                    typecode=typecode,
+                    typecode=typecode, ctx=sub['context'],
                     fail=sub['fail'], name=name)
         code = """
         double one = 1.;
@@ -242,7 +254,7 @@ class GpuDot22(BlasOp, Dot22):
         %(out)s = pygpu_empty(2, dims,
                             %(typecode)s,
                             GA_C_ORDER,
-                            pygpu_default_context(), Py_None);
+                            %(ctx)s, Py_None);
         if (!%(out)s) {
             %(fail)s
         }
@@ -262,7 +274,7 @@ class GpuDot22(BlasOp, Dot22):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_headers(self):
         ret = super(GpuDot22, self).c_headers()

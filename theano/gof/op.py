@@ -666,6 +666,11 @@ class Op(utils.object2, PureOp, CLinkerOp):
             obj._op_use_c_code = theano.config.cxx
         return obj
 
+    def clone_inplace(self):
+        """Make a copy of this op with the same parameters, but
+        working inplace on the inputs"""
+        raise MethodNotImplemented('clone_inplace')
+
     def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
 

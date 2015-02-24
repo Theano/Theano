@@ -8,14 +8,14 @@ from theano.tensor.blas import (gemv_inplace, gemm_inplace, ger_destructive,
                                 _dot22)
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
-from theano.sandbox.gpuarray import gpuarray_shared_constructor
-from theano.sandbox.gpuarray.tests.test_basic_ops import (makeTester, rand,
-                                                          mode_with_gpu)
+from .. import gpuarray_shared_constructor
+from .test_basic_ops import (makeTester, rand, mode_with_gpu, test_ctx,
+                             fake_shared)
 
-from theano.sandbox.gpuarray.blas import (gpugemv_inplace, gpugemv_no_inplace,
-                                          gpugemm_inplace, gpugemm_no_inplace,
-                                          gpuger_inplace, gpuger_no_inplace,
-                                          GpuGer, gpu_dot22)
+from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
+                    gpugemm_inplace, gpugemm_no_inplace,
+                    gpuger_inplace, gpuger_no_inplace,
+                    GpuGer, gpu_dot22)
 
 
 GpuGemvTester = makeTester('GpuGemvTester',
@@ -40,7 +40,7 @@ class TestGpuSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
     @staticmethod
     def shared(val):
         try:
-            return gpuarray_shared_constructor(val)
+            return gpuarray_shared_constructor(val, context=test_ctx)
         except TypeError:
             return theano.shared(val)
 
@@ -69,9 +69,13 @@ class TestGpuSger(TestGer):
         self.mode = mode_with_gpu
         dtype = self.dtype = 'float32'  # optimization isn't dtype-dependent
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
+        self.A.tag.context = test_ctx
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
+        self.a.tag.context = test_ctx
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.x.tag.context = test_ctx
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
+        self.y.tag.context = test_ctx
         self.ger_destructive = gpuger_inplace
 
         # data on the gpu make the op always inplace
@@ -86,7 +90,7 @@ class TestGpuSger(TestGer):
         raise SkipTest('0-sized objects not supported')
 
 class TestGpuSgerNoTransfer(TestGpuSger):
-    shared = staticmethod(gpuarray_shared_constructor)
+    shared = staticmethod(fake_shared)
 
 class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):

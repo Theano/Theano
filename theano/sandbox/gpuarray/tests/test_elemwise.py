@@ -6,17 +6,23 @@ from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
-                                                          rand_gpuarray)
-from theano.sandbox.gpuarray.elemwise import (GpuElemwise, GpuDimShuffle,
-                                              GpuCAReduceCuda, GpuCAReduceCPY)
-from theano.sandbox.gpuarray.type import GpuArrayType
+from .test_basic_ops import (mode_with_gpu, rand_gpuarray, test_ctx,
+                             test_ctx_real, GPUMixin, fake_type)
+from ..elemwise import (GpuElemwise, GpuDimShuffle,
+                        GpuCAReduceCuda, GpuCAReduceCPY)
+from ..type import GpuArrayType
 
-from pygpu.array import gpuarray
+from pygpu import ndgpuarray
 
+@staticmethod
+def fake_op(scalar_op, inplace_pattern=None):
+    return GpuElemwise(scalar_op, inplace_pattern=inplace_pattern,
+                       context=test_ctx)
+
+fake_type = staticmethod(fake_type)
 
 # This is acutally a test for GpuElemwise
-class test_gpu_Broadcast(test_Broadcast):
+class test_gpu_Broadcast(GPUMixin, test_Broadcast):
     op = GpuElemwise
     type = GpuArrayType
     cop = GpuElemwise
@@ -25,39 +31,39 @@ class test_gpu_Broadcast(test_Broadcast):
     linkers = [gof.PerformLinker, gof.CLinker]
 
     def setUp(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        super(test_gpu_Broadcast, self).setUp()
+        if not test_ctx_real.kind == 'cuda':
             self.linkers = [gof.PerformLinker]
 
     def rand_val(self, shp):
-        return rand_gpuarray(*shp, **dict(cls=gpuarray))
+        return rand_gpuarray(*shp, **dict(cls=ndgpuarray))
 
     def rand_cval(self, shp):
-        return rand_gpuarray(*shp, **dict(cls=gpuarray))
+        return rand_gpuarray(*shp, **dict(cls=ndgpuarray))
 
     def test_c(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if not test_ctx_real.kind == 'cuda':
             raise SkipTest("Cuda specific tests")
         super(test_gpu_Broadcast, self).test_c()
 
     def test_c_inplace(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if not test_ctx_real.kind == 'cuda':
             raise SkipTest("Cuda specific tests")
         super(test_gpu_Broadcast, self).test_c_inplace()
 
 
-class test_GpuDimShuffle(test_DimShuffle):
+class test_GpuDimShuffle(GPUMixin, test_DimShuffle):
     op = GpuDimShuffle
+    type = fake_type
 
 
-class test_GpuCAReduceCPY(test_CAReduce):
+class test_GpuCAReduceCPY(GPUMixin, test_CAReduce):
     dtypes = ["float32"]
     bin_dtypes = ["uint8", "int8"]
     op = GpuCAReduceCPY
     reds = [scalar.add, scalar.mul]
     pre_scalar_op = None
+    type = fake_type
 
     def test_perform(self):
         for dtype in self.dtypes + self.bin_dtypes:
@@ -107,29 +113,55 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              #((5, 6), ()),  #reduce on no axis(copy) isn't implemented
              #((2, 3, 4, 5), (0, 1, 3)), mask 1101 isn't implemented
              #((2, 3, 4, 5), (-2, -3)), mask 0110 isn't implemented
-             ((5, 0), None),
-             ((5, 0), (0, )),
-             ((5, 0), (1, )),
+
+             # 0-sized objects not supported
+             #((5, 0), None),
+             #((5, 0), (0, )),
+             #((5, 0), (1, )),
              #((5, 0), ()), reduce on no axis isn't implemented
+
              #((), None), reduce on no axis isn't implemented
              #((), ()) reduce on no axis isn't implemented
 
              #Test all GPU cases implemented
-             ((1,0),(1,)),
-             ((0,1),(1,)),
-             ((0,0),(1,)),
-             ((0,0,0),(1,2)),
-             ((0,0,0,0),(1,2,3)),
+
+             # 0-sized objects not supported
+             #((1,0),(1,)),
+             #((0,1),(1,)),
+             #((0,0),(1,)),
+             #((0,0,0),(1,2)),
+             #((0,0,0,0),(1,2,3)),
+
              ((2,1),(1,)),
              ((1,2),(1,)),
              ((100,3,1300),[1]),
-             ((0,),[0]),((5,),[0]),
-             ((0,0),[0,1]),((1,0),[0,1]),((5,4),[0,1]),((33,31),[0,1]),((5,4),[1]),((5,4),[0]),#need something bigger then 32 for some opt test.
-             ((5,4,3),[0]),((5,4,3),[1]),((5,4,3),[0,1]),((5,4,3),[2]),((5,4,3),[1,2]),((5,4,3),[0,1,2]),
-             ((0,0,0,0),[0,1,2,3]),
-             ((5,4,3,20),[2,3]), ((5,4,3,2),[0,1,2,3]), ((5,4,3,2),[0,2,3]),((5,4,3,2),[1,2,3]),
+             ((5,),[0]),
 
-                               #test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enough thread/block in each dimensions
+             # 0-sized objects not supported
+             #((0,),[0]),
+             #((0,0),[0,1]),
+             #((1,0),[0,1]),
+
+             ((5,4),[0,1]),
+             ((33,31),[0,1]),#need something bigger then 32 for some opt test.
+             ((5,4),[1]),
+             ((5,4),[0]),
+             ((5,4,3),[0]),
+             ((5,4,3),[1]),
+             ((5,4,3),[0,1]),
+             ((5,4,3),[2]),
+             ((5,4,3),[1,2]),
+             ((5,4,3),[0,1,2]),
+             #((0,0,0,0),[0,1,2,3]),
+             ((5,4,3,20),[2,3]),
+             ((5,4,3,2),[0,1,2,3]),
+             ((5,4,3,2),[0,2,3]),
+             ((5,4,3,2),[1,2,3]),
+
+             #test shape bigger then 4096 on each dimension to make
+             #sure that we work correctly when we don't have enough
+             #thread/block in each dimensions
+
              ((4100,3),[0]),((3,4101),[0]),#10
              ((1024,33),[0]),((33,1024),[0]),#10
              ((1025,33),[0]),((33,1025),[0]),#10
@@ -157,15 +189,6 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              ((4100,4,3,2),[1,2,3]),((4,4100,3,2),[1,2,3]),((4,3,4100,2),[1,2,3]),((4,3,2,4100),[1,2,3]),#0111
              ((65,4,3,2),[1,2,3]),((4,65,3,2),[1,2,3]),((4,3,65,2),[1,2,3]),((4,3,2,65),[1,2,3]),#0111
              ((4100,2,3,4),[0,1,2,3]),((2,4100,3,4),[0,1,2,3]),((2,3,4100,4),[0,1,2,3]),((2,3,4,4100),[0,1,2,3]),((128,1,2,3), [0,1,2,3]),#1111
-
-             #test pattern implemented by reshape
-             #Skip them as this test the op directly, not the optimization with reshape
-#             ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
-#             ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
-#             ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
-#             ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
-#             ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
-#             ((5,4,3,10,11),[1,2]),
     ]
     op = GpuCAReduceCuda
     reds = [scalar.add, scalar.mul,
@@ -179,13 +202,12 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
         return
 
     def setUp(self):
-        super(test_GpuCAReduceCuda, self).setUp()
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if not test_ctx_real.kind == 'cuda':
             raise SkipTest("Cuda specific tests")
+        super(test_GpuCAReduceCuda, self).setUp()
 
 
-class T_gpureduce_dtype(T_reduce_dtype):
+class T_gpureduce_dtype(GPUMixin, T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
     op = GpuCAReduceCuda
     #Currently we don't support reduction on 0 axis
@@ -196,9 +218,9 @@ class T_gpureduce_dtype(T_reduce_dtype):
               'float32', 'float64']
 
     def setUp(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if not test_ctx_real.kind == 'cuda':
             raise SkipTest("Cuda specific tests")
+        super(T_gpureduce_dtype, self).setUp()
 
 
 def speed_reduce10():
