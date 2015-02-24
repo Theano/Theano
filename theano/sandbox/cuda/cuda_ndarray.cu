@@ -3065,7 +3065,8 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
         PyErr_SetString(PyExc_RuntimeError, "error copying data to from memory");
         return NULL;
     }
-    return Py_BuildValue("iiii", gpu_sizes[0], sizeof(float*), sizeof(int), gpu_sizes[1]);
+    return Py_BuildValue("iiii", (int) gpu_sizes[0], (int)sizeof(float*),
+                         (int)sizeof(int), (int) gpu_sizes[1]);
 }
 
 static int cublas_init();
