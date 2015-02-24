@@ -1742,7 +1742,7 @@ def get_device_type_sizes():
         cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
         t = cuda_ndarray.ptr_int_size()
         gpu_ptr_size, cpu_ptr_size, int_size, gpu_int_size = t
-        assert int_size == gpu_int_size
+        assert int_size == gpu_int_size, (int_size, gpu_int_size)
         del gpu_int_size
         del t
     except Exception, e:
@@ -1751,7 +1751,9 @@ def get_device_type_sizes():
             "This could cause less GpuElemwise fused together.\n"
             "%s") % e)
 
-    rval = get_device_type_sizes.rval = locals()
+    rval = get_device_type_sizes.rval = dict(gpu_ptr_size=gpu_ptr_size,
+                                             cpu_ptr_size=cpu_ptr_size,
+                                             int_size=int_size)
     return rval
 
 
