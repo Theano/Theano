@@ -260,6 +260,14 @@ class TensorType(Type):
         return type(self) == type(other) and other.dtype == self.dtype \
             and other.broadcastable == self.broadcastable
 
+    def convert_variable(self, var):
+        if (type(self) == type(var.type) and
+            self.dtype == var.type.dtype and
+            self.ndim == var.type.ndim and
+            all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                var.type.broadcastable))):
+            return theano.tensor.patternbroadcast(var, self.broadcastable)
+
     @staticmethod
     def may_share_memory(a, b):
         # This is a method of TensorType, so both a and b should be ndarrays
