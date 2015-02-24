@@ -3088,6 +3088,9 @@ class Test_local_useless_incsubtensor_alloc(unittest.TestCase):
     opt_name = 'local_useless_incsubtensor_alloc'
 
     def test_advanced_inc_subtensor(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+
         x = tensor.vector('x')
         y = tensor.scalar('y')
         i = tensor.matrix('i', dtype='int64')
@@ -3114,6 +3117,9 @@ class Test_local_useless_incsubtensor_alloc(unittest.TestCase):
         utt.assert_allclose(r1, r2)
 
     def test_advanced_inc_subtensor1(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+
         x = tensor.vector('x')
         y = tensor.scalar('y')
         i = tensor.vector('i', dtype='int64')
