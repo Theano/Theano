@@ -74,7 +74,7 @@ from theano.gof.optdb import \
 from theano.gof.toolbox import \
     Feature, \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder,\
-    PrintListener, ReplacementDidntRemovedError
+    PrintListener, ReplacementDidntRemovedError, NoOutputFromInplace
 
 from theano.gof.type import \
     Type, Generic, generic

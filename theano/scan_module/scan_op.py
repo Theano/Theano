@@ -535,7 +535,7 @@ class Scan(PureOp):
                   self.n_sit_sot +
                   self.n_nit_sot)
         wrapped_inputs = [Param(x, borrow=True) for x in self.inputs]
-        wrapped_outputs = [Out(x, borrow=False) for x in
+        wrapped_outputs = [Out(x, borrow=(x not in self.inputs)) for x in
                            self.outputs[:slices]]
         wrapped_outputs += self.outputs[slices:]
         profile = None
@@ -927,11 +927,14 @@ class Scan(PureOp):
                     offset += 1
 
             # 4. collecting slices where the output should be stored
+
+            # 4.1. Collect slices for mitmots
             for idx in xrange(self.n_mit_mot_outs):
                 output_storage[idx].storage[0] = None
 
+            # 4.2. Collect slices for mitsots, sitsots and nitsots
             offset = self.n_mit_mot_outs
-            if i != 0 and self.n_nit_sot > 0:
+            if i != 0:
                 for idx in xrange(self.n_outs + self.n_nit_sot -
                                   self.n_mit_mot):
                     if (store_steps[idx + self.n_mit_mot] == 1 or
@@ -946,15 +949,24 @@ class Scan(PureOp):
                                   self.n_mit_mot):
                     output_storage[idx + offset].storage[0] = None
 
+            # 4.3. Collect slices for shared outputs
             offset += self.n_outs + self.n_nit_sot - self.n_mit_mot
             for idx in xrange(self.n_shared_outs):
                 output_storage[idx + offset].storage[0] = None
-            # If condition add it to the mix
+
+            # 4.4. If there is a condition add it to the mix
             if self.as_while:
                 pdx = offset + self.n_shared_outs
                 output_storage[pdx].storage[0] = None
+
+            # 4.5. Keep a reference to the variables currently in the
+            # output_storage to be able to compare them with the actual
+            # outputs of the inner function after its execution
+            old_output_storage = [o.storage[0] for o in output_storage]
+
             # 5. compute outputs
             t0_fn = time.time()
+
             try:
                 fn()
             except Exception:
@@ -974,10 +986,17 @@ class Scan(PureOp):
                 else:
                     # old-style linkers raise their own exceptions
                     raise
+
             dt_fn = time.time() - t0_fn
             if self.as_while:
                 pdx = offset + self.n_shared_outs
                 cond = output_storage[pdx].storage[0] == 0
+
+            # Check which of the pre-allocated outputs (if applicable) have
+            # been reused by the inner function
+            output_reused = [old_output_storage[o] is
+                             output_storage[o].storage[0]
+                             for o in range(len(output_storage))]
 
             t_fn += dt_fn
             offset_out = 0
@@ -995,8 +1014,7 @@ class Scan(PureOp):
 
             for j in xrange(begin, end):
                 if (store_steps[j] == 1 or self.vector_outs[j] or
-                    outs[j][0][pos[j]] is not
-                      output_storage[offset_out + j].storage[0]):
+                    not output_reused[offset_out + j]):
                     outs[j][0][pos[j]] = \
                             output_storage[offset_out + j].storage[0]
 
@@ -1020,8 +1038,7 @@ class Scan(PureOp):
                         outs[j][0] = outs[j][0][:store_steps[j]]
                     outs[j][0][pos[j]] = output_storage[jout].storage[0]
                 elif (store_steps[j] == 1 or self.vector_outs[j] or
-                      outs[j][0][pos[j]] is not
-                      output_storage[j + offset_out].storage[0]):
+                      not output_reused[offset_out + j]):
                     outs[j][0][pos[j]] = \
                             output_storage[j + offset_out].storage[0]
 

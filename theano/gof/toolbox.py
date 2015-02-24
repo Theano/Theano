@@ -1,6 +1,7 @@
 import sys
 import time
 
+import theano
 from theano import config
 from theano.gof.python25 import partial
 from theano.gof.python25 import OrderedDict
@@ -394,3 +395,26 @@ class PreserveNames(Feature):
             new_r.name = r.name
 
 
+class NoOutputFromInplace(Feature):
+
+    def validate(self, fgraph):
+        if not hasattr(fgraph, 'destroyers'):
+            return True
+        for out in list(fgraph.outputs):
+
+            if out.owner is None:
+                continue
+
+            # Validate that the node that produces the output does not produce
+            # it by modifying something else inplace.
+            node = out.owner
+            op = node.op
+            out_idx = node.outputs.index(out)
+            if hasattr(op, 'destroy_map') and out_idx in op.destroy_map.keys():
+                raise theano.gof.InconsistencyError(
+                    "A function graph Feature has requested (probably for ",
+                    "efficiency reasons for scan) that outputs of the graph",
+                    "be prevented from being the result of inplace ",
+                    "operations. This has prevented output ", out, " from ",
+                    "being computed by modifying another variable ",
+                    "inplace.")

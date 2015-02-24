@@ -1,8 +1,4 @@
-diff --git a/theano/scan_module/scan_perform.c b/theano/scan_module/scan_perform.c
-index aaebb43..2d06b29 100644
---- a/theano/scan_module/scan_perform.c
-+++ b/theano/scan_module/scan_perform.c
-@@ -5595,7 +5595,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
+@@ -5597,7 +5597,7 @@
   *             cdef list stack
   *             cdef int offset
   */
@@ -11,29 +7,29 @@ index aaebb43..2d06b29 100644
    __Pyx_INCREF(__pyx_t_4);
    __pyx_v_descr = ((PyArray_Descr *)__pyx_t_4);
    __pyx_t_4 = 0;
-@@ -7147,7 +7147,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
+@@ -7126,7 +7126,7 @@
   *      arr.base = baseptr
   * 
   */
 -  Py_XDECREF(__pyx_v_arr->base);
 +  Py_XDECREF(PyArray_BASE(__pyx_v_arr));
  
-   /* "/home/anakha/.local/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":974
+   /* "numpy.pxd":973
   *          baseptr = <PyObject*>base
-@@ -7156,7 +7156,11 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
+@@ -7135,7 +7135,11 @@
   * 
   * cdef inline object get_array_base(ndarray arr):
   */
 -  __pyx_v_arr->base = __pyx_v_baseptr;
-+#if NPY_API_VERSION < 0x00000007
-+  PyArray_BASE(__pyx_v_arr) = __pyx_v_baseptr;
-+#else
-+  PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
-+#endif
++  #if NPY_API_VERSION < 0x00000007
++      PyArray_BASE(__pyx_v_arr) = __pyx_v_baseptr;
++  #else
++      PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
++  #endif
  
-   /* "/home/anakha/.local/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":966
-  * 
-@@ -7191,7 +7195,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
+   __Pyx_RefNannyFinishContext();
+ }
+@@ -7161,7 +7165,7 @@
   *         return None
   *     else:
   */
@@ -41,8 +37,8 @@ index aaebb43..2d06b29 100644
 +  __pyx_t_1 = ((PyArray_BASE(__pyx_v_arr) == NULL) != 0);
    if (__pyx_t_1) {
  
-     /* "/home/anakha/.local/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":978
-@@ -7214,8 +7218,8 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
+     /* "numpy.pxd":977
+@@ -7185,8 +7189,8 @@
   *         return <object>arr.base             # <<<<<<<<<<<<<<
   */
      __Pyx_XDECREF(__pyx_r);
@@ -52,4 +48,4 @@ index aaebb43..2d06b29 100644
 +    __pyx_r = ((PyObject *)PyArray_BASE(__pyx_v_arr));
      goto __pyx_L0;
    }
- 
+   __pyx_L3:;
