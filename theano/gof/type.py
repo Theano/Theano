@@ -394,6 +394,23 @@ class Type(object2, PureType, CLinkerType):
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
     """
+    def convert_variable(self, var):
+        """Patch variable so that its type will match self, if possible.
+
+        If the variable can't be converted, this should return None.
+
+        The conversion can only happen if the following implication is
+        true for all possible `val`.
+
+          self.is_valid_value(val) => var.type.is_valid_value(val)
+
+        For the majority of types this means that you can only have
+        non-broadcastable dimensions become broadcastable and not the
+        inverse.
+
+        The default is to not convert anything which is always safe.
+        """
+        return None
 
 
 class SingletonType(Type):
