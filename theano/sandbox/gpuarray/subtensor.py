@@ -308,7 +308,7 @@ class GpuIncSubtensor(IncSubtensor):
             returns a C code expression to copy source into view, and
             return 0 on success
         """
-        return """GpuArray_move(&%(view)s->ga, &%(source)s->ga)""" % locals()
+        return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
     def c_support_code_apply(self, node, nodename):
         gop = self.iadd_node.op
@@ -351,7 +351,7 @@ class GpuIncSubtensor(IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (0,)
+        return parent_version + elemwise_version + (1,)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
