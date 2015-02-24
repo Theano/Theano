@@ -2,6 +2,7 @@ import copy
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
+from theano import gradient
 from theano import tensor
 from theano.tests import unittest_tools
 
@@ -16,7 +17,7 @@ if cuda_ndarray.cuda_available == False:
 import theano.sandbox.cuda as tcn
 
 from theano.tensor.signal.downsample import (DownsampleFactorMax,
-        DownsampleFactorMaxGrad)
+        DownsampleFactorMaxGrad, DownsampleFactorMaxGradGrad)
 from theano.gof.python25 import any
 
 import theano.compile.mode
@@ -307,6 +308,23 @@ def test_downsample():
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
                             for node in g2.maker.fgraph.toposort()])
                 assert numpy.allclose(g(), g2()), shp
+
+                ggf = gradient.Lop(tensor.grad((ds_op(
+                    tensor.as_tensor_variable(a))**2).sum(), a), a, a)
+                
+                ref_mode = copy.copy(mode_without_gpu)
+                ref_mode.check_py_code = False
+                gpu_mode = copy.copy(mode_with_gpu)
+                gpu_mode.check_py_code = False
+                gg = pfunc([], ggf, mode=gpu_mode)
+                gg2 = pfunc([], ggf, mode=ref_mode)
+                
+                assert any([isinstance(node.op,
+                                       tcn.blas.GpuDownsampleFactorMaxGradGrad)
+                            for node in gg.maker.fgraph.toposort()])
+                assert any([isinstance(node.op, DownsampleFactorMaxGradGrad)
+                            for node in gg2.maker.fgraph.toposort()])
+                assert numpy.allclose(gg(), gg2()), shp
 
                 # We already check that the gpu version return
                 # the same value as the gpu version for
