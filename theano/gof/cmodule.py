@@ -913,7 +913,7 @@ class ModuleCache(object):
         if to_delete or to_delete_empty:
             with compilelock.lock_ctx():
                 for a, kw in to_delete:
-                        _rmtree(*a, **kw)
+                    _rmtree(*a, **kw)
                 for a, kw in to_delete_empty:
                     files = os.listdir(a[0])
                     if not files:
