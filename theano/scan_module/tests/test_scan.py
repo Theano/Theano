@@ -3775,6 +3775,7 @@ class T_Scan(unittest.TestCase):
             inp = scan_node.op.outer_non_seqs(scan_node)
             assert len(inp) == 1
 
+    @attr('slow')
     def test_hessian_bug_grad_grad_two_scans(self):
         #Bug reported by Bitton Tenessi
         # NOTE : The test to reproduce the bug reported by Bitton Tenessi
