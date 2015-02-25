@@ -289,7 +289,7 @@ def test_local_gpu_subtensor():
     assert any([isinstance(node.op, cuda.GpuElemwise) for node in topo])
 
 
-def test_local_split():
+def test_local_gpu_split():
     """ Test that the GpuSplit op is being applied and works """
     # Construct symbolic split
     x = tensor.fvector()
@@ -304,6 +304,17 @@ def test_local_split():
     assert any([isinstance(o.op, theano.tensor.Split) for o in l])
     # GPU version
     f = theano.function([x, splits], [ra, rb, rc], mode=mode_with_gpu)
+    gpu_res = f([0, 1, 2, 3, 4, 5], [3, 2, 1])
+    l = f.maker.fgraph.toposort()
+    assert any([isinstance(o.op, theano.sandbox.cuda.GpuSplit) for o in l])
+    # Check equality
+    assert all([(cpu == gpu).all() for cpu, gpu in zip(cpu_res, gpu_res)])
+
+    # Test the other path of the optimizer, when it is the output that
+    # is moved to the GPU.
+    ra = cuda.gpu_from_host(ra)
+    f = theano.function([x, splits], [ra, rb, rc],
+                        mode=mode_with_gpu.excluding("InputToGpuOptimizer"))
     gpu_res = f([0, 1, 2, 3, 4, 5], [3, 2, 1])
     l = f.maker.fgraph.toposort()
     assert any([isinstance(o.op, theano.sandbox.cuda.GpuSplit) for o in l])

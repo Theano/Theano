@@ -197,13 +197,11 @@ class DownsampleFactorMax(Op):
                 'DownsampleFactorMax requires 4D input for now')
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
-                                              self.ignore_border, self.st))
-            z[0] = theano._asarray(z[0], dtype=x.dtype)
+            z[0] = numpy.empty(self.out_shape(x.shape, self.ds,
+                                              self.ignore_border, self.st),
+                               dtype=x.dtype)
         zz = z[0]
 
-        ## zz needs to be initialized with -inf for the following to work
-        zz -= numpy.inf
         #number of pooling output rows
         pr = zz.shape[-2]
         #number of pooling output cols
@@ -221,11 +219,8 @@ class DownsampleFactorMax(Op):
                     for c in xrange(pc):
                         col_st = c * st1
                         col_end = __builtin__.min(col_st + ds1, img_cols)
-                        for row_ind in xrange(row_st, row_end):
-                            for col_ind in xrange(col_st, col_end):
-                                zz[n, k, r, c] = \
-                                    __builtin__.max(zz[n, k, r, c],
-                                                    x[n, k, row_ind, col_ind])
+                        zz[n, k, r, c] = x[
+                            n, k, row_st:row_end, col_st:col_end].max()
 
     def infer_shape(self, node, in_shapes):
         shp = self.out_shape(in_shapes[0], self.ds,
@@ -594,8 +589,8 @@ class DownsampleFactorMaxGradGrad(Op):
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
-                                              self.ignore_border, self.st))
-            z[0] = theano._asarray(z[0], dtype=x.dtype)
+                                              self.ignore_border, self.st),
+                               dtype=x.dtype)
         ggz = z[0]
 
         #number of pooling output rows

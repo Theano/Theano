@@ -304,7 +304,11 @@ def local_gpu_elemwise_1(node):
 def local_gpu_split(node):
     if isinstance(node.op, tensor.Split):
         input = node.inputs[0]
-        if input.owner and isinstance(input.owner.op, HostFromGpu):
+        outs_clients = reduce(list.__add__,
+                              [out.clients for out in node.outputs])
+        if (input.owner and isinstance(input.owner.op, HostFromGpu) or
+            any([c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
+                 in outs_clients])):
             new_op = GpuSplit(node.op.len_splits)
             split_res = new_op(gpu_from_host(input), *node.inputs[1:])
             return [host_from_gpu(o) for o in split_res]
