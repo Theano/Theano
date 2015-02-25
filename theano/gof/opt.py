@@ -1676,8 +1676,10 @@ class OpKeyOptimizer(NavigatorOptimizer):
 class ChangeTracker:
     def __init__(self):
         self.changed = False
+        self.nb_imported = 0
 
     def on_import(self, fgraph, node, reason):
+        self.nb_imported += 1
         self.changed = True
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason):
@@ -1770,9 +1772,11 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         time_opts = {}
         io_toposort_timing = []
         nb_nodes = []
+        node_created = {}
         for opt in self.global_optimizers + list(self.get_local_optimizers()):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
+            node_created.setdefault(opt, 0)
 
         while changed and not max_use_abort:
             process_count = {}
@@ -1781,15 +1785,17 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             #apply global optimizers
             for gopt in self.global_optimizers:
-                fgraph.change_tracker.reset()
+                change_tracker.reset()
+                nb = change_tracker.nb_imported
                 t_opt = time.time()
                 gopt.apply(fgraph)
                 time_opts[gopt] += time.time() - t_opt
-                if fgraph.change_tracker.changed:
+                if change_tracker.changed:
                     process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
                     global_process_count[gopt] += 1
                     changed = True
+                    node_created[gopt] += change_tracker.nb_imported - nb
                     if global_process_count[gopt] > max_use:
                         max_use_abort = True
                         opt_name = (getattr(gopt, "name", None)
@@ -1826,6 +1832,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     for lopt in (self.local_optimizers_all +
                                  self.local_optimizers_map.get(type(node.op), []) +
                                  self.local_optimizers_map.get(node.op, [])):
+                        nb = change_tracker.nb_imported
                         t_opt = time.time()
                         lopt_change = self.process_node(fgraph, node, lopt)
                         time_opts[lopt] += time.time() - t_opt
@@ -1834,6 +1841,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             process_count[lopt] += 1
                             global_process_count[lopt] += 1
                             changed = True
+                            node_created[lopt] += change_tracker.nb_imported - nb
                             if global_process_count[lopt] > max_use:
                                 max_use_abort = True
                                 opt_name = (getattr(lopt, "name", None)
@@ -1857,7 +1865,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         fgraph.remove_feature(change_tracker)
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
-                global_opt_timing, nb_nodes, time_opts, io_toposort_timing)
+                global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
+                node_created)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
@@ -1872,7 +1881,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
     def print_profile(stream, prof, level=0):
         (opt, loop_timing, loop_process_count,
          (start_nb_nodes, end_nb_nodes, max_nb_nodes),
-         global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof
+         global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
+         node_created) = prof
 
         blanc = ('    ' * level)
         print >> stream, blanc, "EquilibriumOptimizer",
@@ -1916,18 +1926,19 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 process_count[o] += v
         for opt, count in process_count.iteritems():
             if count > 0:
-                count_opt.append((time_opts[opt], count, opt))
+                count_opt.append((time_opts[opt], count,
+                                  node_created[opt], opt))
             else:
                 not_used.append((time_opts[opt], opt))
                 not_used_time += time_opts[opt]
 
         if count_opt:
             print >> stream, blanc, \
-                    '  times - times applied - name:'
+                    '  times - times applied - nb node created - name:'
             count_opt.sort()
-            for (t, count, opt) in count_opt[::-1]:
-                print >> stream, blanc, '  %.3fs - %d - %s' % (
-                    t, count, opt)
+            for (t, count, n_created, opt) in count_opt[::-1]:
+                print >> stream, blanc, '  %.3fs - %d - %d - %s' % (
+                    t, count, n_created, opt)
             print >> stream, blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
                 not_used_time, len(not_used))
             not_used.sort()
