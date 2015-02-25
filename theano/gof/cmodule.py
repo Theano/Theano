@@ -663,9 +663,15 @@ class ModuleCache(object):
         too_old_to_use = []
 
         to_delete = []
+        to_delete_empty = []
+
         def rmtree(*args, **kwargs):
             if cleanup:
                 to_delete.append((args, kwargs))
+
+        def rmtree_empty(*args, **kwargs):
+            if cleanup:
+                to_delete_empty.append((args, kwargs))
 
         # add entries that are not in the entry_from_key dictionary
         time_now = time.time()
@@ -684,7 +690,11 @@ class ModuleCache(object):
             if not os.path.isdir(root):
                 continue
             files = os.listdir(root)
-            if not files or 'delete.me' in files:
+            if not files:
+                rmtree_empty(root, ignore_nocleanup=True,
+                       msg="empty dir")
+                continue
+            if 'delete.me' in files:
                 rmtree(root, ignore_nocleanup=True,
                        msg="delete.me found in dir")
                 continue
@@ -900,10 +910,14 @@ class ModuleCache(object):
                                         pkl_file_to_remove)
                     self.loaded_key_pkl.remove(pkl_file_to_remove)
 
-        if to_delete:
+        if to_delete or to_delete_empty:
             with compilelock.lock_ctx():
                 for a, kw in to_delete:
                     _rmtree(*a, **kw)
+                for a, kw in to_delete_empty:
+                    files = os.listdir(a[0])
+                    if not files:
+                        _rmtree(*a, **kw)
 
         _logger.debug('Time needed to refresh cache: %s',
                       (time.time() - start_time))
