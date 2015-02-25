@@ -589,8 +589,8 @@ class DownsampleFactorMaxGradGrad(Op):
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
-                                              self.ignore_border, self.st))
-            z[0] = theano._asarray(z[0], dtype=x.dtype)
+                                              self.ignore_border, self.st),
+                               dtype=x.dtype)
         ggz = z[0]
 
         #number of pooling output rows
