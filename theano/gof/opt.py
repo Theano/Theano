@@ -1742,13 +1742,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
     def add_requirements(self, fgraph):
         super(EquilibriumOptimizer, self).add_requirements(fgraph)
-        fgraph.attach_feature(ChangeTracker())
         for opt in self.get_local_optimizers():
             opt.add_requirements(fgraph)
         for opt in self.global_optimizers:
             opt.add_requirements(fgraph)
 
     def apply(self, fgraph, start_from=None):
+        change_tracker = ChangeTracker()
+        fgraph.attach_feature(change_tracker)
         if start_from is None:
             start_from = fgraph.outputs
         else:
@@ -1853,7 +1854,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           + ". You can safely raise the current threshold of "
                           + "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
-
+        fgraph.remove_feature(change_tracker)
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing)
