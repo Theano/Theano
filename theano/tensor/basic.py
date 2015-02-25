@@ -544,7 +544,8 @@ get_scalar_constant_value_elemwises = (
     scal.IntDiv, scal.TrueDiv, scal.Minimum, scal.Maximum)
 
 
-def get_scalar_constant_value(orig_v, elemwise=True):
+def get_scalar_constant_value(orig_v, elemwise=True,
+                              only_process_constants=False):
     """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts,
@@ -557,6 +558,11 @@ def get_scalar_constant_value(orig_v, elemwise=True):
 
     :param elemwise: If False, we won't try to go into elemwise.
         So this call is faster.
+
+    :param only_process_constants: If True, we only attempt to obtain
+            the value of `orig_v` if it's directly constant and don't
+            try to dig through dimshuffles, fills, allocs, and other to figure
+            out its value.
 
     :note: There may be another function similar to this one in the
         code, but I'm not sure where it is.
@@ -581,7 +587,7 @@ def get_scalar_constant_value(orig_v, elemwise=True):
                 data = v.data
             return numpy_scalar(data)
 
-        if getattr(v, 'owner', None):
+        if not only_process_constants and getattr(v, 'owner', None):
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                        compile.ops.OutputGuard,
                                        compile.DeepCopyOp)):
@@ -4048,7 +4054,7 @@ def flatten(x, outdim=1):
 class Tile(Op):
     """
     DEPRECATED: use tile() instead.
-    
+
     Construct an array by repeating the input x according to reps pattern.
 
     Tiles its input according to reps. The length of reps is the number of

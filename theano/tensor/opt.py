@@ -1932,7 +1932,8 @@ def local_useless_subtensor(node):
     shape_of = node.fgraph.shape_feature.shape_of
 
     if isinstance(node.op, Subtensor):
-        cdata = node.op.get_constant_idx(node.inputs, allow_partial=True)
+        cdata = node.op.get_constant_idx(node.inputs, allow_partial=True,
+                                         only_process_constants=True)
         for pos, idx in enumerate(cdata):
             if not isinstance(idx, slice):
                 # If idx is not a slice, this means we remove this dimension
