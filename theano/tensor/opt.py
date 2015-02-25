@@ -2021,6 +2021,8 @@ def local_useless_subtensor(node):
                 return False
             if step != 1:
                 return False
+        else:
+            return False
     else:
         return False
 
