@@ -1947,15 +1947,17 @@ def local_useless_subtensor(node):
                 # is not a useless subtensor
                 return False
 
-            length_pos_data = maxsize
+        for pos, idx in enumerate(cdata):
 
             length_pos = shape_of[node.inputs[0]][pos]
-            try:
-                length_pos_data = get_scalar_constant_value(length_pos)
-            except NotScalarConstantError:
-                pass
 
             if isinstance(idx.stop, (int, numpy.integer)):
+                length_pos_data = maxsize
+                try:
+                    length_pos_data = get_scalar_constant_value(length_pos)
+                except NotScalarConstantError:
+                    pass
+
                 if idx.stop < length_pos_data:
                     return False
             elif isinstance(idx.stop, gof.Variable):
@@ -1996,10 +1998,10 @@ def local_useless_subtensor(node):
             length = get_scalar_constant_value(shape_of[node.inputs[0]][0])
         except NotScalarConstantError:
             return False
-        
+
         # get index (which must be a vector by definition)
         idx = node.inputs[1]
-        
+
         # `idx` must be equivalent to [0,1,...,shape[0] - 1] to qualify for
         # this optimization
         if isinstance(idx, T.Constant):
@@ -2014,7 +2016,7 @@ def local_useless_subtensor(node):
                                         idx.owner.inputs)
             except NotScalarConstantError:
                 return False
-            
+
             if start != 0:
                 return False
             if stop != length:
