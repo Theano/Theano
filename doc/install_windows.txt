@@ -218,7 +218,7 @@ MinGW, but this has not been tested yet.
   it for instance to ``C:\mingw64``. Also download MSYS from
   `this page <http://sourceforge.net/projects/mingw-w64/files/External%20binary%20packages%20%28Win64%20hosted%29/MSYS%20%2832-bit%29/>`__
   (although it is a 32-bit version of MSYS, this does not matter since it is only
-  a convenience tool). Extract MSYS into the same folder, so that, for instance you
+  a convenience tool). Extract MSYS into the same folder, so that, for instance, you
   end up with ``C:\mingw64\msys``. Run ``C:\mingw64\msys\msys.bat`` and in the MSYS
   shell, type
 
@@ -424,31 +424,6 @@ should run at a speed similar to the regular NumPy
 multiplication. (Both Numpy and Theano should call the same BLAS
 routine for matrix multiplication)
 
-Running Theano's test-suite
-+++++++++++++++++++++++++
-
-Currently, due to memory fragmentation issue in Windows, the
-test-suite breaks at some point when using ``theano-nose``, with many error
-messages looking
-like: ``DLL load failed: Not enough storage is available to process this
-command``. As a workaround, you can instead run:
-
-    .. code-block:: bash
-
-        theano-nose --batch
-
-This will run tests in batches of 100, which should avoid memory errors.
-Note that this script calls ``nosetests``, which may require being run from
-within an MSYS shell if you installed Nose manually as described above.
-
-.. note::
-
-    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
-    are working with such a version, you can call this command instead:
-
-    .. code-block:: bash
-
-        python theano/tests/run_tests_in_batch.py
 
 Configure Theano for GPU use
 ############################
@@ -477,9 +452,31 @@ CPU matrix multiplication performed by NumPy.
 You can also find additional test code and useful GPU tips on the
 :ref:`using_gpu` page.
 
+Running Theano's test-suite
+###########################
 
+Currently, due to memory fragmentation issue in Windows, the
+test-suite breaks at some point when using ``theano-nose``, with many error
+messages looking
+like: ``DLL load failed: Not enough storage is available to process this
+command``. As a workaround, you can instead run:
 
+    .. code-block:: bash
 
+        theano-nose --batch
+
+This will run tests in batches of 100, which should avoid memory errors.
+Note that this script calls ``nosetests``, which may require being run from
+within an MSYS shell if you installed Nose manually as described above.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call this command instead:
+
+    .. code-block:: bash
+
+        python theano/tests/run_tests_in_batch.py
 
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
