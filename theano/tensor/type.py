@@ -378,18 +378,6 @@ class TensorType(Type):
 
         return False
 
-    @staticmethod
-    def values_eq_approx_remove_inf(a, b):
-        return TensorType.values_eq_approx(a, b, True)
-
-    @staticmethod
-    def values_eq_approx_remove_nan(a, b):
-        return TensorType.values_eq_approx(a, b, False, True)
-
-    @staticmethod
-    def values_eq_approx_remove_inf_nan(a, b):
-        return TensorType.values_eq_approx(a, b, True, True)
-
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
         return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable)
@@ -628,6 +616,19 @@ class TensorType(Type):
         else:  # a scalar
             return numpy.dtype(self.dtype).itemsize
 theano.compile.ops.expandable_types += (TensorType,)
+
+
+def values_eq_approx_remove_inf(a, b):
+    return TensorType.values_eq_approx(a, b, True)
+
+
+def values_eq_approx_remove_nan(a, b):
+    return TensorType.values_eq_approx(a, b, False, True)
+
+
+def values_eq_approx_remove_inf_nan(a, b):
+    return TensorType.values_eq_approx(a, b, True, True)
+
 
 # Register TensorType C code for ViewOp.
 theano.compile.register_view_op_c_code(
