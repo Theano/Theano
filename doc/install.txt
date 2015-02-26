@@ -799,11 +799,11 @@ note that you must first register to it, by going to `theano-users`_).
 Windows
 -------
 
-:ref:`install_windows` provides step-by-step instructions on how to install Theano on 32- or 64-bit Windows system, using freely available
+:ref:`install_windows` provides step-by-step instructions on how to install Theano on 32- or 64-bit Windows systems, using freely available
 tools and compilers.
 
 Editing code in Visual Studio
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You will find a Visual Studio solution file (``Theano.sln``) in the root of
 the Theano repository. Note that this project file may not be kept up-to-date
@@ -815,7 +815,7 @@ the Visual Studio editor.
 
 
 Windows Installation References
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. http://stackoverflow.com/questions/9047072/windows-python-version-and-vc-redistributable-version
 2. http://stackoverflow.com/questions/1865069/how-to-compile-a-64-bit-application-using-visual-c-2010-express
