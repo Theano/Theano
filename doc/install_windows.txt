@@ -344,13 +344,13 @@ Once the dependencies are installed, you can download and install
 Theano. We have found that in the long run, the Git install is the
 most useful, because you can update it with a single ``git pull``
 command. Therefore we recommend it. However, a manual install without
-GIT is also possible.
+Git is also possible.
 
 Git Install
 ###########
 
 
-Theano is hosted on GitHub, you need GIT to download it. For Windows,
+Theano is hosted on GitHub, you need Git to download it. For Windows,
 download and install the `MSYSGIT <http://msysgit.github.io/>`_ build.
 Open up the `Git Shell` in the directory in which you want to install
 Theano. For the bleeding-edge version execute
@@ -420,7 +420,7 @@ Create a test file containing:
    print "Result difference: %f" % (np.abs(AB-tAB).max(), )
 
 Then run it. It should execute without problems and the Theano function
-should run at a speed similar to the regular numpy
+should run at a speed similar to the regular NumPy
 multiplication. (Both Numpy and Theano should call the same BLAS
 routine for matrix multiplication)
 
@@ -473,7 +473,7 @@ To use the GPU please write the following configuration file:
 
 Rerun the simple test file and verify that it runs. Depending on you
 GPU, the theano function should run on the GPU much faster than the
-CPU matrix multiplication performed by numpy.
+CPU matrix multiplication performed by NumPy.
 You can also find additional test code and useful GPU tips on the
 :ref:`using_gpu` page.
 
@@ -581,7 +581,7 @@ follows:
      the ``OPENBLAS_NUM_THREADS`` environment variable (default behavior is to use
      all available cores).
      Here are some performance results on an Intel Core2 Duo 1.86 GHz,
-     compared to using Numpy's BLAS or the un-optimized standard BLAS
+     compared to using NumPy's BLAS or the un-optimized standard BLAS
      (compiled manually from its source code).
      Note that we report here results for GotoBLAS2 which is the ancestor of
      OpenBLAS (this benchmark still needs to be updated with OpenBLAS results):
