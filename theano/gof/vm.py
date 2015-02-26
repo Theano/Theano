@@ -954,7 +954,7 @@ class VM_Linker(link.LocalLinker):
                                 break
                             for out in order[i].outputs:
                                 if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
-                                    and ins.type == out.type):
+                                        and ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
                     elif ins in view_of:
@@ -969,22 +969,13 @@ class VM_Linker(link.LocalLinker):
                                 if reuse_out:
                                     break
                                 for out in order[i].outputs:
-                                    if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated 
-                                        and ins.type == out.type):
+                                    if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
+                                            and ins.type == out.type):
                                         reuse_out = out
                                         pre_allocated.add(out)
 
                     if reuse_out:
                         reallocated_info[ins] = [ins, reuse_out]
-
-        lazy = self.lazy
-        if lazy is None:
-            lazy = config.vm.lazy
-        if lazy is None:
-            lazy = not all([(not th.lazy) for th in thunks])
-        if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
-            for pair in reallocated_info.values():
-                storage_map[pair[1]] = storage_map[pair[0]]
 
         for node in order:
             try:
@@ -1004,6 +995,15 @@ class VM_Linker(link.LocalLinker):
         for node, thunk in zip(order, thunks):
             thunk.inputs = [storage_map[v] for v in node.inputs]
             thunk.outputs = [storage_map[v] for v in node.outputs]
+
+        lazy = self.lazy
+        if lazy is None:
+            lazy = config.vm.lazy
+        if lazy is None:
+            lazy = not all([(not th.lazy) for th in thunks])
+        if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
+            for pair in reallocated_info.values():
+                storage_map[pair[1]] = storage_map[pair[0]]
 
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:
