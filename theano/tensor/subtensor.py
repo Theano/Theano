@@ -1971,6 +1971,7 @@ class AdvancedIncSubtensor1(Op):
             else:
                 gx = g_output
             gy = advanced_subtensor1(g_output, idx_list)
+            gy = _sum_grad_over_bcasted_dims(y, gy)
 
         return [gx, gy] + [DisconnectedType()()]
 
