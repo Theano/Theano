@@ -15,7 +15,8 @@ Installing Dependencies
 .. note::
 
     Command lines listed below are assumed to be run in a Windows prompt:
-    click ``Start`` and type the ``cmd`` command to launch a command window.
+    To open the prompt on Windows <= 7, click ``Start`` and type the ``cmd`` command to launch a command window.
+    In Windows 8, go to the Start screen and type ``command`` or ``cmd``.
 
 
 Theano currently works on Windows, however it requires compilers for
@@ -158,8 +159,7 @@ can download the installation for free.
   Software updates...`), as older Canopy versions have trouble installing
   `pip`.
 - Then install `pip` from Canopy Package Manager.
-- In the Windows shell (type `cmd` in the Windows start menu to bring it up),
-  type `pip install theano`.
+- In the Windows Prompt, type `pip install theano`.
 - In Canopy Package Manager, search and install packages "mingw 4.5.2" and "libpython 1.2"
 - (Needed only for Theano 0.6rc3 or earlier)
   The "libpython 1.2" package installs files `libpython27.a` and `libmsvcr90.a` to
