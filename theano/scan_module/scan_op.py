@@ -123,8 +123,8 @@ class Scan(PureOp):
         # Scan from producing outputs by means of inplace operations and
         # therefore allow it to pre-allocate memory storage for the outputs,
         # avoiding needless copies.
-        self.mode_instance = \
-                    self.mode_instance.including("add_no_output_from_inplace")
+        self.mode_instance = self.mode_instance.including(
+                                                "add_no_output_from_inplace")
 
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
