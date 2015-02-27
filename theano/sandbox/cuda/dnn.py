@@ -346,7 +346,8 @@ class GpuDnnConv(DnnBase, COp):
 
     def __init__(self, workmem=None):
         """
-        :param workmem: either 'none', 'small' or 'large'.  Default is 'small'.
+        :param workmem: either 'none', 'small' or 'large'.  Default is
+        the value of :attr:`config.dnn.conv.workmem`.
         """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
                      "APPLY_SPECIFIC(conv_fwd)")
@@ -587,6 +588,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
+    :note: The working memory of the op is influenced by
+      :attr:`config.dnn.conv.workmem`.
     """
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1,1) and
