@@ -33,23 +33,26 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
 
   {
-    cudnnConvolutionFwdAlgo_t algo;
-    err = cudnnGetConvolutionForwardAlgorithm(
-      _handle,
-      APPLY_SPECIFIC(input),
-      APPLY_SPECIFIC(kerns),
-      desc,
-      APPLY_SPECIFIC(output),
-      CUDNN_CONVOLUTION_FWD_NO_WORKSPACE, // TODO: add op param
-      0,
-      &algo);
+    size_t worksize;
+    void *workspace;
 
+    err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
+                                                  APPLY_SPECIFIC(input),
+                                                  APPLY_SPECIFIC(kerns),
+                                                  desc,
+                                                  APPLY_SPECIFIC(output),
+                                                  CONV_ALGO,
+                                                  &worksize);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
-		   "GpuDnnConv: Couldn't select convolution algorithm: %s",
-		   cudnnGetErrorString(err));
+                   "GpuDnnConv: error getting worksize: %s",
+                   cudnnGetErrorString(err));
       return 1;
     }
+
+    workspace = get_work_mem(worksize);
+    if (workspace == NULL && worksize != 0)
+      return 1;
 
     const float alpha = 1;
     const float beta = 0;
@@ -60,8 +63,8 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       APPLY_SPECIFIC(input), CudaNdarray_DEV_DATA(input),
       APPLY_SPECIFIC(kerns), CudaNdarray_DEV_DATA(kerns),
       desc,
-      algo,
-      NULL, 0,
+      CONV_ALGO,
+      workspace, worksize,
       (void *)&beta,
       APPLY_SPECIFIC(output), CudaNdarray_DEV_DATA(*output));
   }

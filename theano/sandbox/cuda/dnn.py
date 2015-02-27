@@ -335,13 +335,31 @@ class GpuDnnConv(DnnBase, COp):
     :param image:
     :param kernel:
     :param descr: the convolution descriptor
-
     """
-    __props__ = ()
+    __props__ = ('workmem',)
 
-    def __init__(self):
+    def __init__(self, workmem='small'):
+        """
+        :param workmem: either 'none', 'small' or 'large'.  Default is 'small'.
+        """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
                      "APPLY_SPECIFIC(conv_fwd)")
+        self.workmem = workmem
+        assert self.workmem in ['none', 'small', 'large']
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'workmem'):
+            self.workmem = 'small'
+
+    def get_op_params(self):
+        if self.workmem == 'none':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
+        elif self.workmem == 'small':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
+        elif self.workmem == 'large':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
+        return [('CONV_ALGO', alg)]
 
     def make_node(self, img, kern, desc):
         img = as_cuda_ndarray_variable(img)
