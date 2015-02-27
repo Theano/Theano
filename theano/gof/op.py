@@ -1160,7 +1160,13 @@ class COp(Op):
     def c_code_cache_version(self):
         return hash(tuple(self.func_codes))
 
-    c_init_code = simple_meth('init_code')
+    def c_init_code(self):
+        if 'init_code' in self.code_sections:
+            return [self.code_sections['init_code']]
+        else:
+            raise utils.MethodNotDefined(
+                'c_init_code', type(self), type(self).__name__)
+
     c_init_code_apply = apply_meth('init_code_apply')
     c_support_code = simple_meth('support_code')
     c_support_code_apply = apply_meth('support_code_apply')
