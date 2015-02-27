@@ -380,7 +380,7 @@ class DownsampleFactorMaxGrad(Op):
         def pad_img(x):
             w = x.shape[3]
             h = x.shape[2]
-            fill = x.min()-1
+            fill = x.min()-1.
             t = numpy.ones((x.shape[0],x.shape[1],1,1))
             ud_bar = (numpy.zeros((pad_h, w)) + fill)[
                 numpy.newaxis, numpy.newaxis,:,:] * t
@@ -393,9 +393,9 @@ class DownsampleFactorMaxGrad(Op):
             w = x.shape[3]
             h = x.shape[2]
             r_st = pad_h
-            r_end = h + pad_h
+            r_end = g.shape[2] - pad_h
             c_st = pad_w
-            c_end = w + pad_w
+            c_end = g.shape[3] - pad_w
             return g[:,:,r_st:r_end,c_st:c_end]
         y = pad_img(x)
         gx = numpy.zeros_like(y)
@@ -411,7 +411,6 @@ class DownsampleFactorMaxGrad(Op):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
                                     gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
-        import ipdb; ipdb.set_trace()
         gx = unpad(gx)
         gx_stg[0] = gx
 

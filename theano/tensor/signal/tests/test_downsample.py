@@ -73,14 +73,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 ii_st = i * st[0]
                 ii_end = __builtin__.min(ii_st + ds[0], img_rows)
                 for j in range(output_val.shape[-1]):
-                    try:
-                        jj_st = j * st[1]
-                        jj_end = __builtin__.min(jj_st + ds[1], img_cols)
-                        patch = y[k][ii_st:ii_end, jj_st:jj_end]
-                        output_val[k][i, j] = numpy.max(patch)
-                    except Exception,e:
-                        import ipdb; ipdb.set_trace()
-                        print
+                    jj_st = j * st[1]
+                    jj_end = __builtin__.min(jj_st + ds[1], img_cols)
+                    patch = y[k][ii_st:ii_end, jj_st:jj_end]
+                    output_val[k][i, j] = numpy.max(patch)
         return output_val
 
     @staticmethod
