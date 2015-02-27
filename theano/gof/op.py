@@ -1146,6 +1146,17 @@ class COp(Op):
                 raise ValueError("No valid section marker was found in file "
                                  "%s" % self.func_files[i])
 
+    def get_op_params(self):
+        """
+        Returns a list of (name, value) pairs that will be turned into
+        macros for use within the op code. This is intended to allow
+        an op's properties to influence the generated C code.
+
+        The names must be strings that are not a C keyword and the
+        values must be strings of litteral C representations.
+        """
+        return []
+
     def c_code_cache_version(self):
         return hash(tuple(self.func_codes))
 
@@ -1207,6 +1218,10 @@ class COp(Op):
         define_macros.append(define_template % ("APPLY_SPECIFIC(str)",
                                                 "str##_%s" % name))
         undef_macros.append(undef_template % "APPLY_SPECIFIC")
+
+        for n, v in self.get_op_params():
+            define_macros.append(define_template % (n, v))
+            undef_macros.append(undef_template % (n,))
 
         return os.linesep.join(define_macros), os.linesep.join(undef_macros)
 
