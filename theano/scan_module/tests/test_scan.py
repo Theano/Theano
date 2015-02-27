@@ -1928,7 +1928,6 @@ class T_Scan(unittest.TestCase):
         s_v = s_v[:-1]
         for i in xrange(100):
             cost = learn_rnn_fn(s_v, t_v)
-            print i, cost
         pred = eval_rnn_fn(s_v)
         assert cost < 0.02
 
