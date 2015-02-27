@@ -118,6 +118,14 @@ class Scan(PureOp):
                 optimizer=mode_instance.provided_optimizer,
                 linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
 
+        # Now that scan has its mode instance, we activate optimization
+        # add_no_output_from_inplace in this mode instance. This will prevent
+        # Scan from producing outputs by means of inplace operations and
+        # therefore allow it to pre-allocate memory storage for the outputs,
+        # avoiding needless copies.
+        self.mode_instance = \
+                    self.mode_instance.including("add_no_output_from_inplace")
+
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
         # to have a fair __eq__ comparison later on, we update the info with
