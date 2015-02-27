@@ -133,20 +133,6 @@ class DnnBase(GpuOp, COp):
     def c_libraries(self):
         return ['cudnn']
 
-    def c_init_code(self):
-        if PY3:
-            error_out = "NULL"
-        else:
-            error_out = ""
-        return ["""{
-cudnnStatus_t err;
-if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %%s",
-               cudnnGetErrorString(err));
-  return %s;
-}
-}""" % (error_out,)]
-
 
 class DnnVersion(GpuOp):
     def c_compiler(self):
