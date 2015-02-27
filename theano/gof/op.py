@@ -1153,7 +1153,7 @@ class COp(Op):
         an op's properties to influence the generated C code.
 
         The names must be strings that are not a C keyword and the
-        values must be strings of litteral C representations.
+        values must be strings of literal C representations.
         """
         return []
 
