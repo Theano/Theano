@@ -202,11 +202,12 @@ class DownsampleFactorMax(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMax requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,self.padding)
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
+                                 self.padding)
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = numpy.empty(self.out_shape(x.shape, self.ds,
-                                              self.ignore_border, self.st),
-                               dtype=x.dtype)
+                            self.ignore_border, self.st, self.padding),
+                            dtype=x.dtype)
         zz = z[0]
 
         #number of pooling output rows
@@ -219,37 +220,19 @@ class DownsampleFactorMax(Op):
         img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
-        def get_valid_corners(x):
-            # x (m,c,h,w)
-            img_h,img_w = x.shape[-2:]
-            row_st_valid = pad_h
-            row_end_valid = img_h + pad_h - 1
-            col_st_valid = pad_w
-            col_end_valid = img_w + pad_w - 1
-            return row_st_valid, row_end_valid, col_st_valid, col_end_valid
-        row_st_valid, row_end_valid, col_st_valid, col_end_valid = get_valid_corners(x)
-        def change_coordinate(row_st, row_end, col_st, col_end):
-            new_row_st = None
-            new_row_end = None
-            new_col_st = None
-            new_col_end = None
-            if row_st <= row_st_valid:
-                new_row_st = row_st_valid
-            if row_end >= row_end_valid:
-                new_row_end = row_end_valid
-            if col_st <= col_st_valid:
-                new_col_st = col_st_valid
-            if col_end >= col_end_valid:
-                new_col_end = col_end_valid
-            if new_row_st is None:
-                new_row_st = row_st - pad_h
-            if new_row_end is None:
-                new_row_end = row_end - pad_h
-            if new_col_st is None:
-                new_col_st = col_st - pad_w
-            if new_col_end is None:
-                new_col_end = col_end - pad_w
-            return new_row_st, new_row_end, new_col_st, new_col_end    
+        def pad_img(x):
+            w = x.shape[3]
+            h = x.shape[2]
+            fill = x.min()-1
+            t = numpy.ones((x.shape[0],x.shape[1],1,1))
+            ud_bar = (numpy.zeros((pad_h, w)) + fill)[
+                numpy.newaxis, numpy.newaxis,:,:] * t
+            lr_bar = (numpy.zeros((pad_h * 2 + h, pad_w)) + fill)[
+                numpy.newaxis, numpy.newaxis,:,:] * t
+            y = numpy.concatenate([ud_bar, x, ud_bar], axis=2)
+            y = numpy.concatenate([lr_bar, y, lr_bar], axis=3)
+            return y
+        y = pad_img(x)
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
@@ -258,9 +241,7 @@ class DownsampleFactorMax(Op):
                     for c in xrange(pc):
                         col_st = c * st1
                         col_end = __builtin__.min(col_st + ds1, img_cols)
-                        row_st, row_end, col_st, col_end = change_coordinate(
-                            row_st, row_end, col_st, col_end)
-                        zz[n, k, r, c] = x[
+                        zz[n, k, r, c] = y[
                             n, k, row_st:row_end, col_st:col_end].max()
 
     def infer_shape(self, node, in_shapes):
@@ -385,8 +366,7 @@ class DownsampleFactorMaxGrad(Op):
     def perform(self, node, inp, out):
         x, maxout, gz = inp
         gx_stg, = out
-        gx = numpy.zeros_like(x)
-
+        
         #number of pooling output rows
         pr = maxout.shape[-2]
         #number of pooling output cols
@@ -397,37 +377,28 @@ class DownsampleFactorMaxGrad(Op):
         img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
-        def get_valid_corners(x):
-            # x (m,c,h,w)
-            img_h,img_w = x.shape[-2:]
-            row_st_valid = pad_h
-            row_end_valid = img_h + pad_h - 1
-            col_st_valid = pad_w
-            col_end_valid = img_w + pad_w - 1
-            return row_st_valid, row_end_valid, col_st_valid, col_end_valid
-        row_st_valid, row_end_valid, col_st_valid, col_end_valid = get_valid_corners(x)
-        def change_coordinate(row_st, row_end, col_st, col_end):
-            new_row_st = None
-            new_row_end = None
-            new_col_st = None
-            new_col_end = None
-            if row_st <= row_st_valid:
-                new_row_st = row_st_valid
-            if row_end >= row_end_valid:
-                new_row_end = row_end_valid
-            if col_st <= col_st_valid:
-                new_col_st = col_st_valid
-            if col_end >= col_end_valid:
-                new_col_end = col_end_valid
-            if new_row_st is None:
-                new_row_st = row_st - pad_h
-            if new_row_end is None:
-                new_row_end = row_end - pad_h
-            if new_col_st is None:
-                new_col_st = col_st - pad_w
-            if new_col_end is None:
-                new_col_end = col_end - pad_w
-            return new_row_st, new_row_end, new_col_st, new_col_end
+        def pad_img(x):
+            w = x.shape[3]
+            h = x.shape[2]
+            fill = x.min()-1
+            t = numpy.ones((x.shape[0],x.shape[1],1,1))
+            ud_bar = (numpy.zeros((pad_h, w)) + fill)[
+                numpy.newaxis, numpy.newaxis,:,:] * t
+            lr_bar = (numpy.zeros((pad_h * 2 + h, pad_w)) + fill)[
+                numpy.newaxis, numpy.newaxis,:,:] * t
+            y = numpy.concatenate([ud_bar, x, ud_bar], axis=2)
+            y = numpy.concatenate([lr_bar, y, lr_bar], axis=3)
+            return y
+        def unpad(g):
+            w = x.shape[3]
+            h = x.shape[2]
+            r_st = pad_h
+            r_end = h + pad_h
+            c_st = pad_w
+            c_end = w + pad_w
+            return g[:,:,r_st:r_end,c_st:c_end]
+        y = pad_img(x)
+        gx = numpy.zeros_like(y)
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
@@ -436,12 +407,12 @@ class DownsampleFactorMaxGrad(Op):
                     for c in xrange(pc):
                         col_st = c * st1
                         col_end = __builtin__.min(col_st + ds1, img_cols)
-                        row_st, row_end, col_st, col_end = change_coordinate(
-                            row_st, row_end, col_st, col_end)
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):
-                                if (maxout[n, k, r, c] == x[n, k, row_ind, col_ind]):
+                                if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
                                     gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
+        import ipdb; ipdb.set_trace()
+        gx = unpad(gx)
         gx_stg[0] = gx
 
     def infer_shape(self, node, in_shapes):
