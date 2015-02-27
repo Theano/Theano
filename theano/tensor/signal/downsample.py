@@ -182,7 +182,7 @@ class DownsampleFactorMax(Op):
         self.padding = padding
         if padding != (0,0) and not ignore_border:
             raise NotImplementedError('padding works only with ignore_boarder=True')
-        if self.padding[0] >= self.st[0] or self.padding[1] >= self.st[1]:
+        if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
             raise NotImplementedError('padding_h and padding_w must be smaller than strides')
     def __str__(self):
         return '%s{%s,%s,%s,%s}' % (self.__class__.__name__,
@@ -223,23 +223,33 @@ class DownsampleFactorMax(Op):
             # x (m,c,h,w)
             img_h,img_w = x.shape[-2:]
             row_st_valid = pad_h
-            row_end_valid = img_h + pad_h
+            row_end_valid = img_h + pad_h - 1
             col_st_valid = pad_w
-            col_end_valid = img_w + pad_w
+            col_end_valid = img_w + pad_w - 1
             return row_st_valid, row_end_valid, col_st_valid, col_end_valid
         row_st_valid, row_end_valid, col_st_valid, col_end_valid = get_valid_corners(x)
-        def shrink(row_st, row_end, col_st, col_end):
-            # this will shrink the pooling region such that padded areas are ignored
-            # when performing max
+        def change_coordinate(row_st, row_end, col_st, col_end):
+            new_row_st = None
+            new_row_end = None
+            new_col_st = None
+            new_col_end = None
             if row_st <= row_st_valid:
-                row_st = row_st_valid
+                new_row_st = row_st_valid
             if row_end >= row_end_valid:
-                row_end = row_end_valid
+                new_row_end = row_end_valid
             if col_st <= col_st_valid:
-                col_st = col_st_valid
+                new_col_st = col_st_valid
             if col_end >= col_end_valid:
-                col_end = col_end_valid
-            return row_st, row_end, col_st, col_end
+                new_col_end = col_end_valid
+            if new_row_st is None:
+                new_row_st = row_st - pad_h
+            if new_row_end is None:
+                new_row_end = row_end - pad_h
+            if new_col_st is None:
+                new_col_st = col_st - pad_w
+            if new_col_end is None:
+                new_col_end = col_end - pad_w
+            return new_row_st, new_row_end, new_col_st, new_col_end    
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
@@ -248,7 +258,7 @@ class DownsampleFactorMax(Op):
                     for c in xrange(pc):
                         col_st = c * st1
                         col_end = __builtin__.min(col_st + ds1, img_cols)
-                        row_st, row_end, col_st, col_end = shrink(
+                        row_st, row_end, col_st, col_end = change_coordinate(
                             row_st, row_end, col_st, col_end)
                         zz[n, k, r, c] = x[
                             n, k, row_st:row_end, col_st:col_end].max()
@@ -391,23 +401,33 @@ class DownsampleFactorMaxGrad(Op):
             # x (m,c,h,w)
             img_h,img_w = x.shape[-2:]
             row_st_valid = pad_h
-            row_end_valid = img_h + pad_h
+            row_end_valid = img_h + pad_h - 1
             col_st_valid = pad_w
-            col_end_valid = img_w + pad_w
+            col_end_valid = img_w + pad_w - 1
             return row_st_valid, row_end_valid, col_st_valid, col_end_valid
         row_st_valid, row_end_valid, col_st_valid, col_end_valid = get_valid_corners(x)
-        def shrink(row_st, row_end, col_st, col_end):
-            # this will shrink the pooling region such that padded areas are ignored
-            # when performing max
+        def change_coordinate(row_st, row_end, col_st, col_end):
+            new_row_st = None
+            new_row_end = None
+            new_col_st = None
+            new_col_end = None
             if row_st <= row_st_valid:
-                row_st = row_st_valid
+                new_row_st = row_st_valid
             if row_end >= row_end_valid:
-                row_end = row_end_valid
+                new_row_end = row_end_valid
             if col_st <= col_st_valid:
-                col_st = col_st_valid
+                new_col_st = col_st_valid
             if col_end >= col_end_valid:
-                col_end = col_end_valid
-            return row_st, row_end, col_st, col_end
+                new_col_end = col_end_valid
+            if new_row_st is None:
+                new_row_st = row_st - pad_h
+            if new_row_end is None:
+                new_row_end = row_end - pad_h
+            if new_col_st is None:
+                new_col_st = col_st - pad_w
+            if new_col_end is None:
+                new_col_end = col_end - pad_w
+            return new_row_st, new_row_end, new_col_st, new_col_end
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
@@ -416,7 +436,7 @@ class DownsampleFactorMaxGrad(Op):
                     for c in xrange(pc):
                         col_st = c * st1
                         col_end = __builtin__.min(col_st + ds1, img_cols)
-                        row_st, row_end, col_st, col_end = shrink(
+                        row_st, row_end, col_st, col_end = change_coordinate(
                             row_st, row_end, col_st, col_end)
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):

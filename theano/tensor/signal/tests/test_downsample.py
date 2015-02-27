@@ -37,6 +37,63 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     patch = input[k][ii:ii + ds[0], jj:jj + ds[1]]
                     output_val[k][i, j] = numpy.max(patch)
         return output_val
+    @staticmethod
+    def numpy_max_pool_2d_stride_padding(
+            x, ds, ignore_border=True, st=None, padding=None):
+        img_rows = x.shape[-2] + 2 * padding[0]
+        img_cols = x.shape[-1] + 2 * padding[1]
+        out_r = (img_rows - ds[0]) // st[0] + 1
+        out_c = (img_cols - ds[1]) // st[1] + 1
+        out_shp = list(x.shape[:-2])
+        out_shp.append(out_r)
+        out_shp.append(out_c)
+        ds0, ds1 = ds
+        st0, st1 = st
+        pad_h = padding[0]
+        pad_w = padding[1]
+        output_val = numpy.zeros(out_shp)
+        def get_valid_corners(x):
+            # x (m,c,h,w)
+            img_h,img_w = x.shape[-2:]
+            row_st_valid = pad_h
+            row_end_valid = img_h + pad_h -1
+            col_st_valid = pad_w
+            col_end_valid = img_w + pad_w -1
+            return row_st_valid, row_end_valid, col_st_valid, col_end_valid
+        row_st_valid, row_end_valid, col_st_valid, col_end_valid = get_valid_corners(x)
+        def change_coordinate(row_st, row_end, col_st, col_end):            
+            if row_st <= row_st_valid:
+                row_st = row_st_valid
+            if row_end >= row_end_valid:
+                row_end = row_end_valid
+            if col_st <= col_st_valid:
+                col_st = col_st_valid
+            if col_end >= col_end_valid:
+                col_end = col_end_valid
+                
+            new_row_st = row_st - pad_h
+            new_row_end = row_end - pad_h
+            new_col_st = col_st - pad_w
+            new_col_end = col_end - pad_w
+            return new_row_st, new_row_end, new_col_st, new_col_end
+        tt = []
+        for k in numpy.ndindex(*x.shape[:-2]):
+            for i in range(output_val.shape[-2]):
+                ii_st = i * st[0]
+                ii_end = __builtin__.min(ii_st + ds[0], img_rows)
+                for j in range(output_val.shape[-1]):
+                    try:
+                        jj_st = j * st[1]
+                        jj_end = __builtin__.min(jj_st + ds[1], img_cols)
+                        ii_st, ii_end, jj_st, jj_end = change_coordinate(
+                            ii_st, ii_end, jj_st, jj_end)
+                        tt.append([ii_st, ii_end, jj_st, jj_end])
+                        patch = x[k][ii_st:ii_end, jj_st:jj_end]
+                        output_val[k][i, j] = numpy.max(patch)
+                    except Exception,e:
+                        import ipdb; ipdb.set_trace()
+                        print
+        return output_val
 
     @staticmethod
     def numpy_max_pool_2d_stride(input, ds, ignore_border=False, st=None):
@@ -195,7 +252,62 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 f = function([images], maxpool_op)
                 output_val = f(imval)
                 utt.assert_allclose(output_val, numpy_output_val)
-
+                
+    def test_DownsampleFactorMaxPaddingStride(self):
+        ignore_border = True # padding does not support ignore_border=False
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        maxpoolsizes = [(5, 3)]
+        stridesizes = [(3, 2)]
+        paddingsizes = [(2, 2)]
+        imgsizes = [(10, 10)]
+        
+        def decide_out_shape(imgsize, maxpoolsize, stridesize, paddingsize):
+            img_h, img_w = imgsize
+            p_h, p_w = maxpoolsize
+            st_h, st_w = stridesize
+            pad_h, pad_w = paddingsize
+            r = img_h
+            c = img_w
+            r += pad_h * 2
+            c += pad_w * 2
+            out_r = (r - p_h) // st_h + 1
+            out_c = (c - p_w) // st_w + 1
+            nr = numpy.maximum(out_r, 0)
+            nc = numpy.maximum(out_c, 0)
+        images = tensor.dtensor4()
+        for indx in numpy.arange(len(maxpoolsizes)):
+            imgsize = imgsizes[indx]
+            imval = rng.rand(4, 10, imgsize[0], imgsize[1])
+            stridesize = stridesizes[indx]
+            maxpoolsize = maxpoolsizes[indx]
+            paddingsize = paddingsizes[indx]
+            outputsize = decide_out_shape(imgsize,maxpoolsize,stridesize,paddingsize)
+            numpy_output_val = self.numpy_max_pool_2d_stride_padding(
+                    imval, maxpoolsize,ignore_border, stridesize, paddingsize)
+            assert numpy_output_val.shape == outputsize, (
+                    "outshape is %s, calculated shape is %s"
+                    % (outputsize, numpy_output_val.shape))
+            maxpool_op = DownsampleFactorMax(maxpoolsize,
+                                        ignore_border=ignore_border,
+                                        st=stridesize,padding=paddingsize)(images)
+            f = function([images], maxpool_op)
+            output_val = f(imval)
+            utt.assert_allclose(output_val, numpy_output_val)
+            
+    def test_DownsampleFactorMaxPaddingStride_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        imval = rng.rand(10, 10, 10, 10) * 10.0
+        maxpoolsize = (5, 3)
+        stridesize = (3, 2)
+        paddingsize = (2,2)
+        def mp(input):
+            return DownsampleFactorMax(
+                maxpoolsize, ignore_border=True,
+                st=stridesize,
+                padding=paddingsize,
+                )(input)
+        utt.verify_grad(mp, [imval], rng=rng)
+                
     def test_DownsampleFactorMax_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (3, 2), (2, 3))
