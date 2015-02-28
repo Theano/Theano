@@ -1815,7 +1815,7 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
     intermediate `alloc`.
     """
     if isinstance(node.op, CrossentropySoftmax1HotWithBiasDx):
-        dy, sm, y_idx = node.inputs[:3]
+        dy, sm, y_idx = node.inputs
 
         if dy.owner is not None and isinstance(dy.owner.op, tensor.Alloc):
             # dz is the input of the Alloc op, i.e. T.alloc(dz, <shape>)
@@ -1823,8 +1823,8 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
 
             # A non-empty list of conditions means that `dz` has some
             # non-broadcastable dimensions that cannot be checked statically
-            # for equal size with the corresponding dimension of `sm`
-            # statically. Thus, a runtime check is necessary.
+            # for equal size with the corresponding dimension of `sm`. Thus, a
+            # runtime check is necessary.
             try:
                 cond = [tensor.eq(dy.shape[k], sm.shape[k])
                         # We iterate over the number of dimensions of `dz`
@@ -1853,7 +1853,7 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
                 msg = '`sm` and `dz.owner.inputs[0]` have no matching shapes.'
                 dz = Assert(msg)(dz, *cond)
 
-            return [node.op(dz, sm, y_idx, *node.inputs[3:])]
+            return [node.op(dz, sm, y_idx)]
 
 
 def binary_crossentropy(output, target):
