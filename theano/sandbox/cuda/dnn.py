@@ -1,13 +1,14 @@
 import os
 
 import theano
-from theano import Apply, gof, tensor
+from theano import Apply, gof, tensor, config
 from theano.scalar import as_scalar
 from theano.gradient import DisconnectedType
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
 from theano.compile.ops import shape_i
+from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.basic import ShapeError
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -132,20 +133,6 @@ class DnnBase(GpuOp, COp):
 
     def c_libraries(self):
         return ['cudnn']
-
-    def c_init_code(self):
-        if PY3:
-            error_out = "NULL"
-        else:
-            error_out = ""
-        return ["""{
-cudnnStatus_t err;
-if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %%s",
-               cudnnGetErrorString(err));
-  return %s;
-}
-}""" % (error_out,)]
 
 
 class DnnVersion(GpuOp):
@@ -342,6 +329,11 @@ class GpuDnnConvDesc(GpuOp):
         return (2, version())
 
 
+AddConfigVar('dnn.conv.workmem',
+             "Default value for the workmem attribute of cudnn convolutions.",
+             EnumStr('small', 'none', 'large'),
+             in_c_key=False)
+
 class GpuDnnConv(DnnBase, COp):
     """
     The forward convolution.
@@ -349,13 +341,36 @@ class GpuDnnConv(DnnBase, COp):
     :param image:
     :param kernel:
     :param descr: the convolution descriptor
-
     """
-    __props__ = ()
+    __props__ = ('workmem',)
 
-    def __init__(self):
+    def __init__(self, workmem=None):
+        """
+        :param workmem: either 'none', 'small' or 'large'.  Default is
+        the value of :attr:`config.dnn.conv.workmem`.
+        """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
                      "APPLY_SPECIFIC(conv_fwd)")
+        if workmem is None:
+            workmem = config.dnn.conv.workmem
+        self.workmem = workmem
+        assert self.workmem in ['none', 'small', 'large']
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'workmem'):
+            self.workmem = 'small'
+
+    def get_op_params(self):
+        if version() == -1:
+            return [('CONV_ALGO', "0")]
+        if self.workmem == 'none':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
+        elif self.workmem == 'small':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
+        elif self.workmem == 'large':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
+        return [('CONV_ALGO', alg)]
 
     def make_node(self, img, kern, desc):
         img = as_cuda_ndarray_variable(img)
@@ -575,6 +590,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
+    :note: The working memory of the op is influenced by
+      :attr:`config.dnn.conv.workmem`.
     """
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1,1) and

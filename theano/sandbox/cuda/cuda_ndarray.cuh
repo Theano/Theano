@@ -88,7 +88,8 @@ typedef float real;
 extern DllExport cublasHandle_t handle;
 
 /**
- * Allocation and freeing of device memory should go through these functions so that the lib can track memory usage.
+ * Allocation and freeing of device memory should go through these functions so
+ * that the lib can track memory usage.
  *
  * device_malloc will set the Python error message before returning None.
  * device_free will return nonzero on failure (after setting the python error message)
@@ -98,6 +99,7 @@ extern DllExport cublasHandle_t handle;
 DllExport void * device_malloc(size_t size);
 DllExport void * device_malloc(size_t size, int verbose);
 DllExport int device_free(void * ptr);
+DllExport void *get_work_mem(size_t sz);
 
 template <typename T>
 static T ceil_intdiv(T a, T b)

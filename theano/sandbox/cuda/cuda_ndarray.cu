@@ -298,6 +298,25 @@ outstanding_mallocs(PyObject* self, PyObject * args)
     return PyInt_FromLong(_outstanding_mallocs[0]);
 }
 
+
+static void *work_mem = NULL;
+static size_t work_size = 0;
+
+/*
+ * Returns a chunk of memory for temporary work inside of an op. You can only
+ * request a single chunk of memory at a time since it is reused.
+ */
+void *get_work_mem(size_t sz) {
+    if (sz < work_size)
+        return work_mem;
+    device_free(work_mem);
+    work_mem = device_malloc(sz);
+    work_size = sz;
+    if (work_mem == NULL)
+        work_size = 0;
+    return work_mem;
+}
+
 /////////////////////////
 // Static helper methods
 /////////////////////////

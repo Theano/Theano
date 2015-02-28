@@ -484,6 +484,25 @@ import theano and print the config variable, as in:
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
+.. attribute:: config.dnn.conv.workmem
+
+   String value: 'none', 'small', 'large'
+
+   Default: 'small'
+
+   The default value for the amount of working memory that is
+   tolerated in the convolution implementation in cudnn.
+
+   'none'
+     Don't allow any extra memory.
+
+   'small'
+     Allow extra memory that is much smaller than the input sizes.
+
+   'large'
+     Allow extra memory that is on the order of the input sizes.
+
+
 .. attribute:: config.gcc.cxxflags
 
     Default: ""
