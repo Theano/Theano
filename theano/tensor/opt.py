@@ -2599,17 +2599,54 @@ def local_adv_sub1_adv_inc_sub1(node):
                       AdvancedIncSubtensor1])
 def local_useless_incsubtensor_alloc(node):
     """
-    Replaces an (Advanced)IncSubtensor(1) where the increment is an alloc of a
-    fully broadcastable scalar by one that increments directly by the scalar.
+    Replaces an [Advanced]IncSubtensor[1], whose increment is an `alloc` of
+    a variable that has either broadcastable or matching dimensions with the
+    target variable that shall be incremented, by one that skips the
+    intermediate `alloc`.
     """
     if isinstance(node.op, (IncSubtensor,
                             AdvancedIncSubtensor,
                             AdvancedIncSubtensor1)):
-        inc = node.inputs[1]
-        if inc.owner is not None and isinstance(inc.owner.op, T.Alloc):
-            inc = inc.owner.inputs[0]
-            if all(inc.broadcastable):
-                return [node.op(node.inputs[0], inc, *node.inputs[2:])]
+        x = node.inputs[0]
+        y = node.inputs[1]
+        i = node.inputs[2:]
+
+        if y.owner is not None and isinstance(y.owner.op, T.Alloc):
+            # z is the input of the Alloc op, i.e. T.alloc(z, <shape>)
+            z = y.owner.inputs[0]
+
+            # A non-empty list of conditions means that `z` has some
+            # non-broadcastable dimensions that cannot be checked statically
+            # for equal size with the corresponding dimension of `x`
+            # statically. Thus, a runtime check is necessary.
+            try:
+                cond = [T.eq(x.shape[k], z.shape[k])
+                        # We iterate over the number of dimensions of `z`
+                        # because `z.ndim <= x.ndim`. If `z.ndim < x.ndim` then
+                        # the right-most dimensions are equivalent to
+                        # broadcastables which is good.
+                        for k in xrange(z.ndim)
+                        # If the increment is broadcastable in dimension `k`,
+                        # we do not care if the shape does not agree with
+                        # `x.shape[k]` because `inc_subtensor` can deal with it
+                        # correctly.
+                        if not z.broadcastable[k] and
+                        # If we can infer statically that the non-broadcastable
+                        # dimension `k` has the same shape as `x.shape[k]`, we
+                        # do not need to check it at run time.
+                        not node.fgraph.shape_feature.same_shape(x, z,
+                                                                 dim_x=k,
+                                                                 dim_y=k)]
+            except AttributeError:
+                # The shape feature may not be available in some mode, but we
+                # need it for this optimization, so don't continue.
+                return False
+
+            if len(cond) > 0:
+                msg = '`x` and `y.owner.inputs[0]` do not have the same shape.'
+                z = Assert(msg)(z, *cond)
+
+            return [node.op(x, z, *i)]
 
 
 ####################

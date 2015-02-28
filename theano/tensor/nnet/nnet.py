@@ -1040,7 +1040,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         return code_template % dict(locals(), **sub)
 
 
-class CrossentropySoftmax1HotWithBiasDx (gof.Op):
+class CrossentropySoftmax1HotWithBiasDx(gof.Op):
     nin = 3
     nout = 1
     """Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op"""
@@ -1060,9 +1060,9 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
         y_idx = tensor.as_tensor_variable(y_idx)
-        if (dy.type.ndim != 1 or
+        if (dy.type.ndim > 1 or
             dy.type.dtype not in tensor.float_dtypes):
-            raise ValueError('dy must be 1-d tensor of floats', dy.type)
+            raise ValueError('dy must be {0,1}-d tensor of floats', dy.type)
         if (sm.type.ndim != 2 or
             sm.type.dtype not in tensor.float_dtypes):
             raise ValueError('sm must be 2-d tensor of floats', sm.type)
@@ -1074,9 +1074,13 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
     def perform(self, node, input_storage, output_storage):
         dy, sm, y_idx = input_storage
         dx = numpy.zeros_like(sm)
+        if dy.ndim == 0:
+            dy = dy[None]
+        incr = int(dy.shape[0] > 1)
         for i in xrange(sm.shape[0]):
-            dx[i] = dy[i] * sm[i]  # vector scale
-            dx[i, y_idx[i]] -= dy[i]  # scalar decrement
+            dy_i = dy[i * incr]
+            dx[i] = dy_i * sm[i]  # vector scale
+            dx[i, y_idx[i]] -= dy_i  # scalar decrement
         output_storage[0][0] = dx
 
     def infer_shape(self, node, shapes):
@@ -1099,14 +1103,13 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inp, out, sub):
         dnll, sm, y_idx = inp
         dx, = out
         y_idx_type = node.inputs[2].type.dtype_specs()[1]
         return """
-
         if ((PyArray_TYPE(%(dnll)s) != NPY_DOUBLE) &&
             (PyArray_TYPE(%(dnll)s) != NPY_FLOAT))
         {
@@ -1121,26 +1124,41 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
                  "sm type should be float32 or float64");
             %(fail)s;
         }
-        if ((PyArray_NDIM(%(dnll)s) != 1)
+
+        // new scope because of variable declaration
+        // TODO: proper indentation, but the diff will get messy
+        {
+        // Get `dnll.shape[0]` or set it to zero if `dnll` is a scalar.
+        const npy_intp %(dnll)s_dims0 = (PyArray_NDIM(%(dnll)s) > 0 ?
+                                         PyArray_DIMS(%(dnll)s)[0] :
+                                         (npy_intp) 0);
+
+        // Get `dnll.strides[0]` and set it to zero if `dnll` is a scalar
+        // or a vector with just one element.
+        const npy_intp %(dnll)s_strides0 = (%(dnll)s_dims0 > 1 ?
+                                            PyArray_STRIDES(%(dnll)s)[0] :
+                                            (npy_intp) 0);
+
+        if ((PyArray_NDIM(%(dnll)s) > 1)
             || (PyArray_NDIM(%(sm)s) != 2)
             || (PyArray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (PyArray_DIMS(%(dnll)s)[0] != PyArray_DIMS(%(sm)s)[0])
+        if (%(dnll)s_dims0 != PyArray_DIMS(%(sm)s)[0] && %(dnll)s_dims0 > 1)
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] (%%ld) != sm.shape[0] (%%ld)",
-                         (long int)PyArray_DIMS(%(dnll)s)[0],
+                         (long int)%(dnll)s_dims0,
                          (long int)PyArray_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (PyArray_DIMS(%(dnll)s)[0] != PyArray_DIMS(%(y_idx)s)[0])
+        if (%(dnll)s_dims0 != PyArray_DIMS(%(y_idx)s)[0] && %(dnll)s_dims0 > 1)
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] (%%ld) != y_idx.shape[0] (%%ld)",
-                         (long int)PyArray_DIMS(%(dnll)s)[0],
+                         (long int)%(dnll)s_dims0,
                          (long int)PyArray_DIMS(%(y_idx)s)[0]);
             %(fail)s;
         }
@@ -1161,7 +1179,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
 
         for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
-            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(PyArray_BYTES(%(dnll)s) + PyArray_STRIDES(%(dnll)s)[0] * i))[0];
+            const dtype_%(dnll)s dnll_i = ((dtype_%(dnll)s*)(PyArray_BYTES(%(dnll)s) + %(dnll)s_strides0 * i))[0];
 
             const %(y_idx_type) s y_i = ((%(y_idx_type)s*)(PyArray_BYTES(%(y_idx)s) + PyArray_STRIDES(%(y_idx)s)[0] * i))[0];
 
@@ -1181,6 +1199,7 @@ class CrossentropySoftmax1HotWithBiasDx (gof.Op):
                 %(fail)s;
             }
             dx_i[y_i * Sdx] -= dnll_i;
+        }
         }
         """ % dict(locals(), **sub)
 
@@ -1736,7 +1755,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             # if the graph is valid, they have the same shape, so we
             # also know that z has the right shape.
 
-            if incr.type not in (dvector, fvector):
+            if incr.ndim != 1 or incr.dtype not in tensor.float_dtypes:
                 return
 
             # here we know that we are incrementing some part of matrix z by a vector
@@ -1782,6 +1801,59 @@ def graph_merge_softmax_with_crossentropy_softmax(node):
                     xx, bb, ll = big_client.inputs
                     mergeable_client = big_client.op(x, b, ll)
                     return [mergeable_client[1]]
+
+
+@opt.register_specialize
+@opt.register_stabilize
+@opt.register_canonicalize
+@gof.local_optimizer([CrossentropySoftmax1HotWithBiasDx])
+def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
+    """
+    Replaces a CrossentropySoftmax1HotWithBiasDx op, whose incoming gradient is
+    an `alloc` of a scalar variable or one that has either broadcastable or
+    matching dimensions with the output variable, by one that skips the
+    intermediate `alloc`.
+    """
+    if isinstance(node.op, CrossentropySoftmax1HotWithBiasDx):
+        dy, sm, y_idx = node.inputs[:3]
+
+        if dy.owner is not None and isinstance(dy.owner.op, tensor.Alloc):
+            # dz is the input of the Alloc op, i.e. T.alloc(dz, <shape>)
+            dz = dy.owner.inputs[0]
+
+            # A non-empty list of conditions means that `dz` has some
+            # non-broadcastable dimensions that cannot be checked statically
+            # for equal size with the corresponding dimension of `sm`
+            # statically. Thus, a runtime check is necessary.
+            try:
+                cond = [tensor.eq(dy.shape[k], sm.shape[k])
+                        # We iterate over the number of dimensions of `dz`
+                        # because `dz.ndim <= sm.ndim`. If `dz.ndim < sm.ndim`
+                        # then the right-most dimensions are equivalent to
+                        # broadcastables which is good.
+                        for k in xrange(dz.ndim)
+                        # If the increment is broadcastable in dimension `k`,
+                        # we do not care if the shape does not agree with
+                        # `sm.shape[k]` because
+                        # `CrossentropySoftmax1HotWithBiasDx` can deal with it
+                        # correctly.
+                        if not dz.broadcastable[k] and
+                        # If we can infer statically that the non-broadcastable
+                        # dimension `k` has the same shape as `sm.shape[k]`, we
+                        # do not need to check it at run time.
+                        not node.fgraph.shape_feature.same_shape(sm, dz,
+                                                                 dim_x=k,
+                                                                 dim_y=k)]
+            except AttributeError:
+                # The shape feature may not be available in some mode, but we
+                # need it for this optimization, so don't continue.
+                return False
+
+            if len(cond) > 0:
+                msg = '`sm` and `dz.owner.inputs[0]` have no matching shapes.'
+                dz = Assert(msg)(dz, *cond)
+
+            return [node.op(dz, sm, y_idx, *node.inputs[3:])]
 
 
 def binary_crossentropy(output, target):

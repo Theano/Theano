@@ -505,24 +505,22 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         #for node in fgraph.toposort():
         #    print node.op, node.inputs
 
-        # the function has 9 ops because the dimshuffle and lemwise{second}
-        # aren't getting cleaned up as well as we'd like.
-        has_cx1hot = False
+        # Since the optimization
+        # `local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc` is
+        # available, the graph is significantly simplified. For details, see
+        # https://github.com/Theano/Theano/pull/2521.
         has_cx1hotdx = False
         has_softmax = False
         has_softmaxdx = False
         for node in fgraph.toposort():
-            if node.op == crossentropy_softmax_argmax_1hot_with_bias:
-                has_cx1hot = True
             if node.op == crossentropy_softmax_1hot_with_bias_dx:
                 has_cx1hotdx = True
             if node.op == softmax:
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
-        assert has_cx1hot
         assert has_cx1hotdx
-        assert not has_softmax
+        assert has_softmax
         assert not has_softmaxdx
 
     def test_softmax_grad_optimizations_vector(self):
@@ -547,24 +545,22 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         #for node in fgraph.toposort():
         #    print node.op, node.inputs
 
-        # the function has 9 ops because the dimshuffle and elemwise{second}
-        # aren't getting cleaned up as well as we'd like.
-        has_cx1hot = False
+        # Since the optimization
+        # `local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc` is
+        # available, the graph is significantly simplified. For details, see
+        # https://github.com/Theano/Theano/pull/2521.
         has_cx1hotdx = False
         has_softmax = False
         has_softmaxdx = False
         for node in fgraph.toposort():
-            if node.op == crossentropy_softmax_argmax_1hot_with_bias:
-                has_cx1hot = True
             if node.op == crossentropy_softmax_1hot_with_bias_dx:
                 has_cx1hotdx = True
             if node.op == softmax:
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
-        assert has_cx1hot
         assert has_cx1hotdx
-        assert not has_softmax
+        assert has_softmax
         assert not has_softmaxdx
 
     def test_get_rid_of_advanced_indexing_version_of_xent(self):
@@ -590,7 +586,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y])
                 ]
         for expr in expressions:
-
             # Verify the optimizer worked on the expressions
             f = theano.function([x, y], expr, mode=mode)
             if verbose:
@@ -612,7 +607,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
-                assert len(ops) == 4
+                assert len(ops) == 2
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
                 assert softmax in ops
                 assert softmax_grad not in ops
@@ -645,7 +640,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
-                assert len(ops) == 4
+                assert len(ops) == 2
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
                 assert softmax_with_bias in ops
                 assert softmax_grad not in ops
@@ -681,7 +676,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
-                assert len(ops) in (6, 7)
+                assert len(ops) == 5
                 #there's an extra dimshuffle in there
                 # but I can't think of a good rule to get rid of it
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
@@ -716,7 +711,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
-                assert len(ops) in (6, 7)
+                assert len(ops) == 5
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
                 assert softmax_with_bias in ops
                 assert softmax_grad not in ops
@@ -765,7 +760,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
             try:
                 ops = [node.op for node in g.maker.fgraph.toposort()]
-                assert len(ops) == 5
+                assert len(ops) == 3
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
                 assert softmax in ops
                 assert softmax_grad not in ops
@@ -1079,7 +1074,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             # Verify the gradient wrt x
             g = theano.function([x, y, a], T.grad(expr, x), mode=mode)
             try:
-                assert 5 <= len(g.maker.fgraph.toposort()) <= 12
+                assert 3 <= len(g.maker.fgraph.toposort()) <= 6
                 validate_grad_graph(g)
                 g(x_val, y_val, 0.1)
             except Exception:
@@ -1090,7 +1085,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             h = theano.function([x, y, a],
                     T.grad(expr, x, known_grads={expr:a * x.sum()}), mode=mode)
             try:
-                assert 8 <= len(h.maker.fgraph.toposort()) <= 17
+                assert 6 <= len(h.maker.fgraph.toposort()) <= 8
                 validate_grad_graph(h)
                 h(x_val, y_val, 0.1)
             except Exception:
