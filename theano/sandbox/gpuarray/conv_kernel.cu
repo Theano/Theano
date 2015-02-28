@@ -182,12 +182,11 @@ template<> __device__ float convolutionRowNoFlip<0>(const float *data,
     return 0;
 }
 
-template<int KERN_WIDTH>
 __device__ void convolutionRowNoFlip(float& sum,
                                      const float *data,
                                      const float *kern, const int kern_wid){
-  if(KERN_WIDTH>0)
-    sum+=convolutionRowNoFlip<KERN_WIDTH>(data,kern);
+  if(THEANO_KERN_WID>0)
+    sum+=convolutionRowNoFlip<THEANO_KERN_WID>(data,kern);
   else
 #pragma unroll 8
     for (int col=0; col < kern_wid; col++) {//loop over col
@@ -219,8 +218,8 @@ __device__ void store_or_accumulate(float& dst,const float value ){
  *                 When true, allow for output image bigger then 512 pixel.
  *                 Use more registers.
  */
-template<bool flipped_kern, int KERN_WIDTH, bool split>
-__global__ void
+template<bool flipped_kern, bool split>
+__device__ inline void
 conv_patch( const float* img, const float* kern, float* out,
             int img_len, int img_wid, int kern_len, int kern_wid,
             int nkern, int nstack)
@@ -260,7 +259,7 @@ conv_patch( const float* img, const float* kern, float* out,
       for (int row=0; row < kern_len; row++) {//loop over row
         const float* idx_kern=&d_kern[row*kern_wid];
         const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
-        convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+        convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
       }
       out[batch_id*out_wid*out_len*nkern+//the good batch
           blockIdx.y*out_wid*out_len+//the output image
@@ -271,7 +270,7 @@ conv_patch( const float* img, const float* kern, float* out,
         for (int row=0; row < kern_len; row++) {//loop over row
           const float* idx_kern=&d_kern[row*kern_wid];
           const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
-          convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+          convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
         }
         out[batch_id*out_wid*out_len*nkern+//the good batch
             kern_id*out_wid*out_len+//the output image
@@ -279,6 +278,24 @@ conv_patch( const float* img, const float* kern, float* out,
       }
     }
 }
+
+extern "C" {
+#define __INSTANTIATE_CONV_PATCH(suffix, ...) \
+__global__ void \
+conv_patch_##suffix(const float *img, const float *kern, float *out, \
+                    int img_len, int img_wid, int kern_len, int kern_wid, \
+                    int nkern, int nstack) \
+{ \
+    conv_patch<__VA_ARGS__>(img, kern, out, img_len, img_wid, kern_len, \
+                            kern_wid, nkern, nstack); \
+}
+
+__INSTANTIATE_CONV_PATCH(2, true, false)
+__INSTANTIATE_CONV_PATCH(3, true, true)
+
+#undef __INSTANTIATE_CONV_PATCH
+}
+
 
 /**
  * As conv_patch, but implement the stack in the kernel.
@@ -295,15 +312,14 @@ conv_patch( const float* img, const float* kern, float* out,
  * dy: patch stride cols(1 for normal convolution)
  * template flipped_kern: if true, we "flip" the kernel as in a real convolution, else we don't
  * template accumulate: if true, we add the result, else we override the result
- * template KERN_WIDTH: if 0, will work for any kern_wid, else it specialyse to this kern_wid as an optimization
  * template img_c_contiguous_2d: if true, the img have are collon and row contiguous
  * template kern_c_contiguous_2d: if true, the kernel have are collon and row contiguous
  * template split: if true, each thread generate more than 1 output pixel, but use more registers.
  * template preload_full_kern: if true, we load the full kernel in shared memory, else, we load 1 row at a time.
  * template subsample: if false, remove some computation needed when dx or dy!=1.
  */
-template<bool flipped_kern, bool accumulate, int KERN_WIDTH, bool img_c_contiguous_2d, bool kern_c_contiguous_2d, bool split, bool preload_full_kern, bool subsample>
-__global__ void
+template<bool flipped_kern, bool accumulate, bool img_c_contiguous_2d, bool kern_c_contiguous_2d, bool split, bool preload_full_kern, bool subsample>
+__device__ inline void
 conv_patch_stack( const float* img, const float* kern, float* out,
                   int img_len, int img_wid, int kern_len, int kern_wid,
                   int out_len, int out_wid,
@@ -365,7 +381,7 @@ conv_patch_stack( const float* img, const float* kern, float* out,
           else
             idx_in=&d_img[(row+out_row)*img_wid+out_col];
           
-          convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+          convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
         }
         __syncthreads(); // ensure calculations have completed before any thread starts changing the shared memory
       }
@@ -425,7 +441,7 @@ conv_patch_stack( const float* img, const float* kern, float* out,
             //as we store the result of only the good thread.
             //This was with nvcc 3.0 on an GTX470 card.
             if(out_row<out_len)
-              convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+              convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
           }
           __syncthreads(); // ensure calculations have completed before any thread starts changing the shared memory
         }
@@ -439,6 +455,63 @@ conv_patch_stack( const float* img, const float* kern, float* out,
     }
 
 }
+
+extern "C" {
+#define __INSTANTIATE_CONV_PATCH_STACK(suffix, ...) \
+__global__ void \
+conv_patch_stack_##suffix(const float *img, const float *kern, float *out, \
+                          int img_len, int img_wid, int kern_len, int kern_wid, \
+                          int out_len, int out_wid, int nkern, int nstack, \
+                          int img_stride_col, int img_stride_row, \
+                          int img_stride_stack, int img_stride_batch, \
+                          int kern_stride_col, int kern_stride_row, \
+                          int kern_stride_stack, int kern_stride_nkern, \
+                          int dx, int dy) \
+{ \
+    conv_patch_stack<__VA_ARGS__>( \
+        img, kern, out, img_len, img_wid, kern_len, kern_wid, out_len, \
+        out_wid, nkern, nstack, img_stride_col, img_stride_row, \
+        img_stride_stack, img_stride_batch, \
+        kern_stride_col, kern_stride_row, \
+        kern_stride_stack, kern_stride_nkern, dx, dy); \
+}
+
+__INSTANTIATE_CONV_PATCH_STACK(64, true, false, false, false, false, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(65, true, false, false, false, false, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(66, true, false, false, false, false, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(67, true, false, false, false, false, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(68, true, false, false, false, true, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(69, true, false, false, false, true, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(70, true, false, false, false, true, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(71, true, false, false, false, true, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(72, true, false, false, true, false, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(73, true, false, false, true, false, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(74, true, false, false, true, false, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(75, true, false, false, true, false, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(76, true, false, false, true, true, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(77, true, false, false, true, true, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(78, true, false, false, true, true, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(79, true, false, false, true, true, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(80, true, false, true, false, false, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(81, true, false, true, false, false, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(82, true, false, true, false, false, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(83, true, false, true, false, false, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(84, true, false, true, false, true, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(85, true, false, true, false, true, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(86, true, false, true, false, true, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(87, true, false, true, false, true, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(88, true, false, true, true, false, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(89, true, false, true, true, false, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(90, true, false, true, true, false, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(91, true, false, true, true, false, true, true)
+__INSTANTIATE_CONV_PATCH_STACK(92, true, false, true, true, true, false, false)
+__INSTANTIATE_CONV_PATCH_STACK(93, true, false, true, true, true, false, true)
+__INSTANTIATE_CONV_PATCH_STACK(94, true, false, true, true, true, true, false)
+__INSTANTIATE_CONV_PATCH_STACK(95, true, false, true, true, true, true, true)
+
+#undef __INSTANTIATE_CONV_PATCH_STACK
+}
+
 
 /**
  * As conv_patch_stack, but kern_len thread for each output pixel
@@ -454,8 +527,8 @@ conv_patch_stack( const float* img, const float* kern, float* out,
  * template img_contiguous: if true, the img have are collon and row contiguous
  * template preload_full_kern: work only when split is true. We don't load the full kernel at once, but we load ceil_intdiv(kern_len/nb_split) kernel row at a time
  */
-template<bool flipped_kern, int KERN_WIDTH, bool c_contiguous, bool split, bool preload_full_kern>
-__global__ void
+template<bool flipped_kern, bool c_contiguous, bool split, bool preload_full_kern>
+__device__ inline void
 conv_patch_stack_reduce( const float* img, const float* kern, float* out,
                   int img_len, int img_wid, int kern_len, int kern_wid,
                   int nkern, int nstack, int img_stride_col,int img_stride_row,
@@ -521,7 +594,7 @@ conv_patch_stack_reduce( const float* img, const float* kern, float* out,
           const float* idx_in=&d_img[(first_row+tz+out_row)*img_wid+out_col];
           float sum2 = 0;
           if(tz<len3)
-            convolutionRowNoFlip<KERN_WIDTH>(sum2,idx_in,idx_kern,kern_wid);
+            convolutionRowNoFlip(sum2,idx_in,idx_kern,kern_wid);
           sum+=sum2;
         }
       }else if(split){
@@ -531,7 +604,7 @@ conv_patch_stack_reduce( const float* img, const float* kern, float* out,
         for(int row=tz;row<kern_len;row+=blockDim.z){
           const float* idx_kern=&d_kern[row*kern_wid];
           const float* idx_in=&d_img[(row+out_row)*img_wid+out_col];
-          convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+          convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
         }
       }else{
         int row = tz;//The row of the kernel.
@@ -540,7 +613,7 @@ conv_patch_stack_reduce( const float* img, const float* kern, float* out,
         load_to_shared(d_kern, kern, thread_id, nb_thread_id, kern_wid, kern_len,
                        kern_stride_col, kern_stride_row, flipped_kern, c_contiguous);
         __syncthreads();
-        convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+        convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
       }
         __syncthreads(); // ensure calculations have completed before any thread starts changing the shared memory
     }
@@ -559,6 +632,45 @@ conv_patch_stack_reduce( const float* img, const float* kern, float* out,
     }
 }
 
+extern "C" {
+#define __INSTANTIATE_CONV_PATCH_STACK_REDUCE(suffix, ...) \
+__global__ void \
+conv_patch_stack_reduce_##suffix( \
+    const float *img, const float *kern, float *out, \
+    int img_len, int img_wid, int kern_len, int kern_wid, \
+    int nkern, int nstack, int img_stride_col, int img_stride_row, \
+    int img_stride_stack, int img_stride_batch, \
+    int kern_stride_col, int kern_stride_row, \
+    int kern_stride_stack, int kern_stride_nkern) \
+{ \
+    conv_patch_stack_reduce<__VA_ARGS__>( \
+        img, kern, out, img_len, img_wid, kern_len, kern_wid, nkern, nstack, \
+        img_stride_col, img_stride_row, img_stride_stack, img_stride_batch, \
+        kern_stride_col, kern_stride_row, \
+        kern_stride_stack, kern_stride_nkern); \
+}
+
+/*__INSTANTIATE_CONV_PATCH_STACK_REDUCE(0, false, false, false, false);*/
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(1, false, false, false, true);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(2, false, false, true, false);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(3, false, false, true, true);
+/*__INSTANTIATE_CONV_PATCH_STACK_REDUCE(4, false, true, false, false);*/
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(5, false, true, false, true);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(6, false, true, true, false);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(7, false, true, true, true);
+/*__INSTANTIATE_CONV_PATCH_STACK_REDUCE(8, true, false, false, false);*/
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(9, true, false, false, true);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(10, true, false, true, false);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(11, true, false, true, true);
+/*__INSTANTIATE_CONV_PATCH_STACK_REDUCE(12, true, true, false, false);*/
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(13, true, true, false, true);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(14, true, true, true, false);
+__INSTANTIATE_CONV_PATCH_STACK_REDUCE(15, true, true, true, true);
+
+#undef __INSTANTIATE_CONV_PATCH_STACK_REDUCE
+}
+
+
 /**
  * WORK FOR IMAGE THAT DON'T FIT IN SHARED MEMORY
  * we store kern_len row of the image and the full kernel in the shared memory
@@ -570,8 +682,8 @@ conv_patch_stack_reduce( const float* img, const float* kern, float* out,
  * Diff with conv_patch: don't store the full image in the shared memory. 
  *    I.E. work for bigger image then conv_patch<split=true,...>.
  */
-template<int KERN_WIDTH, bool c_contiguous>
-__global__ void
+template<bool c_contiguous>
+__device__ inline void
 conv_rows( const float* img, const float* kern, float* out,
            int img_len, int img_wid, int kern_len, int kern_wid,
            int nkern, int nstack,
@@ -612,12 +724,37 @@ conv_rows( const float* img, const float* kern, float* out,
     for (int row=0; row < kern_len; row++) {//loop over row
       const float* idx_kern=&d_kern[row*kern_wid];
       const float* idx_in=&d_img[(row)*img_wid+out_col];
-      convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+      convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
     }
 
     out[batch_id*out_wid*out_len*nkern+//the good batch
         kern_id*out_wid*out_len+//the output image
         out_row*out_wid+out_col] = sum;
+}
+
+extern "C" {
+#define __INSTANTIATE_CONV_ROWS(suffix, ...) \
+__global__ void \
+conv_rows_##suffix(const float *img, const float *kern, float *out, \
+                   int img_len, int img_wid, int kern_len, int kern_wid, \
+                   int nkern, int nstack, \
+                   int img_stride_col, int img_stride_row, \
+                   int img_stride_stack, int img_stride_batch, \
+                   int kern_stride_col, int kern_stride_row, \
+                   int kern_stride_stack, int kern_stride_nkern) \
+{ \
+    conv_rows<__VA_ARGS__>( \
+        img, kern, out, img_len, img_wid, kern_len, kern_wid, \
+        nkern, nstack, img_stride_col, img_stride_row, \
+        img_stride_stack, img_stride_batch, \
+        kern_stride_col, kern_stride_row, \
+        kern_stride_stack, kern_stride_nkern); \
+}
+
+__INSTANTIATE_CONV_ROWS(0, false)
+__INSTANTIATE_CONV_ROWS(1, true)
+
+#undef __INSTANTIATE_CONV_ROWS
 }
 
 /**
@@ -631,8 +768,8 @@ conv_rows( const float* img, const float* kern, float* out,
  * Diff with conv_patch: don't store the full image in the shared memory. 
  *    I.E. work for bigger image then conv_patch<split=true,...>.
  */
-template<int KERN_WIDTH, bool c_contiguous>
-__global__ void
+template<bool c_contiguous>
+__device__ inline void
 conv_rows_stack( const float* img, const float* kern, float* out,
                  const int img_len, const int img_wid, const int kern_len, const int kern_wid,
                  const int nkern, const int nstack,
@@ -708,7 +845,7 @@ conv_rows_stack( const float* img, const float* kern, float* out,
       for (int row=0; row < kern_len; row++) {//loop over row
         const float* idx_kern=&d_kern[row*kern_wid];
         const float* idx_in=&d_img[(row+shared_row)*img_wid+out_col];
-        convolutionRowNoFlip<KERN_WIDTH>(sum,idx_in,idx_kern,kern_wid);
+        convolutionRowNoFlip(sum,idx_in,idx_kern,kern_wid);
       }
       __syncthreads();//to be sure all thread have finished before we modif the shared memory.
     }
@@ -716,6 +853,33 @@ conv_rows_stack( const float* img, const float* kern, float* out,
       out[batch_id*out_wid*out_len*nkern+//the good batch
           kern_id*out_wid*out_len+//the output image
           out_row*out_wid+out_col] = sum;
+}
+
+extern "C" {
+#define __INSTANTIATE_CONV_ROWS_STACK(suffix, ...) \
+__global__ void \
+conv_rows_stack_##suffix( \
+    const float *img, const float *kern, float *out, \
+    const int img_len, const int img_wid, \
+    const int kern_len, const int kern_wid, \
+    const int nkern, const int nstack, \
+    const int img_stride_col, const int img_stride_row, \
+    const int img_stride_stack, const int img_stride_batch, \
+    const int kern_stride_col, const int kern_stride_row, \
+    const int kern_stride_stack, const int kern_stride_nkern) \
+{ \
+    conv_rows_stack<__VA_ARGS__>( \
+        img, kern, out, img_len, img_wid, kern_len, kern_wid, \
+        nkern, nstack, img_stride_col, img_stride_row, \
+        img_stride_stack, img_stride_batch, \
+        kern_stride_col, kern_stride_row, \
+        kern_stride_stack, kern_stride_nkern); \
+}
+
+__INSTANTIATE_CONV_ROWS_STACK(0, false)
+__INSTANTIATE_CONV_ROWS_STACK(1, true)
+
+#undef __INSTANTIATE_CONV_ROWS_STACK
 }
 
 /**
@@ -729,8 +893,8 @@ conv_rows_stack( const float* img, const float* kern, float* out,
  * Diff with conv_patch: don't store the full image and kernel in the shared memory. 
  *    I.E. work for bigger image then conv_patch<split=true,...>.
  */
-template<int KERN_WIDTH, bool c_contiguous, bool preload_full_kern>
-__global__ void
+template<bool c_contiguous, bool preload_full_kern>
+__device__ inline void
 conv_rows_stack2(const float* img, const float* kern, float* out,
                  const int img_len, const int img_wid, const int kern_len, const int kern_wid,
                  const int nkern, const int nstack,
@@ -804,7 +968,7 @@ conv_rows_stack2(const float* img, const float* kern, float* out,
           else idx_kern=d_kern;
           const float* idx_in=&d_img[((shared_row+row)%nb_rows)*img_wid+out_col];
           float sum_ =0.0f;
-          convolutionRowNoFlip<KERN_WIDTH>(sum_,idx_in,idx_kern,kern_wid);
+          convolutionRowNoFlip(sum_,idx_in,idx_kern,kern_wid);
           sum+=sum_;//We pass by an intermediate variable to have more precission.
         }
       }
@@ -814,6 +978,35 @@ conv_rows_stack2(const float* img, const float* kern, float* out,
       out[batch_id*out_wid*out_len*nkern+//the good batch
           kern_id*out_wid*out_len+//the output image
           out_row*out_wid+out_col] = sum;
+}
+
+extern "C" {
+#define __INSTANTIATE_CONV_ROWS_STACK2(suffix, ...) \
+__global__ void \
+conv_rows_stack2_##suffix( \
+    const float *img, const float *kern, float *out, \
+    const int img_len, const int img_wid, \
+    const int kern_len, const int kern_wid, \
+    const int nkern, const int nstack, \
+    const int img_stride_col, const int img_stride_row, \
+    const int img_stride_stack, const int img_stride_batch, \
+    const int kern_stride_col, const int kern_stride_row, \
+    const int kern_stride_stack, const int kern_stride_nkern) \
+{ \
+    conv_rows_stack2<__VA_ARGS__>( \
+        img, kern, out, img_len, img_wid, \
+        kern_len, kern_wid, nkern, nstack, \
+        img_stride_col, img_stride_row, img_stride_stack, img_stride_batch, \
+        kern_stride_col, kern_stride_row, \
+        kern_stride_stack, kern_stride_nkern); \
+}
+
+__INSTANTIATE_CONV_ROWS_STACK2(0, false, false)
+__INSTANTIATE_CONV_ROWS_STACK2(1, false, true)
+__INSTANTIATE_CONV_ROWS_STACK2(2, true, false)
+__INSTANTIATE_CONV_ROWS_STACK2(3, true, true)
+
+#undef __INSTANTIATE_CONV_ROWS_STACK2
 }
 
 /**
@@ -826,7 +1019,7 @@ conv_rows_stack2(const float* img, const float* kern, float* out,
  * TODO: explain parameters, preconditions
  */
 template<bool stack_loop>
-__global__ void
+__device__ inline void
 conv_valid_row_reduce(int nB, int nK, int stacklen,
         int img_len, int img_wid, 
         int kern_len, int kern_wid,
@@ -911,6 +1104,32 @@ conv_valid_row_reduce(int nB, int nK, int stacklen,
     }
 }
 
+extern "C" {
+#define __INSTANTIATE_CONV_VALID_ROW_REDUCE(suffix, ...) \
+__global__ void \
+conv_valid_row_reduce_##suffix( \
+    int nB, int nK, int stacklen, int img_len, int img_wid,  \
+    int kern_len, int kern_wid, int out_len, int out_wid, \
+    const float *img, int img_str_B, int img_str_S, int img_str_R, int img_str_C, \
+    const float *kern, int kern_str_K, int kern_str_S, int kern_str_R, int kern_str_C, \
+    float *out, int out_str_B, int out_str_K, int out_str_R, int out_str_C, \
+    int subsample_rows, int subsample_cols, \
+    const int initial_reduce_boundary) \
+{ \
+    conv_valid_row_reduce<__VA_ARGS__>( \
+        nB, nK, stacklen, img_len, img_wid, \
+        kern_len, kern_wid, out_len, out_wid, \
+        img, img_str_B, img_str_S, img_str_R, img_str_C, \
+        kern, kern_str_K, kern_str_S, kern_str_R, kern_str_C, \
+        out, out_str_B, out_str_K, out_str_R, out_str_C, \
+        subsample_rows, subsample_cols, initial_reduce_boundary); \
+}
+
+__INSTANTIATE_CONV_VALID_ROW_REDUCE(0, false)
+__INSTANTIATE_CONV_VALID_ROW_REDUCE(1, true)
+
+#undef __INSTANTIATE_CONV_VALID_ROW_REDUCE
+}
 
 
 /**

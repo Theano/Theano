@@ -203,11 +203,8 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                   int, int, int, int,
                   int, int);
 
-#define CONV_PATCH_SPECIAL(kern_wid) \
-            if(threads.y==out_len) f=conv_patch<true,kern_wid,false>;\
-            else f=conv_patch<true,kern_wid,true>;
-
-        CONV_PATCH_SPECIAL(THEANO_KERN_WID);
+        if(threads.y==out_len) f=conv_patch_2;
+        else f=conv_patch_3;
 
          f<<< grid, threads, shared_size>>>
              (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
@@ -267,41 +264,39 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                   int, int, int, int,
                   int, int);
 
-#define CONV_PATCH_STACK_SPECIAL(kern_wid) \
-        if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true,true>;} \
-        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true,true>;} \
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true,true>;}\
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false,true>;} \
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false,true>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false,true>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false,true>;} \
-        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true,false>;} \
-        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true,false>;} \
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true,false>;}\
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false,false>;} \
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false,false>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false,false>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false,false>;}
+        if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_64;}
+        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_65;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_66;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_67;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_68;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_69;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_70;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_71;}
+        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_72;}
+        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_73;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_74;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_75;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_76;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_77;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_78;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_79;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_80;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_81;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_82;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_83;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_84;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_85;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack_86;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack_87;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_88;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_89;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_90;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_91;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_92;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_93;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack_94;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack_95;}
 
-        CONV_PATCH_STACK_SPECIAL(THEANO_KERN_WID);
         f<<< grid, threads, shared_size>>>
             (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
               img_len, img_wid, kern_len, kern_wid, 
@@ -380,11 +375,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                   int, int, int, int,
                   int, int);
 
-#define CONV_ROWS_SPECIAL(kern_wid) \
-        if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows<kern_wid, false>;\
-        else f = conv_rows<kern_wid, true>;\
+        if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_0;
+        else f = conv_rows_1;
 
-        CONV_ROWS_SPECIAL(THEANO_KERN_WID);
         f<<< grid, threads, shared_size >>>
             (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
            img_len, img_wid, kern_len, kern_wid, nkern, nstack,
@@ -450,10 +443,10 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
         if(!img_contiguous_2d || !kern_contiguous_2d) {
             //fprintf(stderr, "using false version\n");
-            f = conv_rows_stack<THEANO_KERN_WID, false>;
+            f = conv_rows_stack_0;
         } else {
             //fprintf(stderr, "using true version\n");
-            f = conv_rows_stack<THEANO_KERN_WID, true>;
+            f = conv_rows_stack_1;
         }
 
         f<<< grid, threads, shared_size >>>
@@ -535,13 +528,10 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                   int, int, int, int,
                   int, int);
 
-#define CONV_ROWS_STACK2_SPECIAL(kern_wid) \
-        if((!img_contiguous_2d || !kern_contiguous_2d)&&version==9) f = conv_rows_stack2<kern_wid, false,true>;\
-        else if(version==9) f = conv_rows_stack2<kern_wid, true,true>;\
-        else if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack2<kern_wid, false, false>;\
-        else f = conv_rows_stack2<kern_wid, true, false>;
-
-        CONV_ROWS_STACK2_SPECIAL(THEANO_KERN_WID);
+        if((!img_contiguous_2d || !kern_contiguous_2d)&&version==9) f = conv_rows_stack2_1;
+        else if(version==9) f = conv_rows_stack2_3;
+        else if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack2_0;
+        else f = conv_rows_stack2_2;
 
         f<<< grid, threads, shared_size >>>
             (cuda_get_ptr(img),
@@ -663,24 +653,23 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
             //printf("kern_flipped=%d, ccontig=%d, split=%d, full_kern=%d\n",kern_flipped,ccontig,split,full_kern);
             //We will always be split when we don't load the full kernel
-#define CONV_PATCH_STACK_REDUCE_SPECIAL(kern_wid) \
-                if     (kern_flipped  && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, true>;\
-                else if(kern_flipped  && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, true>;\
-                else if(kern_flipped  && ccontig  && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, true>;\
-                else if(kern_flipped  && !ccontig && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, true>;\
-                else if(!kern_flipped && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, true>;\
-                else if(!kern_flipped && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, true>;\
-                else if(!kern_flipped && ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, true>;\
-                else if(!kern_flipped && !ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, true>;\
-                /*else if(kern_flipped  && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, false>;*/\
-                /*else if(kern_flipped  && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, false>;*/\
-                else if(kern_flipped  && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, false>;\
-                else if(kern_flipped  && !ccontig && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, false>;\
-                /*else if(!kern_flipped && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, false>;*/\
-                /*else if(!kern_flipped && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, false>;*/\
-                else if(!kern_flipped && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, false>;\
-                else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
-            CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
+
+            /* if(!kern_flipped && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce_0;*/
+            /*else*/ if(!kern_flipped && !ccontig && !split && full_kern) f=conv_patch_stack_reduce_1;
+            else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce_2;
+            else if(!kern_flipped && !ccontig  && split && full_kern) f=conv_patch_stack_reduce_3;
+            /*else if(!kern_flipped && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce_4;*/
+            else if(!kern_flipped && ccontig  && !split && full_kern) f=conv_patch_stack_reduce_5;
+            else if(!kern_flipped && ccontig  && split && !full_kern) f=conv_patch_stack_reduce_6;
+            else if(!kern_flipped && ccontig  && split && full_kern) f=conv_patch_stack_reduce_7;
+            /*else if(kern_flipped  && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce_8;*/
+            else if(kern_flipped  && !ccontig && !split && full_kern) f=conv_patch_stack_reduce_9;
+            else if(kern_flipped  && !ccontig && split && !full_kern) f=conv_patch_stack_reduce_10;
+            else if(kern_flipped  && !ccontig && split && full_kern) f=conv_patch_stack_reduce_11;
+            /*else if(kern_flipped  && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce_12;*/
+            else if(kern_flipped  && ccontig  && !split && full_kern) f=conv_patch_stack_reduce_13;
+            else if(kern_flipped  && ccontig  && split && !full_kern) f=conv_patch_stack_reduce_14;
+            else if(kern_flipped  && ccontig  && split && full_kern) f=conv_patch_stack_reduce_15;
 
             f<<< grid, threads, shared_size>>>(cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
                                                img_len, img_wid, kern_len, kern_wid,
@@ -770,9 +759,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         //std::cerr << "kerns " << nstack << " " << kern_len << "\n";
         //std::cerr << "n_reduce_buf/sizeof(float) " << n_reduce_buf / sizeof(float) << "\n";
         if(block_nstack==nstack)
-          f=conv_valid_row_reduce<false>;
+          f=conv_valid_row_reduce_0;
         else
-          f=conv_valid_row_reduce<true>;
+          f=conv_valid_row_reduce_1;
         f<<<n_blocks, n_threads, n_reduce_buf>>>(
                 nbatch, nkern, PyGpuArray_DIMS(img)[1],
                 img_len, img_wid,
@@ -1105,22 +1094,19 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                   int, int, int, int,
                   int, int);
 
-#define CONV_FULL_PATCH_STACK_PADDED_SPECIAL(kern_wid) \
-             if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,true,false,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,true,true,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,true,false,true>;\
-        else if(version==3 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,false,false,false>;\
-        else if(version==4 && kern_flipped)f=conv_full_patch_stack_padded<true,kern_wid,false,true,false>;\
-        else if(version==5 && kern_flipped)f=conv_full_patch_stack_padded<true,kern_wid,false,false,true>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3) f=conv_full_patch_stack_padded<false,kern_wid,true,false,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4) f=conv_full_patch_stack_padded<false,kern_wid,true,true,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5) f=conv_full_patch_stack_padded<false,kern_wid,true,false,true>;\
-        else if(version==3) f=conv_full_patch_stack_padded<false,kern_wid,false,false,false>;\
-        else if(version==4) f=conv_full_patch_stack_padded<false,kern_wid,false,true,false>;\
-        else if(version==5) f=conv_full_patch_stack_padded<false,kern_wid,false,false,true>;\
+        if(version==3) f=conv_full_patch_stack_padded_0;
+        else if(version==5) f=conv_full_patch_stack_padded_1;
+        else if(version==4) f=conv_full_patch_stack_padded_2;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3) f=conv_full_patch_stack_padded_4;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5) f=conv_full_patch_stack_padded_5;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4) f=conv_full_patch_stack_padded_6;
+        else if(version==3 && kern_flipped) f=conv_full_patch_stack_padded_8;
+        else if(version==5 && kern_flipped)f=conv_full_patch_stack_padded_9;
+        else if(version==4 && kern_flipped)f=conv_full_patch_stack_padded_10;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3 && kern_flipped) f=conv_full_patch_stack_padded_12;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5 && kern_flipped) f=conv_full_patch_stack_padded_13;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4 && kern_flipped) f=conv_full_patch_stack_padded_14;
         else assert(false);
-
-        CONV_FULL_PATCH_STACK_PADDED_SPECIAL(THEANO_KERN_WID);
 
         f<<< grid, threads, shared_size>>>
             (cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
@@ -1225,9 +1211,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         //typeof(conv_full_load_everything<0>) f = ;
         void (*f)(const float*, const float*, float*,
                   int, int, int, int, int, int,
-                  int, int, int, int, int, int, int, int) = conv_full_load_everything<0>;
-
-        f = conv_full_load_everything<THEANO_KERN_WID>;
+                  int, int, int, int, int, int, int, int) = conv_full_load_everything;
 
         f<<< grid, threads, shared_size>>>
             (cuda_get_ptr(img),
@@ -1284,10 +1268,10 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                   int, int, int, int,
                   int, int, int, int);
 
-        if(img_contiguous_2d && kern_contiguous_2d) f=conv_full_patch_stack<true,true>;\
-        else if(img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack<true,false>;\
-        else if(!img_contiguous_2d && kern_contiguous_2d) f=conv_full_patch_stack<false,true>;\
-        else if(!img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack<false,false>;
+        if(!img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack_0;
+        else if(!img_contiguous_2d && kern_contiguous_2d) f=conv_full_patch_stack_1;
+        else if(img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack_2;
+        else if(img_contiguous_2d && kern_contiguous_2d) f=conv_full_patch_stack_3;
 
         f<<< grid, threads, shared_size>>>(
                 cuda_get_ptr(img),
