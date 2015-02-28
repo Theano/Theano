@@ -74,6 +74,20 @@ cudnnGetConvolutionForwardAlgorithm(
 }
 
 static inline cudnnStatus_t
+cudnnGetConvolutionForwardWorkspaceSize(
+ cudnnHandle_t handle,
+ const cudnnTensorDescriptor_t srcDesc,
+ const cudnnFilterDescriptor_t filterDesc,
+ const cudnnConvolutionDescriptor_t convDesc,
+ const cudnnTensor4dDescriptor_t destDesc,
+ cudnnConvolutionFwdAlgo_t algo,
+ size_t *sizeInBytes) {
+  *sizeInBytes = 0;
+  return CUDNN_STATUS_SUCCESS;
+}
+
+
+static inline cudnnStatus_t
 cudnnConvolutionForward_v2(
   cudnnHandle_t handle,
   const void *alpha,
