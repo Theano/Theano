@@ -2617,7 +2617,7 @@ def local_useless_incsubtensor_alloc(node):
 
             # A non-empty list of conditions means that `z` has some
             # non-broadcastable dimensions that cannot be checked statically
-            # for equal size with the corresponding dimension of `x` Thus, a
+            # for equal size with the corresponding dimension of `x`. Thus, a
             # runtime check is necessary.
             try:
                 cond = [T.eq(x.shape[k], z.shape[k])
