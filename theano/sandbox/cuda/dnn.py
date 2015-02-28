@@ -362,6 +362,8 @@ class GpuDnnConv(DnnBase, COp):
             self.workmem = 'small'
 
     def get_op_params(self):
+        if version() == -1:
+            return [('CONV_ALGO', "0")]
         if self.workmem == 'none':
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
         elif self.workmem == 'small':
