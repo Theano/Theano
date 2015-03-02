@@ -100,6 +100,9 @@ class DownsampleFactorMax(Op):
             extra row/col of partial downsampling (False) or ignore it (True).
         :type ignore_border: bool
 
+        :param padding: pad zeros on four borders of the images
+        :type padding: tuple of two ints 
+
         :rtype: list
         :returns: the shape of the output from this op, for input of given
             shape.  This will have the same length as imgshape, but with last
@@ -167,6 +170,9 @@ class DownsampleFactorMax(Op):
             (no overlap on pooling regions)
         : type st: list or tuple of two ints
 
+        :param padding: pad zeros on four borders of the images
+        :type padding: tuple of two ints 
+
         """
         self.ds = tuple(ds)
         if not all([isinstance(d, int) for d in ds]):
@@ -221,8 +227,8 @@ class DownsampleFactorMax(Op):
         pad_w = self.padding[1]
 
         # pad the image
-        fill = x.min()-1
-        y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols)) + fill
+        fill = x.min()-1.
+        y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols), dtype=x.dtype) + fill
         y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
         # max pooling
         for n in xrange(x.shape[0]):
@@ -332,7 +338,7 @@ class DownsampleFactorMax(Op):
 
 
 class DownsampleFactorMaxGrad(Op):
-    __props__ = ('ds', 'ignore_border', 'st')
+    __props__ = ('ds', 'ignore_border', 'st', 'padding')
 
     def __init__(self, ds, ignore_border, st=None, padding=(0,0)):
         self.ds = tuple(ds)
@@ -343,7 +349,7 @@ class DownsampleFactorMaxGrad(Op):
         self.padding = tuple(padding)
 
     def __str__(self):
-        return '%s{%s,%s,%s,%s}' % (self.__class__.__name__,
+        return '%s{%s, %s, %s, %s}' % (self.__class__.__name__,
                                  self.ds, self.st, self.ignore_border,self.padding)
 
     def make_node(self, x, maxout, gz):
@@ -373,7 +379,7 @@ class DownsampleFactorMaxGrad(Op):
         
         # pad the image
         fill = x.min()-1
-        y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols)) + fill
+        y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols), dtype=x.dtype) + fill
         y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
         gx = numpy.zeros_like(y)
         for n in xrange(x.shape[0]):
