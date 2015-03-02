@@ -1,15 +1,21 @@
 import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp, CudaNdarray
+
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
+
 from theano.tensor import as_tensor_variable
 from scikits.cuda import cula
+
 try:
     from scikits.cuda import cula
     scikits_cuda_available = True
 except ImportError:
     scikits_cuda_available = False
+
+if cula is not None:
+    cula.culaInitialize()
 
 import numpy
 
@@ -32,8 +38,8 @@ class GpuSolve(GpuOp):
         return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
 
     def make_node(self, inp1, inp2):
-        inp1 = gpu_contiguous(as_cuda_ndarray_variable(inp1))
-        inp2 = gpu_contiguous(as_cuda_ndarray_variable(inp2))
+        inp1 = as_cuda_ndarray_variable(inp1)
+        inp2 = as_cuda_ndarray_variable(inp2)
 
         assert inp1.dtype == "float32"
         assert inp2.dtype == "float32"
@@ -49,20 +55,23 @@ class GpuSolve(GpuOp):
 
         def thunk():
             input_shape = inputs[1][0].shape
+
             #size of the matrices to invert
             z = outputs[0]
+
             #Matrix
             A = inputs[0][0]
 
             #Solution vectors
             b = inputs[1][0]
+            A_cpy = A.copy()
+            b_cpy = b.copy()
 
-            A_pycuda = to_gpuarray(A)
-            b_pycuda = to_gpuarray(b)
+            A_pycuda = to_gpuarray(A_cpy)
+            b_pycuda = to_gpuarray(b_cpy)
 
             def cula_gpu_solve(A, b):
 
-                cula.culaInitialize()
                 A_shape = A.shape
                 b_shape = b.shape
                 assert(len(A_shape) == 2)
@@ -73,6 +82,7 @@ class GpuSolve(GpuOp):
 
                 n = A_shape[0]
                 nrhs = b_shape[1]
+
                 #Create the integer pivot vector to store the indices for
                 #permutation matrix.
                 ipiv = CudaNdarray.zeros((n,))
@@ -84,8 +94,8 @@ class GpuSolve(GpuOp):
 
                 # construct pointer arrays needed for culaDeviceSgels
                 # Cula requires you to pass a pointer for A and b.
-                A_ptr = A.gpudata
-                b_ptr = b.gpudata
+                A_ptr = A_cpy.gpudata
+                b_ptr = b_cpy.gpudata
                 ipiv_ptr = ipiv.gpudata
 
                 cula.culaDeviceSgesv(n, nrhs, A_ptr, lda, ipiv_ptr, b_ptr, ldb)
