@@ -265,7 +265,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             
     def test_DownsampleFactorMaxPaddingStride_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
-        imval = rng.rand(10, 10, 10, 10) * 10.0
+        imval = rng.rand(1, 1, 10, 10) * 10.0
         maxpoolsize = (5, 3)
         stridesize = (3, 2)
         paddingsize = (2,2)
