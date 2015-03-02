@@ -383,7 +383,8 @@ class Subtensor(Op):
         else:
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)
 
-    def get_constant_idx(self, inputs, allow_partial=False):
+    def get_constant_idx(self, inputs, allow_partial=False,
+                         only_process_constants=False):
         """
         Return the idx_list with constant inputs replaced by their
         python scalar equivalent.  May raise
@@ -405,6 +406,11 @@ class Subtensor(Op):
             [v, slice(1, 3, None)]
             >>> b.owner.op.get_constant_idx(b.owner.inputs)
             NotScalarConstantError: v
+
+        :param only_process_constants: If True, we only attempt to obtain
+            the value of an index/slice if it's directly constant and don't
+            try to dig through dimshuffles, fills, allocs, and other to figure
+            out its value.
         """
         real_idx = get_idx_list(inputs, self.idx_list)
 
@@ -417,12 +423,14 @@ class Subtensor(Op):
                              conv(val.step))
             else:
                 try:
-                    return get_scalar_constant_value(val)
+                    return get_scalar_constant_value(val,
+                            only_process_constants=only_process_constants)
                 except theano.tensor.NotScalarConstantError:
                     if allow_partial:
                         return val
                     else:
                         raise
+
         return map(conv, real_idx)
 
     def __init__(self, idx_list):
