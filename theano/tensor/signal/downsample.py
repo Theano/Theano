@@ -4,7 +4,7 @@ Planned:
 DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 
 """
-#This file should move along with conv.py
+# This file should move along with conv.py
 import __builtin__
 
 import numpy
@@ -196,8 +196,9 @@ class DownsampleFactorMax(Op):
                 'padding_h and padding_w must be smaller than strides')
 
     def __str__(self):
-        return '%s{%s, %s, %s, %s}' % (self.__class__.__name__,
-                self.ds, self.st, self.ignore_border, self.padding)
+        return '%s{%s, %s, %s, %s}' % (
+            self.__class__.__name__,
+            self.ds, self.st, self.ignore_border, self.padding)
 
     def make_node(self, x):
         if x.type.ndim != 4:
@@ -216,13 +217,14 @@ class DownsampleFactorMax(Op):
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
                                  self.padding)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.empty(self.out_shape(x.shape, self.ds,
-                            self.ignore_border, self.st, self.padding),
-                            dtype=x.dtype)
+            z[0] = numpy.empty(
+                self.out_shape(x.shape, self.ds, self.ignore_border,
+                               self.st, self.padding),
+                dtype=x.dtype)
         zz = z[0]
-        #number of pooling output rows
+        # number of pooling output rows
         pr = zz.shape[-2]
-        #number of pooling output cols
+        # number of pooling output cols
         pc = zz.shape[-1]
         ds0, ds1 = self.ds
         st0, st1 = self.st
@@ -356,8 +358,9 @@ class DownsampleFactorMaxGrad(Op):
         self.padding = tuple(padding)
 
     def __str__(self):
-        return '%s{%s, %s, %s, %s}' % (self.__class__.__name__,
-                self.ds, self.st, self.ignore_border, self.padding)
+        return '%s{%s, %s, %s, %s}' % (
+            self.__class__.__name__,
+            self.ds, self.st, self.ignore_border, self.padding)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -371,9 +374,9 @@ class DownsampleFactorMaxGrad(Op):
     def perform(self, node, inp, out):
         x, maxout, gz = inp
         gx_stg, = out
-        #number of pooling output rows
+        # number of pooling output rows
         pr = maxout.shape[-2]
-        #number of pooling output cols
+        # number of pooling output cols
         pc = maxout.shape[-1]
         ds0, ds1 = self.ds
         st0, st1 = self.st
@@ -411,15 +414,15 @@ class DownsampleFactorMaxGrad(Op):
         ggx, = grads
         if self.padding == (0, 0):
             return [theano.tensor.zeros_like(x),
-                theano.tensor.zeros_like(maxout),
-                DownsampleFactorMaxGradGrad(
-                    self.ds, ignore_border=self.ignore_border,
-                    st=self.st)(x, maxout, ggx)]
+                    theano.tensor.zeros_like(maxout),
+                    DownsampleFactorMaxGradGrad(
+                        self.ds, ignore_border=self.ignore_border,
+                        st=self.st)(x, maxout, ggx)]
         else:
             return [theano.tensor.zeros_like(x),
-                theano.tensor.zeros_like(maxout),
-                theano.gradients.grad_not_implemented(
-                    self, 2, gz, 'Hessian not implemented with padding')]
+                    theano.tensor.zeros_like(maxout),
+                    theano.gradients.grad_not_implemented(
+                        self, 2, gz, 'Hessian not implemented with padding')]
 
     def c_code(self, node, name, inp, out, sub):
         if self.ds != self.st:
@@ -635,9 +638,9 @@ class DownsampleFactorMaxGradGrad(Op):
                                dtype=x.dtype)
         ggz = z[0]
 
-        #number of pooling output rows
+        # number of pooling output rows
         pr = ggz.shape[-2]
-        #number of pooling output cols
+        # number of pooling output cols
         pc = ggz.shape[-1]
         ds0, ds1 = self.ds
         st0, st1 = self.st
