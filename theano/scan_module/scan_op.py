@@ -1347,12 +1347,6 @@ class Scan(PureOp):
             return self.outputs[s:e]
 
         def _get_inner_inps(iidx):
-            s = 0
-            if self.n_seqs > 0:
-                e = 1
-            else:
-                e = len(self.tap_array[0])
-            p = iidx
             if node.inputs[iidx + 1] in self.outer_nitsot(node):
                 return None
             if node.inputs[iidx + 1] in self.outer_non_seqs(node):
@@ -1360,6 +1354,11 @@ class Scan(PureOp):
                     node.inputs[iidx + 1])
                 return [self.inner_non_seqs(self.inputs)[loc_idx]]
 
+            s = 0
+            if self.n_seqs > 0:
+                e = 1
+            else:
+                e = len(self.tap_array[0])
             for p in xrange(iidx):
                 s = e
                 if p < self.n_seqs:

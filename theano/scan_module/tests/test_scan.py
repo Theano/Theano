@@ -365,6 +365,27 @@ class T_Scan(unittest.TestCase):
              4,
              numpy.int64([2, 2, 3]))
 
+    @attr('slow')
+    def test_only_nonseq_inputs(self):
+        # Compile the Theano function
+        n_steps=2
+        inp = tensor.matrix()
+        broadcasted_inp, _ = theano.scan(lambda x:x,
+                                         non_sequences=[inp],
+                                         n_steps=n_steps)
+        out = broadcasted_inp.sum()
+        gr = tensor.grad(out, inp)
+        fun = theano.function([inp], [broadcasted_inp, gr])
+
+        # Execute the Theano function and compare outputs to the expected outputs
+        inputs = numpy.array([[1, 2], [3, 4]])
+        expected_out1 = numpy.repeat(inputs[None], n_steps, axis=0)
+        expected_out2 = numpy.ones(inputs.shape, dtype="int8") * n_steps
+
+        out1, out2 = fun(inputs)
+        utt.assert_allclose(out1, expected_out1)
+        utt.assert_allclose(out2, expected_out2)
+
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars
     def test_one_sequence_one_output_weights(self):
