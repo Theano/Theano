@@ -223,7 +223,7 @@ class DownsampleFactorMax(Op):
         # pad the image
         fill = x.min()-1
         y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols)) + fill
-        y[:, :, pad_h:-pad_h, pad_w:-pad_w] = x
+        y[:, :, pad_h:(y.shape[2]-pad_h), pad_w:(y.shape[3]-pad_w)] = x
         # max pooling
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
@@ -369,12 +369,12 @@ class DownsampleFactorMaxGrad(Op):
         img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
-
+        
         
         # pad the image
         fill = x.min()-1
         y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols)) + fill
-        y[:, :, pad_h:-pad_h, pad_w:-pad_w] = x
+        y[:, :, pad_h:(y.shape[2]-pad_h), pad_w:(y.shape[3]-pad_w)] = x
         gx = numpy.zeros_like(y)
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
@@ -389,7 +389,7 @@ class DownsampleFactorMaxGrad(Op):
                                 if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
                                     gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
         # unpad the image
-        gx = gx[:, :, pad_h:-pad_h, pad_w:-pad_w]
+        gx = gx[:, :, pad_h:(y.shape[2]-pad_h), pad_w:(y.shape[3]-pad_w)]
         gx_stg[0] = gx
 
     def infer_shape(self, node, in_shapes):
