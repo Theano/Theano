@@ -12,7 +12,6 @@ import numpy
 import theano
 from theano import gof, Op, tensor, Variable, Apply
 
-
 def max_pool2D(*args, **kwargs):
     import sys
     print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
@@ -185,7 +184,7 @@ class DownsampleFactorMax(Op):
         if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
             raise NotImplementedError('padding_h and padding_w must be smaller than strides')
     def __str__(self):
-        return '%s{%s,%s,%s,%s}' % (self.__class__.__name__,
+        return '%s{%s, %s, %s, %s}' % (self.__class__.__name__,
                                  self.ds, self.st, self.ignore_border,self.padding)
 
     def make_node(self, x):
@@ -220,19 +219,12 @@ class DownsampleFactorMax(Op):
         img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
-        def pad_img(x):
-            w = x.shape[3]
-            h = x.shape[2]
-            fill = x.min()-1
-            t = numpy.ones((x.shape[0],x.shape[1],1,1))
-            ud_bar = (numpy.zeros((pad_h, w)) + fill)[
-                numpy.newaxis, numpy.newaxis,:,:] * t
-            lr_bar = (numpy.zeros((pad_h * 2 + h, pad_w)) + fill)[
-                numpy.newaxis, numpy.newaxis,:,:] * t
-            y = numpy.concatenate([ud_bar, x, ud_bar], axis=2)
-            y = numpy.concatenate([lr_bar, y, lr_bar], axis=3)
-            return y
-        y = pad_img(x)
+
+        # pad the image
+        fill = x.min()-1
+        y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols)) + fill
+        y[:, :, pad_h:-pad_h, pad_w:-pad_w] = x
+        # max pooling
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
@@ -377,27 +369,12 @@ class DownsampleFactorMaxGrad(Op):
         img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
-        def pad_img(x):
-            w = x.shape[3]
-            h = x.shape[2]
-            fill = x.min()-1.
-            t = numpy.ones((x.shape[0],x.shape[1],1,1))
-            ud_bar = (numpy.zeros((pad_h, w)) + fill)[
-                numpy.newaxis, numpy.newaxis,:,:] * t
-            lr_bar = (numpy.zeros((pad_h * 2 + h, pad_w)) + fill)[
-                numpy.newaxis, numpy.newaxis,:,:] * t
-            y = numpy.concatenate([ud_bar, x, ud_bar], axis=2)
-            y = numpy.concatenate([lr_bar, y, lr_bar], axis=3)
-            return y
-        def unpad(g):
-            w = x.shape[3]
-            h = x.shape[2]
-            r_st = pad_h
-            r_end = g.shape[2] - pad_h
-            c_st = pad_w
-            c_end = g.shape[3] - pad_w
-            return g[:,:,r_st:r_end,c_st:c_end]
-        y = pad_img(x)
+
+        
+        # pad the image
+        fill = x.min()-1
+        y = numpy.zeros((x.shape[0], x.shape[1], img_rows, img_cols)) + fill
+        y[:, :, pad_h:-pad_h, pad_w:-pad_w] = x
         gx = numpy.zeros_like(y)
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
@@ -411,7 +388,8 @@ class DownsampleFactorMaxGrad(Op):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
                                     gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
-        gx = unpad(gx)
+        # unpad the image
+        gx = gx[:, :, pad_h:-pad_h, pad_w:-pad_w]
         gx_stg[0] = gx
 
     def infer_shape(self, node, in_shapes):
@@ -420,11 +398,16 @@ class DownsampleFactorMaxGrad(Op):
     def grad(self, inp, grads):
         x, maxout, gz = inp
         ggx, = grads
-        return [theano.tensor.zeros_like(x),
+        if self.padding == (0, 0):
+            return [theano.tensor.zeros_like(x),
                 theano.tensor.zeros_like(maxout),
                 DownsampleFactorMaxGradGrad(
                     self.ds, ignore_border=self.ignore_border, st=self.st)(x, maxout, ggx)]
-
+        else:
+            return [theano.tensor.zeros_like(x),
+                theano.tensor.zeros_like(maxout),
+                theano.gradients.grad_not_implemented(
+                    self, 2, gz,'Hessian not implemented with padding']
     def c_code(self, node, name, inp, out, sub):
         if self.ds != self.st:
            raise theano.gof.utils.MethodNotDefined()
