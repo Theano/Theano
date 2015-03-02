@@ -39,7 +39,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         return output_val
     @staticmethod
     def numpy_max_pool_2d_stride_padding(
-            x, ds, ignore_border=True, st=None, padding=None):
+            x, ds, ignore_border=True, st=None, padding=(0,0)):
         pad_h = padding[0]
         pad_w = padding[1]
         h = x.shape[-2]
@@ -240,10 +240,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     def test_DownsampleFactorMaxPaddingStride(self):
         ignore_border = True # padding does not support ignore_border=False
         rng = numpy.random.RandomState(utt.fetch_seed())
-        maxpoolsizes = [(3, 3)]
-        stridesizes = [(2, 2)]
-        paddingsizes = [(2, 2)]
-        imgsizes = [(5, 5)]
+        maxpoolsizes = [(3, 3), (4,4), (3,4)]
+        stridesizes = [(2, 2), (2,2), (1,1)]
+        paddingsizes = [(2, 2), (1,2), (2,1)]
+        imgsizes = [(5, 5), (5,5), (5,6)]
         m = 4 # minibatch
         c = 10 # channel size
         images = tensor.dtensor4()
