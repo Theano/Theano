@@ -3038,20 +3038,16 @@ class T_Scan(unittest.TestCase):
             def stochastic_pooling(in_idx):
                 # sample the input matrix for each column according to the
                 # column values
-                n = tensor.ones((inp.shape[1],))
                 pvals = norm_inp.T
-                pool_idx = rand_stream.multinomial(n=n, pvals=pvals)
-                pooled_row = inp.T[tensor.nonzero(pool_idx)]
-                return pooled_row.flatten()
+                sample = rand_stream.multinomial(n=1, pvals=pvals)
+                return inp + sample
 
             pooled, updates_inner = theano.scan(fn=stochastic_pooling,
                                         sequences=tensor.arange(inp.shape[0]))
-            # randomly dropout units with 50% probability
-            rand_nums = rand_stream.binomial(size=pooled.shape)
-            mask = tensor.nonzero(rand_nums)
-            masked = tensor.set_subtensor(pooled[mask], 0)
-            return tensor.max(masked, axis=0), updates_inner
 
+            # randomly add stuff to units
+            rand_nums = rand_stream.binomial(size=pooled.shape)
+            return pooled + rand_nums, updates_inner
 
         out, updates_outer = theano.scan(unit_dropout,
                                      sequences=[tensor.arange(inp.shape[0])])
