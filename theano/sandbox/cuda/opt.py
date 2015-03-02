@@ -310,7 +310,8 @@ def local_gpu_split(node):
             any([c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
                  in outs_clients])):
             new_op = GpuSplit(node.op.len_splits)
-            split_res = new_op(gpu_from_host(input), *node.inputs[1:])
+            split_res = new_op(gpu_from_host(input), *node.inputs[1:],
+                               return_list=True)
             return [host_from_gpu(o) for o in split_res]
     return False
 
