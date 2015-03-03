@@ -470,7 +470,7 @@ def local_gpu_lazy_ifelse(node):
             # replaced.
             host_input.owner.op.n_outs == 1):
             gpu_ifelse = theano.ifelse.IfElse(host_input.owner.op.n_outs,
-                                                  gpu=True)
+                                              gpu=True)
 
             c = host_input.owner.inputs[0]
             outs = host_input.owner.inputs[1:]
@@ -1600,6 +1600,9 @@ import theano.tensor.signal.downsample as downsample
 def local_gpu_downsample_factor_max(node):
     if (isinstance(node.op, downsample.DownsampleFactorMax)
         and node.op.ds == node.op.st):
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding')
+        if node.op.padding != (0, 0):
+            return
         assert node.op.__props__ == ('ds', 'ignore_border', 'st')
         x, = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
@@ -1612,7 +1615,9 @@ def local_gpu_downsample_factor_max(node):
 def local_gpu_downsample_factor_max_grad(node):
     if (isinstance(node.op, downsample.DownsampleFactorMaxGrad) and
         node.op.ds == node.op.st):
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st')
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding')
+        if node.op.padding != (0, 0):
+            return
         x, z, gz = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
             gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds,
