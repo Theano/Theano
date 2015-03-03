@@ -14,7 +14,8 @@ from theano.tensor.basic import ShapeError
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
-                                           gpu_contiguous, HostFromGpu)
+                                           gpu_contiguous, HostFromGpu,
+                                           cp_on_negative_strides)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
@@ -394,7 +395,7 @@ class GpuDnnConv(DnnBase, COp):
         img, kerns, desc = inp
         top, = grads
 
-        top = gpu_contiguous(top)
+        top = cp_on_negative_strides(top)
 
         d_img = GpuDnnConvGradI()(kerns, top, desc,
                                   img.shape[2], img.shape[3])
@@ -520,7 +521,7 @@ class GpuDnnConvGradI(DnnBase, COp):
         kerns, top, desc, h, w = inp
         img, = grads
 
-        img = gpu_contiguous(img)
+        img = cp_on_negative_strides(img)
 
         d_kerns = GpuDnnConvGradW()(img, top, desc,
                                     kerns.shape[2], kerns.shape[3])
@@ -630,7 +631,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         return GpuDnnConvGradI()(kerns, img, desc, shape2, shape3)
 
     # Standard case: We use GpuDnnConv with suitable padding.
-    img = gpu_contiguous(img)
+    # cp_on_negative_strides will return a gpu_contiguous copy
+    # if the img contains negative strides
+    img = cp_on_negative_strides(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
