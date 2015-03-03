@@ -19,6 +19,7 @@ if cula is not None:
 
 import numpy
 
+
 class GpuSolve(GpuOp):
     """
     CULA GPU solver OP.
@@ -55,53 +56,58 @@ class GpuSolve(GpuOp):
 
         def thunk():
             input_shape = inputs[1][0].shape
-
             #size of the matrices to invert
             z = outputs[0]
-
             #Matrix
             A = inputs[0][0]
 
             #Solution vectors
             b = inputs[1][0]
-            A_cpy = A.copy()
-            b_cpy = b.copy()
 
-            A_pycuda = to_gpuarray(A_cpy)
-            b_pycuda = to_gpuarray(b_cpy)
+            #A_cpy = A.copy()
+            #b_cpy = b.copy()
 
-            def cula_gpu_solve(A, b):
+            A_pycuda = to_gpuarray(A)
+            b_pycuda = to_gpuarray(b)
+
+            def cula_gpu_solve(A, b, trans='N'):
 
                 A_shape = A.shape
                 b_shape = b.shape
+
                 assert(len(A_shape) == 2)
                 assert(len(b_shape) == 2)
-
-                if A_shape[0] != A_shape[1]:
-                    raise ValueError('Coefficient matrix should be a square matrix.')
-
-                n = A_shape[0]
-                nrhs = b_shape[1]
-
-                #Create the integer pivot vector to store the indices for
-                #permutation matrix.
-                ipiv = CudaNdarray.zeros((n,))
-                ipiv = to_gpuarray(ipiv)
-
                 import string
-                lda = max(1, n)
-                ldb = max(1, n)
+
+                if trans in ['T', 'C']:
+                    l, n = A_shape
+                    k, m = b_shape
+                elif trans in ['N']:
+                    n, l = A_shape
+                    k, m = b_shape
+                else:
+                    raise ValueError('Invalid value for trans')
+
+                if n != k:
+                    raise ValueError('A and b must be aligned.')
+
+
+                if trans == 'N':
+                    lda = max(1, n)
+                else:
+                    lda = max(1, l)
+
+                ldb = max(1, k)
 
                 # construct pointer arrays needed for culaDeviceSgels
                 # Cula requires you to pass a pointer for A and b.
-                A_ptr = A_cpy.gpudata
-                b_ptr = b_cpy.gpudata
-                ipiv_ptr = ipiv.gpudata
+                A_ptr = A.gpudata
+                b_ptr = b.gpudata
 
-                cula.culaDeviceSgesv(n, nrhs, A_ptr, lda, ipiv_ptr, b_ptr, ldb)
+                cula.culaDeviceSgels(trans, n, l, m, A_ptr, lda, b_ptr, ldb)
                 return A, b
 
-            A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda)
+            A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
             z[0] = b
 
         thunk.inputs = inputs
@@ -110,4 +116,4 @@ class GpuSolve(GpuOp):
 
         return thunk
 
-gpu_solve = GpuSolve()
+gpu_solve = GpuSolve(trans="T")

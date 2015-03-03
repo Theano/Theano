@@ -52,7 +52,8 @@ class TestCula(unittest.TestCase):
     def test_orth_solve(self):
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         A_orth = numpy.linalg.svd(A_val)[0]
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_orth.shape[1], A_orth.shape[0])).astype("float32")
+        #import ipdb; ipdb.set_trace()
+        x_val = numpy.random.uniform(-0.4, 0.4, (A_orth.shape[1], 1)).astype("float32")
         self.run_gpu_solve(A_orth, x_val)
 
     def test_uni_rand_solve(self):
