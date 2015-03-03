@@ -10,10 +10,13 @@ from theano.compat import PY3
 from theano.compile.ops import shape_i
 from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.signal.downsample import (
+    DownsampleFactorMax, DownsampleFactorMaxGrad)
 from theano.tensor.basic import ShapeError
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
+                                           host_from_gpu,
                                            gpu_contiguous, HostFromGpu)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
@@ -84,16 +87,22 @@ dnn_available.msg = None
 
 def c_set_tensor4d(var, desc, err, fail):
     return """
+{
+    int str0, str1, str2, str3;
+    str3 = CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1;
+    str2 = CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3];
+    str1 = CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3];
+    str0 = CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1];
+    printf("str0=%%d str1=%%d str2=%%d str3=%%d\\n",
+    str0, str1, str2, str3
+    );
 %(err)s = cudnnSetTensor4dDescriptorEx(
     %(desc)s, CUDNN_DATA_FLOAT,
     CudaNdarray_HOST_DIMS(%(var)s)[0],
     CudaNdarray_HOST_DIMS(%(var)s)[1],
     CudaNdarray_HOST_DIMS(%(var)s)[2],
     CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
-    CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
+    str0, str1, str2, str3
 );
 if (%(err)s != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
@@ -104,13 +113,12 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
     CudaNdarray_HOST_DIMS(%(var)s)[1],
     CudaNdarray_HOST_DIMS(%(var)s)[2],
     CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1],
-    CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3],
-    CudaNdarray_HOST_STRIDES(%(var)s)[3]?CudaNdarray_HOST_STRIDES(%(var)s)[3]:1
+    str0, str1, str2, str3
     );
     %(fail)s
 }
+}
+
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
 
@@ -645,8 +653,9 @@ class GpuDnnPoolDesc(GpuOp):
     :param ws: windows size
     :param stride: (dx, dy)
     :param mode: 'max' or 'average'
+    :param pad: (padX, padY) padding information.
     """
-    __props__ = ('ws', 'stride', 'mode')
+    __props__ = ('ws', 'stride', 'mode', 'pad')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -663,15 +672,29 @@ class GpuDnnPoolDesc(GpuOp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max'):
+    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
         assert mode in ('max', 'average')
         self.mode = mode
         assert len(ws) == 2
         self.ws = ws
         assert len(stride) == 2
         self.stride = stride
+        assert len(stride) == 2
+        self.pad = pad
+        if (pad[0] != 0 or pad[1] != 0) and version() < 20:
+            raise RuntimeError("Pooling with padding need CUDNN v2 or"
+                               " more recent.")
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'pad'):
+            import pdb;pdb.set_trace()
+            self.pad = (0, 0)
 
     def make_node(self):
+        if self.pad != (0, 0) and version() < 20:
+            raise RuntimeError(
+                "CUDNNpooling with padding request CUDNN v2 or more recent.")
         return Apply(self, [],
                      [CDataType("cudnnPoolingDescriptor_t")()])
 
@@ -706,7 +729,7 @@ class GpuDnnPoolDesc(GpuOp):
   %(desc)s,
   %(mode_flag)s,
   %(wsX)d, %(wsY)d,
-  0, 0,
+  %(padX)d, %(padY)d,
   %(stridex)d, %(stridey)d
   );
 #endif
@@ -717,11 +740,13 @@ class GpuDnnPoolDesc(GpuOp):
   }
 }
 """ % dict(name=name, desc=desc, mode_flag=mode_flag, fail=sub['fail'],
-           wsX=self.ws[0], wsY=self.ws[1], stridex=self.stride[0],
-           stridey=self.stride[1])
+           wsX=self.ws[0], wsY=self.ws[1],
+           stridex=self.stride[0], stridey=self.stride[1],
+           padX=self.pad[0], padY=self.pad[1],
+       )
 
     def c_code_cache_version(self):
-        return (1, version())
+        return (2, version())
 
 
 class GpuDnnPool(DnnBase):
@@ -831,8 +856,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
 %(out)s_dims[0] = CudaNdarray_HOST_DIMS(%(input)s)[0];
 %(out)s_dims[1] = CudaNdarray_HOST_DIMS(%(input)s)[1];
-%(out)s_dims[2] = (CudaNdarray_HOST_DIMS(%(input)s)[2] - wsX) / strideX + 1;
-%(out)s_dims[3] = (CudaNdarray_HOST_DIMS(%(input)s)[3] - wsY) / strideY + 1;
+%(out)s_dims[2] = (CudaNdarray_HOST_DIMS(%(input)s)[2] + (vpad*2) - wsX) / strideX + 1;
+%(out)s_dims[3] = (CudaNdarray_HOST_DIMS(%(input)s)[3] + (hpad*2) - wsY) / strideY + 1;
 
 if (CudaNdarray_prep_output(&%(out)s, 4, %(out)s_dims) != 0)
 {
@@ -890,7 +915,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return (4, version())
+        return
+        return (5, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1051,6 +1077,24 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
                "GpuDnnPoolGrad: error doing operation: %%s",
                cudnnGetErrorString(err%(name)s));
+  printf("input.shape=(%%d, %%d, %%d, %%d) input_grad.shape=(%%d, %%d, %%d, %%d) output.shape=(%%d, %%d, %%d, %%d) output_grad.shape=(%%d, %%d, %%d, %%d)\\n",
+CudaNdarray_HOST_DIMS(%(input)s)[0],
+CudaNdarray_HOST_DIMS(%(input)s)[1],
+CudaNdarray_HOST_DIMS(%(input)s)[2],
+CudaNdarray_HOST_DIMS(%(input)s)[3],
+CudaNdarray_HOST_DIMS(%(input_grad)s)[0],
+CudaNdarray_HOST_DIMS(%(input_grad)s)[1],
+CudaNdarray_HOST_DIMS(%(input_grad)s)[2],
+CudaNdarray_HOST_DIMS(%(input_grad)s)[3],
+CudaNdarray_HOST_DIMS(%(output)s)[0],
+CudaNdarray_HOST_DIMS(%(output)s)[1],
+CudaNdarray_HOST_DIMS(%(output)s)[2],
+CudaNdarray_HOST_DIMS(%(output)s)[3],
+CudaNdarray_HOST_DIMS(%(output_grad)s)[0],
+CudaNdarray_HOST_DIMS(%(output_grad)s)[1],
+CudaNdarray_HOST_DIMS(%(output_grad)s)[2],
+CudaNdarray_HOST_DIMS(%(output_grad)s)[3]
+        );
   %(fail)s
 }
 """ % dict(output_grad=out_grad, desc=desc,
@@ -1063,13 +1107,14 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            output_grad_desc="output_grad"+name)
 
     def c_code_cache_version(self):
+        return
         return (4, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
 
 
-def dnn_pool(img, ws, stride=(1, 1), mode='max'):
+def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     """
     GPU pooling using cuDNN from NVIDIA.
 
@@ -1080,6 +1125,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max'):
     :param ws: subsampling window size
     :param stride: subsampling stride (default: (1, 1))
     :param mode: one of 'max', 'average' (default: 'max')
+    :param pad: todo doc
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -1087,7 +1133,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max'):
     :note: This Op implements the ignore_border=True of max_pool_2d.
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode)()
+    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
     return GpuDnnPool()(img, desc)
 
 
@@ -1424,6 +1470,22 @@ if True:
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
     @register_opt('cudnn')
+    @local_optimizer([DownsampleFactorMax])
+    def local_pool_dnn_stride(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, DownsampleFactorMax):
+            if not node.op.ignore_border:
+                return
+            img, = node.inputs
+            ds = node.op.ds
+            stride = node.op.st
+            if (img.owner and isinstance(img.owner.op, HostFromGpu)):
+                ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
+                               ds, stride=stride)
+                return [host_from_gpu(ret)]
+
+    @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMaxGrad])
     def local_pool_dnn_grad(node):
         if not dnn_available():
@@ -1439,6 +1501,29 @@ if True:
                                      gpu_contiguous(out),
                                      gpu_contiguous(inp_grad),
                                      desc)]
+
+    @register_opt('cudnn')
+    @local_optimizer([DownsampleFactorMaxGrad])
+    def local_pool_dnn_grad_stride(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, DownsampleFactorMaxGrad):
+            inp, out, inp_grad = node.inputs
+            ds = node.op.ds
+            st = node.op.st
+
+            if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
+                (out.owner and isinstance(out.owner.op, HostFromGpu)) or
+                (inp_grad.owner and isinstance(inp_grad.owner.op, HostFromGpu))
+            ):
+                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode="max")()
+                if not node.op.ignore_border:
+                    return
+                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
+                                       gpu_contiguous(out),
+                                       gpu_contiguous(inp_grad),
+                                       desc)
+                return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
     @local_optimizer([GpuSoftmax])

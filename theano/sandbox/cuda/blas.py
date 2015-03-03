@@ -521,8 +521,8 @@ class BaseGpuCorrMM(GpuOp):
     def __init__(self, border_mode="valid", subsample=(1, 1), pad=(0, 0)):
         if pad != (0, 0):
             _logger.warning(
-                'do not use pad for BaseGpuCorrMM; please set padding in'
-                'border_mode, see the docstring for more details')
+                'do not use pad for BaseGpuCorrMM; please set padding in '
+                'border_mode parameter, see the docstring for more details')
             if border_mode != "valid":
                 raise ValueError("border_mode must be 'valid'")
             border_mode = pad
