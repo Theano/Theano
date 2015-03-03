@@ -1467,7 +1467,7 @@ def std_lib_dirs_and_libs():
                 os.path.join(sys.prefix, 'libs'),
                 # Used in newer Canopy
                 os.path.join(sys.prefix,
-                             'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
+                             r'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
             for f, lib in [('libmsvcr90.a',
                             'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
                 if not any([os.path.exists(os.path.join(libdir, f))
