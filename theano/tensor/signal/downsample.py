@@ -39,6 +39,10 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0)):
         over rows/cols to get the the next pool region.
         if st is None, it is considered equal to ds
         (no overlap on pooling regions)
+    :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+            of the images, pad_h is the size of the top and bottom margins,
+            and pad_w is the size of the left and right margins.
+    :type padding: tuple of two ints
 
     """
     if input.ndim < 2:
@@ -101,8 +105,9 @@ class DownsampleFactorMax(Op):
             extra row/col of partial downsampling (False) or ignore it (True).
         :type ignore_border: bool
 
-        :param padding: (pad_h, pad_w), pad zeros on four borders
-            of the images, pad_h for padding rows, and pad_w for columns.
+        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+            of the images, pad_h is the size of the top and bottom margins,
+            and pad_w is the size of the left and right margins.
         :type padding: tuple of two ints
 
         :rtype: list
@@ -172,8 +177,9 @@ class DownsampleFactorMax(Op):
             (no overlap on pooling regions)
         : type st: list or tuple of two ints
 
-        :param padding: (pad_h, pad_w), pad zeros on four borders
-          of the images, pad_h for padding rows, and pad_w for columns.
+        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+            of the images, pad_h is the size of the top and bottom margins,
+            and pad_w is the size of the left and right margins.
         :type padding: tuple of two ints
 
         """
@@ -226,10 +232,11 @@ class DownsampleFactorMax(Op):
         pc = zz.shape[-1]
         ds0, ds1 = self.ds
         st0, st1 = self.st
-        img_rows = x.shape[-2] + 2 * self.padding[0]
-        img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
+        img_rows = x.shape[-2] + 2 * pad_h
+        img_cols = x.shape[-1] + 2 * pad_w
+        
 
         # pad the image
         fill = x.min()-1.
@@ -377,10 +384,11 @@ class DownsampleFactorMaxGrad(Op):
         pc = maxout.shape[-1]
         ds0, ds1 = self.ds
         st0, st1 = self.st
-        img_rows = x.shape[-2] + 2 * self.padding[0]
-        img_cols = x.shape[-1] + 2 * self.padding[1]
         pad_h = self.padding[0]
         pad_w = self.padding[1]
+        img_rows = x.shape[-2] + 2 * pad_h
+        img_cols = x.shape[-1] + 2 * pad_w
+        
         # pad the image
         fill = x.min()-1
         y = numpy.zeros(
