@@ -10,6 +10,7 @@ import cPickle
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
+from nose.tools import assert_raises
 from numpy.testing import dec
 
 import theano
@@ -3121,6 +3122,38 @@ class T_Scan(unittest.TestCase):
         assert out[2] == 19
         assert out[4] == 19
         # 19.0
+
+    def test_crash_nonseq_grad(self):
+        # Test case was originally reported by Bitton Tenessi. It crashed
+        # during the grad operation and this tests validates that it now
+        # raises a NullTypeGradError instead because the gradient relies on
+        # the intermediary states of the random number generators used in the
+        # test. The test case was modified from the original for simplicity
+
+        rand_stream = tensor.shared_randomstreams.RandomStreams()
+        inp = tensor.matrix()
+        norm_inp = inp / tensor.sum(inp, axis=0)
+
+        def unit_dropout(out_idx):
+            def stochastic_pooling(in_idx):
+                # sample the input matrix for each column according to the
+                # column values
+                pvals = norm_inp.T
+                sample = rand_stream.multinomial(n=1, pvals=pvals)
+                return inp + sample
+
+            pooled, updates_inner = theano.scan(fn=stochastic_pooling,
+                                        sequences=tensor.arange(inp.shape[0]))
+
+            # randomly add stuff to units
+            rand_nums = rand_stream.binomial(size=pooled.shape)
+            return pooled + rand_nums, updates_inner
+
+        out, updates_outer = theano.scan(unit_dropout,
+                                     sequences=[tensor.arange(inp.shape[0])])
+
+        assert_raises(theano.gradient.NullTypeGradError,
+                      tensor.grad, out.sum(), inp)
 
     def test_bugFunctioProvidesIntermediateNodesAsInputs(self):
         # This is a bug recently reported by Ilya
