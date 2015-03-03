@@ -564,7 +564,7 @@ class GpuDnnConvGradI(DnnBase, COp):
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
-             conv_mode='conv', direction_hint=None):
+             conv_mode='conv', direction_hint=None, workmem=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -634,7 +634,13 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
-    return GpuDnnConv()(img, kerns, desc)
+    if conv_mode == 'cross' and subsample != (1, 1) and border_mode != 'valid':
+        # there is a bug in cudnn v2 rc1-3 which gives incorrect
+        # results in this case when using the workmem='small'
+        # algorithm.
+        if workmem is None or workmem == 'small':
+            workmem = 'none'
+    return GpuDnnConv(workmem=workmem)(img, kerns, desc)
 
 
 class GpuDnnPoolDesc(GpuOp):
