@@ -395,7 +395,7 @@ class GpuDnnConv(DnnBase, COp):
         img, kerns, desc = inp
         top, = grads
 
-        top = gpu_contiguous(top)
+        top = cp_on_negative_strides(top)
 
         d_img = GpuDnnConvGradI()(kerns, top, desc,
                                   img.shape[2], img.shape[3])
@@ -521,7 +521,7 @@ class GpuDnnConvGradI(DnnBase, COp):
         kerns, top, desc, h, w = inp
         img, = grads
 
-        img = gpu_contiguous(img)
+        img = cp_on_negative_strides(img)
 
         d_kerns = GpuDnnConvGradW()(img, top, desc,
                                     kerns.shape[2], kerns.shape[3])
