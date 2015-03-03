@@ -48,7 +48,7 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0)):
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
     if input.ndim == 4:
-        op = DownsampleFactorMax(ds, ignore_border, st=st)
+        op = DownsampleFactorMax(ds, ignore_border, st=st, padding=padding)
         output = op(input)
         return output
 
@@ -193,10 +193,9 @@ class DownsampleFactorMax(Op):
         self.st = tuple(st)
         self.ignore_border = ignore_border
         self.padding = tuple(padding)
-        self.padding = padding
-        if padding != (0, 0) and not ignore_border:
+        if self.padding != (0, 0) and not ignore_border:
             raise NotImplementedError(
-                'padding works only with ignore_boarder=True')
+                'padding works only with ignore_border=True')
         if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
             raise NotImplementedError(
                 'padding_h and padding_w must be smaller than strides')
@@ -213,8 +212,6 @@ class DownsampleFactorMax(Op):
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, inp, out):
-        """
-        """
         x, = inp
         z, = out
         if len(x.shape) != 4:
@@ -238,7 +235,6 @@ class DownsampleFactorMax(Op):
         pad_w = self.padding[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
-        
 
         # pad the image
         fill = x.min()-1.
@@ -391,7 +387,7 @@ class DownsampleFactorMaxGrad(Op):
         pad_w = self.padding[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
-        
+
         # pad the image
         fill = x.min()-1
         y = numpy.zeros(

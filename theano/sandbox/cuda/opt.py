@@ -1603,7 +1603,6 @@ def local_gpu_downsample_factor_max(node):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding')
         if node.op.padding != (0, 0):
             return
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st')
         x, = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
             gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
