@@ -691,7 +691,6 @@ class GpuDnnPoolDesc(GpuOp):
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, 'pad'):
-            import pdb;pdb.set_trace()
             self.pad = (0, 0)
 
     def make_node(self):
