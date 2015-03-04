@@ -1,7 +1,7 @@
 import numpy
 import theano
-from theano import Apply, tensor, scalar, Constant
-from theano.tensor import DimShuffle, discrete_dtypes
+from theano import Apply, tensor, scalar
+from theano.tensor import discrete_dtypes
 
 from theano.gradient import grad_undefined
 
@@ -645,19 +645,6 @@ if cuda_available:
         if node.op == sparse_block_outer_ss:
             return [sparse_block_outer_ss_inplace(*node.inputs)]
 
-    def grab_ger(v):
-        # We need to do some digging because apparently the
-        # cut_transfers op does not run before us.
-        if v.owner is not None:
-            if isinstance(v.owner.op, SparseBlockOuterSS):
-                return v.owner
-            elif (isinstance(v.owner.op, GpuFromHost) and
-                  v.owner.inputs[0].owner is not None and
-                  isinstance(v.owner.inputs[0].owner.op, HostFromGpu)):
-                return grab_ger(v.owner.inputs[0].owner.inputs[0])
-            else:
-                return None
-
     # Should be run before elemwise fusion
     @opt.register_opt()
     @opt.local_optimizer([GpuElemwise])
@@ -665,33 +652,15 @@ if cuda_available:
         """
 GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
         """
-        def grab_lr(v):
-            if v.owner is not None:
-                n = v.owner
-                if (isinstance(n.op, GpuDimShuffle) and
-                      n.op.new_order == ('x', 'x', 'x', 'x')):
-                    return host_from_gpu(n.inputs[0])
-                elif (isinstance(n.op, DimShuffle) and
-                      n.op.new_order == ('x', 'x', 'x', 'x')):
-                    return n.inputs[0]
-                elif isinstance(n.op, GpuFromHost):
-                      return grab_lr(n.inputs[0])
-                else:
-                    return None
-            else:
-                if (isinstance(v, Constant) and
-                    v.broadcastable == (True, True, True, True)):
-                    return v.dimshuffle(())
-
         if (isinstance(node.op, GpuElemwise) and
             node.op.scalar_op == scalar.mul and
             node.nin == 2):
-            ger = grab_ger(node.inputs[0])
+            ger = opt.find_node(node.inputs[0], SparseBlockOuterSS)
             if ger is None:
-                ger = grab_ger(node.inputs[1])
-                lr = grab_lr(node.inputs[0])
+                ger = opt.find_node(node.inputs[1], SparseBlockOuterSS)
+                lr = opt.grab_cpu_scalar(node.inputs[0], nd=4)
             else:
-                lr = grab_lr(node.inputs[1])
+                lr = opt.grab_cpu_scalar(node.inputs[1], nd=4)
             if lr is None or ger is None:
                 return None
             alpha = lr * ger.inputs[5]
@@ -704,10 +673,10 @@ GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
             (node.op.scalar_op == scalar.sub or
              node.op.scalar_op == scalar.add) and
             node.nin == 2):
-            ger = grab_ger(node.inputs[0])
+            ger = opt.find_node(node.inputs[0], SparseBlockOuterSS)
             W = node.inputs[1]
             if ger is None:
-                ger = grab_ger(node.inputs[1])
+                ger = opt.find_node(node.inputs[1], SparseBlockOuterSS)
                 W = node.inputs[0]
             if ger is None:
                 return None
