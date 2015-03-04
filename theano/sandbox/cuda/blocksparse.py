@@ -12,7 +12,7 @@ if cuda_available:
                                      opt, GpuFromHost,
                                      HostFromGpu, host_from_gpu,
                                      GpuDimShuffle)
-
+    from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 
 class SparseBlockGemvSS(GpuOp):
     """
@@ -647,47 +647,17 @@ if cuda_available:
 
     # Should be run before elemwise fusion
     @opt.register_opt()
-    @opt.local_optimizer([GpuElemwise])
-    def local_merge_blocksparse_alpha(node):
+    @alpha_merge(SparseBlockOuterSS, alpha_in=5, nd=4)
+    def local_merge_blocksparse_alpha(node, *inputs):
         """
 GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
         """
-        if (isinstance(node.op, GpuElemwise) and
-            node.op.scalar_op == scalar.mul and
-            node.nin == 2):
-            ger = opt.find_node(node.inputs[0], SparseBlockOuterSS)
-            if ger is None:
-                ger = opt.find_node(node.inputs[1], SparseBlockOuterSS)
-                lr = opt.grab_cpu_scalar(node.inputs[0], nd=4)
-            else:
-                lr = opt.grab_cpu_scalar(node.inputs[1], nd=4)
-            if lr is None or ger is None:
-                return None
-            alpha = lr * ger.inputs[5]
-            return [sparse_block_outer_ss(*(ger.inputs[:5] + [alpha]))]
+        return [sparse_block_outer_ss(*inputs)]
 
     @opt.register_opt()
-    @opt.local_optimizer([GpuElemwise])
-    def local_merge_blocksparse_output(node):
-        if (isinstance(node.op, GpuElemwise) and
-            (node.op.scalar_op == scalar.sub or
-             node.op.scalar_op == scalar.add) and
-            node.nin == 2):
-            ger = opt.find_node(node.inputs[0], SparseBlockOuterSS)
-            W = node.inputs[1]
-            if ger is None:
-                ger = opt.find_node(node.inputs[1], SparseBlockOuterSS)
-                W = node.inputs[0]
-            if ger is None:
-                return None
-            if node.op.scalar_op == scalar.sub:
-                alpha = -ger.inputs[5]
-                W = W - ger.inputs[0]
-            else:
-                alpha = ger.inputs[5]
-                W = W + ger.inputs[0]
-            return [sparse_block_outer_ss(*([W] + ger.inputs[1:5] +
-                                            [alpha]))]
+    @output_merge(SparseBlockOuterSS, alpha_in=5, out_in=0, nd=4)
+    def local_merge_blocksparse_output(node, *inputs):
+        return [sparse_block_outer_ss(*inputs)]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):

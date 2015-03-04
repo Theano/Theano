@@ -10,7 +10,7 @@ import numpy
 
 import theano
 from theano import scalar as scal
-from theano import config, tensor, gof, Constant
+from theano import config, tensor, gof
 import theano.ifelse
 
 from theano.compile import optdb
@@ -47,7 +47,7 @@ from theano.sandbox.cuda.var import CudaNdarrayConstant
 from theano.sandbox.cuda import gpu_optimizer, register_opt, gpu_seqopt, GpuOp
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
-from theano.tensor import nlinalg, DimShuffle
+from theano.tensor import nlinalg
 from theano.tensor.nnet.Conv3D import Conv3D
 
 try:
@@ -88,37 +88,6 @@ register_opt()(theano.tensor.opt.local_track_shape_i)
 register_opt(name='gpu_constant_folding')(
     tensor.opt.constant_folding)
 
-
-def grab_cpu_scalar(v, nd):
-    if v.owner is not None:
-        n = v.owner
-        if (isinstance(n.op, GpuDimShuffle) and
-            n.op.new_order == ('x',) * nd):
-            return host_from_gpu(n.inputs[0])
-        elif (isinstance(n.op, DimShuffle) and
-              n.op.new_order == ('x',) * nd):
-            return n.inputs[0]
-        elif isinstance(n.op, GpuFromHost):
-            return grab_cpu_scalar(n.inputs[0], nd=nd)
-        else:
-            return None
-    else:
-        if (isinstance(v, Constant) and
-            v.broadcastable == (True,) * nd):
-            return v.dimshuffle(())
-
-def find_node(v, cls):
-    # This digs through possibly redundant transfers to for the node
-    # that has the op class specified.
-    if v.owner is not None:
-        if isinstance(v.owner.op, cls):
-            return v.owner
-        elif (isinstance(v.owner.op, GpuFromHost) and
-              v.owner.inputs[0].owner is not None and
-              isinstance(v.owner.inputs[0].owner.op, HostFromGpu)):
-            return find_node(v.owner.inputs[0].owner.inputs[0], cls)
-        else:
-            return None
 
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.
