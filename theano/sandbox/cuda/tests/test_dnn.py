@@ -1,5 +1,4 @@
 import logging
-import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -10,11 +9,10 @@ from theano.compat.six import StringIO
 from theano.gof.python25 import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
-from theano.sandbox.neighbours import images2neibs, neibs2images
+from theano.sandbox.neighbours import images2neibs
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
-from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -70,8 +68,8 @@ def test_pooling():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()
-    for func, pad in product(
-        (T.max, T.mean), ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
+    for func, pad in product((T.max, T.mean),
+                             ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
         if pad != (0, 0) and cuda.dnn.version() < 20:
             continue
 
@@ -104,7 +102,7 @@ def test_pooling():
                 for shp in [(1, 10, 100, 100),
                             (1, 3, 99, 99),
                             (32, 1, 147, 197),
-                         ]:
+                            ]:
                     print func, pad, ws, stride, shp
 
                     data = numpy.random.normal(0, 1, shp).astype("float32")
@@ -193,7 +191,7 @@ def test_pooling_opt():
 
 def test_dnn_tag():
     """
-    We test that if cudnn isn't avail we crash and that if it is avail, we use it.
+    Test that if cudnn isn't avail we crash and that if it is avail, we use it.
     """
     x = T.ftensor4()
     old = theano.config.on_opt_error
@@ -440,11 +438,11 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 mode=params[2]
             )()
             pool_grad = dnn.GpuDnnPoolGrad()(
-                    img,
-                    out,
-                    img_grad,
-                    desc
-                )
+                img,
+                out,
+                img_grad,
+                desc
+            )
             self._compile_and_check(
                 [img, img_grad, out],
                 [pool_grad],
