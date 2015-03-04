@@ -103,8 +103,6 @@ def test_pooling():
                             (1, 3, 99, 99),
                             (32, 1, 147, 197),
                             ]:
-                    print func, pad, ws, stride, shp
-
                     data = numpy.random.normal(0, 1, shp).astype("float32")
                     a = f1(data).__array__()
 
@@ -119,7 +117,6 @@ def test_pooling():
 
             ws = 2
             stride = 2
-            print func, pad, ws, stride, shp
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):

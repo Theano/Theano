@@ -94,9 +94,6 @@ def c_set_tensor4d(var, desc, err, fail):
     str2 = CudaNdarray_HOST_STRIDES(%(var)s)[2]?CudaNdarray_HOST_STRIDES(%(var)s)[2]:CudaNdarray_HOST_DIMS(%(var)s)[3];
     str1 = CudaNdarray_HOST_STRIDES(%(var)s)[1]?CudaNdarray_HOST_STRIDES(%(var)s)[1]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3];
     str0 = CudaNdarray_HOST_STRIDES(%(var)s)[0]?CudaNdarray_HOST_STRIDES(%(var)s)[0]:CudaNdarray_HOST_DIMS(%(var)s)[2]*CudaNdarray_HOST_DIMS(%(var)s)[3]*CudaNdarray_HOST_DIMS(%(var)s)[1];
-    printf("str0=%%d str1=%%d str2=%%d str3=%%d\\n",
-    str0, str1, str2, str3
-    );
 %(err)s = cudnnSetTensor4dDescriptorEx(
     %(desc)s, CUDNN_DATA_FLOAT,
     CudaNdarray_HOST_DIMS(%(var)s)[0],
@@ -917,8 +914,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return
-        return (5, version())
+        return (6, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1077,26 +1073,29 @@ _handle,
 #endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPoolGrad: error doing operation: %%s",
-               cudnnGetErrorString(err%(name)s));
-  printf("input.shape=(%%d, %%d, %%d, %%d) input_grad.shape=(%%d, %%d, %%d, %%d) output.shape=(%%d, %%d, %%d, %%d) output_grad.shape=(%%d, %%d, %%d, %%d)\\n",
-CudaNdarray_HOST_DIMS(%(input)s)[0],
-CudaNdarray_HOST_DIMS(%(input)s)[1],
-CudaNdarray_HOST_DIMS(%(input)s)[2],
-CudaNdarray_HOST_DIMS(%(input)s)[3],
-CudaNdarray_HOST_DIMS(%(input_grad)s)[0],
-CudaNdarray_HOST_DIMS(%(input_grad)s)[1],
-CudaNdarray_HOST_DIMS(%(input_grad)s)[2],
-CudaNdarray_HOST_DIMS(%(input_grad)s)[3],
-CudaNdarray_HOST_DIMS(%(output)s)[0],
-CudaNdarray_HOST_DIMS(%(output)s)[1],
-CudaNdarray_HOST_DIMS(%(output)s)[2],
-CudaNdarray_HOST_DIMS(%(output)s)[3],
-CudaNdarray_HOST_DIMS(%(output_grad)s)[0],
-CudaNdarray_HOST_DIMS(%(output_grad)s)[1],
-CudaNdarray_HOST_DIMS(%(output_grad)s)[2],
-CudaNdarray_HOST_DIMS(%(output_grad)s)[3]
-        );
+               "GpuDnnPoolGrad: error doing operation: %%s. "
+               "input.shape=(%%d, %%d, %%d, %%d) "
+               "input_grad.shape=(%%d, %%d, %%d, %%d) "
+               "output.shape=(%%d, %%d, %%d, %%d) "
+               "output_grad.shape=(%%d, %%d, %%d, %%d)",
+               cudnnGetErrorString(err%(name)s),
+               CudaNdarray_HOST_DIMS(%(input)s)[0],
+               CudaNdarray_HOST_DIMS(%(input)s)[1],
+               CudaNdarray_HOST_DIMS(%(input)s)[2],
+               CudaNdarray_HOST_DIMS(%(input)s)[3],
+               CudaNdarray_HOST_DIMS(%(input_grad)s)[0],
+               CudaNdarray_HOST_DIMS(%(input_grad)s)[1],
+               CudaNdarray_HOST_DIMS(%(input_grad)s)[2],
+               CudaNdarray_HOST_DIMS(%(input_grad)s)[3],
+               CudaNdarray_HOST_DIMS(%(output)s)[0],
+               CudaNdarray_HOST_DIMS(%(output)s)[1],
+               CudaNdarray_HOST_DIMS(%(output)s)[2],
+               CudaNdarray_HOST_DIMS(%(output)s)[3],
+               CudaNdarray_HOST_DIMS(%(output_grad)s)[0],
+               CudaNdarray_HOST_DIMS(%(output_grad)s)[1],
+               CudaNdarray_HOST_DIMS(%(output_grad)s)[2],
+               CudaNdarray_HOST_DIMS(%(output_grad)s)[3]
+               );
   %(fail)s
 }
 """ % dict(output_grad=out_grad, desc=desc,
@@ -1109,8 +1108,7 @@ CudaNdarray_HOST_DIMS(%(output_grad)s)[3]
            output_grad_desc="output_grad"+name)
 
     def c_code_cache_version(self):
-        return
-        return (4, version())
+        return (5, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
