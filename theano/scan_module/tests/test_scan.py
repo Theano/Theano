@@ -379,7 +379,7 @@ class T_Scan(unittest.TestCase):
         fun = theano.function([inp], [broadcasted_inp, gr])
 
         # Execute the Theano function and compare outputs to the expected outputs
-        inputs = numpy.array([[1, 2], [3, 4]])
+        inputs = numpy.array([[1, 2], [3, 4]], dtype=theano.config.floatX)
         expected_out1 = numpy.repeat(inputs[None], n_steps, axis=0)
         expected_out2 = numpy.ones(inputs.shape, dtype="int8") * n_steps
 
