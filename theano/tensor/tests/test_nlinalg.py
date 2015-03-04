@@ -419,6 +419,14 @@ class test_Eigh(test_Eig):
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
 
+    @utt.AttemptManyTimes(n_attempts=3, n_req_successes=2)
+    def test_uplo(self):
+        super(test_Eigh_float32, self).test_uplo()
+
+    @utt.AttemptManyTimes(n_attempts=3, n_req_successes=2)
+    def test_grad(self):
+        super(test_Eigh_float32, self).test_grad()
+
 
 class T_lstsq(unittest.TestCase):
 
