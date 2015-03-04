@@ -237,12 +237,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
+        out = T.ftensor4('out')
         img_val = numpy.asarray(
-            numpy.random.rand(3, 4, 5, 6),
+            numpy.random.rand(7, 2, 6, 4),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
-            numpy.random.rand(3, 4, 5, 6),
+            numpy.random.rand(8, 2, 4, 3),
             dtype='float32'
         )
 
@@ -251,16 +252,21 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
+            out_vals = numpy.zeros(
+                dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
+                                             border_mode=params[0],
+                                             subsample=params[1]),
+                dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
             )(img.shape, kerns.shape)
-            conv = dnn.GpuDnnConv()(img_val, kern_vals, desc)
+            conv = dnn.GpuDnnConv()(img, kerns, out, desc)
             self._compile_and_check(
-                [img, kerns],
+                [img, kerns, out],
                 [conv],
-                [img_val, kern_vals],
+                [img_val, kern_vals, out_vals],
                 dnn.GpuDnnConv
             )
 
@@ -269,14 +275,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
+        out = T.ftensor4('out')
         img_val = numpy.asarray(
-            numpy.random.rand(3, 4, 5, 6),
+            numpy.random.rand(2, 5, 6, 8),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
-            numpy.random.rand(3, 4, 5, 6),
+            numpy.random.rand(2, 1, 5, 6),
             dtype='float32'
         )
+        out_vals = numpy.zeros((3, 3, 1, 1), dtype='float32')
 
         for params in product(
             ['valid', 'full'],
@@ -288,27 +296,27 @@ class TestDnnInferShapes(utt.InferShapeTester):
             if params[2] == 'conv':
                 temp_kerns = temp_kerns[:, :, ::-1, ::-1]
             temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-            shape = theano.tensor.stack(
-                temp_kerns.shape[1], temp_img.shape[1],
-                temp_img.shape[2] - temp_kerns.shape[2] + 1,
-                temp_img.shape[3] - temp_kerns.shape[3] + 1
-            )
+            shape = (
+                kern_vals.shape[1], img_val.shape[1],
+                img_val.shape[2] - kern_vals.shape[2] + 1,
+                img_val.shape[3] - kern_vals.shape[3] + 1
+                )
+            out_vals = numpy.zeros(shape, dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(temp_img.shape, shape)
+            )(temp_img.shape, out.shape)
             conv_grad_w = dnn.GpuDnnConvGradW()(
                 temp_img,
                 temp_kerns,
+                out,
                 desc,
-                shape[2],
-                shape[3]
             )
             self._compile_and_check(
-                [temp_img, temp_kerns],
+                [temp_img, temp_kerns, out],
                 [conv_grad_w],
-                [img_val, kern_vals],
+                [img_val, kern_vals, out_vals],
                 dnn.GpuDnnConvGradW
             )
 
@@ -317,6 +325,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
+        out = T.ftensor4('out')
         img_val = numpy.asarray(
             numpy.random.rand(3, 4, 5, 6),
             dtype='float32'
@@ -331,29 +340,28 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1)],
             ['conv', 'cross']
         ):
-            print params
             temp_kerns = kerns.dimshuffle(1, 0, 2, 3)
-            shape = theano.tensor.stack(
-                img.shape[0], temp_kerns.shape[1],
-                img.shape[2] + temp_kerns.shape[2] - 1,
-                img.shape[3] + temp_kerns.shape[3] - 1
+            shape = (
+                img_val.shape[0], kern_vals.shape[1],
+                img_val.shape[2] + kern_vals.shape[2] - 1,
+                img_val.shape[3] + kern_vals.shape[3] - 1
             )
+            out_vals = numpy.zeros(shape, dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(shape, temp_kerns.shape)
+            )(out.shape, temp_kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
                 temp_kerns,
                 img,
+                out,
                 desc,
-                shape[2],
-                shape[3]
             )
             self._compile_and_check(
-                [temp_kerns, img],
+                [temp_kerns, img, out],
                 [conv_grad_i],
-                [kern_vals, img_val],
+                [kern_vals, img_val, out_vals],
                 dnn.GpuDnnConvGradI
             )
 
@@ -423,6 +431,65 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 [img_val, img_grad_val, out_val],
                 dnn.GpuDnnPoolGrad
             )
+
+def test_dnn_conv_merge():
+    img = T.ftensor4()
+    kern = T.ftensor4()
+    out = T.ftensor4()
+
+    b = 1
+    c = 4
+    f = 3
+    ih = 2
+    iw = 8
+    kh = 2
+    kw = 2
+    img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
+    kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
+    out_val = numpy.random.random((b, f, ih-kw+1, iw-kw+1)).astype('float32')
+
+    conv = dnn.dnn_conv(img, kern)
+    gw = theano.grad(conv.sum(), kern)
+    gi = theano.grad(conv.sum(), img)
+
+    lr = numpy.asarray(0.05, dtype='float32')
+
+    fr = out - lr * conv
+    wr = kern - lr * gw
+    ir = img - lr * gi
+
+    f1 = theano.function([img, kern, out], [fr, wr, ir], mode=mode_with_gpu)
+    assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                      dnn.GpuDnnConv)
+    assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                      dnn.GpuDnnConvGradW)
+    assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                      dnn.GpuDnnConvGradI)
+
+    mode = mode_with_gpu
+    mode = mode.excluding('local_dnn_conv_alpha_merge')
+    mode = mode.excluding('local_dnn_convw_alpha_merge')
+    mode = mode.excluding('local_dnn_convi_alpha_merge')
+    mode = mode.excluding('local_dnn_conv_output_merge')
+    mode = mode.excluding('local_dnn_convw_output_merge')
+    mode = mode.excluding('local_dnn_convi_output_merge')
+
+    f2 = theano.function([img, kern, out], [fr, wr, ir], mode=mode)
+
+    assert not isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                          dnn.GpuDnnConv)
+    assert not isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                          dnn.GpuDnnConvGradW)
+    assert not isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                          dnn.GpuDnnConvGradI)
+
+    out_f1 = f1(img_val, kern_val, out_val)
+    out_f2 = f2(img_val, kern_val, out_val)
+
+    assert len(out_f1) == len(out_f2)
+
+    for v1, v2 in zip(out_f1, out_f2):
+        utt.assert_allclose(v1, v2)
 
 
 def test_version():

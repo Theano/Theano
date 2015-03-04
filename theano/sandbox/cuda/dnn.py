@@ -21,6 +21,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
+from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
@@ -347,6 +348,8 @@ def ensure_float(val, default, name):
         return default.clone()
     if not isinstance(val, Variable):
         val = constant(val)
+    if hasattr(val, 'ndim') and val.ndim == 0:
+        val = as_scalar(val)
     if not isinstance(val.type, theano.scalar.Scalar):
         raise TypeError("%s: expected a scalar value" % (name,))
     if not val.type.dtype == 'float32':
@@ -1491,6 +1494,48 @@ if True:
         if type(node.op) != GpuDnnConvGradI or node.op.inplace == True:
             return
         return [GpuDnnConvGradI(inplace=True)(*node.inputs)]
+
+    @register_opt('cudnn')
+    @alpha_merge(GpuDnnConv, alpha_in=4, nd=4)
+    def local_dnn_conv_alpha_merge(node, *inputs):
+        if version() == -1:
+            return None
+        return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+
+    @register_opt('cudnn')
+    @alpha_merge(GpuDnnConvGradW, alpha_in=4, nd=4)
+    def local_dnn_convw_alpha_merge(node, *inputs):
+        if version() == -1:
+            return None
+        return [GpuDnnConvGradW()(*inputs)]
+
+    @register_opt('cudnn')
+    @alpha_merge(GpuDnnConvGradI, alpha_in=4, nd=4)
+    def local_dnn_convi_alpha_merge(node, *inputs):
+        if version() == -1:
+            return None
+        return [GpuDnnConvGradW()(*inputs)]
+
+    @register_opt('cudnn')
+    @output_merge(GpuDnnConv, alpha_in=4, out_in=2, nd=4)
+    def local_dnn_conv_output_merge(node, *inputs):
+        if version() == -1:
+            return None
+        return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+
+    @register_opt('cudnn')
+    @output_merge(GpuDnnConvGradW, alpha_in=4, out_in=2, nd=4)
+    def local_dnn_convw_output_merge(node, *inputs):
+        if version() == -1:
+            return None
+        return [GpuDnnConvGradW()(*inputs)]
+
+    @register_opt('cudnn')
+    @output_merge(GpuDnnConvGradI, alpha_in=4, out_in=2, nd=4)
+    def local_dnn_convi_output_merge(node, *inputs):
+        if version() == -1:
+            return None
+        return [GpuDnnConvGradI()(*inputs)]
 
     @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
