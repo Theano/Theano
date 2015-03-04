@@ -586,6 +586,11 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         *not* 'forward!', it will use GpuDnnConvGradI.
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
+    :param workmem: Specify the amount of working memory allowed.
+      More memory is usually faster.  One of 'none', 'small' or
+      'large'.  (default is None which takes its value from
+      config.dnn.conv.workmem)
+
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
