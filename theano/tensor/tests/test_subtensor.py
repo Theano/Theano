@@ -1135,7 +1135,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 m2_ref = m_val.copy()
 
                 m1_val, m2_val = f(m_val, i_val)
-                for idx in i_val:
+                # We have to explicitly loop over all individual indices,
+                # not as a list or array, numpy only increments the indexed
+                # elements once even if the indices are repeated.
+                for idx in i_val.ravel():
                     m1_ref[:, idx] = 0
                     m2_ref[:, idx] += 1
 
