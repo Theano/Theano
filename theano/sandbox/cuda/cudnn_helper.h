@@ -103,11 +103,11 @@ cudnnConvolutionForward_v2(
   const cudnnTensorDescriptor_t destDesc,
   void *destData) {
   assert(*(float *)alpha == 1.0);
-  assert(*(float *)beta == 0.0);
+  assert(*(float *)beta == 1.0);
   return cudnnConvolutionForward(handle, srcDesc, srcData,
 				 filterDesc, filterData,
 				 convDesc, destDesc, destData,
-				 CUDNN_RESULT_NO_ACCUMULATE);
+				 CUDNN_RESULT_ACCUMULATE);
 }
 #define cudnnConvolutionForward cudnnConvolutionForward_v2
 
@@ -124,11 +124,11 @@ cudnnConvolutionBackwardFilter_v2(
   const cudnnFilterDescriptor_t gradDesc,
   void *gradData) {
   assert(*(float *)alpha == 1.0);
-  assert(*(float *)beta == 0.0);
+  assert(*(float *)beta == 1.0);
   return cudnnConvolutionBackwardFilter(handle, srcDesc, srcData,
 					diffDesc, diffData,
 					convDesc, gradDesc, gradData,
-					CUDNN_RESULT_NO_ACCUMULATE);
+					CUDNN_RESULT_ACCUMULATE);
 }
 
 #define cudnnConvolutionBackwardFilter cudnnConvolutionBackwardFilter_v2
@@ -146,7 +146,7 @@ cudnnConvolutionBackwardData_v2(
   const cudnnTensorDescriptor_t gradDesc,
   void *gradData) {
   assert(*(float *)alpha == 1.0);
-  assert(*(float *)beta == 0.0);
+  assert(*(float *)beta == 1.0);
   return cudnnConvolutionBackwardData(handle,
 				      (cudnnFilterDescriptor_t)filterDesc,
 				      filterData,
@@ -155,7 +155,7 @@ cudnnConvolutionBackwardData_v2(
 				      (cudnnConvolutionDescriptor_t)convDesc,
 				      (cudnnTensorDescriptor_t)gradDesc,
 				      gradData,
-				      CUDNN_RESULT_NO_ACCUMULATE);
+				      CUDNN_RESULT_ACCUMULATE);
 }
 
 #define cudnnConvolutionBackwardData cudnnConvolutionBackwardData_v2
