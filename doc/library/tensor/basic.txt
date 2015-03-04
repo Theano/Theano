@@ -1,4 +1,4 @@
-.. currentmodule:: tensor
+.. currentmodule:: theano.tensor
 
 .. _libdoc_basic_tensor:
 
@@ -583,11 +583,11 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     :type n_ones: int
     :type n_ones: number of dimension to be added to `x`
 
-.. autofunction:: theano.tensor.basic.unbroadcast
+.. autofunction:: unbroadcast(x, *axes)
 
-.. autofunction:: theano.tensor.basic.addbroadcast
+.. autofunction:: addbroadcast(x, *axes)
 
-.. autofunction:: theano.tensor.basic.patternbroadcast
+.. autofunction:: patternbroadcast(x, broadcastable)
 
 .. function:: flatten(x, outdim=1)
 
