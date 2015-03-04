@@ -1483,9 +1483,10 @@ if True:
             img, = node.inputs
             ds = node.op.ds
             stride = node.op.st
+            pad = node.op.padding
             if (img.owner and isinstance(img.owner.op, HostFromGpu)):
                 ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                               ds, stride=stride)
+                               ds, stride=stride, pad=pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -1514,12 +1515,13 @@ if True:
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
             st = node.op.st
+            pad = node.op.padding
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op, HostFromGpu))
             ):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode="max")()
+                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode="max", pad=pad)()
                 if not node.op.ignore_border:
                     return
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),

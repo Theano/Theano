@@ -79,12 +79,12 @@ def test_pooling():
             for stride in (2, 3):
                 if stride > ws:
                     continue
-                if func is T.max and pad == (0, 0):
+                if func is T.max:
                     # We will check that the opt introduced it.
                     out1 = max_pool_2d(x, (ws, ws),
                                        st=(stride, stride),
-                                       ignore_border=True,)
-#                                       pad=pad)
+                                       ignore_border=True,
+                                       padding=pad)
                 else:
                     out1 = cuda.dnn.dnn_pool(
                         x, ws=(ws, ws),
@@ -120,13 +120,13 @@ def test_pooling():
             data = numpy.random.normal(0, 1, shp).astype("float32")*10
 
             ws = 2
-            strides = 2
+            stride = 2
             print func, pad, ws, stride, shp
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return max_pool_2d(x, (ws, ws), ignore_border=True,)
-#                                   pad=pad)
+                return max_pool_2d(x, (ws, ws), ignore_border=True,
+                                   padding=pad)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
                                                     mode=mode_with_gpu)
@@ -155,10 +155,10 @@ def test_pooling():
                         for node in fg.maker.fgraph.toposort()])
             g_out = fg(data)
 
-            if func is T.max and pad == (0, 0):
+            if func is T.max:
                 # Compare again the CPU result
                 out = max_pool_2d(x, (ws, ws),
-#                                  pad=pad,
+                                  padding=pad,
                                   ignore_border=True)
                 fc = theano.function([x], theano.grad(out.sum(), x),
                                      mode=mode_without_gpu)
