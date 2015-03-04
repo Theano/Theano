@@ -654,6 +654,8 @@ class GpuDnnPoolDesc(GpuOp):
     :param stride: (dx, dy)
     :param mode: 'max' or 'average'
     :param pad: (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
     """
     __props__ = ('ws', 'stride', 'mode', 'pad')
 
@@ -682,8 +684,7 @@ class GpuDnnPoolDesc(GpuOp):
         assert len(stride) == 2
         self.pad = pad
         if (pad[0] != 0 or pad[1] != 0) and version() < 20:
-            raise RuntimeError("Pooling with padding need CUDNN v2 or"
-                               " more recent.")
+            raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -692,8 +693,8 @@ class GpuDnnPoolDesc(GpuOp):
 
     def make_node(self):
         if self.pad != (0, 0) and version() < 20:
-            raise RuntimeError(
-                "CUDNNpooling with padding request CUDNN v2 or more recent.")
+            raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
+
         return Apply(self, [],
                      [CDataType("cudnnPoolingDescriptor_t")()])
 
@@ -1125,7 +1126,9 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     :param ws: subsampling window size
     :param stride: subsampling stride (default: (1, 1))
     :param mode: one of 'max', 'average' (default: 'max')
-    :param pad: todo doc
+    :param pad: (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
