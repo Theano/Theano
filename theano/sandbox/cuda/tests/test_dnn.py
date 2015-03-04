@@ -1,5 +1,4 @@
 import logging
-import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -10,11 +9,10 @@ from theano.compat.six import StringIO
 from theano.gof.python25 import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
-from theano.sandbox.neighbours import images2neibs, neibs2images
+from theano.sandbox.neighbours import images2neibs
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
-from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -31,6 +29,7 @@ else:
 
 
 def pool_2d_i2n(input, ds=(2, 2), strides=None,
+                pad=(0, 0),
                 pool_function=T.max, mode='ignore_borders'):
     if strides is None:
         strides = ds
@@ -40,8 +39,19 @@ def pool_2d_i2n(input, ds=(2, 2), strides=None,
             "strides should be smaller than or equal to ds,"
             " strides=(%d, %d) and ds=(%d, %d)" %
             (strides + ds))
-
     shape = input.shape
+    if pad != (0, 0):
+        assert pool_function is T.max
+        pad_x = pad[0]
+        pad_y = pad[1]
+        a = T.alloc(-numpy.inf, shape[0], shape[1], shape[2] + pad_x*2,
+                    shape[3] + pad_y*2)
+        input = T.set_subtensor(a[:, :,
+                                  pad_x:pad_x+shape[2],
+                                  pad_y:pad_y+shape[3]],
+                                input)
+        shape = input.shape
+
     neibs = images2neibs(input, ds, strides, mode=mode)
     pooled_neibs = pool_function(neibs, axis=1)
 
@@ -58,33 +68,41 @@ def test_pooling():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()
+    for func, pad in product((T.max, T.mean),
+                             ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
+        if pad != (0, 0) and cuda.dnn.version() < 20:
+            continue
 
-    for func in (T.max, T.mean):
-        for ws in (2, 4, 5):
+        for ws in (4, 2, 5):
             for stride in (2, 3):
                 if stride > ws:
                     continue
-                if ws == stride and func is T.max:
+                if func is T.max:
                     # We will check that the opt introduced it.
-                    out1 = max_pool_2d(x, (ws, ws), ignore_border=True)
+                    out1 = max_pool_2d(x, (ws, ws),
+                                       st=(stride, stride),
+                                       ignore_border=True,
+                                       padding=pad)
                 else:
                     out1 = cuda.dnn.dnn_pool(
                         x, ws=(ws, ws),
                         stride=(stride, stride),
+                        pad=pad,
                         mode='max' if func is T.max else "average")
                 out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
+                                   pad=pad,
                                    pool_function=func)
 
                 f1 = theano.function([x], out1, mode=mode_with_gpu)
                 assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                             for node in f1.maker.fgraph.apply_nodes])
-                f2 = theano.function([x], out2, mode=mode_with_gpu)
+                f2 = theano.function([x], out2, mode=mode_without_gpu)
                 assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                                 for node in f2.maker.fgraph.apply_nodes])
                 for shp in [(1, 10, 100, 100),
                             (1, 3, 99, 99),
                             (32, 1, 147, 197),
-                         ]:
+                            ]:
                     data = numpy.random.normal(0, 1, shp).astype("float32")
                     a = f1(data).__array__()
 
@@ -98,45 +116,50 @@ def test_pooling():
             data = numpy.random.normal(0, 1, shp).astype("float32")*10
 
             ws = 2
-            strides = 2
+            stride = 2
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return max_pool_2d(x, (ws, ws), ignore_border=True)
+                return max_pool_2d(x, (ws, ws), ignore_border=True,
+                                   padding=pad)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
                                                     mode=mode_with_gpu)
             # Confirm that the opt would have inserted it.
-            f = theano.function([x], theano.grad(fn(x).sum(), x),
-                                mode=mode_with_gpu)
+            fg = theano.function([x], theano.grad(fn(x).sum(), x),
+                                 mode=mode_with_gpu)
             assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
-                        for node in f.maker.fgraph.toposort()])
+                        for node in fg.maker.fgraph.toposort()])
 
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
                     x, ws=(ws, ws),
                     stride=(stride, stride),
+                    pad=pad,
                     mode='max' if func is T.max else "average")
                 return dnn_op
-            theano.tests.unittest_tools.verify_grad(fn, [data],
-                                                    cast_to_output_type=False,
-                                                    mode=mode_with_gpu)
+            theano.tests.unittest_tools.verify_grad(
+                fn, [data],
+                cast_to_output_type=False,
+                mode=mode_with_gpu)
             # Confirm that we get the good op.
-            f = theano.function([x], theano.grad(fn(x).sum(), x),
-                                mode=mode_with_gpu)
+            fg = theano.function([x], theano.grad(fn(x).sum(), x),
+                                 mode=mode_with_gpu)
             assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
-                        for node in f.maker.fgraph.toposort()])
-            g_out = f(data)
+                        for node in fg.maker.fgraph.toposort()])
+            g_out = fg(data)
 
             if func is T.max:
                 # Compare again the CPU result
-                out = max_pool_2d(x, (ws, ws), ignore_border=True)
-                f = theano.function([x], theano.grad(out.sum(), x),
-                                    mode=mode_without_gpu)
+                out = max_pool_2d(x, (ws, ws),
+                                  padding=pad,
+                                  ignore_border=True)
+                fc = theano.function([x], theano.grad(out.sum(), x),
+                                     mode=mode_without_gpu)
                 assert any([isinstance(node.op, DownsampleFactorMaxGrad)
-                            for node in f.maker.fgraph.toposort()])
-                c_out = f(data)
+                            for node in fc.maker.fgraph.toposort()])
+                c_out = fc(data)
                 assert numpy.allclose(c_out, g_out)
 
 
@@ -165,7 +188,7 @@ def test_pooling_opt():
 
 def test_dnn_tag():
     """
-    We test that if cudnn isn't avail we crash and that if it is avail, we use it.
+    Test that if cudnn isn't avail we crash and that if it is avail, we use it.
     """
     x = T.ftensor4()
     old = theano.config.on_opt_error
@@ -412,11 +435,11 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 mode=params[2]
             )()
             pool_grad = dnn.GpuDnnPoolGrad()(
-                    img,
-                    out,
-                    img_grad,
-                    desc
-                )
+                img,
+                out,
+                img_grad,
+                desc
+            )
             self._compile_and_check(
                 [img, img_grad, out],
                 [pool_grad],
