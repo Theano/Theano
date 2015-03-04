@@ -2,8 +2,9 @@
 
 int
 APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
-			 cudnnConvolutionDescriptor_t desc,
-			 CudaNdarray **output) {
+                         cudnnConvolutionDescriptor_t desc,
+                         float alpha, float beta,
+                         CudaNdarray **output) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
   if (c_set_tensor4d(input, APPLY_SPECIFIC(input)) == -1)
@@ -53,9 +54,6 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     workspace = get_work_mem(worksize);
     if (workspace == NULL && worksize != 0)
       return 1;
-
-    const float alpha = 1;
-    const float beta = 0;
 
     err = cudnnConvolutionForward(
       _handle,

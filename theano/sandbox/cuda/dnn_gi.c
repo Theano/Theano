@@ -3,7 +3,7 @@
 int
 APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
 			cudnnConvolutionDescriptor_t desc,
-			int h, int w,
+			int h, int w, float alpha, float beta,
 			CudaNdarray **input) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
@@ -27,9 +27,6 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
 
   {
-    const float alpha = 1;
-    const float beta = 0;
-
     err = cudnnConvolutionBackwardData(
       _handle,
       (void *)&alpha,

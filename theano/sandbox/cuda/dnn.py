@@ -1,8 +1,9 @@
 import os
+import numpy
 
 import theano
 from theano import Apply, gof, tensor, config
-from theano.scalar import as_scalar
+from theano.scalar import as_scalar, constant
 from theano.gradient import DisconnectedType
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
@@ -335,6 +336,23 @@ AddConfigVar('dnn.conv.workmem',
              EnumStr('small', 'none', 'large'),
              in_c_key=False)
 
+# scalar constants
+_zero = constant(numpy.asarray(0.0, dtype='float32'))
+_one = constant(numpy.asarray(1.0, dtype='float32'))
+
+
+def ensure_float(val, default, name):
+    if val is None:
+        return default.clone()
+    if not isinstnace(val, Variable):
+        val = constant(val)
+    if not isisntance(val.type, theano.scalar.Scalar):
+        raise TypeError("%s: expected a scalar value" % (name,))
+    if not val.type.dtype == 'float32':
+        raise TypeError("%s: type is not float32" % (name,))
+    return val
+
+
 class GpuDnnConv(DnnBase, COp):
     """
     The forward convolution.
@@ -373,7 +391,7 @@ class GpuDnnConv(DnnBase, COp):
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
         return [('CONV_ALGO', alg)]
 
-    def make_node(self, img, kern, desc):
+    def make_node(self, img, kern, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         kern = as_cuda_ndarray_variable(kern)
         if img.type.ndim != 4:
@@ -385,14 +403,17 @@ class GpuDnnConv(DnnBase, COp):
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
+        alpha = ensure_float(alpha, _one, 'alpha')
+        beta = ensure_float(beta, _zero, 'beta')
+
         broadcastable = (img.type.broadcastable[0],
                          kern.type.broadcastable[0],
                          False, False)
-        return Apply(self, [img, kern, desc],
+        return Apply(self, [img, kern, desc, alpha, beta],
                      [CudaNdarrayType(broadcastable)()])
 
     def grad(self, inp, grads):
-        img, kerns, desc = inp
+        img, kerns, desc, alpha, beta = inp
         top, = grads
 
         top = cp_on_negative_strides(top)
@@ -402,11 +423,12 @@ class GpuDnnConv(DnnBase, COp):
         d_kerns = GpuDnnConvGradW()(img, top, desc,
                                     kerns.shape[2], kerns.shape[3])
 
-        return d_img, d_kerns, theano.gradient.DisconnectedType()()
+        return [d_img, d_kerns, DisconnectedType()(), DisconnectedType()(),
+                DisconnectedType()()]
 
     def connection_pattern(self, node):
-        # not connected to desc
-        return [[1], [1], [0]]
+        # not connected to desc, alpha, beta
+        return [[1], [1], [0], [0], [0]]
 
     def infer_shape(self, node, shape):
         b = shape[0][0]  # Number of inputs
@@ -455,7 +477,7 @@ class GpuDnnConvGradW(DnnBase, COp):
                      "APPLY_SPECIFIC(conv_gw)")
 
     def grad(self, inp, grads):
-        img, top, desc, h, w = inp
+        img, top, desc, h, w, alpha, beta = inp
         kerns, = grads
 
         kerns = gpu_contiguous(kerns)
@@ -465,13 +487,14 @@ class GpuDnnConvGradW(DnnBase, COp):
         d_top = GpuDnnConv()(img, kerns, desc)
 
         return (d_img, d_top, DisconnectedType()(), DisconnectedType()(),
+                DisconnectedType()(), DiconnnectedType()(),
                 DisconnectedType()())
 
     def connection_pattern(self, node):
-        # not connected to desc, h, w
-        return [[1], [1], [0], [0], [0]]
+        # not connected to desc, h, w, alpha, beta
+        return [[1], [1], [0], [0], [0], [0], [0]]
 
-    def make_node(self, img, topgrad, desc, h, w):
+    def make_node(self, img, topgrad, desc, h, w, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if img.type.ndim != 4:
@@ -486,11 +509,14 @@ class GpuDnnConvGradW(DnnBase, COp):
         h = as_scalar(h)
         w = as_scalar(w)
 
+        alpha = ensure_float(alpha, _one, 'alpha')
+        beta = ensure_float(beta, _zero, 'beta')
+
         broadcastable = [topgrad.type.broadcastable[1],
                          img.type.broadcastable[1],
                          False, False]
 
-        return Apply(self, [img, topgrad, desc, h, w],
+        return Apply(self, [img, topgrad, desc, h, w, alpha, beta],
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
@@ -518,7 +544,7 @@ class GpuDnnConvGradI(DnnBase, COp):
                      "APPLY_SPECIFIC(conv_gi)")
 
     def grad(self, inp, grads):
-        kerns, top, desc, h, w = inp
+        kerns, top, desc, h, w, alpha, beta = inp
         img, = grads
 
         img = cp_on_negative_strides(img)
@@ -527,13 +553,14 @@ class GpuDnnConvGradI(DnnBase, COp):
                                     kerns.shape[2], kerns.shape[3])
         d_top = GpuDnnConv()(img, kerns, desc)
         return (d_kerns, d_top, DisconnectedType()(), DisconnectedType()(),
+                DisconnectedType()(), DisconnectedType()(),
                 DisconnectedType()())
 
     def connection_pattern(self, node):
-        # not connected to desc, h, w
-        return [[1], [1], [0], [0], [0]]
+        # not connected to desc, h, w, alpha, beta
+        return [[1], [1], [0], [0], [0], [0], [0]]
 
-    def make_node(self, kern, topgrad, desc, h, w):
+    def make_node(self, kern, topgrad, desc, h, w, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         if kern.type.ndim != 4:
@@ -548,11 +575,14 @@ class GpuDnnConvGradI(DnnBase, COp):
         h = as_scalar(h)
         w = as_scalar(w)
 
+        alpha = ensure_float(alpha, _one, 'alpha')
+        beta = ensure_float(beta, _zero, 'beta')
+
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1],
                          False, False]
 
-        return Apply(self, [kern, topgrad, desc, h, w],
+        return Apply(self, [kern, topgrad, desc, h, w, alpha, beta],
                      [CudaNdarrayType(broadcastable)()])
 
     def infer_shape(self, node, shape):
