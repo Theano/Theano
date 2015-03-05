@@ -385,9 +385,7 @@ class AttemptManyTimes:
             # need to be called before any attempts to execute the test in
             # case it relies on data randomly generated in the class' setup()
             # method.
-            if (len(args) == 1 and hasattr(args[0], "_testMethodName") and
-                hasattr(args[0], "setUp")):
-
+            if (len(args) == 1 and hasattr(args[0], "_testMethodName")):
                 test_in_class = True
                 class_instance = args[0]
             else:
@@ -403,29 +401,34 @@ class AttemptManyTimes:
                 try:
                     # Attempt to make the test use the current seed
                     config.unittests.rseed = current_seed
-                    if test_in_class:
+                    if test_in_class and hasattr(class_instance, "setUp"):
                         class_instance.setUp()
 
                     fct(*args, **kwargs)
 
                     n_success += 1
-                    if current_seed not in [None, "random"]:
-                        current_seed = str(int(current_seed) + 1)
-
                     if n_success == self.n_req_successes:
-                        config.unittests.rseed = original_seed
                         break
 
-                except:
+                except Exception:
                     n_fail += 1
-                    if current_seed not in [None, "random"]:
-                        current_seed = str(int(current_seed) + 1)
 
                     # If there is not enough attempts remaining to achieve the
                     # required number of successes, propagate the original
                     # exception
                     if n_fail + self.n_req_successes > self.n_attempts:
-                        config.unittests.rseed = original_seed
                         raise
+
+                finally:
+                    # Clean up after the test
+                    config.unittests.rseed = original_seed
+                    if test_in_class and hasattr(class_instance, "tearDown"):
+                        class_instance.tearDown()
+
+                    # Update the current_seed
+                    config.unittests.rseed = original_seed
+                    if current_seed not in [None, "random"]:
+                        current_seed = str(int(current_seed) + 1)
+
 
         return attempt_multiple_times
