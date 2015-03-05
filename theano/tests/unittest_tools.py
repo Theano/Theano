@@ -426,7 +426,6 @@ class AttemptManyTimes:
                         class_instance.tearDown()
 
                     # Update the current_seed
-                    config.unittests.rseed = original_seed
                     if current_seed not in [None, "random"]:
                         current_seed = str(int(current_seed) + 1)
 
