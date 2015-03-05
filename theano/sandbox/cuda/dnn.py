@@ -4,7 +4,7 @@ import numpy
 import theano
 from theano import Apply, gof, tensor, config, Variable
 from theano.scalar import as_scalar, constant
-from theano.gradient import DisconnectedType
+from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
@@ -434,13 +434,13 @@ class GpuDnnConv(DnnBase, COp):
 
         d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
         d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
+        d_alpha = grad_not_implemented(self, 4, alpha)
 
-        return [d_img, d_kerns, output.zeros_like(),
-                DisconnectedType()(), DisconnectedType()()]
+        return [d_img, d_kerns, top * alpha, DisconnectedType()(), d_alpha]
 
     def connection_pattern(self, node):
-        # not connected to desc, alpha
-        return [[1], [1], [1], [0], [0]]
+        # not connected to desc
+        return [[1], [1], [1], [0], [1]]
 
     @staticmethod
     def get_out_shape(ishape, kshape, border_mode, subsample):
@@ -509,13 +509,13 @@ class GpuDnnConvGradW(DnnBase, COp):
 
         d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
         d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
+        d_alpha = grad_not_implemented(self, 4, alpha)
 
-        return (d_img, d_top, output.zeros_like(),
-                DisconnectedType()(), DiconnnectedType()())
+        return (d_img, d_top, kerns * alpha, DisconnectedType()(), d_alpha)
 
     def connection_pattern(self, node):
-        # not connected to desc, alpha
-        return [[1], [1], [1], [0], [0]]
+        # not connected to desc
+        return [[1], [1], [1], [0], [1]]
 
     def get_op_params(self):
         if self.inplace:
@@ -573,12 +573,13 @@ class GpuDnnConvGradI(DnnBase, COp):
 
         d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
         d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
-        return (d_kerns, d_top, output.zeros_like(),
-                DisconnectedType()(), DisconnectedType()())
+        d_alpha = grad_not_implemented(self, 4, alpha)
+
+        return (d_kerns, d_top, img * alpha, DisconnectedType()(), d_alpha)
 
     def connection_pattern(self, node):
-        # not connected to desc, alpha
-        return [[1], [1], [1], [0], [0]]
+        # not connected to desc
+        return [[1], [1], [1], [0], [1]]
 
     def get_op_params(self):
         if self.inplace:

@@ -492,6 +492,41 @@ def test_dnn_conv_merge():
         utt.assert_allclose(v1, v2)
 
 
+def test_dnn_conv_grad():
+    if dnn.version() == -1:
+        raise SkipTest('alpha != 1.0 not supported in cudnn v1')
+
+    b = 1
+    c = 4
+    f = 3
+    ih = 2
+    iw = 8
+    kh = 2
+    kw = 2
+    img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
+    kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
+    out_val = numpy.random.random((b, f, ih-kw+1, iw-kw+1)).astype('float32')
+
+    def dconv(img, kern, out):
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                                  conv_mode='conv')(img.shape, kern.shape)
+        return dnn.GpuDnnConv()(img, kern, out, desc)
+
+    def dconvi(img, kern, out):
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                                  conv_mode='conv')(img.shape, kern.shape)
+        return dnn.GpuDnnConvGradI()(kern, out, img, desc)
+
+    def dconvw(img, kern, out):
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
+                                  conv_mode='conv')(img.shape, kern.shape)
+        return dnn.GpuDnnConvGradW()(img, out, kern, desc)
+
+    utt.verify_grad(dconv, [img_val, kern_val, out_val])
+    utt.verify_grad(dconvi, [img_val, kern_val, out_val])
+    utt.verify_grad(dconvw, [img_val, kern_val, out_val])
+
+
 def test_version():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
