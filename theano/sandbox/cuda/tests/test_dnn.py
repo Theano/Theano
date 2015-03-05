@@ -459,11 +459,11 @@ def test_dnn_conv_merge():
     ir = img - lr * gi
 
     f1 = theano.function([img, kern, out], [fr, wr, ir], mode=mode_with_gpu)
-    assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+    assert isinstance(f1.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
                       dnn.GpuDnnConv)
-    assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+    assert isinstance(f1.maker.fgraph.outputs[1].owner.inputs[0].owner.op,
                       dnn.GpuDnnConvGradW)
-    assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+    assert isinstance(f1.maker.fgraph.outputs[2].owner.inputs[0].owner.op,
                       dnn.GpuDnnConvGradI)
 
     mode = mode_with_gpu
@@ -476,11 +476,11 @@ def test_dnn_conv_merge():
 
     f2 = theano.function([img, kern, out], [fr, wr, ir], mode=mode)
 
-    assert not isinstance(f1.maker.fgraph.outputs[0].owner.op,
+    assert not isinstance(f2.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
                           dnn.GpuDnnConv)
-    assert not isinstance(f1.maker.fgraph.outputs[0].owner.op,
+    assert not isinstance(f2.maker.fgraph.outputs[1].owner.inputs[0].owner.op,
                           dnn.GpuDnnConvGradW)
-    assert not isinstance(f1.maker.fgraph.outputs[0].owner.op,
+    assert not isinstance(f2.maker.fgraph.outputs[2].owner.inputs[0].owner.op,
                           dnn.GpuDnnConvGradI)
 
     out_f1 = f1(img_val, kern_val, out_val)

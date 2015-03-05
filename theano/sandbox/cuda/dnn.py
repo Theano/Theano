@@ -1515,7 +1515,7 @@ if True:
     def local_dnn_convi_alpha_merge(node, *inputs):
         if version() == -1:
             return None
-        return [GpuDnnConvGradW()(*inputs)]
+        return [GpuDnnConvGradI()(*inputs)]
 
     @register_opt('cudnn')
     @output_merge(GpuDnnConv, alpha_in=4, out_in=2, nd=4)
