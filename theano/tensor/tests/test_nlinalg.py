@@ -460,7 +460,7 @@ class T_lstsq(unittest.TestCase):
         self.assertRaises(numpy.linalg.LinAlgError, f, [2, 1], [2, 1], [2, 1])
 
 
-class Matrix_power():
+class Matrix_power(unittest.TestCase):
 
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
