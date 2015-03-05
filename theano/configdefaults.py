@@ -370,7 +370,7 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.5', 'None', 'all', '0.3', '0.4', '0.4.1', '0.6',
+             EnumStr('0.6', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.7',
                      allow_override=False),
              in_c_key=False)
 
