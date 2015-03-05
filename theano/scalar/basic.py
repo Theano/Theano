@@ -1856,7 +1856,7 @@ class Identity(UnaryScalarOp):
         if x.type in continuous_types:
             return gz,
         else:
-            return None,
+            return x.zeros_like(dtype=theano.config.floatX),
 identity = Identity(same_out, name='identity')
 
 
