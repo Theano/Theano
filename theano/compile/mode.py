@@ -399,17 +399,3 @@ def register_mode(name, mode):
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
-
-
-def register_OutputGuard_c_code(type):
-    """Deprecated function calling register_view_op_c_code"""
-    warnings.warn("register_OutputGuard_c_code(type) is deprecated, "
-            "theano.compile.register_view_op_c_code(type, code, version=()) instead.",
-            stacklevel=2)
-    register_view_op_c_code(
-            type,
-            dedent("""
-                Py_XDECREF(%(oname)s);
-                %(oname)s = %(iname)s;
-                Py_XINCREF(%(oname)s);
-                """))
