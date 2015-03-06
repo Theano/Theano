@@ -836,8 +836,9 @@ NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
     """`FunctionMaker` is the class to `create` `Function` instances.
 
-    This class has the fgraph, the optimizer, and the linker.  When copying a `Function`, there is
-    no need to duplicate the `FunctionMaker` instance.  Deepcopy still copies both, which can
+    This class has the fgraph, the optimizer, and the linker.  When
+    copying a `Function`, there is no need to duplicate the
+    `FunctionMaker` instance.  Deepcopy still copies both, which can
     variable in re-compilation.
 
     """
