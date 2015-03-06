@@ -88,6 +88,7 @@ register_opt()(theano.tensor.opt.local_track_shape_i)
 register_opt(name='gpu_constant_folding')(
     tensor.opt.constant_folding)
 
+
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.
 # Hopefully, we can keep this list up to date.

@@ -2,8 +2,8 @@
 
 int
 APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
-			 cudnnConvolutionDescriptor_t desc,
-			 CudaNdarray **output) {
+                         CudaNdarray *om, cudnnConvolutionDescriptor_t desc,
+                         float alpha, CudaNdarray **output) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
   if (c_set_tensor4d(input, APPLY_SPECIFIC(input)) == -1)
@@ -11,23 +11,16 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
   if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
-  {
-    int out_dims[4];
-    err = cudnnGetConvolution2dForwardOutputDim(
-      desc,
-      APPLY_SPECIFIC(input),
-      APPLY_SPECIFIC(kerns),
-      &out_dims[0], &out_dims[1], &out_dims[2], &out_dims[3]);
-    if (err != CUDNN_STATUS_SUCCESS) {
-      PyErr_Format(PyExc_RuntimeError,
-		   "GpuDnnConv: error while computing the output shape: %s",
-		   cudnnGetErrorString(err));
-      return 1;
-    }
-    if (CudaNdarray_prep_output(output, 4, out_dims) != 0) {
-      return 1;
-    }
-  }
+#ifdef CONV_INPLACE
+  Py_XDECREF(*output);
+  *output = om;
+  Py_INCREF(*output);
+#else
+  if (CudaNdarray_prep_output(output, 4, CudaNdarray_HOST_DIMS(om)) != 0)
+    return 1;
+  if (CudaNdarray_CopyFromCudaNdarray(*output, om))
+    return 1;
+#endif
 
   if (c_set_tensor4d(*output, APPLY_SPECIFIC(output)) == -1)
     return 1;
@@ -54,8 +47,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     if (workspace == NULL && worksize != 0)
       return 1;
 
-    const float alpha = 1;
-    const float beta = 0;
+    const float beta = 1;
 
     err = cudnnConvolutionForward(
       _handle,
