@@ -68,7 +68,6 @@ predefined_linkers = {
     'c': gof.CLinker(),  # Don't support gc. so don't check allow_gc
     'c|py': gof.OpWiseCLinker(),  # Use allow_gc Theano flag
     'c|py_nogc': gof.OpWiseCLinker(allow_gc=False),
-    'c&py': gof.DualLinker(checker=check_equal),  # Deprecated
     'vm': gof.vm.VM_Linker(use_cloop=False),  # Use allow_gc Theano flag
     'cvm': gof.vm.VM_Linker(use_cloop=True),  # Use allow_gc Theano flag
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
@@ -393,9 +392,6 @@ def get_mode(orig_string):
 
 def get_default_mode():
     return get_mode(None)
-
-# Removed: use config.mode instead.
-#default_mode = config.mode
 
 
 def register_mode(name, mode):
