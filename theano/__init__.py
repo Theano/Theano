@@ -71,7 +71,7 @@ from theano.printing import pprint, pp
 
 from theano.scan_module import scan, map, reduce, foldl, foldr, clone
 
-from theano.updates import Updates, OrderedUpdates
+from theano.updates import OrderedUpdates
 
 # scan_module import above initializes tensor and scalar making these imports redundant
 #import tensor
