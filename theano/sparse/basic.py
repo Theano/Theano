@@ -3241,7 +3241,6 @@ class StructuredDot(gof.Op):
             raise ValueError('shape mismatch in StructuredDot.perform',
                              (a.shape, b.shape))
 
-        # variable = a.dot(b)  # deprecated
         variable = a * b
         if isinstance(node.outputs[0].type, SparseType):
             assert _is_sparse(variable)
