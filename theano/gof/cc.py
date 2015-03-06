@@ -1737,8 +1737,6 @@ class DualLinker(link.Linker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             return type(self)(self.checker).accept(fgraph, no_recycling)
-            # raise Exception("Cannot accept from a Linker that is already "
-            #                 "tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
