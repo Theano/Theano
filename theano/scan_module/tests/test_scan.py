@@ -983,14 +983,6 @@ class T_Scan(unittest.TestCase):
         # assert that theano does what it should
         utt.assert_allclose(theano_x0, numpy_x0)
         utt.assert_allclose(theano_x1, numpy_x1)
-        # assert that it was done in place
-
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Old way of doing inplace operations is deprecated .. tests don't
-        # make sense anymore.
-
-        ## utt.assert_allclose(theano_x0 , vu2)
-        ## utt.assert_allclose(theano_x1 , vu1)
 
     # simple rnn ; compute inplace version 2
     def test_inplace2(self):
@@ -1063,16 +1055,6 @@ class T_Scan(unittest.TestCase):
         # assert that theano does what it should
         utt.assert_allclose(theano_x0, numpy_x0)
         utt.assert_allclose(theano_x1, numpy_x1)
-        # assert that it was done in place
-        # not that x0 should not be inplace of vu2 because you are using
-        # past values of u2, and therefore you are not allowed to work
-        # inplace !!
-
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Old way of doing inplace operations is deprecated .. tests don't
-        # make sense anymore.
-        #assert not numpy.allclose( theano_x0 , vu2[1:4])
-        #utt.assert_allclose( theano_x1 , vu1[0:3])
 
     def test_inplace3(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -2056,16 +2038,10 @@ class T_Scan(unittest.TestCase):
         required in order to mimic this interface. Scan thus calls
         tensor.shape_padleft on the inner function outputs.
 
-        However, this is not the proper behavior for:
-        * shared variables : these should not be padded in any way
-        * when return_steps is explicitely set to 1. Output should NOT be
-          a list, but a tensor corresponding to the result of the last
-          iteration.
+        However, this is not the proper behavior for shared variables,
+        they should not be padded in any way
 
         This unit test addresses the bug fix of changeset ba7157e95cb1.
-
-        !!! test lost some of its meaning because return_steps has been
-        deprecated !!!
         """
         a = theano.tensor.vector()
         init_a = theano.tensor.vector()
