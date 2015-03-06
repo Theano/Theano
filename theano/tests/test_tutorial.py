@@ -11,7 +11,7 @@ from numpy import array
 
 import theano
 import theano.tensor as T
-from theano import function
+from theano import function, compat
 
 from theano import config
 from theano.tests import unittest_tools as utt

@@ -13,12 +13,12 @@ import theano
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano import config
 import warnings
 NullType = None
 
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 

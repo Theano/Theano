@@ -10,7 +10,7 @@ from theano.scalar import Scalar
 from theano.tensor.basic import Alloc, Join, Split
 
 from theano.gof import HideC
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 

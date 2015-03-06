@@ -48,7 +48,7 @@ def hash_from_file(file_path):
 
 
 import theano
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano import config
 
 # Note that we need to do this before importing cutils, since when there is

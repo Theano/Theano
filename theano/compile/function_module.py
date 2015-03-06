@@ -14,7 +14,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof.python25 import partial
+from theano.compat.python2x import partial
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)

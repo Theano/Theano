@@ -4,7 +4,7 @@ import theano
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gof import local_optimizer
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 
 from theano.sandbox.cuda import cuda_available, GpuOp
 if cuda_available:

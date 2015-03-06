@@ -2,7 +2,7 @@ import sys
 
 import numpy
 
-from theano.gof.python25 import DefaultOrderedDict
+from theano.compat.python2x import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
 from theano.compat.six import StringIO
 from theano.gof import opt

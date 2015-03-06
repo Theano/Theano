@@ -9,7 +9,7 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 try:
     from nose.plugins.skip import SkipTest
 except ImportError:

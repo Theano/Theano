@@ -16,7 +16,7 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.gof.python25 import any, deque
+from theano.compat.python2x import any, deque
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
