@@ -556,7 +556,7 @@ def test_disconnected_cost_grad():
         except theano.gradient.DisconnectedInputError:
             return
         raise AssertionError("A disconnected gradient has been ignored.")
-        
+
 def test_subgraph_grad():
 
     # Tests that the grad method with no known_grads
@@ -618,12 +618,12 @@ class TestConsiderConstant(unittest.TestCase):
         # theano.gradient.consider_constant is a wrapper function!
         assert gradient.consider_constant_ not in \
             [node.op for node in f.maker.fgraph.toposort()]
-        
+
     def test_grad(self):
         T = theano.tensor
         a = np.asarray(self.rng.randn(5, 5),
-            dtype=config.floatX)
-        
+                       dtype=config.floatX)
+
         x = T.matrix('x')
 
         expressions_gradients = [
@@ -641,6 +641,111 @@ class TestConsiderConstant(unittest.TestCase):
             f2 = theano.function([x], expr_grad, on_unused_input='ignore')
 
             assert np.allclose(f(a), f2(a))
+
+
+class TestZeroGrad(unittest.TestCase):
+
+    def setUp(self):
+        utt.seed_rng()
+        self.rng = np.random.RandomState(seed=utt.fetch_seed())
+
+    def test_op_removed(self):
+        x = theano.tensor.matrix('x')
+        y = x * gradient.zero_grad(x)
+        f = theano.function([x], y)
+        # need to refer to theano.gradient.zero_grad here,
+        # theano.gradient.zero_grad is a wrapper function!
+        assert gradient.zero_grad_ not in \
+            [node.op for node in f.maker.fgraph.toposort()]
+
+    def test_grad(self):
+        T = theano.tensor
+        a = np.asarray(self.rng.randn(5, 5),
+                       dtype=config.floatX)
+
+        x = T.matrix('x')
+
+        expressions_gradients = [
+            (x * gradient.zero_grad(x), x),
+            (x * gradient.zero_grad(T.exp(x)), T.exp(x)),
+            (gradient.zero_grad(x), T.constant(0.)),
+            (x**2 * gradient.zero_grad(x), 2 * x**2),
+        ]
+
+        for expr, expr_grad in expressions_gradients:
+            g = gradient.grad(expr.sum(), x)
+            # gradient according to theano
+            f = theano.function([x], g, on_unused_input='ignore')
+            # desired gradient
+            f2 = theano.function([x], expr_grad, on_unused_input='ignore')
+
+            assert np.allclose(f(a), f2(a))
+
+
+class TestDisconnectedGrad(unittest.TestCase):
+
+    def setUp(self):
+        utt.seed_rng()
+        self.rng = np.random.RandomState(seed=utt.fetch_seed())
+
+    def test_op_removed(self):
+        x = theano.tensor.matrix('x')
+        y = x * gradient.disconnected_grad(x)
+        f = theano.function([x], y)
+        # need to refer to theano.gradient.disconnected_grad here,
+        # theano.gradient.disconnected_grad is a wrapper function!
+        assert gradient.disconnected_grad_ not in \
+            [node.op for node in f.maker.fgraph.toposort()]
+
+    def test_grad(self):
+        T = theano.tensor
+        a = np.asarray(self.rng.randn(5, 5),
+                       dtype=config.floatX)
+
+        x = T.matrix('x')
+
+        expressions_gradients = [
+            (x * gradient.disconnected_grad(x), x),
+            (x * gradient.disconnected_grad(T.exp(x)), T.exp(x)),
+            (x**2 * gradient.disconnected_grad(x), 2 * x**2),
+        ]
+
+        for expr, expr_grad in expressions_gradients:
+            g = gradient.grad(expr.sum(), x)
+            # gradient according to theano
+            f = theano.function([x], g, on_unused_input='ignore')
+            # desired gradient
+            f2 = theano.function([x], expr_grad, on_unused_input='ignore')
+
+            assert np.allclose(f(a), f2(a))
+
+    def test_disconnected_paths(self):
+        # Test that taking gradient going through a disconnected
+        # path rasises an exception
+        T = theano.tensor
+        a = np.asarray(self.rng.randn(5, 5),
+                       dtype=config.floatX)
+
+        x = T.matrix('x')
+
+        # This MUST raise a DisconnectedInputError error.
+        # This also rasies an additional warning from gradients.py.
+        self.assertRaises(gradient.DisconnectedInputError, gradient.grad,
+                          gradient.disconnected_grad(x).sum(), x)
+
+        # This MUST NOT raise a DisconnectedInputError error.
+        y = gradient.grad((x + gradient.disconnected_grad(x)).sum(), x)
+
+        a = T.matrix('a')
+        b = T.matrix('b')
+        y = a + gradient.disconnected_grad(b)
+        # This MUST raise a DisconnectedInputError error.
+        # This also rasies an additional warning from gradients.py.
+        self.assertRaises(gradient.DisconnectedInputError,
+                          gradient.grad, y.sum(), b)
+
+        # This MUST NOT raise a DisconnectedInputError error.
+        z = gradient.grad(y.sum(), a)
 
 
 def test_grad_clip():
