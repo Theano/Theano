@@ -147,8 +147,7 @@ def get_updates_and_outputs(ls):
             raise ValueError(error_msg)
 
 
-DEPRECATED_ARG = object()
-def clone(output, replace=None, strict=True, share_inputs=True, copy_inputs=DEPRECATED_ARG):
+def clone(output, replace=None, strict=True, share_inputs=True):
     """
     Function that allows replacing subgraphs of a computational
     graph. It returns a copy of the initial subgraph with the corresponding
@@ -168,11 +167,6 @@ def clone(output, replace=None, strict=True, share_inputs=True, copy_inputs=DEPR
         shared variables still use the same underlying storage, so they
         will always have the same value.
     """
-    if copy_inputs is not DEPRECATED_ARG:
-        warnings.warn('In `clone()` function, the argument `copy_inputs` has been deprecated and renamed into `share_inputs`')
-        assert share_inputs  # since we used `copy_inputs` we should have default value for `share_inputs`
-        share_inputs = copy_inputs
-
     inps, outs, other_stuff = rebuild_collect_shared(output,
                                                      [],
                                                      replace,
