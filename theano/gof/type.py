@@ -497,6 +497,9 @@ class Generic(SingletonType):
     def c_code_cache_version(self):
         return (1,)
 
+    def may_share_memory(self, other):
+        return self is other
+
     def __str__(self):
         return self.__class__.__name__
 
