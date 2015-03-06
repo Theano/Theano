@@ -8,7 +8,7 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 
 from theano.compile.sharedvalue import SharedVariable
 import logging

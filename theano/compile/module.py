@@ -11,7 +11,7 @@ from itertools import chain
 from theano import gof
 from theano.printing import pprint
 from theano.compile import io
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 
 import theano.compile.function_module
 import theano.compile.mode

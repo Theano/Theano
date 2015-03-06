@@ -15,7 +15,7 @@ import scipy.sparse
 
 import theano
 from theano import gof, tensor, compile, scalar, config
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
 import theano.tests.unittest_tools as utt

@@ -19,7 +19,7 @@ except ImportError:
 
 import theano
 from theano import tensor
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.tests.unittest_tools import seed_rng, assert_allclose
 
 # Skip test if cuda is not available.

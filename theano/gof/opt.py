@@ -20,7 +20,7 @@ from theano.gof import unify
 from theano.gof import toolbox
 import theano
 from theano import config
-from theano.gof.python25 import any, all, deque
+from theano.compat.python2x import any, all, deque
 
 
 _logger = logging.getLogger('theano.gof.opt')

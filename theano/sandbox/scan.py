@@ -18,7 +18,7 @@ import warnings
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.tensor import opt
 from theano import tensor
 from theano import config
@@ -478,7 +478,7 @@ def scan(fn,
     # If we use a regular dict here, the results are non-deterministic
     if not isinstance(updates, (list, tuple)):
         if isinstance(updates, dict) and \
-            not isinstance(updates, gof.python25.OrderedDict):
+            not isinstance(updates, compat.python2x.OrderedDict):
                 warnings.warn("Using non-deterministic dictionary.")
 
     dummy_f = function(dummy_args,

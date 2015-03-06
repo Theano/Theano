@@ -20,7 +20,7 @@ from theano.tensor.var import (AsTensorError, TensorVariable,
 from theano.tensor.type import TensorType
 from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
-from theano.gof.python25 import partial, any, all
+from theano.compat.python2x import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str

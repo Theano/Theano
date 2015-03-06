@@ -4,7 +4,7 @@ try:
 except ImportError:
     # Python 2.4
     pass
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 import types
 
 

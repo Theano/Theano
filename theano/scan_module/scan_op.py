@@ -24,7 +24,7 @@ from theano.compat import exc_message
 from theano.compile import function, Param, Out
 from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
-from theano.gof.python25 import any, OrderedDict
+from theano.compat.python2x import any, OrderedDict
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType

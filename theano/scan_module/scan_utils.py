@@ -22,9 +22,9 @@ import numpy
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
-from theano import gof
+from theano import gof, compat
 from theano import tensor, scalar
-from theano.gof.python25 import all, OrderedDict
+from theano.compat.python2x import all, OrderedDict
 from theano.tensor.basic import get_scalar_constant_value
 
 
@@ -227,7 +227,7 @@ def get_updates_and_outputs(ls):
     def is_updates(elem):
         if isinstance(elem, dict):
             # Make sure the updates will be applied in a deterministic order
-            if (not isinstance(elem, gof.python25.OrderedDict) and
+            if (not isinstance(elem, compat.python2x.OrderedDict) and
                 len(elem) > 1):
                 warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
                         + str(type(elem)) + ". This can make your script non-"

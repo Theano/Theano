@@ -17,11 +17,11 @@ import theano
 import theano.sandbox.rng_mrg
 from theano import tensor
 from theano.compile.pfunc import rebuild_collect_shared
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.compat import PY3
 
 from numpy.testing.noseclasses import KnownFailureTest

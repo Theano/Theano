@@ -13,7 +13,7 @@ from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 get_lib_extension)
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.misc.windows import output_subprocess_Popen
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
