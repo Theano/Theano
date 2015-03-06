@@ -87,8 +87,3 @@ class OrderedUpdates(OrderedDict):
         rval.update(other)
         rval.update(self)
         return rval
-
-
-def Updates(*key, **kwargs):
-    warnings.warn("Updates is deprecated. Switch to OrderedUpdates.")
-    return OrderedUpdates(*key, **kwargs)
