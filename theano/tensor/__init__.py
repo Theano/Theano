@@ -20,13 +20,7 @@ from theano.tensor import xlogx
 # These imports cannot be performed here because the modules depend on tensor.  This is done at the
 # end of theano.__init__.py instead.
 #from theano.tensor import raw_random
-#from theano.tensor import randomstreams
 #from theano.tensor import shared_randomstreams
-#from theano.tensor.randomstreams import \
-#    RandomStreams
-
-#random = RandomStreams(seed=0xBAD5EED, no_warn = True)
-#"""Imitate the numpy.random symbol with a tensor.random one"""
 
 from theano.tensor.elemwise import DimShuffle, Elemwise, CAReduce
 

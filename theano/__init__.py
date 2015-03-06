@@ -195,11 +195,11 @@ def sparse_grad(var):
     ret = var.owner.op.__class__(sparse_grad=True)(*var.owner.inputs)
     return ret
 
-# This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
-# depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
-# here and inject an instance in tensor.
-from theano.tensor.randomstreams import RandomStreams
+# This cannot be done in tensor/__init__.py due to a circular
+# dependency -- shared_randomstreams depends on raw_random which
+# depends on tensor.  As a work-around, we import RandomStreams here
+# and inject an instance in tensor.
+from theano.tensor.shared_randomstreams import RandomStreams
 # Imitate the numpy.random symbol with a tensor.random one
-tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)
+tensor.random = RandomStreams(seed=0xBAD5EED)
 del RandomStreams
-__import__('theano.tensor.shared_randomstreams')
