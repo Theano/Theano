@@ -1,18 +1,25 @@
+extern __shared__ float s_data[];
+
 //we store the full image and the full kernel in the shared memory
 //each thread compute only one value for the output
 //thread block size=out_wid, out_len/nb_split
 //grid block size=batch_id
 //dynamic shared memory: img_len*img_wid+kern_len*kern_wid
-__global__ void
-conv_full_patch_split(const float* img, const float* kern, float* out,
+extern "C" __global__ void
+conv_full_patch_split(const float* img, const size_t img_offset,
+                      const float* kern, const size_t kern_offset,
+                      float* out, const size_t out_offset,
                       int img_len, int img_wid, int kern_len, int kern_wid, int nb_split)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
+
+  kern = (const float *)(((const char *)kern)+kern_offset);
+  img = (const float *)(((const char *)img)+img_offset);
+  out = (float *)(((char *)out)+out_offset);
+
   out_len = img_len + kern_len - 1;
   out_wid = img_wid + kern_wid - 1;
   nb_thread_id = blockDim.z*blockDim.y*blockDim.x;
-
-  extern __shared__ float s_data[];
 
     int batch_id = blockIdx.x;
 
@@ -60,17 +67,22 @@ conv_full_patch_split(const float* img, const float* kern, float* out,
 //thread block size=out_wid, out_len
 //grid block size=batch_id, nkern
 //dynamic shared memory: img_len*img_wid+kern_len*kern_wid
-__global__ void
-conv_full_patch( const float* img, const float* kern, float* out,
+extern "C" __global__ void
+conv_full_patch( const float* img, const size_t img_offset,
+                 const float* kern, const size_t kern_offset,
+                 float* out, const size_t out_offset,
                  int img_len, int img_wid,
                  int kern_len, int kern_wid, int nkern, int nstack)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
+
+  kern = (const float *)(((const char *)kern)+kern_offset);
+  img = (const float *)(((const char *)img)+img_offset);
+  out = (float *)(((char *)out)+out_offset);
+
   out_len = img_len + kern_len - 1;
   out_wid = img_wid + kern_wid - 1;
   nb_thread_id = blockDim.z*blockDim.y*blockDim.x;
-
-  extern __shared__ float s_data[];
 
     int batch_id = blockIdx.x;
 
@@ -114,6 +126,8 @@ conv_full_patch( const float* img, const float* kern, float* out,
         out_row*out_wid+out_col] = sum;
 }
 
+
+
 //we store the full image and the full kernel in the shared memory
 //each thread compute only one value for the output
 //thread block size=out_wid, out_len
@@ -123,7 +137,9 @@ conv_full_patch( const float* img, const float* kern, float* out,
 
 template<bool img_c_contiguous_2d, bool kern_c_contiguous_2d>
 __device__ inline void
-conv_full_patch_stack( const float* img, const float* kern, float* out,
+conv_full_patch_stack( const float* img, const size_t img_offset,
+                       const float* kern, const size_t kern_offset,
+                       float* out, const size_t out_offset,
                        int img_len, int img_wid,
                        int kern_len, int kern_wid, int nkern, int nstack,
                        int img_stride_col, int img_stride_row,
@@ -131,12 +147,15 @@ conv_full_patch_stack( const float* img, const float* kern, float* out,
                        int kern_stride_stack, int kern_stride_nkern)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
+
+  kern = (const float *)(((const char *)kern)+kern_offset);
+  img = (const float *)(((const char *)img)+img_offset);
+  out = (float *)(((char *)out)+out_offset);
+
   out_len = img_len + kern_len - 1;
   out_wid = img_wid + kern_wid - 1;
   nb_thread_id = blockDim.y*blockDim.x;//blockDim.z*
   const float __shared__ *kern_, *img_;
-  extern __shared__ float s_data[];
-
     const int batch_id = blockIdx.x;
     const int nkern_id = blockIdx.y;
 
@@ -186,7 +205,9 @@ extern "C" {
 #define __INSTANTIATE_CONV_FULL_PATCH_STACK(suffix, ...) \
 __global__ void \
 conv_full_patch_stack_##suffix( \
-    const float *img, const float *kern, float *out, \
+    const float *img, const size_t img_offset, \
+    const float *kern, const size_t kern_offset, \
+    float *out, const size_t out_offset, \
     int img_len, int img_wid, \
     int kern_len, int kern_wid, int nkern, int nstack, \
     int img_stride_col, int img_stride_row, \
@@ -194,7 +215,8 @@ conv_full_patch_stack_##suffix( \
     int kern_stride_stack, int kern_stride_nkern) \
 { \
     conv_full_patch_stack<__VA_ARGS__>( \
-        img, kern, out, img_len, img_wid, kern_len, kern_wid, nkern, nstack, \
+        img, img_offset, kern, kern_offset, out, out_offset, \
+        img_len, img_wid, kern_len, kern_wid, nkern, nstack, \
         img_stride_col, img_stride_row, kern_stride_col, kern_stride_row,  \
         kern_stride_stack, kern_stride_nkern); \
 }
@@ -206,6 +228,8 @@ __INSTANTIATE_CONV_FULL_PATCH_STACK(3, true, true)
 
 #undef __INSTANTIATE_CONV_FULL_PATCH_STACK
 }
+
+
 
 /**
  * As conv_patch_stack, but used for the full convolution by padding the image in shared memory.
@@ -227,21 +251,33 @@ __INSTANTIATE_CONV_FULL_PATCH_STACK(3, true, true)
  */
 template<bool flipped_kern, bool c_contiguous, bool split, bool low_mem >
 __device__ inline void
-conv_full_patch_stack_padded( const float* img, const float* kern, float* out,
+conv_full_patch_stack_padded( const float* img, const size_t img_offset,
+                  const float* kern, const size_t kern_offset,
+                  float* out, const size_t out_offset,
                   const int img_len, const int img_wid,
                   const int kern_len, const int kern_wid,
                   const int nkern, const int nstack,
                   const int img_stride_col, const int img_stride_row,
                   const int img_stride_stack, const int img_stride_batch,
-                  const int kern_stride_col, const int kern_stride_row,
+                  int kern_stride_col, int kern_stride_row,
                   const int kern_stride_stack, const int kern_stride_nkern)
 {
   int __shared__ out_len, out_wid, nb_thread_id;
+
+  kern = (const float *)(((const char *)kern)+kern_offset);
+  img = (const float *)(((const char *)img)+img_offset);
+  out = (float *)(((char *)out)+out_offset);
+
+  if(kern_stride_col==-1 && kern_stride_row==-kern_wid){
+    //the last two dimensions are c_contiguous but flipped!
+    kern = &(kern[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
+    kern_stride_col=1;
+    kern_stride_row=kern_wid;
+  }
+
   out_len = img_len + kern_len - 1;
   out_wid = img_wid + kern_wid - 1;
   nb_thread_id = blockDim.z*blockDim.y*blockDim.x;
-
-  extern __shared__ float s_data[];
 
     __shared__ int batch_id, kern_id, img_wid_valid, nb_rows;
     batch_id = blockIdx.x;
@@ -380,7 +416,9 @@ extern "C" {
 #define __INSTANTIATE_CONV_FULL_PATCH_STACK_PADDED(suffix, ...) \
 __global__ void \
 conv_full_patch_stack_padded_##suffix( \
-    const float *img, const float *kern, float *out, \
+    const float *img, const size_t img_offset, \
+    const float *kern, const size_t kern_offset, \
+    float *out, const size_t out_offset, \
     const int img_len, const int img_wid, \
     const int kern_len, const int kern_wid, \
     const int nkern, const int nstack, \
@@ -390,7 +428,8 @@ conv_full_patch_stack_padded_##suffix( \
     const int kern_stride_stack, const int kern_stride_nkern) \
 { \
     conv_full_patch_stack_padded<__VA_ARGS__>( \
-        img, kern, out, img_len, img_wid, kern_len, kern_wid, nkern, nstack, \
+        img, img_offset, kern, kern_offset, out, out_offset, \
+        img_len, img_wid, kern_len, kern_wid, nkern, nstack, \
         img_stride_col, img_stride_row, img_stride_stack, img_stride_batch, \
         kern_stride_col, kern_stride_row, \
         kern_stride_stack, kern_stride_nkern); \
@@ -412,6 +451,7 @@ __INSTANTIATE_CONV_FULL_PATCH_STACK_PADDED(14, true, true, true, false)
 #undef __INSTANTIATE_CONV_FULL_PATCH_STACK_PADDED
 }
 
+
 template <int i> __device__ float everything_dot(const float * x, const int sx, const float * y, const int sy) 
 { 
     return everything_dot<i/2>(x, sx, y, sy) + everything_dot<(i+1)/2>(x+sy*(i/2), sx, y+sy*(i/2), sy) ;
@@ -425,8 +465,10 @@ template <> __device__ float everything_dot<1>(const float * x, const int sx, co
 { 
     return x[0] * y[0];
 }
-__global__ void
-conv_full_load_everything( const float* img, const float* kern, float* out,
+extern "C" __global__ void
+conv_full_load_everything( const float* img, const size_t img_offset,
+                 const float* kern, const size_t kern_offset,
+                 float* out, const size_t out_offset,
                  int img_len, int img_wid,
                  int kern_len, int kern_wid, int nkern, int nstack,
                  int img_stride_col, int img_stride_row,
@@ -435,11 +477,14 @@ conv_full_load_everything( const float* img, const float* kern, float* out,
                  int kern_stride_stack, int kern_stride_nkern)
 {
     int __shared__ out_len, out_wid, nb_thread_id;
+
+    kern = (const float *)(((const char *)kern)+kern_offset);
+    img = (const float *)(((const char *)img)+img_offset);
+    out = (float *)(((char *)out)+out_offset);
+
     out_len = img_len + kern_len - 1;
     out_wid = img_wid + kern_wid - 1;
     nb_thread_id = blockDim.y*blockDim.x;
-
-    extern __shared__ float s_data[];
 
     int batch_id = blockIdx.x;
 
@@ -503,6 +548,8 @@ conv_full_load_everything( const float* img, const float* kern, float* out,
         __syncthreads(); //don't start loading another kernel until we're done here
     }
 }
+
+
 /*
   Local Variables:
   mode:c++
