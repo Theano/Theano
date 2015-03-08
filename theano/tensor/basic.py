@@ -4595,6 +4595,76 @@ def arange(start, stop=None, step=1, dtype=None):
     return _arange[dtype](start, stop, step)
 
 
+class _nd_grid(object):
+    """Create a dense n-dimensional 'meshgrid' with equally spaced points.
+
+    Used to create the instance ``mgrid`` and ``ogrid`` which act similarly
+    to their numpy equivalents.
+
+    Parameters
+    ==========
+        sparse : boolean, optional, default=True
+            Specifying False leads to the equivalent of numpy's mgrid
+            functionality. Specifying True leads to the equivalent of ogrid.
+
+    Examples
+    ========
+    >>> a = T.mgrid[0:5, 0:3]
+    >>> a[0].eval()
+    array([[0, 0, 0],
+           [1, 1, 1],
+           [2, 2, 2],
+           [3, 3, 3],
+           [4, 4, 4]], dtype=int8)
+    >>> a[1].eval()
+    array([[0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2]], dtype=int8)
+
+    >>> b = T.ogrid[0:5, 0:3]
+    >>> b[0].eval()
+    array([[0],
+           [1],
+           [2],
+           [3],
+           [4]], dtype=int8)
+    >>> b[1].eval()
+    array([[0, 1, 2, 3]], dtype=int8)
+    """
+    def __init__(self, sparse=False):
+        self.sparse = sparse
+
+    def __getitem__(self, *args):
+
+        ndim = len(args[0])
+        ranges = [arange(sl.start or 0,
+                         sl.stop or None,
+                         sl.step or 1) for sl in args[0]]
+        shapes = [tuple([1] * j + [r.shape[0]] + [1] * (ndim - 1 - j))
+                  for j, r in enumerate(ranges)]
+        ranges = [r.reshape(shape) for r, shape in zip(ranges, shapes)]
+        ones = [ones_like(r) for r in ranges]
+        if self.sparse:
+            grids = ranges
+        else:
+            grids = []
+            for i in range(ndim):
+                grid = 1
+                for j in range(ndim):
+                    if j == i:
+                        grid = grid * ranges[j]
+                    else:
+                        grid = grid * ones[j]
+                grids.append(grid)
+        return grids
+
+
+mgrid = _nd_grid()
+ogrid = _nd_grid(sparse=True)
+
+
 class PermuteRowElements(Op):
     """Permute the elements of each row (inner-most dim) of a tensor.
 
