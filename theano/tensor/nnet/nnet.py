@@ -1821,37 +1821,37 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
             # dz is the input of the Alloc op, i.e. T.alloc(dz, <shape>)
             dz = dy.owner.inputs[0]
 
-            # A non-empty list of conditions means that `dz` has some
-            # non-broadcastable dimensions that cannot be checked statically
-            # for equal size with the corresponding dimension of `sm`. Thus, a
-            # runtime check is necessary.
+            # The following check is to prevent removal of shape errors.
             try:
+                same_shape = node.fgraph.shape_feature.same_shape
+
+                # Build `dz_shape` and `dz_broad` explicitly to include extra
+                # implicit dimensions.
+                dz_shape = (1,) * (dy.ndim - dz.ndim) + tuple(dz.shape)
+                dz_broad = (True,) * (dy.ndim - dz.ndim) + dz.broadcastable
+
                 cond = [tensor.eq(dy.shape[k], sm.shape[k])
-                        # We iterate over the number of dimensions of `dz`
-                        # because `dz.ndim <= sm.ndim`. If `dz.ndim < sm.ndim`
-                        # then the right-most dimensions are equivalent to
-                        # broadcastables which is good.
-                        for k in xrange(dz.ndim)
-                        # If the increment is broadcastable in dimension `k`,
-                        # we do not care if the shape does not agree with
-                        # `sm.shape[k]` because
-                        # `CrossentropySoftmax1HotWithBiasDx` can deal with it
-                        # correctly.
-                        if not dz.broadcastable[k] and
-                        # If we can infer statically that the non-broadcastable
-                        # dimension `k` has the same shape as `sm.shape[k]`, we
-                        # do not need to check it at run time.
-                        not node.fgraph.shape_feature.same_shape(sm, dz,
-                                                                 dim_x=k,
-                                                                 dim_y=k)]
+                        # If `dz` is broadcastable in dimension `k`, we need
+                        # to check whether the shapes of `dy` and `sm` are the
+                        # same.
+                        if dz_broad[k]
+                        # Else, we need to check whether the shapes of `dz` and
+                        # `sm` are the same in dimension `k`.
+                        else tensor.eq(dz.shape[k], sm.shape[k])
+                        # Loop over all dimensions.
+                        for k in xrange(dy.ndim)
+                        # If we can infer statically that the shape of `xi` and
+                        # `y` are the same in dimension `k` we do not need to
+                        # check it at run time.
+                        if not same_shape(sm, dy, dim_x=k, dim_y=k)]
             except AttributeError:
                 # The shape feature may not be available in some mode, but we
                 # need it for this optimization, so don't continue.
                 return False
 
             if len(cond) > 0:
-                msg = '`sm` and `dz.owner.inputs[0]` have no matching shapes.'
-                dz = Assert(msg)(dz, *cond)
+                msg = '`sm` and `dy` do not have the same shape.'
+                dz = opt.Assert(msg)(dz, *cond)
 
             return [node.op(dz, sm, y_idx)]
 

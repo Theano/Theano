@@ -29,8 +29,12 @@ from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      Subtensor, IncSubtensor, make_constant,
                                      AdvancedIncSubtensor1,
                                      AdvancedIncSubtensor,
+                                     AdvancedSubtensor,
                                      AdvancedSubtensor1,
-                                     advanced_inc_subtensor1)
+                                     advanced_subtensor,
+                                     advanced_subtensor1,
+                                     advanced_inc_subtensor1,
+                                     inc_subtensor)
 from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
@@ -2600,9 +2604,8 @@ def local_adv_sub1_adv_inc_sub1(node):
 def local_useless_incsubtensor_alloc(node):
     """
     Replaces an [Advanced]IncSubtensor[1], whose increment is an `alloc` of
-    a variable that has either broadcastable or matching dimensions with the
-    target variable that shall be incremented, by one that skips the
-    intermediate `alloc`.
+    a fully or partially broadcastable variable, by one that skips the
+    intermediate `alloc` where possible.
     """
     if isinstance(node.op, (IncSubtensor,
                             AdvancedIncSubtensor,
@@ -2612,38 +2615,56 @@ def local_useless_incsubtensor_alloc(node):
         i = node.inputs[2:]
 
         if y.owner is not None and isinstance(y.owner.op, T.Alloc):
-            # z is the input of the Alloc op, i.e. T.alloc(z, <shape>)
+            # `z` is the input of the Alloc op, i.e. T.alloc(z, <shape>)
             z = y.owner.inputs[0]
 
-            # A non-empty list of conditions means that `z` has some
-            # non-broadcastable dimensions that cannot be checked statically
-            # for equal size with the corresponding dimension of `x`. Thus, a
-            # runtime check is necessary.
+            # The following check is to prevent removal of shape errors.
             try:
-                cond = [T.eq(x.shape[k], z.shape[k])
-                        # We iterate over the number of dimensions of `z`
-                        # because `z.ndim <= x.ndim`. If `z.ndim < x.ndim` then
-                        # the right-most dimensions are equivalent to
-                        # broadcastables which is good.
-                        for k in xrange(z.ndim)
+                same_shape = node.fgraph.shape_feature.same_shape
+
+                # Get the subtensor of `x` indexed by `i` in order to compare
+                # shapes later.
+                if isinstance(node.op, IncSubtensor):
+                    xi = Subtensor(node.op.idx_list)(x, *i)
+                elif isinstance(node.op, AdvancedIncSubtensor):
+                    xi = advanced_subtensor(x, *i)
+                elif isinstance(node.op, AdvancedIncSubtensor1):
+                    xi = advanced_subtensor1(x, *i)
+                else:
+                    raise Exception('Should never happen!')
+
+                # Add `xi` to the `fgraph`. This is important for shape
+                # inference later because the variable must be part of the
+                # function graph in order to call `same_shape` on it.
+                reason = 'local_useless_incsubtensor_alloc'
+                node.fgraph.__import_r__([xi], reason)
+
+                # Build `z_shape` and `z_broad` explicitly to include extra
+                # implicit dimensions.
+                z_shape = (1,) * (y.ndim - z.ndim) + tuple(z.shape)
+                z_broad = (True,) * (y.ndim - z.ndim) + z.broadcastable
+
+                cond = [T.eq(xi.shape[k], y.shape[k])
                         # If the increment is broadcastable in dimension `k`,
-                        # we do not care if the shape does not agree with
-                        # `x.shape[k]` because `inc_subtensor` can deal with it
-                        # correctly.
-                        if not z.broadcastable[k] and
-                        # If we can infer statically that the non-broadcastable
-                        # dimension `k` has the same shape as `x.shape[k]`, we
-                        # do not need to check it at run time.
-                        not node.fgraph.shape_feature.same_shape(x, z,
-                                                                 dim_x=k,
-                                                                 dim_y=k)]
+                        # we need to check whether the shapes of `xi` and `y`
+                        # are the same.
+                        if z_broad[k]
+                        # Else, we need to check whether the shapes of `xi` and
+                        # `z` are the same in dimension `k`.
+                        else T.eq(xi.shape[k], z_shape[k])
+                        # Loop over all dimensions.
+                        for k in xrange(xi.ndim)
+                        # If we can infer statically that the shape of `xi` and
+                        # `y` are the same in dimension `k` we do not need to
+                        # check it at run time.
+                        if not same_shape(xi, y, dim_x=k, dim_y=k)]
             except AttributeError:
                 # The shape feature may not be available in some mode, but we
                 # need it for this optimization, so don't continue.
                 return False
 
             if len(cond) > 0:
-                msg = '`x` and `y.owner.inputs[0]` do not have the same shape.'
+                msg = '`x[i]` and `y` do not have the same shape.'
                 z = Assert(msg)(z, *cond)
 
             return [node.op(x, z, *i)]
