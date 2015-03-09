@@ -2637,14 +2637,28 @@ def local_useless_incsubtensor_alloc(node):
                 # inference later because the variable must be part of the
                 # function graph in order to call `same_shape` on it.
                 reason = 'local_useless_incsubtensor_alloc'
-                node.fgraph.__import_r__([xi], reason)
+                node.fgraph.__import_r__([xi], '%s: add `xi`' % reason)
+
+                # `xi` may have more dimensions than `y` since the subtensor
+                # ops do automatic broadcasting of the increment internally.
+                # Thus, we need to make the leading implicitly broadcasted
+                # dimensions explicit for shape comparison later.
+                if xi.ndim > y.ndim:
+                    y = T.shape_padleft(y, xi.ndim - y.ndim)
+                    node.fgraph.__import_r__([y], '%s: add `y`' % reason)
 
                 # Build `z_shape` and `z_broad` explicitly to include extra
                 # implicit dimensions.
-                z_shape = (1,) * (y.ndim - z.ndim) + tuple(z.shape)
-                z_broad = (True,) * (y.ndim - z.ndim) + z.broadcastable
+                z_shape = ((1,) * (max(xi.ndim, y.ndim) - z.ndim) +
+                           tuple(z.shape))
+                z_broad = ((True,) * (max(xi.ndim, y.ndim) - z.ndim) +
+                           z.broadcastable)
 
-                cond = [T.eq(xi.shape[k], y.shape[k])
+                cond = [# The shapes of `y` and `xi` must either agree or `y`
+                        # may also have shape equal to 1 which may be treated
+                        # as a broadcastable dimension by the subtensor op.
+                        T.or_(T.eq(y.shape[k], xi.shape[k]),
+                              T.eq(y.shape[k], 1))
                         # If the increment is broadcastable in dimension `k`,
                         # we need to check whether the shapes of `xi` and `y`
                         # are the same.
@@ -2668,6 +2682,50 @@ def local_useless_incsubtensor_alloc(node):
                 z = Assert(msg)(z, *cond)
 
             return [node.op(x, z, *i)]
+
+
+#################
+# Bit-wise opts #
+#################
+
+@register_canonicalize
+@register_specialize
+@register_stabilize
+@gof.local_optimizer([T.Elemwise])
+def local_useless_OR(node):
+    """
+    Remove useless OR op.
+    """
+    if (isinstance(node.op, T.Elemwise) and
+        isinstance(node.op.scalar_op, scalar.basic.OR)):
+        assert len(node.inputs) == 2
+        for i in node.inputs:
+            try:
+                if get_scalar_constant_value(i) != 0:
+                    return [T.as_tensor_variable(1)]
+            except NotScalarConstantError:
+                pass
+    return False
+
+
+@register_canonicalize
+@register_specialize
+@register_stabilize
+@gof.local_optimizer([T.Elemwise])
+def local_useless_AND(node):
+    """
+    Remove useless AND op.
+    """
+    if (isinstance(node.op, T.Elemwise) and
+        isinstance(node.op.scalar_op, scalar.basic.AND)):
+        assert len(node.inputs) == 2
+        for i in node.inputs:
+            try:
+                if get_scalar_constant_value(i) == 0:
+                    return [T.as_tensor_variable(0)]
+            except NotScalarConstantError:
+                pass
+    return False
 
 
 ####################
