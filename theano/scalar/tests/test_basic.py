@@ -438,6 +438,16 @@ def test_grad_switch():
 
     theano.gradient.grad(l, x)
 
+
+def test_grad_identity():
+    # Check that the grad method of Identity correctly handles int dytpes
+    x = theano.tensor.imatrix('x')
+    # tensor_copy is Elemwise{Identity}
+    y = theano.tensor.tensor_copy(x)
+    l = y.sum(dtype=theano.config.floatX)
+    theano.gradient.grad(l, x)
+
+
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
 
