@@ -3201,6 +3201,14 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
 
         utt.assert_allclose(r1, r2)
 
+    def setUp(self):
+        # The optimization requires the shape feature so we need to compile in
+        # FAST_RUN mode.
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        self.mode = compile.mode.get_mode(mode)
+
     def test_advanced_inc_subtensor(self):
         if tensor.inplace_increment is None:
             raise SkipTest('NumPy version >= 1.8 not available')
@@ -3209,8 +3217,8 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         y = tensor.scalar('y')
         i = tensor.matrix('i', dtype='int64')
         z = tensor.advanced_inc_subtensor(x, T.alloc(y, *i.shape), i)
-        mode1 = compile.get_default_mode().excluding(self.opt_name)
-        mode2 = compile.get_default_mode().including(self.opt_name)
+        mode1 = self.mode.excluding(self.opt_name)
+        mode2 = self.mode.including(self.opt_name)
         f1 = theano.function([x, i, y], z, mode=mode1)
         f2 = theano.function([x, i, y], z, mode=mode2)
 
