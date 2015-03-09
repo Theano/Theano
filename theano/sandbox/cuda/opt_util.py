@@ -8,7 +8,7 @@ from theano.gof import local_optimizer
 from theano.tensor import DimShuffle
 
 from theano.sandbox.cuda.basic_ops import (
-    GpuFromHost, HostFromGpu, GpuDimShuffle, GpuElemwise)
+    GpuFromHost, HostFromGpu, host_from_gpu, GpuDimShuffle, GpuElemwise)
 
 def grab_cpu_scalar(v, nd):
     if v.owner is not None:
