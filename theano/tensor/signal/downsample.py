@@ -234,11 +234,14 @@ class DownsampleFactorMax(Op):
         img_cols = x.shape[-1] + 2 * pad_w
 
         # pad the image
-        fill = x.min()-1.
-        y = numpy.zeros(
-            (x.shape[0], x.shape[1], img_rows, img_cols),
-            dtype=x.dtype) + fill
-        y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
+        if self.padding != (0, 0):
+            fill = x.min()-1.
+            y = numpy.zeros(
+                (x.shape[0], x.shape[1], img_rows, img_cols),
+                dtype=x.dtype) + fill
+            y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
+        else:
+            y = x
         # max pooling
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
@@ -386,10 +389,14 @@ class DownsampleFactorMaxGrad(Op):
         img_cols = x.shape[-1] + 2 * pad_w
 
         # pad the image
-        fill = x.min()-1
-        y = numpy.zeros(
-            (x.shape[0], x.shape[1], img_rows, img_cols), dtype=x.dtype) + fill
-        y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
+        if self.padding != (0, 0):
+            fill = x.min()-1
+            y = numpy.zeros(
+                (x.shape[0], x.shape[1], img_rows, img_cols),
+                dtype=x.dtype) + fill
+            y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
+        else:
+            y = x
         gx = numpy.zeros_like(y)
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
