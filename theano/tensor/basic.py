@@ -4012,6 +4012,8 @@ class Flatten(Op):
     """
     view_map = {0: [0]}
 
+    check_input = False
+
     def __init__(self, outdim=1):
         self.outdim = int(outdim)
 
@@ -4079,7 +4081,7 @@ class Flatten(Op):
         return self.make_node(*eval_points).outputs
 
     def c_code_cache_version(self):
-        return (1,)
+        return (1, 1)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, = inputs
@@ -4089,18 +4091,16 @@ class Flatten(Op):
         return """
         if (%(outdim)s == PyArray_NDIM(%(x)s))
         {
-            if (NULL != %(out)s && %(x)s != %(out)s)
-                Py_XDECREF(%(out)s);
-
+            Py_XDECREF(%(out)s);
+            Py_XINCREF(%(x)s);
             %(out)s = %(x)s;
         }
         else
         {
+            Py_XDECREF(%(out)s);
+
             if (%(outdim)s == 1)
             {
-                if (NULL != %(out)s)
-                    Py_XDECREF(%(out)s);
-
                 npy_intp size = PyArray_SIZE(%(x)s);
                 PyArray_Dims newshape;
                 newshape.ptr = &size;
@@ -4111,9 +4111,6 @@ class Flatten(Op):
             }
             else
             {
-                if (NULL != %(out)s)
-                    Py_XDECREF(%(out)s);
-
                 npy_intp *oldshape = PyArray_DIMS(%(x)s);
                 npy_intp newshape_dims[%(outdim)s];
 
