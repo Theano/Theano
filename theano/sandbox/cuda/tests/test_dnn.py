@@ -455,7 +455,10 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnPoolGrad
             )
 
+
 def test_dnn_conv_merge():
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() == -1:
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     img = T.ftensor4()
     kern = T.ftensor4()
     out = T.ftensor4()
@@ -516,7 +519,7 @@ def test_dnn_conv_merge():
 
 
 def test_dnn_conv_grad():
-    if dnn.version() == -1:
+    if not cuda.dnn.dnn_available() or dnn.version() == -1:
         raise SkipTest('alpha != 1.0 not supported in cudnn v1')
 
     b = 1
