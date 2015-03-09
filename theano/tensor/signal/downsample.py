@@ -220,10 +220,7 @@ class DownsampleFactorMax(Op):
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
                                  self.padding)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.empty(
-                self.out_shape(x.shape, self.ds, self.ignore_border,
-                               self.st, self.padding),
-                dtype=x.dtype)
+            z[0] = numpy.empty(z_shape, dtype=x.dtype)
         zz = z[0]
         # number of pooling output rows
         pr = zz.shape[-2]
