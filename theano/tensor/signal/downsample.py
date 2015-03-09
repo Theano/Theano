@@ -272,7 +272,7 @@ class DownsampleFactorMax(Op):
         # No implementation is currently for the case where
         # the stride size and the pooling size are different.
         # An exception is raised for such a case.
-        if self.ds != self.st:
+        if self.ds != self.st or self.padding != (0, 0):
             raise theano.gof.utils.MethodNotDefined()
         x, = inp
         z, = out
@@ -346,7 +346,7 @@ class DownsampleFactorMax(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1)
+        return (0, 2)
 
 
 class DownsampleFactorMaxGrad(Op):
@@ -433,7 +433,7 @@ class DownsampleFactorMaxGrad(Op):
                         self, 2, gz, 'Hessian not implemented with padding')]
 
     def c_code(self, node, name, inp, out, sub):
-        if self.ds != self.st:
+        if self.ds != self.st or self.padding != (0, 0):
             raise theano.gof.utils.MethodNotDefined()
         x, z, gz = inp
         gx, = out
@@ -527,7 +527,7 @@ class DownsampleFactorMaxGrad(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1)
+        return (0, 2)
 
 
 class DownsampleFactorMaxGradGrad(Op):
