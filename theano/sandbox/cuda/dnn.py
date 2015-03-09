@@ -1545,42 +1545,42 @@ if True:
     @register_opt('cudnn')
     @alpha_merge(GpuDnnConv, alpha_in=4, nd=4)
     def local_dnn_conv_alpha_merge(node, *inputs):
-        if version() == -1:
+        if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
 
     @register_opt('cudnn')
     @alpha_merge(GpuDnnConvGradW, alpha_in=4, nd=4)
     def local_dnn_convw_alpha_merge(node, *inputs):
-        if version() == -1:
+        if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConvGradW()(*inputs)]
 
     @register_opt('cudnn')
     @alpha_merge(GpuDnnConvGradI, alpha_in=4, nd=4)
     def local_dnn_convi_alpha_merge(node, *inputs):
-        if version() == -1:
+        if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConvGradI()(*inputs)]
 
     @register_opt('cudnn')
     @output_merge(GpuDnnConv, alpha_in=4, out_in=2, nd=4)
     def local_dnn_conv_output_merge(node, *inputs):
-        if version() == -1:
+        if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
 
     @register_opt('cudnn')
     @output_merge(GpuDnnConvGradW, alpha_in=4, out_in=2, nd=4)
     def local_dnn_convw_output_merge(node, *inputs):
-        if version() == -1:
+        if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConvGradW()(*inputs)]
 
     @register_opt('cudnn')
     @output_merge(GpuDnnConvGradI, alpha_in=4, out_in=2, nd=4)
     def local_dnn_convi_output_merge(node, *inputs):
-        if version() == -1:
+        if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConvGradI()(*inputs)]
 
