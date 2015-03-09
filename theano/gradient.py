@@ -1881,6 +1881,8 @@ def _is_zero(x):
 class ConsiderConstant(ViewOp):
     def grad(self, args, g_outs):
         return [g_out.zeros_like(g_out) for g_out in g_outs]
+
+
 consider_constant_ = ConsiderConstant()
 
 
@@ -1915,6 +1917,7 @@ def consider_constant(x):
 class ZeroGrad(ViewOp):
     def grad(self, args, g_outs):
         return [g_out.zeros_like(g_out) for g_out in g_outs]
+
 
 zero_grad_ = ZeroGrad()
 

@@ -5587,11 +5587,17 @@ else:
 # # Remove consider_constant #
 # ############################
 
-# Although the op just returns its input, it should be removed from
-# the graph to make sure all possible optimizations can be applied.
+# Although the ops ConsiderConstant, ZeroGrad and DisconnectedGrad 
+# just returns the input, it should be removed from the graph to 
+# make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
     'fast_compile', 'fast_run', name='remove_consider_constant')
 
+register_canonicalize(gof.OpRemove(theano.gradient.zero_grad_),
+    'fast_compile', 'fast_run', name='remove_zero_grad')
+
+register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
+    'fast_compile', 'fast_run', name='remove_disconnected_grad')
 
 @register_canonicalize
 @gof.local_optimizer([theano.gradient.GradClip])
