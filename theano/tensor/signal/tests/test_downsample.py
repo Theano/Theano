@@ -242,10 +242,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     def test_DownsampleFactorMaxPaddingStride(self):
         ignore_border = True  # padding does not support ignore_border=False
         rng = numpy.random.RandomState(utt.fetch_seed())
-        maxpoolsizes = [(3, 3), (4, 4), (3, 4), (4, 3)]
-        stridesizes = [(2, 2), (2, 2), (1, 1), (1, 2)]
-        paddingsizes = [(2, 2), (1, 2), (2, 1), (0, 0)]
-        imgsizes = [(5, 5), (5, 5), (5, 6), (6, 5)]
+        maxpoolsizes = [(3, 3), (4, 4), (3, 4), (4, 3), (2, 2)]
+        stridesizes = [(2, 2), (2, 2), (1, 1), (1, 2), (2, 2)]
+        paddingsizes = [(2, 2), (1, 2), (2, 1), (0, 0), (1, 1)]
+        imgsizes = [(5, 5), (5, 5), (5, 6), (6, 5), (5, 5)]
         m = 4 # minibatch
         c = 10 # channel size
         images = tensor.dtensor4()
@@ -267,10 +267,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
     def test_DownsampleFactorMaxPaddingStride_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
-        imgsizes = ((10, 10), (10, 5))
-        maxpoolsizes = ((5, 3),(3, 5))
-        stridesizes = ((3, 2), (2, 3))
-        paddingsizes = ((2, 2),(2, 1))
+        imgsizes = ((10, 10), (10, 5), (5, 5))
+        maxpoolsizes = ((5, 3),(3, 5), (3, 3))
+        stridesizes = ((3, 2), (2, 3), (3, 3))
+        paddingsizes = ((2, 2),(2, 1), (2, 2))
         for i in range(len(imgsizes)):
             imgsize = imgsizes[i]
             imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
