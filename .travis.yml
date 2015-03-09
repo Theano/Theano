@@ -22,6 +22,7 @@ install:
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps --use-mirrors
+  - pip install flake8 
 
 # command to run tests
 env:
