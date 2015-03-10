@@ -12,6 +12,7 @@ import numpy
 
 from theano.compat import PY3
 from theano.compat.six import StringIO
+from theano.gof.utils import MethodNotDefined
 
 if PY3:
     import hashlib
