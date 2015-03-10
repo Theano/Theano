@@ -335,6 +335,9 @@ whitelist_flake8 = [
     "gof/tests/test_cc.py",
     "gof/tests/test_compute_test_value.py",
     "gof/sandbox/equilibrium.py",
+    "generated_version.py",
+    "sandbox/cuda/opt_util.py",
+    "gof/tests/test_utils.py",
 ]
 
 
