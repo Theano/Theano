@@ -36,7 +36,7 @@ e-mail thread "What is gof?"
 """
 
 from theano.gof.cc import \
-    CLinker, OpWiseCLinker, DualLinker
+    CLinker, OpWiseCLinker, DualLinker, HideC
 
 # Also adds config vars
 from theano.gof.compiledir import \
