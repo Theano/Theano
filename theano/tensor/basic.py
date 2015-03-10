@@ -443,12 +443,6 @@ def _obj_is_wrappable_as_tensor(x):
         return False
 
 
-def _wrap_tensor_into_member(x):
-    return compile.module.Member(constant(x))
-compile.module.register_wrapper(_obj_is_wrappable_as_tensor,
-                                _wrap_tensor_into_member, no_warn=True)
-
-
 if int(config.tensor.cmp_sloppy) > 1:
     # This config variable is a quick-and-dirty way to get low-precision
     # comparisons.  For a more precise setting of these tolerances set
