@@ -2998,7 +2998,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         return ()
 
 
-class GpuFlatten(tensor.Flatten, GpuOp):
+class GpuFlatten(gof.HideC, tensor.Flatten, GpuOp):
     """
     Implement Flatten on the gpu.
     """
