@@ -58,14 +58,10 @@ from theano.compile import \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, function_dump, OpFromGraph, \
-    Component, External, Member, Method, \
-    Composite, ComponentList, ComponentDict, Module, \
     ProfileMode, ProfileStats, \
     Param, shared, as_op
 
 from theano.misc.safe_asarray import _asarray
-
-FancyModule = Module
 
 from theano.printing import pprint, pp
 
