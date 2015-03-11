@@ -5,11 +5,16 @@ __authors__ = ("Saizheng Zhang")
 __copyright__ = "(c) 2015, Universite de Montreal"
 __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
-import unittest
+from nose.plugins.skip import SkipTest
 import os
 from fnmatch import fnmatch
 import theano
-import flake8.engine, flake8.main
+try:
+    import flake8.engine
+    import flake8.main
+    flake8_available = True
+except ImportError:
+    flake8_available = False
 
 whitelist_flake8 = [
     "updates.py",
@@ -358,7 +363,8 @@ def test_format_flake8():
     """
     Test if flake8 is respected.
     """
-    files_to_check = []
+    if not flake8_available:
+        raise SkipTest("flake8 is not installed")
     total_errors = 0
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
