@@ -257,7 +257,7 @@ class DownsampleFactorMax(Op):
 
     def infer_shape(self, node, in_shapes):
         shp = self.out_shape(in_shapes[0], self.ds,
-                             self.ignore_border, self.st)
+                             self.ignore_border, self.st, self.padding)
         return [shp]
 
     def grad(self, inp, grads):

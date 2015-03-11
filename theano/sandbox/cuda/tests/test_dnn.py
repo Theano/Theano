@@ -73,11 +73,17 @@ def test_pooling():
         if pad != (0, 0) and cuda.dnn.version() < 20:
             continue
 
+        if pad != (0, 0) and func is T.mean:
+            continue
+
         for ws in (4, 2, 5):
             for stride in (2, 3):
                 if stride > ws:
                     continue
                 if func is T.max:
+                    if pad[0] > stride or pad[1] > stride:
+                        # Not implemented
+                        continue
                     # We will check that the opt introduced it.
                     out1 = max_pool_2d(x, (ws, ws),
                                        st=(stride, stride),
@@ -117,6 +123,9 @@ def test_pooling():
 
             ws = 2
             stride = 2
+            if pad[0] > stride or pad[1] > stride:
+                # Not implemented
+                continue
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
