@@ -4447,7 +4447,8 @@ class T_local_reduce(unittest.TestCase):
             assert isinstance(topo[-1].op, T.Elemwise), out
 
         # Test different axis for the join and the reduction
-        # We must force the dtype, of otherwise, this tests will fail in 32 bit system
+        # We must force the dtype, of otherwise, this tests will fail
+        # on 32 bit systems
         A = theano.shared(numpy.array([1, 2, 3, 4, 5], dtype='int64'))
 
         f = theano.function([], T.sum(T.stack(A, A), axis=0), mode=self.mode)

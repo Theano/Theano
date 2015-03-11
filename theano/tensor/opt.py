@@ -13,6 +13,7 @@ import operator
 import sys
 import time
 import traceback
+import warnings
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
@@ -3908,7 +3909,7 @@ def local_reduce_join(node):
         # I put this warning late to don't add extra warning.
         if len(reduce_axis) != 1 or 0 not in reduce_axis:
             if theano.config.warn.reduce_join:
-                _logger.warn((
+                warnings.warn((
                     'Your current code is fine, but Theano versions '
                     'prior to 0.7 (or this development version Sept 2014) '
                     'might have given an incorrect result for this code. '
