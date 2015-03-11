@@ -692,14 +692,16 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
+    desc_op = desc.owner.op
     if conv_mode == 'cross' and subsample != (1, 1) and border_mode != 'valid':
         # there is a bug in cudnn v2 rc1-3 which gives incorrect
         # results in this case when using the workmem='small'
         # algorithm.
         if workmem is None or workmem == 'small':
             workmem = 'none'
-    out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape, border_mode,
-                                       subsample)
+    out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
+                                       desc_op.border_mode,
+                                       desc_op.subsample)
     out = gpu_alloc(_zero.clone(),
                     out_shp[0], out_shp[1],
                     out_shp[2], out_shp[3])
