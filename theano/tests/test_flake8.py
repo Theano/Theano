@@ -38,7 +38,6 @@ whitelist_flake8 = [
     "tests/test_record.py",
     "tests/__init__.py",
     "tests/test_updates.py",
-    "tests/test_flake8.py",
     "tests/main.py",
     "tests/test_pickle_unpickle_theano_fn.py",
     "tests/test_determinism.py",
@@ -346,7 +345,7 @@ whitelist_flake8 = [
 ]
 
 
-def list_files(dir_path = theano.__path__[0], pattern = '*.py'):
+def list_files(dir_path=theano.__path__[0], pattern='*.py'):
     """
     List all files under theano's path.
     """
@@ -354,8 +353,8 @@ def list_files(dir_path = theano.__path__[0], pattern = '*.py'):
     for (dir, _, files) in os.walk(dir_path):
         for f in files:
             if fnmatch(f, pattern):
-                 path = os.path.join(dir, f)
-                 files_list.append(path)
+                path = os.path.join(dir, f)
+                files_list.append(path)
     return files_list
 
 
@@ -399,7 +398,7 @@ def print_files_information_flake8():
         print(file)
     print("Files that can be removed from whitelist:")
     for file in non_infracting_files:
-        print(file)    
+        print(file)
 
 
 def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
@@ -416,10 +415,11 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
             if fnmatch(f, pattern):
                 error_num = flake8.main.check_file(os.path.join(dir, f))
                 if error_num > 0:
-                    path = os.path.relpath(os.path.join(dir, f), theano.__path__[0])
-                    f_txt.write('"'+ path + '",\n')
+                    path = os.path.relpath(os.path.join(dir, f),
+                                           theano.__path__[0])
+                    f_txt.write('"' + path + '",\n')
     f_txt.close()
 
 
 if __name__ == "__main__":
-    print_files_information_flake8() 
+    print_files_information_flake8()
