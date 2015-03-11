@@ -4482,6 +4482,17 @@ class T_local_reduce(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
 
+        # Test that the optimization does not crash in one case where it
+        # is not applied.  Reported at
+        # https://groups.google.com/d/topic/theano-users/EDgyCU00fFA/discussion
+        old = theano.config.warn.reduce_join
+        try:
+            theano.config.warn.reduce_join = False
+            out = tensor.sum([vx, vy, vz], axis=None)
+            f = theano.function([vx, vy, vz], out)
+        finally:
+            theano.config.warn.reduce_join = old
+
 
 class T_local_sum_dimshuffle(unittest.TestCase):
     def setUp(self):
