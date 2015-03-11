@@ -835,11 +835,12 @@ class GpuDnnPool(DnnBase):
         desc = node.inputs[1].owner.op
         kh, kw = desc.ws
         sh, sw = desc.stride
+        padh, padw = desc.pad
         return [(
             shape[0][0],
             shape[0][1],
-            (shape[0][2] - kh)//sh + 1,
-            (shape[0][3] - kw)//sw + 1
+            (shape[0][2] + 2*padh - kh)//sh + 1,
+            (shape[0][3] + 2*padw - kw)//sw + 1
         )]
 
     def c_support_code_struct(self, node, name):
