@@ -817,6 +817,25 @@ class T_Scan(unittest.TestCase):
         rval = theano.function([x], y, updates=updates)(inp)
         assert numpy.all(rval == inp[:-1])
 
+    def test_connection_pattern(self):
+        """Test connection_pattern() in the presence of recurrent outputs
+        with multiple taps.
+
+        This test refers to a bug signaled on the theano-users mailing list
+        on March 10 2015 by David Schneider-Joseph.
+        """
+        def fn(a_m2, a_m1, b_m2, b_m1):
+            return a_m1, b_m1
+
+        a0 = theano.shared(numpy.arange(2))
+        b0 = theano.shared(numpy.arange(2))
+
+        (a, b), _ = theano.scan(fn,
+                        outputs_info=[{'initial': a0, 'taps': [-2, -1]},
+                                      {'initial': b0, 'taps': [-2, -1]}],
+                        n_steps=2)
+        tensor.grad(a[-1], a0)
+
     # simple rnn, one input, one state, weights for each; input/state are
     # vectors, weights are scalars; using shared variables and past
     # taps (sequences and outputs)
