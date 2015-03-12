@@ -746,7 +746,7 @@ class GpuDnnPoolDesc(GpuOp):
         self.stride = stride
         assert len(stride) == 2
         self.pad = pad
-        if (pad[0] != 0 or pad[1] != 0) and version() < 20:
+        if (pad[0] != 0 or pad[1] != 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
     def __setstate__(self, d):
@@ -755,7 +755,7 @@ class GpuDnnPoolDesc(GpuOp):
             self.pad = (0, 0)
 
     def make_node(self):
-        if self.pad != (0, 0) and version() < 20:
+        if self.pad != (0, 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
         return Apply(self, [],
