@@ -70,7 +70,7 @@ def test_pooling():
     x = T.ftensor4()
     for func, pad in product((T.max, T.mean),
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
-        if pad != (0, 0) and cuda.dnn.version() < 20:
+        if pad != (0, 0) and cuda.dnn.version() == -1:
             continue
 
         if pad != (0, 0) and func is T.mean:
