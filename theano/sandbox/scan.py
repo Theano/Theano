@@ -478,7 +478,7 @@ def scan(fn,
     # If we use a regular dict here, the results are non-deterministic
     if not isinstance(updates, (list, tuple)):
         if isinstance(updates, dict) and \
-            not isinstance(updates, compat.python2x.OrderedDict):
+            not isinstance(updates, OrderedDict):
                 warnings.warn("Using non-deterministic dictionary.")
 
     dummy_f = function(dummy_args,
