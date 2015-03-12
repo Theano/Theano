@@ -154,6 +154,10 @@ class Scan(PureOp):
             self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             self._hash_inner_graph = hash(self._cmodule_key)
 
+        if 'cache_grad' in self.info and self.info['cache_grad']:
+            # cache dC_dinput
+            self.cache = dict()
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         if "allow_gc" not in self.__dict__:
@@ -1473,6 +1477,14 @@ class Scan(PureOp):
 
     ### GRAD FUNCTION
     def grad(self, inputs, dC_douts):
+        if 'cache_grad' in self.info and self.info['cache_grad']:
+            # if the partial derivatives w.r.t. all the input variables has been
+            # computed have been computed before, return the cached derivatives 
+            hit_counter = numpy.sum([1 if id(ii) in self.cache else 0 
+                                     for ii in inputs])
+            if hit_counter == len(inputs):
+                return [self.cache[id(ii)] for ii in inputs]
+
         outs = self(*inputs)
         if not isinstance(outs, (list, tuple)):
             outs = [outs]
@@ -1984,6 +1996,7 @@ class Scan(PureOp):
             info['name'] = None
         info['mode'] = self.mode
         info['allow_gc'] = self.allow_gc
+        info['cache_grad'] = self.info['cache_grad']
 
         outer_inputs = ([grad_steps] +
                         outer_inp_seqs +
@@ -2100,6 +2113,12 @@ class Scan(PureOp):
                     disconnected = False
             if disconnected:
                 gradients[idx] = DisconnectedType()()
+
+        if 'cache_grad' in self.info and self.info['cache_grad']:
+            # save the computed partial derivative: dC/di
+            for ii, gg in zip(inputs, gradients):
+                self.cache[id(ii)] = gg
+
         return gradients
 
     def R_op(self, inputs, eval_points):

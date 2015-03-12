@@ -45,6 +45,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import numpy
+import warnings
 
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -75,7 +76,8 @@ def scan(fn,
          mode=None,
          name=None,
          profile=False,
-         allow_gc=None):
+         allow_gc=None,
+         cache_grad=False):
     """
     This function constructs and applies a Scan op to the provided
     arguments.
@@ -990,6 +992,10 @@ def scan(fn,
     info['as_while'] = as_while
     info['profile'] = profile
     info['allow_gc'] = allow_gc
+    info['cache_grad'] = cache_grad
+    if cache_grad:
+        warnings.warn('cache_grad works only when Scan Op is associated'
+                      'with a single cost.', Warning)
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
