@@ -4997,6 +4997,7 @@ def tensordot(a, b, axes=2):
                              'of b (b.ndim=%i, axes=%i)' % (b.ndim, axes))
 
         outshape = concatenate([a.shape[:a.ndim - axes], b.shape[axes:]])
+        outbcast = a.broadcastable[:a.ndim - axes] + b.broadcastable[axes:]
         outndim = a.ndim + b.ndim - (2 * axes)
 
         a_shape_0 = b_shape_0 = a_shape_1 = b_shape_1 = 1
@@ -5012,7 +5013,10 @@ def tensordot(a, b, axes=2):
         a_reshaped = a.reshape((a_shape_0, a_shape_1), ndim=2)
         b_reshaped = b.reshape((b_shape_0, b_shape_1), ndim=2)
 
-        return _dot(a_reshaped, b_reshaped).reshape(outshape, outndim)
+        out = _dot(a_reshaped, b_reshaped).reshape(outshape, outndim)
+        # Make sure the broadcastable pattern of the result is correct,
+        # since some shape information can be lost in the reshapes.
+        return patternbroadcast(out, outbcast)
 
     # if 'axes' is a list, transpose a and b such that the summed axes of a
     # are last and the summed axes of b are first.
