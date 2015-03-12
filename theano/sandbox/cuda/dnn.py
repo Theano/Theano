@@ -465,6 +465,8 @@ class GpuDnnConv(DnnBase, COp):
         if border_mode == 'full':
             padh = kh - 1
             padw = kw - 1
+        elif isinstance(border_mode, int):
+            padh, padw = border_mode, border_mode
         elif isinstance(border_mode, tuple):
             padh, padw = border_mode
         else:
