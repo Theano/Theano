@@ -23,7 +23,8 @@ instructions below for detailed installation steps):
     Python_ >= 2.6
         The development package (``python-dev`` or ``python-devel``
         on most Linux distributions) is recommended (see just below).
-	Python 2.4 was supported up to and including the release 0.6.
+        Python 2.4 was supported up to and including the release 0.6.
+        Python 3 is supported via 2to3 only, starting from 3.3.
 
     ``g++``, ``python-dev``
         Not technically required but *highly* recommended, in order to compile
@@ -32,16 +33,13 @@ instructions below for detailed installation steps):
         g++ >= 4.2 (for openmp that is currently always used)
         more recent version recommended!
 
-    `NumPy <http://numpy.scipy.org/>`_ >= 1.5.0
+    `NumPy <http://numpy.scipy.org/>`_ >= 1.6.2
         Earlier versions could work, but we don't test it.
 
-    `SciPy <http://scipy.org>`_
+    `SciPy <http://scipy.org>`_ >= 0.11
         Only currently required for sparse matrix and special functions
-        support, but *highly* recommended. We recommend SciPy
-        >=0.8 if you are using sparse matrices, because ``scipy.sparse``
-        is buggy in 0.6 (the ``scipy.csc_matrix`` version of ``dot()`` has a
-        bug with singleton dimensions, there may be more bugs) and we do not
-        run tests with 0.7.
+        support, but *highly* recommended. SciPy >=0.8 could work,
+        but earlier versions have known bugs with sparse matrices.
 
     A `BLAS`_ installation (with Level 3 functionality)
         Including the development headers (``-dev``, ``-devel``, depending on
