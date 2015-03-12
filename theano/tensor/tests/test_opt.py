@@ -4447,7 +4447,8 @@ class T_local_reduce(unittest.TestCase):
             assert isinstance(topo[-1].op, T.Elemwise), out
 
         # Test different axis for the join and the reduction
-        # We must force the dtype, of otherwise, this tests will fail in 32 bit system
+        # We must force the dtype, of otherwise, this tests will fail
+        # on 32 bit systems
         A = theano.shared(numpy.array([1, 2, 3, 4, 5], dtype='int64'))
 
         f = theano.function([], T.sum(T.stack(A, A), axis=0), mode=self.mode)
@@ -4481,6 +4482,17 @@ class T_local_reduce(unittest.TestCase):
         assert numpy.allclose(f(), [15, 15])
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
+
+        # Test that the optimization does not crash in one case where it
+        # is not applied.  Reported at
+        # https://groups.google.com/d/topic/theano-users/EDgyCU00fFA/discussion
+        old = theano.config.warn.reduce_join
+        try:
+            theano.config.warn.reduce_join = False
+            out = tensor.sum([vx, vy, vz], axis=None)
+            f = theano.function([vx, vy, vz], out)
+        finally:
+            theano.config.warn.reduce_join = old
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):

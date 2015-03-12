@@ -13,6 +13,7 @@ import operator
 import sys
 import time
 import traceback
+import warnings
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
@@ -3901,10 +3902,14 @@ def local_reduce_join(node):
             # The reduction do something about the dtype.
             return
 
+        reduce_axis = node.op.axis
+        if reduce_axis is None:
+            reduce_axis = tuple(xrange(node.inputs[0].ndim))
+
         # I put this warning late to don't add extra warning.
-        if len(node.op.axis) != 1 or 0 not in node.op.axis:
+        if len(reduce_axis) != 1 or 0 not in reduce_axis:
             if theano.config.warn.reduce_join:
-                _logger.warn((
+                warnings.warn((
                     'Your current code is fine, but Theano versions '
                     'prior to 0.7 (or this development version Sept 2014) '
                     'might have given an incorrect result for this code. '
@@ -3920,7 +3925,7 @@ def local_reduce_join(node):
         # We add the new check late to don't add extra warning.
         try:
             join_axis = get_scalar_constant_value(join.inputs[0])
-            if join_axis != node.op.axis[0]:
+            if join_axis != reduce_axis[0]:
                 return
         except NotScalarConstantError:
             return
