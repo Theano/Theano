@@ -1400,15 +1400,33 @@ class Scan(PureOp):
                             tmp = ils
                         if any([x is not None for x in tmp]):
                             connection_pattern[iidx + 1][oidx] = True
+
         # Applying Floyd-Warshall to find all paths connecting inputs to
         # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
         # input to `z_t` then `x` is an input to `z_t`.
 
         n_outs = len(node.outputs)
+        outer_iidx_from_inner_iidx = self.get_outer_iidx_from_inner_iidx_seq()
+
         for steps in xrange(n_outs):
             for iidx in xrange(n_outs):
                 for jidx in xrange(n_outs):
-                    j_inp_idx = self.get_input_pos(jidx) + 1
+
+                    # Get the idx of the first inner input corresponding to
+                    # that inner output
+                    j_inp_idx = self.get_input_pos(jidx)
+
+                    if j_inp_idx == -1:
+                        # No corresponding inner input : default to what scan
+                        # was doing in the previous version in those cases
+                        # which *seems* to be a hack designed to avoid passing
+                        # the condition below but it's not certain.
+                        j_inp_idx = 0
+                    else:
+                        # Get the idx of the outer input corresponding to that
+                        # inner input
+                        j_inp_idx = outer_iidx_from_inner_iidx[j_inp_idx]
+
                     if connection_pattern[j_inp_idx][iidx] == True:
                         for k in xrange(len(connection_pattern)):
                             if connection_pattern[k][jidx]:
@@ -1416,6 +1434,42 @@ class Scan(PureOp):
 
         node.tag.connection_pattern = connection_pattern
         return connection_pattern
+
+    def get_outer_iidx_from_inner_iidx_seq(self):
+        """ Return a sequence where the value of at the i-th position is the
+        index of the outer input corresponding to the i-th inner input
+        """
+
+        output = []
+        outer_inp_idx = 1 # First outer input is timestep index, skip it
+
+        # Handle sequences inputs
+        for i in range(self.info['n_seqs']):
+            output.append(outer_inp_idx)
+            outer_inp_idx += 1
+
+        # Handle mitmots, mitsots and sitsots inputs
+        for input_taps in self.info['tap_array']:
+            for tap in input_taps:
+                output.append(outer_inp_idx)
+            outer_inp_idx += 1
+
+        # Handle shared inputs
+        for i in range(self.info['n_shared_outs']):
+            output.append(outer_inp_idx)
+            outer_inp_idx += 1
+
+        # No inner input corresponds to the outer nitsot inputs but they still
+        # need to be counted
+        outer_inp_idx += self.info['n_nit_sot']
+
+        # Handle non-sequences inputs
+        nb_nonseqs_inputs = len(self.inputs) - len(output)
+        for i in range(nb_nonseqs_inputs):
+            output.append(outer_inp_idx)
+            outer_inp_idx += 1
+
+        return output
 
     ### GRAD FUNCTION
     def grad(self, inputs, dC_douts):
