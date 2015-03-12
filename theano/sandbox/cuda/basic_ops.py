@@ -3434,6 +3434,9 @@ class CopyOnNegativeStrides(GpuOp):
             i = i.copy()
         out[0][0] = i
 
+    def infer_shape(self, node, xshp):
+        return xshp
+
     def c_code(self, node, name, inp, out, sub):
         input, = inp
         z, = out

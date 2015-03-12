@@ -649,12 +649,19 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
+    def contig_version(var):
+        if version() == -1:
+            var = gpu_contiguous(var)
+        else:
+            var = cp_on_negative_strides(var)
+        return var
+
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1,1) and
         direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
-        img = cp_on_negative_strides(img.dimshuffle(1, 0, 2, 3))
+        img = contig_version(img.dimshuffle(1, 0, 2, 3))
         if conv_mode == 'conv':
             # We need to flip manually. These 'kerns' are not the kernels
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
@@ -674,7 +681,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         # Special case: We can be faster by using GpuDnnConvGradI to compute
         # the full convolution as the backward pass of a valid convolution.
         # We just need to set up a suitable 'fake' valid convolution.
-        img = cp_on_negative_strides(img)
+        img = gpu_contiguous(img)  # cudnn v1 and v2 rc3 need contiguous data
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
@@ -686,9 +693,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
-    # cp_on_negative_strides will return a gpu_contiguous copy
+    # contig_version will return a gpu_contiguous copy
     # if the img contains negative strides
-    img = cp_on_negative_strides(img)
+    img = contig_version(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
@@ -746,7 +753,7 @@ class GpuDnnPoolDesc(GpuOp):
         self.stride = stride
         assert len(stride) == 2
         self.pad = pad
-        if (pad[0] != 0 or pad[1] != 0) and version() < 20:
+        if (pad[0] != 0 or pad[1] != 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
     def __setstate__(self, d):
@@ -755,7 +762,7 @@ class GpuDnnPoolDesc(GpuOp):
             self.pad = (0, 0)
 
     def make_node(self):
-        if self.pad != (0, 0) and version() < 20:
+        if self.pad != (0, 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
         return Apply(self, [],
