@@ -649,12 +649,19 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
+    def contig_version(var):
+        if version() == -1:
+            var = gpu_contiguous(var)
+        else:
+            var = cp_on_negative_strides(var)
+        return var
+
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1,1) and
         direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
-        img = cp_on_negative_strides(img.dimshuffle(1, 0, 2, 3))
+        img = contig_version(img.dimshuffle(1, 0, 2, 3))
         if conv_mode == 'conv':
             # We need to flip manually. These 'kerns' are not the kernels
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
@@ -686,9 +693,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
-    # cp_on_negative_strides will return a gpu_contiguous copy
+    # contig_version will return a gpu_contiguous copy
     # if the img contains negative strides
-    img = cp_on_negative_strides(img)
+    img = contig_version(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
