@@ -19,7 +19,6 @@ from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
                                            gpu_contiguous, HostFromGpu,
-                                           cp_on_negative_strides,
                                            gpu_alloc)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
@@ -435,7 +434,7 @@ class GpuDnnConv(DnnBase, COp):
         img, kerns, output, desc, alpha = inp
         top, = grads
 
-        top = cp_on_negative_strides(top)
+        top = gpu_contiguous(top)
 
         d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
         d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
@@ -574,7 +573,7 @@ class GpuDnnConvGradI(DnnBase, COp):
         kerns, top, output, desc, alpha = inp
         img, = grads
 
-        img = cp_on_negative_strides(img)
+        img = gpu_contiguous(img)
 
         d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
         d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
@@ -649,19 +648,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
     """
-    def contig_version(var):
-        if version() == -1:
-            var = gpu_contiguous(var)
-        else:
-            var = cp_on_negative_strides(var)
-        return var
-
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1,1) and
         direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
-        img = contig_version(img.dimshuffle(1, 0, 2, 3))
+        img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
         if conv_mode == 'conv':
             # We need to flip manually. These 'kerns' are not the kernels
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
@@ -695,7 +687,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     # Standard case: We use GpuDnnConv with suitable padding.
     # contig_version will return a gpu_contiguous copy
     # if the img contains negative strides
-    img = contig_version(img)
+    img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
@@ -1578,6 +1570,7 @@ if True:
     def local_dnn_conv_output_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
 
     @register_opt('cudnn')
@@ -1585,6 +1578,7 @@ if True:
     def local_dnn_convw_output_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConvGradW()(*inputs)]
 
     @register_opt('cudnn')
@@ -1592,6 +1586,7 @@ if True:
     def local_dnn_convi_output_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConvGradI()(*inputs)]
 
     @register_opt('cudnn')
