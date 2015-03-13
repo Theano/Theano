@@ -13,12 +13,12 @@ import theano
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano import config
 import warnings
 NullType = None
 
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 
@@ -511,11 +511,6 @@ class FunctionGraph(utils.object2):
         for r, new_r in pairs:
             self.replace(r, new_r, reason=reason)
 
-    def extend(self, feature):
-        warnings.warn("FunctionGraph.extend is deprecatd. It has been "
-                      "renamed to FunctionGraph.attach_feature")
-        return self.attach_feature(feature)
-
     def attach_feature(self, feature):
         """
         Adds a gof.toolbox.Feature to this function_graph
@@ -663,23 +658,6 @@ class FunctionGraph(utils.object2):
     def nclients(self, r):
         """WRITEME Same as len(self.clients(r))."""
         return len(self.clients(r))
-
-    def nodes_getter(self):
-        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
-                stacklevel=2)
-        return self.apply_nodes
-
-    def nodes_setter(self, value):
-        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
-                stacklevel=2)
-        self.apply_nodes = value
-
-    def nodes_deleter(self):
-        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
-                stacklevel=2)
-        del self.apply_nodes
-
-    nodes = property(nodes_getter, nodes_setter, nodes_deleter)
 
     def check_integrity(self):
         """WRITEME

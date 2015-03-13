@@ -19,8 +19,7 @@ Reference
 .. class:: RandomStreamsBase(object)
     
     This is the interface for the
-    :class:`theano.tensor.shared_randomstreams.RandomStreams` subclass and the
-    :class:`theano.tensor.randomstreams.RandomStreams` subclass.
+    :class:`theano.tensor.shared_randomstreams.RandomStreams` subclass
 
     .. method:: binomial(self, size=(), n=1, p=0.5, ndim=None):
 

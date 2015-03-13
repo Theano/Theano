@@ -12,9 +12,10 @@ import re
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
-from numpy import any  # to work in python 2.4
+from numpy import any
 import warnings
 from theano import gof
+from theano import compat
 
 
 def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
@@ -205,7 +206,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         updates = []
 
     if (isinstance(updates, dict) and
-            not isinstance(updates, gof.python25.OrderedDict) and
+            not isinstance(updates, compat.python2x.OrderedDict) and
             len(updates) > 1):
         warnings.warn(
             "The parameter 'updates' of theano.function()"

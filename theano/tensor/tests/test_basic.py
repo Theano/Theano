@@ -24,7 +24,7 @@ from theano.compat.six import StringIO
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
-from theano.gof.python25 import any, all, combinations
+from theano.compat.python2x import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,

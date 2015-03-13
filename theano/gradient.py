@@ -21,7 +21,7 @@ import theano
 
 from theano import gof
 from theano.gof import Variable
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp

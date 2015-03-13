@@ -10,7 +10,7 @@ from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import Scalar, get_scalar_type
 from theano.printing import pprint
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 from theano.tensor.utils import hash_from_dict
 from theano.gradient import DisconnectedType
 from theano.gof.null_type import NullType

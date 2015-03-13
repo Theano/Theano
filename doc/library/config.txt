@@ -361,7 +361,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: linker
 
-    String value: 'c|py', 'py', 'c', 'c|py_nogc', 'c&py'
+    String value: 'c|py', 'py', 'c', 'c|py_nogc'
 
     Default: 'c|py'
 

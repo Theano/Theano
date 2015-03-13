@@ -14,7 +14,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.gof.python25 import partial
+from theano.compat.python2x import partial
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
@@ -755,81 +755,6 @@ def _constructor_Function(maker, input_storage, inputs_data):
 copy_reg.pickle(Function, _pickle_Function)
 
 
-
-###
-### SanityCheckFunction
-###
-
-class SanityCheckFunction(Function):
-    """Deprecated. It is not used and not tested anywhere in Theano!
-
-    Also, we should remove the check_equal and related function in
-    this file, and use Type.values_equals() instead.
-
-    """
-
-    def __init__(self, others, check_equal, *args, **kwargs):
-        super(SanityCheckFunction, self).__init__(*args, **kwargs)
-        self.others = others
-        self.check_equal = check_equal
-        # DEPRECATED?  Is this just for DualLinker?
-        warnings.warn("SanityCheckFunction is deprecated")
-
-    def __setitem__(self, item, value):
-        super(SanityCheckFunction, self).__setitem__(item, value)
-        for fn in self.others:
-            fn[item] = value
-
-    def __call__(self, *args, **kwargs):
-
-        for fn in self.others:
-            for stor1, stor2 in zip(self.input_storage, fn.input_storage):
-                stor2.value = copy.copy(stor1.value)
-
-        variables = super(SanityCheckFunction, self).__call__(*args, **kwargs)
-
-        all_outputs = [copy.copy(c.value) for c in self.output_storage] # we keep a copy to make sure it's not overwritten
-        for fn in self.others:
-            fn(*args, **kwargs)
-
-            for i, (c1, c2, input) in enumerate(zip(self.input_storage, fn.input_storage, self.maker.inputs)):
-                if not input.mutable:
-                    if not self.check_equal(c1.value, c2.value):
-                        name = c2.name
-                        if name:
-                            the_name = name
-                        else:
-                            the_name = ""
-                        raise ValueError("Input #%i%s using %s and %s differs."
-                                         % (i,
-                                            #backport
-                                            #" (%s)" % name if name else "",
-                                            " (%s)" % the_name,
-                                            self.maker.mode,
-                                            fn.maker.mode),
-                                         c1.value, c2.value)
-
-            # This checks all output storage (this includes state variables that we updated)
-            # This is ok because the variables of a call stick around in their storage
-            for i, (r1, c2) in enumerate(zip(all_outputs, fn.output_storage)):
-                r2 = c2.value
-                if not self.check_equal(r1, r2):
-                    name = c2.name
-                    if name:
-                        the_name = name
-                    else:
-                        the_name = ""
-                    raise ValueError("Variable #%i%s using %s and %s differs."
-                                     % (i,
-                                        #backport
-                                        #" (%s)" % name if name else "",
-                                        " (%s)" % the_name,
-                                        self.maker.mode,
-                                        fn.maker.mode),
-                                     r1, r2)
-        return variables
-
-
 ###
 ### FunctionMaker
 ###
@@ -911,8 +836,9 @@ NODEFAULT = ['NODEFAULT']
 class FunctionMaker(object):
     """`FunctionMaker` is the class to `create` `Function` instances.
 
-    This class has the fgraph, the optimizer, and the linker.  When copying a `Function`, there is
-    no need to duplicate the `FunctionMaker` instance.  Deepcopy still copies both, which can
+    This class has the fgraph, the optimizer, and the linker.  When
+    copying a `Function`, there is no need to duplicate the
+    `FunctionMaker` instance.  Deepcopy still copies both, which can
     variable in re-compilation.
 
     """
@@ -944,23 +870,6 @@ class FunctionMaker(object):
             return sinput.complete(rinputs)
         elif isinstance(sinput, SymbolicInput):
             return [None, [sinput]]
-
-    def env_getter(self):
-        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        return self.fgraph
-
-    def env_setter(self, value):
-        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        self.fgraph = value
-
-    def env_deleter(self):
-        warnings.warn("FunctionMaker.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        del self.fgraph
-
-    env = property(env_getter, env_setter, env_deleter)
 
     @staticmethod
     def wrap_out(output):

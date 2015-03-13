@@ -16,7 +16,7 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.gof.python25 import any, deque
+from theano.compat.python2x import any, deque
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
@@ -153,23 +153,6 @@ class Apply(Node):
             raise AttributeError("%s.default_output is out of range." %
                                  self.op)
         return self.outputs[do]
-
-    def env_getter(self):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        return self.fgraph
-
-    def env_setter(self, value):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        self.fgraph = value
-
-    def env_deleter(self):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        del self.fgraph
-
-    env = property(env_getter, env_setter, env_deleter)
 
     out = property(default_output,
                    doc="alias for self.default_output()")
@@ -412,21 +395,6 @@ class Variable(Node):
             return [self.owner]
         return []
 
-    def env_getter(self):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        return self.fgraph
-
-    def env_setter(self, value):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        self.fgraph = value
-
-    def env_deleter(self):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        del self.fgraph
-
     def eval(self, inputs_to_values=None):
         """ Evaluates this variable.
 
@@ -452,7 +420,6 @@ class Variable(Node):
         d = self.__dict__.copy()
         d.pop("_fn_cache", None)
         return d
-    env = property(env_getter, env_setter, env_deleter)
 
 
 class Constant(Variable):

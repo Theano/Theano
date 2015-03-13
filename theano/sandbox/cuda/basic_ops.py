@@ -14,7 +14,7 @@ from theano.scalar import Scalar
 
 scal = scalar # somewhere scalar gets reassigned to be a function
 
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 
 try:
     # We must be able to import this file to create the full doc when nvcc
