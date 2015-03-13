@@ -8,6 +8,7 @@ from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compat import PY3
+from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
@@ -1531,26 +1532,30 @@ if True:
                     rval, node.outputs[0].type.broadcastable)
             return [rval]
 
-    @register_opt('cudnn')
     @local_optimizer([GpuDnnConv], inplace=True)
     def local_dnn_conv_inplace(node):
         if type(node.op) != GpuDnnConv or node.op.inplace == True:
             return
         return [GpuDnnConv(workmem=node.op.workmem, inplace=True)(*node.inputs)]
 
-    @register_opt('cudnn')
     @local_optimizer([GpuDnnConvGradW], inplace=True)
     def local_dnn_convgw_inplace(node):
         if type(node.op) != GpuDnnConvGradW or node.op.inplace == True:
             return
         return [GpuDnnConvGradW(inplace=True)(*node.inputs)]
 
-    @register_opt('cudnn')
     @local_optimizer([GpuDnnConvGradI], inplace=True)
     def local_dnn_convgi_inplace(node):
         if type(node.op) != GpuDnnConvGradI or node.op.inplace == True:
             return
         return [GpuDnnConvGradI(inplace=True)(*node.inputs)]
+
+    optdb.register('local_dnn_conv_inplace',
+                   tensor.opt.in2out(local_dnn_conv_inplace,
+                                     local_dnn_convgw_inplace,
+                                     local_dnn_convgi_inplace,
+                                     name="local_dnn_conv_inplace"),
+                   70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
 
     @register_opt('cudnn')
     @alpha_merge(GpuDnnConv, alpha_in=4, nd=4)
