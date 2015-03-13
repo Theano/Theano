@@ -3516,6 +3516,9 @@ class GpuContiguous(GpuOp):
         assert i.is_c_contiguous()
         out[0][0] = i
 
+    def infer_shape(self, node, xshp):
+        return xshp
+
     def c_code(self, node, name, inp, out, sub):
         input, = inp
         z, = out
