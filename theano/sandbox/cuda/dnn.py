@@ -1570,6 +1570,7 @@ if True:
     def local_dnn_conv_output_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
 
     @register_opt('cudnn')
@@ -1577,6 +1578,7 @@ if True:
     def local_dnn_convw_output_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConvGradW()(*inputs)]
 
     @register_opt('cudnn')
@@ -1584,6 +1586,7 @@ if True:
     def local_dnn_convi_output_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
+        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConvGradI()(*inputs)]
 
     @register_opt('cudnn')
