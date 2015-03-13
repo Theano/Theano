@@ -2,13 +2,15 @@
 Release Notes
 =============
 
-Theano 0.7rc1 (4th of March, 2015)
-==================================
-We recommand to everyone still using version 0.6 to upgrade to this version.
+Theano 0.7rc2 (13th of March, 2015)
+===================================
+We recommand to everyone to upgrade to this version.
 
 Highlights:
  * Too many bug and crash fixes to count
+ * Many new optimizations as well
  * Integration of CuDNN for 2D convolutions and pooling on supported GPUs
  * Better support for GPU on Windows (Jan Chorowski, Nicolas Ballas)
  * On MacOS X, clang is used by default (Arnaud Bergeron)
+ * Various fixes and improvement to scan
 
