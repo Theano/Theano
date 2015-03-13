@@ -744,7 +744,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
         var = node.outputs[oo]
         out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
-        if var.type.may_share_memory(out_var, in_var):
+        if (hasattr(var.type, 'may_share_memory') and
+            var.type.may_share_memory(out_var, in_var)):
             actually_inplace_outputs.append(node.outputs[oo])
 
         if warn_input_not_reused and destroyed_res_list:
@@ -762,7 +763,8 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
         var = node.outputs[oo]
         out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
-        may_share = var.type.may_share_memory(out_var, in_var)
+        may_share = (hasattr(var.type, 'may_share_memory') and
+                     var.type.may_share_memory(out_var, in_var))
         if may_share:
             actually_inplace_outputs.append(node.outputs[oo])
 
@@ -831,8 +833,8 @@ def _check_viewmap(node, storage_map):
                 # original value, we we wouldn't be able to do this
                 # useless check.
                 continue
-            if hasattr(inode.type, 'may_share_memory') and\
-               inode.type.may_share_memory(outstorage, in_storage):
+            if (hasattr(inode.type, 'may_share_memory') and
+                inode.type.may_share_memory(outstorage, in_storage)):
 
                 nodeid = id(inode)
                 bad_alias[nodeid] = ii
@@ -861,6 +863,7 @@ def _check_viewmap(node, storage_map):
                 # check to see if we share memory with this other output
                 # this is not a problem if the node is not actually used
                 if (_is_used_in_graph(other_onode) and
+                    hasattr(other_onode.type, 'may_share_memory') and
                     other_onode.type.may_share_memory(outstorage,
                                                       other_storage)):
                     raise BadViewMap(node, oi, outstorage,

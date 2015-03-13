@@ -159,6 +159,9 @@ class Scan(PureOp):
         if "allow_gc" not in self.__dict__:
             self.allow_gc = True
             self.info['allow_gc'] = True
+        if not hasattr(self, 'gpua'):
+            self.gpua = False
+            self.info['gpua'] = False
 
     def make_node(self, *inputs):
         """
