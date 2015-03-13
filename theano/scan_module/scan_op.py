@@ -1996,7 +1996,8 @@ class Scan(PureOp):
             info['name'] = None
         info['mode'] = self.mode
         info['allow_gc'] = self.allow_gc
-        info['cache_grad'] = self.info['cache_grad']
+        if 'cache_grad' in self.info:
+            info['cache_grad'] = self.info['cache_grad']
 
         outer_inputs = ([grad_steps] +
                         outer_inp_seqs +
