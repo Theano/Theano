@@ -994,8 +994,10 @@ def scan(fn,
     info['allow_gc'] = allow_gc
     info['cache_grad'] = cache_grad
     if cache_grad:
-        warnings.warn('cache_grad works only when Scan Op is associated'
-                      'with a single cost.', Warning)
+        warnings.warn('cache_grad can result in a WRONG gradient and may only'
+                      'be used in such conditions as having a single cost '
+                      'associated with this Scan Op. Even when the condition'
+                      'is not met, no error will be issued', Warning)
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
