@@ -191,3 +191,6 @@ def sparse_grad(var):
     ret = var.owner.op.__class__(sparse_grad=True)(*var.owner.inputs)
     return ret
 
+
+__import__('theano.tensor.shared_randomstreams')
+
