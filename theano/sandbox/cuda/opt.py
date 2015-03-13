@@ -87,6 +87,7 @@ gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer,
 register_opt()(theano.tensor.opt.local_track_shape_i)
 register_opt(name='gpu_constant_folding')(
     tensor.opt.constant_folding)
+register_opt()(theano.tensor.opt.local_subtensor_make_vector)
 
 
 # This is a partial list of CPU ops that can be in some circonstance
