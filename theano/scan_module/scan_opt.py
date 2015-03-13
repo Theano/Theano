@@ -65,7 +65,7 @@ import theano
 from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
-from theano.gof.python25 import maxsize, any, OrderedDict
+from theano.compat.python2x import maxsize, any, OrderedDict
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb

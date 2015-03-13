@@ -12,8 +12,6 @@ from theano.compile.mode import *
 
 from theano.compile.io import *
 
-from theano.compile.module import *
-
 from theano.compile.debugmode import DebugMode
 
 from theano.compile.monitormode import MonitorMode

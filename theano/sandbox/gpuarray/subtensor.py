@@ -4,7 +4,7 @@ import numpy
 
 import theano
 from theano import tensor, gof, Op
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
 

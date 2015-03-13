@@ -17,7 +17,7 @@ from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
                         Optimizer, toolbox)
 from theano.gof.opt import LocalMetaOptimizer
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
@@ -1763,7 +1763,7 @@ def get_device_type_sizes():
         del t
     except Exception, e:
         _logger.warning(("Optimization Warning: "
-            "Got the following error, but we can ignore it. "
+            "Got the following error, but you can ignore it. "
             "This could cause less GpuElemwise fused together.\n"
             "%s") % e)
 

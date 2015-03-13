@@ -15,8 +15,8 @@ from theano import tensor
 from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
-from theano.gof.python25 import all, any, product
-from theano.gof.python25 import product as itertools_product
+from theano.compat.python2x import all, any, product
+from theano.compat.python2x import product as itertools_product
 from theano.tensor.basic import _allclose
 
 if not enable_sparse:

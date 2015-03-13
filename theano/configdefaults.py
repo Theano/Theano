@@ -172,8 +172,8 @@ if rc == 0 and config.cxx != "":
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode(deprecated)"),
-                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc',
+                         'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 else:
     # g++ is not present or the user disabled it,
