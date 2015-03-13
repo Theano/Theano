@@ -223,8 +223,8 @@ The ``compute_test_value`` mechanism works as follows:
   which do not implement a ``perform`` method.
 
 
-"How do I Print an Intermediate Value in a Function/Method?"
-------------------------------------------------------------
+"How do I Print an Intermediate Value in a Function?"
+-----------------------------------------------------
 
 Theano provides a 'Print' op to do this.
 
