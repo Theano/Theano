@@ -1784,7 +1784,7 @@ class DualLinker(link.Linker):
 
 class HideC(object):
     def __hide(*args):
-        raise MethodNotDefined()
+        raise utils.MethodNotDefined()
 
     c_code = __hide
     c_code_cleanup = __hide
