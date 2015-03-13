@@ -10,7 +10,7 @@ __contact__ = "theano-dev@googlegroups.com"
 import numpy
 import theano.gof
 from theano.compat import PY3
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano.sandbox.cuda import CudaNdarrayType, GpuOp
 from theano.tensor import (get_vector_length, cast, opt)
 from theano.compile import optdb

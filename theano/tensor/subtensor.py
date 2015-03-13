@@ -13,7 +13,7 @@ import theano
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
-from theano.gof.python25 import maxsize
+from theano.compat.python2x import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
 from theano.tensor.basic import alloc

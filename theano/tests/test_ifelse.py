@@ -16,7 +16,7 @@ from theano import tensor
 import theano.ifelse
 from theano.ifelse import IfElse, ifelse
 from theano.tests  import unittest_tools as utt
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 
 
 class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):

@@ -526,16 +526,17 @@ def qr(a, mode="full"):
           alias of 'reduced', deprecated (default)
 
         'economic'
-          returns h from 'raw', deprecated. The options 'reduced',
+          returns h from 'raw', deprecated.
 
-        'complete', and 'raw' are new in numpy 1.8, see the notes for more
-        information. The default is 'reduced' and to maintain backward
-        compatibility with earlier versions of numpy both it and the old
-        default 'full' can be omitted. Note that array h returned in 'raw'
-        mode is transposed for calling Fortran. The 'economic' mode is
-        deprecated. The modes 'full' and 'economic' may be passed using only
-        the first letter for backwards compatibility, but all others
-        must be spelled out.
+        The options 'reduced', 'complete', and 'raw' are new in numpy
+        1.8, see the notes for more information. The default is
+        'reduced' and to maintain backward compatibility with earlier
+        versions of numpy both it and the old default 'full' can be
+        omitted. Note that array h returned in 'raw' mode is
+        transposed for calling Fortran. The 'economic' mode is
+        deprecated. The modes 'full' and 'economic' may be passed
+        using only the first letter for backwards compatibility, but
+        all others must be spelled out.
 
         Default mode is 'full' which is also default for numpy 1.6.1.
 

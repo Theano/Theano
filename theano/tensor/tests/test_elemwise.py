@@ -8,7 +8,7 @@ from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 
 import theano
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 from theano import gof, scalar, config
 
 from theano import tensor

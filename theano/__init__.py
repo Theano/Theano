@@ -58,20 +58,16 @@ from theano.compile import \
     Mode, \
     predefined_modes, predefined_linkers, predefined_optimizers, \
     FunctionMaker, function, function_dump, OpFromGraph, \
-    Component, External, Member, Method, \
-    Composite, ComponentList, ComponentDict, Module, \
     ProfileMode, ProfileStats, \
     Param, shared, as_op
 
 from theano.misc.safe_asarray import _asarray
 
-FancyModule = Module
-
 from theano.printing import pprint, pp
 
 from theano.scan_module import scan, map, reduce, foldl, foldr, clone
 
-from theano.updates import Updates, OrderedUpdates
+from theano.updates import OrderedUpdates
 
 # scan_module import above initializes tensor and scalar making these imports redundant
 #import tensor
@@ -195,11 +191,6 @@ def sparse_grad(var):
     ret = var.owner.op.__class__(sparse_grad=True)(*var.owner.inputs)
     return ret
 
-# This cannot be done in tensor/__init__.py due to a circular dependency -- randomstreams
-# depends on raw_random which depends on tensor.  As a work-around, we import RandomStreams
-# here and inject an instance in tensor.
-from theano.tensor.randomstreams import RandomStreams
-# Imitate the numpy.random symbol with a tensor.random one
-tensor.random = RandomStreams(seed=0xBAD5EED, no_warn=True)
-del RandomStreams
+
 __import__('theano.tensor.shared_randomstreams')
+

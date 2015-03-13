@@ -48,7 +48,7 @@ def hash_from_file(file_path):
 
 
 import theano
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano import config
 
 # Note that we need to do this before importing cutils, since when there is
@@ -1737,8 +1737,6 @@ class DualLinker(link.Linker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             return type(self)(self.checker).accept(fgraph, no_recycling)
-            # raise Exception("Cannot accept from a Linker that is already "
-            #                 "tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self

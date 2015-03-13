@@ -68,7 +68,6 @@ predefined_linkers = {
     'c': gof.CLinker(),  # Don't support gc. so don't check allow_gc
     'c|py': gof.OpWiseCLinker(),  # Use allow_gc Theano flag
     'c|py_nogc': gof.OpWiseCLinker(allow_gc=False),
-    'c&py': gof.DualLinker(checker=check_equal),  # Deprecated
     'vm': gof.vm.VM_Linker(use_cloop=False),  # Use allow_gc Theano flag
     'cvm': gof.vm.VM_Linker(use_cloop=True),  # Use allow_gc Theano flag
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
@@ -394,26 +393,9 @@ def get_mode(orig_string):
 def get_default_mode():
     return get_mode(None)
 
-# Removed: use config.mode instead.
-#default_mode = config.mode
-
 
 def register_mode(name, mode):
     """Add a `Mode` which can be referred to by `name` in `function`."""
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
-
-
-def register_OutputGuard_c_code(type):
-    """Deprecated function calling register_view_op_c_code"""
-    warnings.warn("register_OutputGuard_c_code(type) is deprecated, "
-            "theano.compile.register_view_op_c_code(type, code, version=()) instead.",
-            stacklevel=2)
-    register_view_op_c_code(
-            type,
-            dedent("""
-                Py_XDECREF(%(oname)s);
-                %(oname)s = %(iname)s;
-                Py_XINCREF(%(oname)s);
-                """))
