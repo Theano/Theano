@@ -98,6 +98,10 @@ def output_merge(cls, alpha_in, beta_in, out_in, nd):
                 if not is_equal(targ.inputs[beta_in], 0.0):
                     # other cases are too complex for now
                     return None
+                if W.broadcastable != targ.inputs[out_in].broadcastable:
+                    # Would need to explicitly tile the output to fill
+                    # the full shape here.  Disable for now.
+                    return None
                 inputs = list(targ.inputs)
                 inputs[out_in] = W
                 inputs[beta_in] = _one.clone()
