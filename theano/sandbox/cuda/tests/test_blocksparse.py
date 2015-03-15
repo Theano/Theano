@@ -169,7 +169,10 @@ def test_blocksparse_grad_shape():
     assert W_g.shape == W_val.shape
 
 
-def test_blocksparse_grad_merge():
+# This test is temporarily disabled since we disabled the output_merge
+# and alpha_merge optimizations for blocksparse due to brokeness.
+# Re-enable when those are re-added.
+def Xtest_blocksparse_grad_merge():
     b = tensor.fmatrix()
     h = tensor.ftensor3()
     iIdx = tensor.lmatrix()
