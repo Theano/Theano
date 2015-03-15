@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
-
+import platform
 import distutils.sysconfig
 
 importlib = None
@@ -1765,8 +1765,8 @@ class GCC_compiler(object):
         # Figure out whether the current Python executable is 32
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
-        # Pi.
-        if not any(['arm' in flag for flag in cxxflags]):
+        # Pi, and Raspberry Pi 2.
+        if not any(['arm' in flag for flag in cxxflags]) and platform.machine() != 'armv7l':
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)

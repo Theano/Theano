@@ -25,7 +25,7 @@ from theano import gof
 from theano import pprint
 from theano import shared
 from theano.gof import FunctionGraph
-from theano.gof.python25 import any, all
+from theano.compat.python2x import any, all
 import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,

@@ -2,7 +2,7 @@ from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 

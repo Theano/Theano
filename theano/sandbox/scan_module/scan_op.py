@@ -19,7 +19,7 @@ import numpy
 
 import theano
 from theano import compile
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType

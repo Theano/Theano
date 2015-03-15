@@ -1,6 +1,6 @@
 import theano
 from theano.gof.utils import give_variables_names, unique, remove
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 
 
 def test_give_variables_names():

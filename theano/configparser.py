@@ -22,13 +22,6 @@ class TheanoConfigWarning(Warning):
         warnings.warn(message, cls, stacklevel=stacklevel + 3)
     warn = classmethod(warn)
 
-# Check for deprecated environment variables
-for key in os.environ:
-    if key.startswith("THEANO"):
-        if key not in ("THEANO_FLAGS", "THEANORC"):
-            TheanoConfigWarning.warn(
-                    "Ignoring deprecated environment variable %s" % key)
-
 THEANO_FLAGS = os.getenv("THEANO_FLAGS", "")
 # The THEANO_FLAGS environment variable should be a list of comma-separated
 # [section.]option=value entries. If the section part is omitted, there should

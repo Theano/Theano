@@ -586,7 +586,7 @@ def test_subgraph_grad():
     true_grads = theano.grad(cost, wrt)
     true_grads = theano.function(inputs, true_grads)
     true_grads = true_grads(*values)
-    from theano.gof.python25 import OrderedDict
+    from theano.compat.python2x import OrderedDict
     next_grad = None
     param_grads = []
     for i in xrange(2):

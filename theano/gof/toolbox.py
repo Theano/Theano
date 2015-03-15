@@ -3,8 +3,8 @@ import time
 
 import theano
 from theano import config
-from theano.gof.python25 import partial
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import partial
+from theano.compat.python2x import OrderedDict
 from theano.gof import graph
 
 

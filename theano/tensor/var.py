@@ -347,15 +347,7 @@ class _tensor_py_operators:
     def astype(self, dtype):
         return theano.tensor.cast(self, dtype)
 
-    # SLICING
-    # Do not define __getslice__ here:
-    # When calling t[1:], for instance, the arguments passed to __getslice__
-    # are (1, sys.maxsize), which is a pain to deal with, and can even not be
-    # an int (but a long).
-    # If __getslice__ does not exist, __getitem__ is called instead, with
-    # argument slice(1, None, None), which is much more desirable.
-    # __getslice__ is deprecated in python 2.6 anyway.
-
+    # SLICING/INDEXING
     def __getitem__(self, args):
         if not isinstance(args, tuple):
             args = args,

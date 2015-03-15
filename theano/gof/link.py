@@ -440,7 +440,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
 
 
 def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
-               no_recycling=None, profiler=None, nice_errors=True):
+               no_recycling=None, nice_errors=True):
     """WRITEME
 
     :param fgraph:
@@ -456,15 +456,11 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
     :param no_recycling: storage elements that cannot be 'recycled' by repeatedly executing the
     program.  These storage elements are cleared before re-running.
 
-    :param profiler: deprecated
-
     :param nice_errors: run in such a way that the double-traceback is printed.  This costs a
     bit of performance in the inner python loop.
     """
     if no_recycling is None:
         no_recycling = []
-    if profiler is not None:
-        raise NotImplementedError()
 
     if len(thunks) != len(order):
         raise ValueError('Length of thunks and order must match',
@@ -518,13 +514,11 @@ class LocalLinker(Linker):
     thunk associated with each node.
     """
 
-    def make_thunk(self, profiler=None, input_storage=None,
-                   output_storage=None):
-        return self.make_all(profiler=profiler,
-                             input_storage=input_storage,
+    def make_thunk(self, input_storage=None, output_storage=None):
+        return self.make_all(input_storage=input_storage,
                              output_storage=output_storage)[:3]
 
-    def make_all(self, profiler, input_storage, output_storage):
+    def make_all(self, input_storage, output_storage):
         # By convention, subclasses of LocalLinker should implement this function!
         #
         # This function should return a tuple of 5 things
@@ -590,9 +584,8 @@ class PerformLinker(LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, profiler=None, input_storage=None, output_storage=None):
+    def make_all(self, input_storage=None, output_storage=None):
         """
-        :param profiler: WRITEME
         :param input_storage: WRITEME
         :param output_storage: WRITEME
 
@@ -648,7 +641,8 @@ class PerformLinker(LocalLinker):
             no_recycling = [storage_map[r] for r in no_recycling if r not in fgraph.inputs]
 
         # The function that actually runs your program is one of the f's in streamline.
-        f = streamline(fgraph, thunks, order, post_thunk_old_storage, no_recycling = no_recycling, profiler = profiler)
+        f = streamline(fgraph, thunks, order, post_thunk_old_storage,
+                       no_recycling=no_recycling)
 
         f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
