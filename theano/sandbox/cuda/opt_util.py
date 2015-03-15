@@ -5,10 +5,13 @@ import numpy
 import theano
 from theano import scalar as scal, Constant
 from theano.gof import local_optimizer
-from theano.tensor import DimShuffle
+from theano.tensor import (DimShuffle, get_scalar_constant_value,
+                           NotScalarConstantError)
 
 from theano.sandbox.cuda.basic_ops import (
     GpuFromHost, HostFromGpu, host_from_gpu, GpuDimShuffle, GpuElemwise)
+
+_one = scal.constant(numpy.asarray(1.0, dtype='float32'))
 
 def grab_cpu_scalar(v, nd):
     if v.owner is not None:
@@ -28,6 +31,7 @@ def grab_cpu_scalar(v, nd):
             v.broadcastable == (True,) * nd):
             return v.dimshuffle(())
 
+
 def find_node(v, cls):
     # This digs through possibly redundant transfers to for the node
     # that has the op class specified.
@@ -42,7 +46,17 @@ def find_node(v, cls):
             return None
 
 
-def alpha_merge(cls, alpha_in, nd):
+def is_equal(var, val):
+    # Returns True if var is always equal to val (python value), False
+    # otherwise (including if var is not constant)
+    try:
+        v = get_scalar_constant_value(var)
+        return v == val
+    except NotScalarConstantValue:
+        return False
+
+
+def alpha_merge(cls, alpha_in, beta_in, nd):
     def wrapper(maker):
         @local_optimizer([GpuElemwise])
         @wraps(maker)
@@ -60,19 +74,19 @@ def alpha_merge(cls, alpha_in, nd):
                     return None
                 inputs = list(targ.inputs)
                 inputs[alpha_in] = lr * targ.inputs[alpha_in]
+                inputs[beta_in] = lr * targ.inputs[beta_in]
                 return maker(targ, *inputs)
         return opt
     return wrapper
 
 
-def output_merge(cls, alpha_in, out_in, nd):
+def output_merge(cls, alpha_in, beta_in, out_in, nd):
     def wrapper(maker):
         @local_optimizer([GpuElemwise])
         @wraps(maker)
         def opt(node):
             if (isinstance(node.op, GpuElemwise) and
-                (node.op.scalar_op == scal.sub or
-                 node.op.scalar_op == scal.add) and
+                node.op.scalar_op == scal.add and
                 node.nin == 2):
                 targ = find_node(node.inputs[0], cls)
                 W = node.inputs[1]
@@ -81,15 +95,12 @@ def output_merge(cls, alpha_in, out_in, nd):
                     W = node.inputs[0]
                 if targ is None:
                     return None
-                if node.op.scalar_op == scal.sub:
-                    alpha = -targ.inputs[alpha_in]
-                    W = W - targ.inputs[out_in]
-                else:
-                    alpha = targ.inputs[alpha_in]
-                    W = W + targ.inputs[out_in]
+                if not is_equal(targ.inputs[beta_in], 0.0):
+                    # other cases are too complex for now
+                    return None
                 inputs = list(targ.inputs)
                 inputs[out_in] = W
-                inputs[alpha_in] = alpha
+                inputs[beta_in] = _one.clone()
                 return maker(targ, *inputs)
         return opt
     return wrapper
