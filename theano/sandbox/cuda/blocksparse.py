@@ -645,19 +645,22 @@ if cuda_available:
         if node.op == sparse_block_outer_ss:
             return [sparse_block_outer_ss_inplace(*node.inputs)]
 
-    # Should be run before elemwise fusion
-    @opt.register_opt()
-    @alpha_merge(SparseBlockOuterSS, alpha_in=5, nd=4)
-    def local_merge_blocksparse_alpha(node, *inputs):
-        """
-GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
-        """
-        return [sparse_block_outer_ss(*inputs)]
+# XXX: these optimisations were badly broken and now require a working
+# beta param (could only be a 0/1 thing for outer_merge, but
+# alpha_merge needs the full range).
 
-    @opt.register_opt()
-    @output_merge(SparseBlockOuterSS, alpha_in=5, out_in=0, nd=4)
-    def local_merge_blocksparse_output(node, *inputs):
-        return [sparse_block_outer_ss(*inputs)]
+#    @opt.register_opt()
+#    @alpha_merge(SparseBlockOuterSS, alpha_in=5, beta_in=?, nd=4)
+#    def local_merge_blocksparse_alpha(node, *inputs):
+#        """
+#GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
+#        """
+#        return [sparse_block_outer_ss(*inputs)]
+
+#    @opt.register_opt()
+#    @output_merge(SparseBlockOuterSS, alpha_in=5, beta_in=? out_in=0, nd=4)
+#    def local_merge_blocksparse_output(node, *inputs):
+#        return [sparse_block_outer_ss(*inputs)]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):

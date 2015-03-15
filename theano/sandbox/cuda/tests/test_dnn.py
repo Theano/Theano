@@ -466,7 +466,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
 
 def test_dnn_conv_merge():
-    if not cuda.dnn.dnn_available() or cuda.dnn.version() == -1:
+    if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img = T.ftensor4()
     kern = T.ftensor4()
@@ -475,13 +475,13 @@ def test_dnn_conv_merge():
     b = 1
     c = 4
     f = 3
-    ih = 2
+    ih = 5
     iw = 8
     kh = 2
-    kw = 2
+    kw = 6
     img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
     kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, ih-kw+1, iw-kw+1)).astype('float32')
+    out_val = numpy.random.random((b, f, ih-kh+1, iw-kw+1)).astype('float32')
 
     conv = dnn.dnn_conv(img, kern)
     gw = theano.grad(conv.sum(), kern)
@@ -489,9 +489,15 @@ def test_dnn_conv_merge():
 
     lr = numpy.asarray(0.05, dtype='float32')
 
-    fr = out - lr * conv
-    wr = kern - lr * gw
-    ir = img - lr * gi
+    if cuda.dnn.version() == -1:
+        # Can't merge alpha with cudnn v1
+        fr = conv + out
+        wr = kern + gw
+        ir = img + gi
+    else:
+        fr = lr * (conv + out)
+        wr = kern + lr * gw
+        ir = img + lr * gi
 
     f1 = theano.function([img, kern, out], [fr, wr, ir], mode=mode_with_gpu)
     assert isinstance(f1.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
@@ -545,17 +551,19 @@ def test_dnn_conv_grad():
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                                   conv_mode='conv')(img.shape, kern.shape)
-        return dnn.GpuDnnConv()(img, kern, out, desc)
+        return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                                   conv_mode='conv')(img.shape, kern.shape)
-        return dnn.GpuDnnConvGradI()(kern, out, img, desc)
+        return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
+                                     beta=0.0)
 
     def dconvw(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                                   conv_mode='conv')(img.shape, kern.shape)
-        return dnn.GpuDnnConvGradW()(img, out, kern, desc)
+        return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
+                                     beta=-1.0)
 
     utt.verify_grad(dconv, [img_val, kern_val, out_val])
     utt.verify_grad(dconvi, [img_val, kern_val, out_val])
