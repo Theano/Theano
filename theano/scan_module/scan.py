@@ -77,7 +77,8 @@ def scan(fn,
          name=None,
          profile=False,
          allow_gc=None,
-         cache_grad=False):
+         cache_grad=False,
+         strict=False):
     """
     This function constructs and applies a Scan op to the provided
     arguments.
@@ -912,14 +913,29 @@ def scan(fn,
                              not isinstance(arg, tensor.Constant))]
 
     givens.update(OrderedDict(zip(other_scan_args, other_inner_args)))
-    other_shared_scan_args = [arg.variable for arg
-                        in dummy_f.maker.expanded_inputs
-                        if (isinstance(arg.variable, SharedVariable) and
-                            not arg.update)]
-    other_shared_inner_args = [safe_new(arg.variable, '_copy') for arg
-                        in dummy_f.maker.expanded_inputs
-                        if (isinstance(arg.variable, SharedVariable) and
-                            not arg.update)]
+
+    if strict:
+        non_seqs_set = set(non_sequences)
+
+        other_shared_scan_args = [arg.variable for arg
+                            in dummy_f.maker.expanded_inputs
+                            if (isinstance(arg.variable, SharedVariable) and
+                                not arg.update and
+                                arg.variable in non_seqs_set)]
+        other_shared_inner_args = [safe_new(arg.variable, '_copy') for arg
+                            in dummy_f.maker.expanded_inputs
+                            if (isinstance(arg.variable, SharedVariable) and
+                                not arg.update and
+                                arg.variable in non_seqs_set)]
+    else:
+        other_shared_scan_args = [arg.variable for arg
+                            in dummy_f.maker.expanded_inputs
+                            if (isinstance(arg.variable, SharedVariable) and
+                                not arg.update)]
+        other_shared_inner_args = [safe_new(arg.variable, '_copy') for arg
+                            in dummy_f.maker.expanded_inputs
+                            if (isinstance(arg.variable, SharedVariable) and
+                                not arg.update)]
     givens.update(OrderedDict(zip(other_shared_scan_args,
                            other_shared_inner_args)))
 
@@ -993,11 +1009,15 @@ def scan(fn,
     info['profile'] = profile
     info['allow_gc'] = allow_gc
     info['cache_grad'] = cache_grad
+    info['strict'] = strict
     if cache_grad:
         warnings.warn('cache_grad can result in a WRONG gradient and may only'
                       'be used in such conditions as having a single cost '
                       'associated with this Scan Op. Even when the condition'
                       'is not met, no error will be issued', Warning)
+    if strict:
+        warnings.warn('In the strict mode, all neccessary shared variables '
+                      'must be passed as a part of non_sequences', Warning)
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
