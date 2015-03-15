@@ -55,7 +55,6 @@ class GpuSolve(GpuOp):
                    node,
                    storage_map, _,
                    no_recycling=[]):
-
         from theano.misc.pycuda_utils import to_gpuarray
 
         inputs = [storage_map[v] for v in node.inputs]
@@ -73,11 +72,14 @@ class GpuSolve(GpuOp):
             #Solution vectors
             b = inputs[1][0]
 
-            b = cuda_ndarray.dimshuffle(b, 1, 0)
+            A_cpy = A.copy()
             b_cpy = b.copy()
 
-            A_pycuda = to_gpuarray(A)
-            b_pycuda = to_gpuarray(b)
+            #Convert b to F-order from c-order.
+            b_cpy = b_cpy.dimshuffle(1, 0).reshape((b.shape[0], b.shape[1]))
+
+            A_pycuda = to_gpuarray(A_cpy)
+            b_pycuda = to_gpuarray(b_cpy)
 
             def cula_gpu_solve(A_, b_, trans='T'):
 
@@ -90,7 +92,7 @@ class GpuSolve(GpuOp):
                 if trans in ['T', 'C']:
                     l, n = A_shape
                     k, m = b_shape
-                    if n != m:
+                    if n != k:
                        raise ValueError('A and b must be aligned.')
                 elif trans in ['N']:
                     n, l = A_shape
@@ -110,10 +112,12 @@ class GpuSolve(GpuOp):
                 b_ptr = b_.gpudata
 
                 cula.culaDeviceSgels(trans, n, l, m, A_ptr, lda, b_ptr, ldb)
-                return A, b
+                return A_, b_
 
             A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
-            z[0] = b
+
+            #Convert b to F-order from c-order and assign it to output:
+            z[0] = b_cpy.reshape((b.shape[0], b.shape[1])).dimshuffle(1, 0)
 
         thunk.inputs = inputs
         thunk.outputs = outputs

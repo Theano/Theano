@@ -555,7 +555,7 @@ def test_local_gpu_solve():
         assert numpy.allclose(numpy.dot(a0, out), b0)
 
     cmp((6, 6), (6, 1))
-    cmp((5, 5), (5, 3))
+    cmp((5, 5), (5, 1))
 
 
 def test_local_gpu_dot_to_dot22dot():
