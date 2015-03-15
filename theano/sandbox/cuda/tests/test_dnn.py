@@ -475,13 +475,13 @@ def test_dnn_conv_merge():
     b = 1
     c = 4
     f = 3
-    ih = 2
+    ih = 5
     iw = 8
     kh = 2
-    kw = 2
+    kw = 6
     img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
     kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, ih-kw+1, iw-kw+1)).astype('float32')
+    out_val = numpy.random.random((b, f, ih-kh+1, iw-kw+1)).astype('float32')
 
     conv = dnn.dnn_conv(img, kern)
     gw = theano.grad(conv.sum(), kern)
