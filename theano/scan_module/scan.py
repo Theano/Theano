@@ -318,7 +318,7 @@ def scan(fn,
 
     :param strict:
         If true, all the shared variables used in ``fn`` must be provided as a
-        part of ``non_sequences``. 
+        part of ``non_sequences`` or ``sequences``. 
 
     :rtype: tuple
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
