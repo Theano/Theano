@@ -334,7 +334,7 @@ def diff(x, n=1, axis=-1):
 class BinCountOp(theano.Op):
     """
     DEPRECATED: use bincount() instead.
-    
+
     See function bincount for docstring
     """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
@@ -361,7 +361,7 @@ class BinCountOp(theano.Op):
         warnings.warn((
             "Tile op is deprecated, use tile function instead."),
                       stacklevel=3)
-        
+
         x = basic.as_tensor_variable(x)
 
         if x.dtype not in BinCountOp.compatible_type:
@@ -462,7 +462,7 @@ def bincount(x, weights=None, minlength=None):
     
     if x.dtype not in compatible_type:
         raise TypeError("Inputs dtype must be an integer.")
-        
+
     # Some dtypes are not supported by numpy's implementation of bincount.
     # Until another one is available, we should fail at graph construction
     # time, not wait for execution.
@@ -487,11 +487,10 @@ def bincount(x, weights=None, minlength=None):
         raise TypeError("Inputs must be of dimension 1.")
 
     max_value = x.max() + 1
-    # out_dtype = x.dtype
-    
+
     if minlength is not None:
         max_value = theano.tensor.maximum(max_value, minlength)
-    
+
     if weights is None:
         out = theano.tensor.zeros([max_value], dtype=out_type.dtype)
         out = theano.tensor.inc_subtensor(out[x], 1)
@@ -501,7 +500,7 @@ def bincount(x, weights=None, minlength=None):
         out = theano.tensor.inc_subtensor(out[x], weights)
     return out
 
-    
+
 def squeeze(x):
     """Remove broadcastable dimensions from
     the shape of an array.
