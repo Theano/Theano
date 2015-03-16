@@ -161,12 +161,12 @@ class TestBinCountOp(utt.InferShapeTester):
             x = T.vector('x', dtype=dtype)
 
             if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+                self.assertRaises(TypeError, BinCountOp(), x)
 
             else:
                 self._compile_and_check(
                         [x],
-                        [bincount(x)],
+                        [BinCountOp()(x,None)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -174,7 +174,7 @@ class TestBinCountOp(utt.InferShapeTester):
                 weights = np.random.random((25,)).astype(config.floatX)
                 self._compile_and_check(
                         [x],
-                        [bincount(x, weights=weights)],
+                        [BinCountOp()(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -183,14 +183,14 @@ class TestBinCountOp(utt.InferShapeTester):
                     continue
                 self._compile_and_check(
                         [x],
-                        [bincount(x, minlength=60)],
+                        [BinCountOp(minlength=60)(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
 
                 self._compile_and_check(
                         [x],
-                        [bincount(x, minlength=5)],
+                        [BinCountOp(minlength=5)(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)

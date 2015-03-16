@@ -1,6 +1,6 @@
 import numpy as np
 import numpy
-
+import warnings
 import theano
 
 from theano.tensor import basic
@@ -332,8 +332,11 @@ def diff(x, n=1, axis=-1):
 
 
 class BinCountOp(theano.Op):
-    # See function bincount for docstring
-
+    """
+    DEPRECATED: use bincount() instead.
+    
+    See function bincount for docstring
+    """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
     """Tuple of all compatible dtype for the parameter of this op."""
@@ -355,6 +358,10 @@ class BinCountOp(theano.Op):
         return hash(type(self)) ^ hash(self.minlength)
 
     def make_node(self, x, weights):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
+        
         x = basic.as_tensor_variable(x)
 
         if x.dtype not in BinCountOp.compatible_type:
@@ -450,39 +457,48 @@ def bincount(x, weights=None, minlength=None):
 
     .. versionadded:: 0.6
     """
-    return BinCountOp(minlength=minlength)(x, weights)
+    compatible_type = ('int8', 'int16', 'int32', 'int64',
+                       'uint8', 'uint16', 'uint32', 'uint64')
+    
+    if x.dtype not in compatible_type:
+        raise TypeError("Inputs dtype must be an integer.")
+        
+    # Some dtypes are not supported by numpy's implementation of bincount.
+    # Until another one is available, we should fail at graph construction
+    # time, not wait for execution.
+    int_bitwidth = theano.gof.python_int_bitwidth()
+    if int_bitwidth == 64:
+        numpy_unsupported_dtypes = ('uint64',)
+    if int_bitwidth == 32:
+        numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+        
+    intp_bitwidth = theano.gof.local_bitwidth()
+    if intp_bitwidth == 32:
+        out_type = basic.ivector()
+    elif intp_bitwidth == 64:
+        out_type = basic.lvector()
 
+    if x.dtype in numpy_unsupported_dtypes:
+        raise TypeError(
+            ("Input dtypes %s are not supported by numpy.bincount, "
+             % numpy_unsupported_dtypes), x.dtype)
 
-def newbincount(x, weights=None, minlength=None):
-    """Count number of occurrences of each value in array of non-negative ints.
+    if x.ndim != 1:
+        raise TypeError("Inputs must be of dimension 1.")
 
-    The number of bins (of size 1) is one larger than the largest
-    value in x. If minlength is specified, there will be at least
-    this number of bins in the output array (though it will be longer
-    if necessary, depending on the contents of x). Each bin gives the
-    number of occurrences of its index value in x. If weights is
-    specified the input array is weighted by it, i.e. if a value n
-    is found at position i, out[n] += weight[i] instead of out[n] += 1.
-    Wraping of numpy.bincount
-
-    :param x: 1 dimension, nonnegative ints
-
-    :param weights: array of the same shape as x with corresponding weights.
-        Optional.
-    :param minlength: A minimum number of bins for the output array.
-        Optional.
-
-    .. versionadded:: 0.6
-    """
-    # do checks ...
-
-    # general case...
     max_value = x.max() + 1
-    out_dtype = x.dtype
+    # out_dtype = x.dtype
     
-    out = theano.tensor.zeros(max_value, dtype=out_dtype)
-    out = theano.tensor.inc_subtensor(out[x], 1)
+    if minlength is not None:
+        max_value = theano.tensor.maximum(max_value, minlength)
     
+    if weights is None:
+        out = theano.tensor.zeros([max_value], dtype=out_type.dtype)
+        out = theano.tensor.inc_subtensor(out[x], 1)
+    else:
+        out_type = basic.dvector()
+        out = theano.tensor.zeros([max_value], dtype=out_type.dtype)
+        out = theano.tensor.inc_subtensor(out[x], weights)
     return out
 
     
