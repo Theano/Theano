@@ -453,6 +453,39 @@ def bincount(x, weights=None, minlength=None):
     return BinCountOp(minlength=minlength)(x, weights)
 
 
+def newbincount(x, weights=None, minlength=None):
+    """Count number of occurrences of each value in array of non-negative ints.
+
+    The number of bins (of size 1) is one larger than the largest
+    value in x. If minlength is specified, there will be at least
+    this number of bins in the output array (though it will be longer
+    if necessary, depending on the contents of x). Each bin gives the
+    number of occurrences of its index value in x. If weights is
+    specified the input array is weighted by it, i.e. if a value n
+    is found at position i, out[n] += weight[i] instead of out[n] += 1.
+    Wraping of numpy.bincount
+
+    :param x: 1 dimension, nonnegative ints
+
+    :param weights: array of the same shape as x with corresponding weights.
+        Optional.
+    :param minlength: A minimum number of bins for the output array.
+        Optional.
+
+    .. versionadded:: 0.6
+    """
+    # do checks ...
+
+    # general case...
+    max_value = x.max() + 1
+    out_dtype = x.dtype
+    
+    out = theano.tensor.zeros(max_value, dtype=out_dtype)
+    out = theano.tensor.inc_subtensor(out[x], 1)
+    
+    return out
+
+    
 def squeeze(x):
     """Remove broadcastable dimensions from
     the shape of an array.
