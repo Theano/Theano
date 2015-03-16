@@ -6,6 +6,7 @@ from theano import scalar as scal, Constant
 from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
+from theano.tensor.opt import broadcast_like
 
 from theano.sandbox.cuda.basic_ops import (
     GpuFromHost, HostFromGpu, host_from_gpu, GpuDimShuffle, GpuElemwise)
@@ -36,7 +37,8 @@ def find_node(v, cls):
     # This digs through possibly redundant transfers to for the node
     # that has the op class specified.
     if v.owner is not None:
-        if isinstance(v.owner.op, cls):
+        if (isinstance(v.owner.op, cls) and
+            len(v.clients) == 1):
             return v.owner
         elif (isinstance(v.owner.op, GpuFromHost) and
               v.owner.inputs[0].owner is not None and
@@ -99,9 +101,7 @@ def output_merge(cls, alpha_in, beta_in, out_in, nd):
                     # other cases are too complex for now
                     return None
                 if W.broadcastable != targ.inputs[out_in].broadcastable:
-                    # Would need to explicitly tile the output to fill
-                    # the full shape here.  Disable for now.
-                    return None
+                    W = broadcast_like(W, targ.inputs[out_in], node.fgraph)
                 inputs = list(targ.inputs)
                 inputs[out_in] = W
                 inputs[beta_in] = _one.clone()
