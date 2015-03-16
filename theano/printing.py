@@ -216,7 +216,7 @@ class Print(Op):
     """
     view_map = {0: [0]}
 
-    __props__ = ('message', 'attrs')
+    __props__ = ('message', 'attrs', 'global_fn')
 
     def __init__(self, message="", attrs=("__str__",), global_fn=_print_fn):
         self.message = message
