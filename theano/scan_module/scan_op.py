@@ -1931,9 +1931,10 @@ class Scan(PureOp):
                 type_outs.append(vl.type.why_null)
                 # Replace the inner output with a zero tensor of
                 # the right shape
-                inner_out_sitsot[_p] = tensor.zeros(
+                inner_out_nitsot[_p] = tensor.zeros(
                     diff_inputs[_p].shape,
                     dtype=theano.config.floatX)
+
             if through_shared:
                 type_outs.append('through_shared')
             elif disconnected_dC_dinps_t[_p]:
