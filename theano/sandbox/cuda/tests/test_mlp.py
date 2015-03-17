@@ -125,6 +125,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
     return numpy.asarray(rval), dt
 
 
+@utt.AttemptManyTimes(n_attempts=3, n_req_successes=1)
 def test_run_nnet():
     for n_in in 1024, 2048, 4096:
         for n_hid in 1024, 2048, 4096:

@@ -1,4 +1,5 @@
 from copy import copy, deepcopy
+from functools import wraps
 import logging
 from StringIO import StringIO
 import sys
@@ -370,6 +371,7 @@ class AttemptManyTimes:
         # Wrap fct in a function that will attempt to run it multiple
         # times and return the result if the test passes enough times
         # of propagate the raised exception if it doesn't.
+        @wraps(fct)
         def attempt_multiple_times(*args, **kwargs):
 
             # Keep a copy of the current seed for unittests so that we can use
