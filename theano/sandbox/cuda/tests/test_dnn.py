@@ -686,6 +686,43 @@ def test_dnn_conv_merge_mouts():
                           dnn.GpuDnnConv)
 
 
+def test_dnn_conv_merge_broad():
+    # make sure it doesn't attempt to output/alpha merge a convolution
+    # that has multiple clients.
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img = T.ftensor4()
+    kern = T.ftensor4()
+
+    img_val = numpy.random.random((2, 1, 8, 8)).astype('float32')
+    kern_val = numpy.random.random((3, 1, 4, 5)).astype('float32')
+
+    conv = dnn.dnn_conv(img, kern)
+
+    lr = numpy.asarray(0.05, dtype='float32')
+
+    # this does broadcasting
+    fr = conv + lr
+
+    f1 = theano.function([img, kern], [fr], mode=mode_with_gpu)
+    assert isinstance(f1.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
+                      dnn.GpuDnnConv)
+
+    mode = mode_with_gpu
+    mode = mode.excluding('local_dnn_conv_alpha_merge')
+    mode = mode.excluding('local_dnn_conv_output_merge')
+
+    f2 = theano.function([img, kern], [fr], mode=mode)
+    assert not isinstance(f2.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
+                          dnn.GpuDnnConv)
+
+
+    out_f1 = f1(img_val, kern_val)
+    out_f2 = f2(img_val, kern_val)
+
+    utt.assert_allclose(out_f1, out_f2)
+
+
 def test_dnn_conv_grad():
     if not cuda.dnn.dnn_available() or dnn.version() == -1:
         raise SkipTest('alpha != 1.0 not supported in cudnn v1')
