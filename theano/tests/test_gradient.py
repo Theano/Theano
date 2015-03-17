@@ -719,6 +719,14 @@ class TestDisconnectedGrad(unittest.TestCase):
 
             assert np.allclose(f(a), f2(a))
 
+    def test_connection_pattern(self):
+        T = theano.tensor
+        x = T.matrix('x')
+        y = gradient.disconnected_grad(x)
+
+        connection_pattern = y.owner.op.connection_pattern(y.owner)
+        assert connection_pattern == [[False]]
+
     def test_disconnected_paths(self):
         # Test that taking gradient going through a disconnected
         # path rasises an exception
