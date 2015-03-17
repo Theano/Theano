@@ -78,13 +78,12 @@ class multiple_outputs_numeric_grad:
         if not ndarray_mask:
             ndarray_mask = [True for x in pt]
 
-        dtype_eps = multiple_outputs_numeric_grad.type_eps['float64']
+        dtype_eps = type_eps['float64']
 
         for i, p in enumerate(pt):
             if ndarray_mask[i]:
                 pt[i] = numpy.array(p)
-                _eps = multiple_outputs_numeric_grad.type_eps[str(
-                    pt[i].dtype)]
+                _eps = type_eps[str(pt[i].dtype)]
                 if _eps > dtype_eps:
                     dtype_eps = _eps
 
