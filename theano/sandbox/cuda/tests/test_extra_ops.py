@@ -162,7 +162,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use multiple GPU gridblocks
-            a_shape = [5, 5]
+            a_shape = [4, 4]
             a_shape[1-shape_axis] = self.max_grid_size1+1
             a = np.random.random(a_shape).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a), rtol=5e-5)
