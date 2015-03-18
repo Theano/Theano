@@ -322,7 +322,7 @@ shows how to print all inputs and outputs:
     f(3)
 
     # The code will print the following:
-    #   0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) [array(5.0), array(3.0)] [array(15.0)]
+    #   0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) input(s) value(s): [array(5.0), array(3.0)] output(s) value(s): [array(15.0)]
 
 When using these ``inspect_inputs`` and ``inspect_outputs`` functions
 with ``MonitorMode``, you should see [potentially a lot of] printed output.
@@ -351,7 +351,7 @@ can be achieved as follows:
 
     def detect_nan(i, node, fn):
         for output in fn.outputs:
-            if (not isinstance(numpy.random.RandomState, output[0]) and
+            if (not isinstance(output[0], numpy.random.RandomState) and
                 numpy.isnan(output[0]).any()):
                 print '*** NaN detected ***'
                 theano.printing.debugprint(node)
