@@ -918,7 +918,7 @@ def scan(fn,
     givens.update(OrderedDict(zip(other_scan_args, other_inner_args)))
 
     if strict:
-        non_seqs_set = set(non_sequences)
+        non_seqs_set = set(non_sequences if non_sequences != None else [])
 
         other_shared_scan_args = [arg.variable for arg
                             in dummy_f.maker.expanded_inputs
