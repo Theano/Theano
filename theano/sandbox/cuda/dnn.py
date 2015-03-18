@@ -411,7 +411,7 @@ class GpuDnnConv(DnnBase, COp):
             alg_def = ('CONV_ALGO', alg)
         return [alg_def] + inpl_def
 
-    def make_node(self, img, kern, output, desc, alpha=None):
+    def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         kern = as_cuda_ndarray_variable(kern)
         output = as_cuda_ndarray_variable(output)
@@ -427,12 +427,13 @@ class GpuDnnConv(DnnBase, COp):
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
         alpha = ensure_float(alpha, _one, 'alpha')
+        beta = ensure_float(beta, _zero, 'beta')
 
-        return Apply(self, [img, kern, output, desc, alpha],
+        return Apply(self, [img, kern, output, desc, alpha, beta],
                      [output.type()])
 
     def grad(self, inp, grads):
-        img, kerns, output, desc, alpha = inp
+        img, kerns, output, desc, alpha, beta = inp
         top, = grads
 
         top = gpu_contiguous(top)
@@ -440,12 +441,14 @@ class GpuDnnConv(DnnBase, COp):
         d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
         d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
+        d_beta = grad_not_implemented(self, 5, beta)
 
-        return [d_img, d_kerns, top * alpha, DisconnectedType()(), d_alpha]
+        return [d_img * alpha, d_kerns * alpha, top * beta,
+                DisconnectedType()(), d_alpha, d_beta]
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [1], [1], [0], [1]]
+        return [[1], [1], [1], [0], [1], [1]]
 
     @staticmethod
     def get_out_shape(ishape, kshape, border_mode, subsample):
@@ -507,7 +510,7 @@ class GpuDnnConvGradW(DnnBase, COp):
             self.inplace = False
 
     def grad(self, inp, grads):
-        img, top, output, desc, alpha = inp
+        img, top, output, desc, alpha, beta = inp
         kerns, = grads
 
         kerns = gpu_contiguous(kerns)
@@ -515,12 +518,14 @@ class GpuDnnConvGradW(DnnBase, COp):
         d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
         d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
+        d_beta = grad_not_implemented(self, 5, beta)
 
-        return (d_img, d_top, kerns * alpha, DisconnectedType()(), d_alpha)
+        return (d_img * alpha, d_top * alpha, kerns * beta,
+                DisconnectedType()(), d_alpha, d_beta)
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [1], [1], [0], [1]]
+        return [[1], [1], [1], [0], [1], [1]]
 
     def get_op_params(self):
         if self.inplace:
@@ -528,7 +533,7 @@ class GpuDnnConvGradW(DnnBase, COp):
         else:
             return []
 
-    def make_node(self, img, topgrad, output, desc, alpha=None):
+    def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -544,8 +549,9 @@ class GpuDnnConvGradW(DnnBase, COp):
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
         alpha = ensure_float(alpha, _one, 'alpha')
+        beta = ensure_float(beta, _zero, 'beta')
 
-        return Apply(self, [img, topgrad, output, desc, alpha],
+        return Apply(self, [img, topgrad, output, desc, alpha, beta],
                      [output.type()])
 
     def infer_shape(self, node, shape):
@@ -571,7 +577,7 @@ class GpuDnnConvGradI(DnnBase, COp):
             self.destroy_map = {0: [2]}
 
     def grad(self, inp, grads):
-        kerns, top, output, desc, alpha = inp
+        kerns, top, output, desc, alpha, beta = inp
         img, = grads
 
         img = gpu_contiguous(img)
@@ -579,12 +585,14 @@ class GpuDnnConvGradI(DnnBase, COp):
         d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
         d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
+        d_beta = grad_not_implemented(self, 5, beta)
 
-        return (d_kerns, d_top, img * alpha, DisconnectedType()(), d_alpha)
+        return (d_kerns * alpha, d_top * alpha, img * beta,
+                DisconnectedType()(), d_alpha, d_beta)
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [1], [1], [0], [1]]
+        return [[1], [1], [1], [0], [1], [1]]
 
     def get_op_params(self):
         if self.inplace:
@@ -592,7 +600,7 @@ class GpuDnnConvGradI(DnnBase, COp):
         else:
             return []
 
-    def make_node(self, kern, topgrad, output, desc, alpha=None):
+    def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -608,8 +616,9 @@ class GpuDnnConvGradI(DnnBase, COp):
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
         alpha = ensure_float(alpha, _one, 'alpha')
+        beta = ensure_float(beta, _zero, 'beta')
 
-        return Apply(self, [kern, topgrad, output, desc, alpha],
+        return Apply(self, [kern, topgrad, output, desc, alpha, beta],
                      [output.type()])
 
     def infer_shape(self, node, shape):
@@ -1550,47 +1559,41 @@ if True:
                    70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConv, alpha_in=4, nd=4)
+    @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
     def local_dnn_conv_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradW, alpha_in=4, nd=4)
+    @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
     def local_dnn_convw_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConvGradW()(*inputs)]
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradI, alpha_in=4, nd=4)
+    @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
     def local_dnn_convi_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
         return [GpuDnnConvGradI()(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConv, alpha_in=4, out_in=2, nd=4)
+    @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
     def local_dnn_conv_output_merge(node, *inputs):
-        if not dnn_available() or version() == -1:
-            return None
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradW, alpha_in=4, out_in=2, nd=4)
+    @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
     def local_dnn_convw_output_merge(node, *inputs):
-        if not dnn_available() or version() == -1:
-            return None
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConvGradW()(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradI, alpha_in=4, out_in=2, nd=4)
+    @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
     def local_dnn_convi_output_merge(node, *inputs):
-        if not dnn_available() or version() == -1:
-            return None
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
         return [GpuDnnConvGradI()(*inputs)]
 

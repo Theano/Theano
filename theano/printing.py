@@ -217,6 +217,8 @@ class Print(Op):
     """
     view_map = {0: [0]}
 
+    __props__ = ('message', 'attrs', 'global_fn')
+
     def __init__(self, message="", attrs=("__str__",), global_fn=_print_fn):
         self.message = message
         self.attrs = tuple(attrs)  # attrs should be a hashable iterable
@@ -237,13 +239,6 @@ class Print(Op):
 
     def R_op(self, inputs, eval_points):
         return [x for x in eval_points]
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.message == other.message
-                and self.attrs == other.attrs)
-
-    def __hash__(self):
-        return hash(self.message) ^ hash(self.attrs)
 
     def __setstate__(self, dct):
         dct.setdefault('global_fn', _print_fn)

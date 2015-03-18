@@ -524,7 +524,7 @@ import theano and print the config variable, as in:
     slower otherwise.
 
     This can be any compiler binary (full path or not) but things may
-    break if the interface if not g++-compatible to some degree.
+    break if the interface is not g++-compatible to some degree.
 
 .. attribute:: config.nvcc.fastmath
 
