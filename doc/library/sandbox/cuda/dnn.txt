@@ -40,8 +40,8 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    strongly suggest that you update it to the final version. From now
    on, we only support the final release.
 
-   CuDNN v2 is much faster then v1. We recommand to every body to
-   update from v2.
+   CuDNN v2 is much faster than v1. We recommend that everybody
+   updates to v2.
 
 .. note::
 
@@ -60,8 +60,8 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-    There is a problem we do not understand yet when cudnn path are
-    used with symbolic link. So avoid using that.
+    There is a problem we do not understand yet when cudnn paths are
+    used with symbolic links. So avoid using that.
 
 
 Functions
