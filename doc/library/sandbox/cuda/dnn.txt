@@ -36,12 +36,12 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-   CuDNN v2 is now release, if you used any v2 release candidate, we
+   CuDNN v2 is now released, if you used any v2 release candidate, we
    strongly suggest that you update it to the final version. From now
    on, we only support the final release.
 
    CuDNN v2 is much faster then v1. We recommand to every body to
-   update from v1 to v2.
+   update from v2.
 
 .. note::
 
