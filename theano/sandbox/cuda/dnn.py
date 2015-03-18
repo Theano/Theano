@@ -7,15 +7,12 @@ from theano.scalar import as_scalar, constant
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
-from theano.compat import PY3
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, DownsampleFactorMaxGrad)
-from theano.tensor.basic import ShapeError
-from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
@@ -82,6 +79,14 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                                          " from one version, but we link with"
                                          " a different version %s" % str(v))
                     raise RuntimeError(dnn_available.msg)
+                if version() == (20, 20):
+                    dnn_available.avail = False
+                    dnn_available.msg = (
+                        "You have installed a release candidate of CuDNN v2."
+                        " This isn't supported anymore."
+                        " Update to CuDNN v2 final version.")
+                    raise RuntimeError(dnn_available.msg)
+
     return dnn_available.avail
 
 
@@ -481,7 +486,6 @@ class GpuDnnConv(DnnBase, COp):
             (w + 2*padw - kw)//sw + 1
         )
 
-
     def infer_shape(self, node, shape):
         return [shape[2]]
 
@@ -659,7 +663,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
       work with this Op.
     """
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
-    if (border_mode == 'valid' and subsample == (1,1) and
+    if (border_mode == 'valid' and subsample == (1, 1) and
         direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
@@ -702,12 +706,6 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
     desc_op = desc.owner.op
-    if conv_mode == 'cross' and subsample != (1, 1) and border_mode != 'valid':
-        # there is a bug in cudnn v2 rc1-3 which gives incorrect
-        # results in this case when using the workmem='small'
-        # algorithm.
-        if workmem is None or workmem == 'small':
-            workmem = 'none'
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
@@ -814,8 +812,7 @@ class GpuDnnPoolDesc(GpuOp):
 """ % dict(name=name, desc=desc, mode_flag=mode_flag, fail=sub['fail'],
            wsX=self.ws[0], wsY=self.ws[1],
            stridex=self.stride[0], stridey=self.stride[1],
-           padX=self.pad[0], padY=self.pad[1],
-       )
+           padX=self.pad[0], padY=self.pad[1])
 
     def c_code_cache_version(self):
         return (2, version())
@@ -1480,7 +1477,7 @@ err%(name)s = cudnnSoftmaxBackward(
 
 # Intentation for history
 if True:
-    #@register_opt('cudnn')  # this optimizer is registered in opt.py instead.
+    # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
         if not dnn_available():
@@ -1535,19 +1532,19 @@ if True:
 
     @local_optimizer([GpuDnnConv], inplace=True)
     def local_dnn_conv_inplace(node):
-        if type(node.op) != GpuDnnConv or node.op.inplace == True:
+        if type(node.op) != GpuDnnConv or node.op.inplace:
             return
         return [GpuDnnConv(workmem=node.op.workmem, inplace=True)(*node.inputs)]
 
     @local_optimizer([GpuDnnConvGradW], inplace=True)
     def local_dnn_convgw_inplace(node):
-        if type(node.op) != GpuDnnConvGradW or node.op.inplace == True:
+        if type(node.op) != GpuDnnConvGradW or node.op.inplace:
             return
         return [GpuDnnConvGradW(inplace=True)(*node.inputs)]
 
     @local_optimizer([GpuDnnConvGradI], inplace=True)
     def local_dnn_convgi_inplace(node):
-        if type(node.op) != GpuDnnConvGradI or node.op.inplace == True:
+        if type(node.op) != GpuDnnConvGradI or node.op.inplace:
             return
         return [GpuDnnConvGradI(inplace=True)(*node.inputs)]
 
@@ -1656,8 +1653,8 @@ if True:
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
-                (inp_grad.owner and isinstance(inp_grad.owner.op, HostFromGpu))
-            ):
+                (inp_grad.owner and isinstance(inp_grad.owner.op,
+                                               HostFromGpu))):
                 desc = GpuDnnPoolDesc(ws=ds, stride=st, mode="max", pad=pad)()
                 if not node.op.ignore_border:
                     return

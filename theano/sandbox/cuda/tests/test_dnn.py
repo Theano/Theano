@@ -44,11 +44,11 @@ def pool_2d_i2n(input, ds=(2, 2), strides=None,
         assert pool_function is T.max
         pad_x = pad[0]
         pad_y = pad[1]
-        a = T.alloc(-numpy.inf, shape[0], shape[1], shape[2] + pad_x*2,
-                    shape[3] + pad_y*2)
+        a = T.alloc(-numpy.inf, shape[0], shape[1], shape[2] + pad_x * 2,
+                    shape[3] + pad_y * 2)
         input = T.set_subtensor(a[:, :,
-                                  pad_x:pad_x+shape[2],
-                                  pad_y:pad_y+shape[3]],
+                                  pad_x:pad_x + shape[2],
+                                  pad_y:pad_y + shape[3]],
                                 input)
         shape = input.shape
 
@@ -119,7 +119,7 @@ def test_pooling():
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
-            data = numpy.random.normal(0, 1, shp).astype("float32")*10
+            data = numpy.random.normal(0, 1, shp).astype("float32") * 10
 
             ws = 2
             stride = 2
@@ -214,12 +214,13 @@ def test_dnn_tag():
             [x],
             max_pool_2d(x, ds=(2, 2), ignore_border=True),
             mode=mode_with_gpu.including("cudnn"))
-    except (AssertionError, RuntimeError), e:
+    except (AssertionError, RuntimeError):
         assert not cuda.dnn.dnn_available()
         raised = True
     finally:
         theano.config.on_opt_error = old
-        logging.getLogger('theano.compile.tests.test_dnn').removeHandler(handler)
+        logging.getLogger(
+            'theano.compile.tests.test_dnn').removeHandler(handler)
         logging.getLogger('theano').addHandler(theano.logging_default_handler)
 
     if not raised:
@@ -332,7 +333,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 kern_vals.shape[1], img_val.shape[1],
                 img_val.shape[2] - kern_vals.shape[2] + 1,
                 img_val.shape[3] - kern_vals.shape[3] + 1
-                )
+            )
             out_vals = numpy.zeros(shape, dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
@@ -481,7 +482,8 @@ def test_dnn_conv_merge():
     kw = 6
     img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
     kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, ih-kh+1, iw-kw+1)).astype('float32')
+    out_val = numpy.random.random((b, f, ih - kh + 1,
+                                   iw - kw + 1)).astype('float32')
 
     conv = dnn.dnn_conv(img, kern)
     gw = theano.grad(conv.sum(), kern)
@@ -546,7 +548,8 @@ def test_dnn_conv_grad():
     kw = 2
     img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
     kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, ih-kw+1, iw-kw+1)).astype('float32')
+    out_val = numpy.random.random((b, f, ih - kw + 1,
+                                   iw - kw + 1)).astype('float32')
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
