@@ -3279,6 +3279,60 @@ class T_Scan(unittest.TestCase):
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 0
 
+    def test_grad_duplicate_outputs(self):
+        # This test validates that taking the gradient of a scan, in which
+        # multiple outputs are the same theano variable, works.
+
+        def inner_fct(inp1, inp2, inp3):
+            total = inp1 + inp2 + inp3
+            return total, total
+
+        # Assemble the scan
+        seq = tensor.matrix()
+        out_init = tensor.matrix()
+        non_seq = tensor.vector()
+
+        outputs_info = ([None, dict(initial=out_init, taps=[-3])])
+
+        scan_outputs, _ = theano.scan(fn=inner_fct, sequences=seq,
+                                      outputs_info=outputs_info,
+                                      non_sequences=non_seq)
+
+        # Attempt to take various gradients
+        g_output0 = theano.grad(scan_outputs[0].sum(), [seq, out_init, non_seq])
+        g_output1 = theano.grad(scan_outputs[1].sum(), [seq, out_init, non_seq])
+
+        # Compile the function
+        fct = theano.function([seq, out_init, non_seq],
+                              g_output0 + g_output1)
+
+        # Run the function and validate the outputs
+        seq_value = numpy.random.random((10, 3))
+        out_init_value = numpy.random.random((3, 3))
+        non_seq_value = numpy.random.random((3))
+
+        outputs =  fct(seq_value, out_init_value, non_seq_value)
+
+        expected_g_seq = numpy.array([[4, 4, 4],
+                                      [3, 3, 3],
+                                      [3, 3, 3],
+                                      [3, 3, 3],
+                                      [2, 2, 2],
+                                      [2, 2, 2],
+                                      [2, 2, 2],
+                                      [1, 1, 1],
+                                      [1, 1, 1],
+                                      [1, 1, 1]])
+        expected_g_out_init = expected_g_seq[:3]
+        expected_g_non_seq = numpy.array([22, 22, 22])
+
+        utt.assert_allclose(outputs[0], expected_g_seq)
+        utt.assert_allclose(outputs[1], expected_g_out_init)
+        utt.assert_allclose(outputs[2], expected_g_non_seq)
+        utt.assert_allclose(outputs[3], expected_g_seq)
+        utt.assert_allclose(outputs[4], expected_g_out_init)
+        utt.assert_allclose(outputs[5], expected_g_non_seq)
+
     def test_grad_multiple_seqs_different_nsteps(self):
         # Example provided Michael Forbes
         # This test assures that we clip the sequences to n_steps before

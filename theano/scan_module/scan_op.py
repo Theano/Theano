@@ -1597,7 +1597,16 @@ class Scan(PureOp):
             if idx >= self.n_mit_mot_outs:
                 Xt_placeholder = safe_new(Xt)
                 Xts.append(Xt_placeholder)
-            if Xt not in self.inner_nitsot_outs(self_outputs):
+
+            # Different processing based on whether Xt is a nitsot output
+            # or not. NOTE : This cannot be done by using
+            # "if Xt not in self.inner_nitsot_outs(self_outputs)" because
+            # the exact same variable can be used as multiple outputs.
+            idx_nitsot_start = (self.info['n_mit_mot'] +
+                                self.info['n_mit_sot'] +
+                                self.info['n_sit_sot'])
+            idx_nitsot_end = idx_nitsot_start + self.info['n_nit_sot']
+            if idx < idx_nitsot_start or idx >= idx_nitsot_end:
                 # What we do here is loop through dC_douts and collect all
                 # those that are connected to the specific one and do an
                 # upcast on all of their dtypes to get the dtype for this
