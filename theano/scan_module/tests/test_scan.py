@@ -11,6 +11,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_raises
+from nose.tools import raises
 from numpy.testing import dec
 
 import theano
@@ -3931,6 +3932,27 @@ class T_Scan(unittest.TestCase):
         diff = (abs(result_loose - result_strict)).mean()
 
         assert diff <= type_eps[theano.config.floatX]
+
+    @raises(theano.gof.fg.MissingInputError)
+    def test_strict_mode_ex(self):
+        n = 10
+
+        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w_ = theano.shared(w)
+        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
+
+        def _scan_loose(x):
+            return tensor.dot(x, w_)
+
+        ret_strict = theano.scan(_scan_loose, 
+                               sequences=[],
+                               outputs_info=[x0_],
+                               n_steps=n,
+                               strict=True)
+
+        f_strict = theano.function([x0_], ret_strict[0][-1])
+        result_strict = f_strict(x0)
 
 
 def test_speed():
