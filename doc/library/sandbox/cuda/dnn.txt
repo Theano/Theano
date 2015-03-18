@@ -49,6 +49,18 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
     input of the convolution. They are also used sometimes in the forward 
     pass, when they give a speed up.
 
+.. note::
+
+    There is a problem we do not understand yet when cudnn path are
+    used with symbolic link. So avoid using that.
+
+.. note::
+
+   CuDNN v2 is now release, if you used any v2 release candidate, we
+   strongly suggest that you update it to the final version. From now
+   on, we only support the final release.
+
+
 Functions
 =========
 
