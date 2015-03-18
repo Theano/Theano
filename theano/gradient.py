@@ -1945,6 +1945,8 @@ class DisconnectedGrad(ViewOp):
     def grad(self, args, g_outs):
         return [disconnected_type() for g_out in g_outs]
 
+    def connection_pattern(self, node):
+        return [[False]]
 
 disconnected_grad_ = DisconnectedGrad()
 
