@@ -1093,6 +1093,37 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                 idx += 1
 
 
+class TestBitOpReduceGrad(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+
+    def test_all_grad(self):
+        x = tensor.bmatrix('x')
+        x_all = x.all()
+        gx = theano.grad(x_all, x)
+        f = theano.function([x], gx)
+        x_random = self.rng.binomial(n=1, p=0.5, size=(5, 7)).astype('int8')
+        for x_val in (x_random,
+                      numpy.zeros_like(x_random),
+                      numpy.ones_like(x_random)):
+            gx_val = f(x_val)
+            assert gx_val.shape == x_val.shape
+            assert numpy.all(gx_val == 0)
+
+    def test_any_grad(self):
+        x = tensor.bmatrix('x')
+        x_all = x.any()
+        gx = theano.grad(x_all, x)
+        f = theano.function([x], gx)
+        x_random = self.rng.binomial(n=1, p=0.5, size=(5, 7)).astype('int8')
+        for x_val in (x_random,
+                      numpy.zeros_like(x_random),
+                      numpy.ones_like(x_random)):
+            gx_val = f(x_val)
+            assert gx_val.shape == x_val.shape
+            assert numpy.all(gx_val == 0)
+
+
 class TestElemwise(unittest_tools.InferShapeTester):
 
     def test_infer_shape(self):

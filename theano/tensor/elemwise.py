@@ -1653,6 +1653,10 @@ class All(CAReduce):
         ret = super(All, self).make_node(input)
         return ret
 
+    def grad(self, inp, grads):
+        x, = inp
+        return [x.zeros_like(theano.config.floatX)]
+
 
 class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
@@ -1678,6 +1682,10 @@ class Any(CAReduce):
             input = theano.tensor.neq(input, 0)
         ret = super(Any, self).make_node(input)
         return ret
+
+    def grad(self, inp, grads):
+        x, = inp
+        return [x.zeros_like(theano.config.floatX)]
 
 
 class CAReduceDtype(CAReduce):
