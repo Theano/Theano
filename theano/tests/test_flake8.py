@@ -220,7 +220,6 @@ whitelist_flake8 = [
     "sandbox/cuda/tests/test_tensor_op.py",
     "sandbox/cuda/tests/test_extra_ops.py",
     "sandbox/cuda/tests/test_gemmcorr3d.py",
-    "sandbox/cuda/tests/test_dnn.py",
     "sandbox/cuda/tests/test_viewop.py",
     "sandbox/scan_module/scan_utils.py",
     "sandbox/scan_module/scan.py",
