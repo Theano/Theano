@@ -36,6 +36,15 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
+   CuDNN v2 is now release, if you used any v2 release candidate, we
+   strongly suggest that you update it to the final version. From now
+   on, we only support the final release.
+
+   CuDNN v2 is much faster then v1. We recommand to every body to
+   update from v1 to v2.
+
+.. note::
+
     Normally you should not call GPU Ops directly, but the CPU interface
     currently does not allow all options supported by cuDNN ops. So it is
     possible that you will need to call them manually.
@@ -53,12 +62,6 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
     There is a problem we do not understand yet when cudnn path are
     used with symbolic link. So avoid using that.
-
-.. note::
-
-   CuDNN v2 is now release, if you used any v2 release candidate, we
-   strongly suggest that you update it to the final version. From now
-   on, we only support the final release.
 
 
 Functions
