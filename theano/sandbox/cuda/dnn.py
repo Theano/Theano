@@ -82,6 +82,14 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                                          " from one version, but we link with"
                                          " a different version %s" % str(v))
                     raise RuntimeError(dnn_available.msg)
+                if version() == (20, 20):
+                    dnn_available.avail = False
+                    dnn_available.msg = (
+                        "You have installed a release candidate of CuDNN v2."
+                        " This isn't supported anymore."
+                        " Update to CuDNN v2 final version.")
+                    raise RuntimeError(dnn_available.msg)
+
     return dnn_available.avail
 
 
@@ -702,12 +710,6 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns.shape)
     desc_op = desc.owner.op
-    if conv_mode == 'cross' and subsample != (1, 1) and border_mode != 'valid':
-        # there is a bug in cudnn v2 rc1-3 which gives incorrect
-        # results in this case when using the workmem='small'
-        # algorithm.
-        if workmem is None or workmem == 'small':
-            workmem = 'none'
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
