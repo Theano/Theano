@@ -1922,6 +1922,34 @@ def local_set_to_inc_subtensor(node):
 @register_canonicalize
 @register_specialize
 @gof.local_optimizer([Subtensor, AdvancedSubtensor1])
+def local_useless_slice(node):
+    """
+    Remove Subtensor/AdvancedSubtensor1 of the from X[0, :] -> X[0]
+    """
+    if isinstance(node.op, Subtensor):
+        slices = get_idx_list(node.inputs, node.op.idx_list)
+        last_slice = len(slices)
+        for s in slices[::-1]: 
+            # check if slice and then check slice indices
+            if isinstance(s, slice): 
+                if s.start is None and s.stop is None and\
+                   (s.step is None or T.extract_constant(s.step) == 1): 
+                    last_slice -= 1
+            else:
+                break
+        # check if we removed something
+        if last_slice < len(slices):
+            subtens = Subtensor(make_constant(slices[:last_slice])) 
+            sl_ins = Subtensor.collapse(slices[:last_slice],
+                                        lambda x: isinstance(x, T.Variable))
+            out = subtens(node.inputs[0], *sl_ins)
+
+            return [out]
+
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_useless_subtensor(node):
     """
     Remove Subtensor/AdvancedSubtensor1 if it takes the full input. In the
