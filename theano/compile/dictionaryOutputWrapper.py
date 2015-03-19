@@ -1,9 +1,10 @@
 '''
-Supports user generating theano function where the outputs are a dictionary
+Generates a wrapper around theano functions that allows the user to receive outputs in a dictionary.  
 '''
 
-def createFunctionReturningDictionary(args, fn, keys):
-    outputLst = fn(*args)
+def createFunctionReturningDictionary(args, kwargs, fn, keys):
+
+    outputLst = fn(*args, **kwargs)
 
     outputDict = {}
 
@@ -11,4 +12,5 @@ def createFunctionReturningDictionary(args, fn, keys):
         outputDict[keys[i]] = outputLst[i]
 
     return outputDict
+
 

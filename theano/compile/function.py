@@ -280,7 +280,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     if outputsDictFormat:
 
-        fnDictOutput = (lambda *args: createFunctionReturningDictionary(args, fn = fn, keys = outputKeys))
+        fnDictOutput = (lambda *args, **kwargs: createFunctionReturningDictionary(args, kwargs, fn = fn, keys = outputKeys))
 
         return fnDictOutput
 
