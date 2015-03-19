@@ -3333,6 +3333,35 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(outputs[4], expected_g_out_init)
         utt.assert_allclose(outputs[5], expected_g_non_seq)
 
+    def test_grad_duplicate_outputs_connection_pattern(self):
+        # This test checks for a crash in scan.connection_pattern when taking
+        # the grad of a scan with certain combinations of outputs.
+
+        def inner_fct(inp1, inp2, inp3, inp4, inp5, inp6):
+            total = inp1 + inp2 + inp3 + inp4 + inp5 + inp6
+            return total, total, total, total, total, total
+
+        # Assemble the scan
+        out_init = [tensor.vector(), tensor.vector(),
+                    tensor.matrix(), tensor.matrix()]
+
+        outputs_info = ([None, None, out_init[0], out_init[1],
+                        dict(initial=out_init[2], taps=[-2, -1]),
+                        dict(initial=out_init[3], taps=[-2, -1])])
+
+        scan_outputs, _ = theano.scan(fn=inner_fct, outputs_info=outputs_info,
+                                      n_steps=10)
+
+        g_output0 = theano.grad(scan_outputs[0].sum(), out_init[1])
+
+        # Validate the connnection pattern is as it should be
+        node = scan_outputs[0].owner
+        connection_pattern = node.op.connection_pattern(node)
+        expected_connection_pattern = [[(j in [1,2,3,4]) for i in range(6)]
+                                       for j in range(7)]
+
+        assert connection_pattern == expected_connection_pattern
+
     def test_grad_multiple_seqs_different_nsteps(self):
         # Example provided Michael Forbes
         # This test assures that we clip the sequences to n_steps before
