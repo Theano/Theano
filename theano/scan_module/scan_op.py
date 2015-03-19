@@ -1349,33 +1349,33 @@ class Scan(PureOp):
                     e += 1
             return self.outputs[s:e]
 
-        def _get_inner_inps(iidx):
-            if node.inputs[iidx + 1] in self.outer_nitsot(node):
-                return None
-            if node.inputs[iidx + 1] in self.outer_non_seqs(node):
-                loc_idx = self.outer_non_seqs(node).index(
-                    node.inputs[iidx + 1])
-                return [self.inner_non_seqs(self.inputs)[loc_idx]]
+        def _get_inner_inps(outer_iidx):
+            """Given the index of an outer input, return the corresponding
+            inner input(s) as a sequence.
+            """
 
-            s = 0
-            if self.n_seqs > 0:
-                e = 1
+            outer_iidx_from_inner_iidx = self.get_outer_iidx_from_inner_iidx_seq()
+
+            # For every inner input, if the corresponding outer input is the
+            # desired one, store the index
+            inner_iidxs = []
+            for i in xrange(len(outer_iidx_from_inner_iidx)):
+                if outer_iidx_from_inner_iidx[i] == outer_iidx:
+                    inner_iidxs.append(i)
+
+            # The inner inputs can be selected this way because the indices in
+            # inner_iidxs are consecutive and in ascending order
+            if len(inner_iidxs) > 0:
+                inner_inputs = self.inputs[inner_iidxs[0]:inner_iidxs[-1]+1]
             else:
-                e = len(self.tap_array[0])
-            for p in xrange(iidx):
-                s = e
-                if p < self.n_seqs:
-                    e += 1
-                elif p - self.n_seqs < len(self.tap_array):
-                    e += len(self.tap_array[p - self.n_seqs])
-                else:
-                    e += 1
+                inner_inputs = []
 
-            return self.inputs[s:e]
+            return inner_inputs
+
         for oidx, out in enumerate(node.outputs):
             for iidx, inp in enumerate(node.inputs[1:]):
                 ols = _get_inner_outs(oidx)
-                ils = _get_inner_inps(iidx)
+                ils = _get_inner_inps(iidx + 1)
 
                 if ils is None:
                     # The gradient should be disconnected
@@ -1439,7 +1439,7 @@ class Scan(PureOp):
         return connection_pattern
 
     def get_outer_iidx_from_inner_iidx_seq(self):
-        """ Return a sequence where the value of at the i-th position is the
+        """ Return a sequence where the value at the i-th position is the
         index of the outer input corresponding to the i-th inner input
         """
 
