@@ -17,6 +17,7 @@ import warnings
 from theano import gof
 from theano import compat
 
+from theano.compile.dictionaryOutputWrapper import createFunctionReturningDictionary
 
 def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
                   givens=None,
@@ -185,6 +186,15 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
+
+    if type(outputs) is dict:
+        outputsDictFormat = True
+        outputKeys = outputs.keys()
+        outputs = outputs.values()
+    else:
+        outputsDictFormat = False
+
+
     if name is None:
         # Determine possible file names
         source_file = re.sub('\.pyc?', '.py', __file__)
@@ -267,4 +277,16 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs
+
+    if outputsDictFormat:
+
+        fnDictOutput = (lambda *args: createFunctionReturningDictionary(args, fn = fn, keys = outputKeys))
+
+        return fnDictOutput
+
+
+
     return fn
+
+
+
