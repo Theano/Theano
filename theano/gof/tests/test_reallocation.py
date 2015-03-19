@@ -26,16 +26,18 @@ class Test_reallocation(unittest.TestCase):
                             mode=m)
 
         output = f(1, 2)
+        assert output
         storage_map = f.fn.storage_map
 
         def check_storage(storage_map):
             from theano.tensor.var import TensorConstant
-            for i in storage_map.keys(): 
+            for i in storage_map.keys():
                 if not isinstance(i, TensorConstant):
                     keys_copy = storage_map.keys()[:]
                     keys_copy.remove(i)
                     for o in keys_copy:
-                        if storage_map[i][0] and storage_map[i][0] == storage_map[o][0]:
+                        if (storage_map[i][0] and
+                            storage_map[i][0] == storage_map[o][0]):
                             return [True, storage_map[o][0]]
             return [False, None]
 
