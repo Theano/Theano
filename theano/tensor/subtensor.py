@@ -13,7 +13,7 @@ import theano
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
-from theano.gof.python25 import maxsize
+from theano.compat.python2x import maxsize
 from theano.printing import pprint
 from theano import scalar as scal
 from theano.tensor.basic import alloc
@@ -383,7 +383,8 @@ class Subtensor(Op):
         else:
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)
 
-    def get_constant_idx(self, inputs, allow_partial=False):
+    def get_constant_idx(self, inputs, allow_partial=False,
+                         only_process_constants=False):
         """
         Return the idx_list with constant inputs replaced by their
         python scalar equivalent.  May raise
@@ -405,6 +406,11 @@ class Subtensor(Op):
             [v, slice(1, 3, None)]
             >>> b.owner.op.get_constant_idx(b.owner.inputs)
             NotScalarConstantError: v
+
+        :param only_process_constants: If True, we only attempt to obtain
+            the value of an index/slice if it's directly constant and don't
+            try to dig through dimshuffles, fills, allocs, and other to figure
+            out its value.
         """
         real_idx = get_idx_list(inputs, self.idx_list)
 
@@ -417,12 +423,14 @@ class Subtensor(Op):
                              conv(val.step))
             else:
                 try:
-                    return get_scalar_constant_value(val)
+                    return get_scalar_constant_value(val,
+                            only_process_constants=only_process_constants)
                 except theano.tensor.NotScalarConstantError:
                     if allow_partial:
                         return val
                     else:
                         raise
+
         return map(conv, real_idx)
 
     def __init__(self, idx_list):
@@ -1544,31 +1552,41 @@ class IncSubtensor(Op):
             else:
                 gx = g_output
             gy = Subtensor(idx_list=self.idx_list)(g_output, *idx_list)
-            if gy.broadcastable != y.broadcastable:
-                y_dim_added = gy.ndim - y.ndim
-                y_broad = (True,) * y_dim_added + y.broadcastable
-                assert sum(gy.broadcastable) < sum(y_broad)
-                axis_to_sum = []
-                for i in range(gy.ndim):
-                    if gy.broadcastable[i] is False and y_broad[i] is True:
-                        axis_to_sum.append(i)
-                    elif (gy.broadcastable[i] is True and
-                          y_broad[i] is False):
-                        # This mean that Theano where able to infer that
-                        # gy.shape[i] is 1, so y.shape[i] is 1, but we
-                        # didn't know it. It is fine.
-                        pass
-                    else:
-                        assert gy.broadcastable[i] == y_broad[i]
-                gy = gy.sum(axis=axis_to_sum, keepdims=True)
-                if gy.ndim != y.ndim:
-                    assert gy.ndim > y.ndim
-                    for i in range(y_dim_added):
-                        assert gy.broadcastable[i]
-                    gy = gy.dimshuffle(*range(y_dim_added, gy.ndim))
-                assert gy.broadcastable == y.broadcastable
+            gy = _sum_grad_over_bcasted_dims(y, gy)
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
+
+def _sum_grad_over_bcasted_dims(x, gx):
+    """Sum of gx over dimensions to reproduce x.broadcastable.
+
+    This is useful to sum gradients over certain dimensions when
+    x has been broadcasted, and we need to sum the gradient contributions
+    over all duplications.
+    """
+    if gx.broadcastable != x.broadcastable:
+        x_dim_added = gx.ndim - x.ndim
+        x_broad = (True,) * x_dim_added + x.broadcastable
+        assert sum(gx.broadcastable) < sum(x_broad)
+        axis_to_sum = []
+        for i in range(gx.ndim):
+            if gx.broadcastable[i] is False and x_broad[i] is True:
+                axis_to_sum.append(i)
+            elif (gx.broadcastable[i] is True and
+                  x_broad[i] is False):
+                # This means that Theano was able to infer that
+                # gx.shape[i] is 1, so x.shape[i] is 1, but we
+                # didn't know it. It is fine.
+                pass
+            else:
+                assert gx.broadcastable[i] == x_broad[i]
+        gx = gx.sum(axis=axis_to_sum, keepdims=True)
+        if gx.ndim != x.ndim:
+            assert gx.ndim > x.ndim
+            for i in range(x_dim_added):
+                assert gx.broadcastable[i]
+            gx = gx.dimshuffle(*range(x_dim_added, gx.ndim))
+        assert gx.broadcastable == x.broadcastable
+    return gx
 
 
 #########################
@@ -1961,6 +1979,7 @@ class AdvancedIncSubtensor1(Op):
             else:
                 gx = g_output
             gy = advanced_subtensor1(g_output, idx_list)
+            gy = _sum_grad_over_bcasted_dims(y, gy)
 
         return [gx, gy] + [DisconnectedType()()]
 
@@ -2247,6 +2266,9 @@ class AdvancedIncSubtensor(Op):
             else:
                 gx = outgrad
             gy = advanced_subtensor(outgrad, *idxs)
+            # Make sure to sum gy over the dimensions of y that have been
+            # added or broadcasted
+            gy = _sum_grad_over_bcasted_dims(y, gy)
         return [gx, gy] + \
             [DisconnectedType()() for _ in idxs]
 

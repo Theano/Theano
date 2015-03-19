@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
-
+import platform
 import distutils.sysconfig
 
 importlib = None
@@ -663,9 +663,15 @@ class ModuleCache(object):
         too_old_to_use = []
 
         to_delete = []
+        to_delete_empty = []
+
         def rmtree(*args, **kwargs):
             if cleanup:
                 to_delete.append((args, kwargs))
+
+        def rmtree_empty(*args, **kwargs):
+            if cleanup:
+                to_delete_empty.append((args, kwargs))
 
         # add entries that are not in the entry_from_key dictionary
         time_now = time.time()
@@ -684,7 +690,11 @@ class ModuleCache(object):
             if not os.path.isdir(root):
                 continue
             files = os.listdir(root)
-            if not files or 'delete.me' in files:
+            if not files:
+                rmtree_empty(root, ignore_nocleanup=True,
+                       msg="empty dir")
+                continue
+            if 'delete.me' in files:
                 rmtree(root, ignore_nocleanup=True,
                        msg="delete.me found in dir")
                 continue
@@ -900,10 +910,14 @@ class ModuleCache(object):
                                         pkl_file_to_remove)
                     self.loaded_key_pkl.remove(pkl_file_to_remove)
 
-        if to_delete:
+        if to_delete or to_delete_empty:
             with compilelock.lock_ctx():
                 for a, kw in to_delete:
                     _rmtree(*a, **kw)
+                for a, kw in to_delete_empty:
+                    files = os.listdir(a[0])
+                    if not files:
+                        _rmtree(*a, **kw)
 
         _logger.debug('Time needed to refresh cache: %s',
                       (time.time() - start_time))
@@ -1411,6 +1425,10 @@ def std_include_dirs():
 
 
 def std_lib_dirs_and_libs():
+    # We cache the results as on Windows, this trigger file access and
+    # this method is called many times.
+    if std_lib_dirs_and_libs.data is not None:
+        return std_lib_dirs_and_libs.data
     python_inc = distutils.sysconfig.get_python_inc()
     if sys.platform == 'win32':
         # Obtain the library name from the Python version instead of the
@@ -1438,25 +1456,39 @@ def std_lib_dirs_and_libs():
             #sys.base_prefix support only one case
             libdir = os.path.join(sys.prefix, 'libs')
 
-            for f, lib in [('libpython27.a', 'libpython 1.2'),
-                           ('libmsvcr90.a', 'mingw 4.5.2')]:
+            for f, lib in [('libpython27.a', 'libpython 1.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
                     print ("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
                            )
+            libdirs = [
+                # Used in older Canopy
+                os.path.join(sys.prefix, 'libs'),
+                # Used in newer Canopy
+                os.path.join(sys.prefix,
+                             r'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
+            for f, lib in [('libmsvcr90.a',
+                            'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
+                if not any([os.path.exists(os.path.join(libdir, f))
+                            for libdir in libdirs]):
+                    print ("Your Python version is from Canopy. " +
+                           "You need to install the package '" + lib +
+                           "' from Canopy package manager."
+                           )
             python_lib_dirs.insert(0, libdir)
-
-        return [libname], python_lib_dirs
+        std_lib_dirs_and_libs.data = [libname], python_lib_dirs
 
     # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
     # makes it unnecessary.
     elif sys.platform == 'darwin':
-        return [], []
+        std_lib_dirs_and_libs.data = [], []
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-        return [libname], []
+        std_lib_dirs_and_libs.data = [libname], []
+    return std_lib_dirs_and_libs.data
+std_lib_dirs_and_libs.data = None
 
 
 def std_libs():
@@ -1733,8 +1765,8 @@ class GCC_compiler(object):
         # Figure out whether the current Python executable is 32
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
-        # Pi.
-        if not any(['arm' in flag for flag in cxxflags]):
+        # Pi, and Raspberry Pi 2.
+        if not any(['arm' in flag for flag in cxxflags]) and platform.machine() != 'armv7l':
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
@@ -1777,6 +1809,7 @@ class GCC_compiler(object):
         flags = list(flags)
         compilation_ok = True
         run_ok = False
+        out, err = None, None
         try:
             fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
             exe_path = path[:-2]

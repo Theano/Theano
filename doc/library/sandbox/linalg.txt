@@ -17,5 +17,3 @@ API
 
 .. automodule:: theano.sandbox.linalg.ops
     :members:
-.. automodule:: theano.sandbox.linalg.kron
-    :members:

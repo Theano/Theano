@@ -68,7 +68,6 @@ predefined_linkers = {
     'c': gof.CLinker(),  # Don't support gc. so don't check allow_gc
     'c|py': gof.OpWiseCLinker(),  # Use allow_gc Theano flag
     'c|py_nogc': gof.OpWiseCLinker(allow_gc=False),
-    'c&py': gof.DualLinker(checker=check_equal),  # Deprecated
     'vm': gof.vm.VM_Linker(use_cloop=False),  # Use allow_gc Theano flag
     'cvm': gof.vm.VM_Linker(use_cloop=True),  # Use allow_gc Theano flag
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
@@ -159,6 +158,18 @@ class AddDestroyHandler(gof.Optimizer):
         fgraph.attach_feature(gof.DestroyHandler())
 
 
+class AddNoOutputFromInplace(gof.Optimizer):
+    """This optimizer adds to the fgraph a feature that will prevent outputs
+    of a fgraph to be created by performing inplace operations on intermediary
+    variables. This is useful when the outputs of the fgraph are preallocated
+    to prevent useless copying of the data. Currently, scan preallocates its
+    outputs
+    """
+    def add_requirements(self, fgraph):
+        super(AddNoOutputFromInplace, self).add_requirements(fgraph)
+        fgraph.attach_feature(gof.NoOutputFromInplace())
+
+
 class PrintCurrentFunctionGraph(gof.Optimizer):
     """This optimizer is for debugging.
 
@@ -210,6 +221,9 @@ optdb.register('specialize_device', gof.EquilibriumDB(),
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),
         49, 'fast_run', 'merge')
+
+optdb.register('add_no_output_from_inplace', AddNoOutputFromInplace(),
+        49.4)
 
 optdb.register('add_destroy_handler', AddDestroyHandler(),
         49.5, 'fast_run', 'inplace')
@@ -379,26 +393,9 @@ def get_mode(orig_string):
 def get_default_mode():
     return get_mode(None)
 
-# Removed: use config.mode instead.
-#default_mode = config.mode
-
 
 def register_mode(name, mode):
     """Add a `Mode` which can be referred to by `name` in `function`."""
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
-
-
-def register_OutputGuard_c_code(type):
-    """Deprecated function calling register_view_op_c_code"""
-    warnings.warn("register_OutputGuard_c_code(type) is deprecated, "
-            "theano.compile.register_view_op_c_code(type, code, version=()) instead.",
-            stacklevel=2)
-    register_view_op_c_code(
-            type,
-            dedent("""
-                Py_XDECREF(%(oname)s);
-                %(oname)s = %(iname)s;
-                Py_XINCREF(%(oname)s);
-                """))

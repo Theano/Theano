@@ -12,6 +12,7 @@ import numpy
 
 from theano.compat import PY3
 from theano.compat.six import StringIO
+from theano.gof.utils import MethodNotDefined
 
 if PY3:
     import hashlib
@@ -47,7 +48,7 @@ def hash_from_file(file_path):
 
 
 import theano
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano import config
 
 # Note that we need to do this before importing cutils, since when there is
@@ -1736,8 +1737,6 @@ class DualLinker(link.Linker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             return type(self)(self.checker).accept(fgraph, no_recycling)
-            # raise Exception("Cannot accept from a Linker that is already "
-            #                 "tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
@@ -1779,3 +1778,34 @@ class DualLinker(link.Linker):
                     link.raise_with_op(node1)
 
         return f, i1, o1
+
+
+class HideC(object):
+    def __hide(*args):
+        raise utils.MethodNotDefined()
+
+    c_code = __hide
+    c_code_cleanup = __hide
+
+    c_headers = __hide
+    c_header_dirs = __hide
+    c_libraries = __hide
+    c_lib_dirs = __hide
+
+    c_support_code = __hide
+    c_support_code_apply = __hide
+
+    c_compile_args = __hide
+    c_no_compile_args = __hide
+    c_init_code = __hide
+    c_init_code_apply = __hide
+
+    c_init_code_struct = __hide
+    c_support_code_struct = __hide
+    c_cleanup_code_struct = __hide
+
+    def c_code_cache_version(self):
+        return ()
+
+    def c_code_cache_version_apply(self, node):
+        return self.c_code_cache_version()

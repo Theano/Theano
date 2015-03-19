@@ -36,6 +36,15 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
+   CuDNN v2 is now released, if you used any v2 release candidate, we
+   strongly suggest that you update it to the final version. From now
+   on, we only support the final release.
+
+   CuDNN v2 is much faster than v1. We recommend that everybody
+   updates to v2.
+
+.. note::
+
     Normally you should not call GPU Ops directly, but the CPU interface
     currently does not allow all options supported by cuDNN ops. So it is
     possible that you will need to call them manually.
@@ -48,6 +57,12 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
     Those correspond to the gradient wrt the weights and the gradient wrt the
     input of the convolution. They are also used sometimes in the forward 
     pass, when they give a speed up.
+
+.. note::
+
+    There is a problem we do not understand yet when cudnn paths are
+    used with symbolic links. So avoid using that.
+
 
 Functions
 =========

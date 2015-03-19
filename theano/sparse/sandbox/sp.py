@@ -15,7 +15,7 @@ from scipy import sparse as scipy_sparse
 import theano
 import theano.sparse
 from theano import sparse, gof, Op, tensor
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 from theano.sparse.basic import Remove0, remove0
 
 # To maintain compatibility

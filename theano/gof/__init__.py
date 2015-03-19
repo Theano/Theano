@@ -36,7 +36,7 @@ e-mail thread "What is gof?"
 """
 
 from theano.gof.cc import \
-    CLinker, OpWiseCLinker, DualLinker
+    CLinker, OpWiseCLinker, DualLinker, HideC
 
 # Also adds config vars
 from theano.gof.compiledir import \
@@ -74,7 +74,7 @@ from theano.gof.optdb import \
 from theano.gof.toolbox import \
     Feature, \
     Bookkeeper, History, Validator, ReplaceValidate, NodeFinder,\
-    PrintListener, ReplacementDidntRemovedError
+    PrintListener, ReplacementDidntRemovedError, NoOutputFromInplace
 
 from theano.gof.type import \
     Type, Generic, generic

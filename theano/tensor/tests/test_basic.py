@@ -24,7 +24,7 @@ from theano.compat.six import StringIO
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
-from theano.gof.python25 import any, all, combinations
+from theano.compat.python2x import any, all, combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
@@ -5528,6 +5528,29 @@ class test_tensordot(unittest.TestCase):
         self.assertTrue(numpy.allclose(numpy.tensordot(aval, bval, axes),
                                        f3(aval, bval)))
         utt.verify_grad(self.TensorDot(axes), [aval, bval])
+
+    def test_broadcastable1(self):
+        x = TensorType(dtype=floatX, broadcastable=(True, False, False))('x')
+        y = tensor3('y')
+        z = tensordot(x, y)
+        assert z.broadcastable == (True, False)
+        f = inplace_func([x, y], z)
+        xv = rand(1, 3, 4)
+        yv = rand(3, 4, 5)
+        zv = f(xv, yv)
+        self.assertTrue(numpy.allclose(numpy.tensordot(xv, yv), zv))
+
+    def test_broadcastable2(self):
+        x = TensorType(dtype=floatX, broadcastable=(True, False, False))('x')
+        y = tensor3('y')
+        axes = [[2, 1], [0, 1]]
+        z = tensordot(x, y, axes=axes)
+        assert z.broadcastable == (True, False)
+        f = inplace_func([x, y], z)
+        xv = rand(1, 3, 4)
+        yv = rand(4, 3, 5)
+        zv = f(xv, yv)
+        self.assertTrue(numpy.allclose(numpy.tensordot(xv, yv, axes=axes), zv))
 
 
 def test_smallest_stack():

@@ -16,8 +16,10 @@ import inspect
 import logging
 import numpy
 import os
-import sys
 import re
+import StringIO
+import sys
+import traceback
 import warnings
 
 import theano
@@ -448,7 +450,31 @@ class PureOp(object):
             return v.get_value(borrow=True, return_internal_type=True)
         elif isinstance(v, graph.Variable) and hasattr(v.tag, 'test_value'):
             # ensure that the test value is correct
-            return v.type.filter(v.tag.test_value)
+            try:
+                ret = v.type.filter(v.tag.test_value)
+            except Exception, e:
+                # Better error message.
+                detailed_err_msg = (
+                    "For compute_test_value, one input test value does not"
+                    " have the requested type.\n")
+                tr = getattr(v.tag, 'trace', None)
+                if tr:
+                    sio = StringIO.StringIO()
+                    traceback.print_list(tr, sio)
+                    tr = sio.getvalue()
+                    detailed_err_msg += (
+                        " \nBacktrace when that variable is created:\n")
+                    detailed_err_msg += str(tr)
+                detailed_err_msg += (
+                    "\nThe error when converting the test value to that"
+                    " variable type:")
+                # We need to only have 1 args and it should be of type
+                # string.  Otherwise, it print the tuple and so the
+                # new line do not get printed.
+                args = (detailed_err_msg,) + tuple(str(arg) for arg in e.args)
+                e.args = ("\n".join(args),)
+                raise
+            return ret
 
         raise AttributeError('%s has no test value' % v)
 
@@ -1120,10 +1146,27 @@ class COp(Op):
                 raise ValueError("No valid section marker was found in file "
                                  "%s" % self.func_files[i])
 
+    def get_op_params(self):
+        """
+        Returns a list of (name, value) pairs that will be turned into
+        macros for use within the op code. This is intended to allow
+        an op's properties to influence the generated C code.
+
+        The names must be strings that are not a C keyword and the
+        values must be strings of literal C representations.
+        """
+        return []
+
     def c_code_cache_version(self):
         return hash(tuple(self.func_codes))
 
-    c_init_code = simple_meth('init_code')
+    def c_init_code(self):
+        if 'init_code' in self.code_sections:
+            return [self.code_sections['init_code']]
+        else:
+            raise utils.MethodNotDefined(
+                'c_init_code', type(self), type(self).__name__)
+
     c_init_code_apply = apply_meth('init_code_apply')
     c_support_code = simple_meth('support_code')
     c_support_code_apply = apply_meth('support_code_apply')
@@ -1181,6 +1224,10 @@ class COp(Op):
         define_macros.append(define_template % ("APPLY_SPECIFIC(str)",
                                                 "str##_%s" % name))
         undef_macros.append(undef_template % "APPLY_SPECIFIC")
+
+        for n, v in self.get_op_params():
+            define_macros.append(define_template % (n, v))
+            undef_macros.append(undef_template % (n,))
 
         return os.linesep.join(define_macros), os.linesep.join(undef_macros)
 

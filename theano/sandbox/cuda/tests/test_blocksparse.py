@@ -18,7 +18,8 @@ from theano.sandbox.cuda.basic_ops import (GpuDimShuffle,
 from theano.sandbox.cuda.blocksparse import (sparse_block_dot_SS,
                                              sparse_block_gemv_ss,
                                              sparse_block_outer_ss,
-                                             sparse_block_outer_ss_inplace)
+                                             sparse_block_outer_ss_inplace,
+                                             SparseBlockOuterSS)
 from theano.sandbox.cuda.var import float32_shared_constructor
 
 
@@ -168,7 +169,10 @@ def test_blocksparse_grad_shape():
     assert W_g.shape == W_val.shape
 
 
-def test_blocksparse_grad_merge():
+# This test is temporarily disabled since we disabled the output_merge
+# and alpha_merge optimizations for blocksparse due to brokeness.
+# Re-enable when those are re-added.
+def Xtest_blocksparse_grad_merge():
     b = tensor.fmatrix()
     h = tensor.ftensor3()
     iIdx = tensor.lmatrix()
@@ -186,12 +190,19 @@ def test_blocksparse_grad_merge():
 
     f1 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)],
                          mode=mode_with_gpu)
-    # not running with mode=gpu ensures that the elemwise is not merged in
-    mode = None
-    if theano.config.mode == 'FAST_COMPILE':
-        mode = theano.compile.mode.get_mode('FAST_RUN')
+
+    # Make sure the lr update was merged.
+    assert isinstance(f1.maker.fgraph.outputs[0].owner.op, SparseBlockOuterSS)
+
+    # Exclude the merge optimizations.
+    mode = mode_with_gpu.excluding('local_merge_blocksparse_alpha')
+    mode = mode.excluding('local_merge_blocksparse_output')
 
     f2 = theano.function([h, iIdx, b, oIdx], updates=[(W, upd)], mode=mode)
+
+    # Make sure the lr update is not merged.
+    assert not isinstance(f2.maker.fgraph.outputs[0].owner.op,
+                          SparseBlockOuterSS)
 
     f2(h_val, iIdx_val, b_val, oIdx_val)
     W_ref = W.get_value()

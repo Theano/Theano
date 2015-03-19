@@ -16,7 +16,7 @@ from theano.gof import cmodule
 _logger = logging.getLogger('theano.scan_module.scan_perform')
 
 
-version = 0.284  # must match constant returned in function get_version()
+version = 0.285  # must match constant returned in function get_version()
 
 need_reload = False
 

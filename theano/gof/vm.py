@@ -10,7 +10,7 @@ import sys
 import time
 import warnings
 
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 
 from theano.configparser import (config, AddConfigVar,
                                  BoolParam, ConfigParam, _config_var_list)

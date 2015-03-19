@@ -25,7 +25,7 @@ from theano import gof
 from theano import pprint
 from theano import shared
 from theano.gof import FunctionGraph
-from theano.gof.python25 import any, all
+from theano.compat.python2x import any, all
 import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
@@ -45,6 +45,7 @@ from theano.tensor import vector, ivector, lvector, fvector, dvector
 from theano.tensor import matrix, imatrix, lmatrix, fmatrix, dmatrix
 from theano.tensor import scalars, vectors, matrices, fmatrices, dmatrices
 from theano.tensor import (
+        AdvancedSubtensor1,
         as_tensor_variable,
         inplace,
         Join,
@@ -1712,6 +1713,29 @@ def test_local_useless_subtensor():
             assert any([isinstance(node.op, Subtensor) for node in prog])
         f([[1, 2, 3], [4, 5, 6]], 1)
         f([[1, 2, 3], [4, 5, 6]], 3)
+
+    # Test AdvancedSubtensor1 case when all rows are selected by a list/vector
+    # or ARange op
+    for dims, res in (([0, 1], True),
+                      ([1, 0], False),
+                      ([0, 0], False),
+                      ([0, 0, 1], False),
+                      (T.arange(2), True),
+                      (T.arange(0, 2), True),
+                      (T.arange(0, 2, 2), False),
+                      (T.arange(0, 2, -1), False),
+                      (T.arange(1, 2), False)):
+        f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
+        #theano.printing.debugprint(f)
+        prog = f.maker.fgraph.toposort()
+        if res:
+            assert isinstance(prog[0].op, theano.tensor.SpecifyShape), dims
+            assert prog[1].op == tensor.exp, dims
+            assert len(prog) == 2, dims
+        else:
+            assert any([isinstance(node.op, AdvancedSubtensor1)
+                        for node in prog])
+        f([[0, 1, 2], [3, 4, 5]])  # let debugmode test something
 
 
 class test_local_subtensor_make_vector(unittest.TestCase):
@@ -4423,7 +4447,8 @@ class T_local_reduce(unittest.TestCase):
             assert isinstance(topo[-1].op, T.Elemwise), out
 
         # Test different axis for the join and the reduction
-        # We must force the dtype, of otherwise, this tests will fail in 32 bit system
+        # We must force the dtype, of otherwise, this tests will fail
+        # on 32 bit systems
         A = theano.shared(numpy.array([1, 2, 3, 4, 5], dtype='int64'))
 
         f = theano.function([], T.sum(T.stack(A, A), axis=0), mode=self.mode)
@@ -4457,6 +4482,17 @@ class T_local_reduce(unittest.TestCase):
         assert numpy.allclose(f(), [15, 15])
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
+
+        # Test that the optimization does not crash in one case where it
+        # is not applied.  Reported at
+        # https://groups.google.com/d/topic/theano-users/EDgyCU00fFA/discussion
+        old = theano.config.warn.reduce_join
+        try:
+            theano.config.warn.reduce_join = False
+            out = tensor.sum([vx, vy, vz], axis=None)
+            f = theano.function([vx, vy, vz], out)
+        finally:
+            theano.config.warn.reduce_join = old
 
 
 class T_local_sum_dimshuffle(unittest.TestCase):

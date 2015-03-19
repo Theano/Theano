@@ -14,7 +14,7 @@ from theano.scalar import Scalar
 
 scal = scalar # somewhere scalar gets reassigned to be a function
 
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 
 try:
     # We must be able to import this file to create the full doc when nvcc
@@ -2998,7 +2998,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         return ()
 
 
-class GpuFlatten(tensor.Flatten, GpuOp):
+class GpuFlatten(gof.HideC, tensor.Flatten, GpuOp):
     """
     Implement Flatten on the gpu.
     """
@@ -3407,6 +3407,79 @@ class GpuAlloc(GpuOp):
 gpu_alloc = GpuAlloc()
 
 
+class CopyOnNegativeStrides(GpuOp):
+    """
+    Checks if the input has contains negative strides. If it
+    does, returns a c contiguous copy.
+    """
+    view_map = {0: [0]}
+    check_input = False
+    __props__ = ()
+
+    def grad(self, inputs, dout):
+
+        x, = inputs
+        dout, = dout
+        dout = as_cuda_ndarray_variable(dout)
+
+        return [dout]
+
+    def make_node(self, input):
+        input = as_cuda_ndarray_variable(input)
+        return Apply(self, [input], [input.type()])
+
+    def perform(self, node, inp, out):
+        i = inp[0]
+        if any(s < 0 for s in i.strides):
+            i = i.copy()
+        out[0][0] = i
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inp, out, sub):
+        input, = inp
+        z, = out
+        fail = sub['fail']
+        str = """
+        {
+            bool strides_all_positive = true;
+            for (int i = 0; i < CudaNdarray_NDIM(%(input)s); i++){
+                if (CudaNdarray_HOST_STRIDES(%(input)s)[i] < 0){
+                    strides_all_positive = false;
+                    break;
+                }
+            }
+            if (strides_all_positive){
+                Py_XDECREF(%(z)s);
+                %(z)s = %(input)s;
+                Py_INCREF(%(z)s);
+
+            } else if ((NULL == %(z)s)""" % locals()
+        for i in xrange(node.inputs[0].type.ndim):
+            str += "\n|| (CudaNdarray_HOST_DIMS(%(input)s)[%(i)s] != CudaNdarray_HOST_DIMS(%(z)s)[%(i)s])" % locals()
+        str += """
+                || !CudaNdarray_is_c_contiguous(%(z)s))
+            {
+                Py_XDECREF(%(z)s);
+                %(z)s = (CudaNdarray*)CudaNdarray_Copy(%(input)s);
+                if (!%(z)s)
+                {
+                    %(fail)s;
+                }
+            }else if(CudaNdarray_CopyFromCudaNdarray(%(z)s,%(input)s)){
+                %(fail)s;
+            }
+        }
+        """ % locals()
+        return str
+
+    def c_code_cache_version(self):
+        return (0,)
+
+cp_on_negative_strides = CopyOnNegativeStrides()
+
+
 class GpuContiguous(GpuOp):
     """
     Always return a c contiguous output. Copy the input only if it is
@@ -3442,6 +3515,9 @@ class GpuContiguous(GpuOp):
             i = i.copy()
         assert i.is_c_contiguous()
         out[0][0] = i
+
+    def infer_shape(self, node, xshp):
+        return xshp
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp

@@ -239,10 +239,10 @@ for this somewhere in the future.
 .. note::
 
    :class:`FunctionGraph` is a Theano structure intended for the optimization
-   phase. It is used internally by function and Module and is rarely
+   phase. It is used internally by function and is rarely
    exposed to the end user. You can use it to test out optimizations,
    etc. if you are comfortable with it, but it is recommended to use
-   the function/Module frontends and to interface optimizations with
+   the function frontend and to interface optimizations with
    :class:`optdb` (we'll see how to do that soon).
 
 

@@ -13,7 +13,7 @@ from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 get_lib_extension)
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.misc.windows import output_subprocess_Popen
 
 _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
@@ -50,16 +50,6 @@ AddConfigVar('cuda.root',
         StrParam(default_cuda_root),
         in_c_key=False)
 
-AddConfigVar('cuda.nvccflags',
-        "DEPRECATED, use nvcc.flags instead",
-        StrParam("", allow_override=False),
-        in_c_key=False)
-
-if config.cuda.nvccflags != '':
-    warnings.warn('Configuration variable cuda.nvccflags is deprecated. '
-            'Please use nvcc.flags instead. You provided value: %s'
-            % config.cuda.nvccflags)
-
 
 def filter_nvcc_flags(s):
     assert isinstance(s, str)
@@ -71,9 +61,10 @@ def filter_nvcc_flags(s):
             " but '--machine=64' is supported. Please add the '=' symbol."
             " nvcc.flags value is '%s'" % s)
     return ' '.join(flags)
+
 AddConfigVar('nvcc.flags',
              "Extra compiler flags for nvcc",
-             ConfigParam(config.cuda.nvccflags, filter_nvcc_flags),
+             ConfigParam("", filter_nvcc_flags),
              # Not needed in c key as it is already added.
              # We remove it as we don't make the md5 of config to change
              # if theano.sandbox.cuda is loaded or not.
@@ -295,6 +286,7 @@ class NVCC_compiler(object):
                             '-fmad', '-ftz', '-maxrregcount',
                             '-prec-div', '-prec-sqrt', '-use_fast_math',
                             '--use-local-env', '--cl-version=']:
+
                 if pa.startswith(pattern):
                     preargs1.append(pa)
         preargs2 = [pa for pa in preargs

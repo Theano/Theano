@@ -74,6 +74,20 @@ cudnnGetConvolutionForwardAlgorithm(
 }
 
 static inline cudnnStatus_t
+cudnnGetConvolutionForwardWorkspaceSize(
+ cudnnHandle_t handle,
+ const cudnnTensorDescriptor_t srcDesc,
+ const cudnnFilterDescriptor_t filterDesc,
+ const cudnnConvolutionDescriptor_t convDesc,
+ const cudnnTensor4dDescriptor_t destDesc,
+ cudnnConvolutionFwdAlgo_t algo,
+ size_t *sizeInBytes) {
+  *sizeInBytes = 0;
+  return CUDNN_STATUS_SUCCESS;
+}
+
+
+static inline cudnnStatus_t
 cudnnConvolutionForward_v2(
   cudnnHandle_t handle,
   const void *alpha,
@@ -89,11 +103,18 @@ cudnnConvolutionForward_v2(
   const cudnnTensorDescriptor_t destDesc,
   void *destData) {
   assert(*(float *)alpha == 1.0);
-  assert(*(float *)beta == 0.0);
+  cudnnAccumulateResult_t r;
+  if (*(float *)beta == 0.0) {
+    r = CUDNN_RESULT_NO_ACCUMULATE;
+  } else if (*(float *)beta == 1.0) {
+    r = CUDNN_RESULT_ACCUMULATE;
+  } else {
+    assert(0 && "beta must be 0.0 or 1.0");
+  }
   return cudnnConvolutionForward(handle, srcDesc, srcData,
 				 filterDesc, filterData,
 				 convDesc, destDesc, destData,
-				 CUDNN_RESULT_NO_ACCUMULATE);
+				 r);
 }
 #define cudnnConvolutionForward cudnnConvolutionForward_v2
 
@@ -110,11 +131,18 @@ cudnnConvolutionBackwardFilter_v2(
   const cudnnFilterDescriptor_t gradDesc,
   void *gradData) {
   assert(*(float *)alpha == 1.0);
-  assert(*(float *)beta == 0.0);
+  cudnnAccumulateResult_t r;
+  if (*(float *)beta == 0.0) {
+    r = CUDNN_RESULT_NO_ACCUMULATE;
+  } else if (*(float *)beta == 1.0) {
+    r = CUDNN_RESULT_ACCUMULATE;
+  } else {
+    assert(0 && "beta must be 0.0 or 1.0");
+  }
   return cudnnConvolutionBackwardFilter(handle, srcDesc, srcData,
 					diffDesc, diffData,
 					convDesc, gradDesc, gradData,
-					CUDNN_RESULT_NO_ACCUMULATE);
+					r);
 }
 
 #define cudnnConvolutionBackwardFilter cudnnConvolutionBackwardFilter_v2
@@ -132,7 +160,16 @@ cudnnConvolutionBackwardData_v2(
   const cudnnTensorDescriptor_t gradDesc,
   void *gradData) {
   assert(*(float *)alpha == 1.0);
-  assert(*(float *)beta == 0.0);
+  cudnnAccumulateResult_t r;
+  if (*(float *)beta == 0.0) {
+    r = CUDNN_RESULT_NO_ACCUMULATE;
+  } else if (*(float *)beta == 1.0) {
+    r = CUDNN_RESULT_ACCUMULATE;
+  } else {
+    assert(0 && "beta must be 0.0 or 1.0");
+  }
+  /* This function needs the casting because its params are not
+     declared as const */
   return cudnnConvolutionBackwardData(handle,
 				      (cudnnFilterDescriptor_t)filterDesc,
 				      filterData,
@@ -141,7 +178,7 @@ cudnnConvolutionBackwardData_v2(
 				      (cudnnConvolutionDescriptor_t)convDesc,
 				      (cudnnTensorDescriptor_t)gradDesc,
 				      gradData,
-				      CUDNN_RESULT_NO_ACCUMULATE);
+				      r);
 }
 
 #define cudnnConvolutionBackwardData cudnnConvolutionBackwardData_v2

@@ -172,8 +172,8 @@ if rc == 0 and config.cxx != "":
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode(deprecated)"),
-                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc',
+                         'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 else:
     # g++ is not present or the user disabled it,
@@ -295,7 +295,8 @@ AddConfigVar('traceback.limit',
              "The number of stack to trace. -1 mean all.",
 # We default to 6 to be able to know where v1 + v2 is created in the
 # user script. The bigger this number is, the more run time it takes.
-             IntParam(6),
+# We need to default to 7 to support theano.tensor.tensor(...).
+             IntParam(7),
              in_c_key=False)
 
 AddConfigVar('experimental.mrg',
@@ -369,7 +370,7 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.5', 'None', 'all', '0.3', '0.4', '0.4.1', '0.6',
+             EnumStr('0.6', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.7',
                      allow_override=False),
              in_c_key=False)
 

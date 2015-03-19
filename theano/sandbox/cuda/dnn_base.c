@@ -68,7 +68,7 @@ c_set_filter(CudaNdarray *var, cudnnFilterDescriptor_t desc) {
   if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %s",
 		 cudnnGetErrorString(err));
-#if PYTHON_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION >= 3
     return NULL;
 #else
     return;

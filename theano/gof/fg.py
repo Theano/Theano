@@ -13,12 +13,12 @@ import theano
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 from theano import config
 import warnings
 NullType = None
 
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 
@@ -89,7 +89,7 @@ class FunctionGraph(utils.object2):
 
         Note: the intermediate nodes between 'inputs' and 'outputs' are not explicitely
         passed.
-         
+
         :param inputs: inputs nodes of the graph, usually declared by the user
         :param outputs: outputs nodes of the graph.
         :param clone: If true, we will clone the graph. This is
@@ -462,12 +462,22 @@ class FunctionGraph(utils.object2):
         if verbose:
             print reason, r, new_r
         if r.fgraph is not self:
-            raise Exception("Cannot replace %s because it does not belong to this FunctionGraph" % r, str(reason))
-        if not r.type == new_r.type:
-            raise TypeError("The type of the replacement must be the same as the type of the original Variable.", r, new_r, r.type, new_r.type, str(reason))
+            raise Exception("Cannot replace %s because it does not belong "
+                            "to this FunctionGraph" % r, str(reason))
+        if r.type != new_r.type:
+            new_r2 = r.type.convert_variable(new_r)
+            # We still make sure that the type converts correctly
+            if new_r2 is None or new_r2.type != r.type:
+                raise TypeError("The type of the replacement must be "
+                                "compatible with the type of the original "
+                                "Variable.", r, new_r, r.type, new_r.type,
+                                str(reason))
+            new_r = new_r2
         if r not in self.variables:
-            # this variable isn't in the graph... don't raise an exception here, just return silently
-            # because it makes it easier to implement some optimizations for multiple-output ops
+            # this variable isn't in the graph... don't raise an
+            # exception here, just return silently because it makes it
+            # easier to implement some optimizations for
+            # multiple-output ops
             return
 
         if theano.config.compute_test_value != 'off':
@@ -500,11 +510,6 @@ class FunctionGraph(utils.object2):
         """WRITEME"""
         for r, new_r in pairs:
             self.replace(r, new_r, reason=reason)
-
-    def extend(self, feature):
-        warnings.warn("FunctionGraph.extend is deprecatd. It has been "
-                      "renamed to FunctionGraph.attach_feature")
-        return self.attach_feature(feature)
 
     def attach_feature(self, feature):
         """
@@ -654,23 +659,6 @@ class FunctionGraph(utils.object2):
         """WRITEME Same as len(self.clients(r))."""
         return len(self.clients(r))
 
-    def nodes_getter(self):
-        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
-                stacklevel=2)
-        return self.apply_nodes
-
-    def nodes_setter(self, value):
-        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
-                stacklevel=2)
-        self.apply_nodes = value
-
-    def nodes_deleter(self):
-        warnings.warn("FunctionGraph.nodes is deprecated, it has been renamed 'apply_nodes'",
-                stacklevel=2)
-        del self.apply_nodes
-
-    nodes = property(nodes_getter, nodes_setter, nodes_deleter)
-
     def check_integrity(self):
         """WRITEME
         Call this for a diagnosis if things go awry.
@@ -756,7 +744,7 @@ class FunctionGraph(utils.object2):
                 del d[attr]
         # The class Updater take fct as parameter and they are lambda function, so unpicklable.
 
-        # execute_callbacks_times have reference to optimizer, and they can't 
+        # execute_callbacks_times have reference to optimizer, and they can't
         # be pickled as the decorators with parameters aren't pickable.
         if "execute_callbacks_times" in d:
             del d["execute_callbacks_times"]

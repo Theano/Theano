@@ -9,7 +9,7 @@ except ImportError:
 import theano
 from theano import sparse, config, tensor
 from theano.sparse import enable_sparse
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 

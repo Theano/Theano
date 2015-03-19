@@ -54,7 +54,7 @@ from theano import tensor
 from theano import config
 from theano.updates import OrderedUpdates
 from theano.compile import ops
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 
 
 from theano.scan_module import scan_op

@@ -10,7 +10,7 @@ import numpy
 import theano
 from theano.compat import exc_message
 from theano.compat.six import StringIO
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.compile import DeepCopyOp
 from theano import config
 from theano import gof
@@ -1135,7 +1135,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 m2_ref = m_val.copy()
 
                 m1_val, m2_val = f(m_val, i_val)
-                for idx in i_val:
+                # We have to explicitly loop over all individual indices,
+                # not as a list or array, numpy only increments the indexed
+                # elements once even if the indices are repeated.
+                for idx in i_val.ravel():
                     m1_ref[:, idx] = 0
                     m2_ref[:, idx] += 1
 
@@ -1328,20 +1331,46 @@ class TestAdvancedSubtensor(unittest.TestCase):
         if inplace_increment is None:
             raise inplace_increment_missing
 
-        a = inc_subtensor(self.m[self.ix1, self.ix12], 2.1)
+        inc = dscalar()
+        a = inc_subtensor(self.m[self.ix1, self.ix12], inc)
+        g_inc = tensor.grad(a.sum(), inc)
 
         assert a.type == self.m.type, (a.type, self.m.type)
-        f = theano.function([self.m, self.ix1, self.ix12], a,
+        f = theano.function([self.m, self.ix1, self.ix12, inc], [a, g_inc],
                             allow_input_downcast=True)
-        aval = f([[.4, .9, .1],
-                  [5, 6, 7],
-                  [.5, .3, .15]],
-                 [1, 2, 1],
-                 [0, 1, 0])
+        aval, gval = f([[.4, .9, .1],
+                        [5, 6, 7],
+                        [.5, .3, .15]],
+                       [1, 2, 1],
+                       [0, 1, 0],
+                       2.1)
         assert numpy.allclose(aval,
                 [[.4, .9, .1],
                   [5 + 2.1 * 2, 6, 7],
                   [.5, .3 + 2.1, .15]]), aval
+        assert numpy.allclose(gval, 3.0), gval
+
+    def test_inc_adv_subtensor1_with_broadcasting(self):
+        if inplace_increment is None:
+            raise inplace_increment_missing
+
+        inc = dscalar()
+        a = inc_subtensor(self.m[self.ix1], inc)
+        g_inc = tensor.grad(a.sum(), inc)
+
+        assert a.type == self.m.type, (a.type, self.m.type)
+        f = theano.function([self.m, self.ix1, inc], [a, g_inc],
+                            allow_input_downcast=True)
+        aval, gval = f([[.4, .9, .1],
+                        [5, 6, 7],
+                        [.5, .3, .15]],
+                       [0, 1, 0],
+                       2.1)
+        assert numpy.allclose(aval,
+                [[.4 + 2.1 * 2, .9  + 2.1 * 2, .1 + 2.1 * 2],
+                  [5 + 2.1, 6 + 2.1, 7 + 2.1],
+                  [.5, .3, .15]]), aval
+        assert numpy.allclose(gval, 9.0), gval
 
     def test_inc_adv_subtensor_with_index_broadcasting(self):
         if inplace_increment is None:

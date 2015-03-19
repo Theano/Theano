@@ -7,9 +7,7 @@ import time
 import theano
 import theano.tensor as T
 import theano.sandbox
-import theano.sandbox.wraplinker
-from theano.compile import module, Mode
-from theano.sandbox.wraplinker import ProfileMode
+from theano.compile import module, Mode, ProfileMode
 from theano import gof, Op, Apply
 
 from theano.tensor import blas, opt

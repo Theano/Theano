@@ -6,7 +6,7 @@ import numpy
 import theano
 from theano import config
 from theano.gof import Constant, hashtype, Type, Variable
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.gof.utils import MethodNotDefined
 from theano import scalar as scal
 
@@ -260,6 +260,14 @@ class TensorType(Type):
         return type(self) == type(other) and other.dtype == self.dtype \
             and other.broadcastable == self.broadcastable
 
+    def convert_variable(self, var):
+        if (type(self) == type(var.type) and
+            self.dtype == var.type.dtype and
+            self.ndim == var.type.ndim and
+            all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                var.type.broadcastable))):
+            return theano.tensor.patternbroadcast(var, self.broadcastable)
+
     @staticmethod
     def may_share_memory(a, b):
         # This is a method of TensorType, so both a and b should be ndarrays
@@ -369,18 +377,6 @@ class TensorType(Type):
                 return (cmp_elemwise + both_missing + both_inf).all()
 
         return False
-
-    @staticmethod
-    def values_eq_approx_remove_inf(a, b):
-        return TensorType.values_eq_approx(a, b, True)
-
-    @staticmethod
-    def values_eq_approx_remove_nan(a, b):
-        return TensorType.values_eq_approx(a, b, False, True)
-
-    @staticmethod
-    def values_eq_approx_remove_inf_nan(a, b):
-        return TensorType.values_eq_approx(a, b, True, True)
 
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
@@ -620,6 +616,19 @@ class TensorType(Type):
         else:  # a scalar
             return numpy.dtype(self.dtype).itemsize
 theano.compile.ops.expandable_types += (TensorType,)
+
+
+def values_eq_approx_remove_inf(a, b):
+    return TensorType.values_eq_approx(a, b, True)
+
+
+def values_eq_approx_remove_nan(a, b):
+    return TensorType.values_eq_approx(a, b, False, True)
+
+
+def values_eq_approx_remove_inf_nan(a, b):
+    return TensorType.values_eq_approx(a, b, True, True)
+
 
 # Register TensorType C code for ViewOp.
 theano.compile.register_view_op_c_code(

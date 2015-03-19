@@ -301,8 +301,6 @@ Example:
 .. code-block:: python
 
     f = T.function([a,b],[c],mode='FAST_RUN')
-    m = theano.Module()
-    minstance = m.make(mode='DebugMode')
 
 Whenever possible, unit tests should omit this parameter. Leaving
 out the mode will ensure that unit tests use the default mode.

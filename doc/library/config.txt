@@ -361,7 +361,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: linker
 
-    String value: 'c|py', 'py', 'c', 'c|py_nogc', 'c&py'
+    String value: 'c|py', 'py', 'c', 'c|py_nogc'
 
     Default: 'c|py'
 
@@ -400,7 +400,7 @@ import theano and print the config variable, as in:
 
     String value: 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6', '0.7'
 
-    Default: 'None'
+    Default: '0.6'
 
     When we fix a Theano bug that generated bad results under some
     circumstances, we also make Theano raise a warning when it encounters
@@ -484,6 +484,25 @@ import theano and print the config variable, as in:
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
+.. attribute:: config.dnn.conv.workmem
+
+   String value: 'none', 'small', 'large'
+
+   Default: 'small'
+
+   The default value for the amount of working memory that is
+   tolerated in the convolution implementation in cudnn.
+
+   'none'
+     Don't allow any extra memory.
+
+   'small'
+     Allow extra memory that is much smaller than the input sizes.
+
+   'large'
+     Allow extra memory that is on the order of the input sizes.
+
+
 .. attribute:: config.gcc.cxxflags
 
     Default: ""
@@ -505,7 +524,7 @@ import theano and print the config variable, as in:
     slower otherwise.
 
     This can be any compiler binary (full path or not) but things may
-    break if the interface if not g++-compatible to some degree.
+    break if the interface is not g++-compatible to some degree.
 
 .. attribute:: config.nvcc.fastmath
 

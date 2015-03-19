@@ -21,7 +21,7 @@ if [ "$1" == "--buildbot" ]; then
     cd ${ROOT_CWD}/Theano
     git rev-parse HEAD
     #Run tests from inside the Theano directory to prevent import problem.
-    PROFILING="--with-coverage --cover-package=theano"
+#    PROFILING="--with-coverage --cover-package=theano"
     NOSETESTS=${ROOT_CWD}/Theano/bin/theano-nose
     export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 else

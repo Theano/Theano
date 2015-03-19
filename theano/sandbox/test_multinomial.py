@@ -6,7 +6,7 @@ import theano
 from theano import config, function, tensor
 import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 import theano.sandbox.cuda as cuda
 
 

@@ -20,7 +20,7 @@ from theano.tensor.var import (AsTensorError, TensorVariable,
 from theano.tensor.type import TensorType
 from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
-from theano.gof.python25 import partial, any, all
+from theano.compat.python2x import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
@@ -443,12 +443,6 @@ def _obj_is_wrappable_as_tensor(x):
         return False
 
 
-def _wrap_tensor_into_member(x):
-    return compile.module.Member(constant(x))
-compile.module.register_wrapper(_obj_is_wrappable_as_tensor,
-                                _wrap_tensor_into_member, no_warn=True)
-
-
 if int(config.tensor.cmp_sloppy) > 1:
     # This config variable is a quick-and-dirty way to get low-precision
     # comparisons.  For a more precise setting of these tolerances set
@@ -544,7 +538,8 @@ get_scalar_constant_value_elemwises = (
     scal.IntDiv, scal.TrueDiv, scal.Minimum, scal.Maximum)
 
 
-def get_scalar_constant_value(orig_v, elemwise=True):
+def get_scalar_constant_value(orig_v, elemwise=True,
+                              only_process_constants=False):
     """return the constant scalar(0-D) value underlying variable `v`
 
     If v is the output of dimshuffles, fills, allocs, rebroadcasts,
@@ -557,6 +552,11 @@ def get_scalar_constant_value(orig_v, elemwise=True):
 
     :param elemwise: If False, we won't try to go into elemwise.
         So this call is faster.
+
+    :param only_process_constants: If True, we only attempt to obtain
+            the value of `orig_v` if it's directly constant and don't
+            try to dig through dimshuffles, fills, allocs, and other to figure
+            out its value.
 
     :note: There may be another function similar to this one in the
         code, but I'm not sure where it is.
@@ -581,7 +581,7 @@ def get_scalar_constant_value(orig_v, elemwise=True):
                 data = v.data
             return numpy_scalar(data)
 
-        if getattr(v, 'owner', None):
+        if not only_process_constants and getattr(v, 'owner', None):
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                        compile.ops.OutputGuard,
                                        compile.DeepCopyOp)):
@@ -744,7 +744,7 @@ def get_scalar_constant_value(orig_v, elemwise=True):
 
 def tensor(*args, **kwargs):
     name = kwargs.pop('name', None)
-    return TensorType(*args, **kwargs).make_variable(name=name)
+    return TensorType(*args, **kwargs)(name=name)
 
 
 def _multi(*fns):
@@ -3259,9 +3259,26 @@ class Split(Op):
 def addbroadcast(x, *axes):
     """
     Make the input broadcastable in the specified axes.
+    For example, addbroadcast(x, 0) will make the first dimension of
+    x broadcastable. When performing the function, if the length of
+    x along that dimension is not 1, a ValueError will be raised.
 
     We apply the opt here not to pollute the graph especially during
     the gpu optimization
+
+    Parameters:
+    ------------
+        x : tensor_like
+            Input theano tensor.
+        axis : an int or an iterable object such as list or tuple
+               of int values
+            The dimension along which the tensor x should be broadcastable.
+            if the length of x along these dimensions is not 1,
+            a ValueError will be raised.
+
+    returns:
+    ----------
+        a theano tensor, which is broadcastable along the specified dimensions.
     """
     rval = Rebroadcast(*[(axis, True) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3270,9 +3287,26 @@ def addbroadcast(x, *axes):
 def unbroadcast(x, *axes):
     """
     Make the input impossible to broadcast in the specified axes.
+    For example, addbroadcast(x, 0) will make the first dimension
+    of x broadcastable. When performing the function, if the length
+    of x along that dimension is not 1, a ValueError will be raised.
 
     We apply the opt here not to pollute the graph especially during
     the gpu optimization
+
+    Parameters:
+    ------------
+        x : tensor_like
+            Input theano tensor.
+        axis : an int or an iterable object such as list or tuple
+               of int values
+            The dimension along which the tensor x should be unbroadcastable.
+            if the length of x along these dimensions is not 1,
+            a ValueError will be raised.
+
+    returns:
+    ----------
+        a theano tensor, which is unbroadcastable along the specified dimensions.
     """
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3281,9 +3315,28 @@ def unbroadcast(x, *axes):
 def patternbroadcast(x, broadcastable):
     """
     Make the input adopt a specific broadcasting pattern.
+    broadcastable must be iterable. For example,
+    patternbroadcast(x, (True, False)) will make the first
+    dimension of x broadcastable and the second dimension
+    not broadcastable, so x will now be a row.
 
     We apply the opt here not to pollute the graph especially during the gpu
     optimization.
+
+    Parameters:
+    ------------
+        x : tensor_like
+            Input theano tensor.
+        broadcastable : an iterable object such as list or tuple
+                        of bool values
+            a set of boolean values indicating whether a dimension
+            should be broadcastable or not.
+            if the length of x along these dimensions is not 1,
+            a ValueError will be raised.
+
+    returns:
+    ----------
+        a theano tensor, which is unbroadcastable along the specified dimensions.
     """
     rval = Rebroadcast(*[(i, broadcastable[i])
                          for i in xrange(len(broadcastable))])(x)
@@ -3953,6 +4006,8 @@ class Flatten(Op):
     """
     view_map = {0: [0]}
 
+    check_input = False
+
     def __init__(self, outdim=1):
         self.outdim = int(outdim)
 
@@ -4019,6 +4074,74 @@ class Flatten(Op):
             return [None]
         return self.make_node(*eval_points).outputs
 
+    def c_code_cache_version(self):
+        return (1, 1)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, = inputs
+        out, = outputs
+        outdim = self.outdim
+        fail = sub['fail']
+        return """
+        if (%(outdim)s == PyArray_NDIM(%(x)s))
+        {
+            Py_XDECREF(%(out)s);
+            Py_XINCREF(%(x)s);
+            %(out)s = %(x)s;
+        }
+        else
+        {
+            Py_XDECREF(%(out)s);
+
+            if (%(outdim)s == 1)
+            {
+                npy_intp size = PyArray_SIZE(%(x)s);
+                PyArray_Dims newshape;
+                newshape.ptr = &size;
+                newshape.len = 1;
+                %(out)s = (PyArrayObject*)PyArray_Newshape(%(x)s,
+                                                           &newshape,
+                                                           NPY_CORDER);
+            }
+            else
+            {
+                npy_intp *oldshape = PyArray_DIMS(%(x)s);
+                npy_intp newshape_dims[%(outdim)s];
+
+                int i;
+                for (i = 0; i < %(outdim)s - 1; ++i)
+                    newshape_dims[i] = oldshape[i];
+
+                newshape_dims[i] = 1;
+
+                for (int j = %(outdim)s - 1; j < PyArray_NDIM(%(x)s); ++j)
+                    newshape_dims[i] *= oldshape[j];
+
+                PyArray_Dims newshape;
+                newshape.ptr = newshape_dims;
+                newshape.len = %(outdim)s;
+                %(out)s = (PyArrayObject*)PyArray_Newshape(%(x)s,
+                                                           &newshape,
+                                                           NPY_CORDER);
+            }
+        }
+        if (!%(out)s)
+        {
+            //The error message should have been set by
+            // PyArray_Newshape
+            %(fail)s;
+        }
+        if (!PyArray_ISALIGNED(%(out)s)) {
+            PyErr_Format(
+                PyExc_RuntimeError,
+                "PyArray_Newshape returned an object that isn't"
+                " aligned! NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
+                " this problem for some input shape/new shape"
+                " combinations. Use another NumPy version.");
+            %(fail)s;
+        }
+        """ % locals()
+
 
 def flatten(x, outdim=1):
     return Flatten(outdim)(x)
@@ -4048,7 +4171,7 @@ def flatten(x, outdim=1):
 class Tile(Op):
     """
     DEPRECATED: use tile() instead.
-    
+
     Construct an array by repeating the input x according to reps pattern.
 
     Tiles its input according to reps. The length of reps is the number of
@@ -4868,6 +4991,7 @@ def tensordot(a, b, axes=2):
                              'of b (b.ndim=%i, axes=%i)' % (b.ndim, axes))
 
         outshape = concatenate([a.shape[:a.ndim - axes], b.shape[axes:]])
+        outbcast = a.broadcastable[:a.ndim - axes] + b.broadcastable[axes:]
         outndim = a.ndim + b.ndim - (2 * axes)
 
         a_shape_0 = b_shape_0 = a_shape_1 = b_shape_1 = 1
@@ -4883,7 +5007,10 @@ def tensordot(a, b, axes=2):
         a_reshaped = a.reshape((a_shape_0, a_shape_1), ndim=2)
         b_reshaped = b.reshape((b_shape_0, b_shape_1), ndim=2)
 
-        return _dot(a_reshaped, b_reshaped).reshape(outshape, outndim)
+        out = _dot(a_reshaped, b_reshaped).reshape(outshape, outndim)
+        # Make sure the broadcastable pattern of the result is correct,
+        # since some shape information can be lost in the reshapes.
+        return patternbroadcast(out, outbcast)
 
     # if 'axes' is a list, transpose a and b such that the summed axes of a
     # are last and the summed axes of b are first.

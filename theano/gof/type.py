@@ -307,8 +307,7 @@ class PureType(object):
     def make_constant(self, value, name=None):
         return self.Constant(type=self, data=value, name=name)
 
-
-    def __call__(self, name = None):
+    def __call__(self, name=None):
         """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
@@ -395,6 +394,23 @@ class Type(object2, PureType, CLinkerType):
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
     """
+    def convert_variable(self, var):
+        """Patch variable so that its type will match self, if possible.
+
+        If the variable can't be converted, this should return None.
+
+        The conversion can only happen if the following implication is
+        true for all possible `val`.
+
+          self.is_valid_value(val) => var.type.is_valid_value(val)
+
+        For the majority of types this means that you can only have
+        non-broadcastable dimensions become broadcastable and not the
+        inverse.
+
+        The default is to not convert anything which is always safe.
+        """
+        return None
 
 
 class SingletonType(Type):
@@ -416,6 +432,19 @@ class SingletonType(Type):
 
     def __str__(self):
         return self.__class__.__name__
+
+    # even if we try to make a singleton, this do not always work.  So
+    # we compare the type. See test_type_other.test_none_Constant for
+    # an exmple. So we need to implement __eq__ and __hash__
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if type(self) is type(other):
+            return True
+        return False
+
+    def __hash__(self):
+        return hash(type(self))
 
 
 class Generic(SingletonType):

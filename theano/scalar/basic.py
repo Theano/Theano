@@ -25,7 +25,7 @@ from theano.compat import PY3
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
-from theano.gof.python25 import partial, all, any
+from theano.compat.python2x import partial, all, any
 from theano.configparser import config
 
 from theano.gradient import DisconnectedType
@@ -1856,7 +1856,7 @@ class Identity(UnaryScalarOp):
         if x.type in continuous_types:
             return gz,
         else:
-            return None,
+            return x.zeros_like(dtype=theano.config.floatX),
 identity = Identity(same_out, name='identity')
 
 

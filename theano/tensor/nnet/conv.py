@@ -19,7 +19,7 @@ from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano import OpenMPOp, config
 from theano.gof import Apply
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 
 imported_scipy_signal = False
 try:

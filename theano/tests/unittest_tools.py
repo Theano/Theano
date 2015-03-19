@@ -1,4 +1,5 @@
 from copy import copy, deepcopy
+from functools import wraps
 import logging
 from StringIO import StringIO
 import sys
@@ -9,7 +10,7 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 try:
     from nose.plugins.skip import SkipTest
 except ImportError:
@@ -341,3 +342,94 @@ class WrongValue(Exception):
 def assert_allclose(val1, val2, rtol=None, atol=None):
     if not T.basic._allclose(val1, val2, rtol, atol):
         raise WrongValue(val1, val2, rtol, atol)
+
+
+class AttemptManyTimes:
+    """Decorator for unit tests that forces a unit test to be attempted
+    multiple times. The test needs to pass a certain number of times for it to
+    be considered to have succeeded. If it doesn't pass enough times, it is
+    considered to have failed.
+
+    Warning : care should be exercised when using this decorator. For some
+    tests, the fact that they fail randomly could point to important issues
+    such as race conditions, usage of uninitialized memory region, etc. and
+    using this decorator could hide these problems.
+
+    Usage:
+        @AttemptManyTimes(n_attempts=5, n_req_successes=3)
+        def fct(args):
+            ...
+    """
+
+    def __init__(self, n_attempts, n_req_successes=1):
+        assert n_attempts >= n_req_successes
+        self.n_attempts = n_attempts
+        self.n_req_successes = n_req_successes
+
+    def __call__(self, fct):
+
+        # Wrap fct in a function that will attempt to run it multiple
+        # times and return the result if the test passes enough times
+        # of propagate the raised exception if it doesn't.
+        @wraps(fct)
+        def attempt_multiple_times(*args, **kwargs):
+
+            # Keep a copy of the current seed for unittests so that we can use
+            # a different seed for every run of the decorated test and restore
+            # the original after
+            original_seed = config.unittests.rseed
+            current_seed = original_seed
+
+            # If the decorator has received only one, unnamed, argument
+            # and that argument has an atribute _testMethodName, it means
+            # that the unit test on which the decorator is used is in a test
+            # class. This means that the setup() method of that class will
+            # need to be called before any attempts to execute the test in
+            # case it relies on data randomly generated in the class' setup()
+            # method.
+            if (len(args) == 1 and hasattr(args[0], "_testMethodName")):
+                test_in_class = True
+                class_instance = args[0]
+            else:
+                test_in_class = False
+
+            n_fail = 0
+            n_success = 0
+
+            # Attempt to call the test function multiple times. If it does
+            # raise any exception for at least one attempt, it passes. If it
+            # raises an exception at every attempt, it fails.
+            for i in range(self.n_attempts):
+                try:
+                    # Attempt to make the test use the current seed
+                    config.unittests.rseed = current_seed
+                    if test_in_class and hasattr(class_instance, "setUp"):
+                        class_instance.setUp()
+
+                    fct(*args, **kwargs)
+
+                    n_success += 1
+                    if n_success == self.n_req_successes:
+                        break
+
+                except Exception:
+                    n_fail += 1
+
+                    # If there is not enough attempts remaining to achieve the
+                    # required number of successes, propagate the original
+                    # exception
+                    if n_fail + self.n_req_successes > self.n_attempts:
+                        raise
+
+                finally:
+                    # Clean up after the test
+                    config.unittests.rseed = original_seed
+                    if test_in_class and hasattr(class_instance, "tearDown"):
+                        class_instance.tearDown()
+
+                    # Update the current_seed
+                    if current_seed not in [None, "random"]:
+                        current_seed = str(int(current_seed) + 1)
+
+
+        return attempt_multiple_times

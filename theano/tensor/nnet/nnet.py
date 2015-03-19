@@ -24,6 +24,7 @@ from theano.gof import Apply
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
+from theano.tensor.type import values_eq_approx_remove_nan
 
 
 ############
@@ -1965,7 +1966,7 @@ def make_out_pattern(X):
     out_var = stabilized_X - tensor.log(tensor.exp(stabilized_X).sum(
         axis=1)).dimshuffle(0, 'x')
     #tell DEBUG_MODE that it's OK if the original graph produced NaN and the optimized graph does not
-    out_var.values_eq_approx = out_var.type.values_eq_approx_remove_nan
+    out_var.values_eq_approx = values_eq_approx_remove_nan
     return out_var
 
 

@@ -13,6 +13,7 @@ import operator
 import sys
 import time
 import traceback
+import warnings
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
@@ -21,7 +22,7 @@ import theano
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.gof.python25 import maxsize
+from theano.compat.python2x import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.configparser import config
 from theano.tensor.elemwise import Elemwise, DimShuffle
@@ -35,8 +36,11 @@ from theano import scalar
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
 from theano.compile.ops import Shape_i
+from theano.tensor.type import (values_eq_approx_remove_inf,
+                                values_eq_approx_remove_nan,
+                                values_eq_approx_remove_inf_nan)
 
-from theano.gof.python25 import any, all
+from theano.compat.python2x import any, all
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer
@@ -830,8 +834,7 @@ class ShapeFeature(object):
             # The current Subtensor always put constant index in the graph.
             # This was not True in the past. So call the Subtensor function
             # that will return the right index.
-            idx = theano.tensor.subtensor.get_idx_list(s_i.owner.inputs,
-                                                       s_i.owner.op.idx_list)
+            idx = get_idx_list(s_i.owner.inputs, s_i.owner.op.idx_list)
             assert len(idx) == 1
             idx = idx[0]
             try:
@@ -1865,8 +1868,7 @@ def local_useless_inc_subtensor(node):
 
     # Check that we keep all the original data.
     # Put the constant inputs in the slice.
-    idx_cst = theano.tensor.subtensor.get_idx_list(node.inputs[1:],
-                                                   node.op.idx_list)
+    idx_cst = get_idx_list(node.inputs[1:], node.op.idx_list)
     if all(isinstance(e, slice) and e.start is None and
            e.stop is None and (e.step is None or T.extract_constant(e.step) == -1)
            for e in idx_cst):
@@ -1919,17 +1921,23 @@ def local_set_to_inc_subtensor(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([Subtensor])
+@gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_useless_subtensor(node):
     """
-    Remove Subtensor if it takes the full input
+    Remove Subtensor/AdvancedSubtensor1 if it takes the full input. In the
+    AdvancedSubtensor1 case, the full input is taken when the indices are
+    equivalent to `arange(0, input.shape[0], 1)` using either an explicit
+    list/vector or the ARange op.
     """
+    # This optimization needs ShapeOpt and fgraph.shape_feature
+    if not hasattr(node.fgraph, 'shape_feature'):
+        return
+
+    shape_of = node.fgraph.shape_feature.shape_of
+
     if isinstance(node.op, Subtensor):
-        # This optimization needs ShapeOpt and fgraph.shape_feature
-        if not hasattr(node.fgraph, 'shape_feature'):
-            return
-        shape_of = node.fgraph.shape_feature.shape_of
-        cdata = node.op.get_constant_idx(node.inputs, allow_partial=True)
+        cdata = node.op.get_constant_idx(node.inputs, allow_partial=True,
+                                         only_process_constants=True)
         for pos, idx in enumerate(cdata):
             if not isinstance(idx, slice):
                 # If idx is not a slice, this means we remove this dimension
@@ -1944,15 +1952,17 @@ def local_useless_subtensor(node):
                 # is not a useless subtensor
                 return False
 
-            length_pos_data = maxsize
+        for pos, idx in enumerate(cdata):
 
             length_pos = shape_of[node.inputs[0]][pos]
-            try:
-                length_pos_data = get_scalar_constant_value(length_pos)
-            except NotScalarConstantError:
-                pass
 
             if isinstance(idx.stop, (int, numpy.integer)):
+                length_pos_data = maxsize
+                try:
+                    length_pos_data = get_scalar_constant_value(length_pos)
+                except NotScalarConstantError:
+                    pass
+
                 if idx.stop < length_pos_data:
                     return False
             elif isinstance(idx.stop, gof.Variable):
@@ -1987,8 +1997,43 @@ def local_useless_subtensor(node):
                 pass
             else:
                 return False
+    elif isinstance(node.op, AdvancedSubtensor1):
+        # get length of the indexed tensor along the first axis
+        try:
+            length = get_scalar_constant_value(shape_of[node.inputs[0]][0])
+        except NotScalarConstantError:
+            return False
 
-        return [node.inputs[0]]
+        # get index (which must be a vector by definition)
+        idx = node.inputs[1]
+
+        # `idx` must be equivalent to [0,1,...,shape[0] - 1] to qualify for
+        # this optimization
+        if isinstance(idx, T.Constant):
+            idx = idx.value
+            if len(idx) != length:
+                return False
+            if numpy.any(idx != numpy.arange(length)):
+                return False
+        elif idx.owner is not None and isinstance(idx.owner.op, T.ARange):
+            try:
+                start, stop, step = map(get_scalar_constant_value,
+                                        idx.owner.inputs)
+            except NotScalarConstantError:
+                return False
+
+            if start != 0:
+                return False
+            if stop != length:
+                return False
+            if step != 1:
+                return False
+        else:
+            return False
+    else:
+        return False
+
+    return [node.inputs[0]]
 
 
 @register_canonicalize
@@ -2358,7 +2403,7 @@ def local_subtensor_of_dot(node):
     a = node.inputs[0].owner.inputs[0]
     b = node.inputs[0].owner.inputs[1]
 
-    idx_list = theano.tensor.subtensor.get_idx_list(node.inputs, node.op.idx_list)
+    idx_list = get_idx_list(node.inputs, node.op.idx_list)
 
     num_a_indices = min(a.ndim - 1, len(idx_list))
     a_indices = idx_list[:num_a_indices]
@@ -2845,8 +2890,7 @@ def local_mul_switch_sink(node):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0], 0,
                                     T.mul(*(listmul + [switch.inputs[2]])))]
-                    fct[0].values_eq_approx = fct[
-                        0].type.values_eq_approx_remove_nan
+                    fct[0].values_eq_approx = values_eq_approx_remove_nan
                     return fct
             except NotScalarConstantError:
                 pass
@@ -2856,8 +2900,7 @@ def local_mul_switch_sink(node):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0],
                                     T.mul(*(listmul + [switch.inputs[1]])), 0)]
-                    fct[0].values_eq_approx = fct[
-                        0].type.values_eq_approx_remove_nan
+                    fct[0].values_eq_approx = values_eq_approx_remove_nan
                     return fct
             except NotScalarConstantError:
                 pass
@@ -2887,8 +2930,7 @@ def local_div_switch_sink(node):
             if get_scalar_constant_value(switch.inputs[1]) == 0.:
                 fct = [T.switch(switch.inputs[0], 0,
                                 op(switch.inputs[2], node.inputs[1]))]
-                fct[0].values_eq_approx = fct[
-                    0].type.values_eq_approx_remove_nan
+                fct[0].values_eq_approx = values_eq_approx_remove_nan
                 return fct
         except NotScalarConstantError:
             pass
@@ -2896,8 +2938,7 @@ def local_div_switch_sink(node):
             if get_scalar_constant_value(switch.inputs[2]) == 0.:
                 fct = [T.switch(switch.inputs[0],
                                 op(switch.inputs[1], node.inputs[1]), 0)]
-                fct[0].values_eq_approx = fct[
-                    0].type.values_eq_approx_remove_nan
+                fct[0].values_eq_approx = values_eq_approx_remove_nan
                 return fct
         except NotScalarConstantError:
             pass
@@ -3861,10 +3902,14 @@ def local_reduce_join(node):
             # The reduction do something about the dtype.
             return
 
+        reduce_axis = node.op.axis
+        if reduce_axis is None:
+            reduce_axis = tuple(xrange(node.inputs[0].ndim))
+
         # I put this warning late to don't add extra warning.
-        if len(node.op.axis) != 1 or 0 not in node.op.axis:
+        if len(reduce_axis) != 1 or 0 not in reduce_axis:
             if theano.config.warn.reduce_join:
-                _logger.warn((
+                warnings.warn((
                     'Your current code is fine, but Theano versions '
                     'prior to 0.7 (or this development version Sept 2014) '
                     'might have given an incorrect result for this code. '
@@ -3880,7 +3925,7 @@ def local_reduce_join(node):
         # We add the new check late to don't add extra warning.
         try:
             join_axis = get_scalar_constant_value(join.inputs[0])
-            if join_axis != node.op.axis[0]:
+            if join_axis != reduce_axis[0]:
                 return
         except NotScalarConstantError:
             return
@@ -4436,7 +4481,7 @@ def local_log_add(node):
 
                 ret = max_pre + T.log1p(T.exp(T.add(*[p - max_pre
                                                       for p in pre_exp])))
-                ret.values_eq_approx = ret.type.values_eq_approx_remove_inf
+                ret.values_eq_approx = values_eq_approx_remove_inf
                 return [ret]
 
 
@@ -4861,7 +4906,7 @@ def local_log_erfc(node):
         threshold = 26.641747557
 
     ret = T.switch(x < threshold, node.outputs[0], stab_value)
-    ret.values_eq_approx = ret.type.values_eq_approx_remove_inf
+    ret.values_eq_approx = values_eq_approx_remove_inf
     return [ret]
 
 
@@ -5008,7 +5053,7 @@ def local_grad_log_erfc_neg(node):
     elif x.dtype == 'float64':
         threshold = 26.641747557
     ret = T.switch(x < threshold, true_div_no_mul, stab_value) * y
-    ret.values_eq_approx = ret.type.values_eq_approx_remove_inf_nan
+    ret.values_eq_approx = values_eq_approx_remove_inf_nan
 
     return [ret]
     """
@@ -5547,11 +5592,17 @@ else:
 # # Remove consider_constant #
 # ############################
 
-# Although the op just returns its input, it should be removed from
-# the graph to make sure all possible optimizations can be applied.
+# Although the ops ConsiderConstant, ZeroGrad and DisconnectedGrad 
+# just returns the input, it should be removed from the graph to 
+# make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
     'fast_compile', 'fast_run', name='remove_consider_constant')
 
+register_canonicalize(gof.OpRemove(theano.gradient.zero_grad_),
+    'fast_compile', 'fast_run', name='remove_zero_grad')
+
+register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
+    'fast_compile', 'fast_run', name='remove_disconnected_grad')
 
 @register_canonicalize
 @gof.local_optimizer([theano.gradient.GradClip])
