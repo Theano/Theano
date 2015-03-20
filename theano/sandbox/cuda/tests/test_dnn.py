@@ -687,8 +687,7 @@ def test_dnn_conv_merge_mouts():
 
 
 def test_dnn_conv_merge_broad():
-    # make sure it doesn't attempt to output/alpha merge a convolution
-    # that has multiple clients.
+    # Make sure that output merge works on broadcasted outputs.
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img = T.ftensor4()
