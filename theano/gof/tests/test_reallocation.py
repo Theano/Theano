@@ -17,7 +17,7 @@ class Test_reallocation(unittest.TestCase):
         x = T.scalar('x')
         y = T.scalar('y')
 
-        z = T.tanh(3*x + y) + T.cosh(x + 5*y)
+        z = T.tanh(3 * x + y) + T.cosh(x + 5 * y)
 
         m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
         m = m.excluding('fusion', 'inplace')
@@ -37,7 +37,7 @@ class Test_reallocation(unittest.TestCase):
                     keys_copy.remove(i)
                     for o in keys_copy:
                         if (storage_map[i][0] and
-                            storage_map[i][0] == storage_map[o][0]):
+                                storage_map[i][0] == storage_map[o][0]):
                             return [True, storage_map[o][0]]
             return [False, None]
 
