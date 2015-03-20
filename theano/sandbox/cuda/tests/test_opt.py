@@ -537,11 +537,15 @@ def test_erfinvgpu():
 
 
 def test_local_gpu_solve():
+    numpy.random.seed(1)
+
     def cmp(a_shp, b_shp):
-        a0 = numpy.random.uniform(-0.4, 0.4, a_shp).astype('float32')
+        a0 = numpy.random.uniform(-0.4, 0.4,
+                                  a_shp).astype('float32')
         a = cuda.shared_constructor(a0, 'a')
 
-        b0 = numpy.random.uniform(-0.4, 0.4, b_shp).astype('float32')
+        b0 = numpy.random.uniform(-0.4, 0.4,
+                                  b_shp).astype('float32')
         b = cuda.shared_constructor(b0, 'b')
 
         f = pfunc([], tensor.slinalg.solve(a, b), mode=mode_with_gpu)

@@ -1,32 +1,36 @@
+import warnings
+
 import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import GpuOp, CudaNdarray
+from theano.sandbox.cuda import GpuOp
 
-from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
-                                           gpu_contiguous)
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 
-from theano.tensor import as_tensor_variable
-from scikits.cuda import cula
-from theano.sandbox.cuda import cuda_ndarray
-
+cula_available = False
 try:
     from scikits.cuda import cula
-    scikits_cuda_available = True
+    cula_available = False
 except ImportError:
-    scikits_cuda_available = False
+    warnings.warn("CULA import failed in theano.sandbox.cuda.cula")
 
-if cula is not None:
-    cula.culaInitialize()
+cula_initialized = False
+if cula_available and cula and not cula_initialized:
+    try:
+        cula.culaInitialize()
+        cula_initialized = True
+    except:
+        warnings.warn("Initialization of cula failed.")
 
-import numpy
 
 class GpuSolve(GpuOp):
     """
     CULA GPU solver OP.
 
-    trans: Whether to take the transpose of the input matrix or not. By default,
-    we will take the transpose of the input matrix, before feeding it into the Op.
-    That is mainly, because that CULA requires inputs to be in Fortran order.
+    trans: Whether to take the transpose of the input matrix
+    or not. By default, we will take the transpose of the
+    input matrix, before feeding it into the Op. That is
+    mainly, because that CULA requires inputs to be in Fortran
+    order.
     """
     def __init__(self, trans='T'):
         self.trans = trans
@@ -61,21 +65,19 @@ class GpuSolve(GpuOp):
         outputs = [storage_map[v] for v in node.outputs]
 
         def thunk():
-            input_shape = inputs[1][0].shape
-
-            #size of the matrices to invert
+            # size of the matrices to invert
             z = outputs[0]
 
-            #Matrix
+            # Matrix
             A = inputs[0][0]
 
-            #Solution vectors
+            # Solution vectors
             b = inputs[1][0]
 
             A_cpy = A.copy()
             b_cpy = b.copy()
 
-            #Convert b to F-order from c-order.
+            # Convert b to F-order from c-order.
             b_cpy = b_cpy.dimshuffle(1, 0).reshape((b.shape[0], b.shape[1]))
 
             A_pycuda = to_gpuarray(A_cpy)
@@ -93,15 +95,14 @@ class GpuSolve(GpuOp):
                     l, n = A_shape
                     k, m = b_shape
                     if n != k:
-                       raise ValueError('A and b must be aligned.')
+                        raise ValueError('A and b must be aligned.')
                 elif trans in ['N']:
                     n, l = A_shape
                     k, m = b_shape
                     if l != m:
-                       raise ValueError('A and b must be aligned.')
+                        raise ValueError('A and b must be aligned.')
                 else:
                     raise ValueError('Invalid value for trans')
-
 
                 lda = max(1, n)
                 ldb = max(1, n, l)
@@ -116,7 +117,7 @@ class GpuSolve(GpuOp):
 
             A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
 
-            #Convert b to F-order from c-order and assign it to output:
+            # Convert b to F-order from c-order and assign it to output:
             z[0] = b_cpy.reshape((b.shape[0], b.shape[1])).dimshuffle(1, 0)
 
         thunk.inputs = inputs
