@@ -38,7 +38,6 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
         cPickle.dump(d, f, -1)
 
 def output_dictionary_wrapper(args, kwargs, fn, keys):
-
     outputLst = fn(*args, **kwargs)
 
     outputDict = {}
@@ -47,8 +46,6 @@ def output_dictionary_wrapper(args, kwargs, fn, keys):
         outputDict[keys[i]] = outputLst[i]
 
     return outputDict
-
-
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
