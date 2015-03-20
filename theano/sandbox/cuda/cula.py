@@ -15,12 +15,6 @@ except (ImportError, OSError):
     pass
 
 cula_initialized = False
-if cula_available and cula and not cula_initialized:
-    try:
-        cula.culaInitialize()
-        cula_initialized = True
-    except:
-        warnings.warn("Initialization of cula failed.")
 
 
 class GpuSolve(GpuOp):
@@ -61,6 +55,12 @@ class GpuSolve(GpuOp):
                    storage_map, _,
                    no_recycling=[]):
         from theano.misc.pycuda_utils import to_gpuarray
+
+        # Initialize CULA the first time it is needed
+        global cula_initialized
+        if cula_available and cula and not cula_initialized:
+            cula.culaInitialize()
+            cula_initialized = True
 
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
