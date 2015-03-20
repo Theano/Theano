@@ -17,7 +17,6 @@ import warnings
 from theano import gof
 from theano import compat
 
-from theano.compile.dictionaryOutputWrapper import createFunctionReturningDictionary
 
 def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
                   givens=None,
@@ -37,6 +36,18 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              on_unused_input=on_unused_input)
     with open(filename, 'wb') as f:
         cPickle.dump(d, f, -1)
+
+def output_dictionary_wrapper(args, kwargs, fn, keys):
+
+    outputLst = fn(*args, **kwargs)
+
+    outputDict = {}
+
+    for i in range(0, len(keys)):
+        outputDict[keys[i]] = outputLst[i]
+
+    return outputDict
+
 
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
@@ -189,8 +200,17 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     if type(outputs) is dict:
         outputsDictFormat = True
-        outputKeys = outputs.keys()
-        outputs = outputs.values()
+        outputItems = outputs.items()
+
+        outputItemsSorted = sorted(outputItems, key = lambda x: x[0])
+
+        outputKeys = []
+        outputs = []
+        for pair in outputItemsSorted: 
+            outputKeys.append(pair[0])
+            outputs.append(pair[1])
+
+
     else:
         outputsDictFormat = False
 
@@ -280,7 +300,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     if outputsDictFormat:
 
-        fnDictOutput = (lambda *args, **kwargs: createFunctionReturningDictionary(args, kwargs, fn = fn, keys = outputKeys))
+        fnDictOutput = (lambda *args, **kwargs: output_dictionary_wrapper(args, kwargs, fn = fn, keys = outputKeys))
 
         return fnDictOutput
 
