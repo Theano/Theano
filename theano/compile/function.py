@@ -211,7 +211,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     else:
         outputs_dict_format = False
-
+        output_keys = None
 
     if name is None:
         # Determine possible file names
@@ -291,16 +291,11 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                 rebuild_strict=rebuild_strict,
                 allow_input_downcast=allow_input_downcast,
                 on_unused_input=on_unused_input,
-                profile=profile)
+                profile=profile,output_dictionary_flag=outputs_dict_format,
+                output_keys=output_keys)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs
-
-    if outputs_dict_format:
-
-        fn_dict_output = (lambda *args, **kwargs: output_dictionary_wrapper(args, kwargs, fn = fn, keys = output_keys))
-
-        return fn_dict_output
 
 
 

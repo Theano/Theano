@@ -16,6 +16,9 @@ try:
 except ImportError:
     flake8_available = False
 
+print theano.__file__
+print "fake8available", flake8_available
+
 whitelist_flake8 = [
     "updates.py",
     "printing.py",
