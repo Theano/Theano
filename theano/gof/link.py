@@ -172,27 +172,45 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         # Prints output_map
         if storage_map is not None:
             detailed_err_msg += "\nStorage map footprint:\n"
+            storage_map_list = []
             for k in storage_map.keys():
                 if storage_map[k][0] is not None:
-                    detailed_err_msg += " - " + str(k) + ", "
+                    storage_map_item = []
+                    storage_map_item.append(str(k))
                     shapeinfo = None
                     if hasattr(storage_map[k][0], 'shape'):
                         shapeinfo = storage_map[k][0].shape
                         if len(shapeinfo) != 0:
-                            detailed_err_msg += "Shape: %s, " % str(shapeinfo)
+                            storage_map_item.append(shapeinfo)
                         else:
-                            detailed_err_msg += "Shape: (1,), "
+                            storage_map_item.append((1,))
+                    else:
+                        storage_map_item.append(None)
+
                     if hasattr(storage_map[k][0], 'dtype'):
                         dtype = storage_map[k][0].dtype
-                        detailed_err_msg += "ElemSize: %s Byte(s)" % numpy.dtype(dtype).itemsize
+                        storage_map_item.append(numpy.dtype(dtype).itemsize)
                         if shapeinfo is None:
-                            detailed_err_msg += "\n"
+                            storage_map_item.append(None)
                         else:
-                            detailed_err_msg += ", TotalSize: %s Byte(s)\n" % (numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo))
+                            storage_map_item.append(numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo))
                     else:
                         bytes = getsizeof(storage_map[k][0])
-                        detailed_err_msg += "ElemSize: %s Byte(s)\n" % str(bytes)
+                        storage_map_item.append(bytes)
+                        storage_map_item.append(None)
+                    storage_map_list.append(storage_map_item)
 
+            from operator import itemgetter
+            storage_map_list.sort(key=itemgetter(3), reverse=True)
+            for storage_map_item in storage_map_list:
+                detailed_err_msg += " - " + storage_map_item[0] + ", "
+                if storage_map_item[1] is not None:
+                    detailed_err_msg += "Shape: %s, " % str(storage_map_item[1])
+                detailed_err_msg += "ElemSize: %s Byte(s)" % storage_map_item[2]
+                if storage_map_item[3] is not None:
+                    detailed_err_msg += ", TotalSize: %s Byte(s)\n" % storage_map_item[3]
+                else:
+                    detailed_err_msg += "\n"
 
     else:
         hints.append(
