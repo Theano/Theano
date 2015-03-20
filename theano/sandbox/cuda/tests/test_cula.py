@@ -10,12 +10,12 @@ import theano.sandbox.cuda as cuda_ndarray
 if not cuda_ndarray.cuda_available:
     raise SkipTest('Optional package cuda not available')
 from theano.misc.pycuda_init import pycuda_available
-from theano.sandbox.cuda.cula import scikits_cuda_available
+from theano.sandbox.cuda.cula import cula_available
 
 if not pycuda_available:
     raise SkipTest('Optional package pycuda not available')
-if not scikits_cuda_available:
-    raise SkipTest('Optional package scikits.cuda not available')
+if not cula_available:
+    raise SkipTest('Optional package scikits.cuda.cula not available')
 
 from theano.sandbox.cuda import cula
 

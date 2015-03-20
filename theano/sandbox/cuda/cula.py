@@ -10,9 +10,9 @@ dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
 
 try:
     from scikits.cuda import cula
-    cula_available = False
-except ImportError:
-    warnings.warn("CULA import failed in theano.sandbox.cuda.cula")
+    cula_available = True
+except (ImportError, OSError):
+    pass
 
 cula_initialized = False
 if cula_available and cula and not cula_initialized:
