@@ -22,12 +22,9 @@ class GpuSolve(GpuOp):
     CULA GPU solver OP.
 
     trans: Whether to take the transpose of the input matrix
-    or not. By default, we will take the transpose of the
-    input matrix, before feeding it into the Op. That is
-    mainly, because that CULA requires inputs to be in Fortran
-    order.
+    or not.
     """
-    def __init__(self, trans='T'):
+    def __init__(self, trans='N'):
         self.trans = trans
         super(GpuSolve, self).__init__()
 
@@ -75,7 +72,14 @@ class GpuSolve(GpuOp):
             # Solution vectors
             b = inputs[1][0]
 
+            # A is not explicitly converted between C and F order, instead we
+            # switch the "transpose" flag
+            if self.trans in ('T', 'C'):
+                trans = 'N'
+            else:
+                trans = 'T'
 
+            # Convert b to F-order from c-order.
             b_cpy = dimshuffle(b, (1, 0)).reshape((b.shape[0], b.shape[1]))
 
             # This copy forces allocation of a new C-contiguous buffer
@@ -118,7 +122,7 @@ class GpuSolve(GpuOp):
                 cula.culaDeviceSgels(trans, n, l, m, A_ptr, lda, b_ptr, ldb)
                 return A_, b_
 
-            A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda, self.trans)
+            A_pycuda, b_pycuda = cula_gpu_solve(A_pycuda, b_pycuda, trans)
 
             #Convert b to F-order from c-order and assign it to output:
             b_cpy = b_cpy.reshape(b.shape[::-1])
