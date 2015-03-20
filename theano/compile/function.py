@@ -38,14 +38,15 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
         cPickle.dump(d, f, -1)
 
 def output_dictionary_wrapper(args, kwargs, fn, keys):
-    outputLst = fn(*args, **kwargs)
+    output_list = fn(*args, **kwargs)
 
-    outputDict = {}
+    output_dict = {}
 
     for i in range(0, len(keys)):
-        outputDict[keys[i]] = outputLst[i]
+        output_dict[keys[i]] = output_list[i]
 
-    return outputDict
+    return output_dict
+
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
@@ -196,20 +197,20 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     """
 
     if type(outputs) is dict:
-        outputsDictFormat = True
-        outputItems = outputs.items()
+        outputs_dict_format = True
+        output_items = outputs.items()
 
-        outputItemsSorted = sorted(outputItems, key = lambda x: x[0])
+        output_items_sorted = sorted(output_items, key = lambda x: x[0])
 
-        outputKeys = []
+        output_keys = []
         outputs = []
-        for pair in outputItemsSorted: 
-            outputKeys.append(pair[0])
+        for pair in output_items_sorted: 
+            output_keys.append(pair[0])
             outputs.append(pair[1])
 
 
     else:
-        outputsDictFormat = False
+        outputs_dict_format = False
 
 
     if name is None:
@@ -295,11 +296,11 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs
 
-    if outputsDictFormat:
+    if outputs_dict_format:
 
-        fnDictOutput = (lambda *args, **kwargs: output_dictionary_wrapper(args, kwargs, fn = fn, keys = outputKeys))
+        fn_dict_output = (lambda *args, **kwargs: output_dictionary_wrapper(args, kwargs, fn = fn, keys = output_keys))
 
-        return fnDictOutput
+        return fn_dict_output
 
 
 
