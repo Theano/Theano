@@ -20,7 +20,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert outputs[1] == 20.0
         assert outputs[2] == 30.0
 
-    def check_output_dictionary(self): 
+    def test_output_dictionary(self): 
         
         x = T.scalar()
 
@@ -33,12 +33,50 @@ class dictionary_output_checker(unittest.TestCase):
         assert outputs[1] == 40.0
         assert outputs['c'] == 20.0
 
-    def check_input_dictionary(self): 
-        x = T.scalar()
-        y = T.scalar()
+    def test_input_dictionary(self): 
+        x = T.scalar('x')
+        y = T.scalar('y')
 
         f = theano.function([x,y], outputs = {'a' : x + y, 'b' : x * y})
 
         assert f(2,4) == {'a' : 6, 'b' : 8}
         assert f(2, y = 4) == f(2,4)
         assert f(x = 2, y = 4) == f(2,4)
+
+    def test_output_order(self): 
+        x = T.scalar('x')
+        y = T.scalar('y')
+        z = T.scalar('z')
+        e1 = T.scalar('1')
+        e2 = T.scalar('2')
+
+        f = theano.function([x,y,z,e1,e2], outputs = {'x':x,'y':y,'z':z,1:e1,2:e2})
+
+        assert '1' in str(f.outputs[0])
+        assert '2' in str(f.outputs[1])
+        assert 'x' in str(f.outputs[2])
+        assert 'y' in str(f.outputs[3])
+        assert 'z' in str(f.outputs[4])
+
+    def test_composing_function(self): 
+        x = T.scalar('x')
+        y = T.scalar('y')
+
+        a = x + y
+        b = x * y
+
+        f = theano.function([x,y], outputs = {'a' : a, 'b' : b})
+
+        a = T.scalar('a')
+        b = T.scalar('b')
+
+        l = a + b
+        r = a * b
+
+        g = theano.function([a,b], outputs = [l,r])
+
+        result = g(**f(5,7))
+
+        assert result[0] == 47.0
+        assert result[1] == 420.0
+
