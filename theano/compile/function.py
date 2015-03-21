@@ -205,6 +205,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         output_keys = []
         outputs = []
         for pair in output_items_sorted: 
+
             output_keys.append(pair[0])
             outputs.append(pair[1])
 
