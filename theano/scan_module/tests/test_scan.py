@@ -11,6 +11,7 @@ import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import assert_raises
+from nose.tools import raises
 from numpy.testing import dec
 
 import theano
@@ -46,11 +47,11 @@ else:
 mode_with_gpu = mode_with_opt.including('gpu', 'scan')
 
 
+type_eps = {'float64': 1e-7,
+            'float32': 3e-3}
+
 class multiple_outputs_numeric_grad:
     """WRITEME"""
-    type_eps = {'float64': 1e-7,
-                'float32': 3e-3}
-
     def __init__(self, f, pt, ndarray_mask=None, eps=None):
         """Return the gradient of f at pt.
 
@@ -78,13 +79,12 @@ class multiple_outputs_numeric_grad:
         if not ndarray_mask:
             ndarray_mask = [True for x in pt]
 
-        dtype_eps = multiple_outputs_numeric_grad.type_eps['float64']
+        dtype_eps = type_eps['float64']
 
         for i, p in enumerate(pt):
             if ndarray_mask[i]:
                 pt[i] = numpy.array(p)
-                _eps = multiple_outputs_numeric_grad.type_eps[str(
-                    pt[i].dtype)]
+                _eps = type_eps[str(pt[i].dtype)]
                 if _eps > dtype_eps:
                     dtype_eps = _eps
 
@@ -3979,6 +3979,63 @@ class T_Scan(unittest.TestCase):
         print >> sys.stderr, "."
         f = theano.function([W, n_steps], H)
         f(numpy.ones((8,), dtype='float32'), 1)
+
+    def test_strict_mode(self):
+        n = 10
+
+        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w_ = theano.shared(w)
+        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
+
+        def _scan_loose(x):
+            return tensor.dot(x, w_)
+
+        def _scan_strict(x, w_ns):
+            return tensor.dot(x, w_ns)
+
+        ret_loose = theano.scan(_scan_loose, 
+                              sequences=[],
+                              outputs_info=[x0_],
+                              n_steps=n,
+                              strict=False)
+        f_loose = theano.function([x0_], ret_loose[0][-1])
+
+        ret_strict = theano.scan(_scan_strict, 
+                               sequences=[],
+                               outputs_info=[x0_],
+                               non_sequences=[w_],
+                               n_steps=n,
+                               strict=True)
+        f_strict = theano.function([x0_], ret_strict[0][-1])
+
+        result_loose = f_loose(x0)
+        result_strict = f_strict(x0)
+
+        diff = (abs(result_loose - result_strict)).mean()
+
+        assert diff <= type_eps[theano.config.floatX]
+
+    @raises(theano.gof.fg.MissingInputError)
+    def test_strict_mode_ex(self):
+        n = 10
+
+        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w_ = theano.shared(w)
+        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
+
+        def _scan_loose(x):
+            return tensor.dot(x, w_)
+
+        ret_strict = theano.scan(_scan_loose, 
+                               sequences=[],
+                               outputs_info=[x0_],
+                               n_steps=n,
+                               strict=True)
+
+        f_strict = theano.function([x0_], ret_strict[0][-1])
+        result_strict = f_strict(x0)
 
 
 def test_speed():
