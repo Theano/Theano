@@ -185,7 +185,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
-
     if type(outputs) is dict:
         outputs_dict_format = True
         output_items = outputs.items()
