@@ -38,7 +38,6 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
         cPickle.dump(d, f, -1)
 
 
-
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              no_default_updates=False, accept_inplace=False, name=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
