@@ -37,15 +37,6 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     with open(filename, 'wb') as f:
         cPickle.dump(d, f, -1)
 
-def output_dictionary_wrapper(args, kwargs, fn, keys):
-    output_list = fn(*args, **kwargs)
-
-    output_dict = {}
-
-    for i in range(0, len(keys)):
-        output_dict[keys[i]] = output_list[i]
-
-    return output_dict
 
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
