@@ -280,7 +280,8 @@ class Function(object):
     """
 
     def __init__(self, fn, input_storage, output_storage, indices, outputs,
-                 defaults, unpack_single, return_none, output_dictionary_flag, output_keys, maker):
+                 defaults, unpack_single, return_none, output_dictionary_flag, 
+                 output_keys, maker):
         """
         Initialize attributes. create finder, inv_finder.
         """
