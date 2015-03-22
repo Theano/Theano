@@ -185,11 +185,11 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
-    if type(outputs) is dict:
+    if isinstance(outputs, dict):
         outputs_dict_format = True
         output_items = outputs.items()
 
-        output_items_sorted = sorted(output_items, key=lambda x: x[0])
+        output_items_sorted = sorted(output_items)
 
         output_keys = []
         outputs = []
