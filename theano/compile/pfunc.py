@@ -333,10 +333,10 @@ class Param(object):
         self.implicit = implicit
 
 
-def pfunc(params, output_dictionary_flag,output_keys, outputs=None, mode=None, updates=None, givens=None,
+def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         no_default_updates=False, accept_inplace=False, name=None,
         rebuild_strict=True, allow_input_downcast=None,
-        profile=None, on_unused_input=None):
+        profile=None, on_unused_input=None,output_keys=None):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -506,9 +506,9 @@ def pfunc(params, output_dictionary_flag,output_keys, outputs=None, mode=None, u
                     mutable=False, borrow=True, shared=True)
         inputs.append(si)
 
-    return orig_function(inputs, cloned_outputs, mode, output_dictionary_flag=output_dictionary_flag,output_keys = output_keys, 
+    return orig_function(inputs, cloned_outputs, mode, 
             accept_inplace=accept_inplace, name=name, profile=profile,
-            on_unused_input=on_unused_input)
+            on_unused_input=on_unused_input, output_keys=output_keys)
 
 
 def _pfunc_param_to_in(param, strict=False, allow_downcast=None):

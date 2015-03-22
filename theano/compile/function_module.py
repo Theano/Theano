@@ -9,7 +9,6 @@ import cPickle
 import itertools
 import time
 import warnings
-
 import numpy
 
 import theano
@@ -280,8 +279,7 @@ class Function(object):
     """
 
     def __init__(self, fn, input_storage, output_storage, indices, outputs,
-                 defaults, unpack_single, return_none, output_dictionary_flag, 
-                 output_keys, maker):
+                 defaults, unpack_single, return_none, output_keys, maker):
         """
         Initialize attributes. create finder, inv_finder.
         """
@@ -299,7 +297,6 @@ class Function(object):
         self.trust_input = False  # If True, we don't check the input parameter
         self.name = None
         self.nodes_with_inner_function = []
-        self.output_dictionary_flag = output_dictionary_flag
         self.output_keys = output_keys
 
         # We will be popping stuff off this `containers` object.  It is a copy.
@@ -680,8 +677,9 @@ class Function(object):
             return outputs[0]
         else:
 
-            if self.output_dictionary_flag: 
+            if self.output_keys != None: 
                 outputDict = {}
+
 
                 assert len(self.output_keys) == len(outputs)
 
@@ -1062,7 +1060,7 @@ class FunctionMaker(object):
     def __init__(self, inputs, outputs,
             mode=None, accept_inplace=False, function_builder=Function,
             profile=None, on_unused_input=None, fgraph=None,
-            output_dictionary_flag=False,output_keys=None):
+            output_keys=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -1216,7 +1214,6 @@ class FunctionMaker(object):
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.on_unused_input = on_unused_input  # Used only for the pickling
-        self.output_dictionary_flag = output_dictionary_flag
         self.output_keys = output_keys
 
         self.required = [(i.value is None) for i in self.inputs]
@@ -1353,7 +1350,7 @@ class FunctionMaker(object):
             self.profile.import_time += import_time
 
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
-                defaults, self.unpack_single, self.return_none, self.output_dictionary_flag, self.output_keys, self)
+                defaults, self.unpack_single, self.return_none, self.output_keys, self)
         fn.profile = self.profile
         return fn
 
@@ -1414,7 +1411,7 @@ def register_checker(checker):
 
 def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                   name=None, profile=None, on_unused_input=None,
-                  output_dictionary_flag=False,output_keys=None):
+                  output_keys=None):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1481,7 +1478,6 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                    accept_inplace=accept_inplace,
                    profile=profile,
                    on_unused_input=on_unused_input,
-                   output_dictionary_flag = output_dictionary_flag,
                    output_keys = output_keys).create(
                        defaults)
 

@@ -186,7 +186,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     """
     if isinstance(outputs, dict):
-        outputs_dict_format = True
         output_items = outputs.items()
 
         output_items_sorted = sorted(output_items)
@@ -200,7 +199,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     else:
-        outputs_dict_format = False
         output_keys = None
 
     if name is None:
@@ -282,7 +280,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                 allow_input_downcast=allow_input_downcast,
                 on_unused_input=on_unused_input,
                 profile=profile,
-                output_dictionary_flag=outputs_dict_format,
                 output_keys=output_keys)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
