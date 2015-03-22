@@ -600,9 +600,7 @@ def scan(fn,
         if init_out.get('taps', None) == [-1]:
 
             actual_arg = init_out['initial']
-            if not isinstance(actual_arg, tensor.Variable):
-                actual_arg = tensor.as_tensor_variable(actual_arg)
-            arg = safe_new(actual_arg)
+            arg = safe_new(init_out['initial'])
             if isinstance(arg, tensor.Constant):
                 # safe new returns a clone of the constants, but that is not
                 # what we need for initial states
