@@ -27,8 +27,7 @@
     As of October 21st, 2014, the default GPU image convolution
     changed: By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
     is available, we will use it, otherwise we will fall back to using the
-    gemm version (slower then cuDNN in most cases, uses more memory, but
-    faster than the legacy version we used before).
+    gemm version (slower then cuDNN in most cases and uses more memory).
 
     Both cuDNN and the gemm version can be disabled using the Theano flags
     ``optimizer_excluding=conv_dnn`` and ``optimizer_excluding=conv_gemm``,
