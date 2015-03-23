@@ -647,7 +647,16 @@ def repeat(x, repeats, axis=None):
 
     .. versionadded:: 0.6
     """
-    return RepeatOp(axis=axis)(x, repeats)
+    ndim  = x.ndim
+    shape = [x.shape[i] for i in xrange(ndim)]
+    if axis is None:
+        rep_tile = [1 for i in xrange(ndim)] + [repeats] 
+        z = tensor.flatten(tensor.tile(x.reshape(shape+[1]), rep_tile))
+    else:
+        rep_tile = [1 for i in xrange(ndim)]
+        rep_tile[axis] = repeats
+        z = tensor.tile(x, rep_tile)
+    return z
 
 
 class Bartlett(gof.Op):
