@@ -513,10 +513,10 @@ MacOS
 -----
 
 There are various ways to install Theano dependencies on a Mac. Here
-we describe the process in detail with Canopy, Anaconda or Homebrew, but
-if you did it differently and it worked, please let us know the
-details on the `theano-users`_ mailing-list, so that we can add
-alternate instructions here.
+we describe the process in detail with Canopy, Anaconda, Homebrew or
+MacPorts but if you did it differently and it worked, please let us
+know the details on the `theano-users`_ mailing-list, so that we can
+add alternate instructions here.
 
 
 In academia: Enthought Canopy
@@ -538,6 +538,8 @@ To install the latest Theano release execute this in a terminal:
     .. code-block:: bash
 
         $ sudo pip install Theano
+
+If you want the bleeding edge version execute this command instead:
 
 .. code-block:: bash
 
