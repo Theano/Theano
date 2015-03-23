@@ -507,19 +507,6 @@ Note that:
 Once your setup is complete, head to :ref:`using_gpu` to find how to verify
 everything is working properly.
 
-.. note::
-    There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using
-    CUDA 2.3 with gcc-4.4.  Symptom: errors about "__sync_fetch_and_add" being undefined.
-    **Solution 1:** make gcc-4.3 the default gcc
-    (http://pascalg.wordpress.com/2010/01/14/cuda-on-ubuntu-9-10linux-mint-helena/)
-    **Solution 2:** make another gcc (e.g. gcc-4.3) the default just for nvcc.
-    Do this by making a directory (e.g. ``$HOME/.theano/nvcc-bindir``) and
-    installing two symlinks in it: one called gcc pointing to gcc-4.3 (or lower) and one called
-    g++ pointing to g++-4.3 (or lower).  Then add
-    ``compiler_bindir = /path/to/nvcc-bindir`` to the ``[nvcc]`` section of your ``.theanorc``
-    (`libdoc_config`).
-
-
 .. _Graphviz: http://www.graphviz.org/Download_windows.php
 
 MacOS
