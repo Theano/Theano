@@ -406,6 +406,22 @@ class GpuCumsum(CumsumOp, GpuOp):
         return code
 
 
+def values_eq_approx_high_tol(a, b):
+    """This fct is needed to don't have DebugMode raise useless
+    error due to ronding error.
+
+    This happen with big input size due to change in the order of
+    operation.
+
+    """
+    rtol = None
+    if a.size > 100000:
+        # For float32 the default rtol is 1e-5
+        rtol = 5e-5
+    return CudaNdarrayType.values_eq_approx(a, b, rtol=rtol)
+
+
+@register_gpu_opt()
 @local_optimizer([CumsumOp])
 def use_gpu_cumsum(node):
     if type(node.op) is CumsumOp \
@@ -427,8 +443,6 @@ def use_gpu_cumsum(node):
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:
             axis = 0
-
-        return [host_from_gpu(GpuCumsum(axis)(x))]
-
-if cuda_available:
-    register_gpu_opt()(use_gpu_cumsum)
+        ret = host_from_gpu(GpuCumsum(axis)(x))
+        ret.values_eq_approx = values_eq_approx_high_tol
+        return [ret]
