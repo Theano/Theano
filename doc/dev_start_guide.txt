@@ -379,30 +379,39 @@ Then in your ``~/.emacs`` file, add this:
 Unit tests
 ----------
 
-Before submitting a pull request, you should run the unit test suite,
-and make sure that your changes did not create any new Error or Failure.
-You can consult `theano-buildbot`_ for the result of a recent run
-of the test suite with various options.
+When you submit a pull request, your changes will automatically be
+tested via Travis-CI. This will post the results of the tests with a
+little icon next to your commit. A yellow circle means the tests are
+running.  A red X means the tests failed and a green circle means the
+tests passed.
+
+Just because the tests run automatically does not mean you shouldn't
+run them yourself to make sure everything is all right.  You can run
+only the portion you are modifying to go faster and have travis to
+make sure there are no global impacts.
+
+Also, if you are changing GPU code, travis doesn't test that, because
+there are no GPUs on the test nodes.
 
 To run the test suite with the default options, you can follow the
 instructions of :ref:`testing_installation`.
 
-Each night we execute all the unit tests automatically, with different
-sets of options.  The result is sent by email to the `theano-buildbot`_
+Each night we execute all the unit tests automatically, with several
+sets of options. The result is sent by email to the `theano-buildbot`_
 mailing list.
 
 For more detail, see :ref:`metadocumentation_nightly_build`.
 
-To run all the tests with the same configuration as the buildbot, run this script:
+To run all the tests with the same configuration as the buildbot, run
+this script:
 
 .. code-block:: bash
 
    theano/misc/do_nightly_build
 
-This function accepts arguments that it forward to nosetests. You can
+This script accepts arguments that it forwards to nosetests. You can
 run only some tests or enable pdb by giving the equivalent nosetests
 parameters.
-
 
 
 More Advanced Git Usage
