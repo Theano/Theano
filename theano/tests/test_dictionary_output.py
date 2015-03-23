@@ -80,3 +80,16 @@ class dictionary_output_checker(unittest.TestCase):
         assert result[0] == 47.0
         assert result[1] == 420.0
 
+    def test_output_list(self): 
+
+        x = T.scalar('x')
+
+        f = theano.function([x], outputs = [x * 3, x * 2, x * 4, x])
+
+        result = f(5.0)
+
+        assert result[0] == 15.0
+        assert result[1] == 10.0
+        assert result[2] == 20.0
+        assert result[3] == 5.0
+

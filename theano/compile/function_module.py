@@ -677,16 +677,16 @@ class Function(object):
             return outputs[0]
         else:
 
-            if self.output_keys != None: 
+            if self.output_keys is not None: 
                 outputDict = {}
 
 
                 assert len(self.output_keys) == len(outputs)
 
-                for i in range(0, len(self.output_keys)): 
-                    outputDict[self.output_keys[i]] = outputs[i]
+                #for i in range(0, len(self.output_keys)): 
+                #    outputDict[self.output_keys[i]] = outputs[i]
 
-                outputs = outputDict
+                return dict(itertools.izip(self.output_keys, outputs))
 
             return outputs
 
