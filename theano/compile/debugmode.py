@@ -2179,7 +2179,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             accept_inplace = False,
             function_builder = Function,
             profile=None,
-            on_unused_input=None):
+            on_unused_input=None,
+            output_keys=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -2314,6 +2315,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.mode = mode
+        self.output_keys = output_keys
 
     def create(self, defaults=None, trustme=False):
         """
@@ -2422,7 +2424,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
-                                   self.return_none, self)
+                                   self.return_none, self.output_keys, self)
         return fn
 
 
