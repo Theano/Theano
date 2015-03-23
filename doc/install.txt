@@ -509,8 +509,8 @@ everything is working properly.
 
 .. _Graphviz: http://www.graphviz.org/Download_windows.php
 
-MacOS
------
+Mac OS
+------
 
 There are various ways to install Theano dependencies on a Mac. Here
 we describe the process in detail with Canopy, Anaconda, Homebrew or
@@ -535,15 +535,15 @@ implementation of blas.
 
 To install the latest Theano release execute this in a terminal:
 
-    .. code-block:: bash
+.. code-block:: bash
 
-        $ sudo pip install Theano
+    $ pip install Theano
 
 If you want the bleeding edge version execute this command instead:
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 See the section `install_bleeding_edge`_ for more
 information on the bleeding edge version.
@@ -576,21 +576,21 @@ acceptable BLAS version.
 After installing Anaconda, in a terminal execute this command to
 install the latest Theano release:
 
-    .. code-block:: bash
+.. code-block:: bash
 
-        $ pip install Theano
+    $ pip install Theano
 
 To install the missing Theano optional dependency (pydot):
 
-    .. code-block:: bash
+.. code-block:: bash
 
-        $ conda install pydot
+    $ conda install pydot
 
 If you want the bleeding edge version instead execute this command:
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 See the section `install_bleeding_edge`_ for more
 information on the bleeding edge version.
@@ -641,6 +641,19 @@ numpy and scipy with hombrew:
     $ brew tap homebrew/python
     $ brew install numpy --with-openblas
     $ brew install scipy --with-openblas
+
+
+Then install theano as usual:
+
+.. code-block:: bash
+
+    $ pip install Theano --user
+
+Or for the bleeding-edge version:
+
+.. code-block:: bash
+
+    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 
 MacPorts
