@@ -13,10 +13,20 @@ from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano.gof import Apply, Op
 from theano.gof import local_optimizer
+
 from theano.sandbox.cuda.basic_ops import (
-    gpu_contiguous, gpu_from_host, host_from_gpu
+    as_cuda_ndarray_variable,
+    gpu_contiguous, gpu_from_host, host_from_gpu,
+    GpuFromHost, HostFromGpu
     )
 from theano.sandbox.cuda import gpu_optimizer, register_opt
+from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.sandbox.cuda.dnn import dnn_available, dnn_conv
+from theano.sandbox.cuda.blas import GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs
+from theano.sandbox.cuda.opt import values_eq_approx_high_tol
+
+
+from theano.tensor.nnet import conv2d as cpu_conv2d
 
 imported_scipy_signal = False
 try:
@@ -99,8 +109,8 @@ def conv2d(img,
     if (filter_flip):
         filters = filters[:, :, ::-1, ::-1]
     ### FIXME input shape/kernel shape
-    conv_op = Conv2d(imshp=image_shape, kshp=filter_shape, bsize=batch_size,
-                     border_mode="valid", subsample=(1, 1), pad=(0, 0))
+    conv_op = Conv2d(imshp=input_shape, kshp=filter_shape, bsize=batch_size,
+                     border_mode="valid", subsample=(1, 1))
     return conv_op(img, filters)
 
 
@@ -175,21 +185,31 @@ class Conv2d(BaseConv2d):
                  kshp=None,
                  bsize=None,
                  border_mode="valid",
-                 subsample=(1, 1),
-                 pad=(0, 0)):
+                 subsample=(1, 1)):
         super(Conv2d, self).__init__(imshp, kshp, bsize,
-                                     border_mode, subsample, pad)
+                                     border_mode, subsample)
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
-        broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
-                         False, False]
-        return Apply(self, [img, kern], [broadcastable()])
 
-    def perform(self, node, nodename, inp, out_, sub):
+        broadcastable=[img.broadcastable[0],
+                       kern.broadcastable[0],
+                       False, False]
+        if not self.on_gpu:
+            img = as_tensor_variable(img)
+            kern = as_tensor_variable(kern)
+            output = theano.tensor.tensor(dtype=img.type.dtype,
+                                          broadcastable=broadcastable)
+            return Apply(self, [img, kern], [output])
+        else:
+            img = as_cuda_ndarray_variable(img)
+            kern = as_cuda_ndarray_variable(kern)
+            return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+
+    def perform(self, node, inp, out_):
         raise NotImplementedError('Conv2d theano optimization failed')
 
     def grad(self, inp, grads):
@@ -218,10 +238,9 @@ class Conv2d_gradWeights(BaseConv2d):
                  kshp=None,
                  bsize=None,
                  border_mode="valid",
-                 subsample=(1, 1),
-                 pad=(0, 0)):
+                 subsample=(1, 1)):
         super(Conv2d_gradWeights, self).__init__(imshp, kshp, bsize,
-                                                 border_mode, subsample, pad)
+                                                 border_mode, subsample)
 
     def make_node(self, img, topgrad, shape=None):
         if img.type.ndim != 4:
@@ -236,11 +255,22 @@ class Conv2d_gradWeights(BaseConv2d):
         else:
             height_width = []
 
-        broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
-                         False, False]
-        return Apply(self, [img, topgrad] + height_width, [broadcastable()])
+        broadcastable=[topgrad.broadcastable[0],
+                       img.broadcastable[0],
+                       False, False]
+        if not self.on_gpu:
+            img = as_tensor_variable(img)
+            topgrad = as_tensor_variable(topgrad)
+            output = theano.tensor.tensor(dtype=img.type.dtype,
+                                          broadcastable=broadcastable)
+            return Apply(self, [img, topgrad] + height_width, [output])
+        else:
+            img = as_cuda_ndarray_variable(img)
+            topgrad = as_cuda_ndarray_variable(topgrad)
+            return Apply(self, [img, topgrad] + height_width,
+                         [CudaNdarrayType(broadcastable)()])
 
-    def perform(self, node, nodename, inp, out_, sub):
+    def perform(self, node, inp, out_):
         raise NotImplementedError('Conv2d_gradWeight theano optimization failed')
 
     def grad(self, inp, grads):
@@ -275,10 +305,9 @@ class Conv2d_gradInputs(Conv2d):
                  kshp=None,
                  bsize=None,
                  border_mode="valid",
-                 subsample=(1, 1),
-                 pad=(0, 0)):
+                 subsample=(1, 1)):
         super(Conv2d_gradInputs, self).__init__(imshp, kshp, bsize,
-                                                border_mode, subsample, pad)
+                                                border_mode, subsample)
 
     def make_node(self, kern, topgrad, shape=None):
         if kern.type.ndim != 4:
@@ -287,11 +316,23 @@ class Conv2d_gradInputs(Conv2d):
             raise TypeError('topgrad must be 4D tensor')
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
-        height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
 
-        broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
+        height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+        broadcastable = [topgrad.type.broadcastable[0],
+                         kern.type.broadcastable[1],
                          False, False]
-        return Apply(self, [kern, topgrad] + height_width, [broadcastable()])
+
+        if not self.on_gpu:
+            kern = as_tensor_variable(kern)
+            topgrad = as_tensor_variable(topgrad)
+            output = theano.tensor.tensor(dtype=kern.type.dtype,
+                                          broadcastable=broadcastable)
+            return Apply(self, [kern, topgrad] + height_width, [output])
+        else:
+            kern = as_cuda_ndarray_variable(kern)
+            topgrad = as_cuda_ndarray_variable(topgrad)
+            return Apply(self, [kern, topgrad] + height_width,
+                         [CudaNdarrayType(broadcastable)()])
 
     def perform(self, node, nodename, inp, out_, sub):
         raise NotImplementedError('Conv2d_gradWeight theano optimization failed')
@@ -316,9 +357,9 @@ class Conv2d_gradInputs(Conv2d):
 
 
 
-### to Gpu optimization
+### move to Gpu optimization
 @local_optimizer([gpu_from_host, Conv2d, Conv2d_gradWeights, Conv2d_gradInputs])
-def local_conv2d_gpu_conv(node, convop):
+def local_conv2d_gpu_conv(node):
     """
     gpu_from_host(Conv) -> (gpu)_Conv(gpu_from_host)
 
@@ -331,14 +372,15 @@ def local_conv2d_gpu_conv(node, convop):
                 (isinstance(host_input.owner.op, Conv2d) or
                  isinstance(host_input.owner.op, Conv2d_gradWeights) or
                  isinstance(host_input.owner.op, Conv2d_gradInputs)):
+            print "here Gpu 2"
             gpu_conv = host_input.owner.op
             gpu_conv.on_gpu = True
             img, kern = host_input.owner.inputs
             out = gpu_conv(gpu_from_host(img),
                            gpu_from_host(kern))
-            out = tensor.patternbroadcast(gpu_from_host(out),
-                                          node.outputs[0].broadcastable)
-            #out.values_eq_approx = values_eq_approx_high_tol
+            out = theano.tensor.patternbroadcast(gpu_from_host(out),
+                                                 node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx_high_tol
             return [out]
 
     if (isinstance(node.op, Conv2d) or
@@ -353,11 +395,11 @@ def local_conv2d_gpu_conv(node, convop):
             gpu_conv.on_gpu = True
             out = gpu_conv(gpu_from_host(img),
                            gpu_from_host(kern))
-            out = tensor.patternbroadcast(
+            out = theano.tensor.patternbroadcast(
                 out,
                 node.outputs[0].broadcastable)
-            #out.values_eq_approx = values_eq_approx_high_tol
-            return [out]
+            out.values_eq_approx = values_eq_approx_high_tol
+            return [as_tensor_variable(out)]
 
 # We register the optimizer that moves convolutions to the GPU.
 register_opt()(local_conv2d_gpu_conv)
@@ -391,14 +433,13 @@ def local_conv2d_dnn(node):
                         subsample=node.op.subsample,
                         direction_hint='bprop inputs')
         return [rval]
-
 register_opt()(local_conv2d_dnn)
 
 #### GPU CorrMM optimization
 @local_optimizer([Conv2d])
 def local_conv2d_gemm(node):
     if (isinstance(node.op, Conv2d) and
-        node.on_gpu and
+        node.op.on_gpu and
         node.op.border_mode in ['full', 'valid']):
         img, kern = node.inputs
         border_mode = node.op.border_mode
@@ -452,48 +493,165 @@ def local_conv2d_gemm(node):
             rval = tensor.patternbroadcast(
                 rval, node.outputs[0].type.broadcastable)
         return [rval]
+register_opt()(local_conv2d_gemm)
 
 @local_optimizer([Conv2d_gradWeights])
 def local_conv2d_gradweight_gemm(node):
-    if isinstance(node.op, Conv2d) and node.on_gpu:
-        rval = GpuCorrMM_gradWeight(border_mode=node.op.border_mode,
-                                    subsample=node.op.subsample)(
-            gpu_contiguous(img), gpu_contiguous(kern))
+    if isinstance(node.op, Conv2d_gradWeights) and node.op.on_gpu:
+        img, topgrad = node.inputs
+        rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
+                                     subsample=node.op.subsample)(
+            gpu_contiguous(img), gpu_contiguous(topgrad))
         return [rval]
+register_opt()(local_conv2d_gradweight_gemm)
 
 @local_optimizer([Conv2d_gradInputs])
 def local_conv2d_gradinputs_gemm(node):
-    if isinstance(node.op, Conv2d) and node.on_gpu:
+    if isinstance(node.op, Conv2d_gradInputs) and node.op.on_gpu:
+        kern, topgrad = node.inputs
         rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
                                      subsample=node.op.subsample)(
-            gpu_contiguous(img), gpu_contiguous(kern))
+            gpu_contiguous(kern), gpu_contiguous(topgrad))
         return [rval]
+register_opt()(local_conv2d_gradinputs_gemm)
 
-# First we register the optimizer that moves convolutions to the GPU.
 
 ### Cpu Optmization
+### Desactived focus on GPU optimization first
+# @local_optimizer([Conv2d])
+# def local_conv2d(node):
+#     if isinstance(node.op, Conv2d) and not node.on_gpu:
+#         img, kern = node.inputs
+#         rval = cpu_conv2d(img, kern,
+#                           node.op.imshp, node.op.filter_shape,
+#                           border_mode=node.op.border_mode,
+#                           subsample=node.op.subsample)
+#         return [rval]
 
-@local_optimizer([Conv2d_gradWeights])
-def local_conv2d_cpu(node):
-    if isinstance(node.op, Conv2d) and node.on_gpu:
-        rval = GpuCorrMM_gradWeight(border_mode=node.op.border_mode,
-                                    subsample=node.op.subsample)(
-            gpu_contiguous(img), gpu_contiguous(kern))
-        return [rval]
+
+# @local_optimizer([Conv2d_gradWeights])
+# def local_conv2d_gradweight_cpu(node):
+
+#     if not isinstance(node.op, Conv2d_gradWeights) or not node.on_gpu:
+#         return
+
+#     img, topgrad = node.inputs
+#     if op.border_mode == 'valid' and op.subsample != (1, 1):
+#         # Use the gradient as defined in conv3D, because the implementation
+#         # by Conv is slow (about 3x slower than conv3D, and probably 10x
+#         # slower than it could be), nad incorrect when dx or dy > 2.
+#         # build a "node", that should be equivalent to the one given by
+#         # self.make_node, but using convGrad3D instead.
+#         shuffled_img = img.dimshuffle(0, 2, 3, 'x', 1)
+#         shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
+#         rval = ConvGrad3D(V=shuffled_img,
+#                           d=(op.subsample[0], op.subsample[1], 1),
+#                           WShape=(self.kshp[0], self.kshp[1], 1),
+#                           dCdH_=shuffled_topgrad)
+
+#         return [rval.dimshuffle(0, 4, 1, 2)]
 
 
-@local_optimizer([Conv2d_gradWeights])
-def local_conv2d_gradweight_cpu(node):
-    if isinstance(node.op, Conv2d) and node.on_gpu:
-        rval = GpuCorrMM_gradWeight(border_mode=node.op.border_mode,
-                                    subsample=node.op.subsample)(
-            gpu_contiguous(img), gpu_contiguous(kern))
-        return [rval]
+#     if op.subsample[0] not in (1, 2) or op.subsample[1] not in (1, 2):
+#         raise NotImplementedError(
+#             "ERROR: We disable conv2d grad now when stride x or "
+#             "stride y are different from 1 and 2, as there is a bug in it.")
 
-@local_optimizer([Conv2d_gradInputs])
-def local_conv2d_gradinputs_cpu(node):
-    if isinstance(node.op, Conv2d) and node.on_gpu:
-        rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
-                                     subsample=node.op.subsample)(
-            gpu_contiguous(img), gpu_contiguous(kern))
-        return [rval]
+#     if op.imshp is None or op.kshp is None:
+#         raise Exception("Conv2d grad when stride x!=1 or stride y!=1 we must have"
+#                         " all the optional shape information")
+
+#     ####### Determine gradient on kernels ########
+#     assert len(op.imshp) == 4 and len(op.kshp) == 4
+
+#     #newin = inputs.dimshuffle((1, 0, 2, 3))
+#     #newgz = gz.dimshuffle((1, 0, 2, 3))
+
+#     outshp = op.getOutputShape(op.imshp[1:],
+#                                op.kshp,  op.subsample,
+#                                op.border_mode)
+#     fulloutshp = op.getOutputShape(op.imshp[1:],
+#                                    op.kshp, (1, 1),
+#                                    op.border_mode)
+
+
+#     if op.border_mode == 'valid':
+#         (img, filters) = (img, topgrad)
+#         kshp_logical = fulloutshp ## FIXME
+#         kshp_logical_top_aligned = False
+#         imshp_logical = None
+#         (bsize, nkern) = (op.imshp[0], op.kshp[0])
+#         imshp = (bsize, op.imshp[1], op.imshp[2])
+#         kshp = outshp ## FIXME
+#     elif op.border_mode == 'full':
+#         (img, filters) = (topgrad, imag)
+#         kshp_logical = None
+#         kshp_logical_top_aligned = True
+#         imshp_logical = (op.imshp[0],
+#                          fulloutshp[0],
+#                          fulloutshp[1]) ## FIXME
+#         (bsize, nkern) = (op.kshp[0], op.imshp[0])
+#         imshp = (op.imshp[0], outshp[0], outshp[1]) ## FIXME
+#         kshp = op.imshp[1:] ## FIXME
+#     else:
+#         raise NotImplementedError(
+#             'Only [full,valid] modes are currently supported.')
+
+#     filters = filters[:, :, ::-1, ::-1]  # flip them
+#     dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
+#                 unroll_batch=None, unroll_kern=None, unroll_patch=None,
+#                 imshp_logical=imshp_logical,
+#                 kshp_logical=kshp_logical,
+#                 kshp_logical_top_aligned=kshp_logical_top_aligned,
+#                 direction_hint='bprop weights')
+#     return [dw(img, filters)]
+
+
+# @local_optimizer([Conv2d_gradInputs])
+# def local_conv2d_gradinputs_cpu(node):
+#     if not isinstance(node.op, Conv2d_gradInputs) or not node.on_gpu:
+#         return
+
+#     # ####### Determine gradient on inputs ########
+#     # mode = 'valid'
+#     # if not self.out_mode == 'full':
+#     #     mode = 'full'
+#     # filters = kerns.dimshuffle((1, 0, 2, 3))
+#     # filters = filters[:, :, ::-1, ::-1]
+
+#     #     nkern = self.imshp[0]
+#     #     imshp = (self.nkern, self.outshp[0], self.outshp[1])
+#     #     imshp_logical = (self.nkern, self.fulloutshp[0],
+#     #                      self.fulloutshp[1])
+
+#     #     if 0:  # hard-code c generation parameters
+#     #         din = ConvOp(imshp, self.kshp, nkern, self.bsize,
+#     #                      1, 1, output_mode=mode,
+#     #                      unroll_batch=un_b, unroll_kern=un_k,
+#     #                      unroll_patch=un_p,
+#     #                      imshp_logical=imshp_logical,
+#     #                      kshp_logical=None,
+#     #                      version=-1,  # we we change the mode, we don't forward the version.
+#     #                      direction_hint='bprop inputs',
+#     #                      verbose=self.verbose)
+#     #     else:  # let __init__ figure out the unrolling / patch sizes
+#     #         din = ConvOp(imshp, self.kshp, nkern, self.bsize,
+#     #                      1, 1, output_mode=mode,
+#     #                      unroll_batch=None, unroll_kern=None,
+#     #                      unroll_patch=None,
+#     #                      imshp_logical=imshp_logical,
+#     #                      kshp_logical=None,
+#     #                      version=-1,  # we we change the mode, we don't forward the version.
+#     #                      direction_hint='bprop inputs',
+#     #                      verbose=self.verbose)
+
+#     #     din = din(gz, filters)
+
+#     #     assert all(o is None or o == i
+#     #                for o, i in zip(din.owner.op.outshp, self.imshp[1:]))
+
+#     #     # din and dw should have the same broadcasting pattern as the
+#     #     # parameters they are the gradient of (resp. inputs and kerns).
+#     #     din = patternbroadcast(din, inputs.broadcastable)
+#     #     dw = patternbroadcast(dw, kerns.broadcastable)
+#     #     return [din, dw]
