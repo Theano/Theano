@@ -3342,13 +3342,15 @@ class GpuAlloc(GpuOp):
         }
         if (%(memset_0)s && CudaNdarray_is_c_contiguous(%(out)s))
         {
-            if (cudaSuccess != cudaMemset(%(out)s->devdata, 0,
-                                          CudaNdarray_SIZE(%(out)s) * 4))
+            cudaError_t err = cudaMemset(%(out)s->devdata, 0,
+                                         CudaNdarray_SIZEt(%(out)s) * 4);
+            if (cudaSuccess != err)
             {
                 PyErr_Format(PyExc_MemoryError,
-                             "GpuAlloc: Error memsetting %%d"
-                             " bytes of device memory.",
-                             CudaNdarray_SIZE(%(out)s) * 4);
+                             "GpuAlloc: Error memsetting %%ld"
+                             " bytes of device memory. %%s",
+                             (long)(CudaNdarray_SIZEt(%(out)s) * 4),
+                             cudaGetErrorString(err));
                 Py_XDECREF(%(out)s);
                 %(out)s = NULL;
                 %(fail)s;
@@ -3372,7 +3374,7 @@ class GpuAlloc(GpuOp):
         return [None for i in inputs]
 
     def c_code_cache_version(self):
-        return (7,)
+        return (9,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:

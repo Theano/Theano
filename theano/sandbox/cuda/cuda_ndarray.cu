@@ -5117,6 +5117,17 @@ CudaNdarray_SIZE(const CudaNdarray *self)
     }
     return size;
 }
+size_t
+CudaNdarray_SIZEt(const CudaNdarray *self)
+{
+    if (self->nd == -1) return 0;
+    size_t size = 1;
+    for (int i = 0; i < self->nd; ++i)
+    {
+        size *= CudaNdarray_HOST_DIMS(self)[i];
+    }
+    return size;
+}
 
 PyObject *
 CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure)
