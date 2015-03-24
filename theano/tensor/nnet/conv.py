@@ -61,12 +61,14 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :param subsample: factor by which to subsample the output.
                       Also called strides elsewhere.
 
-    :type image_shape: None, tuple/list of len 4 of int or Constant variable
+    :type image_shape: None, tuple/list of len 4 of int, None or
+                       Constant variable
     :param image_shape: The shape of the input parameter.
                         Optional, used for optimization like loop unrolling
                         You can put None for any element of the list
                         to tell that this element is not constant.
-    :type filter_shape: None, tuple/list of len 4 of int or Constant variable
+    :type filter_shape: None, tuple/list of len 4 of int, None or
+                        Constant variable
     :param filter_shape: Optional, used for optimization like loop unrolling
                          You can put None for any element of the list
                          to tell that this element is not constant.
@@ -671,15 +673,23 @@ class ConvOp(OpenMPOp):
         imshp = self.imshp
         if any(x is None for x in imshp):
             imshp = tuple(img2d.shape[1:])
+        if imshp != img2d.shape[1:]:
+            raise ValueError("bad shape", imshp, img2d.shape[1:])
         kshp = self.kshp
         if any(x is None for x in kshp):
             kshp = tuple(filtersflipped.shape[2:])
+        if kshp != filtersflipped.shape[2:]:
+            raise ValueError("bad shape", kshp, filtersflipped.shape[2:])
         bsize = self.bsize
         if bsize is None:
             bsize = img2d.shape[0]
+        elif bsize != img2d.shape[0]:
+            raise ValueError("bad shape", bsize, img2d.shape[0])
         nkern = self.nkern
         if nkern is None:
             nkern = filtersflipped.shape[0]
+        elif nkern != filtersflipped.shape[0]:
+            raise ValueError("bad shape", nkern, filtersflipped.shape[0])
 
         imshp_logical = self.imshp_logical
         if imshp_logical[0] is None:
@@ -974,7 +984,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (13, self.openmp, blas.blas_header_version())
+        return (14, self.openmp, blas.blas_header_version())
 
     def c_support_code(self):
         return """
@@ -1069,25 +1079,126 @@ using namespace std;
         d["self_imshp2"] = "PyArray_DIMS(%(img2d)s)[3]" % d
         d["self_kshp0"] = "PyArray_DIMS(%(filtersflipped)s)[2]" % d
         d["self_kshp1"] = "PyArray_DIMS(%(filtersflipped)s)[3]" % d
+        d["assert_size"] = ""
 
         # Override the default value if we have it
         if self.kshp[0] is not None:
+            expected = d["self_kshp0"]
+            value = self.kshp[0]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_kshp0"] = self.kshp[0]
         if self.kshp[1] is not None:
+            expected = d["self_kshp1"]
+            value = self.kshp[1]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_kshp1"] = self.kshp[1]
         if self.outshp[0] is not None:
+            expected = "dim_zz[0]"
+            value = self.outshp[0]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_outshp0"] = self.outshp[0]
         if self.outshp[1] is not None:
+            expected = "dim_zz[1]"
+            value = self.outshp[1]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_outshp1"] = self.outshp[1]
         if self.imshp[0] is not None:
+            expected = d["self_imshp0"]
+            value = self.imshp[0]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
+            expected = "kerns_dim[1]"
+            value = self.imshp[0]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_imshp0"] = self.imshp[0]
         if self.imshp[1] is not None:
+            expected = d["self_imshp1"]
+            value = self.imshp[1]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_imshp1"] = self.imshp[1]
         if self.imshp[2] is not None:
+            expected = d["self_imshp2"]
+            value = self.imshp[2]
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_imshp2"] = self.imshp[2]
         if self.bsize is not None:
+            expected = d["self_bsize"]
+            value = self.bsize
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_bsize"] = self.bsize
         if self.nkern is not None:
+            expected = d["self_nkern"]
+            value = self.nkern
+            d["assert_size"] += """
+if(%(value)s != %(expected)s){
+    PyErr_Format(PyExc_ValueError,
+            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            (long)%(value)s, (long)%(expected)s);
+    %(fail)s;
+}
+            """ % dict(expected=expected, value=value, **sub)
             d["self_nkern"] = self.nkern
 
         # Other hard coded stuff only if we have all shapes
@@ -1111,86 +1222,6 @@ using namespace std;
             d["all_shape"] = "1"
             d["dim_zz_const"] = "const"
             d["dim_zz_affect"] = ""
-            d["assert_size"] = """
-// Check the batch size and the number of kernels (sometimes constant in the graph)
-if(img2d_dim[0] != %(self_bsize)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the batch size in the image (%%ld) at run time is different"
-            " than at build time (%%ld) for the ConvOp.",
-            (long)img2d_dim[0], (long)%(self_bsize)s);
-    %(fail)s;
-}
-if(kerns_dim[0] != %(self_nkern)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the number of kernels in the filter (%%ld) at run time is"
-            " different than at build time (%%ld) for the ConvOp.",
-            (long)kerns_dim[0], (long)%(self_nkern)s);
-    %(fail)s;
-}
-
-// Check the size of the image (sometimes constant in the graph)
-if(img2d_dim[1] != %(self_imshp0)s){
-    PyErr_Format(PyExc_ValueError,
-            "the image stack size (%%ld) at run time is different than"
-            " at build time (%%ld) for the ConvOp.",
-            (long)img2d_dim[1], (long)%(self_imshp0)s);
-    %(fail)s;
-}
-if(img2d_dim[2] != %(self_imshp1)s){
-    PyErr_Format(PyExc_ValueError,
-            "the number of rows in the image (%%ld) at run time is different"
-            " than at build time (%%ld) for the ConvOp.",
-            (long)img2d_dim[2], (long)%(self_imshp1)s);
-    %(fail)s;
-}
-if(img2d_dim[3] != %(self_imshp2)s){
-    PyErr_Format(PyExc_ValueError,
-            "the number of columns in the image (%%ld) at run time is"
-            " different than at build time (%%ld) for the ConvOp.",
-            (long)img2d_dim[3], (long)%(self_imshp2)s);
-    %(fail)s;
-}
-
-// Check the size of the output (sometimes constant in the graph)
-if(dim_zz[0] != %(self_outshp0)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the precomputed number of rows in the output (%%ld) at run time"
-            " is different than at build time (%%ld) for the ConvOp.",
-            (long)dim_zz[0], (long)%(self_outshp0)s);
-    %(fail)s;
-}
-if(dim_zz[1] != %(self_outshp1)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the precomputed number of columns in the output (%%ld) at run"
-            " time is different than at build time (%%ld) for the ConvOp.",
-            (long)dim_zz[1], (long)%(self_outshp1)s);
-    %(fail)s;
-}
-
-// Check the size of the filter (sometimes constant in the graph)
-if(kerns_dim[1] %% %(self_imshp0)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the filter stack size (%%ld) at run time is different than at"
-            " build time (%%ld) for the ConvOp.",
-            (long)kerns_dim[1], (long)%(self_imshp0)s);
-    %(fail)s;
-}
-if(kerns_dim[2] %% %(self_kshp0)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the number of rows in the filter (%%ld) at run time is different"
-            " than at build time (%%ld) for the ConvOp.",
-            (long)kerns_dim[2], (long)%(self_kshp0)s);
-    %(fail)s;
-}
-if(kerns_dim[3] %% %(self_kshp1)s!=0){
-    PyErr_Format(PyExc_ValueError,
-            "the number of columns in the filter (%%ld) at run time is"
-            " different than at build time (%%ld) for the ConvOp.",
-            (long)kerns_dim[3], (long)%(self_kshp1)s);
-    %(fail)s;
-}
-
-""" % (locals())
         else:
             d["affectation"] = "+="
             d["all_shape"] = "0"
@@ -1204,7 +1235,7 @@ if(kerns_dim[3] %% %(self_kshp1)s!=0){
     dim_zz[1] = (int)ceil((dim_im[1]-dim_ker1+1)/float(%(self_dy)s));
   }
 """ % d
-            d["assert_size"] = """
+            d["assert_size"] += """
 // Check the stack size of the filter and images are equals
 if(kerns_dim[1] != img2d_dim[1]){
     PyErr_Format(PyExc_ValueError,
