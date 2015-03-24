@@ -436,7 +436,7 @@ class BinCountOp(theano.Op):
         return self.__class__.__name__
 
 
-def bincount(x, weights=None, minlength=None):
+def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     """Count number of occurrences of each value in array of ints.
 
     The number of bins (of size 1) is one larger than the largest
@@ -453,7 +453,9 @@ def bincount(x, weights=None, minlength=None):
         Optional.
     :param minlength: A minimum number of bins for the output array.
         Optional.
-
+    :param assert_nonneg: A flag that inserts an assert_op to check if
+        every input x is nonnegative.
+        Optional.
     .. versionadded:: 0.6
     """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
@@ -470,6 +472,11 @@ def bincount(x, weights=None, minlength=None):
 
     if x.ndim != 1:
         raise TypeError("Inputs must be of dimension 1.")
+
+    if assert_nonneg:
+        from theano.tensor.opt import Assert
+        assert_op = Assert('Input to bincount has negative values!')
+        x = assert_op(x, theano.tensor.all(x >= 0))
 
     max_value = theano.tensor.cast(x.max() + 1, 'int64')
 

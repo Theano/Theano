@@ -14,6 +14,7 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      to_one_hot)
 from theano import tensor as T
 from theano import config, tensor, function
+from nose.tools import assert_raises
 
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
@@ -138,6 +139,9 @@ class TestBinCountOp(utt.InferShapeTester):
                 f4 = theano.function([x], bincount(x, minlength=5))
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
+                a[0] = -1
+                f5 = theano.function([x], bincount(x, assert_nonneg=True))
+                self.assertRaises(AssertionError, f5, a)
 
     def test_bincountOp(self):
         w = T.vector('w')
