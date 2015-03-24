@@ -67,13 +67,11 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                         Optional, used for optimization like loop unrolling
                         You can put None for any element of the list
                         to tell that this element is not constant.
-                        Not used on the GPU.
     :type filter_shape: None, tuple/list of len 4 of int, None or
                         Constant variable
     :param filter_shape: Optional, used for optimization like loop unrolling
                          You can put None for any element of the list
                          to tell that this element is not constant.
-                         Not used on the GPU.
     :param kwargs: kwargs are passed onto ConvOp.
                    Can be used to set the following:
                    unroll_batch, unroll_kern, unroll_patch,
