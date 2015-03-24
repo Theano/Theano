@@ -61,15 +61,19 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :param subsample: factor by which to subsample the output.
                       Also called strides elsewhere.
 
-    :type image_shape: None, tuple/list of len 4 of int or Constant variable
+    :type image_shape: None, tuple/list of len 4 of int, None or
+                       Constant variable
     :param image_shape: The shape of the input parameter.
                         Optional, used for optimization like loop unrolling
                         You can put None for any element of the list
                         to tell that this element is not constant.
-    :type filter_shape: None, tuple/list of len 4 of int or Constant variable
+                        Not used on the GPU.
+    :type filter_shape: None, tuple/list of len 4 of int, None or
+                        Constant variable
     :param filter_shape: Optional, used for optimization like loop unrolling
                          You can put None for any element of the list
                          to tell that this element is not constant.
+                         Not used on the GPU.
     :param kwargs: kwargs are passed onto ConvOp.
                    Can be used to set the following:
                    unroll_batch, unroll_kern, unroll_patch,
