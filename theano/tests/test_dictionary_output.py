@@ -6,17 +6,6 @@ import sys
 
 class dictionary_output_checker(unittest.TestCase):
 
-    def test_output_list(self):
-        x = T.scalar()
-
-        f = theano.function([x], outputs=[x, x*2, x*3])
-
-        outputs = f(10.0)
-
-        assert outputs[0] == 10.0
-        assert outputs[1] == 20.0
-        assert outputs[2] == 30.0
-
     def test_output_dictionary(self):
         x = T.scalar()
         f = theano.function([x], outputs={'a': x, 'c': x*2,
@@ -29,7 +18,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert outputs['1'] == 40.0
         assert outputs['c'] == 20.0
 
-    def test_input_dictionary(self):
+    def test_input_named_variables(self):
         x = T.scalar('x')
         y = T.scalar('y')
 
@@ -39,7 +28,7 @@ class dictionary_output_checker(unittest.TestCase):
         assert f(2, y=4) == f(2, 4)
         assert f(x=2, y=4) == f(2, 4)
 
-    def test_output_order(self):
+    def test_output_order_sorted(self):
         x = T.scalar('x')
         y = T.scalar('y')
         z = T.scalar('z')

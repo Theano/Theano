@@ -193,7 +193,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         output_keys = []
         outputs = []
         for pair in output_items_sorted: 
-
+            assert isinstance(pair[0], str)
             output_keys.append(pair[0])
             outputs.append(pair[1])
 
