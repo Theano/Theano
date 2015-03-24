@@ -1372,9 +1372,11 @@ class Scan(PureOp):
         return global_connection_pattern
 
     def connection_pattern(self, node):
-        # We cache this, as grad call connection_pattern, and it call
-        # grad in its turn. I was a case where theano.grad() took 4h
-        # that had many scan one inside each others.
+
+        # We cache the result of this function because, with a previous
+        # implementation that repeatedly called grad, there were cases
+        # where calls to theano.grad() took as much as 4h for functions
+        # containing many nested scans.
         if hasattr(node.tag, 'connection_pattern'):
             return node.tag.connection_pattern
 
