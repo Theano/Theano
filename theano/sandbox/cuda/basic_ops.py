@@ -3259,14 +3259,7 @@ class GpuSplit(tensor.Split, GpuOp):
 
 class GpuAllocEmpty(GpuOp):
     """Implement Alloc on the gpu, but without initializing memory."""
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, *shape):
         sh = [tensor.as_tensor_variable(s) for s in shape]
@@ -3325,10 +3318,6 @@ class GpuAllocEmpty(GpuOp):
     def infer_shape(self, node, input_shapes):
         return [node.inputs]
 
-    def grad(self, inputs, grads):
-        gout, = grads
-        return [None for i in inputs]
-
     def c_code_cache_version(self):
         return (1,)
 
@@ -3346,14 +3335,10 @@ class GpuAlloc(GpuAllocEmpty):
     cudaMemset that is faster.
 
     """
+    __props__ = ('memset_0',)
+
     def __init__(self, memset_0=False):
         self.memset_0 = memset_0
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.memset_0 == other.memset_0
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.memset_0)
 
     def __str__(self):
         #Hide the memset parameter when not used to prevent confusion.
