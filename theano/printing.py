@@ -464,7 +464,8 @@ class PPrinter:
         inv_updates = dict((b, a) for (a, b) in updates.iteritems())
         i = 1
         for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
-                                          list(outputs) + updates.values()):
+                                          list(outputs) +
+                                          updates.values()):
             for output in node.outputs:
                 if output in inv_updates:
                     name = str(inv_updates[output])
@@ -954,8 +955,9 @@ def pydotprint_variables(vars,
     try:
         import pydot as pd
     except ImportError:
-        print ("Failed to import pydot. You must install pydot for "
+        str = ("Failed to import pydot. You must install pydot for " +
                "`pydotprint_variables` to work.")
+        print str
         return
     g = pd.Dot()
     my_list = {}
