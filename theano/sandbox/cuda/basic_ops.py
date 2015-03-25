@@ -3275,7 +3275,9 @@ class GpuAllocEmpty(GpuOp):
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)
-        return Apply(self, sh, [otype()])
+        output = otype()
+        output.values_eq_approx = tensor.type.values_eq_approx_always_true
+        return Apply(self, sh, [output])
 
     def perform(self, node, inputs, out_):
         out, = out_
