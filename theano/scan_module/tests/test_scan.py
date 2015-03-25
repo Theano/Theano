@@ -3995,14 +3995,14 @@ class T_Scan(unittest.TestCase):
         def _scan_strict(x, w_ns):
             return tensor.dot(x, w_ns)
 
-        ret_loose = theano.scan(_scan_loose, 
+        ret_loose = theano.scan(_scan_loose,
                               sequences=[],
                               outputs_info=[x0_],
                               n_steps=n,
                               strict=False)
         f_loose = theano.function([x0_], ret_loose[0][-1])
 
-        ret_strict = theano.scan(_scan_strict, 
+        ret_strict = theano.scan(_scan_strict,
                                sequences=[],
                                outputs_info=[x0_],
                                non_sequences=[w_],
@@ -4029,7 +4029,7 @@ class T_Scan(unittest.TestCase):
         def _scan_loose(x):
             return tensor.dot(x, w_)
 
-        ret_strict = theano.scan(_scan_loose, 
+        ret_strict = theano.scan(_scan_loose,
                                sequences=[],
                                outputs_info=[x0_],
                                n_steps=n,
