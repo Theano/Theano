@@ -298,10 +298,12 @@ class test_RopLop(RopLop_checker):
                                                ev_input, ev_filters])
             scan_f = function([input, filters, ev_input, ev_filters], sy,
                               on_unused_input='ignore')
-            image_data = numpy.random.random(image_shape)
-            filter_data = numpy.random.random(filter_shape)
-            ev_image_data = numpy.random.random(image_shape)
-            ev_filter_data = numpy.random.random(filter_shape)
+
+            dtype = theano.config.floatX
+            image_data = numpy.random.random(image_shape).astype(dtype)
+            filter_data = numpy.random.random(filter_shape).astype(dtype)
+            ev_image_data = numpy.random.random(image_shape).astype(dtype)
+            ev_filter_data = numpy.random.random(filter_shape).astype(dtype)
             v1 = rop_f(image_data, filter_data, ev_image_data,
                        ev_filter_data)
             v2 = scan_f(image_data, filter_data, ev_image_data,

@@ -3307,9 +3307,10 @@ class T_Scan(unittest.TestCase):
                               g_output0 + g_output1)
 
         # Run the function and validate the outputs
-        seq_value = numpy.random.random((10, 3))
-        out_init_value = numpy.random.random((3, 3))
-        non_seq_value = numpy.random.random((3))
+        dtype = theano.config.floatX
+        seq_value = numpy.random.random((10, 3)).astype(dtype)
+        out_init_value = numpy.random.random((3, 3)).astype(dtype)
+        non_seq_value = numpy.random.random((3)).astype(dtype)
 
         outputs =  fct(seq_value, out_init_value, non_seq_value)
 
@@ -3994,14 +3995,14 @@ class T_Scan(unittest.TestCase):
         def _scan_strict(x, w_ns):
             return tensor.dot(x, w_ns)
 
-        ret_loose = theano.scan(_scan_loose, 
+        ret_loose = theano.scan(_scan_loose,
                               sequences=[],
                               outputs_info=[x0_],
                               n_steps=n,
                               strict=False)
         f_loose = theano.function([x0_], ret_loose[0][-1])
 
-        ret_strict = theano.scan(_scan_strict, 
+        ret_strict = theano.scan(_scan_strict,
                                sequences=[],
                                outputs_info=[x0_],
                                non_sequences=[w_],
@@ -4028,7 +4029,7 @@ class T_Scan(unittest.TestCase):
         def _scan_loose(x):
             return tensor.dot(x, w_)
 
-        ret_strict = theano.scan(_scan_loose, 
+        ret_strict = theano.scan(_scan_loose,
                                sequences=[],
                                outputs_info=[x0_],
                                n_steps=n,
