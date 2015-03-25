@@ -49,7 +49,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     :param inputs: function parameters, these are not allowed to be shared
     variables
 
-    :type outputs: list of Variables or Out instances
+    :type outputs: list or dict of Variables or Out instances.  If it is a 
+    dict, the keys must be strings
     :param outputs: expressions to compute
 
     :type mode: string or `Mode` instance.
@@ -193,7 +194,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         output_keys = []
         outputs = []
         for pair in output_items_sorted: 
-            assert isinstance(pair[0], str)
+            assert isinstance(pair[0], basestring)
             output_keys.append(pair[0])
             outputs.append(pair[1])
 

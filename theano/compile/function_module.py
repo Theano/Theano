@@ -1442,6 +1442,11 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     :param on_unused_input: What to do if a variable in the 'inputs' list is
         not used in the graph. Possible values are 'raise', 'warn', 'ignore'
         and None
+
+    :param output_keys: If the outputs were provided to theano.function as a
+        list, then output_keys is None.  Otherwise, if outputs were provided
+        as a dict, output_keys is the sorted list of keys from the outputs
+
     """
 
     # Every element of the input list will be upgraded to an `In` instance if

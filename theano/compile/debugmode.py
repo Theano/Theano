@@ -2196,6 +2196,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         :param on_unused_input: What to do if a variable in the 'inputs' list is
         not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
 
+        :param output_keys: If the outputs argument for theano.function was a
+        list, then output_keys is None.  If the outputs argument was a dict, 
+        then output_keys is a sorted list of the keys from that dict.  
+
         :note: this function sets TensorType.filter_checks_isfinite
         when `mode.check_isfinite` is True
 

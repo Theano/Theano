@@ -506,7 +506,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                     mutable=False, borrow=True, shared=True)
         inputs.append(si)
 
-    return orig_function(inputs, cloned_outputs, mode, 
+    return orig_function(inputs, cloned_outputs, mode,
             accept_inplace=accept_inplace, name=name, profile=profile,
             on_unused_input=on_unused_input, output_keys=output_keys)
 
