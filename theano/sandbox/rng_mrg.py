@@ -6,7 +6,6 @@ http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
 import warnings
-import weakref
 
 import numpy
 
@@ -1222,7 +1221,7 @@ class MRG_RandomStreams(object):
                                    *mrg_uniform.new(node_rstate,
                                                     ndim, dtype, size))
         # Add a reference to distinguish from other shared variables
-        node_rstate.rng_owner = weakref.ref(self)
+        node_rstate.tag.is_rng = True
         r = u * (high - low) + low
 
         if u.type.broadcastable != r.type.broadcastable:
