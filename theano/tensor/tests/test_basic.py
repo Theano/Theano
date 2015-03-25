@@ -6113,7 +6113,7 @@ def test_len():
 def test_mod():
     """
     We add this test as not all language and C implementation give the same
-    signe to the result. This check that the c_code of `Mod` is implemented
+    sign to the result. This check that the c_code of `Mod` is implemented
     as Python. That is what we want.
     """
     x, y = fscalars('xy')
@@ -6124,6 +6124,23 @@ def test_mod():
                 (5, 3), (-5, 3), (5, -3), (-5, -3)
                 ):
         assert fn(a, b) == a % b, (a,)
+
+
+def test_divmod():
+    """
+    Confirm that divmod is equivalent to the python version.
+    """
+    x, y = fscalars('xy')
+    d, r = divmod(x, y)
+    fn = gof.DualLinker().accept(
+            gof.FunctionGraph([x, y], [d, r])).make_function()
+    for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
+                (1, 2), (-1, 2), (1, -2), (-1, -2),
+                (5, 3), (-5, 3), (5, -3), (-5, -3)
+                ):
+        d_v, r_v = fn(a, b)
+        d_vp, r_vp = divmod(a, b)
+        assert d_v == d_vp and r_v == r_vp, (a,)
 
 
 def test_mod_compile():
