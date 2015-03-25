@@ -3307,9 +3307,10 @@ class T_Scan(unittest.TestCase):
                               g_output0 + g_output1)
 
         # Run the function and validate the outputs
-        seq_value = numpy.random.random((10, 3))
-        out_init_value = numpy.random.random((3, 3))
-        non_seq_value = numpy.random.random((3))
+        dtype = theano.config.floatX
+        seq_value = numpy.random.random((10, 3)).astype(dtype)
+        out_init_value = numpy.random.random((3, 3)).astype(dtype)
+        non_seq_value = numpy.random.random((3)).astype(dtype)
 
         outputs =  fct(seq_value, out_init_value, non_seq_value)
 
