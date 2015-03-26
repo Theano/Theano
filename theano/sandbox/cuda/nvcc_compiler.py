@@ -12,6 +12,7 @@ from theano.gof import local_bitwidth
 from theano.gof.cc import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
+                                Compiler,
                                 get_lib_extension)
 from theano.compat.python2x import any
 from theano.misc.windows import output_subprocess_Popen
@@ -126,7 +127,20 @@ def add_standard_rpath(rpath):
     rpath_defaults.append(rpath)
 
 
-class NVCC_compiler(object):
+class NVCC_compiler(Compiler):
+    @staticmethod
+    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False):
+        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
+                                         try_run, output,
+                                         nvcc_path)
+
+    @staticmethod
+    def try_flags(flag_list, preambule="", body="",
+                  try_run=False, output=False):
+        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
+                                   nvcc_path)
+
     @staticmethod
     def version_str():
         return "nvcc " + nvcc_version
