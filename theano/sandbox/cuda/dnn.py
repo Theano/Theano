@@ -58,7 +58,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             # default gpu, not the one selected by the user. If mixed
             # GPU are installed or if the GPUs are configured in
             # exclusive mode, this cause bad detection.
-            comp, out, err = gof.cmodule.GCC_compiler.try_flags(
+            comp, out, err = NVCC_compiler.try_flags(
                 ["-l", "cudnn", "-I" + os.path.dirname(__file__),
                  "-I" + os.path.join(theano.config.cuda.root, 'include'),
                  "-L" + os.path.join(theano.config.cuda.root, 'lib64')],

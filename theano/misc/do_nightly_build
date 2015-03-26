@@ -53,6 +53,21 @@ if [ "$RELEASE" ]; then
     echo "Number of elements in the compiledir:"
     ls ${COMPILEDIR}|wc -l
     echo
+
+    echo "Executing tests with linker=vm,floatX=float32"
+    echo "THEANO_FLAGS=${FLAGS},linker=vm,floatX=float32 ${NOSETESTS} ${ARGS}"
+    THEANO_FLAGS=${FLAGS},linker=vm,floatX=float32 ${NOSETESTS} ${ARGS}
+    echo "Number of elements in the compiledir:"
+    ls ${COMPILEDIR}|wc -l
+    echo
+
+    echo "Executing tests with cxx="
+    echo "THEANO_FLAGS=${FLAGS},cxx= ${NOSETESTS} ${ARGS}"
+    THEANO_FLAGS=${FLAGS},cxx= ${NOSETESTS} ${ARGS}
+    echo "Number of elements in the compiledir:"
+    ls ${COMPILEDIR}|wc -l
+    echo
+
 fi
 
 echo "Executing tests with mode=FAST_RUN"
