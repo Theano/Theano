@@ -7,6 +7,8 @@ from theano.sandbox.cuda import cuda_ndarray
 
 dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
 
+cula_available = False
+
 try:
     from scikits.cuda import cula
     cula_available = True
@@ -23,7 +25,7 @@ class GpuSolve(GpuOp):
     :param trans: Whether to take the transpose of the input matrix
     or not.
     """
-    __props__ = ('trans')
+    __props__ = ('trans',)
 
     def __init__(self, trans='N'):
         self.trans = trans
