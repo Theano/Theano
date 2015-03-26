@@ -110,7 +110,7 @@ def conv2d(img,
         filters = filters[:, :, ::-1, ::-1]
     ### FIXME input shape/kernel shape
     conv_op = Conv2d(imshp=input_shape, kshp=filter_shape, bsize=batch_size,
-                     border_mode="valid", subsample=(1, 1))
+                     border_mode="valid", subsample=subsample)
     return conv_op(img, filters)
 
 
