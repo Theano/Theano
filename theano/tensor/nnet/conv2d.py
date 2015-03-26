@@ -145,7 +145,9 @@ class BaseConv2d(Op):
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
         self.subsample = subsample
-        self.on_gpu = False
+
+        ### FIXME handle optimizer_excluding...
+        self.optim = ['cudnn', 'corrmm', 'cpu']
 
     @property
     def pad(self):
@@ -198,16 +200,11 @@ class Conv2d(BaseConv2d):
         broadcastable=[img.broadcastable[0],
                        kern.broadcastable[0],
                        False, False]
-        if not self.on_gpu:
-            img = as_tensor_variable(img)
-            kern = as_tensor_variable(kern)
-            output = theano.tensor.tensor(dtype=img.type.dtype,
-                                          broadcastable=broadcastable)
-            return Apply(self, [img, kern], [output])
-        else:
-            img = as_cuda_ndarray_variable(img)
-            kern = as_cuda_ndarray_variable(kern)
-            return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+        img = as_tensor_variable(img)
+        kern = as_tensor_variable(kern)
+        output = theano.tensor.tensor(dtype=img.type.dtype,
+                                      broadcastable=broadcastable)
+        return Apply(self, [img, kern], [output])
 
     def perform(self, node, inp, out_):
         raise NotImplementedError('Conv2d theano optimization failed')
@@ -258,17 +255,11 @@ class Conv2d_gradWeights(BaseConv2d):
         broadcastable=[topgrad.broadcastable[0],
                        img.broadcastable[0],
                        False, False]
-        if not self.on_gpu:
-            img = as_tensor_variable(img)
-            topgrad = as_tensor_variable(topgrad)
-            output = theano.tensor.tensor(dtype=img.type.dtype,
-                                          broadcastable=broadcastable)
-            return Apply(self, [img, topgrad] + height_width, [output])
-        else:
-            img = as_cuda_ndarray_variable(img)
-            topgrad = as_cuda_ndarray_variable(topgrad)
-            return Apply(self, [img, topgrad] + height_width,
-                         [CudaNdarrayType(broadcastable)()])
+        img = as_tensor_variable(img)
+        topgrad = as_tensor_variable(topgrad)
+        output = theano.tensor.tensor(dtype=img.type.dtype,
+                                      broadcastable=broadcastable)
+        return Apply(self, [img, topgrad] + height_width, [output])
 
     def perform(self, node, inp, out_):
         raise NotImplementedError('Conv2d_gradWeight theano optimization failed')
@@ -321,18 +312,12 @@ class Conv2d_gradInputs(Conv2d):
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1],
                          False, False]
+        kern = as_tensor_variable(kern)
+        topgrad = as_tensor_variable(topgrad)
+        output = theano.tensor.tensor(dtype=kern.type.dtype,
+                                      broadcastable=broadcastable)
+        return Apply(self, [kern, topgrad] + height_width, [output])
 
-        if not self.on_gpu:
-            kern = as_tensor_variable(kern)
-            topgrad = as_tensor_variable(topgrad)
-            output = theano.tensor.tensor(dtype=kern.type.dtype,
-                                          broadcastable=broadcastable)
-            return Apply(self, [kern, topgrad] + height_width, [output])
-        else:
-            kern = as_cuda_ndarray_variable(kern)
-            topgrad = as_cuda_ndarray_variable(topgrad)
-            return Apply(self, [kern, topgrad] + height_width,
-                         [CudaNdarrayType(broadcastable)()])
 
     def perform(self, node, nodename, inp, out_, sub):
         raise NotImplementedError('Conv2d_gradWeight theano optimization failed')
@@ -357,99 +342,42 @@ class Conv2d_gradInputs(Conv2d):
 
 
 
-### move to Gpu optimization
-@local_optimizer([gpu_from_host, Conv2d, Conv2d_gradWeights, Conv2d_gradInputs])
-def local_conv2d_gpu_conv(node):
-    """
-    gpu_from_host(Conv) -> (gpu)_Conv(gpu_from_host)
-
-    Conv(host_from_gpu) -> host_from_gpu((gpu)_Conv)
-    """
-    if isinstance(node.op, GpuFromHost):
-        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
-        host_input = node.inputs[0]
-        if host_input.owner and \
-                (isinstance(host_input.owner.op, Conv2d) or
-                 isinstance(host_input.owner.op, Conv2d_gradWeights) or
-                 isinstance(host_input.owner.op, Conv2d_gradInputs)):
-            print "here Gpu 2"
-            gpu_conv = host_input.owner.op
-            gpu_conv.on_gpu = True
-            img, kern = host_input.owner.inputs
-            out = gpu_conv(gpu_from_host(img),
-                           gpu_from_host(kern))
-            out = theano.tensor.patternbroadcast(gpu_from_host(out),
-                                                 node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
-            return [out]
-
-    if (isinstance(node.op, Conv2d) or
-        isinstance(node.op, Conv2d_gradWeights) or
-        isinstance(node.op, Conv2d_gradInputs)):
-        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
-        img, kern = node.inputs
-        img_on_gpu = (img.owner and isinstance(img.owner.op, HostFromGpu))
-        kern_on_gpu = (kern.owner and isinstance(kern.owner.op, HostFromGpu))
-        if img_on_gpu or kern_on_gpu:
-            gpu_conv = node.op
-            gpu_conv.on_gpu = True
-            out = gpu_conv(gpu_from_host(img),
-                           gpu_from_host(kern))
-            out = theano.tensor.patternbroadcast(
-                out,
-                node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
-            return [as_tensor_variable(out)]
-
-# We register the optimizer that moves convolutions to the GPU.
-register_opt()(local_conv2d_gpu_conv)
-
-#### GPU DNN optimization
-@local_optimizer([Conv2d, Conv2d_gradWeights, Conv2d_gradInputs])
-def local_conv2d_dnn(node):
+def replace_conv_with_cudnn(convop, inputs):
     if not dnn_available():
-        return
-    if border_mode not in ['full', 'valid']:
-        return
+        return None
 
-    if (isinstance(node.op, Conv2d) and node.op.on_gpu):
-        img, kern = node.inputs
-        rval = dnn_conv(img, kern,
-                        border_mode=node.op.border_mode,
-                        subsample=node.op.subsample,
+    inp1, inp2, shape = inputs
+    if (isinstance(convop, Conv2d)):
+        rval = dnn_conv(inp1, inp2,
+                        border_mode=convop.border_mode,
+                        subsample=convop.subsample,
                         direction_hint='forward')
-        return [rval]
-    if (isinstance(node.op, Conv2d_gradWeights) and node.op.on_gpu):
-        img, kern = node.inputs
-        rval = dnn_conv(img, kern,
+        return rval
+    if (isinstance(convop, Conv2d_gradWeights)):
+        rval = dnn_conv(inp1, inp2,
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='bprop weights')
-        return [rval]
-    if (isinstance(node.op, Conv2d_gradInputs) and node.op.on_gpu):
-        img, kern = node.inputs
-        rval = dnn_conv(img, kern,
+        return rval
+    if (isinstance(convop, Conv2d_gradInputs)):
+        rval = dnn_conv(inp1, inp2,
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='bprop inputs')
-        return [rval]
-register_opt()(local_conv2d_dnn)
+        return rval
 
-#### GPU CorrMM optimization
-@local_optimizer([Conv2d])
-def local_conv2d_gemm(node):
-    if (isinstance(node.op, Conv2d) and
-        node.op.on_gpu and
-        node.op.border_mode in ['full', 'valid']):
-        img, kern = node.inputs
-        border_mode = node.op.border_mode
-        subsample = node.op.subsample
+def replace_convforward_with_corrmm(convop, inputs):
+    img, kern, shape = inputs
+
+    if convop.border_mode in ['full', 'valid']:
+        border_mode = convop.border_mode
+        subsample = convop.subsample
         if (border_mode == 'valid') or (subsample != (1,1)):
             # need to flip the kernel for valid convolution
             kern = kern[:, :, ::-1, ::-1]
             # By default use GpuCorrMM
-            rval = GpuCorrMM(border_mode, subsample)(
-                gpu_contiguous(img), gpu_contiguous(kern))
+            rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img), \
+                                                         gpu_contiguous(kern))
 
             # call GpuCorrMM_gradWeights if good
             # (the latter is faster if batchsize * kernelHeight * kernelWidth
@@ -457,20 +385,20 @@ def local_conv2d_gemm(node):
             # GpuConv does not always store information on the batchsize and
             # channels, though, so we only use what information we have.)
             if ((subsample == (1,1)) and
-                (node.op.imshp is not None) and
-                (None not in node.op.imshp[-2:]) and
-                (node.op.kshp is not None) and
-                (None not in node.op.kshp)):
+                (convop.imshp is not None) and
+                (None not in convop.imshp[-2:]) and
+                (convop.kshp is not None) and
+                (None not in convop.kshp)):
                 # we know the kernel and output size
-                prod1 = node.op.kshp[0] * node.op.kshp[1]
-                prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
-                         (node.op.imshp[-1] - node.op.kshp[1] + 1))
-                if ((node.op.bsize is not None) and
-                        (len(node.op.imshp) == 3) and
-                        (node.op.imshp[0] is not None)):
+                prod1 = convop.kshp[0] * convop.kshp[1]
+                prod2 = ((convop.imshp[-2] - convop.kshp[0] + 1) *
+                         (convop.imshp[-1] - convop.kshp[1] + 1))
+                if ((convop.bsize is not None) and
+                        (len(convop.imshp) == 3) and
+                        (convop.imshp[0] is not None)):
                     # we also know batchsize and input channels
-                    prod1 *= node.op.bsize
-                    prod2 *= node.op.imshp[0]
+                    prod1 *= convop.bsize
+                    prod2 *= convop.imshp[0]
                 # compare to decide
                 if prod1 > prod2:
                     # (we need to wrap the result in as_cuda_ndarray_variable,
@@ -487,33 +415,102 @@ def local_conv2d_gemm(node):
             # call GpuCorrMM_gradInputs
             rval = GpuCorrMM_gradInputs('valid', subsample)(
                     gpu_contiguous(kern), gpu_contiguous(img))
-        if node.outputs[0].broadcastable != rval.broadcastable:
-            # With given shape information, conv2d_fft may return a different
-            # broadcast pattern than GpuConv. This is forbidden, so we fix it.
-            rval = tensor.patternbroadcast(
-                rval, node.outputs[0].type.broadcastable)
-        return [rval]
-register_opt()(local_conv2d_gemm)
+        return rval
 
-@local_optimizer([Conv2d_gradWeights])
-def local_conv2d_gradweight_gemm(node):
-    if isinstance(node.op, Conv2d_gradWeights) and node.op.on_gpu:
-        img, topgrad = node.inputs
-        rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
-                                     subsample=node.op.subsample)(
-            gpu_contiguous(img), gpu_contiguous(topgrad))
-        return [rval]
-register_opt()(local_conv2d_gradweight_gemm)
+def replace_convgradweight_with_corrmm(convop, inputs):
+    img, topgrad, shape = inputs
+    rval = GpuCorrMM_gradWeights(border_mode=convop.border_mode,
+    subsample=convop.subsample)(
+    gpu_contiguous(img), gpu_contiguous(topgrad), shape)
+    return rval
 
-@local_optimizer([Conv2d_gradInputs])
-def local_conv2d_gradinputs_gemm(node):
-    if isinstance(node.op, Conv2d_gradInputs) and node.op.on_gpu:
-        kern, topgrad = node.inputs
-        rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
-                                     subsample=node.op.subsample)(
-            gpu_contiguous(kern), gpu_contiguous(topgrad))
-        return [rval]
-register_opt()(local_conv2d_gradinputs_gemm)
+def replace_convgradinputs_withcorrmm(convop, inputs):
+    kern, topgrad, shape = inputs
+    rval =  GpuCorrMM_gradInputs(border_mode=convop.border_mode,
+    subsample=convop.subsample)(
+    gpu_contiguous(kern), gpu_contiguous(topgrad))
+    return rval
+
+
+def replace_convop(convop, inputs):
+    """
+    Dispatch based on the convop.optim values
+    """
+    gpu_conv = None
+    if "cudnn" in convop.optim:
+        gpu_conv = replace_conv_with_cudnn(convop, inputs)
+    if gpu_conv is None and "corrmm" in convop.optim:
+        if isinstance(convop, Conv2d):
+            gpu_conv = replace_convforward_with_corrmm(convop, inputs)
+        elif isinstance(convop, Conv2d_gradWeights):
+            gpu_conv = replace_convgradweight_with_corrmm(convop, inputs)
+        elif isinstance(convop, Conv2d_gradInputs):
+            gpu_conv = replace_convgradinputs_withcorrmm(convop, inputs)
+
+    ### FIXME add fft code
+    return gpu_conv
+
+
+
+### move to Gpu optimization
+@local_optimizer([gpu_from_host, Conv2d, Conv2d_gradWeights, Conv2d_gradInputs])
+def local_conv2d_gpu_conv(node):
+    """
+    gpu_from_host(Conv) -> (gpu)_Conv(gpu_from_host)
+
+    Conv(host_from_gpu) -> host_from_gpu((gpu)_Conv)
+    """
+    if isinstance(node.op, GpuFromHost):
+        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
+        host_input = node.inputs[0]
+        if host_input.owner and \
+                (isinstance(host_input.owner.op, Conv2d) or
+                 isinstance(host_input.owner.op, Conv2d_gradWeights) or
+                 isinstance(host_input.owner.op, Conv2d_gradInputs)):
+
+            conv = host_input.owner.op
+            if len(host_input.owner.inputs) == 3:
+                inp1, inp2, shape = host_input.owner.inputs
+            else:
+                inp1, inp2 = host_input.owner.inputs
+                shape = None
+            out = replace_convop(conv, [gpu_from_host(inp1),
+                                        gpu_from_host(inp2),
+                                        shape])
+            if out is None:
+                return
+            out = theano.tensor.patternbroadcast(gpu_from_host(out),
+                                                 node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx_high_tol
+            return [out]
+
+    if (isinstance(node.op, Conv2d) or
+        isinstance(node.op, Conv2d_gradWeights) or
+        isinstance(node.op, Conv2d_gradInputs)):
+        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+
+        if len(node.inputs) == 3:
+            inp1, inp2, shape = node.inputs
+        else:
+            inp1, inp2 = node.inputs
+            shape = None
+        inp1_on_gpu = (inp1.owner and isinstance(inp1.owner.op, HostFromGpu))
+        inp2_on_gpu = (inp2.owner and isinstance(inp2.owner.op, HostFromGpu))
+        if inp1_on_gpu or inp2_on_gpu:
+            conv = node.op
+            out = replace_convop(conv, [gpu_from_host(inp1),
+                                        gpu_from_host(inp2),
+                                        shape])
+            if out is None:
+                return
+            out = theano.tensor.patternbroadcast(
+                out,
+                node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx_high_tol
+            return [as_tensor_variable(out)]
+# We register the optimizer that moves convolutions to the GPU.
+register_opt()(local_conv2d_gpu_conv)
+
 
 
 ### Cpu Optmization

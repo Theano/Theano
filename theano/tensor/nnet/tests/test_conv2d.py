@@ -56,10 +56,10 @@ class TestConv2d(unittest.TestCase):
             self.run_conv(inputs_shape=(16, 1, 2, 2),
                           filters_shape=(10, 1, 2, 2),
                           verify_grad=False)
-            self.run_conv(inputs_shape=(16, 1, 8, 8),
-                          filters_shape=(10, 1, 2, 2),
-                          subsample=(2, 2),
-                          verify_grad=False)
+            # self.run_conv(inputs_shape=(16, 1, 8, 8),
+            #               filters_shape=(10, 1, 2, 2),
+            #               subsample=(2, 2),
+            #               verify_grad=False)
             # self.run_conv(inputs_shape=(16, 1, 2, 2),
             #               filters_shape=(10, 1, 2, 2),
             #               verify_grad=True)
@@ -72,10 +72,10 @@ class TestConv2d(unittest.TestCase):
         self.run_conv(inputs_shape=(16, 1, 2, 2),
                       filters_shape=(10, 1, 2, 2),
                       verify_grad=False, mode=mode)
-        self.run_conv(inputs_shape=(16, 1, 8, 8),
-                      filters_shape=(10, 1, 2, 2),
-                      subsample=(2, 2),
-                      verify_grad=False,mode=mode)
+        # self.run_conv(inputs_shape=(16, 1, 8, 8),
+        #               filters_shape=(10, 1, 2, 2),
+        #               subsample=(2, 2),
+        #               verify_grad=False,mode=mode)
         # self.run_conv(inputs_shape=(16, 1, 2, 2),
         #               filters_shape=(10, 1, 2, 2),
         #               verify_grad=True,mode=mode)
