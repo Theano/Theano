@@ -2055,6 +2055,12 @@ def local_gpu_extract_diagonal(node):
                 gpu_from_host(diag_node.inputs[0]))]
     return False
 
+def typeConstructor(broadcastable, dtype):
+    if dtype == 'float32':
+        return CudaNdarrayType(broadcastable=broadcastable)
+    else:
+        return tensor.TensorType(broadcastable=broadcastable, dtype=dtype)
+
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])
 def gpuScanOptimization(node):
@@ -2114,7 +2120,9 @@ def gpuScanOptimization(node):
 
             nw_op = scan_op.Scan(scan_ins,
                                  scan_outs,
-                                 info).make_node(*nw_ins)
+                                 info,
+                                 typeConstructor=typeConstructor).make_node(
+                                     *nw_ins)
             _outputs = nw_op.outputs
             return _outputs
 
@@ -2160,7 +2168,8 @@ def gpuScanOptimization(node):
             _outputs = scan_op.Scan(
                 scan_ins,
                 scan_outs,
-                info).make_node(*nw_ins).outputs
+                info,
+                typeConstructor=typeConstructor).make_node(*nw_ins).outputs
             outputs = []
             for x, y in zip(_outputs, node.outputs):
                 if isinstance(y.type, CudaNdarrayType):
@@ -2172,7 +2181,8 @@ def gpuScanOptimization(node):
 
 
 optdb.register('gpu_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(gpu_flag=True),
+               scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
+                                             gpu_flag=True),
                75,
                'gpu',
                'fast_run',
