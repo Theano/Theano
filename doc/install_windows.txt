@@ -359,11 +359,11 @@ Theano. For the bleeding-edge version execute
 
   git clone https://github.com/Theano/Theano.git
 
-For the latest stable release 0.6 (as of Oct 2014) run instead:
+For the latest stable release 0.7 (as of March 2015) run instead:
 
 .. code-block:: bash
 
-  git clone https://github.com/Theano/Theano.git --branch rel-0.6
+  git clone https://github.com/Theano/Theano.git --branch rel-0.7
 
 Either way, a folder `Theano` will be created with the library
 downloaded to it.
@@ -377,11 +377,11 @@ To get the latest bleeding edge version got to `Theano on GitHub
 <https://github.com/Theano/Theano/archive/master.zip>`_. Then unzip it
 somewhere.
 
-Alternatively, you can check the latest release release 0.6 (as of Oct
-2014) by going to
-https://github.com/Theano/Theano/releases/tag/rel-0.6 and
+Alternatively, you can check the latest release release 0.7 (as of March
+2015) by going to
+https://github.com/Theano/Theano/releases/tag/rel-0.7 and
 downloading the `zip
-<https://github.com/Theano/Theano/archive/rel-0.6.zip>`_.
+<https://github.com/Theano/Theano/archive/rel-0.7.zip>`_.
 
 Configuring Theano
 ##################

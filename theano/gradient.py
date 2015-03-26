@@ -659,7 +659,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     :return: Returns lists of gradients with respect to `wrt` and `end`,
             respectively.
 
-    .. versionadded:: 0.6.1
+    .. versionadded:: 0.7
     '''
     assert ((cost is not None) or (start is not None))
     assert isinstance(end, list)
@@ -1905,7 +1905,7 @@ def consider_constant(x):
     :return: The expression is returned unmodified, but its gradient
         is now truncated to 0.
 
-    .. versionadded:: 0.6.1
+    .. versionadded:: 0.7
     """
     warnings.warn((
         "consider_constant() is deprecated, use zero_grad() or "
