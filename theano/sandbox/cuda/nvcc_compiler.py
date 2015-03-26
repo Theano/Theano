@@ -51,6 +51,12 @@ AddConfigVar('cuda.root',
         in_c_key=False)
 
 
+AddConfigVar('cuda.disable_gcc_cudnn_check',
+             "Disable the GCC-based cuDNN compilation check",
+             BoolParam(default=False),
+             in_c_key=False)
+
+
 def filter_nvcc_flags(s):
     assert isinstance(s, str)
     flags = [flag for flag in s.split(' ') if flag]

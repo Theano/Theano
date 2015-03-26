@@ -54,16 +54,20 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
-            # Do not run here the test program. It would run on the
-            # default gpu, not the one selected by the user. If mixed
-            # GPU are installed or if the GPUs are configured in
-            # exclusive mode, this cause bad detection.
-            comp, out, err = gof.cmodule.GCC_compiler.try_flags(
-                ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-                 "-I" + os.path.join(theano.config.cuda.root, 'include'),
-                 "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
-                preambule=preambule, body=body,
-                try_run=False, output=True)
+            if config.cuda.disable_gcc_cudnn_check:
+                comp = True
+                err = None
+            else:
+                # Do not run here the test program. It would run on the
+                # default gpu, not the one selected by the user. If mixed
+                # GPU are installed or if the GPUs are configured in
+                # exclusive mode, this cause bad detection.
+                comp, out, err = gof.cmodule.GCC_compiler.try_flags(
+                    ["-l", "cudnn", "-I" + os.path.dirname(__file__),
+                     "-I" + os.path.join(theano.config.cuda.root, 'include'),
+                     "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
+                    preambule=preambule, body=body,
+                    try_run=False, output=True)
 
             dnn_available.avail = comp
             if not dnn_available.avail:
