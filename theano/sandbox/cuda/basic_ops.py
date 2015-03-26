@@ -3362,9 +3362,11 @@ class GpuAlloc(GpuAllocEmpty):
 
     def perform(self, node, inputs, out_):
         # the super class (GpuAllocEmpty) allocates memory, we fill it
-        super(GpuAlloc, self).perform(node, inputs, out_)
+        value = inputs[0]
+        shps = inputs[1:]
+        super(GpuAlloc, self).perform(node, shps, out_)
         out, = out_
-        out[0][...] = v  # broadcast v to fill us up
+        out[0][...] = value  # broadcast value to fill us up
 
     def c_code(self, node, name, inputs, out_, sub):
         # the super class (GpuAllocEmpty) allocates memory, we fill it
