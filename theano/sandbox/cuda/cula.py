@@ -1,5 +1,3 @@
-import warnings
-
 import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
