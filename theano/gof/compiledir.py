@@ -198,8 +198,17 @@ def filter_compiledir(path):
     # os.system('touch') returned -1 for an unknown reason; the
     # alternate approach here worked in all cases... it was weird.
     # No error should happen as we checked the permissions.
-    open(os.path.join(path, '__init__.py'), 'w').close()
-
+    init_file = os.path.join(path, '__init__.py')
+    if not os.path.exists(init_file):
+        try:
+            open(init_file, 'w').close()
+        except IOError as e:
+            if os.path.exists(init_file):
+                pass  # has already been created
+            else:
+                if os.path.exists(path):
+                    e.args += ('%s does not exist..' % path,)
+                raise
     return path
 
 
