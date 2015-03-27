@@ -558,8 +558,8 @@ def pydotprint(fct, outfile=None,
                assert_nb_all_strings=-1,
                return_image=False,
                ):
-    """Print to a file (png or svg format) the graph of a compiled theano
-    function's ops. Depends on the pydot package.
+    """Print to a file the graph of a compiled theano function's ops. Supports
+    all pydot output formats, including png and svg.
 
     :param fct: a compiled Theano function, a Variable, an Apply or
                 a list of Variable.
