@@ -4,7 +4,7 @@ import numpy
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
-                                             DownsampleFactorMaxGrad)
+                                             DownsampleFactorMaxGrad, max_pool_2d_same_size)
 from theano import function
 
 
@@ -463,6 +463,29 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 def mp(input):
                     return max_pool_2d(input, maxpoolshp, ignore_border)
                 utt.verify_grad(mp, [imval], rng=rng)
+
+    def test_max_pool_2d_2D_same_size(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        test_input_array = numpy.array([[[
+            [1.,2.,3.,4.], 
+            [5.,6.,7.,8.]
+        ]]])
+        test_answer_array = numpy.array([[[
+            [0.,0.,0.,0.],
+            [0.,6.,0.,8.]
+        ]]])
+        input = tensor.tensor4(name='input')
+        patch_size = (2,2)
+        op = max_pool_2d_same_size(input, patch_size)
+        op_output = function([input], op)(test_input_array)
+        assert numpy.all(op_output == test_answer_array), (
+            "op_output is %s, test_answer_array is %s" % (
+                op_output, numpy_output_val
+            )
+        )
+        def mp(input):
+            return max_pool_2d_same_size(input, patch_size)
+        utt.verify_grad(mp, [test_input_array], rng=rng)
 
     def test_max_pool_2d_3D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

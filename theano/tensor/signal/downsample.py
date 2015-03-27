@@ -18,6 +18,23 @@ def max_pool2D(*args, **kwargs):
     print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
     return max_pool_2d(*args, **kwargs)
 
+def max_pool_2d_same_size(input, patch_size):
+    """
+    Takes as input a 4-D tensor. It sets all non maximum values 
+    of non-overlapping patches of size (patch_size[0],patch_size[1]) to zero, 
+    keeping only the maximum values. The output has the same dimensions as 
+    the input.
+
+    :type input: 4-D theano tensor of input images.
+    :param input: input images. Max pooling will be done over the 2 last
+        dimensions.
+    :type patch_size: tuple of length 2
+    :param patch_size: size of the patch (patch height, patch width).
+        (2,2) will retain only one non-zero value per patch of 4 values.
+    """
+    output = DownsampleFactorMax(patch_size, True)(input)
+    outs = DownsampleFactorMaxGrad(patch_size, True)(input, output, output)
+    return outs
 
 def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0)):
     """
@@ -43,7 +60,6 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0)):
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
     :type padding: tuple of two ints
-
     """
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
