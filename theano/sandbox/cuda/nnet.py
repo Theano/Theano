@@ -771,6 +771,11 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
         corresponding target. If target is None, then all the outputs are
         computed for each input.
 
+    :rtype: Theano tensor variable of the following shape:
+        - (batch_size, 1) if target is not None
+        - (batch_size, n_out) if target is None
+    :returns: the minibatch output of the 2-layer hierarchical softmax.
+
     :note: If n_outputs is not a square number, it will still work but the
         user has to specify the following shapes of its weight/bias matrices:
         - number of outputs per class: n_outputs_per_class = ceil(sqrt(
