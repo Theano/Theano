@@ -50,7 +50,7 @@ class GpuSolve(GpuOp):
         # Initialize CULA the first time it is needed
         global cula_initialized
 
-        if not (cula_available and cula):
+        if not cula_available:
             raise RuntimeError('Cula is not available and '
                                'GpuSolve Op can not be constructed.')
 
