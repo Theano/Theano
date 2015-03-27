@@ -157,7 +157,7 @@ class dictionary_output_checker(unittest.TestCase):
             pass
 
         try:
-            theano.function([x], outputs={("a", "b"): x, 1.0: x**2})
+            theano.function([x], outputs={(1, 2): x, 1.0: x**2})
             raise Exception("Did not throw exception with tuple as key")
         except AssertionError:
             pass
