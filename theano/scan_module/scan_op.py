@@ -1330,7 +1330,7 @@ class Scan(PureOp):
                 ipos += len(otaps)
         return ipos + opos
 
-    def inner_connection_pattern(self, node):
+    def inner_connection_pattern(self):
         """ Returns the connection pattern of scan's inner function
         """
 
@@ -1439,7 +1439,7 @@ class Scan(PureOp):
             return inner_iidxs
 
         # Obtain the connection pattern of the inner function.
-        inner_connect_pattern = self.inner_connection_pattern(node)
+        inner_connect_pattern = self.inner_connection_pattern()
 
         # Initially assume no outer input is connected to any outer output
         connection_pattern = [[False for output in node.outputs]
