@@ -1,5 +1,11 @@
+import numpy
+
+import theano
 from theano import Op, Apply
+from theano import tensor as T
 from theano.compat.six import StringIO
+from theano.sandbox.cuda.blocksparse import sparse_block_dot_SS
+from theano.tensor.nnet import softmax
 
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
@@ -721,3 +727,115 @@ class GpuSoftmaxWithBias(GpuOp):
         return ret1 + "\n" + ret2
 
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
+
+
+def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
+    """
+    GPU-only function that returns the outputs of a two-level hierarchical
+    softmax.
+    In the two-level hierarchical softmax architecture, outputs are grouped
+    in sqrt(n_outputs) classes.
+    There are two softmax layers. The first predicts the class of the input x
+    while the second predicts the output of the input x in the predicted class.
+    More explanations can be found in the original paper
+    http://arxiv.org/abs/cs/0108006.
+    If target is specified, it will only compute the outputs of the
+    corresponding targets. Otherwise, if target is None, it will compute all
+    the outputs.
+
+    :type W1: a Theano shared variable of shape (number of features of the
+        input x, number of classes)
+    :param W1: the weight matrix of the first softmax, which maps the
+        input x to the probabilities of the classes.
+
+    :type b1: a Theano shared variable of shape (number of classes,)
+    :param b1: the bias vector of the first softmax layer.
+
+    :type W2: a Theano shared variable of shape (number of classes, number of
+        features of the input x, number of outputs per class)
+    :param W2: the weight matrix of the second softmax, which maps the input
+        x to the probabilities of the outputs.
+
+    :type b2: a Theano shared variable of shape (number of classes, number of
+        outputs per class)
+    :param b2: the bias vector of the second softmax layer.
+
+    :type x: Theano tensor variable of shape (batch_size, number of features)
+    :param x: the minibatch input of the multi-class softmax.
+
+    :type n_outputs: int
+    :param n_outputs: the number of outputs.
+
+    :type target: a Theano variable of shape either (batch_size,) or
+        (batch_size, 1)
+    :param target: Contains the indices of the targets for the minibatch
+        input x. For each input, the function computes the output for its
+        corresponding target. If target is None, then all the outputs are
+        computed for each input.
+
+    :note: If n_outputs is not a square number, it will still work but the
+        user has to specify the following shapes of its weight/bias matrices:
+        - number of outputs per class: n_outputs_per_class = ceil(sqrt(
+          n_outputs)
+        - number of classes: n_classes = ceil(n_outputs / n_outputs_per_class)
+
+    """
+
+    if theano.config.device != 'gpu':
+        raise Exception('The multiclass softmax only works on gpu.')
+
+    batch_size = x.shape[0]
+
+    n_classes, n_outputs_per_class = b2.get_value(True, True).shape
+
+    # First softmax which computes the probabilities of belonging to each class
+    class_probs = softmax(T.dot(x, W1) + b1)
+
+    if target is None:
+        # Computes the probabilites of all the outputs
+
+        class_ids = T.arange(n_classes)
+
+        def _compute_output_probs(class_id):
+            # Second softmax that computes the probabilities of the outputs
+            # in a given class indexed by class_id
+            output_prob = softmax(
+                T.dot(x, W2[class_id, :, :]) + b2[class_id,:])
+            output_prob = output_prob * class_probs[:, class_id][:, None]
+            return output_prob.T
+
+        output_probs = theano.scan(_compute_output_probs, class_ids, None,
+                                   name='compute_output_probs')
+        output_probs = output_probs[0].reshape(
+            [output_probs[0].shape[0] * output_probs[0].shape[1], output_probs[
+                0].shape[2]]).T
+        output_probs = output_probs[:, :n_outputs]
+
+    else:
+        # Computes the probabilities of the outputs specified by the targets
+
+        # Flattens the targets
+        target = target.flatten()
+
+        # Classes to which belong each target
+        target_classes = target // n_outputs_per_class
+
+        # Outputs to which belong each target inside a class
+        target_outputs_in_class = target % n_classes
+
+        # Second softmax that computes the output probabilities
+        # Adds a dimension so that sparse_block_dot_SS works properly
+        orig_shape = W2.get_value(True, True).shape
+        W2 = T.reshape(W2, (1,) + orig_shape)
+        output_probs = softmax(sparse_block_dot_SS(W2,
+            x[:, None, :], T.zeros((batch_size, 1), dtype='int64'), b2,
+            target_classes[:, None])[:, 0, :])
+        # Restores the original shape
+        W2 = T.reshape(W2, orig_shape)
+
+        target_class_probs = class_probs[T.arange(batch_size), target_classes]
+        output_probs = output_probs[T.arange(batch_size),
+                                    target_outputs_in_class]
+        output_probs = target_class_probs * output_probs
+
+    return output_probs

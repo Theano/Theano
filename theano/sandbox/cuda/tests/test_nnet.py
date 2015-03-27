@@ -435,3 +435,85 @@ class test_SoftMax(unittest.TestCase):
                         i.op,
                         theano.tensor.nnet.SoftmaxGrad
                     )]) == 1)
+
+
+class test_hierarchical_softmax(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
+    def _generate_data(self, n_in, n_out, batch_size):
+        n_outputs_per_class = numpy.ceil(numpy.sqrt(n_out)).astype('int64')
+        n_classes = numpy.ceil(n_out/float(n_outputs_per_class)).astype('int64')
+
+        W1_np = numpy.random.normal(size=(n_in, n_classes)).astype(
+            dtype=theano.config.floatX)
+        b1_np = numpy.random.normal(size=(n_classes,)).astype(
+            dtype=theano.config.floatX)
+        W2_np = numpy.random.normal(size=(n_classes, n_in,n_outputs_per_class))\
+            .astype(dtype=theano.config.floatX)
+        b2_np = numpy.random.normal(size=(n_classes, n_outputs_per_class))\
+            .astype(dtype=theano.config.floatX)
+
+        W1 = theano.shared(W1_np, name='W1')
+        b1 = theano.shared(b1_np, name='b1')
+        W2 = theano.shared(W2_np, name='W2')
+        b2 = theano.shared(b2_np, name='b2')
+
+        return W1, b1, W2, b2
+
+    def _test_h_softmax_with_targets(self, n_in, n_out, batch_size):
+
+        W1, b1, W2, b2 = self._generate_data(n_in, n_out, batch_size)
+
+        x = T.matrix()
+        target = T.ivector()
+        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
+                                         target=target)
+
+        f = theano.function([x, target], y)
+
+        x = numpy.random.normal(size=(batch_size, n_in)).astype(
+            dtype=theano.config.floatX)
+
+        target = numpy.random.randint(0, n_out, size=(batch_size,)).astype(
+            dtype=numpy.int32)
+
+        outputs = f(x, target)
+
+        self.assertTrue(outputs.shape == (batch_size,))
+
+    def _test_h_softmax_without_targets(self, n_in, n_out, batch_size):
+
+        W1, b1, W2, b2 = self._generate_data(n_in, n_out, batch_size)
+
+        x = T.matrix()
+        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out)
+
+        f = theano.function([x], y)
+
+        x = numpy.random.normal(size=(batch_size, n_in)).astype(
+            dtype=theano.config.floatX)
+
+        outputs = f(x)
+
+        self.assertTrue(outputs.shape == (batch_size, n_out))
+
+    def test_square_n_outputs(self):
+        # Tests a square number of outputs
+
+        n_in = 5
+        n_out = 9
+        batch_size = 2
+
+        self._test_h_softmax_with_targets(n_in, n_out, batch_size)
+        self._test_h_softmax_without_targets(n_in, n_out, batch_size)
+
+    def test_non_square_n_outputs(self):
+        # Tests a non-square number of outputs
+
+        n_in = 5
+        n_out = 8
+        batch_size = 2
+
+        self._test_h_softmax_with_targets(n_in, n_out, batch_size)
+        self._test_h_softmax_without_targets(n_in, n_out, batch_size)
