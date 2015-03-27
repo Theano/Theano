@@ -207,6 +207,7 @@ class T_Scan(unittest.TestCase):
 
     def setUp(self):
         utt.seed_rng()
+        super(T_Scan, self).setUp()
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
