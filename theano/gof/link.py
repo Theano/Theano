@@ -175,6 +175,9 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             shared_input_list = [
                 item for item in node.fgraph.inputs
                 if isinstance(item, theano.compile.SharedVariable)]
+            nonshared_input_list = [
+                item for item in node.fgraph.inputs
+                if not isinstance(item, theano.compile.SharedVariable)]
             storage_map_list = []
             for k in storage_map.keys():
                 storage_map_item = []
@@ -211,8 +214,10 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
                 # storage_map_item[4]
                 if k in shared_input_list:
                     storage_map_item.append(True)
-                else:
+                elif k in nonshared_input_list:
                     storage_map_item.append(False)
+                else:
+                    storage_map_item.append(None)
                 storage_map_list.append(storage_map_item)
 
             from operator import itemgetter
@@ -221,7 +226,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
                 detailed_err_msg += " - " + storage_map_item[0] + ", "
                 if storage_map_item[4] is True:
                     detailed_err_msg += "Shared Input, "
-                else:
+                elif storage_map_item[4] is False:
                     detailed_err_msg += "Input, "
                 if storage_map_item[1] is not None:
                     detailed_err_msg += "Shape: %s, " % str(storage_map_item[1])
