@@ -18,7 +18,6 @@ except ImportError:
 
 whitelist_flake8 = [
     "updates.py",
-    "printing.py",
     "__init__.py",
     "configparser.py",
     "ifelse.py",
