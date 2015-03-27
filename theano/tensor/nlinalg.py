@@ -700,3 +700,35 @@ def norm(x, ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class TensorSolve(Op):
+    """Computes the pseudo-inverse of a matrix :math:`A`.
+
+    The pseudo-inverse of a matrix A, denoted :math:`A^+`, is
+    defined as: "the matrix that 'solves' [the least-squares problem]
+    :math:`Ax = b`," i.e., if :math:`\\bar{x}` is said solution, then
+    :math:`A^+` is that matrix such that :math:`\\bar{x} = A^+b`.
+
+    Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
+    This method is not faster then `matrix_inverse`. Its strength comes from
+    that it works for non-square matrices.
+    If you have a square matrix though, `matrix_inverse` can be both more
+    exact and faster to compute. Also this op does not get optimized into a
+    solve op.
+    """
+
+    __props__ = ()
+
+    def __init__(self):
+        pass
+
+    def make_node(self, x):
+        x = as_tensor_variable(x)
+        assert x.ndim == 2
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, (x,), (z, )):
+        z[0] = numpy.linalg.pinv(x).astype(x.dtype)
+
+tensorsolve = TensorSolve()

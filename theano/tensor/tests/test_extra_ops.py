@@ -7,8 +7,8 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
-                                     squeeze, RepeatOp, repeat,
-                                     Bartlett, bartlett,
+                                     squeeze, CompressOp, compress,
+                                     RepeatOp, repeat, Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
                                      to_one_hot)
@@ -342,6 +342,45 @@ class SqueezeTester(utt.InferShapeTester):
 
             assert tested.shape == expected.shape
             assert numpy.allclose(tested, expected)
+
+
+class TestCompressOp(utt.InferShapeTester):
+    def setUp(self):
+        super(TestCompressOp, self).setUp()
+        self.op_class = CompressOp
+        self.op = CompressOp()
+
+    def test_compressOp(self):
+        x = T.dmatrix()
+        cond = T.dvector()
+
+        cond_val = np.array([1, 0, 1, 0], dtype=bool)
+        a = np.random.random((3, 4)).astype(config.floatX)
+
+        f = theano.function([cond, x], compress(cond, x))
+        assert np.allclose(np.compress(cond_val, a), f(cond_val, a))
+
+        for axis in range(len(a.shape)):
+            g = theano.function([cond, x], compress(cond, x, axis=axis))
+            assert np.allclose(np.compress(cond_val, a, axis=axis), g(cond_val, a))
+
+    def test_infer_shape(self):
+        x = T.dmatrix()
+        cond = T.dvector()
+
+        cond_val = np.array([1, 0, 1, 0], dtype=bool)
+        a = np.random.random((3, 4)).astype(config.floatX)
+
+        self._compile_and_check([cond, x],
+                                [compress(cond, x)],
+                                [cond_val, a],
+                                self.op_class)
+
+        for axis in range(len(a.shape)):
+            self._compile_and_check([cond, x],
+                                    [compress(cond, x, axis=axis)],
+                                    [cond_val, a],
+                                    self.op_class)
 
 
 class TestRepeatOp(utt.InferShapeTester):
