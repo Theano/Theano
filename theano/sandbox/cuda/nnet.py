@@ -1,5 +1,3 @@
-import numpy
-
 import theano
 from theano import Op, Apply
 from theano import tensor as T
@@ -800,7 +798,7 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
             # Second softmax that computes the probabilities of the outputs
             # in a given class indexed by class_id
             output_prob = softmax(
-                T.dot(x, W2[class_id, :, :]) + b2[class_id,:])
+                T.dot(x, W2[class_id, :, :]) + b2[class_id, :])
             output_prob = output_prob * class_probs[:, class_id][:, None]
             return output_prob.T
 
@@ -827,8 +825,8 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
         # Adds a dimension so that sparse_block_dot_SS works properly
         orig_shape = W2.get_value(True, True).shape
         W2 = T.reshape(W2, (1,) + orig_shape)
-        output_probs = softmax(sparse_block_dot_SS(W2,
-            x[:, None, :], T.zeros((batch_size, 1), dtype='int64'), b2,
+        output_probs = softmax(sparse_block_dot_SS(
+            W2, x[:, None, :], T.zeros((batch_size, 1), dtype='int64'), b2,
             target_classes[:, None])[:, 0, :])
         # Restores the original shape
         W2 = T.reshape(W2, orig_shape)
