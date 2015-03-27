@@ -2696,6 +2696,67 @@ class T_Scan(unittest.TestCase):
         f2_vals = f2(x_val)
         utt.assert_allclose(f_vals, f2_vals)
 
+    def test_gpu_memory_usage(self):
+
+        # The test must be performed on the GPU
+        from theano.sandbox import cuda
+        if not cuda.cuda_available:
+            raise SkipTest('Optional package cuda disabled')
+
+        # Dimensionality of input and output data (not one-hot coded)
+        n_in = 100
+        n_out = 100
+        # Number of neurons in hidden layer
+        n_hid = 4000
+
+        # Number of minibatches
+        mb_size = 2
+        # Time steps in minibatch
+        mb_length = 200
+
+        # Define input variables
+        xin = tensor.ftensor3(name='xin')
+        yout = tensor.ftensor3(name='yout')
+
+        # Initialize the network parameters
+        floatX = theano.config.floatX
+        U = theano.shared(numpy.zeros((n_in, n_hid), dtype="float32"),
+                        name='W_xin_to_l1')
+        V = theano.shared(numpy.zeros((n_hid, n_hid), dtype="float32"),
+                        name='W_l1_to_l1')
+        W = theano.shared(numpy.zeros((n_hid, n_out), dtype="float32"),
+                        name='W_l1_to_l2')
+        nparams = [U, V, W]
+
+        # Build the forward pass
+        l1_base = tensor.dot(xin, U)
+
+        def scan_l(baseline, last_step):
+            return baseline + tensor.dot(last_step, V)
+
+        zero_output = tensor.alloc(numpy.asarray(0., dtype="float32"),
+                                   mb_size, n_hid)
+
+        l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
+                                outputs_info=[zero_output],
+                                mode=mode_with_gpu)
+
+        l2_out = tensor.dot(l1_out, W)
+
+        # Compute the cost and take the gradient wrt params
+        cost = tensor.sum((l2_out - yout) ** 2)
+        grads = tensor.grad(cost, nparams)
+        updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
+
+        # Compile and call the theano function
+        feval_backprop = theano.function([xin, yout], cost, updates=updates,
+                                         mode=mode_with_gpu)
+
+        feval_backprop(numpy.zeros((mb_length, mb_size, n_in),
+                                   dtype="float32"),
+                       numpy.zeros((mb_length, mb_size, n_out),
+                                   dtype="float32"))
+
     def test_reduce_memory_consumption(self):
 
         x = theano.shared(numpy.asarray(
@@ -3994,14 +4055,14 @@ class T_Scan(unittest.TestCase):
         def _scan_strict(x, w_ns):
             return tensor.dot(x, w_ns)
 
-        ret_loose = theano.scan(_scan_loose, 
+        ret_loose = theano.scan(_scan_loose,
                               sequences=[],
                               outputs_info=[x0_],
                               n_steps=n,
                               strict=False)
         f_loose = theano.function([x0_], ret_loose[0][-1])
 
-        ret_strict = theano.scan(_scan_strict, 
+        ret_strict = theano.scan(_scan_strict,
                                sequences=[],
                                outputs_info=[x0_],
                                non_sequences=[w_],
@@ -4028,7 +4089,7 @@ class T_Scan(unittest.TestCase):
         def _scan_loose(x):
             return tensor.dot(x, w_)
 
-        ret_strict = theano.scan(_scan_loose, 
+        ret_strict = theano.scan(_scan_loose,
                                sequences=[],
                                outputs_info=[x0_],
                                n_steps=n,
