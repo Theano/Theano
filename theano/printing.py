@@ -130,7 +130,7 @@ Timing Info
 <total time>   time for this node + total times for this node's ancestors
 <% total time> total time for this node over total computation time
 
-N.B.: 
+N.B.:
 * Times include the node time and the function overhead.
 * <total time> and <% total time> may over-count computation times
   if inputs to a node share a common ancestor and should be viewed as a
@@ -558,7 +558,8 @@ def pydotprint(fct, outfile=None,
                assert_nb_all_strings=-1,
                return_image=False,
                ):
-    """Print to a file (png format) the graph of a compiled theano function's ops.
+    """Print to a file (png or svg format) the graph of a compiled theano
+    function's ops. Depends on the pydot package.
 
     :param fct: a compiled Theano function, a Variable, an Apply or
                 a list of Variable.
