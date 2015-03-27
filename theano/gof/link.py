@@ -220,7 +220,9 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             for storage_map_item in storage_map_list:
                 detailed_err_msg += " - " + storage_map_item[0] + ", "
                 if storage_map_item[4] is True:
-                    detailed_err_msg += "Shared, "
+                    detailed_err_msg += "Shared Input, "
+                else:
+                    detailed_err_msg += "Input, "
                 if storage_map_item[1] is not None:
                     detailed_err_msg += "Shape: %s, " % str(storage_map_item[1])
                 detailed_err_msg += "ElemSize: %s Byte(s)" % storage_map_item[2]
