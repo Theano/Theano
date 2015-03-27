@@ -2754,10 +2754,23 @@ class T_Scan(unittest.TestCase):
         grads = tensor.grad(cost, nparams)
         updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
 
-        # Compile and call the theano function
+        # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,
                                          mode=mode_with_gpu)
 
+        # Validate that the PushOutScanOutput optimization has been applied
+        # by checking the number of outputs of the grad Scan node in the
+        #compiled function.
+        nodes = feval_backprop.maker.fgraph.toposort()
+        scan_nodes = [n for n in nodes if isinstance(
+                      n.op, theano.scan_module.scan_op.Scan)]
+
+        # The grad scan is always the 2nd one according to toposort. If the
+        # optimization has been applied, it has 2 outputs, otherwise 3.
+        grad_scan_node = scan_nodes[1]
+        assert len(grad_scan_node.outputs) == 2
+
+        # Call the theano function to ensure the absence of a memory error
         feval_backprop(numpy.zeros((mb_length, mb_size, n_in),
                                    dtype="float32"),
                        numpy.zeros((mb_length, mb_size, n_out),
