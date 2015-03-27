@@ -1176,7 +1176,7 @@ class GpuCAReduce(GpuOp):
             int verbose = 0;
             dim3 n_threads(
                     std::min(CudaNdarray_SIZE(%(x)s),
-                            NUM_VECTOR_OP_THREADS_PER_BLOCK));
+                             (size_t) NUM_VECTOR_OP_THREADS_PER_BLOCK));
             dim3 n_blocks(1);
             if (verbose) printf("running kernel_reduce_ccontig_%(name)s"
                                 " n_threads.x=%%d, size=%%d, ndim=%%d\\n",
@@ -1739,7 +1739,7 @@ class GpuCAReduce(GpuOp):
         """ % locals()
 
     def c_code_cache_version_apply(self, node):
-        version = [11]  # the version corresponding to the c code in this Op
+        version = [12]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -3380,13 +3380,13 @@ class GpuAlloc(GpuAllocEmpty):
         if (%(memset_0)s && CudaNdarray_is_c_contiguous(%(out)s))
         {
             cudaError_t err = cudaMemset(%(out)s->devdata, 0,
-                                         CudaNdarray_SIZEt(%(out)s) * 4);
+                                         CudaNdarray_SIZE(%(out)s) * 4);
             if (cudaSuccess != err)
             {
                 PyErr_Format(PyExc_MemoryError,
                              "GpuAlloc: Error memsetting %%ld"
                              " bytes of device memory. %%s",
-                             (long)(CudaNdarray_SIZEt(%(out)s) * 4),
+                             (long)(CudaNdarray_SIZE(%(out)s) * 4),
                              cudaGetErrorString(err));
                 Py_XDECREF(%(out)s);
                 %(out)s = NULL;
@@ -3407,7 +3407,7 @@ class GpuAlloc(GpuAllocEmpty):
         return [node.inputs[1:]]
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:

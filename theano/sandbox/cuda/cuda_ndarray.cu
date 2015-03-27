@@ -848,7 +848,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     // check shape tuple
     unsigned int rval_nd;
     unsigned int * rval_dims;
-    unsigned int rval_size = 1;
+    size_t rval_size = 1;
 
     if (PyTuple_Check(shape)){
         // copy shape to integer array
@@ -884,7 +884,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     // calculate new size, assert same as old size
     if (rval_size != CudaNdarray_SIZE(self))
     {
-        PyErr_Format(PyExc_ValueError, "size must remain unchanged, changed from %i to %i", CudaNdarray_SIZE(self), rval_size);
+        PyErr_Format(PyExc_ValueError, "size must remain unchanged, changed from %lld to %lld", CudaNdarray_SIZE(self), rval_size);
         free(rval_dims);
         return NULL;
     }
@@ -1309,7 +1309,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (cpu_err_var != 0) {
         PyErr_Format(
             PyExc_IndexError,
-            "CudaNdarray_TakeFrom: One of the index value is out of bound.\n",
+            "CudaNdarray_TakeFrom: One of the index value is out of bound. Error code: %i.\n",
             cpu_err_var);
         // Must reset it to 0 to don't reset it before each use.
         err = cudaMemset((void*)err_var, 0, sizeof(int));
@@ -5106,22 +5106,11 @@ CudaNdarray_DEV_DATA(const CudaNdarray * self)
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
  */
-int
+size_t
 CudaNdarray_SIZE(const CudaNdarray *self)
 {
     if (self->nd == -1) return 0;
     int size = 1;
-    for (int i = 0; i < self->nd; ++i)
-    {
-        size *= CudaNdarray_HOST_DIMS(self)[i];
-    }
-    return size;
-}
-size_t
-CudaNdarray_SIZEt(const CudaNdarray *self)
-{
-    if (self->nd == -1) return 0;
-    size_t size = 1;
     for (int i = 0; i < self->nd; ++i)
     {
         size *= CudaNdarray_HOST_DIMS(self)[i];

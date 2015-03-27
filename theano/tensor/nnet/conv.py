@@ -674,22 +674,30 @@ class ConvOp(OpenMPOp):
         if any(x is None for x in imshp):
             imshp = tuple(img2d.shape[1:])
         if imshp != img2d.shape[1:]:
-            raise ValueError("bad shape", imshp, img2d.shape[1:])
+            raise ValueError("The image shape provided at build time "
+                             "is different from the one passed at run time",
+                             imshp, img2d.shape[1:])
         kshp = self.kshp
         if any(x is None for x in kshp):
             kshp = tuple(filtersflipped.shape[2:])
         if kshp != filtersflipped.shape[2:]:
-            raise ValueError("bad shape", kshp, filtersflipped.shape[2:])
+            raise ValueError("The filter shape provided at build time "
+                             "is different from the one passed at run time",
+                             kshp, filtersflipped.shape[2:])
         bsize = self.bsize
         if bsize is None:
             bsize = img2d.shape[0]
         elif bsize != img2d.shape[0]:
-            raise ValueError("bad shape", bsize, img2d.shape[0])
+            raise ValueError("The batch size provided at build time "
+                             "is different from the one passed at run time",
+                             bsize, img2d.shape[0])
         nkern = self.nkern
         if nkern is None:
             nkern = filtersflipped.shape[0]
         elif nkern != filtersflipped.shape[0]:
-            raise ValueError("bad shape", nkern, filtersflipped.shape[0])
+            raise ValueError("The number of filters provided at build time "
+                             "is different from the one passed at run time",
+                             nkern, filtersflipped.shape[0])
 
         imshp_logical = self.imshp_logical
         if imshp_logical[0] is None:
@@ -984,7 +992,7 @@ class ConvOp(OpenMPOp):
         return ['<numpy/noprefix.h>', '<iostream>', '<sstream>']
 
     def c_code_cache_version(self):
-        return (14, self.openmp, blas.blas_header_version())
+        return (15, self.openmp, blas.blas_header_version())
 
     def c_support_code(self):
         return """
@@ -1088,7 +1096,8 @@ using namespace std;
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of rows in the filter "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1100,7 +1109,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of columns in the filter "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1112,7 +1122,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of rows in the output "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1124,7 +1135,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of columns in the output "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1136,7 +1148,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the image stack size (%%ld) "
+            "isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1146,7 +1159,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the kernel stack size (%%ld) "
+            "isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1158,7 +1172,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of rows in the image "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1170,7 +1185,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of columns in the image "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1182,7 +1198,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the batch size (%%ld) "
+            "isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
@@ -1194,7 +1211,8 @@ if(%(value)s != %(expected)s){
             d["assert_size"] += """
 if(%(value)s != %(expected)s){
     PyErr_Format(PyExc_ValueError,
-            "the hard coded shape (%%ld) isn't the run time shape (%%ld).",
+            "The hardcoded shape for the number of kernels in the filter "
+            "(%%ld) isn't the run time shape (%%ld).",
             (long)%(value)s, (long)%(expected)s);
     %(fail)s;
 }
