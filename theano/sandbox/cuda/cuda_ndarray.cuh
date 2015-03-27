@@ -285,10 +285,7 @@ DllExport float *CudaNdarray_DEV_DATA(const CudaNdarray * self);
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
  */
-DllExport int CudaNdarray_SIZE(const CudaNdarray *self);
-// Useful as many cuda function use size_t as input. This make sure we use the
-// most precission and not int.
-DllExport size_t CudaNdarray_SIZEt(const CudaNdarray *self);
+DllExport size_t CudaNdarray_SIZE(const CudaNdarray *self);
 
 static PyObject *CudaNdarray_SIZE_Object(const CudaNdarray *self, void *closure);
 
