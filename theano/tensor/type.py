@@ -630,6 +630,10 @@ def values_eq_approx_remove_inf_nan(a, b):
     return TensorType.values_eq_approx(a, b, True, True)
 
 
+def values_eq_approx_always_true(a, b):
+    return True
+
+
 # Register TensorType C code for ViewOp.
 theano.compile.register_view_op_c_code(
         TensorType,
