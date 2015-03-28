@@ -374,7 +374,6 @@ class ProfileMode(Mode):
             else:
                 print '   NOT CALLED', key.name
 
-
         # Compute stats per op.
         op_time = {}
         op_call = {}
@@ -413,7 +412,6 @@ class ProfileMode(Mode):
             sop_cimpl[typ] = sop_cimpl[typ] and op_cimpl.get(a, False)
             sop_call[typ] = sop_call.get(typ, 0)+op_call[a]
 
-
         # Print the summary per op class.
         print
         print 'Single Op-wise summary:'
@@ -439,7 +437,6 @@ class ProfileMode(Mode):
                   sum(soinfo[1] for soinfo in sotimes[n_ops_to_print:]))
 
         print '(*) Op is running a c implementation'
-
 
         # The summary per op
         op_flops = {}
@@ -478,7 +475,6 @@ class ProfileMode(Mode):
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
-
 
         if print_apply:
             print

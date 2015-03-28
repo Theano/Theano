@@ -715,7 +715,6 @@ class T_SharedRandomStreams(unittest.TestCase):
         s_rng_True = shared(rng, borrow=True)
         s_rng_False = shared(rng, borrow=False)
 
-
         # test borrow contract: that False means a copy must have been made
         assert s_rng_default.container.storage[0] is not rng
         assert s_rng_False.container.storage[0] is not rng

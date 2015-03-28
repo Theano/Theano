@@ -304,7 +304,6 @@ class T_function(unittest.TestCase):
         self.assertTrue(inc[s] == -1)
         self.assertTrue(dec[s] == -1)
 
-
     def test_constant_output(self):
         # Test that if the output is a constant, we respect the theano memory interface
         f = theano.function([], theano.tensor.constant([4]))
@@ -332,7 +331,6 @@ class T_function(unittest.TestCase):
         else:
             assert out2 is out
             assert (out2 == 3).all()
-
 
     def test_borrow_input(self):
         """
@@ -567,12 +565,10 @@ class T_picklefunction(unittest.TestCase):
             assert [i.type for i in nf.inputs] == [i.type for i in ng.inputs]
             assert [i.type for i in nf.outputs] == [i.type for i in ng.outputs]
 
-
     def test_multiple_functions(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
         v = T.vector('v')
-
 
         # put in some inputs
         list_of_things = [s, x, v]

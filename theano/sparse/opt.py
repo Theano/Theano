@@ -257,7 +257,6 @@ class StructuredDotCSC(gof.Op):
         # @param z: return value
         # @param sub: TODO, not too sure, something to do with weave probably
 
-
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a_val')
         if node.inputs[4].type.dtype in ('complex64', 'complex128'):

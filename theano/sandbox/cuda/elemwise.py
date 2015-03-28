@@ -220,7 +220,6 @@ class NaiveAlgo(object):
             print >> sio, "    }"
             print >> sio, "    __syncthreads();"
 
-
             if (nd == 4):
                 print >> sio, """
                 for (int pos0 = blockIdx.x; pos0 < shared_dims[0]; pos0 += gridDim.x)
@@ -458,7 +457,6 @@ class NaiveAlgo(object):
             if _logical_scalar(i):
                 print >> sio, "    const float ii_i%i_value = i%i_data[0];" % (ipos, ipos)
 
-
         # loop over the elements to be treated by this kernel call
         print >> sio, "    for (int i = idx; i < numEls; i += numThreads) {"
         # perform the scalar operation on the input and output references
@@ -690,7 +688,6 @@ nd_collapse_[i]=0;
             }
             """%locals()
 
-
         for ipos in xrange(len(node.outputs)):
             print >> sio, """
             for(int i=nd_collapse-1;i>0;i--){
@@ -737,7 +734,6 @@ nd_collapse_[i]=0;
                 print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]"%(ipos, x) for x in xrange(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
                 print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]"%(ipos, x) for x in xrange(nd)])+'<<"\\n";'
-
 
         def launch_Ccontiguous(nodename, scalar_op, sync=True):
             kernel_call_args = ["numEls"]

@@ -18,9 +18,6 @@ from theano.sandbox.cuda.var import (
         CudaNdarrayVariable, CudaNdarrayConstant, CudaNdarraySharedVariable)
 
 
-
-
-
 def as_variable(x):
     assert isinstance(x, Variable)
     return x
@@ -361,7 +358,6 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
         assert r3.auto_name == "auto_" + str(autoname_id + 2)
 
-
     def test_sparsevariable(self):
         # Get counter value
         autoname_id = next(Variable.__count__)
@@ -404,7 +400,6 @@ class TestAutoName:
                                                                    strict=False)
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
-
 
     def test_clone(self):
         # Get counter value

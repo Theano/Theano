@@ -241,7 +241,6 @@ class _tensor_py_operators:
     def __rdivmod__(self, other):
         return theano.tensor.basic.divmod(other, self)
 
-
     def __rpow__(self, other):
         return theano.tensor.basic.pow(other, self)
 

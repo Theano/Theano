@@ -222,7 +222,6 @@ class TestConv3dFFT(unittest.TestCase):
         res_fft = f_fft()
         utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
 
-
     def test_valid(self):
         self.run_conv_valid(inputs_shape=(16, 20, 32, 16, 1),
                             filters_shape=(10, 6, 12, 4, 1),

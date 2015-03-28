@@ -218,7 +218,6 @@ def test_careduce():
             finally:
                 theano.tensor.basic.float32_rtol = orig_rtol
 
-
             # test with dimshuffle
             # we shuffle the 2 outer dims.
         for shape, pattern in [  # ((5,),[0]),
@@ -835,8 +834,6 @@ def test_hostfromgpu_shape_i():
     assert isinstance(topo[2].op, T.opt.MakeVector)
     assert tuple(f(av)) == (5, 4)
 
-
-
     f = theano.function([ca], cuda.basic_ops.host_from_gpu(ca), mode=m)
     assert cuda.basic_ops.host_from_gpu in [x.op
                                             for x in f.maker.fgraph.toposort()]
@@ -994,7 +991,6 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
                      self).__init__(name)
 
     def test_adv_sub1_fast(self):
-
         """We check that the special cases of advanced indexing that
         use CudaNdarrayTakeFrom are handled correctly
 
@@ -1137,7 +1133,6 @@ def test_many_arg_elemwise():
                 symb_args = [theano.tensor.TensorType('float32',
                                                       (False,)*nb_dim)()
                              for arg in xrange(0, num_args)]
-
 
                 outputs = []
                 for mode in [mode_with_gpu, mode_without_gpu]:

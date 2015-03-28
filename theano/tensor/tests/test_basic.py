@@ -6866,7 +6866,6 @@ class TestInferShape(utt.InferShapeTester):
                                 [Mean(aiscal_val)(adtens3)],
                                 [adtens3_val], Mean)
 
-
         # Reshape
         # TODO: generalize infer_shape to account for tensor variable
         # (non-constant) input shape

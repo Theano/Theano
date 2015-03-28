@@ -4356,7 +4356,6 @@ def local_add_specialize(node):
                 continue
             new_inputs.append(input)
 
-
         if len(new_inputs) < len(node.inputs):
             dtype = node.outputs[0].type.dtype
             if len(new_inputs) == 0:

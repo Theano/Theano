@@ -117,7 +117,6 @@ def test_cholesky_and_cholesky_grad_shape():
             yield numpy.testing.assert_equal, f_cholgrad(m), (shp, shp)
 
 
-
 def test_eigvalsh():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the geigvalsh op.")

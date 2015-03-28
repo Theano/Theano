@@ -421,7 +421,6 @@ def test_reshape():
     utt.seed_rng()
     rng = numpy.random.RandomState(utt.fetch_seed())
 
-
     def subtest(shape_1, shape_2, rng):
         #print >> sys.stdout, "INFO: shapes", shape_1, shape_2
         a = theano._asarray(rng.randn(*shape_1), dtype='float32')
@@ -458,13 +457,11 @@ def test_reshape():
         a = theano._asarray(rng.randn(*shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
 
-
         try:
             bb = b.reshape(shape_2)
         except Exception, ValueError:
             return
         assert False
-
 
     # test working shapes
     for shape_1, shape_2 in shapelist:
@@ -516,7 +513,6 @@ def test_stride_manipulation():
 
     v._dev_data += offset * sizeof_float
     c = numpy.asarray(v)
-
 
     assert numpy.all(c == [[5, 4, 3], [2, 1, 0]])
 
@@ -632,7 +628,6 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[1:]), a[1:])
     _cmp(numpy.asarray(_a[1:2]), a[1:2])
     _cmp(numpy.asarray(_a[-1:1]), a[-1:1])
-
 
     # test with tuple (mix slice, integer, numpy.int64)
     _cmp(numpy.asarray(_a[:, :, ::numpy.int64(-1), ::-1]), a[:, :, ::-1, ::-1])
@@ -977,7 +972,6 @@ def test_zeros_basic():
         _n = numpy.zeros(shp, dtype="float32")
         assert numpy.allclose(numpy.asarray(_a), _n)
         assert _a.shape == _n.shape
-
 
     try:
         _n = numpy.zeros()

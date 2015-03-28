@@ -486,7 +486,6 @@ def test_known_grads():
 
 def test_dxdx():
 
-
     # Tests that the gradient of a scalar with respect to itself is 1
     # I use an integer in this case because people keep changing this
     # gradient to be 0 on integers but according to our interpretation

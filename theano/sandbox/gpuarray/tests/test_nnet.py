@@ -199,7 +199,6 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
         z = T.nnet.softmax_with_bias(x, T.arange(x.shape[1] * 2,
                                                  dtype='float64')[::2])
 
-
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
     assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_with_bias

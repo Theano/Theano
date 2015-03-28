@@ -90,7 +90,6 @@ class T_Scan(TestCase):
         assert not any([isinstance(node.op, GpuFromHost)
                         for node in scan_node_topo])
 
-
     # This second version test the second case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu2(self):
         def f_rnn(u_t, x_tm1, W_in, W):
@@ -211,7 +210,6 @@ class T_Scan(TestCase):
                         for node in scan_node_topo])
         assert not any([isinstance(node.op, GpuFromHost)
                         for node in scan_node_topo])
-
 
     def test_gpu4_gibbs_chain(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

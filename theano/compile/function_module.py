@@ -689,7 +689,6 @@ class Function(object):
         None,  # this property itself is not settable
         doc="""dictionary-like access to the containers associated with Variables""")
 
-
     def free(self):
         """
         When allow_gc = False, clear the Variables in storage_map

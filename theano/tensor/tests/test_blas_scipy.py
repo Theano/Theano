@@ -25,7 +25,6 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         if not theano.tensor.blas_scipy.have_fblas:
             self.SkipTest()
 
-
     def function(self, inputs, outputs):
         return theano.function(inputs, outputs, self.mode)
 

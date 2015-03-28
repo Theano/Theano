@@ -62,7 +62,6 @@ class test_ScalarOps(unittest.TestCase):
                     ):
             self.assertTrue(fn(a, b) == a%b, (a,))
 
-
     def test_clip_grad(self):
         # This is testing for the issue #633
         x, y = floats('xy')
@@ -225,7 +224,6 @@ class test_logical(unittest.TestCase):
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [neq(x, y)])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
             self.assertTrue(fn(a, b) == (a != b))
-
 
     def test_or(self):
         x, y, z = ints('xyz')

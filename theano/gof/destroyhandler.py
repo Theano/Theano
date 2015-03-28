@@ -72,7 +72,6 @@ def _contains_cycle(fgraph, orderings):
     # dictionary also runs slower when storing ids than when
     # storing objects.
 
-
     # dict mapping an Apply or Variable instance to the number
     # of its parents (including parents imposed by orderings)
     # that haven't been visited yet
@@ -102,7 +101,6 @@ def _contains_cycle(fgraph, orderings):
     #     I think since we need to scan through all variables and nodes
     #     to make parent_counts anyway, it's cheap enough to always
     #     detect orphans at cycle detection / toposort time
-
 
     # Pass through all the nodes to build visitable, parent_count, and
     # node_to_children
@@ -152,8 +150,6 @@ def _contains_cycle(fgraph, orderings):
 
     # at this point,
     # parent_counts.keys() == fgraph.apply_nodes + fgraph.variables
-
-
 
     # Now we actually check for cycles
     # As long as there are nodes that can be visited while respecting

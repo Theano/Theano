@@ -99,7 +99,6 @@ class OpFromGraph(gof.Op):
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
 
-
     def __eq__(self, other):
         # TODO: recognize a copy
         return self is other

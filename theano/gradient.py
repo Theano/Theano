@@ -1888,7 +1888,6 @@ consider_constant_ = ConsiderConstant()
 
 # I create a function only to have the doc show well.
 def consider_constant(x):
-
     """
     DEPRECATED: use zero_grad() or disconnected_grad() instead.
 
@@ -1923,7 +1922,6 @@ zero_grad_ = ZeroGrad()
 
 
 def zero_grad(x):
-
     """
     Consider an expression constant when computing gradients.
 
@@ -1952,7 +1950,6 @@ disconnected_grad_ = DisconnectedGrad()
 
 
 def disconnected_grad(x):
-
     """
     Consider an expression constant when computing gradients,
     while effectively not backpropagating through it.

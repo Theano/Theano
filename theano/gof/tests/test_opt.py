@@ -77,7 +77,6 @@ op_y = MyOp('OpY', x=1)
 op_z = MyOp('OpZ', x=1)
 
 
-
 def inputs():
     x = MyVariable('x')
     y = MyVariable('y')

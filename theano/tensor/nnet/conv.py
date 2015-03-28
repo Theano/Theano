@@ -845,7 +845,6 @@ class ConvOp(OpenMPOp):
             return theano.gradient.grad(cost=None,
                     known_grads={node: gz}, wrt=[inputs, kerns])
 
-
         if self.dx not in (1, 2) or self.dy not in (1, 2):
             raise NotImplementedError(
                 "ERROR: We disable ConvOp.grad now when dx or "

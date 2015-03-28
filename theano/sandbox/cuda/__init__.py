@@ -34,7 +34,6 @@ def register_opt(*tags, **kwargs):
     return f
 
 
-
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 

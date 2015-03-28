@@ -46,7 +46,6 @@ class SymPyCCode(ScalarOp):
     3.0
     """
 
-
     def __init__(self, inputs, expr, name=None):
         self.name = name or next(names)
         self.inputs = inputs

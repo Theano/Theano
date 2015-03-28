@@ -128,7 +128,6 @@ class TestSP(unittest.TestCase):
 
         # profmode.print_summary()
 
-
     @attr('slow')
     def test_sparse(self):
 
@@ -219,7 +218,6 @@ class TestSP(unittest.TestCase):
 #            print 'Theano processing time: ', ttot
         # profmode.print_summary()
 
-
     def test_multilayer_sparse(self):
         # fixed parameters
         bsize = 10     # batch size
@@ -300,7 +298,6 @@ class TestSP(unittest.TestCase):
 
                     l2hidval = l2propup(l2kernvals, l1hidval)
 
-
     def test_maxpool(self):
         # generate flatted images
         maxpoolshps = ((2, 2), (3, 3), (4, 4), (5, 5), (6, 6))
@@ -334,7 +331,6 @@ class TestSP(unittest.TestCase):
                 output, outshp = sp.max_pool(input, imval.shape[1:], maxpoolshp)
                 return output
             utt.verify_grad(mp, [imval.reshape(imval.shape[0], -1)])
-
 
     def test_CSMGrad(self):
         imshp = (3, 3)

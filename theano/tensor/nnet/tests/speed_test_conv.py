@@ -195,7 +195,6 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
         return tctot, tpytot, ntot
 
 
-
 def speed_multilayer_conv():
         # calculate the speed up of different combination of unroll
         # put the paramter to the same you will try.

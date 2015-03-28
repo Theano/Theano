@@ -46,7 +46,6 @@ def pretty_format(string):
         indent += lines[i].count('{')
     #
 
-
     rval = '\n'.join(lines)
 
     return rval

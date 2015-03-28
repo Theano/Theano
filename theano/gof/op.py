@@ -1277,7 +1277,6 @@ class COp(Op):
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
 
-
     def c_code(self, node, name, inp, out, sub):
         if self.func_name is not None:
             assert 'code' not in self.code_sections

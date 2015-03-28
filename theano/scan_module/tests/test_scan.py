@@ -3794,7 +3794,6 @@ class T_Scan(unittest.TestCase):
         vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         utt.assert_allclose(f(vA, vB), numpy.dot(vA.T, vB))
 
-
     def test_pregreedy_optimizer(self):
         W = tensor.zeros((5, 4))
         bv = tensor.zeros((5,))

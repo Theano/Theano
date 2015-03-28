@@ -295,7 +295,6 @@ if sys.version_info[:2] < (2, 7):
         def __ne__(self, other):
             return not self == other
 
-
     # The following implementation of Counter compatible with python 2.4
     # was taken from http://code.activestate.com/recipes/576611/
     # It is under the MIT license.

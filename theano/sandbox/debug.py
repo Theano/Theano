@@ -148,7 +148,6 @@ class DebugLinker(gof.WrapLinker):
             raise DebugException, exc, exc_trace
 
 
-
 def print_info(i, node, *thunks):
     print "step %i, node %s" % (i, node)
 

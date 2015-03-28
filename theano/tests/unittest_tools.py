@@ -431,5 +431,4 @@ class AttemptManyTimes:
                     if current_seed not in [None, "random"]:
                         current_seed = str(int(current_seed) + 1)
 
-
         return attempt_multiple_times

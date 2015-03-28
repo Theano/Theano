@@ -214,7 +214,6 @@ class CLinkerType(CLinkerObject):
         return ()
 
 
-
 class PureType(object):
     """Interface specification for variable type instances.
 

@@ -333,7 +333,6 @@ class TestPushOutSumOfDot():
             res_h = z * new_h + (1 - z) * h
             return res_h
 
-
         # Compile the function twice, once with the optimization and once
         # without
         opt_mode = mode.including("scan")

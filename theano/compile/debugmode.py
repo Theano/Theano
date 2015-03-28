@@ -1896,7 +1896,6 @@ class _Linker(gof.link.LocalLinker):
                             raise_with_op(node, thunk_c,
                                           (exc_type, exc_value, exc_trace))
 
-
                     if thunk_py:
                         # check output values for type-correctness
                         for r in node.outputs:
@@ -2531,7 +2530,6 @@ class DebugMode(Mode):
             check_preallocated_output=None,
             require_matching_strides=None,
             linker=_DummyLinker()):
-
         """Initialize member variables.
 
         If any of these arguments (except optimizer) is not None, it overrides

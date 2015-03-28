@@ -773,7 +773,6 @@ class CLinker(link.Linker):
             init_tasks.append((node, 'init', id))
             id += 1
 
-
         # List of arg names for use in struct_gen. Note the call to
         # uniq: duplicate inputs must only be passed once because they
         # are mapped to the same name.  Duplicates are defined by (a

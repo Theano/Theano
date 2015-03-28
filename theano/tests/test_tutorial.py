@@ -44,13 +44,11 @@ class T_extending(unittest.TestCase):
         def values_eq_approx(x, y, tolerance=1e-4):
             return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
-
         from theano import gof
 
         double = gof.Type()
         double.filter = filter
         double.values_eq_approx = values_eq_approx
-
 
         from theano import gof
 
@@ -71,11 +69,8 @@ class T_extending(unittest.TestCase):
 
         double = Double()
 
-
         def __eq__(self, other):
             return type(self) is Double and type(other) is Double
-
-
 
         from theano import gof
 
@@ -98,7 +93,6 @@ class T_extending(unittest.TestCase):
                 return a is b
 
         double = Double()
-
 
         from theano import gof
         mul = gof.Op()
@@ -124,7 +118,6 @@ class T_extending(unittest.TestCase):
         x = double('x')
         self.assertRaises(AttributeError, mul, x, 2)
 
-
         def make_node(x, y):
             if isinstance(x, (int, float)):
                 x = gof.Constant(double, x)
@@ -134,7 +127,6 @@ class T_extending(unittest.TestCase):
                 raise TypeError('mul only works on doubles')
             return gof.Apply(mul, [x, y], [double()])
         mul.make_node = make_node
-
 
         x = double('x')
         z = mul(x, 2)
@@ -257,7 +249,6 @@ class T_extending(unittest.TestCase):
             """ % dict(name=name)
         double.c_declare = c_declare
 
-
         def c_init(name, sub):
             return """
             %(name)s = 0.0;
@@ -294,7 +285,6 @@ class T_extending(unittest.TestCase):
             return ""
         double.c_cleanup = c_cleanup
 
-
         from theano import function
 
         x, y, z = double('x'), double('y'), double('z')
@@ -302,7 +292,6 @@ class T_extending(unittest.TestCase):
         b = mul(a, z)
         f = function([x, y, z], b)
         assert f(1.0, 2.0, 3.0) == 9.0
-
 
         from theano import gof
         class Double(gof.Type):
@@ -363,7 +352,6 @@ class T_extending(unittest.TestCase):
 
         double = Double()
 
-
         def c_code(node, name, input_names, output_names, sub):
             x_name, y_name = input_names[0], input_names[1]
             output_name = output_names[0]
@@ -371,7 +359,6 @@ class T_extending(unittest.TestCase):
             %(output_name)s = %(x_name)s * %(y_name)s;
             """ % locals()
         mul.c_code = c_code
-
 
         from theano import gof
         class BinaryDoubleOp(gof.Op):
@@ -403,7 +390,6 @@ class T_extending(unittest.TestCase):
                 z, = out
                 return self.ccode % locals()
 
-
         add = BinaryDoubleOp(name='add',
                             fn=lambda x, y: x + y,
                             ccode="%(z)s = %(x)s + %(y)s;")
@@ -419,7 +405,6 @@ class T_extending(unittest.TestCase):
         div = BinaryDoubleOp(name='div',
                             fn=lambda x, y: x / y,
                             ccode="%(z)s = %(x)s / %(y)s;")
-
 
         from theano.gof import toolbox
 
@@ -538,7 +523,6 @@ class T_adding(unittest.TestCase):
     # Theano/doc/tutorial/adding.txt
     # Any change you do here also add it to the tutorial !
 
-
     def test_adding_1(self):
         import theano.tensor as T
         from theano import function
@@ -562,7 +546,6 @@ class T_adding(unittest.TestCase):
                          numpy.array([[ 11.,  22.], [ 33.,  44.]]))
 
 
-
 class T_examples(unittest.TestCase):
     # All tests here belog to
     # http://deeplearning.net/software/theano/tutorial/examples.html
@@ -576,9 +559,6 @@ class T_examples(unittest.TestCase):
         assert numpy.allclose( logistic([[0, 1], [-1, -2]]),
                          array([[ 0.5       ,  0.73105858],
                                 [ 0.26894142,  0.11920292]]))
-
-
-
 
     def test_examples_2(self):
 
@@ -611,7 +591,6 @@ class T_examples(unittest.TestCase):
         assert f(4)    ==  array(8.0)
         assert f(94.2) == array(188.40000000000001)
 
-
     def test_examples_5(self):
 
         x = T.dmatrix('x')
@@ -622,7 +601,6 @@ class T_examples(unittest.TestCase):
                          array([[ 0.25      ,  0.19661193],
                                [ 0.19661193,  0.10499359]]))
 
-
     def test_examples_6(self):
 
         from theano import Param
@@ -631,7 +609,6 @@ class T_examples(unittest.TestCase):
         f = function([x, Param(y, default=1)], z)
         assert f(33)    == array(34.0)
         assert f(33, 2) == array(35.0)
-
 
     def test_examples_7(self):
         from theano import Param
@@ -643,7 +620,6 @@ class T_examples(unittest.TestCase):
         assert f(33, 0, 1)             == array(33.0)
         assert f(33, w_by_name=1)      == array(34.0)
         assert f(33, w_by_name=1, y=0) == array(33.0)
-
 
     def test_examples_8(self):
         from theano import shared
@@ -676,7 +652,6 @@ class T_examples(unittest.TestCase):
         assert skip_shared(1, 3)       == array(7)
         assert state.get_value()       == array(0)
 
-
     def test_examples_9(self):
 
         from theano.tensor.shared_randomstreams import RandomStreams
@@ -686,7 +661,6 @@ class T_examples(unittest.TestCase):
         f = function([], rv_u)
         g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
-
 
         f_val0 = f()
         f_val1 = f()  #different numbers from f_val0
@@ -823,7 +797,6 @@ class T_aliasing(unittest.TestCase):
         assert numpy.all(s_false.get_value()   == array([1.0, 1.0]))
         assert numpy.all(s_true.get_value()    == array([2.0, 2.0]))
 
-
     def test_aliasing_2(self):
 
         import numpy, theano
@@ -836,13 +809,10 @@ class T_aliasing(unittest.TestCase):
 
         v_internal = s.get_value(borrow=True, return_internal_type=True)
 
-
         s.set_value(
             # some_inplace_fn
             s.get_value(borrow=True).__imul__(2),
             borrow=True)
-
-
 
     def test_aliasing_3(self):
 
@@ -884,7 +854,6 @@ class T_loading_and_saving(unittest.TestCase):
                 f = open('obj.save', 'wb')
                 cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
                 f.close()
-
 
                 f = open('obj.save', 'rb')
                 loaded_obj = cPickle.load(f)

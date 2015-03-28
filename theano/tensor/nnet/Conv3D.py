@@ -595,7 +595,6 @@ def computeH(V, W, b, d):
     outputWidth = int( (vidWidth - filterWidth) / dy )+1
     outputDur = int( (vidDur - filterDur) / dt ) + 1
 
-
     H =  N.zeros( (batchSize,  outputHeight,
         outputWidth, outputDur, outputChannels ), dtype=V.dtype )
 

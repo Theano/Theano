@@ -524,7 +524,6 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
     return basic_ops.as_cuda_ndarray_variable(output)
 
 
-
 def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
                border_mode='valid', pad_last_dim=False):
     """
@@ -632,7 +631,6 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     input_fft_v_shape = (b, ic, o0 * o1, o2 // 2 + 1, 2)
     filters_fft_v_shape = (oc, ic, o0 * o1, o2 // 2 + 1, 2)
 
-
     input_fft_v = input_fft_flat.reshape(input_fft_v_shape)
     filters_fft_v = filters_fft_flat.reshape(filters_fft_v_shape)
 
@@ -641,7 +639,6 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
                                    input_shape=input_fft_v_shape,
                                    filter_shape=filters_fft_v_shape)
     #output_fft_s = input_fft_v
-
 
     # reshape for IFFT
     output_fft_flat = output_fft_s.reshape((b * oc, o0, o1, o2 // 2 + 1, 2))

@@ -273,7 +273,6 @@ class GpuElemwise(GpuOp):
                     )(input))
         _inputs = args
 
-
         # output is broadcastable only along dimensions where all
         # inputs are broadcastable
         broadcastable = []
@@ -515,7 +514,6 @@ class GpuDimShuffle(GpuOp):
         for augm in self.augment:
             rval.insert(augm, 1)
         return [rval]
-
 
 
 class GpuCAReduce(GpuOp):

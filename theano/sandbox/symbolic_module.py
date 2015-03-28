@@ -443,7 +443,6 @@ if 0:
     # at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
-
     # running this means:
     nnet_on_pca = neural_net(x=PCA.y, submodules=[PCA])
     #nnet_on_pca = SymbolicModule()
@@ -461,7 +460,6 @@ if 0:
             redefine={'x': (LogisticLayer.x, LogisticLayer.y)},
             submodule={'hid': LogisticLayer},
             add_symbols={'x': LogisticLayer.x})
-
 
     def stats_collector(r, stat_name):
         """stats_collector(nnet_on_pca.x, 'mean')

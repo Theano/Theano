@@ -18,7 +18,6 @@ from theano.sandbox.gpuarray.kernel_codegen import (nvcc_kernel,
                                                    inline_softmax_fixed_shared)
 
 
-
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     """
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.

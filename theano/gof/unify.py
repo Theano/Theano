@@ -497,7 +497,6 @@ if __name__ == "__main__":
     else:
         print "no match"
 
-
     U = unify_walk((1, 2), (va, va), Unification())
     print U[va]
 

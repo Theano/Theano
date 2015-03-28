@@ -59,9 +59,6 @@ class LogisticRegression(object):
     determine a class membership probability.
     """
 
-
-
-
     def __init__(self, input, n_in, n_out, name_prefix=''):
         """ Initialize the parameters of the logistic regression
 
@@ -92,10 +89,6 @@ class LogisticRegression(object):
 
         # parameters of the model
         self.params = [self.W]
-
-
-
-
 
     def negative_log_likelihood(self, y):
         """Return the mean of the negative log-likelihood of the prediction
@@ -178,8 +171,6 @@ class MLP(object):
     class).
     """
 
-
-
     def __init__(self, rng, input, n_in, n_hidden, n_out):
         """Initialize the parameters for the multilayer perceptron
 
@@ -253,8 +244,6 @@ def test_mlp():
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
     test_set_x , test_set_y  = datasets[2]
-
-
 
     batch_size = 100    # size of the minibatch
 

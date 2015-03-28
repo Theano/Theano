@@ -10,7 +10,6 @@ if not cudamat_available:
 from theano.misc.cudamat_utils import cudandarray_to_cudamat, cudamat_to_cudandarray
 
 
-
 def test(shape=(3, 4)):
     """
 Make sure that the cudamat conversion is exact.
@@ -18,7 +17,6 @@ Make sure that the cudamat conversion is exact.
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
     U = gpu(theano.tensor.fmatrix('U'))
     ii = theano.function([U], gpu(U+1))
-
 
     A_cpu = numpy.asarray(numpy.random.rand(*shape), dtype="float32")
     A_cnd = theano.sandbox.cuda.CudaNdarray(A_cpu)

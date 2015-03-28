@@ -674,7 +674,6 @@ class PushOutScanOutput(gof.Optimizer):
                     idx_matrix_input = 1
                     idx_vector_input = 0
 
-
                 if valid_inputs:
                     # The optimization can be applied on the current Dot
 
@@ -747,7 +746,6 @@ class PushOutScanOutput(gof.Optimizer):
                          new_scan_args) = self.push_out_inner_vars(fgraph,
                                                                    inner_dot_inputs,
                                                                    node, args)
-
 
                         # Collapse some of the dimensions of the tensors
                         # so that they become matrices. This is because a

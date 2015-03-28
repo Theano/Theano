@@ -53,7 +53,6 @@ def test_to_gpuarray():
         pass
 
 
-
 def test_to_cudandarray():
     px = pycuda.gpuarray.zeros((3, 4, 5), 'float32')
     cx = to_cudandarray(px)

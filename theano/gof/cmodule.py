@@ -359,7 +359,6 @@ def is_same_entry(entry_1, entry_2):
 
 
 def get_module_hash(src_code, key):
-
     """
     Return an MD5 hash that uniquely identifies a module.
 

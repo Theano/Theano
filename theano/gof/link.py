@@ -241,7 +241,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             "HINT: Use the Theano flag 'exception_verbosity=high'"
             " for a debugprint and storage map footprint of this apply node.")
 
-
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
     raise exc_type, exc_value, exc_trace

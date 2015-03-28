@@ -497,7 +497,6 @@ class Scan(PureOp):
                                              self.inputs,
                                              other.inputs)
 
-
     def __str__(self):
         if self.gpu:
             gpu_str = 'gpu'
@@ -1464,7 +1463,6 @@ class Scan(PureOp):
 
                     if connection_pattern[outer_iidx][outer_oidx]:
                         break
-
 
         # Applying Floyd-Warshall to find all paths connecting inputs to
         # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
