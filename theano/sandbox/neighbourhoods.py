@@ -229,7 +229,7 @@ class NeighbourhoodsFromImages(Op):
         base_indent = ('\t' * (self.n_dims_before + inner_dim_no*2))
         code_before = base_indent + \
                 "for stride_idx_%d in xrange(num_strides[%d]):\n" % \
-                    (inner_dim_no,inner_dim_no)
+                    (inner_dim_no, inner_dim_no)
         base_indent += '\t'
         code_before += base_indent + \
                 "dim_%d_offset = stride_idx_%d * self.strides[%d]\n" %\
@@ -246,14 +246,14 @@ class NeighbourhoodsFromImages(Op):
         return code_before
 
     def _py_flattened_idx(self):
-        return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i,i) \
+        return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i, i) \
                     for i in xrange(len(self.strides))])
 
     def _py_assignment(self):
         input_idx = "".join(["outer_idx_%d," % (i,) \
                     for i in xrange(self.n_dims_before)])
         input_idx += "".join(["dim_%d_offset+neigh_idx_%d," % \
-                    (i,i) for i in xrange(len(self.strides))])
+                    (i, i) for i in xrange(len(self.strides))])
         out_idx = "".join(\
                 ["outer_idx_%d," % (i,) for i in \
                         range(self.n_dims_before)] + \
@@ -279,7 +279,7 @@ class NeighbourhoodsFromImages(Op):
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
     def __init__(self, n_dims_before, dims_neighbourhoods,
                         strides=None, ignore_border=False):
-        NeighbourhoodsFromImages.__init__(self,n_dims_before, dims_neighbourhoods,
+        NeighbourhoodsFromImages.__init__(self, n_dims_before, dims_neighbourhoods,
                                 strides=strides, ignore_border=ignore_border,
                                 inverse=True)
         # and that's all there is to it

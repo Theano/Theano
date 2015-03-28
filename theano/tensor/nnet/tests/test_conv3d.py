@@ -506,7 +506,7 @@ class TestConv3D(utt.InferShapeTester):
         theano.tests.unittest_tools.verify_grad(DummyConvTransp3D(rng,
                         (W, rb, dCdH), d, V.get_value(borrow=True).shape[1:4]),
                                         [0.0], n_tests=testsPerDir)
-        theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V,dCdH),
+        theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V, dCdH),
                         d, W.get_value(borrow=True).shape),
                                         [0.0], n_tests=testsPerDir)
 

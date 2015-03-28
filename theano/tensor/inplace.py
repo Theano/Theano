@@ -38,39 +38,39 @@ def _scal_inplace(symbol):
 
 
 @_scal_inplace
-def lt_inplace(a,b):
+def lt_inplace(a, b):
     """a < b (inplace on a)"""
 
 @_scal_inplace
-def gt_inplace(a,b):
+def gt_inplace(a, b):
     """a > b (inplace on a)"""
 
 @_scal_inplace
-def le_inplace(a,b):
+def le_inplace(a, b):
     """a <= b (inplace on a)"""
 
 @_scal_inplace
-def ge_inplace(a,b):
+def ge_inplace(a, b):
     """a >= b (inplace on a)"""
 
 @_scal_inplace
-def eq_inplace(a,b):
+def eq_inplace(a, b):
     """a == b (inplace on a)"""
 
 @_scal_inplace
-def neq_inplace(a,b):
+def neq_inplace(a, b):
     """a != b (inplace on a)"""
 
 @_scal_inplace
-def and__inplace(a,b):
+def and__inplace(a, b):
     """bitwise a & b (inplace on a)"""
 
 @_scal_inplace
-def or__inplace(a,b):
+def or__inplace(a, b):
     """bitwise a | b (inplace on a)"""
 
 @_scal_inplace
-def xor_inplace(a,b):
+def xor_inplace(a, b):
     """bitwise a ^ b (inplace on a)"""
 
 @_scal_inplace

@@ -25,7 +25,7 @@ def grad_sources_inputs(sources, inputs):
     """
     if inputs is None:
         inputs = theano.gof.graph.inputs([source[0] for source in sources])
-    return dict(zip(inputs,theano.gradient.grad(cost=None, known_grads=dict(sources),
+    return dict(zip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),
         wrt=inputs, consider_constant=inputs)))
 
 class testgrad_sources_inputs(unittest.TestCase):
@@ -413,7 +413,7 @@ class test_grad(unittest.TestCase):
         g_x = theano.tensor.grad(z_x, x, consider_constant=[x])
         g_one = theano.tensor.grad(z_one, one)
 
-        f = theano.function([x, y],[g_x, g_one])
+        f = theano.function([x, y], [g_x, g_one])
 
         g_x, g_one = f(1, .5)
 
@@ -447,7 +447,7 @@ def test_known_grads():
     layers = [
             [cost],
             [y],
-            [ct,p],
+            [ct, p],
             [ct, x, ft],
             [coeffs, t, full_range, x]
             ]
@@ -463,11 +463,11 @@ def test_known_grads():
     true_grads = true_grads(*values)
 
     for layer in layers:
-        print 'Testing by separately computing ',layer
+        print 'Testing by separately computing ', layer
         first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
         known = dict(zip(layer, first))
         full = theano.tensor.grad(cost=None,
-                known_grads=known,wrt=inputs, disconnected_inputs='ignore')
+                known_grads=known, wrt=inputs, disconnected_inputs='ignore')
         full = theano.function(inputs, full)
         full = full(*values)
         assert len(true_grads) == len(full)
@@ -479,7 +479,7 @@ def test_known_grads():
                 print var
                 print layer
                 for v in known:
-                    print v,':',theano.function(inputs,known[v])(*values)
+                    print v, ':', theano.function(inputs, known[v])(*values)
                 assert False
 
 def test_dxdx():
@@ -498,7 +498,7 @@ def test_dxdx():
 
     g = g.eval({ x : 12 })
 
-    assert np.allclose(g,1.)
+    assert np.allclose(g, 1.)
 
 def test_known_grads_integers():
 
@@ -511,7 +511,7 @@ def test_known_grads_integers():
             known_grads={x : g_expected},
             wrt=x)
 
-    f = theano.function([g_expected],g_grad)
+    f = theano.function([g_expected], g_grad)
 
     x = -3
     gv = np.cast[theano.config.floatX](.6)
@@ -564,16 +564,16 @@ def test_subgraph_grad():
 
     x = theano.tensor.fvector('x')
     t = theano.tensor.fvector('t')
-    w1 = theano.shared(np.random.randn(3,4))
-    w2 = theano.shared(np.random.randn(4,2))
-    a1 = theano.tensor.tanh(theano.tensor.dot(x,w1))
-    a2 = theano.tensor.tanh(theano.tensor.dot(a1,w2))
+    w1 = theano.shared(np.random.randn(3, 4))
+    w2 = theano.shared(np.random.randn(4, 2))
+    a1 = theano.tensor.tanh(theano.tensor.dot(x, w1))
+    a2 = theano.tensor.tanh(theano.tensor.dot(a1, w2))
     cost2 = theano.tensor.sqr(a2 - t).sum() 
     cost2 += theano.tensor.sqr(w2.sum())
     cost1 = theano.tensor.sqr(w1.sum())
     
-    params = [[w2],[w1]]
-    costs = [cost2,cost1]
+    params = [[w2], [w1]]
+    costs = [cost2, cost1]
     grad_ends = [[a1], [x]]
     
     inputs = [t, x]

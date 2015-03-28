@@ -754,7 +754,7 @@ class PushOutScanOutput(gof.Optimizer):
                         # dot is usually faster on two large matrices than
                         # a bunch of small ones
                         outer_dot_inputs[0] = theano.tensor.flatten(
-                                       outer_dot_inputs[0].dimshuffle(1,0,2),
+                                       outer_dot_inputs[0].dimshuffle(1, 0, 2),
                                        outdim=2)
 
                         shape_input1 = theano.tensor.shape(outer_dot_inputs[1])
@@ -856,7 +856,7 @@ class PushOutScanOutput(gof.Optimizer):
 
         if len(add_as_nitsots) > 0:
 
-            new_scan_node = self.add_nitsot_outputs(fgraph,old_scan_node,
+            new_scan_node = self.add_nitsot_outputs(fgraph, old_scan_node,
                                                     old_scan_args,
                                                     add_as_nitsots)
 

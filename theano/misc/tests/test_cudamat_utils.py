@@ -11,7 +11,7 @@ from theano.misc.cudamat_utils import cudandarray_to_cudamat, cudamat_to_cudanda
 
 
 
-def test(shape=(3,4)):
+def test(shape=(3, 4)):
     """
 Make sure that the cudamat conversion is exact.
 """
@@ -28,7 +28,7 @@ Make sure that the cudamat conversion is exact.
     B_cnd = ii(A_cnd)
 
     u = A_cnd.copy()
-    u += theano.sandbox.cuda.CudaNdarray(numpy.asarray([[1]],dtype='float32'))
+    u += theano.sandbox.cuda.CudaNdarray(numpy.asarray([[1]], dtype='float32'))
     u = numpy.asarray(u)
     v = numpy.asarray(B_cnd)
     w = A_cmat.add(1).asarray()

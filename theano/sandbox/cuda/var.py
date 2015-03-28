@@ -31,9 +31,9 @@ class _operators(tensor.basic._tensor_py_operators):
     def _as_CudaNdarrayVariable(self):
         return self
 
-    dtype = property(lambda s:'float32')
-    broadcastable = property(lambda s:s.type.broadcastable)
-    ndim = property(lambda s:s.type.ndim)
+    dtype = property(lambda s: 'float32')
+    broadcastable = property(lambda s: s.type.broadcastable)
+    ndim = property(lambda s: s.type.ndim)
 
 
 class CudaNdarrayVariable(_operators, Variable):

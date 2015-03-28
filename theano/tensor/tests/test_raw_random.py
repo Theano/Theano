@@ -512,7 +512,7 @@ class T_random_function(utt.InferShapeTester):
         rng_R = random_state_type()
         # Use non-default parameters, and larger dimensions because of
         # the integer nature of the result
-        post_r, out = poisson(rng_R, lam=5, size=(11,8))
+        post_r, out = poisson(rng_R, lam=5, size=(11, 8))
 
         f = compile.function(
                 [compile.In(rng_R,
@@ -523,8 +523,8 @@ class T_random_function(utt.InferShapeTester):
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
-        numpy_val0 = numpy_rng.poisson(5,size=(11,8))
-        numpy_val1 = numpy_rng.poisson(5,size=(11,8))
+        numpy_val0 = numpy_rng.poisson(5, size=(11, 8))
+        numpy_val1 = numpy_rng.poisson(5, size=(11, 8))
         print val0
         print numpy_val0
         print val1

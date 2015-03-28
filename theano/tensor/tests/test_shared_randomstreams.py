@@ -19,8 +19,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_tutorial(self):
         srng = RandomStreams(seed=234)
-        rv_u = srng.uniform((2,2))
-        rv_n = srng.normal((2,2))
+        rv_u = srng.uniform((2, 2))
+        rv_n = srng.normal((2, 2))
         f = function([], rv_u)
         g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
@@ -34,8 +34,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_basics(self):
         random = RandomStreams(utt.fetch_seed())
-        fn = function([], random.uniform((2,2)), updates=random.updates())
-        gn = function([], random.normal((2,2)), updates=random.updates())
+        fn = function([], random.uniform((2, 2)), updates=random.updates())
+        gn = function([], random.normal((2, 2)), updates=random.updates())
 
         fn_val0 = fn()
         fn_val1 = fn()
@@ -46,8 +46,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
 
         #print fn_val0
-        numpy_val0 = rng.uniform(size=(2,2))
-        numpy_val1 = rng.uniform(size=(2,2))
+        numpy_val0 = rng.uniform(size=(2, 2))
+        numpy_val1 = rng.uniform(size=(2, 2))
         #print numpy_val0
 
         assert numpy.allclose(fn_val0, numpy_val0)
@@ -59,7 +59,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
     def test_seed_fn(self):
         random = RandomStreams(234)
-        fn = function([], random.uniform((2,2)), updates=random.updates())
+        fn = function([], random.uniform((2, 2)), updates=random.updates())
 
         random.seed(utt.fetch_seed())
 
@@ -70,8 +70,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         rng = numpy.random.RandomState(int(rng_seed))  #int() is for 32bit
 
         #print fn_val0
-        numpy_val0 = rng.uniform(size=(2,2))
-        numpy_val1 = rng.uniform(size=(2,2))
+        numpy_val0 = rng.uniform(size=(2, 2))
+        numpy_val1 = rng.uniform(size=(2, 2))
         #print numpy_val0
 
         assert numpy.allclose(fn_val0, numpy_val0)
@@ -80,7 +80,7 @@ class T_SharedRandomStreams(unittest.TestCase):
     def test_getitem(self):
 
         random = RandomStreams(234)
-        out = random.uniform((2,2))
+        out = random.uniform((2, 2))
         fn = function([], out, updates=random.updates())
 
         random.seed(utt.fetch_seed())
@@ -90,15 +90,15 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         fn_val0 = fn()
         fn_val1 = fn()
-        numpy_val0 = rng.uniform(size=(2,2))
-        numpy_val1 = rng.uniform(size=(2,2))
+        numpy_val0 = rng.uniform(size=(2, 2))
+        numpy_val1 = rng.uniform(size=(2, 2))
         assert numpy.allclose(fn_val0, numpy_val0)
         assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_setitem(self):
 
         random = RandomStreams(234)
-        out = random.uniform((2,2))
+        out = random.uniform((2, 2))
         fn = function([], out, updates=random.updates())
 
         random.seed(888)
@@ -108,8 +108,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         fn_val0 = fn()
         fn_val1 = fn()
-        numpy_val0 = rng.uniform(size=(2,2))
-        numpy_val1 = rng.uniform(size=(2,2))
+        numpy_val0 = rng.uniform(size=(2, 2))
+        numpy_val1 = rng.uniform(size=(2, 2))
         assert numpy.allclose(fn_val0, numpy_val0)
         assert numpy.allclose(fn_val1, numpy_val1)
 
@@ -120,11 +120,11 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # ndim not specified, OK
         random = RandomStreams(utt.fetch_seed())
-        fn = function([], random.uniform((2,2)))
+        fn = function([], random.uniform((2, 2)))
 
         # ndim specified, consistent with shape, OK
         random2 = RandomStreams(utt.fetch_seed())
-        fn2 = function([], random2.uniform((2,2), ndim=2))
+        fn2 = function([], random2.uniform((2, 2), ndim=2))
 
         val1 = fn()
         val2 = fn2()
@@ -132,20 +132,20 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # ndim specified, inconsistent with shape, should raise ValueError
         random3 = RandomStreams(utt.fetch_seed())
-        self.assertRaises(ValueError, random3.uniform, (2,2), ndim=1)
+        self.assertRaises(ValueError, random3.uniform, (2, 2), ndim=1)
 
     def test_uniform(self):
         """Test that RandomStreams.uniform generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
-        fn = function([], random.uniform((2,2), -1, 1))
+        fn = function([], random.uniform((2, 2), -1, 1))
         fn_val0 = fn()
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
-        numpy_val0 = rng.uniform(-1, 1, size=(2,2))
-        numpy_val1 = rng.uniform(-1, 1, size=(2,2))
+        numpy_val0 = rng.uniform(-1, 1, size=(2, 2))
+        numpy_val1 = rng.uniform(-1, 1, size=(2, 2))
 
         assert numpy.allclose(fn_val0, numpy_val0)
         assert numpy.allclose(fn_val1, numpy_val1)
@@ -155,14 +155,14 @@ class T_SharedRandomStreams(unittest.TestCase):
         # Check over two calls to see if the random state is correctly updated.
 
         random = RandomStreams(utt.fetch_seed())
-        fn = function([], random.normal((2,2), -1, 2))
+        fn = function([], random.normal((2, 2), -1, 2))
         fn_val0 = fn()
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
-        numpy_val0 = rng.normal(-1, 2, size=(2,2))
-        numpy_val1 = rng.normal(-1, 2, size=(2,2))
+        numpy_val0 = rng.normal(-1, 2, size=(2, 2))
+        numpy_val1 = rng.normal(-1, 2, size=(2, 2))
 
         assert numpy.allclose(fn_val0, numpy_val0)
         assert numpy.allclose(fn_val1, numpy_val1)
@@ -177,8 +177,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
-        numpy_val0 = rng.random_integers(-5, 5, size=(20,20))
-        numpy_val1 = rng.random_integers(-5, 5, size=(20,20))
+        numpy_val0 = rng.random_integers(-5, 5, size=(20, 20))
+        numpy_val1 = rng.random_integers(-5, 5, size=(20, 20))
 
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
@@ -245,15 +245,15 @@ class T_SharedRandomStreams(unittest.TestCase):
         """Test that RandomStreams.multinomial generates the same results as numpy"""
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
-        fn = function([], random.multinomial((4,4), 1, [0.1]*10), updates=random.updates())
+        fn = function([], random.multinomial((4, 4), 1, [0.1]*10), updates=random.updates())
 
         fn_val0 = fn()
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
-        numpy_val0 = rng.multinomial(1, [0.1]*10, size=(4,4))
-        numpy_val1 = rng.multinomial(1, [0.1]*10, size=(4,4))
+        numpy_val0 = rng.multinomial(1, [0.1]*10, size=(4, 4))
+        numpy_val1 = rng.multinomial(1, [0.1]*10, size=(4, 4))
 
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
@@ -271,7 +271,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # Generate the elements to be shuffled
         val_rng = numpy.random.RandomState(utt.fetch_seed()+42)
-        in_mval = val_rng.uniform(-2, 2, size=(20,5))
+        in_mval = val_rng.uniform(-2, 2, size=(20, 5))
         fn_mval0 = f(in_mval)
         fn_mval1 = f(in_mval)
         print in_mval[0]
@@ -317,7 +317,7 @@ class T_SharedRandomStreams(unittest.TestCase):
     def test_default_updates(self):
         # Basic case: default_updates
         random_a = RandomStreams(utt.fetch_seed())
-        out_a = random_a.uniform((2,2))
+        out_a = random_a.uniform((2, 2))
         fn_a = function([], out_a)
         fn_a_val0 = fn_a()
         fn_a_val1 = fn_a()
@@ -328,7 +328,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # Explicit updates #1
         random_b = RandomStreams(utt.fetch_seed())
-        out_b = random_b.uniform((2,2))
+        out_b = random_b.uniform((2, 2))
         fn_b = function([], out_b, updates=random_b.updates())
         fn_b_val0 = fn_b()
         fn_b_val1 = fn_b()
@@ -337,7 +337,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # Explicit updates #2
         random_c = RandomStreams(utt.fetch_seed())
-        out_c = random_c.uniform((2,2))
+        out_c = random_c.uniform((2, 2))
         fn_c = function([], out_c, updates=[out_c.update])
         fn_c_val0 = fn_c()
         fn_c_val1 = fn_c()
@@ -346,7 +346,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # No updates at all
         random_d = RandomStreams(utt.fetch_seed())
-        out_d = random_d.uniform((2,2))
+        out_d = random_d.uniform((2, 2))
         fn_d = function([], out_d, no_default_updates=True)
         fn_d_val0 = fn_d()
         fn_d_val1 = fn_d()
@@ -355,7 +355,7 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # No updates for out
         random_e = RandomStreams(utt.fetch_seed())
-        out_e = random_e.uniform((2,2))
+        out_e = random_e.uniform((2, 2))
         fn_e = function([], out_e, no_default_updates=[out_e.rng])
         fn_e_val0 = fn_e()
         fn_e_val1 = fn_e()
@@ -367,10 +367,10 @@ class T_SharedRandomStreams(unittest.TestCase):
         shape = tensor.lvector()
         f = function([shape], random.uniform(size=shape, ndim=2))
 
-        assert f([2,3]).shape == (2,3)
-        assert f([4,8]).shape == (4,8)
+        assert f([2, 3]).shape == (2, 3)
+        assert f([4, 8]).shape == (4, 8)
         self.assertRaises(ValueError, f, [4])
-        self.assertRaises(ValueError, f, [4,3,4,5])
+        self.assertRaises(ValueError, f, [4, 3, 4, 5])
 
     def test_mixed_shape(self):
         # Test when the provided shape is a tuple of ints and scalar vars
@@ -468,8 +468,8 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(val0c == numpy_val0c)
         assert numpy.all(val1c == numpy_val1c)
         self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1])
-        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1,2])
-        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [2,1])
+        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1, 2])
+        self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [2, 1])
         self.assertRaises(ValueError, fc, [-4., -2], [-1], [1])
         #TODO: do we want that?
         #self.assertRaises(ValueError, fc, [-4., -2], [-1], [2])

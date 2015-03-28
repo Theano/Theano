@@ -26,7 +26,7 @@ class ConvGrad3D(theano.Op):
         WShape_ = T.as_tensor_variable(WShape)
         dCdH_ = T.as_tensor_variable(dCdH)
 
-        return theano.Apply(self, inputs=[V_, d_, WShape_, dCdH_], outputs = [ T.TensorType(V_.dtype, (False,False,False,False,False))() ] )
+        return theano.Apply(self, inputs=[V_, d_, WShape_, dCdH_], outputs = [ T.TensorType(V_.dtype, (False, False, False, False, False))() ] )
 
     def infer_shape(self, node, input_shapes):
         V, d, W_shape, dCdH = node.inputs
@@ -81,7 +81,7 @@ class ConvGrad3D(theano.Op):
                                 for r in xrange(0, outputDur):
                                     for j in xrange(0, WShape[0]):
                                         for z in xrange(0, WShape[4]):
-                                            dCdW[j,k,l,m,z] +=  dCdH[i,p,q,r,j] * V[i,dr*p+k,dc*q+l,dt*r+m,z]
+                                            dCdW[j, k, l, m, z] +=  dCdH[i, p, q, r, j] * V[i, dr*p+k, dc*q+l, dt*r+m, z]
 
         output_storage[0][0] = dCdW
 

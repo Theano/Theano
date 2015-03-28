@@ -904,7 +904,7 @@ def local_gpu_subtensor(node):
                 not gpu_x.owner.inputs[0].owner):
                 if len(x.clients) == 1:
                     if any([n == 'output' or isinstance(n.op, GpuOp)
-                            for n,_  in node.outputs[0].clients]):
+                            for n, _  in node.outputs[0].clients]):
                         return
                     else:
                         return [host_from_gpu(gpu_from_host(node.outputs[0]))]
@@ -1339,7 +1339,7 @@ def local_conv_gemm(node):
         img, kern = node.inputs
         border_mode = node.op.border_mode
         subsample = node.op.subsample
-        if (border_mode == 'valid') or (subsample != (1,1)):
+        if (border_mode == 'valid') or (subsample != (1, 1)):
             # need to flip the kernel for valid convolution
             kern = kern[:, :, ::-1, ::-1]
             # By default use GpuCorrMM
@@ -1351,7 +1351,7 @@ def local_conv_gemm(node):
             # is larger than inputChannels * outputHeight * outputWidth.
             # GpuConv does not always store information on the batchsize and
             # channels, though, so we only use what information we have.)
-            if ((subsample == (1,1)) and
+            if ((subsample == (1, 1)) and
                     (node.op.imshp is not None) and
                     (None not in node.op.imshp[-2:]) and
                     (node.op.kshp is not None) and
@@ -1525,7 +1525,7 @@ def local_convgrad3d_fft(node):
         f = node.inputs[3]
         f = f.dimshuffle(4, 0, 1, 2, 3)
         # filter flip
-        f = f[:,:,::-1,::-1,::-1]
+        f = f[:, :, ::-1, ::-1, ::-1]
         rval = conv3d_fft(x, f, border_mode='valid', pad_last_dim=True)
         # Shuffle from (ic, oc, 0, 1, t) to (oc, 0, 1, t, ic)
         return [rval.dimshuffle(1, 2, 3, 4, 0)]

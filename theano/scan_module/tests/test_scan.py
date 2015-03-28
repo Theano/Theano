@@ -372,7 +372,7 @@ class T_Scan(unittest.TestCase):
         # Compile the Theano function
         n_steps=2
         inp = tensor.matrix()
-        broadcasted_inp, _ = theano.scan(lambda x:x,
+        broadcasted_inp, _ = theano.scan(lambda x: x,
                                          non_sequences=[inp],
                                          n_steps=n_steps)
         out = broadcasted_inp.sum()
@@ -3438,7 +3438,7 @@ class T_Scan(unittest.TestCase):
         # Validate the connnection pattern is as it should be
         node = scan_outputs[0].owner
         connection_pattern = node.op.connection_pattern(node)
-        expected_connection_pattern = [[(j in [1,2,3,4]) for i in range(6)]
+        expected_connection_pattern = [[(j in [1, 2, 3, 4]) for i in range(6)]
                                        for j in range(7)]
 
         assert connection_pattern == expected_connection_pattern
@@ -3783,11 +3783,11 @@ class T_Scan(unittest.TestCase):
     def test_dot_optimization(self):
         A = tensor.matrix('A')
         B = tensor.matrix('B')
-        S, _ = theano.scan(lambda x1,x2, u: u + tensor.dot(x1,x2),
+        S, _ = theano.scan(lambda x1, x2, u: u + tensor.dot(x1, x2),
                            sequences = [A.dimshuffle(0, 1, 'x'),
-                                        B.dimshuffle(0,'x', 1)],
+                                        B.dimshuffle(0, 'x', 1)],
                            outputs_info=[tensor.zeros_like(A)])
-        f = theano.function([A,B], S.owner.inputs[0][-1])
+        f = theano.function([A, B], S.owner.inputs[0][-1])
         rng = numpy.random.RandomState(utt.fetch_seed())
         vA = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
@@ -3892,7 +3892,7 @@ class T_Scan(unittest.TestCase):
 
         #This used to raise an exception
         f = theano.function([v], theano.tensor.grad(y.sum(), W))
-        utt.assert_allclose(f([1,2]), [[0,0,0],[1,1,1],[1,1,1]])
+        utt.assert_allclose(f([1, 2]), [[0, 0, 0], [1, 1, 1], [1, 1, 1]])
 
     def test_clone(self):
         def test(x, y, mention_y):
@@ -3900,7 +3900,7 @@ class T_Scan(unittest.TestCase):
                 d = 0.1 + 0 * y
             else:
                 d = 0.1
-            out = theano.clone(y, replace={x:x + d})
+            out = theano.clone(y, replace={x: x + d})
             #theano.printing.debugprint(out)
             return theano.function([], out)()
 
@@ -3924,12 +3924,12 @@ class T_Scan(unittest.TestCase):
     def test_scan_merge_nodes(self):
         inps = tensor.vector()
         state = tensor.scalar()
-        y1, _ = theano.scan(lambda x,y: x*y,
+        y1, _ = theano.scan(lambda x, y: x*y,
                             sequences = inps,
                             outputs_info = state,
                             n_steps = 5)
 
-        y2, _ = theano.scan(lambda x,y : (x+y, theano.scan_module.until(x>0)),
+        y2, _ = theano.scan(lambda x, y : (x+y, theano.scan_module.until(x>0)),
                             sequences = inps,
                             outputs_info = state,
                             n_steps = 5)
@@ -4064,9 +4064,9 @@ class T_Scan(unittest.TestCase):
     def test_strict_mode(self):
         n = 10
 
-        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w = numpy.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
         w_ = theano.shared(w)
-        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0 = numpy.array([1, 2]).astype(theano.config.floatX)
         x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
 
         def _scan_loose(x):
@@ -4101,9 +4101,9 @@ class T_Scan(unittest.TestCase):
     def test_strict_mode_ex(self):
         n = 10
 
-        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w = numpy.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
         w_ = theano.shared(w)
-        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0 = numpy.array([1, 2]).astype(theano.config.floatX)
         x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
 
         def _scan_loose(x):

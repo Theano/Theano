@@ -350,7 +350,7 @@ class Expm(Op):
         A = as_tensor_variable(A)
         assert A.ndim == 2
         expm = theano.tensor.matrix(dtype=A.dtype)
-        return Apply(self, [A,], [expm,])
+        return Apply(self, [A, ], [expm, ])
 
     def perform(self, node, (A,), (expm,)):
         expm[0] = scipy.linalg.expm(A)
@@ -372,7 +372,7 @@ class ExpmGrad(Op):
         A = as_tensor_variable(A)
         assert A.ndim == 2
         out = theano.tensor.matrix(dtype=A.dtype)
-        return Apply(self, [A, gw], [out,])
+        return Apply(self, [A, gw], [out, ])
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

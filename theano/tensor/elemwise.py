@@ -497,7 +497,7 @@ class Elemwise(OpenMPOp):
 
         #precompute the hash of this node
         self._rehash()
-        super(Elemwise,self).__init__(openmp=openmp)
+        super(Elemwise, self).__init__(openmp=openmp)
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -922,8 +922,8 @@ class Elemwise(OpenMPOp):
         # This is to protect again futur change of uniq.
         assert len(inames) == len(inputs)
         ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))
-        assert all([x == y for x,y in zip(ii, inames)])
-        assert all([x == y for x,y in zip(iii, inputs)])
+        assert all([x == y for x, y in zip(ii, inames)])
+        assert all([x == y for x, y in zip(iii, inputs)])
 
         defines = ""
         undefs = ""

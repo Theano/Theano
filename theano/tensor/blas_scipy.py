@@ -4,7 +4,7 @@ Implementations of BLAS Ops based on scipy's BLAS bindings.
 import numpy
 
 from theano.tensor.blas import Ger, ger, ger_destructive, have_fblas
-from theano.tensor.blas import blas_optdb, optdb,local_optimizer
+from theano.tensor.blas import blas_optdb, optdb, local_optimizer
 
 from theano.tensor.opt import in2out
 

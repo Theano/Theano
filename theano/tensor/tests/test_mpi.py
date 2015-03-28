@@ -12,7 +12,7 @@ mpi_mode = theano.Mode(linker=mpi_linker)
 
 
 def test_recv():
-    x = recv((10,10), 'float64', 0, 11)
+    x = recv((10, 10), 'float64', 0, 11)
     assert x.dtype == 'float64'
     assert x.broadcastable == (False, False)
 
@@ -28,7 +28,7 @@ def test_send():
     assert sendnode.op.tag  == 11
 
 def test_can_make_function():
-    x = recv((5,5), 'float32', 0, 11)
+    x = recv((5, 5), 'float32', 0, 11)
     y = x+1
     assert theano.function([], [y])
 
@@ -57,10 +57,10 @@ def test_mpi_send_wait_cmp():
     assert mpi_send_wait_cmp(waitnode, addnode) > 0 # wait happens last
 
 def test_mpi_tag_ordering():
-    x = recv((2,2), 'float32', 1, 12)
-    y = recv((2,2), 'float32', 1, 11)
-    z = recv((2,2), 'float32', 1, 13)
-    f = theano.function([], [x,y,z], mode=mpi_mode)
+    x = recv((2, 2), 'float32', 1, 12)
+    y = recv((2, 2), 'float32', 1, 11)
+    z = recv((2, 2), 'float32', 1, 13)
+    f = theano.function([], [x, y, z], mode=mpi_mode)
     nodes = f.maker.linker.make_all()[-1]
 
     assert all(node.op.tag == tag

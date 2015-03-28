@@ -52,28 +52,28 @@ def test_host_to_device():
 
 def test_add_iadd_idiv():
     for shapes in (
-                  [(5,5),(5,1)],
-                  [(5,5),(1,5)],
-                  (), (0,), (3,), (2,3),
-                  (1,10000000),(10000,1000),(1000000,10),
-                  (4100,33,34),(33,4100,34),(33,34,4100),
-                  (4100,33,3,6),(33,4100,3,6),(33,3,4100,6),(33,3,6,4100),
-                  (4100,3,34,6),(3,4100,34,6),(3,34,4100,6),(3,34,6,4100),
-                  (4100,3,4,36),(3,4100,4,36),(3,4,4100,36),(3,4,36,4100),
-                  (0,0,0,0,0),
-                  (3,34,35,36,37),
-                  (33,34,3,36,37),
-                  (33,34,35,36,3),
-                  (0,0,0,0,0,0),
-                  (3,34,35,36,37,2),
-                  (33,34,3,36,37,2),
-                  (33,34,35,36,3,2),
-                  (3,4,5,6,7,1025),
-                  (3,4,5,6,1025,7),
-                  (3,4,5,1025,6,7),
-                  (3,4,1025,5,6,7),
-                  (3,1025,4,5,6,7),
-                  (1025,3,4,5,6,7),
+                  [(5, 5), (5, 1)],
+                  [(5, 5), (1, 5)],
+                  (), (0,), (3,), (2, 3),
+                  (1, 10000000), (10000, 1000), (1000000, 10),
+                  (4100, 33, 34), (33, 4100, 34), (33, 34, 4100),
+                  (4100, 33, 3, 6), (33, 4100, 3, 6), (33, 3, 4100, 6), (33, 3, 6, 4100),
+                  (4100, 3, 34, 6), (3, 4100, 34, 6), (3, 34, 4100, 6), (3, 34, 6, 4100),
+                  (4100, 3, 4, 36), (3, 4100, 4, 36), (3, 4, 4100, 36), (3, 4, 36, 4100),
+                  (0, 0, 0, 0, 0),
+                  (3, 34, 35, 36, 37),
+                  (33, 34, 3, 36, 37),
+                  (33, 34, 35, 36, 3),
+                  (0, 0, 0, 0, 0, 0),
+                  (3, 34, 35, 36, 37, 2),
+                  (33, 34, 3, 36, 37, 2),
+                  (33, 34, 35, 36, 3, 2),
+                  (3, 4, 5, 6, 7, 1025),
+                  (3, 4, 5, 6, 1025, 7),
+                  (3, 4, 5, 1025, 6, 7),
+                  (3, 4, 1025, 5, 6, 7),
+                  (3, 1025, 4, 5, 6, 7),
+                  (1025, 3, 4, 5, 6, 7),
                   ):
         if isinstance(shapes, tuple):
             shape = shapes
@@ -197,7 +197,7 @@ def test_exp():
 
 def test_copy():
     #print >>sys.stdout, 'starting test_copy'
-    shape = (500,499)
+    shape = (500, 499)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
     #print >>sys.stdout, '.. creating device object'
@@ -399,23 +399,23 @@ def test_sum():
 
 def test_reshape():
     shapelist = [
-            ((1,2,3), (1,2,3)),
+            ((1, 2, 3), (1, 2, 3)),
             ((1,), (1,)),
-            ((1,2,3), (3,2,1)),
-            ((1,2,3), (6,)),
-            ((1,2,3,2), (6,2)),
-            ((2,3,2), (6,2)),
-            ((2,3,2), (12,))
+            ((1, 2, 3), (3, 2, 1)),
+            ((1, 2, 3), (6,)),
+            ((1, 2, 3, 2), (6, 2)),
+            ((2, 3, 2), (6, 2)),
+            ((2, 3, 2), (12,))
              ]
 
     bad_shapelist = [
-            ((1,2,3), (1,2,4)),
+            ((1, 2, 3), (1, 2, 4)),
             ((1,), (2,)),
-            ((1,2,3), (2,2,1)),
-            ((1,2,3), (5,)),
-            ((1,2,3,2), (6,3)),
-            ((2,3,2), (5,2)),
-            ((2,3,2), (11,))
+            ((1, 2, 3), (2, 2, 1)),
+            ((1, 2, 3), (5,)),
+            ((1, 2, 3, 2), (6, 3)),
+            ((2, 3, 2), (5, 2)),
+            ((2, 3, 2), (11,))
             ]
 
     utt.seed_rng()
@@ -479,12 +479,12 @@ def test_reshape():
 
 def test_getshape():
     shapelist = [
-            ((1,2,3), (1,2,3)),
+            ((1, 2, 3), (1, 2, 3)),
             ((1,), (1,)),
-            ((1,2,3), (3,2,1)),
-            ((1,2,3), (6,)),
-            ((1,2,3,2), (6,2)),
-            ((2,3,2), (6,2))
+            ((1, 2, 3), (3, 2, 1)),
+            ((1, 2, 3), (6,)),
+            ((1, 2, 3, 2), (6, 2)),
+            ((2, 3, 2), (6, 2))
              ]
 
     def subtest(shape):
@@ -498,7 +498,7 @@ def test_getshape():
 
 def test_stride_manipulation():
 
-    a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
+    a = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
     b = cuda_ndarray.CudaNdarray(a)
     v = b.view()
     v._dev_data += 0
@@ -531,7 +531,7 @@ def test_subtensor_broadcastable():
 
 def test_copy_subtensor0():
     sizeof_float=4
-    a = theano._asarray(numpy.random.rand(30,20,5,5), dtype='float32')
+    a = theano._asarray(numpy.random.rand(30, 20, 5, 5), dtype='float32')
     cuda_a = cuda_ndarray.CudaNdarray(a)
     a_view = cuda_a.view()
     a_view_strides = a_view._strides
@@ -541,10 +541,10 @@ def test_copy_subtensor0():
 
     a_view_copy = copy.deepcopy(a_view)
 
-    assert numpy.all(a[:,:,::-1,::-1] == numpy.asarray(a_view_copy))
+    assert numpy.all(a[:, :, ::-1, ::-1] == numpy.asarray(a_view_copy))
 
 def test_mapping_getitem_ellipsis():
-    a = theano._asarray(numpy.random.rand(5,4,3,2), dtype='float32')
+    a = theano._asarray(numpy.random.rand(5, 4, 3, 2), dtype='float32')
     a = cuda_ndarray.CudaNdarray(a)
 
     b = a[...]
@@ -553,24 +553,24 @@ def test_mapping_getitem_ellipsis():
     assert b.shape == a.shape
 
 def test_mapping_getitem_reverse_some_dims():
-    dim=(5,4,3,2)
+    dim=(5, 4, 3, 2)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    _b = _a[:,:,::-1, ::-1]
+    _b = _a[:, :, ::-1, ::-1]
 
     b = numpy.asarray(_b)
-    assert numpy.all(b==a[:,:,::-1,::-1])
+    assert numpy.all(b==a[:, :, ::-1, ::-1])
 
 def test_mapping_getitem_w_int():
-    def _cmp(x,y):
+    def _cmp(x, y):
         assert x.shape == y.shape
         if not numpy.all(x == y):
             print x
             print y
         assert numpy.all(x == y)
 
-    def _cmpf(x,*y):
+    def _cmpf(x, *y):
         try:
             x.__getitem__(y)
         except IndexError:
@@ -578,7 +578,7 @@ def test_mapping_getitem_w_int():
         else:
             raise Exception("Did not generate out or bound error")
 
-    def _cmpfV(x,*y):
+    def _cmpfV(x, *y):
         try:
             if len(y)==1:
                 x.__getitem__(*y)
@@ -598,25 +598,25 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[::1]), a[::1])
     _cmp(numpy.asarray(_a[::-1]), a[::-1])
     _cmp(numpy.asarray(_a[...]), a[...])
-    _cmpf(_a,2)
+    _cmpf(_a, 2)
 
     dim =()
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[...]), a[...])
-    _cmpf(_a,0)
-    _cmpfV(_a,slice(1))
+    _cmpf(_a, 0)
+    _cmpfV(_a, slice(1))
 
-    dim =(5,4,3,2)
+    dim =(5, 4, 3, 2)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    _cmpf(_a,slice(-1),slice(-1),10,-10)
-    _cmpf(_a,slice(-1),slice(-1),-10,slice(-1))
-    _cmpf(_a,0,slice(0,-1,-20),-10)
-    _cmpf(_a,10)
-    _cmpf(_a,(10,0,0,0))
-    _cmpf(_a,-10)
+    _cmpf(_a, slice(-1), slice(-1), 10, -10)
+    _cmpf(_a, slice(-1), slice(-1), -10, slice(-1))
+    _cmpf(_a, 0, slice(0, -1, -20), -10)
+    _cmpf(_a, 10)
+    _cmpf(_a, (10, 0, 0, 0))
+    _cmpf(_a, -10)
 
     #test with integer
     _cmp(numpy.asarray(_a[1]), a[1])
@@ -631,52 +631,52 @@ def test_mapping_getitem_w_int():
 
 
     #test with tuple (mix slice, integer, numpy.int64)
-    _cmp(numpy.asarray(_a[:,:,::numpy.int64(-1), ::-1]), a[:,:,::-1,::-1])
-    _cmp(numpy.asarray(_a[:,:,numpy.int64(1),-1]), a[:,:,1,-1])
-    _cmp(numpy.asarray(_a[:,:,::-1, ::-1]), a[:,:,::-1,::-1])
-    _cmp(numpy.asarray(_a[:,:,::-10, ::-10]), a[:,:,::-10,::-10])
-    _cmp(numpy.asarray(_a[:,:,1,-1]), a[:,:,1,-1])
-    _cmp(numpy.asarray(_a[:,:,-1,:]), a[:,:,-1,:])
-    _cmp(numpy.asarray(_a[:,::-2,-1,:]), a[:,::-2,-1,:])
-    _cmp(numpy.asarray(_a[:,::-20,-1,:]), a[:,::-20,-1,:])
-    _cmp(numpy.asarray(_a[:,::-2,-1]), a[:,::-2,-1])
-    _cmp(numpy.asarray(_a[0,::-2,-1]), a[0,::-2,-1])
+    _cmp(numpy.asarray(_a[:, :, ::numpy.int64(-1), ::-1]), a[:, :, ::-1, ::-1])
+    _cmp(numpy.asarray(_a[:, :, numpy.int64(1), -1]), a[:, :, 1, -1])
+    _cmp(numpy.asarray(_a[:, :, ::-1, ::-1]), a[:, :, ::-1, ::-1])
+    _cmp(numpy.asarray(_a[:, :, ::-10, ::-10]), a[:, :, ::-10, ::-10])
+    _cmp(numpy.asarray(_a[:, :, 1, -1]), a[:, :, 1, -1])
+    _cmp(numpy.asarray(_a[:, :, -1, :]), a[:, :, -1, :])
+    _cmp(numpy.asarray(_a[:, ::-2, -1, :]), a[:, ::-2, -1, :])
+    _cmp(numpy.asarray(_a[:, ::-20, -1, :]), a[:, ::-20, -1, :])
+    _cmp(numpy.asarray(_a[:, ::-2, -1]), a[:, ::-2, -1])
+    _cmp(numpy.asarray(_a[0, ::-2, -1]), a[0, ::-2, -1])
 
-    _cmp(numpy.asarray(_a[-1,-1,-1,-2]), a[-1,-1,-1,-2])
+    _cmp(numpy.asarray(_a[-1, -1, -1, -2]), a[-1, -1, -1, -2])
     _cmp(numpy.asarray(_a[...]), a[...])
 
 def test_gemm_vector_vector():
-    a = theano._asarray(numpy.random.rand(5,1), dtype='float32')
+    a = theano._asarray(numpy.random.rand(5, 1), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
-    b = theano._asarray(numpy.random.rand(1,5), dtype='float32')
+    b = theano._asarray(numpy.random.rand(1, 5), dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
-    _c = cuda_ndarray.dot(_a,_b)
-    assert _c.shape == (5,5)
+    _c = cuda_ndarray.dot(_a, _b)
+    assert _c.shape == (5, 5)
     assert numpy.allclose(_c, numpy.dot(a, b))
 
-    _c = cuda_ndarray.dot(_b,_a)
-    assert _c.shape == (1,1)
+    _c = cuda_ndarray.dot(_b, _a)
+    assert _c.shape == (1, 1)
     assert numpy.allclose(_c, numpy.dot(b, a))
 
 # ---------------------------------------------------------------------
 
 def test_setitem_matrixscalar0():
-    a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
+    a = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
     b = theano._asarray(8, dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
     # set an element to 8
-    _a[1,1] = _b
-    a[1,1] = b
-    assert numpy.allclose(a,numpy.asarray(_a))
+    _a[1, 1] = _b
+    a[1, 1] = b
+    assert numpy.allclose(a, numpy.asarray(_a))
 
     #test direct transfert from numpy
-    _a[1,1] = theano._asarray(888, dtype='float32')
-    a[1,1] = theano._asarray(888, dtype='float32')
-    assert numpy.allclose(a,numpy.asarray(_a))
+    _a[1, 1] = theano._asarray(888, dtype='float32')
+    a[1, 1] = theano._asarray(888, dtype='float32')
+    assert numpy.allclose(a, numpy.asarray(_a))
 
     # broadcast a 0
     _a[1, 1] = 0
@@ -684,67 +684,67 @@ def test_setitem_matrixscalar0():
     _a[1:] = 0
 
 def test_setitem_matrixvector1():
-    a = theano._asarray([[0,1,2], [3,4,5]], dtype='float32')
+    a = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([8,9], dtype='float32')
+    b = theano._asarray([8, 9], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
     # set second column to 8,9
-    _a[:,1] = _b
-    a[:,1] = b
-    assert numpy.allclose(a,numpy.asarray(_a))
+    _a[:, 1] = _b
+    a[:, 1] = b
+    assert numpy.allclose(a, numpy.asarray(_a))
 
     #test direct transfert from numpy
-    _a[:,1] =  b*100
-    a[:,1] =  b*100
-    assert numpy.allclose(a,numpy.asarray(_a))
+    _a[:, 1] =  b*100
+    a[:, 1] =  b*100
+    assert numpy.allclose(a, numpy.asarray(_a))
 
-    row = theano._asarray([777,888,999], dtype='float32')
-    _a[1,:] = row
-    a[1,:] = row
-    assert numpy.allclose(a,numpy.asarray(_a))
+    row = theano._asarray([777, 888, 999], dtype='float32')
+    _a[1, :] = row
+    a[1, :] = row
+    assert numpy.allclose(a, numpy.asarray(_a))
 
 def test_setitem_matrix_tensor3():
     a = numpy.arange(27)
-    a.resize((3,3,3))
+    a.resize((3, 3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([7,8,9], dtype='float32')
+    b = theano._asarray([7, 8, 9], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
     # set middle row through cube to 7,8,9
-    _a[:,1,1] = _b
+    _a[:, 1, 1] = _b
 
-    a[:,1,1] = b
-    assert numpy.allclose(a,numpy.asarray(_a))
+    a[:, 1, 1] = b
+    assert numpy.allclose(a, numpy.asarray(_a))
 
     #test direct transfert from numpy
-    _a[:,1,1] = b*100
-    a[:,1,1] = b*100
-    assert numpy.allclose(a,numpy.asarray(_a))
+    _a[:, 1, 1] = b*100
+    a[:, 1, 1] = b*100
+    assert numpy.allclose(a, numpy.asarray(_a))
 
-    row = theano._asarray([777,888,999], dtype='float32')
-    _a[1,1,:] = row
-    a[1,1,:] = row
-    assert numpy.allclose(a,numpy.asarray(_a))
+    row = theano._asarray([777, 888, 999], dtype='float32')
+    _a[1, 1, :] = row
+    a[1, 1, :] = row
+    assert numpy.allclose(a, numpy.asarray(_a))
 
 def test_setitem_from_numpy_error():
     pass
 
 def test_setitem_matrix_bad_shape():
     a = numpy.arange(27)
-    a.resize((3,3,3))
+    a.resize((3, 3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([7,8], dtype='float32')
+    b = theano._asarray([7, 8], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
     try:
         # attempt to assign the ndarray b with setitem
-        _a[:,1,1] = _b
+        _a[:, 1, 1] = _b
         assert False
     except ValueError, e:
         #print e
@@ -753,7 +753,7 @@ def test_setitem_matrix_bad_shape():
     #test direct transfert from numpy
     try:
         # attempt to assign the ndarray b with setitem
-        _a[1,1,:] = b
+        _a[1, 1, :] = b
         assert False
     except ValueError, e:
         #print e
@@ -761,16 +761,16 @@ def test_setitem_matrix_bad_shape():
 
 def test_setitem_matrix_bad_ndim():
     a = numpy.arange(27)
-    a.resize((3,3,3))
+    a.resize((3, 3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([7,8], dtype='float32')
+    b = theano._asarray([7, 8], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
     try:
         # attempt to assign the ndarray b with setitem
-        _a[:,:,1] = _b
+        _a[:, :, 1] = _b
         assert False
     except ValueError, e:
         #print e
@@ -779,7 +779,7 @@ def test_setitem_matrix_bad_ndim():
     #test direct transfert from numpy
     try:
         # attempt to assign the ndarray b with setitem
-        _a[1,:,:] = b
+        _a[1, :, :] = b
         assert False
     except ValueError, e:
         #print e
@@ -787,16 +787,16 @@ def test_setitem_matrix_bad_ndim():
 
 def test_setitem_matrix_bad_type():
     a = numpy.arange(27)
-    a.resize((3,3,3))
+    a.resize((3, 3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([7,8], dtype='float64')
+    b = theano._asarray([7, 8], dtype='float64')
 
     #test direct transfert from numpy
     try:
         # attempt to assign the ndarray b with setitem
-        _a[1,:,:] = b
+        _a[1, :, :] = b
         assert False
     except TypeError, e:
         #print e
@@ -804,28 +804,28 @@ def test_setitem_matrix_bad_type():
 
 def test_setitem_assign_to_slice():
     a = numpy.arange(27)
-    a.resize((3,3,3))
+    a.resize((3, 3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([7,8,9], dtype='float32')
+    b = theano._asarray([7, 8, 9], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
 
     # first get a slice of a
-    _c = _a[:,:,1]
+    _c = _a[:, :, 1]
 
     # set middle row through cube to 7,8,9
     # (this corresponds to middle row of matrix _c)
-    _c[:,1] = _b
+    _c[:, 1] = _b
 
-    a[:,:,1][:,1] = b
-    assert numpy.allclose(a,numpy.asarray(_a))
+    a[:, :, 1][:, 1] = b
+    assert numpy.allclose(a, numpy.asarray(_a))
 
     #test direct transfert from numpy
-    _d = _a[1,:,:]
-    _d[1,:] = b*10
-    a[1,:,:][1,:] = b*10
-    assert numpy.allclose(a,numpy.asarray(_a))
+    _d = _a[1, :, :]
+    _d[1, :] = b*10
+    a[1, :, :][1, :] = b*10
+    assert numpy.allclose(a, numpy.asarray(_a))
 
 def test_setitem_broadcast():
     #test scalar to vector without stride
@@ -837,32 +837,32 @@ def test_setitem_broadcast():
     _b = cuda_ndarray.CudaNdarray(b)
     _a[:] = _b.reshape((1,))
     a[:] = b.reshape((1,))
-    assert numpy.allclose(numpy.asarray(_a),a)
+    assert numpy.allclose(numpy.asarray(_a), a)
 
     #test vector to matrice without stride
     a = numpy.arange(9)
-    a.resize((3,3))
+    a.resize((3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([7,8,9], dtype='float32')
+    b = theano._asarray([7, 8, 9], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
-    _a[:,:] = _b.reshape((1,3))
-    a[:,:] = b.reshape((1,3))
-    assert numpy.allclose(numpy.asarray(_a),a)
+    _a[:, :] = _b.reshape((1, 3))
+    a[:, :] = b.reshape((1, 3))
+    assert numpy.allclose(numpy.asarray(_a), a)
 
     #test vector to matrice with stride
     a = numpy.arange(27)
-    a.resize((3,3,3))
+    a.resize((3, 3, 3))
     a = theano._asarray(a, dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
-    b = theano._asarray([[7,8,9],[10,11,12]], dtype='float32')
+    b = theano._asarray([[7, 8, 9], [10, 11, 12]], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)[0]
     b = b[0]
-    _a[:,:,1] = _b.reshape((1,3))
-    a[:,:,1] = b.reshape((1,3))
-    assert numpy.allclose(numpy.asarray(_a),a)
+    _a[:, :, 1] = _b.reshape((1, 3))
+    a[:, :, 1] = b.reshape((1, 3))
+    assert numpy.allclose(numpy.asarray(_a), a)
 
 
 def test_setitem_broadcast_numpy():
@@ -949,7 +949,7 @@ def test_setitem_rightvalue_ndarray_fails():
 
 
 def test_zeros_basic():
-    for shp in [(3,4,5), (300,), (), (0,7)]:
+    for shp in [(3, 4, 5), (300,), (), (0, 7)]:
         _a = cuda_ndarray.CudaNdarray.zeros(shp)
         _n = numpy.zeros(shp, dtype="float32")
         assert numpy.allclose(numpy.asarray(_a), _n)
@@ -958,7 +958,7 @@ def test_zeros_basic():
 
     # TODO:The following don't have the same stride!
     #      This should be fixed with the new GpuNdArray.
-    for shp in [(3,0), (4,1,5)]:
+    for shp in [(3, 0), (4, 1, 5)]:
         _a = cuda_ndarray.CudaNdarray.zeros(shp)
         _n = numpy.zeros(shp, dtype="float32")
         assert numpy.allclose(numpy.asarray(_a), _n)
@@ -982,18 +982,18 @@ def test_zeros_basic():
 def test_base():
     # Test that the 'base' attribute of a CudaNdarray is the one
     # built initially, not an intermediate one.
-    a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
+    a = cuda_ndarray.CudaNdarray.zeros((3, 4, 5))
     for i in xrange(5):
         b = a[:]
     assert b.base is a
 
     c = a[0]
-    d = c[:,0]
+    d = c[:, 0]
     #print d.shape
     assert c.base is a
     assert d.base is a
 
-    e = b.reshape((5,2,2,3))
+    e = b.reshape((5, 2, 2, 3))
     assert e.base is a
 
 
@@ -1024,7 +1024,7 @@ def test_set_strides():
 
 
 def test_is_c_contiguous():
-    a = cuda_ndarray.CudaNdarray.zeros((3,4,5))
+    a = cuda_ndarray.CudaNdarray.zeros((3, 4, 5))
     assert a.is_c_contiguous()
     assert a[1].is_c_contiguous()
     assert not a[::2].is_c_contiguous()

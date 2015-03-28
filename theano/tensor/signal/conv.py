@@ -16,7 +16,7 @@ _logger=logging.getLogger("theano.tensor.signal.conv")
 
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
-           border_mode='valid', subsample=(1,1), **kargs):
+           border_mode='valid', subsample=(1, 1), **kargs):
     """
     signal.conv.conv2d performs a basic 2D convolution of the input with the
     given filters. The input parameter can be a single 2D image or a 3D tensor,
@@ -40,8 +40,8 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     :return: tensor of filtered images, with shape
              ([number images,] [number filters,] image height, image width)
     """
-    assert input.ndim in (2,3)
-    assert filters.ndim in (2,3)
+    assert input.ndim in (2, 3)
+    assert filters.ndim in (2, 3)
 
     ### use shape information if it is given to us ###
     if filter_shape and image_shape:
@@ -71,16 +71,16 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     else:
         sym_nkern = 1
 
-    new_input_shape = tensor.join(0, tensor.stack(sym_bsize,1), input.shape[-2:])
+    new_input_shape = tensor.join(0, tensor.stack(sym_bsize, 1), input.shape[-2:])
     input4D = tensor.reshape(input, new_input_shape, ndim=4)
 
-    new_filter_shape = tensor.join(0, tensor.stack(sym_nkern,1), filters.shape[-2:])
+    new_filter_shape = tensor.join(0, tensor.stack(sym_nkern, 1), filters.shape[-2:])
     filters4D = tensor.reshape(filters, new_filter_shape, ndim=4)
 
     ### perform actual convolution ###
     op = conv.ConvOp(output_mode=border_mode,
                 dx=subsample[0], dy=subsample[1],
-                imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize,**kargs)
+                imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize, **kargs)
 
     output = op(input4D, filters4D)
 

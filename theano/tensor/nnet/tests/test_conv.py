@@ -117,7 +117,7 @@ class TestConv2D(utt.InferShapeTester):
                             icol = col * subsample[1]  # image col
                             ref_output[bb, nn, row, col] += (image2d[
                                 irow:irow + N_filter_shape[2],
-                                icol:icol + N_filter_shape[3]] * filter2d[::-1,::-1]
+                                icol:icol + N_filter_shape[3]] * filter2d[::-1, ::-1]
                             ).sum()
 
         self.assertTrue(_allclose(theano_output, ref_output))

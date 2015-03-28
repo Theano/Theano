@@ -45,7 +45,7 @@ class Kouh2008(object):
         """
         if len(w_list) != len(x_list):
             raise ValueError('w_list must have same len as x_list')
-        output = (sum(w * tensor.pow(x, p) for (w,x) in zip(w_list, x_list)))\
+        output = (sum(w * tensor.pow(x, p) for (w, x) in zip(w_list, x_list)))\
                 / (theano._asarray(eps, dtype=k.type.dtype) + k + tensor.pow(sum(tensor.pow(x, q) for x in x_list), r))
 
         assert output.type.ndim == 2
@@ -74,7 +74,7 @@ class Kouh2008(object):
         if use_softmax_w:
             w = shared_uniform(low=-.1, high=.1, size=(n_out, n_terms), name='Kouh2008::w')
             w_sm = theano.tensor.nnet.softmax(w)
-            w_list = [w_sm[:,i] for i in xrange(n_terms)]
+            w_list = [w_sm[:, i] for i in xrange(n_terms)]
             w_l1 = abs(w).sum()
             w_l2_sqr = (w**2).sum()
         else:
@@ -208,25 +208,25 @@ class Kouh2008(object):
             for c in xrange(cols):
                 out_c_low = c*(col_gap + filter_shape[1])
                 out_c_high = out_c_low + filter_shape[1]
-                out_tile = out_array[out_r_low:out_r_high, out_c_low:out_c_high,:]
+                out_tile = out_array[out_r_low:out_r_high, out_c_low:out_c_high, :]
 
                 if c % 3 == 0: # linear filter
                     if w_col < w.shape[1]:
-                        out_tile[...] = pixel_range(w[:,w_col]).reshape(filter_shape+(1,))
+                        out_tile[...] = pixel_range(w[:, w_col]).reshape(filter_shape+(1,))
                         w_col += 1
                 if c % 3 == 1: # E filters
                     if w_col < w.shape[1]:
                         #filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
-                        for i in xrange(min(self.n_E_quadratic,3)):
-                            out_tile[:,:,i] = pixel_range(w[:,w_col+i]).reshape(filter_shape)
+                        for i in xrange(min(self.n_E_quadratic, 3)):
+                            out_tile[:, :, i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
                         w_col += self.n_E_quadratic
                 if c % 3 == 2: # S filters
                     if w_col < w.shape[1]:
                         #filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
-                        for i in xrange(min(self.n_S_quadratic,3)):
-                            out_tile[:,:,2-i] = pixel_range(w[:,w_col+i]).reshape(filter_shape)
+                        for i in xrange(min(self.n_S_quadratic, 3)):
+                            out_tile[:, :, 2-i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
                         w_col += self.n_S_quadratic
         return Image.fromarray(out_array, 'RGB')
 
@@ -260,7 +260,7 @@ class Config(object):
     ft_batchsize = 30
     ft_epoch_len = 50000
     ft_status_interval = 50 #property( lambda s:s.ft_epoch_len/s.ft_batchsize)
-    ft_validation_interval = property( lambda s:s.ft_epoch_len/s.ft_batchsize)
+    ft_validation_interval = property( lambda s: s.ft_epoch_len/s.ft_batchsize)
     ft_ntrain_limit = 0
     ft_test_lag1 = True
 
@@ -293,7 +293,7 @@ if 0:
         if not debug:
             sshape = (None, 784)
         else: sshape = (None, 3)
-        x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0,0), shape=sshape)()
+        x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0, 0), shape=sshape)()
         y = theano.tensor.lvector()
 
         rng = numpy.random.RandomState(conf.rng_seed)

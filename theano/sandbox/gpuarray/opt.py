@@ -353,7 +353,7 @@ def local_gpua_subtensor(node):
             if len(x.clients) == 1:
                 if any([n == 'output' or any([isinstance(v.type, GpuArrayType)
                                               for v in n.inputs + n.outputs])
-                        for n,_  in node.outputs[0].clients]):
+                        for n, _  in node.outputs[0].clients]):
                     return
                 else:
                     return [host_from_gpu(gpu_from_host(node.outputs[0]))]

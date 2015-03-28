@@ -14,12 +14,12 @@ from theano.compat.python2x import any, OrderedDict
 def gen_data():
 
     # generate the dataset
-    train_set=(numpy.asarray(numpy.random.rand(10000,784),dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10,dtype='int64'))
-    valid_set=(numpy.asarray(numpy.random.rand(10000,784),dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10,dtype='int64'))
-    test_set=(numpy.asarray(numpy.random.rand(10000,784),dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10,dtype='int64'))
+    train_set=(numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
+    valid_set=(numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
+    test_set=(numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
     def shared_dataset(data_xy):
         """ Function that loads the dataset into shared variables
 
@@ -45,7 +45,7 @@ def gen_data():
     valid_set_x, valid_set_y = shared_dataset(valid_set)
     train_set_x, train_set_y = shared_dataset(train_set)
 
-    rval = [(train_set_x, train_set_y), (valid_set_x,valid_set_y), (test_set_x, test_set_y)]
+    rval = [(train_set_x, train_set_y), (valid_set_x, valid_set_y), (test_set_x, test_set_y)]
     return rval
 
 class LogisticRegression(object):
@@ -78,7 +78,7 @@ class LogisticRegression(object):
         """
 
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
-        self.W = theano.shared(value=numpy.zeros((n_in,n_out), dtype = theano.config.floatX),
+        self.W = theano.shared(value=numpy.zeros((n_in, n_out), dtype = theano.config.floatX),
                                 name=name_prefix+'W')
 
         # compute vector of class-membership probabilities in symbolic form
@@ -118,7 +118,7 @@ class LogisticRegression(object):
         # LP[T.arange(y.shape[0]),y] is a vector v containing [LP[0,y[0]], LP[1,y[1]], LP[2,y[2]], ..., LP[n-1,y[n-1]]]
         # and T.mean(LP[T.arange(y.shape[0]),y]) is the mean (across minibatch examples) of the elements in v,
         # i.e., the mean log-likelihood across the minibatch.
-        return T.log(self.p_y_given_x)[T.arange(y.shape[0]),y]
+        return T.log(self.p_y_given_x)[T.arange(y.shape[0]), y]
 
 
 class HiddenLayer(object):
@@ -295,28 +295,28 @@ def test_mlp():
 
     updates2 = OrderedDict()
 
-    updates2[classifier.hiddenLayer.params[0]]=T.grad(cost,classifier.hiddenLayer.params[0])
+    updates2[classifier.hiddenLayer.params[0]]=T.grad(cost, classifier.hiddenLayer.params[0])
     train_model =theano.function( inputs = [index],
             updates = updates2,
             givens={
-                x:train_set_x[index*batch_size:(index+1)*batch_size],
-                y:train_set_y[index*batch_size:(index+1)*batch_size]},
+                x: train_set_x[index*batch_size:(index+1)*batch_size],
+                y: train_set_y[index*batch_size:(index+1)*batch_size]},
             mode=mode)
     #print 'MODEL 1'
     #theano.printing.debugprint(train_model, print_type=True)
-    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
+    assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
 
     # Even without FeatureShape
     train_model =theano.function( inputs = [index],
             updates = updates2,
             mode=mode.excluding('ShapeOpt'),
             givens={
-                x:train_set_x[index*batch_size:(index+1)*batch_size],
-                y:train_set_y[index*batch_size:(index+1)*batch_size]})
+                x: train_set_x[index*batch_size:(index+1)*batch_size],
+                y: train_set_y[index*batch_size:(index+1)*batch_size]})
     #print
     #print 'MODEL 2'
     #theano.printing.debugprint(train_model, print_type=True)
-    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
+    assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
 
 if __name__ == '__main__':
     test_mlp()

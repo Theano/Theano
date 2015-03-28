@@ -629,7 +629,7 @@ class TensorVariable(_tensor_py_operators, Variable):
             elif config.warn_float64 == "raise":
                 raise Exception(msg)
             elif config.warn_float64 == 'pdb':
-                import pdb;pdb.set_trace()
+                import pdb; pdb.set_trace()
 TensorType.Variable = TensorVariable
 
 

@@ -372,14 +372,14 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,1),
+                                        x, neib_shape=(2, 1),
                                         mode='valid')],
                                     [images],
                                     Images2Neibs
                                     )
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,3),
+                                        x, neib_shape=(2, 3),
                                         mode='valid')],
                                     [images],
                                     Images2Neibs
@@ -389,7 +389,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,1),
+                                        x, neib_shape=(2, 1),
                                         mode='ignore_borders')],
                                     [images],
                                     Images2Neibs
@@ -399,7 +399,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,3),
+                                        x, neib_shape=(2, 3),
                                         mode='ignore_borders')],
                                     [images],
                                     Images2Neibs
@@ -410,7 +410,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(2,2),
+                                        x, neib_shape=(2, 2),
                                         mode='ignore_borders')],
                                     [images],
                                     Images2Neibs
@@ -420,7 +420,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         x = T.ftensor4()
         f = self._compile_and_check([x],
                                     [images2neibs(
-                                        x, neib_shape=(3,3),
+                                        x, neib_shape=(3, 3),
                                         mode='wrap_centered')],
                                     [images],
                                     Images2Neibs

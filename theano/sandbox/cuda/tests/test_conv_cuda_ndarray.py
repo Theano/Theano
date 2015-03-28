@@ -344,21 +344,21 @@ def get_valid_shapes():
             , ((16, 5, 64, 64), (8, 5, 8, 8), (1, 1), (1, 1), (1, 1)) # a big one
             , ((16, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1)) # MNIST LeNET layer 1
             , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1)) # layer 1 backprop to weights
-            , ((60,20,28,28), (10,20,5,5), (1, 1), (2,2), (1, 1))#added a test case that fail from test_nnet.py.test_conv_nnet2
-            , ((10,5,28,28), (10,5,5,5), (1, 1), (2,2), (1, 1))#test precedent but reduced that triger the error
+            , ((60, 20, 28, 28), (10, 20, 5, 5), (1, 1), (2, 2), (1, 1))#added a test case that fail from test_nnet.py.test_conv_nnet2
+            , ((10, 5, 28, 28), (10, 5, 5, 5), (1, 1), (2, 2), (1, 1))#test precedent but reduced that triger the error
             #Test more than maxThreadsDim0
-            , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
-            , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
+            , ((2, 4, 13, 1050), (3, 4, 10, 11), (1, 1), (1, 1), (1, 1))
+            , ((2, 4, 1050, 13), (3, 4, 10, 11), (1, 1), (1, 1), (1, 1))
             ]
 
-    shapes += [ ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
-            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
-            , ((60,30,8,8),(20,30,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 1 full
-            , ((20,60,12,12),(30,60,8,8), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
+    shapes += [ ((60, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
+            , ((60, 20, 12, 12), (30, 20, 5, 5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
+            , ((60, 30, 8, 8), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 1 full
+            , ((20, 60, 12, 12), (30, 60, 8, 8), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
 #            , ((1,60,28,28),(20,60,24,24), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
-            , ((10,1,64,64),(20,1,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 1 layers
-            , ((10,20,29,29),(30,20,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 2 layers
-            , ((10,30,23,23),(20,30,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
+            , ((10, 1, 64, 64), (20, 1, 7, 7), (1, 1), (1, 1), (1, 1))#test_lenet_64 1 layers
+            , ((10, 20, 29, 29), (30, 20, 7, 7), (1, 1), (1, 1), (1, 1))#test_lenet_64 2 layers
+            , ((10, 30, 23, 23), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
 #            , ((20,10,29,29),(30,10,23,23), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 1
 #            , ((1,10,64,64),(20,10,58,58), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 2
             ]
@@ -479,18 +479,18 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
     shapes += [
 #        ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
 #            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
-             ((60,30,8,8),(20,30,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 1 full
+             ((60, 30, 8, 8), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 1 full
 #            , ((20,60,12,12),(30,60,8,8), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
 #            , ((1,60,28,28),(20,60,24,24), (1, 1), (1, 1), (1, 1))#test_lenet_28 bprop 2 valid
 #            , ((10,1,64,64),(20,1,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 1 layers
 #            , ((10,20,29,29),(30,20,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 2 layers
-            , ((10,30,23,23),(20,30,7,7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
+            , ((10, 30, 23, 23), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#test_lenet_64 full
 #            , ((20,10,29,29),(30,10,23,23), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 1
 #            , ((1,10,64,64),(20,10,58,58), (1, 1), (1, 1), (1, 1))#test_lenet_64 bprop 2
             #Test more than maxThreadsDim0
-            , ((2,4,13,1050), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
-            , ((2,4,1050,13), (3,4,10, 11), (1, 1), (1, 1), (1, 1))
-            , ((1,1,44800,1), (6,1,1,1), (1, 1), (1, 1), (1, 1))#This caused crash
+            , ((2, 4, 13, 1050), (3, 4, 10, 11), (1, 1), (1, 1), (1, 1))
+            , ((2, 4, 1050, 13), (3, 4, 10, 11), (1, 1), (1, 1), (1, 1))
+            , ((1, 1, 44800, 1), (6, 1, 1, 1), (1, 1), (1, 1), (1, 1))#This caused crash
             ]
 
     verbose = 0
@@ -725,7 +725,7 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
         op = theano.sandbox.cuda.blas.GpuCorrMM(border_mode='valid',
                                                 subsample=subsample)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
-        gpuval = f(npy_img, npy_kern[:,:,::-1,::-1])
+        gpuval = f(npy_img, npy_kern[:, :, ::-1, ::-1])
     elif direction == 'bprop img':
         i = cuda.CudaNdarrayType(
             broadcastable=[sh == 1 for sh in
@@ -752,7 +752,7 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
         f = theano.function([i, k], op, mode=theano_mode)
         gpuval = numpy.array(f(
                 npy_img.transpose(1, 0, 2, 3),
-                npy_kern.transpose(1, 0, 2, 3)[:,:,::-1,::-1])).transpose(
+                npy_kern.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1])).transpose(
             1, 0, 2, 3)
 
     assert_allclose(cpuval, gpuval, rtol=1e-4)
@@ -760,8 +760,8 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
 
 def test_gemm_directly():
     for bs in range(1, 5):
-        for ch in range(1,4):
-            for nf in range(1,4):
+        for ch in range(1, 4):
+            for nf in range(1, 4):
                 for rImg1 in range(5, 9):
                     for rImg2 in range(5, 9):
                         for rFlt1 in range(2, 4):
@@ -805,14 +805,14 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     corr_op = op(mode, subsample)(i, k)
     # try to compile reference implementation without shape,
     # so we don't have to compile hundreds of versions
-    conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
+    conv_op = tensor.nnet.conv2d(i, k[:, :, ::-1, ::-1],
                                  border_mode=mode, subsample=subsample)
     try:
         conv_op_di = theano.grad(conv_op.sum(), i)
         conv_op_dk = theano.grad(conv_op.sum(), k)
     except Exception:
         # compile with shape information only when needed
-        conv_op = tensor.nnet.conv2d(i, k[:,:,::-1,::-1],
+        conv_op = tensor.nnet.conv2d(i, k[:, :, ::-1, ::-1],
                                      ishape, kshape, mode, subsample)
     conv_op_di = theano.grad(conv_op.sum(), i)
     conv_op_dk = theano.grad(conv_op.sum(), k)
@@ -869,43 +869,43 @@ def benchmark():
 
     shapes_valid = [
         #test_lenet_28 shape
-        ((20, 60,12,12), (30,60,8,8), (1, 1), (1, 1), (1, 1))#valid
-        ,((60, 20,12,12), (30,20,5,5), (1, 1), (1, 1), (1, 1))#valid
-        ,((60, 1,28,28), (20,1,5,5), (1, 1), (1, 1), (1, 1))#valid
-        ,((1, 60,28,28), (20,60,24,24), (1, 1), (1, 1), (1, 1))#valid
+        ((20, 60, 12, 12), (30, 60, 8, 8), (1, 1), (1, 1), (1, 1))#valid
+        , ((60, 20, 12, 12), (30, 20, 5, 5), (1, 1), (1, 1), (1, 1))#valid
+        , ((60, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1))#valid
+        , ((1, 60, 28, 28), (20, 60, 24, 24), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_32 shape
-        ,((20, 60,14,14), (30,60,10,10), (1, 1), (1, 1), (1, 1))#valid
-        ,((60, 20,14,14), (30,20,5,5), (1, 1), (1, 1), (1, 1))#valid
-        ,((60, 1,32,32), (20,1,5,5), (1, 1), (1, 1), (1, 1))#valid
-        ,((1, 60,32,32), (20,60,28,28), (1, 1), (1, 1), (1, 1))#valid
+        , ((20, 60, 14, 14), (30, 60, 10, 10), (1, 1), (1, 1), (1, 1))#valid
+        , ((60, 20, 14, 14), (30, 20, 5, 5), (1, 1), (1, 1), (1, 1))#valid
+        , ((60, 1, 32, 32), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1))#valid
+        , ((1, 60, 32, 32), (20, 60, 28, 28), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_64 shape
-        ,((10, 20,29,29), (30,20,7,7), (1, 1), (1, 1), (1, 1))#valid
-        ,((20, 10,29,29), (30,10,23,23), (1, 1), (1, 1), (1, 1))#valid
-        ,((10, 1,64,64), (20,1,7,7), (1, 1), (1, 1), (1, 1))#valid
-        ,((1, 10,64,64), (20,10,58,58), (1, 1), (1, 1), (1, 1))#valid
+        , ((10, 20, 29, 29), (30, 20, 7, 7), (1, 1), (1, 1), (1, 1))#valid
+        , ((20, 10, 29, 29), (30, 10, 23, 23), (1, 1), (1, 1), (1, 1))#valid
+        , ((10, 1, 64, 64), (20, 1, 7, 7), (1, 1), (1, 1), (1, 1))#valid
+        , ((1, 10, 64, 64), (20, 10, 58, 58), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_108 shape
-        ,((10, 20,51,51), (30,20,7,7), (1, 1), (1, 1), (1, 1))#valid
-        ,((20, 10,51,51), (30,10,45,45), (1, 1), (1, 1), (1, 1))#valid
-        ,((10, 1,108,108), (20,1,7,7), (1, 1), (1, 1), (1, 1))#valid
-        ,((1, 10,108,108), (20,10,102,102), (1, 1), (1, 1), (1, 1))#valid
+        , ((10, 20, 51, 51), (30, 20, 7, 7), (1, 1), (1, 1), (1, 1))#valid
+        , ((20, 10, 51, 51), (30, 10, 45, 45), (1, 1), (1, 1), (1, 1))#valid
+        , ((10, 1, 108, 108), (20, 1, 7, 7), (1, 1), (1, 1), (1, 1))#valid
+        , ((1, 10, 108, 108), (20, 10, 102, 102), (1, 1), (1, 1), (1, 1))#valid
         #test_lenet_256 shape
-        ,((2, 20,124,124), (30,20,9,9), (1, 1), (1, 1), (1, 1))#valid
-        ,((20, 2,124,124), (30,2,116,116), (1, 1), (1, 1), (1, 1))#valid
-        ,((2, 1,256,256), (20,1,9,9), (1, 1), (1, 1), (1, 1))#valid
-        ,((1, 2,256,256), (20,2,248,248), (1, 1), (1, 1), (1, 1))#valid
+        , ((2, 20, 124, 124), (30, 20, 9, 9), (1, 1), (1, 1), (1, 1))#valid
+        , ((20, 2, 124, 124), (30, 2, 116, 116), (1, 1), (1, 1), (1, 1))#valid
+        , ((2, 1, 256, 256), (20, 1, 9, 9), (1, 1), (1, 1), (1, 1))#valid
+        , ((1, 2, 256, 256), (20, 2, 248, 248), (1, 1), (1, 1), (1, 1))#valid
             ]
 
     shapes_full = [
         #test_lenet_28 shape
-         ((60, 30,8,8), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#full
+         ((60, 30, 8, 8), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#full
         #test_lenet_32 shape
-         ,((60, 30,10,10), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#full conv_full_patch_stack_padded' N=1
+         , ((60, 30, 10, 10), (20, 30, 5, 5), (1, 1), (1, 1), (1, 1))#full conv_full_patch_stack_padded' N=1
         #test_lenet_64 shape
-         ,((10, 30,23,23), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#full conv_full_patch_stack_padded' N=3
+         , ((10, 30, 23, 23), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#full conv_full_patch_stack_padded' N=3
         #test_lenet_108 shape
-         ,((10, 30,45,45), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#full 'conv_full_patch_stack_padded' N=9
+         , ((10, 30, 45, 45), (20, 30, 7, 7), (1, 1), (1, 1), (1, 1))#full 'conv_full_patch_stack_padded' N=9
         #test_lenet_256 shape
-         ,((2, 30,116,116), (20, 30, 9,9), (1, 1), (1, 1), (1, 1))#full conv_reference_full
+         , ((2, 30, 116, 116), (20, 30, 9, 9), (1, 1), (1, 1), (1, 1))#full conv_reference_full
             ]
 
     version = [-1]

@@ -44,7 +44,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (9,1)
+        return (9, 1)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',

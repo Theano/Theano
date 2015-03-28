@@ -349,7 +349,7 @@ class ProfileMode(Mode):
             time_per_call = 0
 
         print
-        print 'ProfileMode.%s(%s)' % (fct_name,message)
+        print 'ProfileMode.%s(%s)' % (fct_name, message)
         print '---------------------------'
         print
         print 'Time since import %.3fs'%(total_time)
@@ -369,10 +369,10 @@ class ProfileMode(Mode):
         print '<% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
             if fct_call[key]>0:
-                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 , fct_call_time[key],
                                                       fct_call_time[key]/fct_call[key], fct_call[key], key.name)
             else:
-                print '   NOT CALLED',key.name
+                print '   NOT CALLED', key.name
 
 
         # Compute stats per op.
@@ -381,14 +381,14 @@ class ProfileMode(Mode):
         op_apply = {}
         op_cimpl = {}
         sop_apply = {}
-        for (i,a),t in apply_time.items():
+        for (i, a), t in apply_time.items():
             op=a.op
-            op_time.setdefault(op,0)
-            op_call.setdefault(op,0)
-            op_apply.setdefault(op,0)
-            sop_apply.setdefault(type(a.op),0)
+            op_time.setdefault(op, 0)
+            op_call.setdefault(op, 0)
+            op_apply.setdefault(op, 0)
+            sop_apply.setdefault(type(a.op), 0)
             op_time[op]+=t
-            nb_call = [v for k,v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
+            nb_call = [v for k, v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
             op_cimpl.setdefault(a.op, True)
             op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
             if t==0:
@@ -403,15 +403,15 @@ class ProfileMode(Mode):
         sop_call={}
         sop_op = {}
         sop_cimpl={} #map each op class to Bool. True iff all applies were done in c.
-        for a,t in op_time.items():
+        for a, t in op_time.items():
             typ = type(a)
-            sop_time.setdefault(typ,0)
+            sop_time.setdefault(typ, 0)
             sop_time[typ]+=t
-            sop_op.setdefault(typ,0)
+            sop_op.setdefault(typ, 0)
             sop_op[typ]+=1
-            sop_cimpl.setdefault(typ,True)
+            sop_cimpl.setdefault(typ, True)
             sop_cimpl[typ]=sop_cimpl[typ] and op_cimpl.get(a, False)
-            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
+            sop_call[typ]=sop_call.get(typ, 0)+op_call[a]
 
 
         # Print the summary per op class.
@@ -422,7 +422,7 @@ class ProfileMode(Mode):
         sotimes.sort()
         sotimes.reverse()
         tot=0
-        for f,t,a,ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
+        for f, t, a, ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
@@ -443,8 +443,8 @@ class ProfileMode(Mode):
 
         # The summary per op
         op_flops = {}
-        for a,t in op_time.items():
-            if hasattr(a,'flops'):
+        for a, t in op_time.items():
+            if hasattr(a, 'flops'):
                 op_flops[a]=a.flops*op_call[a]/t/1e6
         flops_msg=''
         if op_flops:
@@ -454,12 +454,12 @@ class ProfileMode(Mode):
         print 'Op-wise summary:'
         print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> [*] %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
-        otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
+        otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a, 0))
                 for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
         tot=0
-        for f,t,a,ci,nb_call,nb_apply in otimes[:n_ops_to_print]:
+        for f, t, a, ci, nb_call, nb_apply in otimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
@@ -470,7 +470,7 @@ class ProfileMode(Mode):
             else:
                 msg = ' '
             if op_flops:
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a,-1), nb_call, nb_apply, a)
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a, -1), nb_call, nb_apply, a)
             else:
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_apply, a)
         print '   ... (remaining %i Op account for %6.2f%%(%.2fs) of the runtime)'\
@@ -484,11 +484,11 @@ class ProfileMode(Mode):
             print
             print 'Apply-wise summary:'
             print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
+            atimes = [(t*100/local_time, t, a, [v for k, v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
             tot=0
-            for f,t,a,nb_call in atimes[:n_apply_to_print]:
+            for f, t, a, nb_call in atimes[:n_apply_to_print]:
                 tot+=t
                 ftot=tot*100/local_time
                 if nb_call==0:

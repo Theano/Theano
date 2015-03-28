@@ -54,8 +54,8 @@ def test_outputs():
 
 @run(True)
 def test_submodule():
-    MM = MyModule(1,2)
-    MM.submodule = MyModule(3,4)
+    MM = MyModule(1, 2)
+    MM.submodule = MyModule(3, 4)
     assert MM.add(5) == 8
     MM.submodule.sub(7)
     assert MM.submodule.b.get() == -3
@@ -75,8 +75,8 @@ def test_misc_prints():
     print MM.add(19)
     print 'b', MM.value(MM.b)
     print 'a', MM.value(MM.a)
-    MM.value_set(MM.a,6)
-    MM.value_set(MM.b,6)
+    MM.value_set(MM.a, 6)
+    MM.value_set(MM.b, 6)
     print MM.add(6)
 
     try:

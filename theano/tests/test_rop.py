@@ -309,7 +309,7 @@ class test_RopLop(RopLop_checker):
             v2 = scan_f(image_data, filter_data, ev_image_data,
                         ev_filter_data)
             assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
-                                            (v1,v2))
+                                            (v1, v2))
 
     def test_join(self):
         tv = numpy.asarray(self.rng.uniform(size=(10,)),

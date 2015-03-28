@@ -210,7 +210,7 @@ class TestToposort:
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
-        assert all == [o1,o0]
+        assert all == [o1, o0]
 
     def test_4(self):
         """Test inputs and outputs mixed together in a chain graph"""
@@ -353,7 +353,7 @@ class TestAutoName:
         r1 = tensor.TensorType(dtype='int32', broadcastable=())('myvar')
         r2 = tensor.TensorVariable(tensor.TensorType(dtype='int32',
                                                      broadcastable=()))
-        r3 = shared(numpy.random.randn(3,4))
+        r3 = shared(numpy.random.randn(3, 4))
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
         assert r3.auto_name == "auto_" + str(autoname_id + 2)

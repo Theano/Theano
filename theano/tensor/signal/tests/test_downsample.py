@@ -268,9 +268,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     def test_DownsampleFactorMaxPaddingStride_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         imgsizes = ((10, 10), (10, 5), (5, 5))
-        maxpoolsizes = ((5, 3),(3, 5), (3, 3))
+        maxpoolsizes = ((5, 3), (3, 5), (3, 3))
         stridesizes = ((3, 2), (2, 3), (3, 3))
-        paddingsizes = ((2, 2),(2, 1), (2, 2))
+        paddingsizes = ((2, 2), (2, 1), (2, 2))
         for i in range(len(imgsizes)):
             imgsize = imgsizes[i]
             imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
@@ -467,15 +467,15 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     def test_max_pool_2d_2D_same_size(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         test_input_array = numpy.array([[[
-            [1.,2.,3.,4.], 
-            [5.,6.,7.,8.]
+            [1., 2., 3., 4.], 
+            [5., 6., 7., 8.]
         ]]])
         test_answer_array = numpy.array([[[
-            [0.,0.,0.,0.],
-            [0.,6.,0.,8.]
+            [0., 0., 0., 0.],
+            [0., 6., 0., 8.]
         ]]])
         input = tensor.tensor4(name='input')
-        patch_size = (2,2)
+        patch_size = (2, 2)
         op = max_pool_2d_same_size(input, patch_size)
         op_output = function([input], op)(test_input_array)
         assert numpy.all(op_output == test_answer_array), (

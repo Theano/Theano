@@ -13,7 +13,7 @@ class InitGraph(type):
         #print 'INITIALIZING', name
         super(InitGraph, cls).__init__(name, bases, dct)
         def just_symbolic(dct):
-            def filter(k,v):
+            def filter(k, v):
                 return True
                 if getattr(v, '__is_symbolic', False):
                     return True
@@ -87,8 +87,8 @@ def compile_fn(f, path_locals, common_inputs):
     #make new inputs for the vars named in args
     # this has the effect of creating new storage for these arguments
     # The common storage doesn't get messed with.
-    inputs = [In(path_locals.get(name,name)) for name in args]
-    inputs.extend([v for k,v in common_inputs.items() if k not in args])
+    inputs = [In(path_locals.get(name, name)) for name in args]
+    inputs.extend([v for k, v in common_inputs.items() if k not in args])
     outputs = f()
     #print 'inputs', inputs
     #print 'outputs', outputs
@@ -119,7 +119,7 @@ def compile(smod, initial_values=None):
                     for s in modwalker(path_locals, val.values()):
                         yield s
                 elif issymbolicmodule(val):
-                    for s in modwalker(val.__dict__, [v for k,v in sym_items(val)]):
+                    for s in modwalker(val.__dict__, [v for k, v in sym_items(val)]):
                         yield s
                 elif isinstance(val, (basestring, int, float)):
                     pass
@@ -130,8 +130,8 @@ def compile(smod, initial_values=None):
                 else :
                     # check for weird objects that we would like to disallow
                     # not all objects can be transfered by the clone mechanism below
-                    raise TypeError( (val, type(val), getattr(val,'__name__')))
-        for blah in modwalker(root.__dict__, [v for k,v in sym_items(root)]):
+                    raise TypeError( (val, type(val), getattr(val, '__name__')))
+        for blah in modwalker(root.__dict__, [v for k, v in sym_items(root)]):
             yield blah
 
     #Locate all the starting nodes, and create containers entries for their values
@@ -241,7 +241,7 @@ def Layer(x=None, w=None, b=None):
         b = T.dvector()
     y = T.tanh(T.dot(x, w) + b)
     @symbolicmethod
-    def params(): return [w,b]
+    def params(): return [w, b]
     return locals()
 
 @symbolic_module
@@ -272,7 +272,7 @@ def NNet(x=None, y=None, n_hid_layers=2):
         def update(x, y):
             pp = params()
             gp = T.grad(classif.loss, pp)
-            return dict((p,p - 0.01*g) for p, g in zip(pp, gp))
+            return dict((p, p - 0.01*g) for p, g in zip(pp, gp))
 
     return locals()
 nnet = compile(NNet)
@@ -403,7 +403,7 @@ if 0:
         def update(cls, x, y, **kwargs):
             params = cls.symbolic_params()
             gp = T.grad(cls.loss, params)
-            return [], [In(p, update=p - cls.step * g) for p,g in zip(params, gp)]
+            return [], [In(p, update=p - cls.step * g) for p, g in zip(params, gp)]
 
         def predict(cls, x, **kwargs):
             return cls.pred, []
@@ -419,12 +419,12 @@ if 0:
             var_thresh = T.dscalar()
             ):
         #naive version, yes
-        s,v,d = T.svd(x)
+        s, v, d = T.svd(x)
         acc = T.accumulate(v)
         npc = T.lsearch(acc, var_thresh * T.sum(v))
-        y = s[:,:npc]
+        y = s[:, :npc]
         #transform will map future points x into the principle components space
-        transform = d[:npc,:].T / v[:npc]
+        transform = d[:npc, :].T / v[:npc]
         return locals()
 
     #at this point there is a neural_net module all built and compiled,
@@ -445,9 +445,9 @@ if 0:
             )
 
     nnet = logistic_regression(
-            redefine={'x':(LogisticLayer.x, LogisticLayer.y)},
-            submodule={'hid':LogisticLayer},
-            add_symbols={'x':LogisticLayer.x})
+            redefine={'x': (LogisticLayer.x, LogisticLayer.y)},
+            submodule={'hid': LogisticLayer},
+            add_symbols={'x': LogisticLayer.x})
 
 
     def stats_collector(r, stat_name):

@@ -468,7 +468,7 @@ if 0:
                 if self.clients[old_r][app] == 0:
                     del self.clients[old_r][app]
 
-                self.clients.setdefault(new_r,{}).setdefault(app,0)
+                self.clients.setdefault(new_r, {}).setdefault(app, 0)
                 self.clients[new_r][app] += 1
 
                 #UPDATE self.view_i, self.view_o
@@ -533,7 +533,7 @@ if 0:
 
                 # check for destruction of constants
                 illegal_destroy = [r for r in droot if
-                        getattr(r.tag,'indestructible', False) or
+                        getattr(r.tag, 'indestructible', False) or
                         isinstance(r, graph.Constant)]
                 if illegal_destroy:
                     #print 'destroying illegally'
@@ -612,8 +612,8 @@ if 0:
                         # depend on destroyed_input
                         root_clients = OrderedSet()
                         for r in root_impact:
-                            assert not [a for a,c in self.clients[r].items() if not c]
-                            root_clients.update([a for a,c in self.clients[r].items() if c])
+                            assert not [a for a, c in self.clients[r].items() if not c]
+                            root_clients.update([a for a, c in self.clients[r].items() if c])
                         root_clients.remove(app)
                         if root_clients:
                             rval[app] = root_clients
@@ -875,7 +875,7 @@ class DestroyHandler(toolbox.Bookkeeper):
             if self.clients[old_r][app] == 0:
                 del self.clients[old_r][app]
 
-            self.clients.setdefault(new_r, OrderedDict()).setdefault(app,0)
+            self.clients.setdefault(new_r, OrderedDict()).setdefault(app, 0)
             self.clients[new_r][app] += 1
 
             #UPDATE self.view_i, self.view_o
@@ -947,7 +947,7 @@ class DestroyHandler(toolbox.Bookkeeper):
 
             # check for destruction of constants
             illegal_destroy = [r for r in droot if \
-                    getattr(r.tag,'indestructible', False) or \
+                    getattr(r.tag, 'indestructible', False) or \
                     isinstance(r, graph.Constant)]
             if illegal_destroy:
                 raise InconsistencyError("Attempting to destroy indestructible variables: %s" %

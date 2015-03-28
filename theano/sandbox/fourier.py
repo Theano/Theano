@@ -85,7 +85,7 @@ class FFT(Op):
             elif axis==1:
                 if (N % 2):
                     raise ValueError('halfFFT on odd-length vectors is undefined')
-                spectrogram[0] = fft[:,0:N/2]
+                spectrogram[0] = fft[:, 0:N/2]
             else:
                 raise NotImplementedError()
         else:

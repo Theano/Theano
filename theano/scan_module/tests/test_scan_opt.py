@@ -384,7 +384,7 @@ class TestPushOutSumOfDot():
             dot_output = T.dot(temp1, temp2)
             return previous_output + dot_output
 
-        init = T.as_tensor_variable(numpy.random.normal(size=(3,7)))
+        init = T.as_tensor_variable(numpy.random.normal(size=(3, 7)))
 
         # Compile the function twice, once with the optimization and once
         # without

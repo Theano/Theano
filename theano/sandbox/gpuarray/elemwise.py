@@ -620,7 +620,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         ax = ''
         if self.axis is not None:
             ax = '{%s}' % (', '.join(str(x) for x in self.axis),)
-        return "GpuCAReduceCuda{%s%s}%s" % (pre,str(self.scalar_op), ax)
+        return "GpuCAReduceCuda{%s%s}%s" % (pre, str(self.scalar_op), ax)
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -1214,7 +1214,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         for num in [16, 8, 4, 2, 1]:
             this_if = "if (threadNum + %d < threadCount) " % num + \
                 self._assign_reduce(node, name,
-                                    'buf[threadNum]','buf[threadNum+%d]' % num,
+                                    'buf[threadNum]', 'buf[threadNum+%d]' % num,
                                     sub, False)
             current_version += this_if
             current_version += """

@@ -2057,7 +2057,7 @@ class Test_getitem(unittest.TestCase):
         def op_with_fixed_index(x):
             return op(x, index=numpy.asarray([0, 1]))
 
-        x, x_val = sparse_random_inputs("csr", (4,5))
+        x, x_val = sparse_random_inputs("csr", (4, 5))
 
         try:
             verify_grad_sparse(op_with_fixed_index, x_val)
@@ -2099,7 +2099,7 @@ class Test_getitem(unittest.TestCase):
         def op_with_fixed_index(x):
             return op(x, ind1=numpy.asarray([0, 1]), ind2=numpy.asarray([2, 3]))
 
-        x, x_val = sparse_random_inputs("csr", (4,5))
+        x, x_val = sparse_random_inputs("csr", (4, 5))
 
         verify_grad_sparse(op_with_fixed_index, x_val)
 

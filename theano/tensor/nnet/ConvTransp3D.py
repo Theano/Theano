@@ -33,7 +33,7 @@ class ConvTransp3D(theano.Op):
         else:
             RShape_ = T.as_tensor_variable([-1, -1, -1])
 
-        return theano.Apply(self, inputs=[W_,b_,d_,H_, RShape_], outputs = [ T.TensorType(H_.dtype, (False,False,False,False,False))() ] )
+        return theano.Apply(self, inputs=[W_, b_, d_, H_, RShape_], outputs = [ T.TensorType(H_.dtype, (False, False, False, False, False))() ] )
 
     def infer_shape(self, node, input_shapes):
         W, b, d, H, RShape = node.inputs
@@ -408,7 +408,7 @@ def computeR(W, b, d, H, Rshape=None):
                                         break
 
                                     R[
-                                        i,r,c,t,j] += N.dot(W[:,rk,ck,tk,j], H[i,rc,cc,tc,:] )
+                                        i, r, c, t, j] += N.dot(W[:, rk, ck, tk, j], H[i, rc, cc, tc, :] )
 
                                     tc += 1
                                 ""  # close loop over tc

@@ -1113,7 +1113,7 @@ class GpuCAReduce(GpuOp):
         for num in [16, 8, 4, 2, 1]:
             this_if = "if (threadNum + %d < threadCount) " % num + \
                 self._assign_reduce(node, name,
-                                    'buf[threadNum]','buf[threadNum+%d]' % num,
+                                    'buf[threadNum]', 'buf[threadNum+%d]' % num,
                                     sub, False)
             current_version += this_if
         current_version += """

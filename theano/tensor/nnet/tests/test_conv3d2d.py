@@ -62,8 +62,8 @@ def pyconv3d(signals, filters):
     for ns in xrange(Ns):
         for nf in xrange(Nf):
             for c in xrange(C):
-                s_i = signals[ns,:,c,:,:]
-                f_i = filters[nf,:,c,:,:]
+                s_i = signals[ns, :, c, :, :]
+                f_i = filters[nf, :, c, :, :]
                 r_i = rval[ns, :, nf, :, :]
                 o_i = ndimage.convolve(s_i, f_i, mode='constant', cval=1)
                 #print s_i.shape, f_i.shape, r_i.shape, o_i.shape

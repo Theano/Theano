@@ -58,7 +58,7 @@ try:
             # a cudamat object with no data_host.
             cm_mat = cudamat.cudamat()
 
-            cm_mat.size[0] = reduce(lambda x,y:x*y, x.shape, 1)
+            cm_mat.size[0] = reduce(lambda x, y: x*y, x.shape, 1)
             cm_mat.size[1] = 1
             cm_mat.on_host = 0
             cm_mat.on_device = 1

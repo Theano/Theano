@@ -396,8 +396,8 @@ class NaiveAlgo(object):
                     [scalar.Scalar(dtype = output.type.dtype).make_variable()
                      for output in node.outputs])
                 , nodename + '_scalar_'
-                , ['i%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.inputs)]
-                , ['o%i_data_%i[0]'%(ipos,d) for ipos, i in enumerate(node.outputs)]
+                , ['i%i_data_%i[0]'%(ipos, d) for ipos, i in enumerate(node.inputs)]
+                , ['o%i_data_%i[0]'%(ipos, d) for ipos, i in enumerate(node.outputs)]
                 , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
 
         if nd == 4:
@@ -441,7 +441,7 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" %(self.scalar_op.__class__.__name__,nodename)
+        print >> sio, "static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" %(self.scalar_op.__class__.__name__, nodename)
         #declare inputs
         for ipos, i in enumerate(node.inputs):
             print >> sio, "\t,", "const float * i%i_data" % ipos
@@ -722,8 +722,8 @@ nd_collapse_[i]=0;
         l=["local_str[%s][nd_collapse-1]==1 "%ipos for ipos in xrange(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
         l+=["local_ostr[%s][nd_collapse-1]==1 "%ipos for ipos in xrange(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
         if len(l)>0:
-            print >> sio," && "," && ".join(l)
-        print >> sio,"""){nd_collapse=0;} """
+            print >> sio, " && ", " && ".join(l)
+        print >> sio, """){nd_collapse=0;} """
 
         if self.verbose:
             print >> sio, 'std::cerr <<"after can_collapse\\n";'

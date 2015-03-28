@@ -9,10 +9,10 @@ DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE = False
 dirs = []
 if len(sys.argv)>1:
     for compiledir in sys.argv[1:]:
-        dirs.extend([os.path.join(compiledir,d) for d in os.listdir(compiledir)])
+        dirs.extend([os.path.join(compiledir, d) for d in os.listdir(compiledir)])
 else:
     dirs = os.listdir(theano.config.compiledir)
-    dirs = [os.path.join(theano.config.compiledir,d) for d in dirs]
+    dirs = [os.path.join(theano.config.compiledir, d) for d in dirs]
 keys = {} # key -> nb seen
 mods = {}
 for dir in dirs:
@@ -57,7 +57,7 @@ for val in keys.values():
 nbs_mod = {} # nb seen -> how many key
 nbs_mod_to_key = {} #nb seen -> keys
 more_than_one = 0
-for mod,kk in mods.iteritems():
+for mod, kk in mods.iteritems():
     val = len(kk)
     nbs_mod.setdefault(val, 0)
     nbs_mod[val]+=1
@@ -88,6 +88,6 @@ useless = total - uniq
 print "mod.{cpp,cu} total:", total
 print "mod.{cpp,cu} uniq:", uniq
 print "mod.{cpp,cu} with more than 1 copy:", more_than_one
-print "mod.{cpp,cu} useless:", useless, float(useless)/total*100,"%"
+print "mod.{cpp,cu} useless:", useless, float(useless)/total*100, "%"
 
 print "nb directory", len(dirs)

@@ -408,7 +408,7 @@ def computeR(W, b, d, H, Rshape=None):
                     #print '\t\t\trow '+str(r+1)+'/'+str(videoHeight)
                     for c in xrange(0, videoWidth):
                         for t in xrange(0, videoDur):
-                            R[i,j,r,c,t] = b[j]
+                            R[i, j, r, c, t] = b[j]
 
                             ftc = max([0, int(numpy.ceil(float(t-filterDur +1  )/float(dt))) ])
                             fcc = max([0, int(numpy.ceil(float(c-filterWidth +1)/float(dc))) ])
@@ -431,7 +431,7 @@ def computeR(W, b, d, H, Rshape=None):
                                         if tk < 0:
                                             break
 
-                                        R[i,j,r,c,t] += numpy.dot(W[:,j,rk,ck,tk], H[i,:,rc,cc,tc] )
+                                        R[i, j, r, c, t] += numpy.dot(W[:, j, rk, ck, tk], H[i, :, rc, cc, tc] )
 
                                         tc += 1
                                     ""  # close loop over tc

@@ -988,8 +988,8 @@ _good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3))
                                         row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
                                         column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
                                         dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3))),
-                                        complex1 = (randcomplex(2,3),randcomplex(2,3)),
-                                        complex2 = (randcomplex(2,3),rand(2,3)),
+                                        complex1 = (randcomplex(2, 3), randcomplex(2, 3)),
+                                        complex2 = (randcomplex(2, 3), rand(2, 3)),
                                         #complex3 = (rand(2,3),randcomplex(2,3)), # Inplace on the first element.
                                         empty1 = (numpy.asarray([], dtype=config.floatX),
                                                   numpy.asarray([1], dtype=config.floatX)),
@@ -1236,14 +1236,14 @@ RoundHalfToEvenInplaceTester = makeBroadcastTester(
 #This happen in float32 mode.
 RoundHalfAwayFromZeroTester = makeBroadcastTester(
     op=tensor.round_half_away_from_zero,
-    expected=lambda a:theano.scalar.basic.round_half_away_from_zero_vec(a),
+    expected=lambda a: theano.scalar.basic.round_half_away_from_zero_vec(a),
     good=_good_broadcast_unary_normal_float_no_empty_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
     #_good_broadcast_unary_normal_float)
 
 RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(
     op=inplace.round_half_away_from_zero_inplace,
-    expected=lambda a:theano.scalar.basic.round_half_away_from_zero_vec(a),
+    expected=lambda a: theano.scalar.basic.round_half_away_from_zero_vec(a),
     good=_good_broadcast_unary_normal_float_no_empty_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case,
     inplace=True)
@@ -2167,7 +2167,7 @@ class TestAlloc(unittest.TestCase):
         ones_scalar = theano.function([], [tensor.ones(x.shape)])
         assert numpy.allclose(ones_scalar(), numpy.ones(shp))
 
-        for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
+        for (typ, shp) in [(vector, [3]), (matrix, [3, 4])]:
             x = typ()
             ones_tensor = theano.function([x], [tensor.ones(x.shape)])
             inp = numpy.zeros(shp, dtype=config.floatX)
@@ -2185,7 +2185,7 @@ class TestAlloc(unittest.TestCase):
         zeros_scalar = theano.function([], [tensor.zeros(x.shape)])
         assert numpy.allclose(zeros_scalar(), numpy.zeros(shp))
 
-        for (typ, shp) in [(vector, [3]), (matrix, [3,4])]:
+        for (typ, shp) in [(vector, [3]), (matrix, [3, 4])]:
             x = typ()
             zeros_tensor = theano.function([x], [tensor.zeros(x.shape)])
             inp = numpy.zeros(shp, dtype=config.floatX)
@@ -2525,7 +2525,7 @@ def test_batched_dot():
 def test_batched_tensordot():
     first = theano.tensor.tensor4("first")
     second = theano.tensor.tensor4("second")
-    axes = [[1,2], [3,1]]
+    axes = [[1, 2], [3, 1]]
     output = theano.tensor.basic.batched_tensordot(first, second, axes)
     first_val = numpy.random.rand(8, 10, 20, 3).astype(config.floatX)
     second_val = numpy.random.rand(8, 20, 5, 10).astype(config.floatX)
@@ -5463,7 +5463,7 @@ class test_tensordot(unittest.TestCase):
         self.assertRaises(ValueError, tensordot, amat, bmat, ((0, 1), (0)))
 
         # Test invalid len(axes) given inputs are matrices
-        self.assertRaises(ValueError, tensordot, amat, bmat, ((0,1,2),(0,1,2)))
+        self.assertRaises(ValueError, tensordot, amat, bmat, ((0, 1, 2), (0, 1, 2)))
 
         # Test invalid axes[1] given that y is a vector
         self.assertRaises(ValueError, tensordot, amat, bvec, (0, 1))
@@ -6464,31 +6464,31 @@ def test_transpose():
     assert tensor.transpose(tensor.dmatrix()).name is None
 
 def test_stacklists():
-    a,b,c,d = map(scalar, 'abcd')
+    a, b, c, d = map(scalar, 'abcd')
     X = stacklists([[a, b],
                     [c, d]])
     f = function([a, b, c, d], X)
-    result = f(1,2,3,4)
+    result = f(1, 2, 3, 4)
     assert result.shape == (2, 2)
-    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1,2],[3,4]]))
+    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1, 2], [3, 4]]))
 
-    X = stacklists([a,b,c,d])
+    X = stacklists([a, b, c, d])
     f = function([a, b, c, d], X)
-    result = f(1,2,3,4)
+    result = f(1, 2, 3, 4)
     assert result.shape == (4,)
-    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1,2,3,4]]))
+    assert numpy.allclose(f(1, 2, 3, 4), numpy.asarray([[1, 2, 3, 4]]))
 
-    X = stacklists([[[a],[b]],[[c],[d]]])
+    X = stacklists([[[a], [b]], [[c], [d]]])
     f = function([a, b, c, d], X)
-    result = f(1,2,3,4)
+    result = f(1, 2, 3, 4)
     assert result.shape == (2, 2, 1)
 
-    a,b,c,d = [matrix(a) for a in 'abcd']
+    a, b, c, d = [matrix(a) for a in 'abcd']
     X = stacklists([[a, b],
                     [c, d]])
     f = function([a, b, c, d], X)
     x = numpy.ones((4, 4), 'float32')
-    assert f(x,x,x,x).shape == (2, 2, 4, 4)
+    assert f(x, x, x, x).shape == (2, 2, 4, 4)
 
 
 class TestSpecifyShape(unittest.TestCase):
@@ -6627,13 +6627,13 @@ class TestInferShape(utt.InferShapeTester):
         atens3_diag = Diagonal(-1)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1,0,2)(atens3)
+        atens3_diag = Diagonal(1, 0, 2)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1,1,2)(atens3)
+        atens3_diag = Diagonal(1, 1, 2)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1,2,0)(atens3)
+        atens3_diag = Diagonal(1, 2, 0)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
 
@@ -6960,7 +6960,7 @@ class TestInferShape(utt.InferShapeTester):
 class TestTensorInstanceMethods(unittest.TestCase):
     def setUp(self):
         self.vars = matrices('X', 'Y')
-        self.vals = [m.astype(floatX) for m in [rand(2,2),rand(2,2)]]
+        self.vals = [m.astype(floatX) for m in [rand(2, 2), rand(2, 2)]]
 
     def test_argmin(self):
         X, _ = self.vars
@@ -7048,18 +7048,18 @@ class TestTensorInstanceMethods(unittest.TestCase):
         assert_array_equal(X.diagonal().eval({X: x}), x.diagonal())
         assert_array_equal(X.diagonal(1).eval({X: x}), x.diagonal(1))
         assert_array_equal(X.diagonal(-1).eval({X: x}), x.diagonal(-1))
-        for offset, axis1, axis2 in [(1,0,1), (-1,0,1), (0,1,0), (-2,1,0)]:
+        for offset, axis1, axis2 in [(1, 0, 1), (-1, 0, 1), (0, 1, 0), (-2, 1, 0)]:
             assert_array_equal(X.diagonal(offset, axis1, axis2).eval({X: x}),
                                x.diagonal(offset, axis1, axis2))
 
     def test_take(self):
         X, _ = self.vars
         x, _ = self.vals
-        indices = [1,0,3]
+        indices = [1, 0, 3]
         assert_array_equal(X.take(indices).eval({X: x}), x.take(indices))
-        indices = [1,0,1]
+        indices = [1, 0, 1]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
-        indices = numpy.array([-10,5,12], dtype='int32')
+        indices = numpy.array([-10, 5, 12], dtype='int32')
         assert_array_equal(X.take(indices, 1, mode='wrap').eval({X: x}),
                            x.take(indices, 1, mode='wrap'))
         assert_array_equal(X.take(indices, -1, mode='wrap').eval({X: x}),
@@ -7072,10 +7072,10 @@ class TestTensorInstanceMethods(unittest.TestCase):
         self.assertRaises(IndexError, X.take(indices).eval, {X: x})
         self.assertRaises(IndexError, (2 * X.take(indices)).eval, {X: x})
         self.assertRaises(TypeError, X.take, [0.0])
-        indices = [[1,0,1], [0,1,1]]
+        indices = [[1, 0, 1], [0, 1, 1]]
         assert_array_equal(X.take(indices, 1).eval({X: x}), x.take(indices, 1))
         # Test equivalent advanced indexing
-        assert_array_equal(X[:,indices].eval({X: x}), x[:,indices])
+        assert_array_equal(X[:, indices].eval({X: x}), x[:, indices])
 
     def test_cumsum(self):
         X, _ = self.vars
@@ -7205,7 +7205,7 @@ class T_swapaxes(unittest.TestCase):
 
     def test_interface(self):
         x = theano.tensor.matrix()
-        x.swapaxes(0,1)
+        x.swapaxes(0, 1)
 
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

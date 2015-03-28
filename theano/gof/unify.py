@@ -375,7 +375,7 @@ def unify_merge(bv, o, U):
 
 @comm_guard(VariableInList, (list, tuple))
 def unify_merge(vil, l, U):
-    return [unify_merge(x,x,U) for x in l]
+    return [unify_merge(x, x, U) for x in l]
 
 @comm_guard((list, tuple), (list, tuple))
 def unify_merge(l1, l2, U):

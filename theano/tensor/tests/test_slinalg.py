@@ -198,17 +198,17 @@ class test_Solve(utt.InferShapeTester):
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
         y = self.op(A, b)
-        gen_solve_func = theano.function([A,b],y)
+        gen_solve_func = theano.function([A, b], y)
 
         cholesky_lower = Cholesky(lower=True)
         L = cholesky_lower(A)
         y_lower = self.op(L, b)
-        lower_solve_func = theano.function([L,b],y_lower)
+        lower_solve_func = theano.function([L, b], y_lower)
 
         cholesky_upper = Cholesky(lower=False)
         U = cholesky_upper(A)
         y_upper = self.op(U, b)
-        upper_solve_func = theano.function([U,b],y_upper)
+        upper_solve_func = theano.function([U, b], y_upper)
 
         b_val = numpy.asarray(rng.rand(5, 1), dtype=config.floatX)
         

@@ -526,7 +526,7 @@ class T_introduction(unittest.TestCase):
 
         # convert the expression into a callable object that takes (a,b)
         # values as input and computes a value for c
-        f = theano.function([a,b], c)
+        f = theano.function([a, b], c)
 
         # bind 1.5 to 'a', 2.5 to 'b', and evaluate 'c'
         assert 4.0 == f(1.5, 2.5)
@@ -555,7 +555,7 @@ class T_adding(unittest.TestCase):
         z = x + y
         f = function([x, y], z)
         assert numpy.all(f([[1, 2], [3, 4]], [[10, 20], [30, 40]]) ==
-                         numpy.array([[ 11.,  22.],[ 33.,  44.]]))
+                         numpy.array([[ 11.,  22.], [ 33.,  44.]]))
 
         assert numpy.all(f(numpy.array([[1, 2], [3, 4]])
                            , numpy.array([[10, 20], [30, 40]])) ==
@@ -596,9 +596,9 @@ class T_examples(unittest.TestCase):
         diff_squared = diff**2
         f = function([a, b], [diff, abs_diff, diff_squared])
         elems = f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
-        assert numpy.all( elems[0] == array([[ 1.,  0.],[-1., -2.]]))
-        assert numpy.all( elems[1] == array([[ 1.,  0.],[ 1.,  2.]]))
-        assert numpy.all( elems[2] == array([[ 1.,  0.],[ 1.,  4.]]))
+        assert numpy.all( elems[0] == array([[ 1.,  0.], [-1., -2.]]))
+        assert numpy.all( elems[1] == array([[ 1.,  0.], [ 1.,  2.]]))
+        assert numpy.all( elems[2] == array([[ 1.,  0.], [ 1.,  4.]]))
 
     def test_examples_4(self):
         from theano import pp
@@ -681,8 +681,8 @@ class T_examples(unittest.TestCase):
 
         from theano.tensor.shared_randomstreams import RandomStreams
         srng = RandomStreams(seed=234)
-        rv_u = srng.uniform((2,2))
-        rv_n = srng.normal((2,2))
+        rv_u = srng.uniform((2, 2))
+        rv_n = srng.normal((2, 2))
         f = function([], rv_u)
         g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
@@ -700,7 +700,7 @@ class T_examples(unittest.TestCase):
         assert numpy.all(g_val0 != f_val1)
 
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
-        assert numpy.allclose(nearly_zeros(), [[0.,0.],[0.,0.]])
+        assert numpy.allclose(nearly_zeros(), [[0., 0.], [0., 0.]])
 
         rng_val = rv_u.rng.get_value(borrow=True)   # Get the rng for rv_u
         rng_val.seed(89234)                         # seeds the generator
@@ -783,7 +783,7 @@ class T_examples(unittest.TestCase):
 
         # Compile
         train = theano.function(
-            inputs=[x,y],
+            inputs=[x, y],
             outputs=[prediction, xent],
             updates=((w, w - 0.1 * gw), (b, b - 0.1 * gb)))
         predict = theano.function(inputs=[x], outputs=prediction)
@@ -959,7 +959,7 @@ class T_using_gpu(unittest.TestCase):
         else:
             print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert not numpy.any( [isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
             assert numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
@@ -1344,7 +1344,7 @@ class T_scan(unittest.TestCase):
     def test_trace(self):
         # define tensor variable
         X = T.matrix("X")
-        results, updates = theano.scan(lambda i, j, t_f: T.cast(X[i,j] +
+        results, updates = theano.scan(lambda i, j, t_f: T.cast(X[i, j] +
                                                                 t_f, theano.config.floatX),
                                        sequences=[T.arange(X.shape[0]),
                                                   T.arange(X.shape[1])],
@@ -1372,7 +1372,7 @@ class T_scan(unittest.TestCase):
         n_sym = T.iscalar("n_sym")
 
         results, updates = theano.scan(
-            lambda x_tm2,x_tm1: T.dot(x_tm2,U) + T.dot(x_tm1,V) + T.tanh(T.dot(x_tm1,W) + b_sym),
+            lambda x_tm2, x_tm1: T.dot(x_tm2, U) + T.dot(x_tm1, V) + T.tanh(T.dot(x_tm1, W) + b_sym),
             n_steps=n_sym,
             outputs_info=[dict(initial=X, taps=[-2, -1])])
 
@@ -1453,8 +1453,8 @@ class T_scan(unittest.TestCase):
                                               outputs=[results],
                                               updates=updates,
                                               allow_input_downcast = True)
-        x = numpy.eye(10,2)
-        w = numpy.ones((2,2))
+        x = numpy.eye(10, 2)
+        w = numpy.ones((2, 2))
         b = numpy.ones((2))
 
         print compute_with_bnoise(x, w, b)
@@ -1476,8 +1476,8 @@ class T_typedlist(unittest.TestCase):
         output = f([[1, 2, 3], [4, 5]], [2])
 
         # Validate ouput is as expected
-        expected_output = [numpy.array([1,2,3], dtype="float32"),
-                           numpy.array([4,5], dtype="float32"),
+        expected_output = [numpy.array([1, 2, 3], dtype="float32"),
+                           numpy.array([4, 5], dtype="float32"),
                            numpy.array([2], dtype="float32")]
 
         assert len(output) == len(expected_output)

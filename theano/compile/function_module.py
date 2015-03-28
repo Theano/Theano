@@ -549,8 +549,8 @@ class Function(object):
                             [self.input_storage[k].storage[0] for k
                              in args_share_memory[j]])
                         if numpy.any([(var.type is i_var.type and
-                                        var.type.may_share_memory(val,i_val))
-                                       for (var,val) in group_j]):
+                                        var.type.may_share_memory(val, i_val))
+                                       for (var, val) in group_j]):
 
                             is_aliased = True
                             args_share_memory[j].append(i)
@@ -1037,7 +1037,7 @@ class FunctionMaker(object):
             #investigating.
             before_opt = self.fgraph.clone(check_integrity=False)
             optimizer_profile = optimizer(self.fgraph)
-            graph_db.update({before_opt:self.fgraph})
+            graph_db.update({before_opt: self.fgraph})
             f = open(graph_db_file, 'wb')
             cPickle.dump(graph_db, f, -1)
             f.close()

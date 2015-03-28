@@ -18,9 +18,9 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
-        self.Aval = numpy.ones((2,3), dtype=dtype)
-        self.xval = numpy.asarray([1,2], dtype=dtype)
-        self.yval = numpy.asarray([1.5,2.7,3.9], dtype=dtype)
+        self.Aval = numpy.ones((2, 3), dtype=dtype)
+        self.xval = numpy.asarray([1, 2], dtype=dtype)
+        self.yval = numpy.asarray([1.5, 2.7, 3.9], dtype=dtype)
         if not theano.tensor.blas_scipy.have_fblas:
             self.SkipTest()
 

@@ -1088,7 +1088,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
             # Verify the gradient when providing output gradient
             h = theano.function([x, y, a],
-                    T.grad(expr, x, known_grads={expr:a * x.sum()}), mode=mode)
+                    T.grad(expr, x, known_grads={expr: a * x.sum()}), mode=mode)
             try:
                 assert 8 <= len(h.maker.fgraph.toposort()) <= 17
                 validate_grad_graph(h)

@@ -48,147 +48,147 @@ class T_function(unittest.TestCase):
         self.assertTrue(fn() == [])
 
     def test_extra_inputs(self):
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
         fn = function([x], [x])
-        self.assertRaises(TypeError,fn,1,2)
+        self.assertRaises(TypeError, fn, 1, 2)
 
     def test_missing_inputs(self):
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             fn = function([], [x])
         checkfor(self, fn, MissingInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             # Ignore unused input s, as it hides the other error
             fn = function([s], [x], on_unused_input='ignore')
         checkfor(self, fn, MissingInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             fn = function([s], [x])
         checkfor(self, fn, UnusedInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             # Ignore unused input s, as it hides the other error
             fn = function([s], x, on_unused_input='ignore')
         checkfor(self, fn, MissingInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             fn = function([s], x)
         checkfor(self, fn, UnusedInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             # Ignore unused input s, as it hides the other error
             fn = function([s], Out(x), on_unused_input='ignore')
         checkfor(self, fn, MissingInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             fn = function([s], Out(x))
         checkfor(self, fn, UnusedInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             fn = function([In(x, update=s+x)], x)
         checkfor(self, fn, MissingInputError)
 
         def fn():
-            x,s = T.scalars('xs')
+            x, s = T.scalars('xs')
             fn = function([In(x, update=((s * s) + x))], x)
         checkfor(self, fn, MissingInputError)
 
     def test_input_anon_singleton(self):
-        x,s = T.scalars('xs')
-        fn = function([s,x], [x+s])
-        self.assertTrue(fn(2,3) == [5])
+        x, s = T.scalars('xs')
+        fn = function([s, x], [x+s])
+        self.assertTrue(fn(2, 3) == [5])
         # no state
-        self.assertTrue(fn(2,3) == [5])
+        self.assertTrue(fn(2, 3) == [5])
 
     def test_input_anon_unpack(self):
-        x,s = T.scalars('xs')
-        fn = function([s,x], x+s)
-        self.assertTrue(fn(2,3) == 5)
+        x, s = T.scalars('xs')
+        fn = function([s, x], x+s)
+        self.assertTrue(fn(2, 3) == 5)
 
     def test_naming_rule0(self):
-        x,s = T.scalars('xs')
-        f = function([x,s], x/s)
-        self.assertTrue(f(1,2) == 0.5)
-        self.assertTrue(f(2,1) == 2.0)
-        self.assertTrue(f(s=2,x=1) == 0.5)
-        self.assertTrue(f(x=2,s=1) == 2.0)
+        x, s = T.scalars('xs')
+        f = function([x, s], x/s)
+        self.assertTrue(f(1, 2) == 0.5)
+        self.assertTrue(f(2, 1) == 2.0)
+        self.assertTrue(f(s=2, x=1) == 0.5)
+        self.assertTrue(f(x=2, s=1) == 2.0)
         self.assertTrue(f(2, s=1) == 2.0)
-        checkfor(self, lambda :f(2, x=2.0), TypeError) #got multiple values for keyword argument 'x'
-        checkfor(self, lambda :f(x=1), TypeError) #takes exactly 2 non-keyword arguments (1 given)
-        checkfor(self, lambda :f(s=1), TypeError) #takes exactly 2 non-keyword arguments (0 given)
+        checkfor(self, lambda : f(2, x=2.0), TypeError) #got multiple values for keyword argument 'x'
+        checkfor(self, lambda : f(x=1), TypeError) #takes exactly 2 non-keyword arguments (1 given)
+        checkfor(self, lambda : f(s=1), TypeError) #takes exactly 2 non-keyword arguments (0 given)
 
     def test_naming_rule1(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
         f = function([a, s], a/s)
-        self.assertTrue(f(1,2) == 0.5)
-        self.assertTrue(f(2,1) == 2.0)
+        self.assertTrue(f(1, 2) == 0.5)
+        self.assertTrue(f(2, 1) == 2.0)
         self.assertTrue(f(2, s=1) == 2.0)
-        checkfor(self, lambda:f(q=2,s=1), TypeError) #got unexpected keyword argument 'q'
-        checkfor(self, lambda:f(a=2,s=1), TypeError) #got unexpected keyword argument 'a'
+        checkfor(self, lambda: f(q=2, s=1), TypeError) #got unexpected keyword argument 'q'
+        checkfor(self, lambda: f(a=2, s=1), TypeError) #got unexpected keyword argument 'a'
 
     def test_naming_rule2(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
         #x's name is ignored because it is followed by anonymous parameter a.
         # Ignore unused input x, as it hides the other error
         f = function([x, a, s], a/s, on_unused_input='ignore')
-        self.assertTrue(f(9,1,2) == 0.5)
-        self.assertTrue(f(9,2,1) == 2.0)
-        self.assertTrue(f(9,2, s=1) == 2.0)
-        checkfor(self, lambda:f(x=9,a=2,s=1), TypeError) #got unexpected keyword argument 'x'
-        checkfor(self, lambda:f(5.0,x=9), TypeError) #got unexpected keyword argument 'x'
+        self.assertTrue(f(9, 1, 2) == 0.5)
+        self.assertTrue(f(9, 2, 1) == 2.0)
+        self.assertTrue(f(9, 2, s=1) == 2.0)
+        checkfor(self, lambda: f(x=9, a=2, s=1), TypeError) #got unexpected keyword argument 'x'
+        checkfor(self, lambda: f(5.0, x=9), TypeError) #got unexpected keyword argument 'x'
 
     def test_naming_rule3(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
         #x's name is not ignored (as in test_naming_rule2) because a has a default value.
         f = function([x, In(a, value=1.0), s], a/s+x)
-        self.assertTrue(f(9,2,4) == 9.5) #can specify all args in order
-        self.assertTrue(f(9,2,s=4) == 9.5) # can give s as kwarg
-        self.assertTrue(f(9,s=4) == 9.25) # can give s as kwarg, get default a
-        self.assertTrue(f(x=9,s=4) == 9.25) # can give s as kwarg, omit a, x as kw
-        checkfor(self, lambda:f(x=9,a=2,s=4), TypeError) #got unexpected keyword argument 'a'
-        checkfor(self, lambda:f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
-        checkfor(self, lambda:f(x=9), TypeError) #takes exactly 3 non-keyword arguments (1 given)
+        self.assertTrue(f(9, 2, 4) == 9.5) #can specify all args in order
+        self.assertTrue(f(9, 2, s=4) == 9.5) # can give s as kwarg
+        self.assertTrue(f(9, s=4) == 9.25) # can give s as kwarg, get default a
+        self.assertTrue(f(x=9, s=4) == 9.25) # can give s as kwarg, omit a, x as kw
+        checkfor(self, lambda: f(x=9, a=2, s=4), TypeError) #got unexpected keyword argument 'a'
+        checkfor(self, lambda: f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
+        checkfor(self, lambda: f(x=9), TypeError) #takes exactly 3 non-keyword arguments (1 given)
 
     def test_naming_rule4(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), s], a/s+x)
+        f = function([x, In(a, value=1.0, name='a'), s], a/s+x)
 
-        self.assertTrue(f(9,2,4) == 9.5) #can specify all args in order
-        self.assertTrue(f(9,2,s=4) == 9.5) # can give s as kwarg
-        self.assertTrue(f(9,s=4) == 9.25) # can give s as kwarg, get default a
-        self.assertTrue(f(9,a=2,s=4) == 9.5) # can give s as kwarg, a as kwarg
-        self.assertTrue(f(x=9,a=2, s=4) == 9.5) # can give all kwargs
-        self.assertTrue(f(x=9,s=4) == 9.25) # can give all kwargs
-        checkfor(self, lambda:f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
-        checkfor(self, lambda:f(5.0,x=9), TypeError) #got multiple values for keyword argument 'x'
+        self.assertTrue(f(9, 2, 4) == 9.5) #can specify all args in order
+        self.assertTrue(f(9, 2, s=4) == 9.5) # can give s as kwarg
+        self.assertTrue(f(9, s=4) == 9.25) # can give s as kwarg, get default a
+        self.assertTrue(f(9, a=2, s=4) == 9.5) # can give s as kwarg, a as kwarg
+        self.assertTrue(f(x=9, a=2, s=4) == 9.5) # can give all kwargs
+        self.assertTrue(f(x=9, s=4) == 9.25) # can give all kwargs
+        checkfor(self, lambda: f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
+        checkfor(self, lambda: f(5.0, x=9), TypeError) #got multiple values for keyword argument 'x'
 
     def test_state_access(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x)], s+a*x)
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x)], s+a*x)
 
         self.assertTrue(f[a] == 1.0)
         self.assertTrue(f[s] == 0.0)
 
         self.assertTrue(f(3.0) == 3.0)
-        self.assertTrue(f(3.0,a=2.0) == 9.0) #3.0 + 2*3.0
+        self.assertTrue(f(3.0, a=2.0) == 9.0) #3.0 + 2*3.0
 
         self.assertTrue(f[a] == 1.0) #state hasn't changed permanently, we just overrode it last line
         self.assertTrue(f[s] == 9.0)
@@ -199,28 +199,28 @@ class T_function(unittest.TestCase):
         self.assertTrue(f[s] == 24.0)
 
     def test_same_names(self):
-        a,x,s = T.scalars('xxx')
+        a, x, s = T.scalars('xxx')
         #implicit names would cause error.  What do we do?
         f = function([a, x, s], a+x+s)
-        self.assertTrue(f(1,2,3) == 6)
-        checkfor(self, lambda:f(1,2,x=3), TypeError)
+        self.assertTrue(f(1, 2, 3) == 6)
+        checkfor(self, lambda: f(1, 2, x=3), TypeError)
 
     def test_weird_names(self):
-        a,x,s = T.scalars('xxx')
+        a, x, s = T.scalars('xxx')
 
-        checkfor(self, lambda:function([In(a,name=[])],[]), TypeError)
+        checkfor(self, lambda: function([In(a, name=[])], []), TypeError)
 
         def t():
-            f = function([In(a,name=set(['adsf',()]), value=1.0),
-                          In(x,name=(), value=2.0),
-                          In(s,name=T.scalar(), value=3.0)], a+x+s)
+            f = function([In(a, name=set(['adsf', ()]), value=1.0),
+                          In(x, name=(), value=2.0),
+                          In(s, name=T.scalar(), value=3.0)], a+x+s)
         checkfor(self, t, TypeError)
 
     def test_copy(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         g = copy.copy(f)
         #if they both return, assume  that they return equivalent things.
@@ -235,15 +235,15 @@ class T_function(unittest.TestCase):
 
         self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        f(1,2) # put them out of sync
+        f(1, 2) # put them out of sync
         self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
 
     def test_shared_state0(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
-        g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s], update=s-a*x, mutable=True)], s+a*x)
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        g = function([x, In(a, value=1.0, name='a'), In(s, value=f.container[s], update=s-a*x, mutable=True)], s+a*x)
 
         f(1, 2)
         self.assertTrue(f[s] == 2)
@@ -254,10 +254,10 @@ class T_function(unittest.TestCase):
 
     def test_shared_state1(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
-        g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s])], s+a*x)
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        g = function([x, In(a, value=1.0, name='a'), In(s, value=f.container[s])], s+a*x)
 
         f(1, 2)
         self.assertTrue(f[s] == 2)
@@ -269,11 +269,11 @@ class T_function(unittest.TestCase):
 
     def test_shared_state2(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x,
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x,
             mutable=False)], s+a*x)
-        g = function([x, In(a, value=1.0,name='a'), In(s, value=f.container[s])], s+a*x)
+        g = function([x, In(a, value=1.0, name='a'), In(s, value=f.container[s])], s+a*x)
 
         f(1, 2)
         self.assertTrue(f[s] == 2)
@@ -306,7 +306,7 @@ class T_function(unittest.TestCase):
 
     def test_constant_output(self):
         # Test that if the output is a constant, we respect the theano memory interface
-        f = theano.function([],theano.tensor.constant([4]))
+        f = theano.function([], theano.tensor.constant([4]))
         #print f.maker.fgraph.toposort()
         out = f()
         assert (out==4).all()
@@ -317,7 +317,7 @@ class T_function(unittest.TestCase):
         assert (out2==4).all()
 
         # Test that if the output is a constant and borrow, we respect the theano memory interface
-        f = theano.function([],Out(theano.tensor.constant([4]), borrow=True))
+        f = theano.function([], Out(theano.tensor.constant([4]), borrow=True))
         #print f.maker.fgraph.toposort()
         out = f()
         assert (out==4).all()
@@ -341,7 +341,7 @@ class T_function(unittest.TestCase):
         when borrow=True is implemented.
         """
         a = T.dmatrix()
-        aval = numpy.random.rand(3,3)
+        aval = numpy.random.rand(3, 3)
 
         # when borrow=False, test that a destroy map cannot alias output to input
         f = theano.function([In(a, borrow=False)], Out(a+1, borrow=True))
@@ -349,25 +349,25 @@ class T_function(unittest.TestCase):
         assert not numpy.may_share_memory(aval, f(aval))
 
         # when borrow=False, test that a viewmap cannot alias output to input
-        f = theano.function([In(a, borrow=False)], Out(a[0,:], borrow=True))
-        assert numpy.all(f(aval) == aval[0,:])
+        f = theano.function([In(a, borrow=False)], Out(a[0, :], borrow=True))
+        assert numpy.all(f(aval) == aval[0, :])
         assert not numpy.may_share_memory(aval, f(aval))
 
     def test_borrow_output(self):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
-        o = N.ones((3,3))
+        o = N.ones((3, 3))
         assert o is not f(o) #function no longer permits aliasing outputs to inputs
 
         f = function([a], Out(a*4, borrow=False))
-        o = N.ones((3,3))
+        o = N.ones((3, 3))
         four = f(o)
         assert numpy.all(four==4)
         f(o+.1) #should not clobber the memory used to store four
         assert numpy.all(four==4)
 
         f = function([a], Out(a*4, borrow=True), mode=theano.Mode('c|py_nogc', 'fast_run'))
-        o = N.ones((3,3))
+        o = N.ones((3, 3))
         four = f(o)
         assert numpy.all(four==4)
         f(o+.1) #should clobber the memory used to store four
@@ -424,9 +424,9 @@ class T_picklefunction(unittest.TestCase):
 
     def test_deepcopy(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         try:
             g = copy.deepcopy(f)
@@ -458,7 +458,7 @@ class T_picklefunction(unittest.TestCase):
 
         self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        f(1,2) # put them out of sync
+        f(1, 2) # put them out of sync
         self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
         g(1, 2) # put them back in sync
         self.assertTrue(f(3) == g(3)) # They should be in sync again.
@@ -489,9 +489,9 @@ class T_picklefunction(unittest.TestCase):
 
     def test_pickle(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
 
-        f = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         try:
             # Note that here we also test protocol 0 on purpose, since it
@@ -519,7 +519,7 @@ class T_picklefunction(unittest.TestCase):
 
         self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
         self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        f(1,2) # put them out of sync
+        f(1, 2) # put them out of sync
         self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
 
     def test_optimizations_preserved(self):
@@ -568,7 +568,7 @@ class T_picklefunction(unittest.TestCase):
 
     def test_multiple_functions(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
         v = T.vector('v')
 
 
@@ -578,18 +578,18 @@ class T_picklefunction(unittest.TestCase):
         # some derived thing, whose inputs aren't all in the list
         list_of_things.append(a * x + s )
 
-        f1 = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        f1 = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
         list_of_things.append(f1)
 
         # now put in a function sharing container with the previous one
-        f2 = function([x, In(a, value=1.0,name='a'), In(s, value=f1.container[s], update=s+a*x, mutable=True)], s+a*x)
+        f2 = function([x, In(a, value=1.0, name='a'), In(s, value=f1.container[s], update=s+a*x, mutable=True)], s+a*x)
         list_of_things.append(f2)
 
         assert isinstance(f2.container[s].storage, list)
         assert f2.container[s].storage is f1.container[s].storage
 
         # now put in a function with non-scalar
-        v_value = numpy.asarray([2,3,4.], dtype=config.floatX)
+        v_value = numpy.asarray([2, 3, 4.], dtype=config.floatX)
         f3 = function([x, In(v, value=v_value)], x+v)
         list_of_things.append(f3)
 
@@ -621,7 +621,7 @@ class T_picklefunction(unittest.TestCase):
         assert nl[3].owner.inputs[1].type == s.type
 
         # moving on to the functions...
-        for i in range(4,7):
+        for i in range(4, 7):
             assert nl[i] != ol[i]
 
         # looking at function number 1, input 's'
@@ -699,7 +699,7 @@ class T_picklefunction(unittest.TestCase):
 class SomethingToPickle(object):
     def __init__(self):
         a = T.scalar() # the a is for 'anonymous' (un-named).
-        x,s = T.scalars('xs')
+        x, s = T.scalars('xs')
         v = T.vector('v')
 
         self.s = s
@@ -708,9 +708,9 @@ class SomethingToPickle(object):
 
         self.e = a * x + s
 
-        self.f1 = function([x, In(a, value=1.0,name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
+        self.f1 = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
-        self.f2 = function([x, In(a, value=1.0,name='a'), In(s, value=self.f1.container[s], update=s+a*x, mutable=True)], s+a*x)
+        self.f2 = function([x, In(a, value=1.0, name='a'), In(s, value=self.f1.container[s], update=s+a*x, mutable=True)], s+a*x)
 
 
 def test_empty_givens_updates():

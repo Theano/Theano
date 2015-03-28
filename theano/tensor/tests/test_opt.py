@@ -466,10 +466,10 @@ class test_canonize(unittest.TestCase):
                 'local_elemwise_fusion')
 
             #test x / x -> 1
-            for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx,[fx],[fxv],'float32'),
-                                                           (dx/dx,[dx],[dxv],'float64'),
-                                                           (fv/fv,[fv],[fvv],'float32'),
-                                                           (dv/dv,[dv],[dvv],'float64'),
+            for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx, [fx], [fxv], 'float32'),
+                                                           (dx/dx, [dx], [dxv], 'float64'),
+                                                           (fv/fv, [fv], [fvv], 'float32'),
+                                                           (dv/dv, [dv], [dvv], 'float64'),
                                                            ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -488,15 +488,15 @@ class test_canonize(unittest.TestCase):
                 assert(out_dtype == out.dtype)
 
             #test (x * y) / x -> y
-            for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
-                                                           ((dx*dy)/dx,[dx,dy],[dxv,dyv],0,'float64'),
-                                                           ((fx*fy)/fx,[fx,fy],[fxv,fyv],0,'float32'),
-                                                           ((dv*dy)/dv,[dv,dy],[dvv,dyv],0,'float64'),
-                                                           ((fv*fy)/fv,[fv,fy],[fvv,fyv],0,'float32'),
+            for id, (g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
+                                                           ((dx*dy)/dx, [dx, dy], [dxv, dyv], 0, 'float64'),
+                                                           ((fx*fy)/fx, [fx, fy], [fxv, fyv], 0, 'float32'),
+                                                           ((dv*dy)/dv, [dv, dy], [dvv, dyv], 0, 'float64'),
+                                                           ((fv*fy)/fv, [fv, fy], [fvv, fyv], 0, 'float32'),
                 #must broadcast as their is a dimshuffle in the computation
-                                                           ((dx*dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
+                                                           ((dx*dv)/dx, [dx, dv], [dxv, dvv], 1, 'float64'),
                 #topo: [Elemwise{second,no_inplace}(x, <TensorType(float64, row)>)]
-                                                           ((fx*fv)/fx,[fx,fv],[fxv,fvv],1,'float32')
+                                                           ((fx*fv)/fx, [fx, fv], [fxv, fvv], 1, 'float32')
                 #topo: [Elemwise{second,no_inplace}(x, <TensorType(float32, row)>)]
                 ]):
                 f = compile.function(list(sym_inputs), g,
@@ -511,16 +511,16 @@ class test_canonize(unittest.TestCase):
                     assert isinstance(topo[-1].op, tensor.Alloc)
 
             #test x / y / x -> 1 / y
-            for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
-                                                           ((dx/dy)/dx,[dx,dy],[dxv,dyv],1,'float64'),
-                                                           ((fx/fy)/fx,[fx,fy],[fxv,fyv],1,'float32'),
-                                                           ((dv/dy)/dv,[dv,dy],[dvv,dyv],1,'float64'),
-                                                           ((fv/fy)/fv,[fv,fy],[fvv,fyv],1,'float32'),
+            for id, (g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
+                                                           ((dx/dy)/dx, [dx, dy], [dxv, dyv], 1, 'float64'),
+                                                           ((fx/fy)/fx, [fx, fy], [fxv, fyv], 1, 'float32'),
+                                                           ((dv/dy)/dv, [dv, dy], [dvv, dyv], 1, 'float64'),
+                                                           ((fv/fy)/fv, [fv, fy], [fvv, fyv], 1, 'float32'),
                             #must broadcast as their is a dimshuffle in the computation
 
-                                                           ((dx/dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
+                                                           ((dx/dv)/dx, [dx, dv], [dxv, dvv], 1, 'float64'),
     #topo:            [Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Alloc]
-                                                           ((fx/fv)/fx,[fx,fv],[fxv,fvv],1,'float32'),
+                                                           ((fx/fv)/fx, [fx, fv], [fxv, fvv], 1, 'float32'),
                 #topo:[Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Alloc]
                 ]):
                 f = compile.function(list(sym_inputs), g,
@@ -537,16 +537,16 @@ class test_canonize(unittest.TestCase):
 
             #test (a / b) * (b / c) * (c / d) -> a / d
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           ((dx / dy) * (dy / dz) * (dz / dw),[dx,dy,dz,dw],[dxv,dyv,dzv,dwv],'float64'),
-                                                           ((fx / fy) * (fy / fz) * (fz / fw),[fx,fy,fz,fw],[fxv,fyv,fzv,fwv],'float32'),
-                                                           ((dv / dy) * (dy / dz) * (dz / dw),[dv,dy,dz,dw],[dvv,dyv,dzv,dwv],'float64'),
-                                                           ((fv / fy) * (fy / fz) * (fz / fw),[fv,fy,fz,fw],[fvv,fyv,fzv,fwv],'float32'),
-                                                           ((dx / dv) * (dv / dz) * (dz / dw),[dx,dv,dz,dw],[dxv,dvv,dzv,dwv],'float64'),
-                                                           ((fx / fv) * (fv / fz) * (fz / fw),[fx,fv,fz,fw],[fxv,fvv,fzv,fwv],'float32'),
-                                                           ((dx / dy) * (dy / dv) * (dv / dw),[dx,dy,dv,dw],[dxv,dyv,dvv,dwv],'float64'),
-                                                           ((fx / fy) * (fy / fv) * (fv / fw),[fx,fy,fv,fw],[fxv,fyv,fvv,fwv],'float32'),
-                                                           ((dx / dy) * (dy / dz) * (dz / dv),[dx,dy,dz,dv],[dxv,dyv,dzv,dvv],'float64'),
-                                                           ((fx / fy) * (fy / fz) * (fz / fv),[fx,fy,fz,fv],[fxv,fyv,fzv,fvv],'float32'),
+                                                           ((dx / dy) * (dy / dz) * (dz / dw), [dx, dy, dz, dw], [dxv, dyv, dzv, dwv], 'float64'),
+                                                           ((fx / fy) * (fy / fz) * (fz / fw), [fx, fy, fz, fw], [fxv, fyv, fzv, fwv], 'float32'),
+                                                           ((dv / dy) * (dy / dz) * (dz / dw), [dv, dy, dz, dw], [dvv, dyv, dzv, dwv], 'float64'),
+                                                           ((fv / fy) * (fy / fz) * (fz / fw), [fv, fy, fz, fw], [fvv, fyv, fzv, fwv], 'float32'),
+                                                           ((dx / dv) * (dv / dz) * (dz / dw), [dx, dv, dz, dw], [dxv, dvv, dzv, dwv], 'float64'),
+                                                           ((fx / fv) * (fv / fz) * (fz / fw), [fx, fv, fz, fw], [fxv, fvv, fzv, fwv], 'float32'),
+                                                           ((dx / dy) * (dy / dv) * (dv / dw), [dx, dy, dv, dw], [dxv, dyv, dvv, dwv], 'float64'),
+                                                           ((fx / fy) * (fy / fv) * (fv / fw), [fx, fy, fv, fw], [fxv, fyv, fvv, fwv], 'float32'),
+                                                           ((dx / dy) * (dy / dz) * (dz / dv), [dx, dy, dz, dv], [dxv, dyv, dzv, dvv], 'float64'),
+                                                           ((fx / fy) * (fy / fz) * (fz / fv), [fx, fy, fz, fv], [fxv, fyv, fzv, fvv], 'float32'),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -562,12 +562,12 @@ class test_canonize(unittest.TestCase):
 
             #test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           (((2.0*dx)/(4.0*dy)),[dx,dy],[dxv,dyv],'float64'),
-                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-                                                           (((2.0*dv)/(4.0*dy)),[dv,dy],[dvv,dyv],'float64'),
-                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-                                                           (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
-                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (((2.0*dx)/(4.0*dy)), [dx, dy], [dxv, dyv], 'float64'),
+                                                           (((2.0*fx)/(4.0*fy)), [fx, fy], [fxv, fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (((2.0*dv)/(4.0*dy)), [dv, dy], [dvv, dyv], 'float64'),
+                                                           (((2.0*fv)/(4.0*fy)), [fv, fy], [fvv, fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (((2.0*dx)/(4.0*dv)), [dx, dv], [dxv, dvv], 'float64'),
+                                                           (((2.0*fx)/(4.0*fv)), [fx, fv], [fxv, fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
 
                 if isinstance(out_dtype, dict):
@@ -591,10 +591,10 @@ class test_canonize(unittest.TestCase):
 
             #test 2 * x / 2 -> x
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           ((2*dx)/2,[dx],[dxv],'float64'),
-                                                           ((2*fx)/2,[fx],[fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-                                                           ((2*dv)/2,[dv],[dvv],'float64'),
-                                                           ((2*fv)/2,[fv],[fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           ((2*dx)/2, [dx], [dxv], 'float64'),
+                                                           ((2*fx)/2, [fx], [fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           ((2*dv)/2, [dv], [dvv], 'float64'),
+                                                           ((2*fv)/2, [fv], [fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
                 if isinstance(out_dtype, dict):
                     out_dtype = out_dtype[config.cast_policy]
@@ -609,12 +609,12 @@ class test_canonize(unittest.TestCase):
 
             #test x / abs(x) -> sign(x)
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           (dx/abs(dx),[dx],[0.5-dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.5-fxv], 'float32'),
-                                                           (dx/abs(dx),[dx],[0.1*dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.1*fxv], 'float32'),
-                                                           (dv/abs(dv),[dv],[0.5-dvv],'float64'),
-                                                           (fv/abs(fv),[fv],[0.5-fvv], 'float32'),
+                                                           (dx/abs(dx), [dx], [0.5-dxv], 'float64'),
+                                                           (fx/abs(fx), [fx], [0.5-fxv], 'float32'),
+                                                           (dx/abs(dx), [dx], [0.1*dxv], 'float64'),
+                                                           (fx/abs(fx), [fx], [0.1*fxv], 'float32'),
+                                                           (dv/abs(dv), [dv], [0.5-dvv], 'float64'),
+                                                           (fv/abs(fv), [fv], [0.5-fvv], 'float32'),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -717,8 +717,8 @@ class test_canonize(unittest.TestCase):
     #test fail!
             #test x / y / z -> x / (y * z)
             for (g, sym_inputs, val_inputs, out_dtype) in [
-                                                           ((dx/dy)/dz,[dx,dy,dz],[dxv,dyv,dzv],'float64'),
-                                                           ((fx/fy)/fz,[fx,fy,fz],[fxv,fyv,fzv],'float32')
+                                                           ((dx/dy)/dz, [dx, dy, dz], [dxv, dyv, dzv], 'float64'),
+                                                           ((fx/fy)/fz, [fx, fy, fz], [fxv, fyv, fzv], 'float32')
                 ]:
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -735,8 +735,8 @@ class test_canonize(unittest.TestCase):
 
             #test x / (y / z) -> (x * z) / y
             for (g, sym_inputs, val_inputs, out_dtype) in [
-                                                           (dx/(dy/dz),[dx,dy,dz],[dxv,dyv,dzv],'float64'),
-                                                           (fx/(fy/fz),[fx,fy,fz],[fxv,fyv,fzv],'float32')
+                                                           (dx/(dy/dz), [dx, dy, dz], [dxv, dyv, dzv], 'float64'),
+                                                           (fx/(fy/fz), [fx, fy, fz], [fxv, fyv, fzv], 'float32')
                 ]:
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -925,27 +925,27 @@ class test_fusion(unittest.TestCase):
             (fx*fy*fz*fw+fx+fy+fz+fw, (fw, fx, fy, fz), (fwv, fxv,
                 fyv, fzv), 1, fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv, 'float32'),  # 15
             #test with constant
-            ((fw+fx)+(fy+fz)+ 2.,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            (((fw+fx)+2.+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+2.+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            (fw+(fx+(fy+fz)+2.),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),  # 20
-            (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
+            ((fw+fx)+(fy+fz)+ 2., (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            (((fw+fx)+2.+fy)+fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            ((fw+(fx+2.+fy))+fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            ((fw+(fx+fy)+2+fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            (fw+(fx+(fy+fz)+2.), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),  # 20
+            (2+(fw+fx)+(fy+fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
             #mix float32 and float64
-            (2+(dw+fx)+(fy+fz),(dw,fx,fy,fz),(dwv,fxv,fyv,fzv),
-                1,dwv+fxv+fyv+fzv+2,'float64'),
-            (2+(fw+dw)+(fy+fz),(fw,dw,fy,fz),(fwv,dwv,fyv,fzv),
-                1,fwv+dwv+fyv+fzv+2,'float64'),
-            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),
-                1,fwv+fxv+dwv+fzv+2,'float64'),
-            (2+(fw+fx)+(fy+dw),(fw,fx,fy,dw),(fwv,fxv,fyv,dwv),
-                1,fwv+fxv+fyv+dwv+2,'float64'),  # 25
+            (2+(dw+fx)+(fy+fz), (dw, fx, fy, fz), (dwv, fxv, fyv, fzv),
+                1, dwv+fxv+fyv+fzv+2, 'float64'),
+            (2+(fw+dw)+(fy+fz), (fw, dw, fy, fz), (fwv, dwv, fyv, fzv),
+                1, fwv+dwv+fyv+fzv+2, 'float64'),
+            (2+(fw+fx)+(dw+fz), (fw, fx, dw, fz), (fwv, fxv, dwv, fzv),
+                1, fwv+fxv+dwv+fzv+2, 'float64'),
+            (2+(fw+fx)+(fy+dw), (fw, fx, fy, dw), (fwv, fxv, fyv, dwv),
+                1, fwv+fxv+fyv+dwv+2, 'float64'),  # 25
             #test when their is other op then elemwise.
             #the good output for the next test.
 #            (Pdb) p f.maker.fgraph.toposort()
@@ -957,99 +957,99 @@ class test_fusion(unittest.TestCase):
 #%(o0)s = V%(id)s_tmp2 + V%(id)s_tmp1;
 #}
 #, nout=1, fgraph=[add(add(<float32>, <float32>), add(<float32>, <float32>))]}}(InplaceDimShuffle{x,x}.0, Elemwise{add,no_inplace}.0, y, z)]
-            ((fwx.sum())+(fwx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,
-                fyv,fzv),4,(fwv+fxv).sum()+fwv+fxv+fyv+fzv,'float32'),
+            ((fwx.sum())+(fwx)+(fy+fz), (fw, fx, fy, fz), (fwv, fxv,
+                fyv, fzv), 4, (fwv+fxv).sum()+fwv+fxv+fyv+fzv, 'float32'),
             #test other elemwise op
-            (fx+fy+tensor.cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv+fyv+numpy.cos(fzv),'float32'),
-            (fx+fy+tensor.cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv+fyv+numpy.cosh(fzv),'float32'),
-            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+
-                numpy.absolute(fzv),'float32'),
-            (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+
-                numpy.absolute(izv),'int32'),  # 30
-            (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
-            (fx+fy+theano.tensor.log2(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.log2(fzv),'float32'),
-            (fx+fy+theano.tensor.log10(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.log10(fzv),'float32'),
-            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,
+            (fx+fy+tensor.cos(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv+fyv+numpy.cos(fzv), 'float32'),
+            (fx+fy+tensor.cosh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv+fyv+numpy.cosh(fzv), 'float32'),
+            (fx+fy+abs(fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv+fyv+
+                numpy.absolute(fzv), 'float32'),
+            (ix+iy+abs(iz), (ix, iy, iz), (ixv, iyv, izv), 1, ixv+iyv+
+                numpy.absolute(izv), 'int32'),  # 30
+            (fx+fy+theano.tensor.log(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.log(fzv), 'float32'),
+            (fx+fy+theano.tensor.log2(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.log2(fzv), 'float32'),
+            (fx+fy+theano.tensor.log10(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.log10(fzv), 'float32'),
+            (fx+fy**fz, (fx, fy, fz), (fxv, fyv, fzv), 1, fxv+fyv**fzv,
                 'float32'),  # pow
-            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),  # 35
-            (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
-            (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.true_div(fy,2),(fx,fy),(fxv,fyv),
-                1,fxv-(fyv/2),'float32'),
-            (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,
-                fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,
-                iy),(fxv,ixv,iyv),1,fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #40
-            (fx-(fy/2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
-            (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
-            (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
-            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
-            (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),#45
-            (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),
-            (fx-T.eq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(
-                fyv==fzv),'float32'),
-            (fx-T.neq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(
-                fyv!=fzv),'float32'),
-            (fx-fy+tensor.tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.tan(fzv),'float32'),
-            (fx-fy+tensor.tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.tanh(fzv),'float32'),#50
-            (fx-fy+tensor.sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.sin(fzv),'float32'),
-            (fx-fy+tensor.sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.sinh(fzv),'float32'),
-            (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+(fzv*fzv),'float32'),
-            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
-            (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+(1/fzv),'float32'),#55
-            (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+(-fzv),'float32'),
-            (fx-fy+theano.tensor.round(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+numpy.round(fzv),'float32'),
-            (ix-iy+theano.tensor.iround(fz),(ix,iy,fz),(ixv,
-                iyv,fzv),1,ixv-iyv+numpy.round(fzv),'int64'),
+            (fx+fy+theano.tensor.exp(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.exp(fzv), 'float32'),  # 35
+            (fx-fy-fz, (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-fyv-fzv, 'float32'),
+            (fx-(fy/fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv/fzv), 'float32'),
+            (fx-theano.tensor.true_div(fy, 2), (fx, fy), (fxv, fyv),
+                1, fxv-(fyv/2), 'float32'),
+            (fx-theano.tensor.true_div(fy, fz), (fx, fy, fz), (fxv,
+                fyv, fzv), 1, fxv-(fyv/fzv), 'float32'),
+            (fx-theano.tensor.int_div(ix*100, iy*1000), (fx, ix,
+                iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #40
+            (fx-(fy/2), (fx, fy), (fxv, fyv), 1, fxv-(fyv/2), 'float32'),
+            (fx-(fy%fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv%fzv), 'float32'),
+            (fx-(fy>fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv>fzv), 'float32'),
+            (fx-(fy>=fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv>=fzv), 'float32'),
+            (fx-(fy<fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<fzv), 'float32'),#45
+            (fx-(fy<=fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<=fzv), 'float32'),
+            (fx-T.eq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
+                fyv==fzv), 'float32'),
+            (fx-T.neq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
+                fyv!=fzv), 'float32'),
+            (fx-fy+tensor.tan(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.tan(fzv), 'float32'),
+            (fx-fy+tensor.tanh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.tanh(fzv), 'float32'),#50
+            (fx-fy+tensor.sin(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.sin(fzv), 'float32'),
+            (fx-fy+tensor.sinh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.sinh(fzv), 'float32'),
+            (fx-fy+theano.tensor.sqr(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+(fzv*fzv), 'float32'),
+            (fx-fy+theano.tensor.sqrt(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+numpy.sqrt(fzv), 'float32'),
+            (fx-fy+theano.tensor.inv(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+(1/fzv), 'float32'),#55
+            (fx-fy+theano.tensor.neg(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+(-fzv), 'float32'),
+            (fx-fy+theano.tensor.round(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+numpy.round(fzv), 'float32'),
+            (ix-iy+theano.tensor.iround(fz), (ix, iy, fz), (ixv,
+                iyv, fzv), 1, ixv-iyv+numpy.round(fzv), 'int64'),
             # Bit op
-            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,
-                izv),1,fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,
-                izv),1,fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),#60
-            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,
-                izv),1,fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,
+            (fx-theano.tensor.or_(iy, iz), (fx, iy, iz), (fxv, iyv,
+                izv), 1, fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.xor(iy, iz), (fx, iy, iz), (fxv, iyv,
+                izv), 1, fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),#60
+            (fx-theano.tensor.and_(iy, iz), (fx, iy, iz), (fxv, iyv,
+                izv), 1, fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.invert(iy), (fx, iy), (fxv, iyv), 1,
                 fxv-(~iyv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
-            (fx-theano.tensor.cast(fy,dtype='float64'),(fx,fy),(fxv,fyv),1,
-                              fxv-numpy.asarray(fyv,'float64'),'float64'),
-            (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,
-                fyv,fzv),1,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
-            (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,
+            (fx-theano.tensor.cast(fy, dtype='float64'), (fx, fy), (fxv, fyv), 1,
+                              fxv-numpy.asarray(fyv, 'float64'), 'float64'),
+            (theano.tensor.pow(fx*fy+fz, fx*fy), (fx, fy, fz), (fxv,
+                fyv, fzv), 1, numpy.power(fxv*fyv+fzv, fxv*fyv), 'float32'),
+            (fv+fy**fz, (fv, fy, fz), (fvv, fyv, fzv), 2, fvv+fyv**fzv,
                 'float32'),#fused with a dimshuffle #65
-            (fv-fy+tensor.tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,
-                fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
+            (fv-fy+tensor.tanh(fz), (fv, fy, fz), (fvv, fyv, fzv), 2,
+                fvv-fyv+numpy.tanh(fzv), 'float32'),#fused with a dimshuffle
 
             # Cases where the same input is reused many times.
-            (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*
-                fxv*fxv*fxv,'float32'),
-            (theano.tensor.mul(fx,ftanx,ftanx),(fx,),(fxv,),1,
-                fxv*numpy.tan(fxv)*numpy.tan(fxv),'float32'),
-            (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),
-                1,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),
-            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,
-                fyv),1,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'), # 70
+            (theano.tensor.mul(fx, fx, fx, fx), (fx,), (fxv,), 1, fxv*
+                fxv*fxv*fxv, 'float32'),
+            (theano.tensor.mul(fx, ftanx, ftanx), (fx,), (fxv,), 1,
+                fxv*numpy.tan(fxv)*numpy.tan(fxv), 'float32'),
+            (theano.tensor.mul(fx, ftanx, ftanx, fx), (fx,), (fxv,),
+                1, fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv, 'float32'),
+            (theano.tensor.mul(ftanx, ftanx, fx+fy), (fx, fy), (fxv,
+                fyv), 1, numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv), 'float32'), # 70
 
             #Cases with different broadcast pattern. They should not
             #be merged as this would duplicate computation
             #The graph should have 2 elemwise and 1 dimshuffle
-            (fx*theano.tensor.sin(fs),(fx,fs),(fxv,
-                fsv),3,fxv*numpy.sin(fsv),'float32'),
+            (fx*theano.tensor.sin(fs), (fx, fs), (fxv,
+                fsv), 3, fxv*numpy.sin(fsv), 'float32'),
             ]
         if slice:
             cases = cases[slice]
@@ -1307,7 +1307,7 @@ class test_fusion(unittest.TestCase):
                               assert_len_topo=False, slice=s, nb_repeat=100)
 
     def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'),
-                        shared_fn=shared, shp=(3000,3000), gpu=False,
+                        shared_fn=shared, shp=(3000, 3000), gpu=False,
                         nb_repeat=30, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
@@ -1342,8 +1342,8 @@ class test_fusion(unittest.TestCase):
                 pdb.set_trace()
                 #f = orig_function([compile.In(fx),compile.In(variable=fy, value=None)],
                 #            [fy+fx],mode=mode)#no memory leak
-                f = orig_function([compile.In(fx),compile.In(variable=fy, value=v)],
-                            [fy + fx],mode=mode)  # memory leak
+                f = orig_function([compile.In(fx), compile.In(variable=fy, value=v)],
+                            [fy + fx], mode=mode)  # memory leak
                 del v
                 gc.collect()
                 gc.collect()
@@ -2811,14 +2811,14 @@ def test_local_subtensor_of_dot():
     m1 = theano.tensor.tensor3()
     m2 = theano.tensor.tensor3()
     idx = theano.tensor.iscalar()
-    d1 = numpy.arange(30).reshape(2,5,3).astype(config.floatX)
-    d2 = numpy.arange(72).reshape(4,3,6).astype(config.floatX) + 100
+    d1 = numpy.arange(30).reshape(2, 5, 3).astype(config.floatX)
+    d2 = numpy.arange(72).reshape(4, 3, 6).astype(config.floatX) + 100
 
-    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx,1:4,:,idx:], mode=mode)
-    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1,1:4,:,1:])
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx, 1:4, :, idx:], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1, 1:4, :, 1:])
 
-    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4,:,idx:,idx], mode=mode)
-    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4,:,1:,1])
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4, :, idx:, idx], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4, :, 1:, 1])
 
 
 class Test_local_elemwise_alloc(unittest.TestCase):
@@ -3853,11 +3853,11 @@ class T_local_switch_sink(unittest.TestCase):
         self.xs = 1.
 
         # expected results
-        self.resm = [numpy.asarray([[1,0,1,0],[0,0,0,0],[1,1,1,1]])]*3 + [numpy.asarray([[1,0,1,0],[1,0,1,0],[1,0,1,0]])] + \
-                    2*[numpy.asarray([[1,0,1,0]])] + [[numpy.ones((3,4)),numpy.zeros((3,4)),numpy.ones((3,4)),numpy.zeros((3,4))]] + \
-                    [[numpy.ones((4,)),numpy.zeros((4,)),numpy.ones((4,)),numpy.zeros((4,))]] + \
-                    [[numpy.asarray(1.0),numpy.asarray(
-                        0.0),numpy.asarray(1.0),numpy.asarray(0.0)]]
+        self.resm = [numpy.asarray([[1, 0, 1, 0], [0, 0, 0, 0], [1, 1, 1, 1]])]*3 + [numpy.asarray([[1, 0, 1, 0], [1, 0, 1, 0], [1, 0, 1, 0]])] + \
+                    2*[numpy.asarray([[1, 0, 1, 0]])] + [[numpy.ones((3, 4)), numpy.zeros((3, 4)), numpy.ones((3, 4)), numpy.zeros((3, 4))]] + \
+                    [[numpy.ones((4,)), numpy.zeros((4,)), numpy.ones((4,)), numpy.zeros((4,))]] + \
+                    [[numpy.asarray(1.0), numpy.asarray(
+                        0.0), numpy.asarray(1.0), numpy.asarray(0.0)]]
 
         self.mode = theano.compile.mode.get_default_mode().including(
                 'canonicalize', 'fast_run').excluding('gpu', 'fusion')
@@ -3867,8 +3867,8 @@ class T_local_switch_sink(unittest.TestCase):
     def test_local_mul_switch_sink(self):
         c = T.dscalar()
         idx = 0
-        for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
-            for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
+        for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
+            for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.mul(T.switch(condition[0] > 0, 1. * x[0],
                     0. *x[0]), T.switch(condition[0]>0, 1.*x[0], T.log(c)*x[0]))
                 f = theano.function([condition[0], x[0], c]
@@ -3888,10 +3888,10 @@ class T_local_switch_sink(unittest.TestCase):
     def test_local_div_switch_sink(self):
         c = T.dscalar()
         idx = 0
-        for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
-            for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
+        for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
+            for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.true_div(T.switch(condition[0] > 0, 1. *
-                    x[0],0.*x[0]),T.switch(condition[0]>0,1.*x[0],T.log(c)*x[0]))
+                    x[0], 0.*x[0]), T.switch(condition[0]>0, 1.*x[0], T.log(c)*x[0]))
                 f = theano.function([condition[0], x[0], c]
                     , [y], mode=self.mode)
                 if type(condition[1]) is list:
@@ -4079,7 +4079,7 @@ class T_local_erfc(unittest.TestCase):
         assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert len(f.maker.fgraph.toposort()[0].fgraph.toposort()[
-            0].op.scalar_op.fgraph.apply_nodes)==22,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
+            0].op.scalar_op.fgraph.apply_nodes)==22, len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         #TODO: fix this problem
         if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest(
@@ -4220,7 +4220,7 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         f = theano.function([x, y], z, mode=self.mode)
         assert len([node.op for node in f.maker.fgraph.toposort() if
                     isinstance(node.op, theano.tensor.Elemwise) and
-                    not isinstance(node.op.scalar_op,theano.scalar.basic.Cast)]) == 0
+                    not isinstance(node.op.scalar_op, theano.scalar.basic.Cast)]) == 0
         vx = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int32')
         vy = numpy.array([10, 11, 12], dtype='int64')
         assert numpy.all(f(vx, vy) == vx)
@@ -4243,7 +4243,7 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         f = theano.function([x, y], z, mode=self.mode)
         assert len([node.op for node in f.maker.fgraph.toposort() if
                     isinstance(node.op, theano.tensor.Elemwise) and
-                    not isinstance(node.op.scalar_op,theano.scalar.basic.Cast)]) == 0
+                    not isinstance(node.op.scalar_op, theano.scalar.basic.Cast)]) == 0
         vx = numpy.array([4, 5, 6], dtype='int32')
         vy = numpy.array([[7, 8, 9], [10, 11, 12]], dtype='int64')
         assert numpy.all(f(vx, vy) == vx)
@@ -4330,8 +4330,8 @@ class T_local_sum(unittest.TestCase):
                               dtype='float64')
         mode = self.mode.including('specialize').excluding('fusion')
 
-        for t_like,n_like,nb_nodes in [(tensor.zeros_like,numpy.zeros_like,(1,3,3,2)),
-                                       (tensor.ones_like,numpy.ones_like,(5,5,5,6))]:
+        for t_like, n_like, nb_nodes in [(tensor.zeros_like, numpy.zeros_like, (1, 3, 3, 2)),
+                                       (tensor.ones_like, numpy.ones_like, (5, 5, 5, 6))]:
 
             f = theano.function([a], t_like(a).sum(None), mode=mode)
             assert numpy.allclose(f(input), n_like(input).sum())
