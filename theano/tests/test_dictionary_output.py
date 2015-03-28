@@ -135,29 +135,3 @@ class dictionary_output_checker(unittest.TestCase):
         assert result[0] == 5.0
         assert result[1] == 10.0
         assert result[2] == 15.0
-
-    def test_key_string_requirement(self):
-        '''
-        Tests that an exception is thrown if a non-string key is used in
-        the outputs dictionary.
-        '''
-
-        x = T.scalar('x')
-
-        try:
-            theano.function([x], outputs={1.0: x})
-            raise Exception("Did not throw exception with 1.0 as only key")
-        except AssertionError:
-            pass
-
-        try:
-            theano.function([x], outputs={1.0: x, 2.0: x**2})
-            raise Exception("Did not throw exception with 1.0 as one key")
-        except AssertionError:
-            pass
-
-        try:
-            theano.function([x], outputs={(1, 2): x, 1.0: x**2})
-            raise Exception("Did not throw exception with tuple as key")
-        except AssertionError:
-            pass
