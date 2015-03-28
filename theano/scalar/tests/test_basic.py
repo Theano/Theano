@@ -128,7 +128,7 @@ class test_composite(unittest.TestCase):
         e = mul(add(70.0, y), div_proxy(x, y))
         C = Composite([x, y], [e])
         c = C.make_node(x, y)
-        assert "70.0" in c.op.c_code(c, 'dummy', ['x', 'y'], ['z'], dict(id = 0))
+        assert "70.0" in c.op.c_code(c, 'dummy', ['x', 'y'], ['z'], dict(id=0))
         # print c.c_code(['x', 'y'], ['z'], dict(id = 0))
         g = FunctionGraph([x, y], [c.out])
         fn = gof.DualLinker().accept(g).make_function()
@@ -417,8 +417,8 @@ class test_div(unittest.TestCase):
         assert isinstance((a/c).owner.op, TrueDiv)
 
 def test_grad_gt():
-    x = float32(name = 'x')
-    y = float32(name = 'y')
+    x = float32(name='x')
+    y = float32(name='y')
     z = x > y
     g = theano.gradient.grad(z, y)
     assert g.eval({ y : 1. }) == 0.

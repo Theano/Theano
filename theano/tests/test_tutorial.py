@@ -261,7 +261,7 @@ class T_extending(unittest.TestCase):
         def c_init(name, sub):
             return """
             %(name)s = 0.0;
-            """ % dict(name = name)
+            """ % dict(name=name)
         double.c_init = c_init
 
         def c_extract(name, sub, check_input=True):
@@ -270,12 +270,12 @@ class T_extending(unittest.TestCase):
                 if (!PyFloat_Check(py_%(name)s)) {
                     PyErr_SetString(PyExc_TypeError, "expected a float");
                     %(fail)s
-                }""" % dict(name = name, fail = sub['fail'])
+                }""" % dict(name=name, fail=sub['fail'])
             else:
                 pre = ""
             return pre + """
             %(name)s = PyFloat_AsDouble(py_%(name)s);
-            """ % dict(name = name, fail = sub['fail'])
+            """ % dict(name=name, fail=sub['fail'])
         double.c_extract = c_extract
 
         def c_sync( name, sub):
@@ -287,7 +287,7 @@ class T_extending(unittest.TestCase):
                 Py_XINCREF(Py_None);
                 py_%(name)s = Py_None;
             }
-            """ % dict(name = name)
+            """ % dict(name=name)
         double.c_sync = c_sync
 
         def c_cleanup(name, sub):
@@ -321,12 +321,12 @@ class T_extending(unittest.TestCase):
             def c_declare(self, name, sub, check_input=True):
                 return """
                 double %(name)s;
-                """ % dict(name = name)
+                """ % dict(name=name)
 
             def c_init(self, name, sub):
                 return """
                 %(name)s = 0.0;
-                """ % dict(name = name)
+                """ % dict(name=name)
 
             def c_extract(self, name, sub, check_input=True):
                 if(check_input):
@@ -351,7 +351,7 @@ class T_extending(unittest.TestCase):
                     Py_XINCREF(Py_None);
                     py_%(name)s = Py_None;
                 }
-                """ % dict(name = name)
+                """ % dict(name=name)
 
             def c_cleanup(self, name, sub):
                 return ""
@@ -1452,7 +1452,7 @@ class T_scan(unittest.TestCase):
         compute_with_bnoise = theano.function(inputs=[X, W, b_sym],
                                               outputs=[results],
                                               updates=updates,
-                                              allow_input_downcast = True)
+                                              allow_input_downcast=True)
         x = numpy.eye(10, 2)
         w = numpy.ones((2, 2))
         b = numpy.ones((2))

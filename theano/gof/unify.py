@@ -32,7 +32,7 @@ class Variable:
     If that doesn't sound like what you're doing, the Variable class you
     want is probably theano.gof.graph.Variable
     """
-    def __init__(self, name = "?"):
+    def __init__(self, name="?"):
         self.name = name
     def __str__(self):
         return self.__class__.__name__ + "(" + ", ".join(["%s=%s" % (key, value) for key, value in self.__dict__.items()]) + ")"
@@ -111,7 +111,7 @@ class Unification:
     with each other or with tangible values.
     """
 
-    def __init__(self, inplace = False):
+    def __init__(self, inplace=False):
         """
         If inplace is False, the merge method will return a new Unification
         that is independent from the previous one (which allows backtracking).

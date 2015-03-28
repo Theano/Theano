@@ -161,8 +161,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                 # DownsampleFactorMax op
                 maxpool_op = DownsampleFactorMax(maxpoolshp,
-                                                 ignore_border=
-                                                 ignore_border)(images)
+                                                 ignore_border=ignore_border)(images)
                 f = function([images], maxpool_op)
                 output_val = f(imval)
                 utt.assert_allclose(output_val, numpy_output_val)
@@ -298,8 +297,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 # print 'ignore_border =', ignore_border
                 def mp(input):
                     return DownsampleFactorMax(maxpoolshp,
-                                               ignore_border=
-                                               ignore_border)(input)
+                                               ignore_border=ignore_border)(input)
                 utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st(self):

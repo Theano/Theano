@@ -253,9 +253,9 @@ class NaiveAlgo(object):
             # TODO: What if the scalar_op needs support_code??
             task_code = self.scalar_op.c_code(
                     Apply(self.scalar_op,
-                        [scalar.Scalar(dtype = input.type.dtype).make_variable()
+                        [scalar.Scalar(dtype=input.type.dtype).make_variable()
                          for input in node.inputs],
-                        [scalar.Scalar(dtype = output.type.dtype).make_variable()
+                        [scalar.Scalar(dtype=output.type.dtype).make_variable()
                          for output in node.outputs])
                     , nodename + '_scalar_'
                     , get_str_list_logical_scalar(node, value_str='value0[%i]')
@@ -391,9 +391,9 @@ class NaiveAlgo(object):
         def task_code(d):
             print >> sio, self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                    [scalar.Scalar(dtype = input.type.dtype).make_variable()
+                    [scalar.Scalar(dtype=input.type.dtype).make_variable()
                      for input in node.inputs],
-                    [scalar.Scalar(dtype = output.type.dtype).make_variable()
+                    [scalar.Scalar(dtype=output.type.dtype).make_variable()
                      for output in node.outputs])
                 , nodename + '_scalar_'
                 , ['i%i_data_%i[0]'%(ipos, d) for ipos, i in enumerate(node.inputs)]
@@ -465,9 +465,9 @@ class NaiveAlgo(object):
         # TODO: What if the scalar_op needs support_code??
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
-                    [scalar.Scalar(dtype = input.type.dtype).make_variable()
+                    [scalar.Scalar(dtype=input.type.dtype).make_variable()
                      for input in node.inputs],
-                    [scalar.Scalar(dtype = output.type.dtype).make_variable()
+                    [scalar.Scalar(dtype=output.type.dtype).make_variable()
                      for output in node.outputs])
                 , nodename + '_scalar_'
                 #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)]

@@ -293,7 +293,7 @@ class test_RopLop(RopLop_checker):
                 lambda i, y, x1, x2, v1, v2:
                     (tensor.grad(y[i], x1) * v1).sum() + \
                     (tensor.grad(y[i], x2) * v2).sum(),
-                                sequences = tensor.arange(output.shape[0]),
+                                sequences=tensor.arange(output.shape[0]),
                                 non_sequences=[output, input, filters,
                                                ev_input, ev_filters])
             scan_f = function([input, filters, ev_input, ev_filters], sy,

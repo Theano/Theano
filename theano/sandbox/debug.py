@@ -21,8 +21,8 @@ class DebugLinker(gof.WrapLinker):
         if debug_post is None:
             debug_post = []
         gof.WrapLinker.__init__(self,
-                                linkers = linkers,
-                                wrapper = self.wrapper)
+                                linkers=linkers,
+                                wrapper=self.wrapper)
 
         self.fgraph = None
 
@@ -65,7 +65,7 @@ class DebugLinker(gof.WrapLinker):
         for thunk, linker in zip(thunks, self.linkers):
             for r in node.outputs:
                 try:
-                    r.type.filter(r.value, strict = True)
+                    r.type.filter(r.value, strict=True)
                 except TypeError, e:
                     exc_type, exc_value, exc_trace = sys.exc_info()
                     exc = DebugException(e, "The output %s was filled with data with the wrong type using linker " \
@@ -170,7 +170,7 @@ def print_sep(i, node, *thunks):
     print "==================================="
 
 import numpy
-def numpy_compare(a, b, tolerance = 1e-6):
+def numpy_compare(a, b, tolerance=1e-6):
     if isinstance(a, numpy.ndarray):
         return (abs(a - b) <= tolerance).all()
     else:
@@ -183,6 +183,6 @@ def numpy_debug_linker(pre, post=None):
     return DebugLinker([gof.OpWiseCLinker],
                        pre,
                        post,
-                       compare_fn = numpy_compare)
+                       compare_fn=numpy_compare)
 
 

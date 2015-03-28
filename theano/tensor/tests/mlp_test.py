@@ -78,7 +78,7 @@ class LogisticRegression(object):
         """
 
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
-        self.W = theano.shared(value=numpy.zeros((n_in, n_out), dtype = theano.config.floatX),
+        self.W = theano.shared(value=numpy.zeros((n_in, n_out), dtype=theano.config.floatX),
                                 name=name_prefix+'W')
 
         # compute vector of class-membership probabilities in symbolic form
@@ -122,7 +122,7 @@ class LogisticRegression(object):
 
 
 class HiddenLayer(object):
-    def __init__(self, rng, input, n_in, n_out, activation = T.tanh, name_prefix=''):
+    def __init__(self, rng, input, n_in, n_out, activation=T.tanh, name_prefix=''):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
         sigmoidal activation function. Weight matrix W is of shape (n_in,n_out)
@@ -155,10 +155,10 @@ class HiddenLayer(object):
         # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU
         W_values = numpy.asarray( rng.uniform( \
-              low = -numpy.sqrt(6./(n_in+n_out)), \
-              high = numpy.sqrt(6./(n_in+n_out)), \
-              size = (n_in, n_out)), dtype = theano.config.floatX)
-        self.W = theano.shared(value = W_values, name=name_prefix+'W')
+              low=-numpy.sqrt(6./(n_in+n_out)), \
+              high=numpy.sqrt(6./(n_in+n_out)), \
+              size=(n_in, n_out)), dtype=theano.config.floatX)
+        self.W = theano.shared(value=W_values, name=name_prefix+'W')
 
         self.output = T.dot(input, self.W)
         # parameters of the model
@@ -205,16 +205,16 @@ class MLP(object):
         # translate into a TanhLayer connected to the LogisticRegression
         # layer; this can be replaced by a SigmoidalLayer, or a layer
         # implementing any other nonlinearity
-        self.hiddenLayer = HiddenLayer(rng = rng, input = input,
-                                 n_in = n_in, n_out = n_hidden,
-                                 activation = T.tanh, name_prefix='hid_')
+        self.hiddenLayer = HiddenLayer(rng=rng, input=input,
+                                 n_in=n_in, n_out=n_hidden,
+                                 activation=T.tanh, name_prefix='hid_')
 
         # The logistic regression layer gets as input the hidden units
         # of the hidden layer
         self.logRegressionLayer = LogisticRegression(
-                                    input = self.hiddenLayer.output,
-                                    n_in  = n_hidden,
-                                    n_out = n_out, name_prefix='log_')
+                                    input=self.hiddenLayer.output,
+                                    n_in=n_hidden,
+                                    n_out=n_out, name_prefix='log_')
 
         # negative log likelihood of the MLP is given by the negative
         # log likelihood of the output of the model, computed in the
@@ -275,7 +275,7 @@ def test_mlp():
     rng = numpy.random.RandomState(1234)
 
     # construct the MLP class
-    classifier = MLP( rng = rng, input=x, n_in=28*28, n_hidden = 500, n_out=10)
+    classifier = MLP( rng=rng, input=x, n_in=28*28, n_hidden=500, n_out=10)
 
     # the cost we minimize during training is the negative log likelihood of
     # the model.
@@ -296,8 +296,8 @@ def test_mlp():
     updates2 = OrderedDict()
 
     updates2[classifier.hiddenLayer.params[0]]=T.grad(cost, classifier.hiddenLayer.params[0])
-    train_model =theano.function( inputs = [index],
-            updates = updates2,
+    train_model =theano.function( inputs=[index],
+            updates=updates2,
             givens={
                 x: train_set_x[index*batch_size:(index+1)*batch_size],
                 y: train_set_y[index*batch_size:(index+1)*batch_size]},
@@ -307,8 +307,8 @@ def test_mlp():
     assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
 
     # Even without FeatureShape
-    train_model =theano.function( inputs = [index],
-            updates = updates2,
+    train_model =theano.function( inputs=[index],
+            updates=updates2,
             mode=mode.excluding('ShapeOpt'),
             givens={
                 x: train_set_x[index*batch_size:(index+1)*batch_size],

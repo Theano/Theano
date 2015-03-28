@@ -294,7 +294,7 @@ class PureType(object):
         """Optional: return a message explaining the output of is_valid_value"""
         return "none"
 
-    def make_variable(self, name = None):
+    def make_variable(self, name=None):
         """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
@@ -302,7 +302,7 @@ class PureType(object):
             A pretty string for printing and debugging.
 
         """
-        return self.Variable(self, name = name)
+        return self.Variable(self, name=name)
 
     def make_constant(self, value, name=None):
         return self.Constant(type=self, data=value, name=name)

@@ -213,7 +213,7 @@ class TheanoObject(object):
         v = tensor.lscalar(name)
         v._theanoclass_container = \
                 theano.gof.Container(v,
-                        storage = [theano._asarray(ival, dtype='int64')],
+                        storage=[theano._asarray(ival, dtype='int64')],
                         readonly=False)
         assert not hasattr(v, 'set')
         assert not hasattr(v, 'get')

@@ -23,7 +23,7 @@ def makeSharedTester(shared_constructor_,
                      test_internal_type_,
                      theano_fct_,
                      ref_fct_,
-                     cast_value_ = numpy.asarray,
+                     cast_value_=numpy.asarray,
                      op_by_matrix_=False,
                      name=None,
                      ):
@@ -86,7 +86,7 @@ def makeSharedTester(shared_constructor_,
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
-            x_shared = self.shared_constructor(x, borrow = False)
+            x_shared = self.shared_constructor(x, borrow=False)
             total = self.theano_fct(x_shared)
 
             total_func = theano.function([], total)
@@ -105,7 +105,7 @@ def makeSharedTester(shared_constructor_,
             # value used to construct should not alias with internal
             assert numpy.allclose(total_val, total_val_2)
 
-            x = x_shared.get_value(borrow = False)
+            x = x_shared.get_value(borrow=False)
 
             x /= values_to_div
 
@@ -115,7 +115,7 @@ def makeSharedTester(shared_constructor_,
             assert numpy.allclose(total_val, total_val_3)
 
             # in this case we can alias
-            x = x_shared.get_value(borrow = True)
+            x = x_shared.get_value(borrow=True)
             x /= values_to_div
 
             # this is not required by the contract but it is a feature we've
@@ -135,7 +135,7 @@ def makeSharedTester(shared_constructor_,
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
-            x_shared = self.shared_constructor(x, borrow = False)
+            x_shared = self.shared_constructor(x, borrow=False)
             total = self.theano_fct(x_shared)
 
             f = theano.function([], x_shared.shape)
@@ -158,7 +158,7 @@ def makeSharedTester(shared_constructor_,
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
-            x_shared = self.shared_constructor(x, borrow = False)
+            x_shared = self.shared_constructor(x, borrow=False)
             total = self.theano_fct(x_shared)
 
             f = theano.function([], x_shared.shape[1])
@@ -179,13 +179,13 @@ def makeSharedTester(shared_constructor_,
             x = self.cast_value(x)
 
             x_ref = self.ref_fct(x)
-            x_shared = self.shared_constructor(x, borrow = False)
+            x_shared = self.shared_constructor(x, borrow=False)
             total = self.theano_fct(x_shared)
 
             total_func = theano.function([], total)
 
             # in this case we can alias with the internal value
-            x = x_shared.get_value(borrow = True, return_internal_type = True)
+            x = x_shared.get_value(borrow=True, return_internal_type=True)
             assert self.test_internal_type(x)
 
             values_to_div = .5
@@ -199,7 +199,7 @@ def makeSharedTester(shared_constructor_,
             # implement for some type of SharedVariable.
             assert numpy.allclose(self.ref_fct(x), total_func())
 
-            x = x_shared.get_value(borrow = False, return_internal_type = True)
+            x = x_shared.get_value(borrow=False, return_internal_type=True)
             assert self.test_internal_type(x)
             assert x is not x_shared.container.value
             x /= values_to_div#supported by ndarray and CudaNdarray
@@ -219,10 +219,10 @@ def makeSharedTester(shared_constructor_,
             x_orig = numpy.asarray(rng.uniform(0, 1, [2, 4]), dtype=dtype)
             x_cast = self.cast_value(x_orig)
             if self.shared_constructor_accept_ndarray:
-                x_shared = self.shared_constructor(x_orig, borrow = False)
+                x_shared = self.shared_constructor(x_orig, borrow=False)
                 assert isinstance(x_shared.get_value(), x_orig.__class__)
 
-            x_shared = self.shared_constructor(x_cast, borrow = False)
+            x_shared = self.shared_constructor(x_cast, borrow=False)
             assert isinstance(x_shared.get_value(), x_cast.__class__)
 
         def test_set_value(self):
@@ -237,7 +237,7 @@ def makeSharedTester(shared_constructor_,
             x_orig = x
             x_orig_copy = x.copy()
             x_ref = self.ref_fct(x)
-            x_shared = self.shared_constructor(x, borrow = False)
+            x_shared = self.shared_constructor(x, borrow=False)
             total = self.theano_fct(x_shared)
 
             total_func = theano.function([], total)
@@ -284,7 +284,7 @@ def makeSharedTester(shared_constructor_,
             x = self.cast_value(x)
             x_ref = self.ref_fct(x)
 
-            x_shared = self.shared_constructor(x, borrow = True)
+            x_shared = self.shared_constructor(x, borrow=True)
 
             total = self.theano_fct(x_shared)
 
@@ -601,18 +601,18 @@ def makeSharedTester(shared_constructor_,
     return SharedTester
 
 test_shared_options=makeSharedTester(
-    shared_constructor_ = tensor._shared,
-    dtype_ = theano.config.floatX,
-    get_value_borrow_true_alias_ = True,
-    shared_borrow_true_alias_ = True,
-    set_value_borrow_true_alias_ = True,
-    set_value_inplace_ = False,
-    set_cast_value_inplace_ = False,
-    shared_constructor_accept_ndarray_ = True,
-    internal_type_ = numpy.ndarray,
-    test_internal_type_ = lambda a: isinstance(a, numpy.ndarray),
-    theano_fct_ = lambda a: a*2,
-    ref_fct_ = lambda a: numpy.asarray((a*2)),
-    cast_value_ = numpy.asarray,
-    op_by_matrix_ = False,
+    shared_constructor_=tensor._shared,
+    dtype_=theano.config.floatX,
+    get_value_borrow_true_alias_=True,
+    shared_borrow_true_alias_=True,
+    set_value_borrow_true_alias_=True,
+    set_value_inplace_=False,
+    set_cast_value_inplace_=False,
+    shared_constructor_accept_ndarray_=True,
+    internal_type_=numpy.ndarray,
+    test_internal_type_=lambda a: isinstance(a, numpy.ndarray),
+    theano_fct_=lambda a: a*2,
+    ref_fct_=lambda a: numpy.asarray((a*2)),
+    cast_value_=numpy.asarray,
+    op_by_matrix_=False,
     name='test_shared_options')

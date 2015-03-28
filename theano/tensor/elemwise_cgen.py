@@ -315,8 +315,8 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     declare_totals = """
     int init_totals[%(nnested)s] = {%(totals)s};
     """ % dict(
-            nnested = nnested,
-            totals = ', '.join(totals)
+            nnested=nnested,
+            totals=', '.join(totals)
             )
 
     # Sort totals to match the new order that was computed by sorting
@@ -354,9 +354,9 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     int init_strides[%(nvars)i][%(nnested)i] = {
         %(strides)s
     };""" % dict(
-            nvars = nvars,
-            nnested = nnested,
-            strides = ', \n'.join(
+            nvars=nvars,
+            nnested=nnested,
+            strides=', \n'.join(
                 ', '.join(get_loop_strides(lo, i))
                 for i, lo in enumerate(init_loop_orders)
                 if len(lo)>0))

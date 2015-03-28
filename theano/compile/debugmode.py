@@ -1624,8 +1624,8 @@ class _Linker(gof.link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, profiler = None, input_storage = None
-                 , output_storage = None):
+    def make_all(self, profiler=None, input_storage=None
+                 , output_storage=None):
 
         if 1:
             # can't import at toplevel because of circular import TODO:
@@ -2176,8 +2176,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
     0: silent)"""
 
     def __init__(self, inputs, outputs, optimizer, mode,
-            accept_inplace = False,
-            function_builder = Function,
+            accept_inplace=False,
+            function_builder=Function,
             profile=None,
             on_unused_input=None):
         """

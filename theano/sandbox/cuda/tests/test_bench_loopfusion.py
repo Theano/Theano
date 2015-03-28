@@ -105,11 +105,11 @@ class Kouh2008(object):
 
         if use_softmax_w:
             rval = cls(w_list, x_list, p, q, r, k,
-                    params = [p_unbounded, q_unbounded, r_unbounded, k_unbounded, w] + params,
+                    params=[p_unbounded, q_unbounded, r_unbounded, k_unbounded, w] + params,
                     updates=updates)
         else:
             rval = cls(w_list, x_list, p, q, r, k,
-                    params = [p_unbounded, q_unbounded, r_unbounded, k_unbounded] + w_list + params,
+                    params=[p_unbounded, q_unbounded, r_unbounded, k_unbounded] + w_list + params,
                     updates=updates)
         rval.p_unbounded = p_unbounded
         rval.q_unbounded = q_unbounded

@@ -314,7 +314,7 @@ if 0:
             y=T.dmatrix(),    #our targets
             v=T.dmatrix(),    #first layer weights
             c=T.dvector(),    #first layer bias
-            l2_coef = T.dscalar()
+            l2_coef=T.dscalar()
             ):
         pred = T.dot(x, v) + c
         sse = T.sum((pred - y) * (pred - y))
@@ -415,8 +415,8 @@ if 0:
 
     @SymbolicModule_fromFn
     def PCA(
-            x = T.dmatrix(),
-            var_thresh = T.dscalar()
+            x=T.dmatrix(),
+            var_thresh=T.dscalar()
             ):
         # naive version, yes
         s, v, d = T.svd(x)

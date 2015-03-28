@@ -761,52 +761,52 @@ SwitchTester = makeBroadcastTester(
 
 
 MaximumTester = makeBroadcastTester(op=maximum,
-                                  expected = lambda *inputs: check_floatX(inputs, numpy.maximum(*inputs)),
-                                  good = _good_broadcast_binary_normal,
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                  grad = _grad_broadcast_binary_normal)
+                                  expected=lambda *inputs: check_floatX(inputs, numpy.maximum(*inputs)),
+                                  good=_good_broadcast_binary_normal,
+                                  bad_build=_bad_build_broadcast_binary_normal,
+                                  bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                  grad=_grad_broadcast_binary_normal)
 
 MaximumInplaceTester = makeBroadcastTester(op=inplace.maximum_inplace,
                                          expected=numpy.maximum,
                                          good=_good_broadcast_binary_normal,
-                                         bad_build = _bad_build_broadcast_binary_normal,
-                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                         grad = _grad_broadcast_binary_normal,
-                                         inplace = True)
+                                         bad_build=_bad_build_broadcast_binary_normal,
+                                         bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                         grad=_grad_broadcast_binary_normal,
+                                         inplace=True)
 
 MinimumTester = makeBroadcastTester(op=minimum,
-                                  expected = lambda *inputs: check_floatX(inputs, numpy.minimum(*inputs)),
-                                  good = _good_broadcast_binary_normal,
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                  grad = _grad_broadcast_binary_normal)
+                                  expected=lambda *inputs: check_floatX(inputs, numpy.minimum(*inputs)),
+                                  good=_good_broadcast_binary_normal,
+                                  bad_build=_bad_build_broadcast_binary_normal,
+                                  bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                  grad=_grad_broadcast_binary_normal)
 
 MinimumInplaceTester = makeBroadcastTester(op=inplace.minimum_inplace,
                                          expected=numpy.minimum,
                                          good=_good_broadcast_binary_normal,
-                                         bad_build = _bad_build_broadcast_binary_normal,
-                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                         grad = _grad_broadcast_binary_normal,
-                                         inplace = True)
+                                         bad_build=_bad_build_broadcast_binary_normal,
+                                         bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                         grad=_grad_broadcast_binary_normal,
+                                         inplace=True)
 
 MulTester = makeBroadcastTester(op=mul,
-                                  expected = lambda *inputs: check_floatX(inputs, reduce(lambda x, y: x * y, inputs)),
-                                  good = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
-                                              four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
+                                  expected=lambda *inputs: check_floatX(inputs, reduce(lambda x, y: x * y, inputs)),
+                                  good=dict(three_inputs_same_shapes=(rand(2, 3), rand(2, 3), rand(2, 3)),
+                                              four_inputs_broadcast=(rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
                                               **_good_broadcast_binary_normal),
-                                  bad_build = _bad_build_broadcast_binary_normal,
-                                  bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                  grad = dict(three_inputs_same_shapes = (rand(2, 3), rand(2, 3), rand(2, 3)),
-                                              four_inputs_broadcast = (rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
+                                  bad_build=_bad_build_broadcast_binary_normal,
+                                  bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                  grad=dict(three_inputs_same_shapes=(rand(2, 3), rand(2, 3), rand(2, 3)),
+                                              four_inputs_broadcast=(rand(2, 3), rand(1, 3), rand(2, 1), rand(1, 1)),
                                               **_grad_broadcast_binary_normal))
 MulInplaceTester = makeBroadcastTester(op=inplace.mul_inplace,
                                          expected=lambda x, y: x * y,
                                          good=_good_broadcast_binary_normal,
-                                         bad_build = _bad_build_broadcast_binary_normal,
-                                         bad_runtime = _bad_runtime_broadcast_binary_normal,
-                                         grad = _grad_broadcast_binary_normal,
-                                         inplace = True)
+                                         bad_build=_bad_build_broadcast_binary_normal,
+                                         bad_runtime=_bad_runtime_broadcast_binary_normal,
+                                         grad=_grad_broadcast_binary_normal,
+                                         inplace=True)
 
 
 def copymod(dct, without=None, **kwargs):
@@ -983,32 +983,32 @@ ModInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_div_mod_normal,
     inplace=True)
 
-_good_broadcast_pow_normal_float = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                        scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                        row = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                        column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
-                                        dtype_mixup = (rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3))),
-                                        complex1 = (randcomplex(2, 3), randcomplex(2, 3)),
-                                        complex2 = (randcomplex(2, 3), rand(2, 3)),
+_good_broadcast_pow_normal_float = dict(same_shapes=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
+                                        scalar=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
+                                        row=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
+                                        column=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
+                                        dtype_mixup=(rand_ranged(-3, 3, (2, 3)), randint_ranged(-3, 3, (2, 3))),
+                                        complex1=(randcomplex(2, 3), randcomplex(2, 3)),
+                                        complex2=(randcomplex(2, 3), rand(2, 3)),
                                         # complex3 = (rand(2,3),randcomplex(2,3)), # Inplace on the first element.
-                                        empty1 = (numpy.asarray([], dtype=config.floatX),
+                                        empty1=(numpy.asarray([], dtype=config.floatX),
                                                   numpy.asarray([1], dtype=config.floatX)),
-                                        empty2 = (numpy.asarray([0], dtype=config.floatX),
+                                        empty2=(numpy.asarray([0], dtype=config.floatX),
                                                   numpy.asarray([], dtype=config.floatX)),
-                                        empty3 = (numpy.asarray([], dtype=config.floatX),
+                                        empty3=(numpy.asarray([], dtype=config.floatX),
                                                   numpy.asarray([], dtype=config.floatX)),
 )
-_grad_broadcast_pow_normal = dict(same_shapes = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
-                                  scalar = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
-                                  row = (
+_grad_broadcast_pow_normal = dict(same_shapes=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
+                                  scalar=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 1))),
+                                  row=(
                                       rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (1, 3))),
-                                  column = (rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
+                                  column=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 1))),
                                   #complex1 = (randcomplex(2,3),randcomplex(2,3)),
                                   #complex2 = (randcomplex(2,3),rand(2,3)),
                                   #complex3 = (rand(2,3),randcomplex(2,3)),
                                   #empty1 = (numpy.asarray([]), numpy.asarray([1])),
                                   #empty2 = (numpy.asarray([0]), numpy.asarray([])),
-                                  x_eq_zero = (
+                                  x_eq_zero=(
                                       numpy.asarray([0.], dtype=config.floatX),
                                       numpy.asarray([2.], dtype=config.floatX)
                                   ),  # Test for issue 1780
@@ -1220,13 +1220,13 @@ TruncTester = makeBroadcastTester(
 
 RoundHalfToEvenTester = makeBroadcastTester(
     op=tensor.round_half_to_even,
-    expected= numpy.round,
+    expected=numpy.round,
     good=_good_broadcast_unary_normal_float_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case)
 
 RoundHalfToEvenInplaceTester = makeBroadcastTester(
     op=inplace.round_half_to_even_inplace,
-    expected= numpy.round,
+    expected=numpy.round,
     good=_good_broadcast_unary_normal_float_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex_no_corner_case,
     inplace=True)
@@ -2439,7 +2439,7 @@ class CastTester(unittest.TestCase):
 ClipTester = makeTester(name='ClipTester',
                         op=clip,
                         expected=lambda x, y, z: numpy.clip(x, y, z),
-                        good = dict(correct1=((5 * rand(5, 5)).astype('float32'),
+                        good=dict(correct1=((5 * rand(5, 5)).astype('float32'),
                                           numpy.array(-1, dtype='float32'),
                                           numpy.array(1, dtype='float32')),
                                     correct2=((5 * rand(5, 5)).astype('float64'),

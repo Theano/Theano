@@ -8,8 +8,8 @@ from theano.tensor.nnet import sigmoid
 class NNet(object):
 
     def __init__(self,
-            input = tensor.dvector('input'),
-            target = tensor.dvector('target'),
+            input=tensor.dvector('input'),
+            target=tensor.dvector('target'),
             n_input=1, n_hidden=1, n_output=1, lr=1e-3, **kw):
         super(NNet, self).__init__(**kw)
 
@@ -29,9 +29,9 @@ class NNet(object):
                     self.w2: self.w2 - self.lr * tensor.grad(self.cost, self.w2)}
 
         self.sgd_step = pfunc(
-                params = [self.input, self.target],
-                outputs = [self.output, self.cost],
-                updates = self.sgd_updates)
+                params=[self.input, self.target],
+                outputs=[self.output, self.cost],
+                updates=self.sgd_updates)
 
         self.compute_output = pfunc([self.input],  self.output)
 
@@ -42,7 +42,7 @@ class TestNnet(unittest.TestCase):
     def test_nnet(self):
         rng = numpy.random.RandomState(1827)
         data = rng.rand(10, 4)
-        nnet = NNet(n_input = 3, n_hidden = 10)
+        nnet = NNet(n_input=3, n_hidden=10)
         for epoch in range(3):
             mean_cost = 0
             for x in data:

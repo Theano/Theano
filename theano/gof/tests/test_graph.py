@@ -92,8 +92,8 @@ class X:
 
     def str(self, inputs, outputs):
         return as_string(inputs, outputs,
-                         leaf_formatter = self.leaf_formatter,
-                         node_formatter = self.node_formatter)
+                         leaf_formatter=self.leaf_formatter,
+                         node_formatter=self.node_formatter)
 
 
 class TestStr(X):

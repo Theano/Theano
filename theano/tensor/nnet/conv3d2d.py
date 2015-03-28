@@ -225,7 +225,7 @@ def conv3d(signals, filters,
         filters.reshape(_filters_shape_4d),
         image_shape=conv2d_signal_shape,
         filter_shape=conv2d_filter_shape,
-        border_mode = border_mode[1])  # ignoring border_mode[2]
+        border_mode=border_mode[1])  # ignoring border_mode[2]
 
     # reshape the output to restore its original size
     # shape = Ns, Ts, Nf, Tf, W-Wf+1, H-Hf+1

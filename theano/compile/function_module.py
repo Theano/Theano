@@ -744,7 +744,7 @@ def _pickle_Function(f):
 def _constructor_Function(maker, input_storage, inputs_data):
     if not theano.config.unpickle_function:
         return None
-    f = maker.create(input_storage, trustme = True)
+    f = maker.create(input_storage, trustme=True)
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
         assert (container.data is x) or \

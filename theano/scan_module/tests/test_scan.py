@@ -1946,10 +1946,10 @@ class T_Scan(unittest.TestCase):
         # hidden and outputs of the entire sequence
         [h, y], _ = theano.scan(
             fn=one_step,
-            sequences = dict(input=x),
+            sequences=dict(input=x),
             # corresponds to the return type of one_step
-            outputs_info = [dict(initial=h0, taps=[-2, -1]), None],
-            non_sequences = [W_ih, W_hh, b_h, W_ho, b_o])
+            outputs_info=[dict(initial=h0, taps=[-2, -1]), None],
+            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o])
 
         # target values
         t = tensor.matrix()
@@ -3784,7 +3784,7 @@ class T_Scan(unittest.TestCase):
         A = tensor.matrix('A')
         B = tensor.matrix('B')
         S, _ = theano.scan(lambda x1, x2, u: u + tensor.dot(x1, x2),
-                           sequences = [A.dimshuffle(0, 1, 'x'),
+                           sequences=[A.dimshuffle(0, 1, 'x'),
                                         B.dimshuffle(0, 'x', 1)],
                            outputs_info=[tensor.zeros_like(A)])
         f = theano.function([A, B], S.owner.inputs[0][-1])
@@ -3925,14 +3925,14 @@ class T_Scan(unittest.TestCase):
         inps = tensor.vector()
         state = tensor.scalar()
         y1, _ = theano.scan(lambda x, y: x*y,
-                            sequences = inps,
-                            outputs_info = state,
-                            n_steps = 5)
+                            sequences=inps,
+                            outputs_info=state,
+                            n_steps=5)
 
         y2, _ = theano.scan(lambda x, y : (x+y, theano.scan_module.until(x>0)),
-                            sequences = inps,
-                            outputs_info = state,
-                            n_steps = 5)
+                            sequences=inps,
+                            outputs_info=state,
+                            n_steps=5)
         scan_node1 = y1.owner.inputs[0].owner
         assert isinstance(scan_node1.op, theano.scan_module.scan_op.Scan)
         scan_node2 = y2.owner.inputs[0].owner

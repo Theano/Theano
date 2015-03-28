@@ -26,7 +26,7 @@ class MyType(Type):
 
 
 def MyVariable(name):
-    return Variable(MyType(), None, None, name = name)
+    return Variable(MyType(), None, None, name=name)
 
 
 class MyOp(Op):
@@ -73,8 +73,8 @@ op5 = MyOp('Op5')
 op6 = MyOp('Op6')
 op_d = MyOp('OpD', {0: [0]})
 
-op_y = MyOp('OpY', x = 1)
-op_z = MyOp('OpZ', x = 1)
+op_y = MyOp('OpY', x=1)
+op_z = MyOp('OpZ', x=1)
 
 
 
@@ -192,9 +192,9 @@ class TestPatternOptimizer:
         assert str(g) == "[Op1(x)]"
 
     def test_constant_unification(self):
-        x = Constant(MyType(), 2, name = 'x')
+        x = Constant(MyType(), 2, name='x')
         y = MyVariable('y')
-        z = Constant(MyType(), 2, name = 'z')
+        z = Constant(MyType(), 2, name='z')
         e = op1(op1(x, y), y)
         g = Env([y], [e])
         PatternOptimizer((op1, z, '1'),
@@ -294,8 +294,8 @@ class TestMergeOptimizer:
 
     def test_constant_merging(self):
         x = MyVariable('x')
-        y = Constant(MyType(), 2, name = 'y')
-        z = Constant(MyType(), 2, name = 'z')
+        y = Constant(MyType(), 2, name='y')
+        z = Constant(MyType(), 2, name='z')
         e = op1(op2(x, y), op2(x, y), op2(x, z))
         g = Env([x, y, z], [e])
         MergeOptimizer().optimize(g)
@@ -340,8 +340,8 @@ class TestMergeOptimizer:
 
     def test_identical_constant_args(self):
         x = MyVariable('x')
-        y = Constant(MyType(), 2, name = 'y')
-        z = Constant(MyType(), 2, name = 'z')
+        y = Constant(MyType(), 2, name='y')
+        z = Constant(MyType(), 2, name='z')
         ctv_backup = config.compute_test_value
         config.compute_test_value = 'off'
         try:
@@ -366,7 +366,7 @@ class TestEquilibrium(object):
              PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
              PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
              ],
-            max_use_ratio = 10)
+            max_use_ratio=10)
         opt.optimize(g)
         # print g
         assert str(g) == '[Op2(x, y)]'
@@ -383,7 +383,7 @@ class TestEquilibrium(object):
              PatternSub((op5, 'x', 'y'), (op6, 'x', 'y')),
              PatternSub((op6, 'x', 'y'), (op2, 'x', 'y'))
              ],
-            max_use_ratio = 10)
+            max_use_ratio=10)
         opt.optimize(g)
         assert str(g) == '[Op2(x, y)]'
 
@@ -403,7 +403,7 @@ class TestEquilibrium(object):
                  PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
                  PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
                  ],
-                max_use_ratio = 1. / len(g.apply_nodes)) # each opt can only be applied once
+                max_use_ratio=1. / len(g.apply_nodes)) # each opt can only be applied once
             opt.optimize(g)
         finally:
             _logger.setLevel(oldlevel)

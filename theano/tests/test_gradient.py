@@ -533,7 +533,7 @@ def test_undefined_cost_grad():
         cost = x + y
         assert cost.dtype in theano.tensor.discrete_dtypes
         try:
-            grads = theano.tensor.grad(cost, [x, y], known_grads = {cost: NullType()() })
+            grads = theano.tensor.grad(cost, [x, y], known_grads={cost: NullType()() })
         except theano.gradient.NullTypeGradError:
             return
         raise AssertionError("An undefined gradient has been ignored.")
@@ -551,7 +551,7 @@ def test_disconnected_cost_grad():
         cost = x + y
         assert cost.dtype in theano.tensor.discrete_dtypes
         try:
-            grads = theano.tensor.grad(cost, [x, y], known_grads = {cost: gradient.DisconnectedType()() },
+            grads = theano.tensor.grad(cost, [x, y], known_grads={cost: gradient.DisconnectedType()() },
                     disconnected_inputs='raise')
         except theano.gradient.DisconnectedInputError:
             return

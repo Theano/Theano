@@ -2069,7 +2069,7 @@ class GpuCAReduce(GpuOp):
             # TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub = {})
+            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              "A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2]",
                                              {}, True)

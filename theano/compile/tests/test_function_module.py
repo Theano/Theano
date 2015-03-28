@@ -293,7 +293,7 @@ class T_function(unittest.TestCase):
         x, s = T.scalars('xs')
         inc = function([x, In(s, update=(s+x), value=10.0)], [])
         dec = function([x, In(s, update=(s-x), value=inc.container[s],
-            implicit = False)], [])
+            implicit=False)], [])
         self.assertTrue(dec[s] is inc[s])
         inc[s] = 2
         self.assertTrue(dec[s] == 2)
@@ -467,16 +467,16 @@ class T_picklefunction(unittest.TestCase):
         # Ensure that shared containers remain shared after a deep copy.
         a, x = T.scalars('ax')
 
-        h = function([In(a, value = 0.0)], a)
-        f = function([x, In(a, value=h.container[a], implicit = True)], x + a)
+        h = function([In(a, value=0.0)], a)
+        f = function([x, In(a, value=h.container[a], implicit=True)], x + a)
 
         try:
             memo = {}
             ac = copy.deepcopy(a)
             memo.update({id(a): ac})
-            hc = copy.deepcopy(h, memo = memo)
+            hc = copy.deepcopy(h, memo=memo)
             memo.update({id(h): hc})
-            fc = copy.deepcopy(f, memo = memo)
+            fc = copy.deepcopy(f, memo=memo)
         except NotImplementedError, e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
