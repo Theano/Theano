@@ -735,7 +735,7 @@ def _pickle_Function(f):
                             _logger.warning(('aliased relationship between'
                                     ' Function arguments %s, %s'
                                     ' will not be preserved by un-pickling'
-                                    ' operation') %(str(d_i), str(d_j)))
+                                    ' operation') % (str(d_i), str(d_j)))
                         else:
                             raise AliasedMemoryError(d_i, d_j)
     rval = (_constructor_Function, (f.maker, input_storage, inputs_data))

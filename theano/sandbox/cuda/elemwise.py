@@ -117,10 +117,10 @@ class NaiveAlgo(object):
             print >> sio, "        float * ii_o%i_data = o%i_data;" % (ipos, ipos)
         for d in xrange(nd-1, -1, -1):
             if d > 0:
-                print >> sio, "        int pos%i = ii %% dim%i;" %(d, d)
-                print >> sio, "        ii = ii / dim%i;" %d
+                print >> sio, "        int pos%i = ii %% dim%i;" % (d, d)
+                print >> sio, "        ii = ii / dim%i;" % d
             else:
-                print >> sio, "        int pos%i = ii;" %d
+                print >> sio, "        int pos%i = ii;" % d
 
             for ipos, i in enumerate(node.inputs):
                 if not _logical_scalar(i):
@@ -188,7 +188,7 @@ class NaiveAlgo(object):
                 print >> sio, "//    Input  ", ipos, str(i.type)
             for ipos, i in enumerate(node.outputs):
                 print >> sio, "//    Output ", ipos, str(i.type)
-            print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(
+            print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (
                     self.scalar_op.__class__.__name__,
                     nodename,
                     'tiling%i'%nd)
@@ -292,7 +292,7 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" %(
+        print >> sio, "static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (
                 self.scalar_op.__class__.__name__,
                 nodename,
                 'tiling%i_less_registers'%nd)
@@ -320,9 +320,9 @@ class NaiveAlgo(object):
 
         def stride(io, p, d):
             if use_shared_stride:
-                return "s%s_str[%i][%i]" %(io, p, d)
+                return "s%s_str[%i][%i]" % (io, p, d)
             else:
-                return "%s%i_str_%i" %(io, p, d)
+                return "%s%i_str_%i" % (io, p, d)
         def limits(d):
             if use_shared_limits:
                 return "limits[%i]" % d
@@ -339,10 +339,10 @@ class NaiveAlgo(object):
             """ % locals()
             for i in xrange(nin):
                 for d in xrange(nd):
-                    print >> sio, "si_str[%(i)s][%(d)s] = i%(i)s_str_%(d)s;" %locals()
+                    print >> sio, "si_str[%(i)s][%(d)s] = i%(i)s_str_%(d)s;" % locals()
             for i in xrange(n_out):
                 for d in xrange(nd):
-                    print >> sio, "so_str[%(i)s][%(d)s] = o%(i)s_str_%(d)s;" %locals()
+                    print >> sio, "so_str[%(i)s][%(d)s] = o%(i)s_str_%(d)s;" % locals()
             print >> sio, "} __syncthreads();"
 
         def calc_limit(d):
@@ -368,18 +368,18 @@ class NaiveAlgo(object):
             assert dm1 >= 0
             for i in xrange(n_in):
                 s = stride('i', i, d)
-                print >> sio, "const float * i%(i)s_data_%(d)s = i%(i)s_data_%(dm1)s + %(offset)s * %(s)s;" %locals()
+                print >> sio, "const float * i%(i)s_data_%(d)s = i%(i)s_data_%(dm1)s + %(offset)s * %(s)s;" % locals()
             for i in xrange(n_out):
                 s = stride('o', i, d)
-                print >> sio, "float * o%(i)s_data_%(d)s = o%(i)s_data_%(dm1)s + %(offset)s * %(s)s;" %locals()
+                print >> sio, "float * o%(i)s_data_%(d)s = o%(i)s_data_%(dm1)s + %(offset)s * %(s)s;" % locals()
 
         def inc_ptrs(d, amt):
             for i in xrange(n_in):
                 s = stride('i', i, d)
-                print >> sio, "i%(i)s_data_%(d)s += %(amt)s * %(s)s;" %locals()
+                print >> sio, "i%(i)s_data_%(d)s += %(amt)s * %(s)s;" % locals()
             for i in xrange(n_out):
                 s = stride('o', i, d)
-                print >> sio, "o%(i)s_data_%(d)s += %(amt)s * %(s)s;" %locals()
+                print >> sio, "o%(i)s_data_%(d)s += %(amt)s * %(s)s;" % locals()
 
         def while_limit(d):
             lname = limits(d)
@@ -441,7 +441,7 @@ class NaiveAlgo(object):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
-        print >> sio, "static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" %(self.scalar_op.__class__.__name__, nodename)
+        print >> sio, "static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" % (self.scalar_op.__class__.__name__, nodename)
         # declare inputs
         for ipos, i in enumerate(node.inputs):
             print >> sio, "\t,", "const float * i%i_data" % ipos
@@ -519,7 +519,7 @@ class NaiveAlgo(object):
 
         prod_dims = '*'.join(["dims[%i]"%di for di in xrange(nd)]+['1'])
 
-        scalar_op=self.scalar_op.__class__.__name__
+        scalar_op = self.scalar_op.__class__.__name__
 
         sio = StringIO()
         print >> sio, """
@@ -532,7 +532,7 @@ class NaiveAlgo(object):
                 }else collapse[i]=0;
             }
         }
-        """ %locals()
+        """ % locals()
         print >> sio, """
         static int callkernel_%(nodename)s(unsigned int numEls, const int d,
             const int * dims,
@@ -540,24 +540,24 @@ class NaiveAlgo(object):
             %(output_params)s)
         {
             numEls = %(prod_dims)s;
-        """ %locals()
+        """ % locals()
         if self.verbose:
             print >> sio, """
                 std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s     w numEls" << numEls << " dims"<< d << "\\n";
-            """ %locals()
+            """ % locals()
             print >> sio, 'std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"])
-        if self.verbose>1:
+        if self.verbose > 1:
             for ipos in xrange(len(node.inputs)):
                 print >> sio, """
                 std::cerr << "   %(ipos)s data strides" <<
-                """ %locals() + " << ' ' <<  ".join(["i%s_data"%ipos]
+                """ % locals() + " << ' ' <<  ".join(["i%s_data"%ipos]
                 + list("i%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
 
             for ipos in xrange(len(node.outputs)):
                 print >> sio, """
                 std::cerr << "   %(ipos)s data strides" <<
-                """ %locals() + " << ' ' <<  ".join(["o%s_data"%ipos]
+                """ % locals() + " << ' ' <<  ".join(["o%s_data"%ipos]
                     + list("o%s_str[%i]"%(ipos, di) for di in xrange(nd))) + ''' << "\\n"; '''
     # collapse dimension that are broadcast in all inputs.
     # need to be done before contiguous collapse as it will break it.
@@ -594,7 +594,7 @@ class NaiveAlgo(object):
               local_ostr[%(ipos)s][i]=o%(ipos)s_str[i];
             }
             """ % locals()
-        if self.verbose>2:
+        if self.verbose > 2:
             print >>sio, 'std::cerr <<"before broadcast collapse\\n";'
             print >>sio, 'std::cerr<< "nd_collapse "<< nd_collapse << "\\n"; '
             print >> sio, 'std::cerr << "local_dims";'
@@ -604,10 +604,10 @@ class NaiveAlgo(object):
 
             for ipos in xrange(len(node.inputs)):
                 print >> sio, 'std::cerr << " local_str inputs %(ipos)s: " <<'%locals() + \
-                        ' << " " << '.join(["local_str[%s][%s]"% (ipos, x) for x in xrange(nd)])+'<<"\\n";'
+                        ' << " " << '.join(["local_str[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
                 print >> sio, 'std::cerr << " local_ostr inputs %(ipos)s: " <<'%locals() + \
-                        ' << " " << '.join(["local_ostr[%s][%s]"% (ipos, x) for x in xrange(nd)])+'<<"\\n";'
+                        ' << " " << '.join(["local_ostr[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
 
         print >> sio, """
         for(int id=0;id<nd_collapse;id++){
@@ -637,7 +637,7 @@ class NaiveAlgo(object):
         }
         """%locals()
 
-        if self.verbose>2:
+        if self.verbose > 2:
             print >>sio, 'std::cerr <<"after broadcast collapse\\n";'
             print >>sio, 'std::cerr<< "nd_collapse "<< nd_collapse << "\\n"; '
             print >> sio, 'std::cerr << "local_dims";'
@@ -646,21 +646,21 @@ class NaiveAlgo(object):
             print >> sio, 'std::cerr << "\\n";'
 
             for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]"% (ipos, x) for x in xrange(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
             for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]"% (ipos, x) for x in xrange(nd)])+'<<"\\n";'
+                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
     # collapse contiguous dimensions (ignoring scalars, generic version(collapse any dimensions, right, left, middle))
     # this is a good idea because we make less index calculation in the gpu.
 
         if nd > 0:
-            print >> sio, "int nd_collapse_[%(nd)s] = {"%locals() +','.join(['1' for x in xrange(nd)]) +"};"
+            print >> sio, "int nd_collapse_[%(nd)s] = {"%locals() + ','.join(['1' for x in xrange(nd)]) + "};"
         else:
             print >> sio, "int *nd_collapse_ = NULL;"
         for ipos in xrange(len(node.inputs)):
             if not _logical_scalar(node.inputs[ipos]):
                 if nd > 0:
                     print >> sio, """
-                        int nd_collapse_%(ipos)s[%(nd)s] = {"""%locals() +','.join(['1' for x in xrange(nd)]) +"};"
+                        int nd_collapse_%(ipos)s[%(nd)s] = {"""%locals() + ','.join(['1' for x in xrange(nd)]) + "};"
                 else:
                     print >> sio, """
                         int *nd_collapse_%(ipos)s = NULL;"""%locals()
@@ -670,12 +670,12 @@ for(int i=0;i<nd_collapse;i++){
 if(nd_collapse_%(ipos)s[i]==0)
 nd_collapse_[i]=0;
 }
-                """ %locals()
-                if self.verbose>1:
+                """ % locals()
+                if self.verbose > 1:
                     print >>sio, """
                     std::cerr<< "nd_collapse_%(ipos)s "<<
                     """%locals()
-                    print >>sio, ' << " " << '.join(["nd_collapse_%s[" % ipos +str(i)+"]" for i in xrange(nd)])
+                    print >>sio, ' << " " << '.join(["nd_collapse_%s[" % ipos + str(i)+"]" for i in xrange(nd)])
                     print >>sio, '<< "\\n";'
 
     # update the local stride.
@@ -719,16 +719,16 @@ nd_collapse_[i]=0;
           if(nd_collapse_[i]==1)nd_collapse--;
         }
         if(nd_collapse == 1 """%locals()
-        l=["local_str[%s][nd_collapse-1]==1 "%ipos for ipos in xrange(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
-        l+=["local_ostr[%s][nd_collapse-1]==1 "%ipos for ipos in xrange(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
-        if len(l)>0:
+        l = ["local_str[%s][nd_collapse-1]==1 "%ipos for ipos in xrange(len(node.inputs)) if not _logical_scalar(node.inputs[ipos])]
+        l += ["local_ostr[%s][nd_collapse-1]==1 "%ipos for ipos in xrange(len(node.outputs)) if not _logical_scalar(node.outputs[ipos])]
+        if len(l) > 0:
             print >> sio, " && ", " && ".join(l)
         print >> sio, """){nd_collapse=0;} """
 
         if self.verbose:
             print >> sio, 'std::cerr <<"after can_collapse\\n";'
-            print >> sio, """std::cerr << "nd_collapse " << nd_collapse << "\\n"; """ %locals()
-        if self.verbose>1:
+            print >> sio, """std::cerr << "nd_collapse " << nd_collapse << "\\n"; """ % locals()
+        if self.verbose > 1:
             for d in xrange(nd):
                 print >> sio, 'std::cerr << " " << local_dims[%(d)s]; '%locals()
             print >> sio, 'std::cerr << "\\n";'
@@ -746,9 +746,9 @@ nd_collapse_[i]=0;
             for ipos in xrange(len(node.outputs)):
                 kernel_call_args.append("o%i_data"%ipos)
             kernel_call_args = ", ".join(kernel_call_args)
-            verb=""
+            verb = ""
             if self.verbose:
-                verb='std::cerr << "   Running ccontiguous version\\n";'
+                verb = 'std::cerr << "   Running ccontiguous version\\n";'
             print >> sio, """
                 //first use at least a full warp
                 int threads_per_block = std::min(numEls,  (unsigned int)32); //WARP SIZE
@@ -762,7 +762,7 @@ nd_collapse_[i]=0;
                 kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
 
                 //std::cerr << "calling callkernel returned\\n";
-                """ %locals()
+                """ % locals()
             if sync:
                 print >> sio, """
                 CNDA_THREAD_SYNC;
@@ -778,28 +778,28 @@ nd_collapse_[i]=0;
                 }
                 %(verb)s
                 return 0;
-                """ %locals()
+                """ % locals()
             else:
-                print >> sio, " return 0; " %locals()
+                print >> sio, " return 0; " % locals()
 
         def launch_General(nodename, scalar_op, force_nd, sync=True):
             # kernel_call_args are used to invoke the cuda kernel
-            local="local_"
+            local = "local_"
             kernel_call_args = ["numEls"]
             kernel_call_args.extend(local+"dims[%i]"%di for di in xrange(force_nd))
             for ipos in xrange(len(node.inputs)):
-                kernel_call_args+=["i%i_data"%ipos] + list(local+"str[%i][%i]"%(ipos, di) for di in xrange(force_nd))
+                kernel_call_args += ["i%i_data"%ipos] + list(local+"str[%i][%i]"%(ipos, di) for di in xrange(force_nd))
                 #strides = ", ".join("i%i_str[%i]"%(ipos, di) for di in xrange(force_nd))
                 #kernel_call_args.append( "%s, i%i_data" % (strides, ipos))
             for ipos in xrange(len(node.outputs)):
-                kernel_call_args+=["o%i_data"%ipos] + list(local+"ostr[%i][%i]"%(ipos, di) for di in xrange(force_nd))
+                kernel_call_args += ["o%i_data"%ipos] + list(local+"ostr[%i][%i]"%(ipos, di) for di in xrange(force_nd))
                 #strides = ", ".join("o%i_str[%i]"%(ipos, di) for di in xrange(force_nd))
                 #kernel_call_args.append( "%s, o%i_data" % (strides, ipos))
             if self.verbose:
                 print >> sio, """
                     std::cerr << "   Running general version with %(force_nd)s  dims\\n";
                     """%locals()
-                print >> sio, "std::cerr << "+ ' << " " << '.join(kernel_call_args)+' << "\\n";'
+                print >> sio, "std::cerr << " + ' << " " << '.join(kernel_call_args)+' << "\\n";'
                 # std::cerr << numEls << dims[0] << i0_data, i0_str[0] << o0_data, o0_str[0]\n;
 
             kernel_call_args = ", ".join(kernel_call_args)
@@ -816,7 +816,7 @@ nd_collapse_[i]=0;
                     threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
 
                 kernel_%(scalar_op)s_%(nodename)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
-                """ %locals()
+                """ % locals()
             if sync:
                 print >> sio, """
                 CNDA_THREAD_SYNC;
@@ -831,9 +831,9 @@ nd_collapse_[i]=0;
 
                 }
                 return 0;
-                """ %locals()
+                """ % locals()
             else:
-                print >> sio, " return 0; " %locals()
+                print >> sio, " return 0; " % locals()
         print >> sio, "if(numEls==0) return 0;"
         print >> sio, "switch (nd_collapse==0?0:min(%(nd)s,nd_collapse)) {"%locals()
         print >> sio, "case 0: {"

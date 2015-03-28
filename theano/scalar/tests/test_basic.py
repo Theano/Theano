@@ -194,37 +194,37 @@ class test_logical(unittest.TestCase):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x > y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a>b))
+            self.assertTrue(fn(a, b) == (a > b))
 
     def test_lt(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x < y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a<b))
+            self.assertTrue(fn(a, b) == (a < b))
 
     def test_le(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x <= y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a<=b))
+            self.assertTrue(fn(a, b) == (a <= b))
 
     def test_ge(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [x >= y])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a>=b))
+            self.assertTrue(fn(a, b) == (a >= b))
 
     def test_eq(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [eq(x, y)])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a==b))
+            self.assertTrue(fn(a, b) == (a == b))
 
     def test_neq(self):
         x, y, z = inputs()
         fn = gof.DualLinker().accept(FunctionGraph([x, y], [neq(x, y)])).make_function()
         for a, b in ((3., 9), (3, 0.9), (3, 3)):
-            self.assertTrue(fn(a, b) == (a!=b))
+            self.assertTrue(fn(a, b) == (a != b))
 
 
     def test_or(self):

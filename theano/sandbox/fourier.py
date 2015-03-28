@@ -40,7 +40,7 @@ class FFT(Op):
 
     def __init__(self, half=False, inverse=False):
         self.half = half
-        self.inverse=inverse
+        self.inverse = inverse
 
     def __eq__(self, other):
         return type(self) == type(other) and (self.half == other.half) and (self.inverse ==
@@ -82,7 +82,7 @@ class FFT(Op):
                 if (M % 2):
                     raise ValueError('halfFFT on odd-length vectors is undefined')
                 spectrogram[0] = fft[0:M/2, :]
-            elif axis==1:
+            elif axis == 1:
                 if (N % 2):
                     raise ValueError('halfFFT on odd-length vectors is undefined')
                 spectrogram[0] = fft[:, 0:N/2]

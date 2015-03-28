@@ -78,7 +78,7 @@ def get_pull_request(project, num, github_api=3):
 
     github_api : version of github api to use
     """
-    if github_api==2 :
+    if github_api == 2 :
         url = "http://github.com/api/v2/json/pulls/{project}/{num}".format(project=project, num=num)
     elif github_api == 3:
         url = "https://api.github.com/repos/{project}/pulls/{num}".format(project=project, num=num)

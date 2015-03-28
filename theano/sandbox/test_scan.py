@@ -12,7 +12,7 @@ def test_001():
                            n_steps=5)
     fn = theano.function([x0], out[0])
     val_x0 = numpy.float32([1, 2, 3])
-    assert numpy.all(fn(val_x0) == val_x0 +5)
+    assert numpy.all(fn(val_x0) == val_x0 + 5)
 
 
 def test_002():
@@ -28,7 +28,7 @@ def test_002():
                            n_steps=5)
     fn = theano.function([x0], out)
     val_x0 = numpy.float32([1, 2, 3])
-    assert numpy.all(fn(val_x0)[-1] == val_x0 +5)
+    assert numpy.all(fn(val_x0)[-1] == val_x0 + 5)
     assert numpy.all(fn(val_x0)[0] == val_x0)
 
 
@@ -48,7 +48,7 @@ def test_003():
     fn = theano.function([sq, x0], out)
     val_x0 = numpy.float32([1, 2, 3])
     val_sq = numpy.float32([1, 2, 3, 4, 5])
-    assert numpy.all(fn(val_sq, val_x0)[-1] == val_x0 +15)
+    assert numpy.all(fn(val_sq, val_x0)[-1] == val_x0 + 15)
     assert numpy.all(fn(val_sq, val_x0)[0] == val_x0)
 
 def test_004():
@@ -60,7 +60,7 @@ def test_004():
                            n_steps=nst)
     fn = theano.function([sq, nst], out)
     val_sq = numpy.float32([1, 2, 3, 4, 5])
-    assert numpy.all(fn(val_sq, 5) == val_sq +1)
+    assert numpy.all(fn(val_sq, 5) == val_sq + 1)
 
 def test_005():
     sq = theano.tensor.fvector('sq')
@@ -71,10 +71,10 @@ def test_005():
                        n_steps=nst)
     fn = theano.function([sq, nst], out)
     val_sq = numpy.float32([1, 2, 3, 4, 5])
-    assert numpy.all(fn(val_sq, 5) == val_sq +1)
+    assert numpy.all(fn(val_sq, 5) == val_sq + 1)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     test_001()
     test_002()
     test_003()

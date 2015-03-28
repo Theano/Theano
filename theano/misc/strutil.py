@@ -25,7 +25,7 @@ def render_string(string, sub):
             except Exception, F:
                 if str(F) == str(E):
                     raise Exception(string[0:i]+"<<<< caused exception "+str(F))
-            i+=1
+            i += 1
         assert False
     return finalCode
 
@@ -50,6 +50,6 @@ def pretty_format(string):
     return rval
 
 def strip_leading_white_space(line):
-    while len(line) >0 and (line[0]==' ' or line[0]=='\t'):
+    while len(line) > 0 and (line[0] == ' ' or line[0] == '\t'):
         line = line[1:]
     return line

@@ -359,7 +359,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
             strides=', \n'.join(
                 ', '.join(get_loop_strides(lo, i))
                 for i, lo in enumerate(init_loop_orders)
-                if len(lo)>0))
+                if len(lo) > 0))
 
     # Declare (sorted) stride and for each variable
     # we iterate from innermost loop to outermost loop
@@ -403,7 +403,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
             update = pointer_update
         if i == 0:
             if openmp:
-                openmp_elemwise_minsize= theano.config.openmp_elemwise_minsize
+                openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
                 forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         forloop += "for(int %(iterv)s = 0; %(iterv)s<%(total)s; %(iterv)s++)" % locals()
 

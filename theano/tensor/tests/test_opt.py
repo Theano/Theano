@@ -503,7 +503,7 @@ class test_canonize(unittest.TestCase):
                 assert(out_dtype == out.dtype)
                 assert numpy.allclose(out, val_inputs[1])
                 topo = f.maker.fgraph.toposort()
-                if topo and not(len(topo)==1 and topo[0].op==deep_copy_op):
+                if topo and not(len(topo) == 1 and topo[0].op == deep_copy_op):
                     for node in topo[:-1]:
                         assert isinstance(node.op, Shape_i)
                     assert isinstance(topo[-1].op, tensor.Alloc)
@@ -923,7 +923,7 @@ class test_fusion(unittest.TestCase):
             (fx*fy*fz*fw+fx+fy+fz+fw, (fw, fx, fy, fz), (fwv, fxv,
                 fyv, fzv), 1, fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv, 'float32'),  # 15
             # test with constant
-            ((fw+fx)+(fy+fz)+ 2., (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+            ((fw+fx)+(fy+fz) + 2., (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
                 1, fwv+fxv+fyv+fzv+2, 'float32'),
             (((fw+fx)+2.+fy)+fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
                 1, fwv+fxv+fyv+fzv+2, 'float32'),
@@ -962,9 +962,9 @@ class test_fusion(unittest.TestCase):
                 fxv+fyv+numpy.cos(fzv), 'float32'),
             (fx+fy+tensor.cosh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
                 fxv+fyv+numpy.cosh(fzv), 'float32'),
-            (fx+fy+abs(fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv+fyv+
+            (fx+fy+abs(fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv+fyv +
                 numpy.absolute(fzv), 'float32'),
-            (ix+iy+abs(iz), (ix, iy, iz), (ixv, iyv, izv), 1, ixv+iyv+
+            (ix+iy+abs(iz), (ix, iy, iz), (ixv, iyv, izv), 1, ixv+iyv +
                 numpy.absolute(izv), 'int32'),  # 30
             (fx+fy+theano.tensor.log(fz), (fx, fy, fz), (fxv, fyv,
                 fzv), 1, fxv+fyv+numpy.log(fzv), 'float32'),
@@ -986,14 +986,14 @@ class test_fusion(unittest.TestCase):
                 iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 40
             (fx-(fy/2), (fx, fy), (fxv, fyv), 1, fxv-(fyv/2), 'float32'),
             (fx-(fy%fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv%fzv), 'float32'),
-            (fx-(fy>fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv>fzv), 'float32'),
-            (fx-(fy>=fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv>=fzv), 'float32'),
-            (fx-(fy<fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<fzv), 'float32'),  # 45
-            (fx-(fy<=fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<=fzv), 'float32'),
+            (fx-(fy > fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv > fzv), 'float32'),
+            (fx-(fy >= fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv >= fzv), 'float32'),
+            (fx-(fy < fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv < fzv), 'float32'),  # 45
+            (fx-(fy <= fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv <= fzv), 'float32'),
             (fx-T.eq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
-                fyv==fzv), 'float32'),
+                fyv == fzv), 'float32'),
             (fx-T.neq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
-                fyv!=fzv), 'float32'),
+                fyv != fzv), 'float32'),
             (fx-fy+tensor.tan(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
                 fxv-fyv+numpy.tan(fzv), 'float32'),
             (fx-fy+tensor.tanh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
@@ -1034,7 +1034,7 @@ class test_fusion(unittest.TestCase):
                 fvv-fyv+numpy.tanh(fzv), 'float32'),  # fused with a dimshuffle
 
             # Cases where the same input is reused many times.
-            (theano.tensor.mul(fx, fx, fx, fx), (fx,), (fxv,), 1, fxv*
+            (theano.tensor.mul(fx, fx, fx, fx), (fx,), (fxv,), 1, fxv *
                 fxv*fxv*fxv, 'float32'),
             (theano.tensor.mul(fx, ftanx, ftanx), (fx,), (fxv,), 1,
                 fxv*numpy.tan(fxv)*numpy.tan(fxv), 'float32'),
@@ -1355,7 +1355,7 @@ class test_fusion(unittest.TestCase):
                     nd = objgraph.typestats()
                     print 'key, old val, new val, diff'
                     for key in set(d.keys() + nd.keys()):
-                        if d.has_key(key) and nd.has_key(key) and nd[key]!=d[key]:
+                        if d.has_key(key) and nd.has_key(key) and nd[key] != d[key]:
                             print key, d.get(key), nd.get(key),
                             if d.has_key(
                                 key) and nd.has_key(key):
@@ -3868,7 +3868,7 @@ class T_local_switch_sink(unittest.TestCase):
         for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
             for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.mul(T.switch(condition[0] > 0, 1. * x[0],
-                    0. *x[0]), T.switch(condition[0]>0, 1.*x[0], T.log(c)*x[0]))
+                    0. * x[0]), T.switch(condition[0] > 0, 1.*x[0], T.log(c)*x[0]))
                 f = theano.function([condition[0], x[0], c]
                     , [y], mode=self.mode)
                 if type(condition[1]) is list:
@@ -3889,7 +3889,7 @@ class T_local_switch_sink(unittest.TestCase):
         for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
             for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.true_div(T.switch(condition[0] > 0, 1. *
-                    x[0], 0.*x[0]), T.switch(condition[0]>0, 1.*x[0], T.log(c)*x[0]))
+                    x[0], 0.*x[0]), T.switch(condition[0] > 0, 1.*x[0], T.log(c)*x[0]))
                 f = theano.function([condition[0], x[0], c]
                     , [y], mode=self.mode)
                 if type(condition[1]) is list:
@@ -4077,9 +4077,9 @@ class T_local_erfc(unittest.TestCase):
         assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert len(f.maker.fgraph.toposort()[0].fgraph.toposort()[
-            0].op.scalar_op.fgraph.apply_nodes)==22, len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
+            0].op.scalar_op.fgraph.apply_nodes) == 22, len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         # TODO: fix this problem
-        if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+        if theano.config.floatX == "float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest(
                 "the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error.")
         assert all(numpy.isfinite(f(val)))
@@ -4090,7 +4090,7 @@ class T_local_erfc(unittest.TestCase):
         if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
 # python mode don't like the inv(0) in computation, but the switch don't select this value. So it is computed for no good reason.
             val.remove(0)
-        if theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.floatX=='float32':
+        if theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.floatX == 'float32':
             # In float32 their is a plage of values close to 10 that we stabilize as it give bigger error then the stabilized version.
             # The orig value in float32 -30.0, the stab value -20.1 the orig value in float64 -18.1.
             val.remove(10)
@@ -4148,7 +4148,7 @@ class T_local_erfc(unittest.TestCase):
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
         # TODO: fix this problem
-        if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+        if theano.config.floatX == "float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             # Showing this test error is a duplicate of the one in test_local_log_erfc. We hide it.
             #raise KnownFailureTest("the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error. This happen in an intermediate step that don't show in the final result.")
             pass

@@ -1081,7 +1081,7 @@ class BaseGpuCorr3dMM(GpuOp):
         if self.pad == "half":
             padH = padW = padD = -1
         elif self.pad == "full":
-            padH = padW = padD =-2
+            padH = padW = padD = -2
         else:
             padH, padW, padD = self.pad
         if direction == "forward":

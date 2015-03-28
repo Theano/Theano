@@ -212,7 +212,7 @@ class TestSP(unittest.TestCase):
                             sp.convolution_indices.sparse_eval(imshp, kshp, nkern, ss, conv_mode)
                     spmat = sparse.csc_matrix((spfilt[kmap], indices, indptr), spmat_shape)
                     visref = numpy.dot(out1, spmat.todense())
-                    assert numpy.all(visref==visval), (visref, visval)
+                    assert numpy.all(visref == visval), (visref, visval)
 
 #            print '**** Sparse Profiling Results (',mode,') ****'
 #            print 'Numpy processing time: ', ntot

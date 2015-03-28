@@ -165,7 +165,7 @@ class Kouh2008(object):
         #x_list = [theano._asarray(eps, dtype=dtype)+softplus(tensor.dot(input, f_list[i])) for i in xrange(n_terms)]
         filter_range = theano._asarray(filter_range, dtype=dtype)
         half_filter_range = theano._asarray(filter_range/2, dtype=dtype)
-        x_list = [theano._asarray(filter_range + eps, dtype=dtype)+half_filter_range *softsign(tensor.dot(input, f_list[i]) +
+        x_list = [theano._asarray(filter_range + eps, dtype=dtype)+half_filter_range * softsign(tensor.dot(input, f_list[i]) +
             b_list[i]) for i in xrange(n_terms)]
 
         rval = cls.new_expbounds(rng, x_list, n_out, dtype=dtype, params=f_list + b_list,
@@ -186,10 +186,10 @@ class Kouh2008(object):
             rows = int(numpy.sqrt(n_out))
         if cols is None:
             cols = n_out // rows
-            if n_out % rows: cols+=1
+            if n_out % rows: cols += 1
         if rows is None:
             rows = n_out // cols
-            if n_out % cols: rows+=1
+            if n_out % cols: rows += 1
 
         filter_shape = self.filter_shape
         height = rows * (row_gap + filter_shape[0]) - row_gap
@@ -232,9 +232,9 @@ class Kouh2008(object):
 
 class Config(object):
     use_gpu = True
-    dtype='float32'
-    dtype2=dtype
-    if dtype2=='floatX':
+    dtype = 'float32'
+    dtype2 = dtype
+    if dtype2 == 'floatX':
         import theano.config as c
         dtype2 = c.config.get('scalar.floatX')
 
@@ -283,10 +283,10 @@ if 0:
             import theano.sandbox.cuda
             theano.sandbox.cuda.use()
 
-        debug=False
+        debug = False
         if isinstance(theano.compile.mode.get_default_mode(),
                 theano.compile.debugmode.DebugMode):
-            debug=True
+            debug = True
 
         # get symbolic train set
         s_lr = theano.tensor.fscalar()
@@ -302,7 +302,7 @@ if 0:
             layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], conf.n_hid, conf.n_terms)
         else:
             layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], 3, 2)
-            n_iter=3
+            n_iter = 3
         cost = layer.output.mean()
 
         assert cost.type.ndim == 0

@@ -94,8 +94,8 @@ class Conv3D(theano.Op):
         dCdb = T.sum(dCdH, axis=(0, 1, 2, 3))
         dCdb = T.patternbroadcast(dCdb, b.broadcastable)
         dCdd = grad_undefined(self, 3, inputs[3],
-                "The gradient of Conv3D with respect to the convolution"+\
-                " stride is undefined because Conv3D is only defined for"+\
+                "The gradient of Conv3D with respect to the convolution" +\
+                " stride is undefined because Conv3D is only defined for" +\
                 " integer strides.")
 
         if 'name' in dir(dCdH) and dCdH.name is not None:
@@ -591,7 +591,7 @@ def computeH(V, W, b, d):
 
     outputHeight = int( (vidHeight - filterHeight) / dx )+1
     outputWidth = int( (vidWidth - filterWidth) / dy )+1
-    outputDur = int( (vidDur - filterDur) / dt ) +1
+    outputDur = int( (vidDur - filterDur) / dt ) + 1
 
 
     H =  N.zeros( (batchSize,  outputHeight,

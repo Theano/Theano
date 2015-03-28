@@ -309,28 +309,28 @@ class T_function(unittest.TestCase):
         f = theano.function([], theano.tensor.constant([4]))
         # print f.maker.fgraph.toposort()
         out = f()
-        assert (out==4).all()
-        out[0]=3
+        assert (out == 4).all()
+        out[0] = 3
         out2 = f()
         # If the following 2 asserts fail it mean Theano broke it's memory contract.
         assert out2 is not out
-        assert (out2==4).all()
+        assert (out2 == 4).all()
 
         # Test that if the output is a constant and borrow, we respect the theano memory interface
         f = theano.function([], Out(theano.tensor.constant([4]), borrow=True))
         # print f.maker.fgraph.toposort()
         out = f()
-        assert (out==4).all()
-        out[0]=3
+        assert (out == 4).all()
+        out[0] = 3
         out2 = f()
 
         if isinstance(theano.compile.mode.get_default_mode(),
                       theano.compile.DebugMode):
             # In DebugMode, we don't implement optimization based on borrow on the output.
-            assert (out2==4).all()
+            assert (out2 == 4).all()
         else:
             assert out2 is out
-            assert (out2==3).all()
+            assert (out2 == 3).all()
 
 
     def test_borrow_input(self):
@@ -362,21 +362,21 @@ class T_function(unittest.TestCase):
         f = function([a], Out(a*4, borrow=False))
         o = N.ones((3, 3))
         four = f(o)
-        assert numpy.all(four==4)
+        assert numpy.all(four == 4)
         f(o+.1)  # should not clobber the memory used to store four
-        assert numpy.all(four==4)
+        assert numpy.all(four == 4)
 
         f = function([a], Out(a*4, borrow=True), mode=theano.Mode('c|py_nogc', 'fast_run'))
         o = N.ones((3, 3))
         four = f(o)
-        assert numpy.all(four==4)
+        assert numpy.all(four == 4)
         f(o+.1)  # should clobber the memory used to store four
         if theano.config.cxx:
-            assert not numpy.all(four==4)
+            assert not numpy.all(four == 4)
         else:
             # The Elemwise.perform method don't reuse memory
             # as some numpy version don't support that correctly.
-            assert numpy.all(four==4)
+            assert numpy.all(four == 4)
 
     def test_disconnected_input(self):
         a = T.scalar('a')

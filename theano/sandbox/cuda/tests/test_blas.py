@@ -212,7 +212,7 @@ if 0:
                                         (5, 5, [[[[6, 8], [ 16, 18], [ 21, 23]]]],
                                          [[[[6, 8, 9], [ 16, 18, 19], [ 21, 23, 24]]]])]:
             for border, ret in [(True, r_true), (False, r_false)]:
-                ret=numpy.array(ret)
+                ret = numpy.array(ret)
                 a = tcn.blas.DownsampleFactorMax((2, 2), border)
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
@@ -222,7 +222,7 @@ if 0:
                 r = f(bval)[0]
     #            print bval, bval.shape, border
                 # print r, r.shape
-                assert (ret==r).all()
+                assert (ret == r).all()
 
 
 def test_downsample():

@@ -361,7 +361,7 @@ def test_reshape():
     assert y.shape == (8, 1, 1)
 
     dim = T.scalar('dim_val', dtype='int32')
-    f_reshp=theano.function(
+    f_reshp = theano.function(
         [x, dim],
         x.reshape((dim, dim, 1)),
         mode=mode_with_gpu
@@ -1097,7 +1097,7 @@ def test_inc_subtensor():
     f = theano.function([x, y], expr, mode=mode_with_gpu)
 
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
-                node.op.set_instead_of_inc==False
+                node.op.set_instead_of_inc == False
                 for node in f.maker.fgraph.toposort()]) == 1
     assert numpy.allclose(f(xval, yval), [[1., 12., 13.],
                                           [4., 15., 16.], [7., 18., 19.]])

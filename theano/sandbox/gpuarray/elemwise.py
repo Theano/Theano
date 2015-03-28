@@ -761,7 +761,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                 PyErr_Format(PyExc_ValueError," tried to reduce a 0-length axis.");
                 %(fail)s;
             }
-            """ %locals()
+            """ % locals()
 
         #
         # alloc an output if we need one

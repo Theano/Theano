@@ -15,8 +15,8 @@ except ImportError:
 from theano.misc.may_share_memory import may_share_memory
 
 def test_may_share_memory():
-    a=numpy.random.rand(5, 4)
-    b=numpy.random.rand(5, 4)
+    a = numpy.random.rand(5, 4)
+    b = numpy.random.rand(5, 4)
     va = a.view()
     vb = b.view()
     ra = a.reshape((4, 5))
@@ -32,13 +32,13 @@ def test_may_share_memory():
                       (a, ta, True), (b, tb, True), (ta, b, False), (a, tb, False),
                       ]:
 
-        assert may_share_memory(a_, b_, False)==rep
-        assert may_share_memory(b_, a_, False)==rep
+        assert may_share_memory(a_, b_, False) == rep
+        assert may_share_memory(b_, a_, False) == rep
 
     # test that it raise error when needed.
     for a_, b_, rep in [(a, (0,), False), (a, 1, False), (a, None, False), ]:
-        assert may_share_memory(a_, b_, False)==rep
-        assert may_share_memory(b_, a_, False)==rep
+        assert may_share_memory(a_, b_, False) == rep
+        assert may_share_memory(b_, a_, False) == rep
         try:
             may_share_memory(a_, b_)
             raise Exception("An error was expected")
@@ -52,8 +52,8 @@ def test_may_share_memory():
 
 if scipy_imported:
     def test_may_share_memory_scipy():
-        a=scipy.sparse.csc_matrix(scipy.sparse.eye(5, 3))
-        b=scipy.sparse.csc_matrix(scipy.sparse.eye(4, 3))
+        a = scipy.sparse.csc_matrix(scipy.sparse.eye(5, 3))
+        b = scipy.sparse.csc_matrix(scipy.sparse.eye(4, 3))
         as_ar = lambda a: theano._asarray(a, dtype='int32')
         for a_, b_, rep in [(a, a, True), (b, b, True), (a, b, False),
                           (a, a.data, True), (a, a.indptr, True), (a, a.indices, True), (a, as_ar(a.shape), False),
@@ -63,13 +63,13 @@ if scipy_imported:
                           (b.data, a, False), (b.indptr, a, False), (b.indices, a, False), (as_ar(b.shape), a, False),
                           ]:
 
-            assert may_share_memory(a_, b_)==rep
-            assert may_share_memory(b_, a_)==rep
+            assert may_share_memory(a_, b_) == rep
+            assert may_share_memory(b_, a_) == rep
 
         # test that it raise error when needed.
         for a_, b_, rep in [(a, (0,), False), (a, 1, False), (a, None, False)]:
-            assert may_share_memory(a_, b_, False)==rep
-            assert may_share_memory(b_, a_, False)==rep
+            assert may_share_memory(a_, b_, False) == rep
+            assert may_share_memory(b_, a_, False) == rep
             try:
                 may_share_memory(a_, b_)
                 raise Exception("An error was expected")

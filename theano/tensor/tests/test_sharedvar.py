@@ -141,9 +141,9 @@ def makeSharedTester(shared_constructor_,
             f = theano.function([], x_shared.shape)
             topo = f.maker.fgraph.toposort()
 
-            assert numpy.all(f()==(2, 4))
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo)==3
+            assert numpy.all(f() == (2, 4))
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo) == 3
                 assert isinstance(topo[0].op, tensor.opt.Shape_i)
                 assert isinstance(topo[1].op, tensor.opt.Shape_i)
                 assert isinstance(topo[2].op, tensor.opt.MakeVector)
@@ -164,9 +164,9 @@ def makeSharedTester(shared_constructor_,
             f = theano.function([], x_shared.shape[1])
             topo = f.maker.fgraph.toposort()
 
-            assert numpy.all(f()==(4))
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo)==1
+            assert numpy.all(f() == (4))
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo) == 1
                 assert isinstance(topo[0].op, tensor.opt.Shape_i)
 
         def test_return_internal_type(self):
@@ -328,15 +328,15 @@ def makeSharedTester(shared_constructor_,
             if x.__class__.__name__ != 'csr_matrix':
                 # sparse matrix don't support inplace affectation
                 x_shared.container.value[:] = nd
-                assert (numpy.asarray(x_shared.get_value(borrow=True))==nd).all()
+                assert (numpy.asarray(x_shared.get_value(borrow=True)) == nd).all()
                 # This should always share value!
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
 
-                nd[0]+=1
+                nd[0] += 1
                 x_shared.container.value[0] = nd[0]
-                assert (numpy.asarray(x_shared.get_value(borrow=True)[0])==nd[0]).all()
-                assert (numpy.asarray(x_shared.get_value(borrow=True)[1:])==nd[1:]).all()
+                assert (numpy.asarray(x_shared.get_value(borrow=True)[0]) == nd[0]).all()
+                assert (numpy.asarray(x_shared.get_value(borrow=True)[1:]) == nd[1:]).all()
                 # This should always share value!
                 assert may_share_memory(old_data, x_shared.container.storage[0])
                 assert may_share_memory(old_data, x_shared.get_value(borrow=True, return_internal_type=True))
@@ -403,25 +403,25 @@ def makeSharedTester(shared_constructor_,
                     self.ref_fct( x1_2))
             shape_op_fct = theano.function([], x1_shared.shape)
             topo = shape_op_fct.maker.fgraph.toposort()
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo)==3
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo) == 3
                 assert isinstance(topo[0].op, tensor.opt.Shape_i)
                 assert isinstance(topo[1].op, tensor.opt.Shape_i)
                 assert isinstance(topo[2].op, tensor.opt.MakeVector)
 
             # Test that we forward the input
             specify_shape_fct = theano.function([], x1_specify_shape)
-            assert numpy.all(self.ref_fct(specify_shape_fct())==
+            assert numpy.all(self.ref_fct(specify_shape_fct()) ==
                              self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.fgraph.toposort()
-            assert len(topo_specify)==2
+            assert len(topo_specify) == 2
 
             # Test that we put the shape info into the graph
             shape_constant_fct = theano.function([], x1_specify_shape.shape)
-            assert numpy.all(shape_constant_fct()==shape_op_fct())
+            assert numpy.all(shape_constant_fct() == shape_op_fct())
             topo_cst = shape_constant_fct.maker.fgraph.toposort()
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_cst)==1
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo_cst) == 1
                 topo_cst[0].op == theano.compile.function_module.deep_copy_op
 
             # Test that we can take the grad.
@@ -473,8 +473,8 @@ def makeSharedTester(shared_constructor_,
             shape_op_fct = theano.function([], x1_shared.shape)
             topo = shape_op_fct.maker.fgraph.toposort()
             shape_op_fct()
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo)==3
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo) == 3
                 assert isinstance(topo[0].op, tensor.opt.Shape_i)
                 assert isinstance(topo[1].op, tensor.opt.Shape_i)
                 assert isinstance(topo[2].op, tensor.opt.MakeVector)
@@ -484,18 +484,18 @@ def makeSharedTester(shared_constructor_,
             specify_shape_fct()
             # theano.printing.debugprint(specify_shape_fct)
             assert numpy.all(self.ref_fct(specify_shape_fct())
-                             ==self.ref_fct(x1_2))
+                             == self.ref_fct(x1_2))
             topo_specify = specify_shape_fct.maker.fgraph.toposort()
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_specify)==4
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo_specify) == 4
 
             # Test that we put the shape info into the graph
             shape_constant_fct = theano.function([], x1_specify_shape.shape)
             # theano.printing.debugprint(shape_constant_fct)
-            assert numpy.all(shape_constant_fct()==shape_op_fct())
+            assert numpy.all(shape_constant_fct() == shape_op_fct())
             topo_cst = shape_constant_fct.maker.fgraph.toposort()
-            if theano.config.mode!='FAST_COMPILE':
-                assert len(topo_cst)==2
+            if theano.config.mode != 'FAST_COMPILE':
+                assert len(topo_cst) == 2
 
             # Test that we can replace with values of the different shape
             # but that will raise an error in some case, but not all
@@ -527,12 +527,12 @@ def makeSharedTester(shared_constructor_,
             s_shared = self.shared_constructor(s)
             f = theano.function([],
                                 updates=[(s_shared, theano.dot(a_shared, b_shared)
-                                         +s_shared)])
-            topo=f.maker.fgraph.toposort()
+                                         + s_shared)])
+            topo = f.maker.fgraph.toposort()
             f()
             #[Gemm{inplace}(<TensorType(float64, matrix)>, 0.01, <TensorType(float64, matrix)>, <TensorType(float64, matrix)>, 2e-06)]
-            if theano.config.mode!='FAST_COMPILE':
-                assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo])==1
+            if theano.config.mode != 'FAST_COMPILE':
+                assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
             # Their is no inplace gemm for sparse
@@ -542,12 +542,12 @@ def makeSharedTester(shared_constructor_,
             # now test with the specify shape op in the output
             f = theano.function([], s_shared.shape,
                                 updates=[(s_shared, theano.dot(a_shared, b_shared)
-                                         +s_shared_specify)])
-            topo=f.maker.fgraph.toposort()
-            shp=f()
+                                         + s_shared_specify)])
+            topo = f.maker.fgraph.toposort()
+            shp = f()
             assert numpy.all(shp == (40, 40))
-            if theano.config.mode!='FAST_COMPILE':
-                assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo])==1
+            if theano.config.mode != 'FAST_COMPILE':
+                assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
             # now test with the specify shape op in the inputs and outputs
@@ -558,12 +558,12 @@ def makeSharedTester(shared_constructor_,
 
             f = theano.function([], s_shared.shape,
                                 updates=[(s_shared, theano.dot(a_shared, b_shared)
-                                         +s_shared_specify)])
-            topo=f.maker.fgraph.toposort()
-            shp=f()
+                                         + s_shared_specify)])
+            topo = f.maker.fgraph.toposort()
+            shp = f()
             assert numpy.all(shp == (40, 40))
-            if theano.config.mode!='FAST_COMPILE':
-                assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo])==1
+            if theano.config.mode != 'FAST_COMPILE':
+                assert sum([node.op.__class__.__name__ in ["Gemm", "GpuGemm", "StructuredDot"] for node in topo]) == 1
                 assert all(node.op == tensor.blas.gemm_inplace for node in topo if isinstance(node.op, tensor.blas.Gemm))
                 assert all(node.op.inplace for node in topo if node.op.__class__.__name__ == "GpuGemm")
         def test_values_eq(self):
@@ -580,7 +580,7 @@ def makeSharedTester(shared_constructor_,
             rng = numpy.random.RandomState(utt.fetch_seed())
             for x in [numpy.asarray(rng.rand(*shp), dtype=dtype),
                       numpy.zeros(shp, dtype=dtype)]:
-                zeros = (x==0).all()
+                zeros = (x == 0).all()
                 x = self.cast_value(x)
                 x_shared = self.shared_constructor(x, borrow=True)
 
@@ -600,7 +600,7 @@ def makeSharedTester(shared_constructor_,
 
     return SharedTester
 
-test_shared_options=makeSharedTester(
+test_shared_options = makeSharedTester(
     shared_constructor_=tensor._shared,
     dtype_=theano.config.floatX,
     get_value_borrow_true_alias_=True,

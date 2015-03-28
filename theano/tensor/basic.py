@@ -5391,7 +5391,7 @@ class Choose(Op):
         if len(choice_bcast) != out_ndim:
             if isinstance(choice.type, TensorType):
                 choice = choice.dimshuffle(0,
-                                           *(('x',) *(out_ndim - choice_ndim) +
+                                           *(('x',) * (out_ndim - choice_ndim) +
                                              tuple(range(1, choice.ndim))))
                 choice_ndim = choice.ndim - 1
                 choice_bcast = choice.broadcastable[1:]

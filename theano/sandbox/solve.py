@@ -36,11 +36,11 @@ class Solve(gof.Op):
     def perform(self, node, inp, out):
         A, b = inp
         output, = out
-        ret=scipy.linalg.solve(A, b)
+        ret = scipy.linalg.solve(A, b)
         if ret.dtype != node.outputs[0].dtype:
             print >> sys.stderr, "WARNING: Solve.perform() required cast."
             ret = theano._asarray(ret, dtype=node.outputs[0].dtype)
-        output[0]=ret
+        output[0] = ret
 
 solve = Solve()
 
@@ -54,9 +54,9 @@ class T_solve(unittest.TestCase):
         self.rng = numpy.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):
-        A=self.rng.randn(5, 5)
-        b=numpy.array(range(5), dtype=float)
-        x=scipy.linalg.solve(A, b)
+        A = self.rng.randn(5, 5)
+        b = numpy.array(range(5), dtype=float)
+        x = scipy.linalg.solve(A, b)
         Ax = numpy.dot(A, x)
         are = tensor.numeric_grad.abs_rel_err(Ax, b)
         self.assertTrue(numpy.all(are < 1.0e-5), (are, Ax, b))

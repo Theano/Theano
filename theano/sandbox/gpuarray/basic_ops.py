@@ -176,7 +176,7 @@ class GpuKernelBase(object):
     def c_init_code_apply(self, node, name):
         err = 'err_' + name
         kernels = self.gpu_kernels(node, name)
-        inits ='\n'.join(self._generate_kernel_init(k, err) for k in kernels)
+        inits = '\n'.join(self._generate_kernel_init(k, err) for k in kernels)
         return ("int %(err)s;\n" % dict(err=err)) + inits
 
     def _GpuKernelBase_version(self):
@@ -852,7 +852,7 @@ class GpuJoin(HideC, Join):
 
     def c_code(self, node, name, inputs, out_, sub):
         copy_to_list = []
-        restype=pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
+        restype = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         for i, inp in enumerate(inputs[1:]):
             copy_to_list.append("als[%s] = &%s->ga;" % (i, inp))
         return """

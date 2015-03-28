@@ -38,7 +38,7 @@ try:
         """
         if not isinstance(x, cuda.CudaNdarray):
             raise ValueError("We can transfer only CudaNdarray to cudamat.CUDAMatrix")
-        elif x.ndim!=2:
+        elif x.ndim != 2:
             raise TypeError("cudandarray_to_cudamat: input must be 2-d (has %s dims). That's "
                             "because cudamat arrays are always 2-dimensional")
 

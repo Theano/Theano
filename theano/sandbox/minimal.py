@@ -40,7 +40,7 @@ class Minimal(gof.Op):
 
         # return some computed value.
         # do not return something that is aliased to one of the inputs.
-        output[0]=numpy.asarray(0, dtype='int64')
+        output[0] = numpy.asarray(0, dtype='int64')
 
 minimal = Minimal()
 
@@ -54,14 +54,14 @@ class T_minimal(unittest.TestCase):
         self.rng = numpy.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):
-        A=tensor.matrix()
-        b=tensor.vector()
+        A = tensor.matrix()
+        b = tensor.vector()
 
         print 'building function'
         f = function([A, b], minimal(A, A, b, b, A))
         print 'built'
 
-        Aval=self.rng.randn(5, 5)
-        bval=numpy.array(range(5), dtype=float)
+        Aval = self.rng.randn(5, 5)
+        bval = numpy.array(range(5), dtype=float)
         f(Aval, bval)
         print 'done'

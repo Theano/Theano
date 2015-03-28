@@ -360,7 +360,7 @@ class BadDestroyMap(DebugModeError):
             print >> sio, "  location of first 10 mismatches:", numpy.transpose(numpy.nonzero(delta))[:10]
             print >> sio, ""
         except Exception, e:
-            print >> sio, "(Numpy-hints failed with: %s)" %str(e)
+            print >> sio, "(Numpy-hints failed with: %s)" % str(e)
         print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation [which compared input values]"
         return sio.getvalue()
 

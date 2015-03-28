@@ -1344,7 +1344,7 @@ class Scan(PureOp):
 
         for i in range(nb_inputs):
             input = self.inputs[i]
-            inp_connection_pattern = [i==j for j in range(nb_inputs)]
+            inp_connection_pattern = [i == j for j in range(nb_inputs)]
             connect_pattern_by_var[input] = inp_connection_pattern
 
         # Iterate through the nodes used to produce the outputs from the
@@ -1759,7 +1759,7 @@ class Scan(PureOp):
                 outmaxtap = 0
             seq = outs[idx]
             for k in self.tap_array[idx]:
-                if outmaxtap -k != 0:
+                if outmaxtap - k != 0:
                     nw_seq = seq[k - mintap: -(outmaxtap-k)][::-1]
                 else:
                     nw_seq = seq[k - mintap:][::-1]

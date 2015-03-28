@@ -12,7 +12,7 @@ import theano.tensor as tensor
 from theano.tensor.nnet import conv
 
 import logging
-_logger=logging.getLogger("theano.tensor.signal.conv")
+_logger = logging.getLogger("theano.tensor.signal.conv")
 
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
@@ -45,13 +45,13 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     ### use shape information if it is given to us ###
     if filter_shape and image_shape:
-        if input.ndim==3:
+        if input.ndim == 3:
             bsize = image_shape[0]
         else:
             bsize = 1
         imshp = (1,) + tuple(image_shape[-2:])
 
-        if filters.ndim==3:
+        if filters.ndim == 3:
             nkern = filter_shape[0]
         else:
             nkern = 1
@@ -61,12 +61,12 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         bsize, imshp = None, None
 
     ### reshape tensors to 4D, for compatibility with ConvOp ###
-    if input.ndim==3:
+    if input.ndim == 3:
         sym_bsize = input.shape[0]
     else:
         sym_bsize = 1
 
-    if filters.ndim==3:
+    if filters.ndim == 3:
         sym_nkern = filters.shape[0]
     else:
         sym_nkern = 1

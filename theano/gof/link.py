@@ -303,7 +303,7 @@ class Linker(object):
         def execute(*args):
             def e_arity(takes, got):
                 return 'Function call takes exactly %i %s (%i given)' \
-                        % (takes, ['argument', 'arguments'][takes>1], got)
+                        % (takes, ['argument', 'arguments'][takes > 1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
             for arg, variable in zip(args, inputs):

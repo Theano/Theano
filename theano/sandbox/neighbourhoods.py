@@ -177,19 +177,19 @@ class NeighbourhoodsFromImages(Op):
             # +1 in the inverse case
             if len(x.shape) != (self.n_dims_before + \
                             len(self.dims_neighbourhoods) + 1):
-                raise ValueError("Images passed as input don't match the "+\
+                raise ValueError("Images passed as input don't match the " +\
                  "dimensions passed when this (inversed) Apply node was created")
             prod = 1
             for dim in self.dims_neighbourhoods:
                 prod *= dim
             if x.shape[-1] != prod:
-                raise ValueError(("Last dimension of neighbourhoods (%s) is not "+\
+                raise ValueError(("Last dimension of neighbourhoods (%s) is not " +\
                         "the product of the neighbourhoods dimensions (%s)") % \
                          (str(x.shape[-1]), str(prod)))
         else:
             if len(x.shape) != (self.n_dims_before + \
                             len(self.dims_neighbourhoods)):
-                raise ValueError("Images passed as input don't match the "+\
+                raise ValueError("Images passed as input don't match the " +\
                         "dimensions passed when this Apply node was created")
 
         if self.inverse:
@@ -240,7 +240,7 @@ class NeighbourhoodsFromImages(Op):
                     self.n_dims_before+inner_dim_no, inner_dim_no)
         code_before += base_indent + \
                 ("for neigh_idx_%d in xrange(min(max_neigh_idx_%d,"\
-                +" self.dims_neighbourhoods[%d])):\n") % \
+                + " self.dims_neighbourhoods[%d])):\n") % \
                     (inner_dim_no, inner_dim_no, inner_dim_no)
 
         return code_before

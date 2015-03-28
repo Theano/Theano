@@ -370,7 +370,7 @@ class T_Scan(unittest.TestCase):
     @attr('slow')
     def test_only_nonseq_inputs(self):
         # Compile the Theano function
-        n_steps=2
+        n_steps = 2
         inp = tensor.matrix()
         broadcasted_inp, _ = theano.scan(lambda x: x,
                                          non_sequences=[inp],
@@ -3929,7 +3929,7 @@ class T_Scan(unittest.TestCase):
                             outputs_info=state,
                             n_steps=5)
 
-        y2, _ = theano.scan(lambda x, y : (x+y, theano.scan_module.until(x>0)),
+        y2, _ = theano.scan(lambda x, y : (x+y, theano.scan_module.until(x > 0)),
                             sequences=inps,
                             outputs_info=state,
                             n_steps=5)

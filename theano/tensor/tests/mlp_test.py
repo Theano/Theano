@@ -14,11 +14,11 @@ from theano.compat.python2x import any, OrderedDict
 def gen_data():
 
     # generate the dataset
-    train_set=(numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+    train_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
                numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
-    valid_set=(numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+    valid_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
                numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
-    test_set=(numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+    test_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
                numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
     def shared_dataset(data_xy):
         """ Function that loads the dataset into shared variables
@@ -86,7 +86,7 @@ class LogisticRegression(object):
 
         # compute prediction as class whose probability is maximal in
         # symbolic form
-        self.y_pred=T.argmax(self.p_y_given_x, axis=1)
+        self.y_pred = T.argmax(self.p_y_given_x, axis=1)
 
         # parameters of the model
         self.params = [self.W]
@@ -295,8 +295,8 @@ def test_mlp():
 
     updates2 = OrderedDict()
 
-    updates2[classifier.hiddenLayer.params[0]]=T.grad(cost, classifier.hiddenLayer.params[0])
-    train_model =theano.function( inputs=[index],
+    updates2[classifier.hiddenLayer.params[0]] = T.grad(cost, classifier.hiddenLayer.params[0])
+    train_model = theano.function( inputs=[index],
             updates=updates2,
             givens={
                 x: train_set_x[index*batch_size:(index+1)*batch_size],
@@ -307,7 +307,7 @@ def test_mlp():
     assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
 
     # Even without FeatureShape
-    train_model =theano.function( inputs=[index],
+    train_model = theano.function( inputs=[index],
             updates=updates2,
             mode=mode.excluding('ShapeOpt'),
             givens={

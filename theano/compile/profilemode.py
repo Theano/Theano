@@ -357,9 +357,9 @@ class ProfileMode(Mode):
         print '    Optimization time: %.3fs'%(other_time['optimizer_time'])
         print '    Linker time: %.3fs'%(other_time['linker_time'])
         print 'Theano fct call %.3fs (%.1f%% since import)'%(total_fct_time, total_fct_time/total_time*100)
-        print '   Theano Op time %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+        print '   Theano Op time %.3fs %.1f%%(since import) %.1f%%(of fct call)' % (
             local_time, local_time/total_time*100, time_pr_in_fct)
-        print '   Theano function overhead in ProfileMode %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+        print '   Theano function overhead in ProfileMode %.3fs %.1f%%(since import) %.1f%%(of fct call)' % (
             overhead_time, overhead_time/total_time*100, overhead_time_pourcent_fct_time)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
         print 'Rest of the time since import %.3fs %.1f%%'%(unknown_time, unknown_time/total_time*100)
@@ -368,7 +368,7 @@ class ProfileMode(Mode):
         print 'Theano fct summary:'
         print '<% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
-            if fct_call[key]>0:
+            if fct_call[key] > 0:
                 print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 , fct_call_time[key],
                                                       fct_call_time[key]/fct_call[key], fct_call[key], key.name)
             else:
@@ -382,16 +382,16 @@ class ProfileMode(Mode):
         op_cimpl = {}
         sop_apply = {}
         for (i, a), t in apply_time.items():
-            op=a.op
+            op = a.op
             op_time.setdefault(op, 0)
             op_call.setdefault(op, 0)
             op_apply.setdefault(op, 0)
             sop_apply.setdefault(type(a.op), 0)
-            op_time[op]+=t
+            op_time[op] += t
             nb_call = [v for k, v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
             op_cimpl.setdefault(a.op, True)
             op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
-            if t==0:
+            if t == 0:
                 assert nb_call == 0, nb_call
             else:
                 op_call[op] += nb_call
@@ -399,19 +399,19 @@ class ProfileMode(Mode):
                 sop_apply[type(a.op)] += 1
 
         # Compute stats per op class
-        sop_time={}
-        sop_call={}
+        sop_time = {}
+        sop_call = {}
         sop_op = {}
-        sop_cimpl={}  # map each op class to Bool. True iff all applies were done in c.
+        sop_cimpl = {}  # map each op class to Bool. True iff all applies were done in c.
         for a, t in op_time.items():
             typ = type(a)
             sop_time.setdefault(typ, 0)
-            sop_time[typ]+=t
+            sop_time[typ] += t
             sop_op.setdefault(typ, 0)
-            sop_op[typ]+=1
+            sop_op[typ] += 1
             sop_cimpl.setdefault(typ, True)
-            sop_cimpl[typ]=sop_cimpl[typ] and op_cimpl.get(a, False)
-            sop_call[typ]=sop_call.get(typ, 0)+op_call[a]
+            sop_cimpl[typ] = sop_cimpl[typ] and op_cimpl.get(a, False)
+            sop_call[typ] = sop_call.get(typ, 0)+op_call[a]
 
 
         # Print the summary per op class.
@@ -421,20 +421,20 @@ class ProfileMode(Mode):
         sotimes = [(t*100/local_time, t, a, sop_cimpl[a], sop_call[a], sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
-        tot=0
+        tot = 0
         for f, t, a, ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
-            tot+=t
-            ftot=tot*100/local_time
+            tot += t
+            ftot = tot*100/local_time
             if ci:
                 msg = '*'
             else:
                 msg = ' '
             print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, nb_apply, a)
         print '   ... (remaining %i single Op account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(sotimes)-n_ops_to_print),
+                % (max(0, len(sotimes)-n_ops_to_print),
                   sum(soinfo[0] for soinfo in sotimes[n_ops_to_print:]),
                   sum(soinfo[1] for soinfo in sotimes[n_ops_to_print:]))
 
@@ -445,10 +445,10 @@ class ProfileMode(Mode):
         op_flops = {}
         for a, t in op_time.items():
             if hasattr(a, 'flops'):
-                op_flops[a]=a.flops*op_call[a]/t/1e6
-        flops_msg=''
+                op_flops[a] = a.flops*op_call[a]/t/1e6
+        flops_msg = ''
         if op_flops:
-            flops_msg=' <MFlops/s>'
+            flops_msg = ' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\'t always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
         print
         print 'Op-wise summary:'
@@ -458,13 +458,13 @@ class ProfileMode(Mode):
                 for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
-        tot=0
+        tot = 0
         for f, t, a, ci, nb_call, nb_apply in otimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
-            tot+=t
-            ftot=tot*100/local_time
+            tot += t
+            ftot = tot*100/local_time
             if ci:
                 msg = '*'
             else:
@@ -474,7 +474,7 @@ class ProfileMode(Mode):
             else:
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_apply, a)
         print '   ... (remaining %i Op account for %6.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(otimes)-n_ops_to_print),
+                % (max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
@@ -487,11 +487,11 @@ class ProfileMode(Mode):
             atimes = [(t*100/local_time, t, a, [v for k, v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
-            tot=0
+            tot = 0
             for f, t, a, nb_call in atimes[:n_apply_to_print]:
-                tot+=t
-                ftot=tot*100/local_time
-                if nb_call==0:
+                tot += t
+                ftot = tot*100/local_time
+                if nb_call == 0:
                     continue
                 if apply_cimpl.get(a[1], False):
                     msg = '*'
@@ -500,7 +500,7 @@ class ProfileMode(Mode):
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %s %i  %2i %s' % (
                     f, ftot, t, tot, t/nb_call, msg, nb_call, a[0], str(a[1]))
             print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
-                    %(max(0, len(atimes)-n_apply_to_print),
+                    % (max(0, len(atimes)-n_apply_to_print),
                       sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
                       sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
             print '(*) Op is running a c implementation'

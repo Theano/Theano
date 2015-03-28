@@ -530,7 +530,7 @@ def test_subtensor_broadcastable():
 
 
 def test_copy_subtensor0():
-    sizeof_float=4
+    sizeof_float = 4
     a = theano._asarray(numpy.random.rand(30, 20, 5, 5), dtype='float32')
     cuda_a = cuda_ndarray.CudaNdarray(a)
     a_view = cuda_a.view()
@@ -553,14 +553,14 @@ def test_mapping_getitem_ellipsis():
     assert b.shape == a.shape
 
 def test_mapping_getitem_reverse_some_dims():
-    dim=(5, 4, 3, 2)
+    dim = (5, 4, 3, 2)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 
     _b = _a[:, :, ::-1, ::-1]
 
     b = numpy.asarray(_b)
-    assert numpy.all(b==a[:, :, ::-1, ::-1])
+    assert numpy.all(b == a[:, :, ::-1, ::-1])
 
 def test_mapping_getitem_w_int():
     def _cmp(x, y):
@@ -580,7 +580,7 @@ def test_mapping_getitem_w_int():
 
     def _cmpfV(x, *y):
         try:
-            if len(y)==1:
+            if len(y) == 1:
                 x.__getitem__(*y)
             else:
                 x.__getitem__(y)
@@ -589,7 +589,7 @@ def test_mapping_getitem_w_int():
         else:
             raise Exception("Did not generate out or bound error")
 
-    dim =(2,)
+    dim = (2,)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[1]), a[1])
@@ -600,14 +600,14 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[...]), a[...])
     _cmpf(_a, 2)
 
-    dim =()
+    dim = ()
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
     _cmp(numpy.asarray(_a[...]), a[...])
     _cmpf(_a, 0)
     _cmpfV(_a, slice(1))
 
-    dim =(5, 4, 3, 2)
+    dim = (5, 4, 3, 2)
     a = theano._asarray(numpy.random.rand(*dim), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
 

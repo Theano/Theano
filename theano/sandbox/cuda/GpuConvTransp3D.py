@@ -410,8 +410,8 @@ def computeR(W, b, d, H, Rshape=None):
                         for t in xrange(0, videoDur):
                             R[i, j, r, c, t] = b[j]
 
-                            ftc = max([0, int(numpy.ceil(float(t-filterDur +1  )/float(dt))) ])
-                            fcc = max([0, int(numpy.ceil(float(c-filterWidth +1)/float(dc))) ])
+                            ftc = max([0, int(numpy.ceil(float(t-filterDur + 1  )/float(dt))) ])
+                            fcc = max([0, int(numpy.ceil(float(c-filterWidth + 1)/float(dc))) ])
 
                             rc =  max([0, int(numpy.ceil(float(r-filterHeight+1)/float(dr))) ])
                             while rc < outputHeight:

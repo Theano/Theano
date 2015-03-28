@@ -7,7 +7,7 @@ DISPLAY_DUPLICATE_KEYS = False
 DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE = False
 
 dirs = []
-if len(sys.argv)>1:
+if len(sys.argv) > 1:
     for compiledir in sys.argv[1:]:
         dirs.extend([os.path.join(compiledir, d) for d in os.listdir(compiledir)])
 else:
@@ -23,7 +23,7 @@ for dir in dirs:
         key = f.read()
         f.close()
         keys.setdefault(key, 0)
-        keys[key]+=1
+        keys[key] += 1
         del f
     except IOError:
         # print dir, "don't have a key.pkl file"
@@ -36,7 +36,7 @@ for dir in dirs:
         mod = f.read()
         f.close()
         mods.setdefault(mod, ())
-        mods[mod]+=(key,)
+        mods[mod] += (key,)
         del mod
         del f
         del path
@@ -52,7 +52,7 @@ if DISPLAY_DUPLICATE_KEYS:
 nbs_keys = {}  # nb seen -> now many key
 for val in keys.values():
     nbs_keys.setdefault(val, 0)
-    nbs_keys[val]+=1
+    nbs_keys[val] += 1
 
 nbs_mod = {}  # nb seen -> how many key
 nbs_mod_to_key = {}  # nb seen -> keys
@@ -60,8 +60,8 @@ more_than_one = 0
 for mod, kk in mods.iteritems():
     val = len(kk)
     nbs_mod.setdefault(val, 0)
-    nbs_mod[val]+=1
-    if val>1:
+    nbs_mod[val] += 1
+    if val > 1:
         more_than_one += 1
     nbs_mod_to_key[val] = kk
 
