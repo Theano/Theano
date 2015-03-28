@@ -1222,7 +1222,7 @@ class GetItem2d(gof.op.Op):
                 start = ind.start
                 stop = ind.stop
                 step = ind.step
-                # If start or stop or step are None, make them a Generic 
+                # If start or stop or step are None, make them a Generic
                 # constant. Else, they should be converted to Tensor Variables
                 # of dimension 1 and int/uint dtype.
                 if scipy_ver < [0, 14] and ind.step != None:
@@ -1239,7 +1239,7 @@ class GetItem2d(gof.op.Op):
                         raise ValueError((
                             "Impossible to index into a sparse matrix with "
                             "slice where step=%s" % step),
-                            step.ndim, step.dtype)                    
+                            step.ndim, step.dtype)
 
                 if start is None:
                     start = generic_None

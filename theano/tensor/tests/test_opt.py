@@ -1586,7 +1586,7 @@ def test_local_useless_slice():
     f_opt = theano.function([x], o, mode=mode_opt)
     test_inp = numpy.random.randint(-10, 10, (4, 4)).astype('float32')
     assert all(f_opt(test_inp)  == f_unopt(test_inp)),\
-           "The optimization caused a mismatch in the result" 
+           "The optimization caused a mismatch in the result"
     # test to see if the slice is truely gone
     apply_node = f_opt.maker.fgraph.toposort()[0]
     subtens = apply_node.op
@@ -1599,7 +1599,7 @@ def test_local_useless_slice():
     f_opt_check = theano.function([z], o2, mode=mode_opt)
     f_opt_check_apply = theano.function([z], o3, mode=mode_opt)
 
-    # The optimization shouldn't apply here 
+    # The optimization shouldn't apply here
     apply_node = f_opt_check.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert [isinstance(idx, slice) for idx in subtens.idx_list].count(True) == 2

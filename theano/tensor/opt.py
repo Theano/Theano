@@ -1929,16 +1929,16 @@ def local_useless_slice(node):
     if isinstance(node.op, Subtensor):
         slices = get_idx_list(node.inputs, node.op.idx_list)
         last_slice = len(slices)
-        for s in slices[::-1]: 
+        for s in slices[::-1]:
             # check if slice and then check slice indices
             if (isinstance(s, slice) and s.start is None and s.stop is None
-                and (s.step is None or T.extract_constant(s.step) == 1)): 
+                and (s.step is None or T.extract_constant(s.step) == 1)):
                     last_slice -= 1
             else:
                 break
         # check if we removed something
         if last_slice < len(slices):
-            subtens = Subtensor(slices[:last_slice]) 
+            subtens = Subtensor(slices[:last_slice])
             sl_ins = Subtensor.collapse(slices[:last_slice],
                                         lambda x: isinstance(x, T.Variable))
             out = subtens(node.inputs[0], *sl_ins)
@@ -5619,8 +5619,8 @@ else:
 # # Remove consider_constant #
 # ############################
 
-# Although the ops ConsiderConstant, ZeroGrad and DisconnectedGrad 
-# just returns the input, it should be removed from the graph to 
+# Although the ops ConsiderConstant, ZeroGrad and DisconnectedGrad
+# just returns the input, it should be removed from the graph to
 # make sure all possible optimizations can be applied.
 register_canonicalize(gof.OpRemove(theano.gradient.consider_constant_),
     'fast_compile', 'fast_run', name='remove_consider_constant')

@@ -568,7 +568,7 @@ def test_subgraph_grad():
     w2 = theano.shared(np.random.randn(4, 2))
     a1 = theano.tensor.tanh(theano.tensor.dot(x, w1))
     a2 = theano.tensor.tanh(theano.tensor.dot(a1, w2))
-    cost2 = theano.tensor.sqr(a2 - t).sum() 
+    cost2 = theano.tensor.sqr(a2 - t).sum()
     cost2 += theano.tensor.sqr(w2.sum())
     cost1 = theano.tensor.sqr(w1.sum())
     
@@ -591,7 +591,7 @@ def test_subgraph_grad():
     param_grads = []
     for i in xrange(2):
         param_grad, next_grad = theano.subgraph_grad(
-            wrt=params[i], end=grad_ends[i], 
+            wrt=params[i], end=grad_ends[i],
             start=next_grad, cost=costs[i]
         )
         next_grad = OrderedDict(zip(grad_ends[i], next_grad))

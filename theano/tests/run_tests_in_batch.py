@@ -153,7 +153,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     assert rval == 0
     noseids_file = '.noseids'
 
-    with open(noseids_file, 'rb') as f: 
+    with open(noseids_file, 'rb') as f:
         data = cPickle.load(f)
 
     ids = data['ids']

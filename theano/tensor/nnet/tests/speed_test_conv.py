@@ -42,9 +42,9 @@ global_rng = N.random.RandomState(3423489)
 
 dmatrix4 = T.TensorType('float64', (False, False, False, False))
 
-def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns, 
-        unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True, 
-        conv_op_py=False, do_print=True, repeat=1, 
+def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
+        unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True,
+        conv_op_py=False, do_print=True, repeat=1,
         unroll_patch=False, unroll_patch_size=False, verbose=0):
 
         # build actual input images
@@ -56,7 +56,7 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
         kerns4 = dmatrix4()
 
         # for each layer
-        ntot = 0 
+        ntot = 0
         tctot = 0
         tpytot = 0
 
@@ -76,7 +76,7 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
             if conv_mode == 'full':
                 padimg_shp = N.array(imshp[1:]) + 2*(N.array(kshp) - N.array([1, 1]))
                 padimg = N.zeros(N.r_[bsize, imshp[0], padimg_shp])
-                padimg[:, :, kshp[0]-1:-kshp[0]+1, 
+                padimg[:, :, kshp[0]-1:-kshp[0]+1,
                              kshp[1]-1:-kshp[1]+1] = imgval
 
             outshp = N.hstack((nkern, ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
@@ -136,9 +136,9 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
 
         return tctot, tpytot, ntot
 
-def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns, 
+def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
         unroll_batch=0, unroll_kern=0, img=T.dmatrix(),
-        do_print=True, repeat=1, 
+        do_print=True, repeat=1,
         unroll_patch=False, unroll_patch_size=False, verbose=0):
 
         # build actual input images
@@ -150,7 +150,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
         kerns4 = dmatrix4()
 
         # for each layer
-        ntot = 0 
+        ntot = 0
         tctot = 0
         tpytot = 0
 
@@ -195,7 +195,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
 
 def speed_multilayer_conv():
         # calculate the speed up of different combination of unroll
-        # put the paramter to the same you will try. 
+        # put the paramter to the same you will try.
         
         validate = False  # we don't validate the result to have it much faster!
         repeat = 3

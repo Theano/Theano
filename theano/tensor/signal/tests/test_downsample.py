@@ -465,7 +465,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     def test_max_pool_2d_2D_same_size(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         test_input_array = numpy.array([[[
-            [1., 2., 3., 4.], 
+            [1., 2., 3., 4.],
             [5., 6., 7., 8.]
         ]]])
         test_answer_array = numpy.array([[[

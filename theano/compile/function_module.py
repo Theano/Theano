@@ -933,7 +933,7 @@ class FunctionMaker(object):
             found_graph_in_db = None
             # The sole purpose of this loop is to set 'need_optimize' by
             # going through graph_db, looking for graph that has the same
-            # computation performed. 
+            # computation performed.
             for graph_old, graph_optimized in graph_db.iteritems():
                 inputs_old = graph_old.inputs
                 outputs_old = graph_old.outputs
@@ -1031,7 +1031,7 @@ class FunctionMaker(object):
             print 'graph not found in graph_db, optimizing the graph'
             self.fgraph.variables = set(gof.graph.variables(
                 self.fgraph.inputs, self.fgraph.outputs))
-            # check_integrity parameters was added to ignore 
+            # check_integrity parameters was added to ignore
             #"excess cached variables" errors. Works that way
             # but once again the error couldbe worth
             # investigating.
@@ -1123,7 +1123,7 @@ class FunctionMaker(object):
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one 
+        # Make a list of (SymbolicInput|SymblicInputKits, indices, [SymbolicInput,...]), one
         # tuple for each input. (See Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs) for input in inputs]
 
@@ -1156,7 +1156,7 @@ class FunctionMaker(object):
                 if theano.config.cache_optimizations:
                     optimizer_profile = self.optimize_graph_with_cache(
                         optimizer, inputs, outputs)
-                else:    
+                else:
                     optimizer_profile = optimizer(fgraph)
                     
                 end_optimizer = time.time()

@@ -490,7 +490,7 @@ class GpuSoftmax (Op):
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
-            cnda_thread_sync = ""  
+            cnda_thread_sync = ""
         return """
         if (PyGpuArray_NDIM(%(x)s) != 2)
         {
@@ -686,7 +686,7 @@ class GpuSoftmaxWithBias (Op):
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
-            cnda_thread_sync = "" 
+            cnda_thread_sync = ""
         return """
         if (PyGpuArray_NDIM(%(x)s) != 2)
         {
