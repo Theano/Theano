@@ -89,7 +89,7 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
                 return self.container.value
             else:
                 return copy.deepcopy(self.container.value)
-        else: #return an ndarray
+        else:  # return an ndarray
             return numpy.asarray(self.container.value)
 
     def set_value(self, value, borrow=False):
@@ -129,7 +129,7 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
             if not isinstance(value, numpy.ndarray):
                 # in case this is a cuda_ndarray, we copy it
                 value = copy.deepcopy(value)
-        self.container.value = value # this will copy a numpy ndarray
+        self.container.value = value  # this will copy a numpy ndarray
 
     def __getitem__(self, *args):
         # Defined to explicitly use the implementation from `_operators`, since

@@ -402,7 +402,7 @@ class ProfileMode(Mode):
         sop_time={}
         sop_call={}
         sop_op = {}
-        sop_cimpl={} #map each op class to Bool. True iff all applies were done in c.
+        sop_cimpl={}  # map each op class to Bool. True iff all applies were done in c.
         for a, t in op_time.items():
             typ = type(a)
             sop_time.setdefault(typ, 0)

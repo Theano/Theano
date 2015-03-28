@@ -89,9 +89,9 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
                 from scipy.signal.signaltools import  _valfrommode, _bvalfromboundary
                 val = _valfrommode(conv_mode)
                 bval = _bvalfromboundary('fill')
-                for b in range(bsize): # loop over batches
-                    for n in range(nkern): # loop over filters
-                        for i in range(imshp[0]): # loop over input feature maps
+                for b in range(bsize):  # loop over batches
+                    for n in range(nkern):  # loop over filters
+                        for i in range(imshp[0]):  # loop over input feature maps
                             outval[b, n, ...] +=  _convolve2d(\
                                 imgval[b, i, ...], w_flip[n, i, ...], 1, val, bval, 0)[0::ss[0], 0::ss[1]]
                 ntot += time.time() - time1
@@ -111,14 +111,14 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
             time1 = time.time()
             for i in range(repeat):
                 hidval2_ = propup2(imgval, w_flip)
-            hidval2 = hidval2_#[:,:,0::ss[0],0::ss[1]]
+            hidval2 = hidval2_  # [:,:,0::ss[0],0::ss[1]]
             tctot += time.time() - time1
 
             if conv_op_py:
                 time1 = time.time()
                 for i in range(repeat):
                     hidval3_ = propup3(imgval, w_flip)
-                hidval3 = hidval3_#[:,:,0::ss[0],0::ss[1]]
+                hidval3 = hidval3_  # [:,:,0::ss[0],0::ss[1]]
                 tpytot += time.time() - time1
                 assert (N.abs(hidval2-hidval3)<1e-5).all()
             else:
@@ -183,7 +183,7 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
             time1 = time.time()
             for i in range(repeat):
                 hidval2_ = propup2(imgval, w_flip)
-            hidval2 = hidval2_#[:,:,0::ss[0],0::ss[1]]
+            hidval2 = hidval2_  # [:,:,0::ss[0],0::ss[1]]
             tctot += time.time() - time1
 
             imshp = tuple(outshp)
@@ -197,22 +197,22 @@ def speed_multilayer_conv():
         # calculate the speed up of different combination of unroll
         # put the paramter to the same you will try. 
         
-        validate=False# we don't validate the result to have it much faster!
+        validate=False  # we don't validate the result to have it much faster!
         repeat = 3
         verbose=1
-        unroll_batch = [1, 2, 3, 4, 5, 6, 10]#15, 30, 60 always much slower
-        unroll_kern = [1, 2, 3, 4, 5, 6, 10]#15, 30, 60 always much slower
+        unroll_batch = [1, 2, 3, 4, 5, 6, 10]  # 15, 30, 60 always much slower
+        unroll_kern = [1, 2, 3, 4, 5, 6, 10]  # 15, 30, 60 always much slower
         #unroll_batch = [1,4,5]
         #unroll_kern = [1,4,5]
         #unroll_batch = [1,4]
         #unroll_kern = [1,4]
         unroll_patch = [True, False]
         
-        bsize = 60 # batch size
-        imshp_start = (1, 48, 48)#un square shape to test more corner case.
-        kshps = ([11, 12],)#un square shape to test more corner case.
-        nkerns = [60] # per output pixel
-        ssizes = [(1, 1), ]#(1,1)]#(2,2) bugged
+        bsize = 60  # batch size
+        imshp_start = (1, 48, 48)  # un square shape to test more corner case.
+        kshps = ([11, 12],)  # un square shape to test more corner case.
+        nkerns = [60]  # per output pixel
+        ssizes = [(1, 1), ]  # (1,1)]#(2,2) bugged
         convmodes = ['valid', 'full']
         do_convolve2=False
         a=T.dmatrix()
@@ -246,9 +246,9 @@ def speed_multilayer_conv():
                     if unroll_b==1 and unroll_k==1:
                         # print "unroll 1/1",tctot
                         worst=tctot
-                    timing[n_b, n_k]=[tctot, tpytot, ntot]#[sum(tctot), sum(tpytot), sum(ntot)]
+                    timing[n_b, n_k]=[tctot, tpytot, ntot]  # [sum(tctot), sum(tpytot), sum(ntot)]
         if not t_:
-            t=timing[:, :, 0, :]#We select only the c timing.
+            t=timing[:, :, 0, :]  # We select only the c timing.
         else:
             t=t_
         t=N.asarray(t)

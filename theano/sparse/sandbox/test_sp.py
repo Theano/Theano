@@ -140,7 +140,7 @@ class TestSP(unittest.TestCase):
         bsize = 10     # batch size
         imshp = (8, 8)
         kshp = (5, 5)
-        nkern = 1 # per output pixel
+        nkern = 1  # per output pixel
         ssizes = ((1, 1), (2, 2))
         convmodes = ('full', 'valid',)
 
@@ -182,7 +182,7 @@ class TestSP(unittest.TestCase):
                     patch = numpy.zeros((kshp[0], kshp[1]))
                     for b in xrange(bsize):
                         for k in xrange(nkern):
-                            pixi = 0 # pixel index in raster order
+                            pixi = 0  # pixel index in raster order
                             for j in xrange(outshp[1]):
                                 for i in xrange(outshp[2]):
                                     n = j * ss[0]
@@ -225,7 +225,7 @@ class TestSP(unittest.TestCase):
         bsize = 10     # batch size
         imshp = (5, 5)
         kshp = ((3, 3), (2, 2))
-        nkerns = (10, 20) # per output pixel
+        nkerns = (10, 20)  # per output pixel
         ssizes = ((1, 1), (2, 2))
         convmodes = ('full', 'valid',)
 
@@ -263,9 +263,9 @@ class TestSP(unittest.TestCase):
         bsize = 10     # batch size
         imshp = (5, 5)
         kshp = ((3, 3), (2, 2))
-        nkerns = (3, 6) # per output pixel
+        nkerns = (3, 6)  # per output pixel
         ssizes = (((1, 1), (2, 2)),)
-        convmodes = ('full',)#'valid',)
+        convmodes = ('full',)  # 'valid',)
 
         # symbolic stuff
         kerns = [tensor.dmatrix(), tensor.dmatrix()]
@@ -338,7 +338,7 @@ class TestSP(unittest.TestCase):
 
     def test_CSMGrad(self):
         imshp = (3, 3)
-        nkern = 1 # per output pixel
+        nkern = 1  # per output pixel
         kshp = (2, 2)
         #ssizes = ((1,1),(2,2))
         ssizes = ((1, 1),)

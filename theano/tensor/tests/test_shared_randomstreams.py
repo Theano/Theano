@@ -43,7 +43,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         gn_val0 = gn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
 
         # print fn_val0
         numpy_val0 = rng.uniform(size=(2, 2))
@@ -86,7 +86,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         random.seed(utt.fetch_seed())
 
         rng = numpy.random.RandomState()
-        rng.set_state(random[out.rng].get_state()) #tests getitem
+        rng.set_state(random[out.rng].get_state())  # tests getitem
 
         fn_val0 = fn()
         fn_val1 = fn()
@@ -143,7 +143,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
         numpy_val0 = rng.uniform(-1, 1, size=(2, 2))
         numpy_val1 = rng.uniform(-1, 1, size=(2, 2))
 
@@ -160,7 +160,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
         numpy_val0 = rng.normal(-1, 2, size=(2, 2))
         numpy_val1 = rng.normal(-1, 2, size=(2, 2))
 
@@ -176,7 +176,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
         numpy_val0 = rng.random_integers(-5, 5, size=(20, 20))
         numpy_val1 = rng.random_integers(-5, 5, size=(20, 20))
 
@@ -198,7 +198,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
         numpy_val0 = rng.choice(10, (11, 8), True, None)
         numpy_val1 = rng.choice(10, (11, 8), True, None)
 
@@ -215,7 +215,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
         numpy_val0 = rng.poisson(lam=5, size=(11, 8))
         numpy_val1 = rng.poisson(lam=5, size=(11, 8))
 
@@ -232,7 +232,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
 
         # rng.permutation outputs one vector at a time, so we iterate.
         numpy_val0 = numpy.asarray([rng.permutation(10) for i in range(20)])
@@ -251,7 +251,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         fn_val1 = fn()
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
-        rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
+        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
         numpy_val0 = rng.multinomial(1, [0.1]*10, size=(4, 4))
         numpy_val1 = rng.multinomial(1, [0.1]*10, size=(4, 4))
 
@@ -419,7 +419,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.allclose(val0, numpy_val0)
         assert numpy.allclose(val1, numpy_val1)
 
-        for i in range(10): # every test has 50% chance of passing even with non-matching random states
+        for i in range(10):  # every test has 50% chance of passing even with non-matching random states
             val2 = g()
             numpy_val2 = multinomial_rng.multinomial(n=1, pvals=[.5, .5])
             assert numpy.all(val2 == numpy_val2)

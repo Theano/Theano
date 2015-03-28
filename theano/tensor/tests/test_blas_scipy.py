@@ -43,19 +43,19 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         f = self.function([self.A, self.x, self.y],
                 self.A + tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, ScipyGer(destructive=False))
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, ScipyGer(destructive=False))
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
     def test_scaled_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 0.2 * self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, gemm_no_inplace)
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
 class TestBlasStridesScipy(TestBlasStrides):
     mode = theano.compile.get_default_mode()

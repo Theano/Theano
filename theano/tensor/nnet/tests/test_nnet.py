@@ -1137,7 +1137,7 @@ def test_argmax_pushdown():
     # print 'AFTER'
     # for node in fgraph.toposort():
         # print node.op
-    assert len(fgraph.toposort()) == 4 # an output_guard is second
+    assert len(fgraph.toposort()) == 4  # an output_guard is second
     assert isinstance(fgraph.toposort()[0].op, tensor.Elemwise)
     assert isinstance(fgraph.toposort()[1].op, Softmax)
     assert isinstance(fgraph.toposort()[2].op, tensor.CAReduce)

@@ -269,7 +269,7 @@ def test_mlp():
     # allocate symbolic variables for the data
     index = T.lscalar()    # index to a [mini]batch
     x     = T.matrix('x')  # the data is presented as rasterized images
-    y     = T.ivector('y') # the labels are presented as 1D vector of
+    y     = T.ivector('y')  # the labels are presented as 1D vector of
                            # [int] labels
 
     rng = numpy.random.RandomState(1234)

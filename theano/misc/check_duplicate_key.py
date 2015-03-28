@@ -13,7 +13,7 @@ if len(sys.argv)>1:
 else:
     dirs = os.listdir(theano.config.compiledir)
     dirs = [os.path.join(theano.config.compiledir, d) for d in dirs]
-keys = {} # key -> nb seen
+keys = {}  # key -> nb seen
 mods = {}
 for dir in dirs:
 
@@ -49,13 +49,13 @@ if DISPLAY_DUPLICATE_KEYS:
         if v > 1:
             print "Duplicate key (%i copies): %s" % (v, cPickle.loads(k))
 
-nbs_keys = {} # nb seen -> now many key
+nbs_keys = {}  # nb seen -> now many key
 for val in keys.values():
     nbs_keys.setdefault(val, 0)
     nbs_keys[val]+=1
 
-nbs_mod = {} # nb seen -> how many key
-nbs_mod_to_key = {} #nb seen -> keys
+nbs_mod = {}  # nb seen -> how many key
+nbs_mod_to_key = {}  # nb seen -> keys
 more_than_one = 0
 for mod, kk in mods.iteritems():
     val = len(kk)

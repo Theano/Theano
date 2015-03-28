@@ -7,7 +7,7 @@ class CallCache(object):
         self.filename = filename
         try:
             if filename is None:
-                raise IOError('bad filename') #just goes to except
+                raise IOError('bad filename')  # just goes to except
             f = open(filename, 'r')
             self.cache = cPickle.load(f)
             f.close()

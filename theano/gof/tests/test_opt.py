@@ -109,18 +109,18 @@ class TestPatternOptimizer:
 
     def test_unification_1(self):
         x, y, z = inputs()
-        e = op1(op2(x, x), z) # the arguments to op2 are the same
+        e = op1(op2(x, x), z)  # the arguments to op2 are the same
         g = Env([x, y, z], [e])
-        PatternOptimizer((op1, (op2, '1', '1'), '2'), # they are the same in the pattern
+        PatternOptimizer((op1, (op2, '1', '1'), '2'),  # they are the same in the pattern
                          (op4, '2', '1')).optimize(g)
         # So the replacement should occur
         assert str(g) == "[Op4(z, x)]"
 
     def test_unification_2(self):
         x, y, z = inputs()
-        e = op1(op2(x, y), z) # the arguments to op2 are different
+        e = op1(op2(x, y), z)  # the arguments to op2 are different
         g = Env([x, y, z], [e])
-        PatternOptimizer((op1, (op2, '1', '1'), '2'), # they are the same in the pattern
+        PatternOptimizer((op1, (op2, '1', '1'), '2'),  # they are the same in the pattern
                          (op4, '2', '1')).optimize(g)
         # The replacement should NOT occur
         assert str(g) == "[Op1(Op2(x, y), z)]"
@@ -403,7 +403,7 @@ class TestEquilibrium(object):
                  PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
                  PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
                  ],
-                max_use_ratio=1. / len(g.apply_nodes)) # each opt can only be applied once
+                max_use_ratio=1. / len(g.apply_nodes))  # each opt can only be applied once
             opt.optimize(g)
         finally:
             _logger.setLevel(oldlevel)

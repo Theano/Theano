@@ -1506,7 +1506,7 @@ class Scan(PureOp):
         """
 
         output = []
-        outer_inp_idx = 1 # First outer input is timestep index, skip it
+        outer_inp_idx = 1  # First outer input is timestep index, skip it
 
         # Handle sequences inputs
         for i in range(self.info['n_seqs']):

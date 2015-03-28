@@ -260,7 +260,7 @@ class NaiveAlgo(object):
                     , nodename + '_scalar_'
                     , get_str_list_logical_scalar(node, value_str='value0[%i]')
                     , ['ii_o%i_data[0]'%ipos for ipos, i in enumerate(node.outputs)]
-                    , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+                    , sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
             print >> sio, "       ", task_code
 
             print >> sio, "    }" * nd
@@ -398,7 +398,7 @@ class NaiveAlgo(object):
                 , nodename + '_scalar_'
                 , ['i%i_data_%i[0]'%(ipos, d) for ipos, i in enumerate(node.inputs)]
                 , ['o%i_data_%i[0]'%(ipos, d) for ipos, i in enumerate(node.outputs)]
-                , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+                , sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
 
         if nd == 4:
             decl_shared_stride(n_in, n_out, nd)
@@ -473,7 +473,7 @@ class NaiveAlgo(object):
                 #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)]
                 , get_str_list_logical_scalar(node, data_str='i%i_data[i]')
                 , ['o%i_data[i]'%ipos for ipos, i in enumerate(node.outputs)]
-                , sub=dict(fail='return;')) #TODO: set a failure code somehow!!!
+                , sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
         print >> sio, "       ", task_code
         print >> sio, "    }"
         print >> sio, "}"
@@ -844,9 +844,9 @@ nd_collapse_[i]=0;
             launch_General(nodename, scalar_op, i, self.sync)
             print >> sio, "        } break;"
 
-        print >> sio, "}"#end case
+        print >> sio, "}"  # end case
         print >> sio, "return -2;"  # should not get to this point
-        print >> sio, "}"#end fct
+        print >> sio, "}"  # end fct
 
         # N.B. cudaGetLastError is called by c_code
         return sio.getvalue()

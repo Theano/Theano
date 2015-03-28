@@ -12,7 +12,7 @@ from theano.compat.six import StringIO
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 
-scal = scalar # somewhere scalar gets reassigned to be a function
+scal = scalar  # somewhere scalar gets reassigned to be a function
 
 from theano.compat.python2x import all, any
 
@@ -3415,7 +3415,7 @@ class GpuAlloc(GpuAllocEmpty):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (#The following ops work inplace of their input id 0.
+            elif (  # The following ops work inplace of their input id 0.
                   client[1] == 0 and
                   isinstance(client[0].op, (
                     # Ops that will work inplace on the Alloc. So if they

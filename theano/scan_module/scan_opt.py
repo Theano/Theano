@@ -692,7 +692,7 @@ class PushOutScanOutput(gof.Optimizer):
                         outer_dot_inputs = [outer_vector_input,
                                             outer_matrix_input.transpose()]
                         outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
-                    else: # idx_matrix_input == 1
+                    else:  # idx_matrix_input == 1
                         outer_dot_inputs = [outer_vector_input,
                                             outer_matrix_input]
                         outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
@@ -725,7 +725,7 @@ class PushOutScanOutput(gof.Optimizer):
 
                     sitsot_in_idx = nd.inputs.index(args.inner_in_sit_sot[sitsot_idx])
 
-                    dot_in_idx = 1 - sitsot_in_idx # 0 if sitsot_in_idx==1,
+                    dot_in_idx = 1 - sitsot_in_idx  # 0 if sitsot_in_idx==1,
                                                    # 1 if sitsot_in_idx==0
                     dot_input = nd.inputs[dot_in_idx]
 

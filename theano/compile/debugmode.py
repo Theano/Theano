@@ -326,7 +326,7 @@ class BadDestroyMap(DebugModeError):
     wasn't in the destroy_map"""
     def __init__(self, node, idx, old_val, new_val, perform):
         #super(BadDestroyMap, self).__init__()
-        DebugModeError.__init__(self)#to be compatible with python2.4
+        DebugModeError.__init__(self)  # to be compatible with python2.4
         self.node = node
         self.idx = idx
         self.old_val = old_val
@@ -794,7 +794,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                         # bad: there should only be one active node that destroys any variable
                         raise Exception('failure in topological ordering')
                     if clobber_dr_vals:
-                        dr_vals[r] = (storage_map[r][0], node) #no copy, this is the last use of this variable
+                        dr_vals[r] = (storage_map[r][0], node)  # no copy, this is the last use of this variable
                     # make sure that dr_vals[r] doens't get used again
                     storage_map[r][0] = data_destroyed
             else:
@@ -887,7 +887,7 @@ def _check_strides_match(a, b, warn_err, op):
     try:
         strides_eq = a.strides == b.strides
     except Exception:
-        return # no strides
+        return  # no strides
 
     if not strides_eq:
         e = TypeError('Stride mismatch', (a.shape, b.shape, a.strides,
@@ -1643,7 +1643,7 @@ class _Linker(gof.link.LocalLinker):
         order_outputs.reverse()
         order = graph.io_toposort(fgraph.inputs, order_outputs)
 
-        active_order = self.schedule(fgraph) # an ordering of just the active nodes
+        active_order = self.schedule(fgraph)  # an ordering of just the active nodes
         active_order_set = set(active_order)
 
         # Disable no_recycling, in order to be able to use
@@ -1999,7 +1999,7 @@ class _Linker(gof.link.LocalLinker):
                                 raise InvalidValueError(r, storage_map[r][0], hint='c output')
 
                             if thunk_py:
-                                assert r in r_vals #because we put it in during the thunk_py branch
+                                assert r in r_vals  # because we put it in during the thunk_py branch
                                 # check for stride correctness (may raise exception)
                                 _check_strides_match(r_vals[r],
                                     storage_map[r][0],
@@ -2032,7 +2032,7 @@ class _Linker(gof.link.LocalLinker):
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 # retrieve each output from the storage_map
                                 r_vals[r] = storage_map[r][0]
-                            storage_map[r][0] = None #clear the storage_map for the thunk_c
+                            storage_map[r][0] = None  # clear the storage_map for the thunk_c
 
                         if self.maker.mode.check_preallocated_output:
                             prealloc_modes = \

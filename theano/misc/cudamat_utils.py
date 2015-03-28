@@ -71,7 +71,7 @@ try:
             cm_mat.on_host = 0
             cm_mat.on_device = 1
             cm_mat.is_trans = 0
-            cm_mat.owns_data = 0 # <-- note: cm_mat dosen't owe the data; x does. So x will delete it.
+            cm_mat.owns_data = 0  # <-- note: cm_mat dosen't owe the data; x does. So x will delete it.
 
 
             # x.gpudata is a long. We need a pointer to a float. cast.
@@ -80,12 +80,12 @@ try:
 
             px = cudamat.CUDAMatrix(cm_mat)
 
-            px._base = x # x won't be __del__'ed as long as px is around.
+            px._base = x  # x won't be __del__'ed as long as px is around.
 
 
 
 
-            px.mat_on_host = False # let cudamat know that we don't have a numpy
+            px.mat_on_host = False  # let cudamat know that we don't have a numpy
                                    # array attached.
             return px
 

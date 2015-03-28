@@ -396,7 +396,7 @@ class FunctionGraph(utils.object2):
         # then __prune__ is a no-op.
         for output in node.outputs:
             # Cannot prune an op which is an output or used somewhere
-            if self.clients(output) or output in self.outputs: #output in self.outputs or self.clients(output):
+            if self.clients(output) or output in self.outputs:  # output in self.outputs or self.clients(output):
                 return
         self.apply_nodes.remove(node)
         self.variables.difference_update(node.outputs)

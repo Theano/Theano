@@ -53,8 +53,8 @@ def test_mpi_send_wait_cmp():
     waitnode = y.owner
     sendnode = y.owner.inputs[0].owner
     addnode = z.owner
-    assert mpi_send_wait_cmp(sendnode, addnode) < 0 # send happens first
-    assert mpi_send_wait_cmp(waitnode, addnode) > 0 # wait happens last
+    assert mpi_send_wait_cmp(sendnode, addnode) < 0  # send happens first
+    assert mpi_send_wait_cmp(waitnode, addnode) > 0  # wait happens last
 
 def test_mpi_tag_ordering():
     x = recv((2, 2), 'float32', 1, 12)

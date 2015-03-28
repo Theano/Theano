@@ -226,8 +226,8 @@ class PureType(object):
 
     """
 
-    Variable = graph.Variable #the type that will be created by call to make_variable.
-    Constant = graph.Constant #the type that will be created by call to make_constant
+    Variable = graph.Variable  # the type that will be created by call to make_variable.
+    Constant = graph.Constant  # the type that will be created by call to make_constant
 
     def filter(self, data, strict=False, allow_downcast=None):
         """Required: Return data or an appropriately wrapped/converted data.

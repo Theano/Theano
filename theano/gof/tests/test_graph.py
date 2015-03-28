@@ -142,10 +142,10 @@ class TestClone(X):
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
         _, new = clone([r1, r2, r5], node2.outputs, False)
-        assert node2.outputs[0].type == new[0].type and node2.outputs[0] is not new[0] # the new output is like the old one but not the same object
-        assert node2 is not new[0].owner # the new output has a new owner
-        assert new[0].owner.inputs[1] is r5 # the inputs are not copied
-        assert new[0].owner.inputs[0].type == node.outputs[0].type and new[0].owner.inputs[0] is not node.outputs[0] # check that we copied deeper too
+        assert node2.outputs[0].type == new[0].type and node2.outputs[0] is not new[0]  # the new output is like the old one but not the same object
+        assert node2 is not new[0].owner  # the new output has a new owner
+        assert new[0].owner.inputs[1] is r5  # the inputs are not copied
+        assert new[0].owner.inputs[0].type == node.outputs[0].type and new[0].owner.inputs[0] is not node.outputs[0]  # check that we copied deeper too
 
     def test_not_destructive(self):
         # Checks that manipulating a cloned graph leaves the original unchanged.

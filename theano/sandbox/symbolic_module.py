@@ -184,7 +184,7 @@ def compile(smod, initial_values=None):
                     print p
                     reflected[thing] = p
                 else:
-                    reflected[thing] = None #TODO: how to reflect derived resuls?
+                    reflected[thing] = None  # TODO: how to reflect derived resuls?
             elif issymbolicmethod(thing):
                 reflected[thing] = compiled_functions[thing]
             else :
@@ -332,12 +332,12 @@ if 0:
             x=T.dmatrix(),    #our points, one point per row
             w=T.dmatrix(),    #first layer weights
             b=T.dvector(),    #first layer bias
-            **kwargs #other things from logistic_regression
+            **kwargs  # other things from logistic_regression
             ):
         hid = T.tanh(T.dot(x, w) + b)
         if top_part:
             print 'top_part', top_part, 'kwargs', kwargs
-            top = top_part(x=hid, **kwargs) # SymbolicModule
+            top = top_part(x=hid, **kwargs)  # SymbolicModule
             def params(): return top.params() + [w, b]
         else:
             def params(): return [w, b]
@@ -353,7 +353,7 @@ if 0:
 
 if 0:
     class SymbolicModule(object):
-        name = "__no_name__" #name of this module
+        name = "__no_name__"  # name of this module
 
         variable_table = {}  #map strings (names) to Variables
         method_table = {}  #map strings to compilable functions
@@ -385,8 +385,8 @@ if 0:
             b=T.dvector(),    #first layer bias
             v=T.dmatrix(),    #second layer weights
             c=T.dvector(),    #second layer bias
-            step=T.dscalar(), #step size for gradient descent
-            l2_coef=T.dscalar() #l2 regularization amount
+            step=T.dscalar(),  # step size for gradient descent
+            l2_coef=T.dscalar()  # l2 regularization amount
             ):
         """Idea A:
         """

@@ -8,7 +8,7 @@ def make_declare(loop_orders, dtypes, sub):
 
     decl = ""
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
-        var = sub['lv%i' % i] # input name corresponding to ith loop variable
+        var = sub['lv%i' % i]  # input name corresponding to ith loop variable
         # we declare an iteration variable
         # and an integer for the number of dimensions
         decl += """
@@ -229,7 +229,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
                 preloops.setdefault(j, "")
                 preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
                 break
-        else: # all broadcastable
+        else:  # all broadcastable
             preloops.setdefault(0, "")
             preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 
@@ -512,7 +512,7 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
                 preloops.setdefault(j, "")
                 preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
                 break
-        else: # all broadcastable
+        else:  # all broadcastable
             preloops.setdefault(0, "")
             preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 

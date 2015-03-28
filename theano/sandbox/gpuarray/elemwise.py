@@ -1048,7 +1048,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         else:
             assert isinstance(self.scalar_op, (scal.Maximum,
                                                scal.Minimum))
-            if self.pre_scalar_op: # TODO, multi_dtype!
+            if self.pre_scalar_op:  # TODO, multi_dtype!
                 #dtype = node.inputs[0].dtype
                 dtype = 'float32'
 

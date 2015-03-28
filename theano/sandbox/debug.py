@@ -106,7 +106,7 @@ class DebugLinker(gof.WrapLinker):
         fgraph = f.fgraph
         for r in fgraph.variables:
             if r.owner is None:
-                r.step = "value" # this will be overwritten if r is an input
+                r.step = "value"  # this will be overwritten if r is an input
             else:
                 r.step = None
             r.value = None

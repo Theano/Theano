@@ -983,12 +983,12 @@ class test_fusion(unittest.TestCase):
             (fx-theano.tensor.true_div(fy, fz), (fx, fy, fz), (fxv,
                 fyv, fzv), 1, fxv-(fyv/fzv), 'float32'),
             (fx-theano.tensor.int_div(ix*100, iy*1000), (fx, ix,
-                iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #40
+                iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 40
             (fx-(fy/2), (fx, fy), (fxv, fyv), 1, fxv-(fyv/2), 'float32'),
             (fx-(fy%fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv%fzv), 'float32'),
             (fx-(fy>fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv>fzv), 'float32'),
             (fx-(fy>=fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv>=fzv), 'float32'),
-            (fx-(fy<fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<fzv), 'float32'),#45
+            (fx-(fy<fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<fzv), 'float32'),  # 45
             (fx-(fy<=fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv<=fzv), 'float32'),
             (fx-T.eq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
                 fyv==fzv), 'float32'),
@@ -997,7 +997,7 @@ class test_fusion(unittest.TestCase):
             (fx-fy+tensor.tan(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
                 fxv-fyv+numpy.tan(fzv), 'float32'),
             (fx-fy+tensor.tanh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
-                fxv-fyv+numpy.tanh(fzv), 'float32'),#50
+                fxv-fyv+numpy.tanh(fzv), 'float32'),  # 50
             (fx-fy+tensor.sin(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
                 fxv-fyv+numpy.sin(fzv), 'float32'),
             (fx-fy+tensor.sinh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
@@ -1007,7 +1007,7 @@ class test_fusion(unittest.TestCase):
             (fx-fy+theano.tensor.sqrt(fz), (fx, fy, fz), (fxv, fyv,
                 fzv), 1, fxv-fyv+numpy.sqrt(fzv), 'float32'),
             (fx-fy+theano.tensor.inv(fz), (fx, fy, fz), (fxv, fyv,
-                fzv), 1, fxv-fyv+(1/fzv), 'float32'),#55
+                fzv), 1, fxv-fyv+(1/fzv), 'float32'),  # 55
             (fx-fy+theano.tensor.neg(fz), (fx, fy, fz), (fxv, fyv,
                 fzv), 1, fxv-fyv+(-fzv), 'float32'),
             (fx-fy+theano.tensor.round(fz), (fx, fy, fz), (fxv, fyv,
@@ -1018,7 +1018,7 @@ class test_fusion(unittest.TestCase):
             (fx-theano.tensor.or_(iy, iz), (fx, iy, iz), (fxv, iyv,
                 izv), 1, fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (fx-theano.tensor.xor(iy, iz), (fx, iy, iz), (fxv, iyv,
-                izv), 1, fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),#60
+                izv), 1, fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 60
             (fx-theano.tensor.and_(iy, iz), (fx, iy, iz), (fxv, iyv,
                 izv), 1, fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (fx-theano.tensor.invert(iy), (fx, iy), (fxv, iyv), 1,
@@ -1029,9 +1029,9 @@ class test_fusion(unittest.TestCase):
             (theano.tensor.pow(fx*fy+fz, fx*fy), (fx, fy, fz), (fxv,
                 fyv, fzv), 1, numpy.power(fxv*fyv+fzv, fxv*fyv), 'float32'),
             (fv+fy**fz, (fv, fy, fz), (fvv, fyv, fzv), 2, fvv+fyv**fzv,
-                'float32'),#fused with a dimshuffle #65
+                'float32'),  # fused with a dimshuffle #65
             (fv-fy+tensor.tanh(fz), (fv, fy, fz), (fvv, fyv, fzv), 2,
-                fvv-fyv+numpy.tanh(fzv), 'float32'),#fused with a dimshuffle
+                fvv-fyv+numpy.tanh(fzv), 'float32'),  # fused with a dimshuffle
 
             # Cases where the same input is reused many times.
             (theano.tensor.mul(fx, fx, fx, fx), (fx,), (fxv,), 1, fxv*
@@ -1041,7 +1041,7 @@ class test_fusion(unittest.TestCase):
             (theano.tensor.mul(fx, ftanx, ftanx, fx), (fx,), (fxv,),
                 1, fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv, 'float32'),
             (theano.tensor.mul(ftanx, ftanx, fx+fy), (fx, fy), (fxv,
-                fyv), 1, numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv), 'float32'), # 70
+                fyv), 1, numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv), 'float32'),  # 70
 
             # Cases with different broadcast pattern. They should not
             # be merged as this would duplicate computation

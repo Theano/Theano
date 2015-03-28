@@ -176,7 +176,7 @@ class AliasedMemoryError(Exception):
 ###
 
 
-DUPLICATE = ['DUPLICATE'] # unique id object used as a placeholder for duplicate entries
+DUPLICATE = ['DUPLICATE']  # unique id object used as a placeholder for duplicate entries
 class Function(object):
     """
     Type of the functions returned by theano.function or theano.FunctionMaker.create.
@@ -320,7 +320,7 @@ class Function(object):
         # Initialize the storage
         # this loop works by modifying the elements (as variable c) of self.input_storage inplace.
         for i, ((input, indices, sinputs), (required, refeed, value)) in enumerate(zip(self.indices, defaults)):
-            if indices is None: # this is true iff input is not a SymbolicInputKit
+            if indices is None:  # this is true iff input is not a SymbolicInputKit
                 c = containers[0]  #containers is being used as a stack. Here we pop off the next one.
                 c.strict = getattr(input, 'strict', False)
                 c.allow_downcast = getattr(input, 'allow_downcast', None)
@@ -338,7 +338,7 @@ class Function(object):
                         c.value = value
                 c.required = required
                 c.implicit = input.implicit
-                c.provided = 0 # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
+                c.provided = 0  # this is a count of how many times the input has been provided (reinitialized to 0 on __call__)
                 finder[i] = c
                 finder[input.variable] = c
                 if input.name not in finder:
@@ -726,7 +726,7 @@ def _pickle_Function(f):
     # HACK to detect aliased storage.
     # This is here because aliased relationships are not [currently] preserved across the pickle operation
     if not (f.pickle_aliased_memory_strategy == 'ignore'):
-        all_data = input_storage + inputs_data # addition here means list append
+        all_data = input_storage + inputs_data  # addition here means list append
         for i, d_i in enumerate(all_data):
             for j, d_j in enumerate(all_data):
                 if (i < j) and isinstance(d_i, numpy.ndarray) and isinstance(d_j, numpy.ndarray):

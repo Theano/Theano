@@ -97,7 +97,7 @@ def makeSharedTester(shared_constructor_,
 
             values_to_div = .5
             if self.op_by_matrix:
-                values_to_div = self.internal_type(numpy.ones(x.shape, dtype=dtype)/2)#supported for cudandarray, but not ndarray.
+                values_to_div = self.internal_type(numpy.ones(x.shape, dtype=dtype)/2)  # supported for cudandarray, but not ndarray.
                 assert self.test_internal_type(values_to_div)
             x /= values_to_div
             total_val_2 = total_func()
@@ -193,7 +193,7 @@ def makeSharedTester(shared_constructor_,
                 # supported for cudandarray, but not ndarray.
                 values_to_div = self.internal_type(
                     numpy.ones(x.shape, dtype=dtype)/2)
-            x /= values_to_div#supported by ndarray and CudaNdarray
+            x /= values_to_div  # supported by ndarray and CudaNdarray
 
             # this is not required by the contract but it is a feature we can
             # implement for some type of SharedVariable.
@@ -202,7 +202,7 @@ def makeSharedTester(shared_constructor_,
             x = x_shared.get_value(borrow=False, return_internal_type=True)
             assert self.test_internal_type(x)
             assert x is not x_shared.container.value
-            x /= values_to_div#supported by ndarray and CudaNdarray
+            x /= values_to_div  # supported by ndarray and CudaNdarray
 
             # this is required by the contract
             assert not numpy.allclose(self.ref_fct(x), total_func())
@@ -251,7 +251,7 @@ def makeSharedTester(shared_constructor_,
 
             # test if that theano shared variable optimize set_value(borrow=True)
             get_x = x_shared.get_value(borrow=True)
-            assert get_x is not x_orig#borrow=False to shared_constructor
+            assert get_x is not x_orig  # borrow=False to shared_constructor
             get_x /= values_to_div
             x_shared.set_value(get_x, borrow=True)
             x = x_shared.get_value(borrow=True)
@@ -263,10 +263,10 @@ def makeSharedTester(shared_constructor_,
 
             # test optimized get set value on the gpu(don't pass data to the cpu)
             get_x = x_shared.get_value(borrow=True, return_internal_type=True)
-            assert get_x is not x_orig#borrow=False to shared_constructor
+            assert get_x is not x_orig  # borrow=False to shared_constructor
             assert self.test_internal_type(get_x)
 
-            get_x /= values_to_div#supported by ndarray and CudaNdarray
+            get_x /= values_to_div  # supported by ndarray and CudaNdarray
             assert self.test_internal_type(get_x)
             x_shared.set_value(get_x, borrow=True)
             x = x_shared.get_value(borrow=True, return_internal_type=True)
@@ -316,7 +316,7 @@ def makeSharedTester(shared_constructor_,
             if dtype is None:
                 dtype = theano.config.floatX
 
-            shp = (100/4, 1024)#100KB
+            shp = (100/4, 1024)  # 100KB
 
             x = numpy.zeros(shp, dtype=dtype)
             x = self.cast_value(x)

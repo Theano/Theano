@@ -112,7 +112,7 @@ def run_mercurial_command(hg_command):
 def parse_stdout_filelist(hg_out_filelist):
     files = hg_out_filelist.split()
     files = [f.strip(string.whitespace + "'") for f in files]
-    files = filter(operator.truth, files) # get rid of empty entries
+    files = filter(operator.truth, files)  # get rid of empty entries
     return files
 
 def changed_files():
@@ -221,14 +221,14 @@ def main(argv=None):
         else:
             # parsing succeeded, it is safe to check indentation
             if not args.no_indentation:
-                was_clean = None # unknown
+                was_clean = None  # unknown
                 # only calculate was_clean if it will matter to us
                 if args.incremental or args.incremental_with_patch:
                     if filename in changed_filenames:
                         old_file_contents = get_file_contents(filename, revision=parent_commit())
                         was_clean = get_correct_indentation_diff(old_file_contents, "") is None
                     else:
-                        was_clean = True # by default -- it was newly added and thus had no prior problems
+                        was_clean = True  # by default -- it was newly added and thus had no prior problems
 
                 check_indentation = was_clean or not args.incremental
                 if check_indentation:

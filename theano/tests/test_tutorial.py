@@ -461,7 +461,7 @@ class T_extending(unittest.TestCase):
                 # This should be needed for the EquilibriumOptimizer
                 # but it isn't now
                 # TODO: do this and explain it
-                return [] # that's not what you should do
+                return []  # that's not what you should do
 
         local_simplify = LocalSimplify()
 
@@ -775,8 +775,8 @@ class T_examples(unittest.TestCase):
         # Construct Theano expression graph
         p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
         prediction = p_1 > 0.5                    # The prediction thresholded
-        xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
-        cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
+        xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1)  # Cross-entropy loss function
+        cost = xent.mean() + 0.01 * (w ** 2).sum()  # The cost to minimize
         gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
                                                   # (we shall return to this in a
                                                   # following section of this tutorial)
@@ -817,7 +817,7 @@ class T_aliasing(unittest.TestCase):
         s_false   = theano.shared(np_array, borrow=False)
         s_true    = theano.shared(np_array, borrow=True)
 
-        np_array += 1 # now it is an array of 2.0 s
+        np_array += 1  # now it is an array of 2.0 s
 
         assert numpy.all(s_default.get_value() == array([1.0, 1.0]))
         assert numpy.all(s_false.get_value()   == array([1.0, 1.0]))
@@ -831,7 +831,7 @@ class T_aliasing(unittest.TestCase):
 
         s = theano.shared(np_array)
 
-        v_false = s.get_value(borrow=False) # N.B. borrow default is False
+        v_false = s.get_value(borrow=False)  # N.B. borrow default is False
         v_true = s.get_value(borrow=True)
 
         v_internal = s.get_value(borrow=True, return_internal_type=True)

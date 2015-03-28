@@ -325,11 +325,11 @@ if 0:
             fgraph.destroy_handler = self
 
             self.fgraph = fgraph
-            self.destroyers = OrderedSet() #set of Apply instances with non-null destroy_map
+            self.destroyers = OrderedSet()  # set of Apply instances with non-null destroy_map
             self.view_i = {}  # variable -> variable used in calculation
             self.view_o = {}  # variable -> set of variables that use this one as a direct input
             # clients: how many times does an apply use a given variable
-            self.clients = {} # variable -> apply -> ninputs
+            self.clients = {}  # variable -> apply -> ninputs
             self.stale_droot = True
 
             # IG: It's unclear if this is meant to be included in deployed code. It looks like
@@ -725,11 +725,11 @@ class DestroyHandler(toolbox.Bookkeeper):
         fgraph.destroy_handler = self
 
         self.fgraph = fgraph
-        self.destroyers = OrderedSet() #set of Apply instances with non-null destroy_map
+        self.destroyers = OrderedSet()  # set of Apply instances with non-null destroy_map
         self.view_i = OrderedDict()  # variable -> variable used in calculation
         self.view_o = OrderedDict()  # variable -> set of variables that use this one as a direct input
         # clients: how many times does an apply use a given variable
-        self.clients = OrderedDict() # variable -> apply -> ninputs
+        self.clients = OrderedDict()  # variable -> apply -> ninputs
         self.stale_droot = True
 
         self.debug_all_apps = OrderedSet()
@@ -754,7 +754,7 @@ class DestroyHandler(toolbox.Bookkeeper):
         if self.stale_droot:
             droot = OrderedDict()   # destroyed view + nonview variables -> foundation
             impact = OrderedDict()  # destroyed nonview variable -> it + all views of it
-            root_destroyer = OrderedDict() # root -> destroyer apply
+            root_destroyer = OrderedDict()  # root -> destroyer apply
 
             for app in self.destroyers:
                 for output_idx, input_idx_list in app.op.destroy_map.items():

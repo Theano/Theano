@@ -36,7 +36,7 @@ def checkfor(testcase, fn, E):
 
 class T_function(unittest.TestCase):
     def test_none(self):
-        fn = function([], None) #ok
+        fn = function([], None)  # ok
         rval = fn()
         if rval == []:
             raise KnownFailureTest('See #254: Using None as function output leads to [] return value')
@@ -44,7 +44,7 @@ class T_function(unittest.TestCase):
             assert rval is None
 
     def test_empty(self):
-        fn = function([], []) #ok
+        fn = function([], [])  # ok
         self.assertTrue(fn() == [])
 
     def test_extra_inputs(self):
@@ -122,22 +122,22 @@ class T_function(unittest.TestCase):
         self.assertTrue(f(s=2, x=1) == 0.5)
         self.assertTrue(f(x=2, s=1) == 2.0)
         self.assertTrue(f(2, s=1) == 2.0)
-        checkfor(self, lambda : f(2, x=2.0), TypeError) #got multiple values for keyword argument 'x'
-        checkfor(self, lambda : f(x=1), TypeError) #takes exactly 2 non-keyword arguments (1 given)
-        checkfor(self, lambda : f(s=1), TypeError) #takes exactly 2 non-keyword arguments (0 given)
+        checkfor(self, lambda : f(2, x=2.0), TypeError)  # got multiple values for keyword argument 'x'
+        checkfor(self, lambda : f(x=1), TypeError)  # takes exactly 2 non-keyword arguments (1 given)
+        checkfor(self, lambda : f(s=1), TypeError)  # takes exactly 2 non-keyword arguments (0 given)
 
     def test_naming_rule1(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
         f = function([a, s], a/s)
         self.assertTrue(f(1, 2) == 0.5)
         self.assertTrue(f(2, 1) == 2.0)
         self.assertTrue(f(2, s=1) == 2.0)
-        checkfor(self, lambda: f(q=2, s=1), TypeError) #got unexpected keyword argument 'q'
-        checkfor(self, lambda: f(a=2, s=1), TypeError) #got unexpected keyword argument 'a'
+        checkfor(self, lambda: f(q=2, s=1), TypeError)  # got unexpected keyword argument 'q'
+        checkfor(self, lambda: f(a=2, s=1), TypeError)  # got unexpected keyword argument 'a'
 
     def test_naming_rule2(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         # x's name is ignored because it is followed by anonymous parameter a.
@@ -146,40 +146,40 @@ class T_function(unittest.TestCase):
         self.assertTrue(f(9, 1, 2) == 0.5)
         self.assertTrue(f(9, 2, 1) == 2.0)
         self.assertTrue(f(9, 2, s=1) == 2.0)
-        checkfor(self, lambda: f(x=9, a=2, s=1), TypeError) #got unexpected keyword argument 'x'
-        checkfor(self, lambda: f(5.0, x=9), TypeError) #got unexpected keyword argument 'x'
+        checkfor(self, lambda: f(x=9, a=2, s=1), TypeError)  # got unexpected keyword argument 'x'
+        checkfor(self, lambda: f(5.0, x=9), TypeError)  # got unexpected keyword argument 'x'
 
     def test_naming_rule3(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         # x's name is not ignored (as in test_naming_rule2) because a has a default value.
         f = function([x, In(a, value=1.0), s], a/s+x)
-        self.assertTrue(f(9, 2, 4) == 9.5) #can specify all args in order
-        self.assertTrue(f(9, 2, s=4) == 9.5) # can give s as kwarg
-        self.assertTrue(f(9, s=4) == 9.25) # can give s as kwarg, get default a
-        self.assertTrue(f(x=9, s=4) == 9.25) # can give s as kwarg, omit a, x as kw
-        checkfor(self, lambda: f(x=9, a=2, s=4), TypeError) #got unexpected keyword argument 'a'
-        checkfor(self, lambda: f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
-        checkfor(self, lambda: f(x=9), TypeError) #takes exactly 3 non-keyword arguments (1 given)
+        self.assertTrue(f(9, 2, 4) == 9.5)  # can specify all args in order
+        self.assertTrue(f(9, 2, s=4) == 9.5)  # can give s as kwarg
+        self.assertTrue(f(9, s=4) == 9.25)  # can give s as kwarg, get default a
+        self.assertTrue(f(x=9, s=4) == 9.25)  # can give s as kwarg, omit a, x as kw
+        checkfor(self, lambda: f(x=9, a=2, s=4), TypeError)  # got unexpected keyword argument 'a'
+        checkfor(self, lambda: f(), TypeError)  # takes exactly 3 non-keyword arguments (0 given)
+        checkfor(self, lambda: f(x=9), TypeError)  # takes exactly 3 non-keyword arguments (1 given)
 
     def test_naming_rule4(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), s], a/s+x)
 
-        self.assertTrue(f(9, 2, 4) == 9.5) #can specify all args in order
-        self.assertTrue(f(9, 2, s=4) == 9.5) # can give s as kwarg
-        self.assertTrue(f(9, s=4) == 9.25) # can give s as kwarg, get default a
-        self.assertTrue(f(9, a=2, s=4) == 9.5) # can give s as kwarg, a as kwarg
-        self.assertTrue(f(x=9, a=2, s=4) == 9.5) # can give all kwargs
-        self.assertTrue(f(x=9, s=4) == 9.25) # can give all kwargs
-        checkfor(self, lambda: f(), TypeError) #takes exactly 3 non-keyword arguments (0 given)
-        checkfor(self, lambda: f(5.0, x=9), TypeError) #got multiple values for keyword argument 'x'
+        self.assertTrue(f(9, 2, 4) == 9.5)  # can specify all args in order
+        self.assertTrue(f(9, 2, s=4) == 9.5)  # can give s as kwarg
+        self.assertTrue(f(9, s=4) == 9.25)  # can give s as kwarg, get default a
+        self.assertTrue(f(9, a=2, s=4) == 9.5)  # can give s as kwarg, a as kwarg
+        self.assertTrue(f(x=9, a=2, s=4) == 9.5)  # can give all kwargs
+        self.assertTrue(f(x=9, s=4) == 9.25)  # can give all kwargs
+        checkfor(self, lambda: f(), TypeError)  # takes exactly 3 non-keyword arguments (0 given)
+        checkfor(self, lambda: f(5.0, x=9), TypeError)  # got multiple values for keyword argument 'x'
 
     def test_state_access(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x)], s+a*x)
@@ -188,14 +188,14 @@ class T_function(unittest.TestCase):
         self.assertTrue(f[s] == 0.0)
 
         self.assertTrue(f(3.0) == 3.0)
-        self.assertTrue(f(3.0, a=2.0) == 9.0) #3.0 + 2*3.0
+        self.assertTrue(f(3.0, a=2.0) == 9.0)  # 3.0 + 2*3.0
 
-        self.assertTrue(f[a] == 1.0) #state hasn't changed permanently, we just overrode it last line
+        self.assertTrue(f[a] == 1.0)  # state hasn't changed permanently, we just overrode it last line
         self.assertTrue(f[s] == 9.0)
 
         f[a] = 5.0
         self.assertTrue(f[a] == 5.0)
-        self.assertTrue(f(3.0) == 24.0) #9 + 3*5
+        self.assertTrue(f(3.0) == 24.0)  # 9 + 3*5
         self.assertTrue(f[s] == 24.0)
 
     def test_same_names(self):
@@ -217,7 +217,7 @@ class T_function(unittest.TestCase):
         checkfor(self, t, TypeError)
 
     def test_copy(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
@@ -229,17 +229,17 @@ class T_function(unittest.TestCase):
         self.assertFalse(g.container[a].storage is f.container[a].storage)
         self.assertFalse(g.container[s].storage is f.container[s].storage)
 
-        self.assertFalse(g.value[a] is not f.value[a]) # should not have been copied
-        self.assertFalse(g.value[s] is f.value[s]) # should have been copied because it is mutable.
-        self.assertFalse((g.value[s] != f.value[s]).any()) # its contents should be identical
+        self.assertFalse(g.value[a] is not f.value[a])  # should not have been copied
+        self.assertFalse(g.value[s] is f.value[s])  # should have been copied because it is mutable.
+        self.assertFalse((g.value[s] != f.value[s]).any())  # its contents should be identical
 
-        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        f(1, 2) # put them out of sync
-        self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        self.assertTrue(f(2, 1) == g(2))  # they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2))  # they should be in sync, default value should be copied.
+        f(1, 2)  # put them out of sync
+        self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
 
     def test_shared_state0(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
@@ -253,7 +253,7 @@ class T_function(unittest.TestCase):
         self.assertTrue(g[s] == 0)
 
     def test_shared_state1(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
@@ -268,7 +268,7 @@ class T_function(unittest.TestCase):
         self.assertTrue(g[s] == 4)
 
     def test_shared_state2(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x,
@@ -281,7 +281,7 @@ class T_function(unittest.TestCase):
         f(1, 2)
         self.assertTrue(f[s] == 4)
         self.assertTrue(g[s] == 4)
-        g(1, 2) # has no effect on state
+        g(1, 2)  # has no effect on state
         self.assertTrue(f[s] == 4)
         self.assertTrue(g[s] == 4)
 
@@ -357,20 +357,20 @@ class T_function(unittest.TestCase):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
         o = N.ones((3, 3))
-        assert o is not f(o) #function no longer permits aliasing outputs to inputs
+        assert o is not f(o)  # function no longer permits aliasing outputs to inputs
 
         f = function([a], Out(a*4, borrow=False))
         o = N.ones((3, 3))
         four = f(o)
         assert numpy.all(four==4)
-        f(o+.1) #should not clobber the memory used to store four
+        f(o+.1)  # should not clobber the memory used to store four
         assert numpy.all(four==4)
 
         f = function([a], Out(a*4, borrow=True), mode=theano.Mode('c|py_nogc', 'fast_run'))
         o = N.ones((3, 3))
         four = f(o)
         assert numpy.all(four==4)
-        f(o+.1) #should clobber the memory used to store four
+        f(o+.1)  # should clobber the memory used to store four
         if theano.config.cxx:
             assert not numpy.all(four==4)
         else:
@@ -423,7 +423,7 @@ class T_function(unittest.TestCase):
 class T_picklefunction(unittest.TestCase):
 
     def test_deepcopy(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
@@ -452,16 +452,16 @@ class T_picklefunction(unittest.TestCase):
             for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
                 f.defaults, g.defaults)]))
 
-        self.assertFalse(g.value[1] is f.value[1]) # should not have been copied
-        self.assertFalse(g.value[2] is f.value[2]) # should have been copied because it is mutable.
-        self.assertFalse((g.value[2] != f.value[2]).any()) # its contents should be identical
+        self.assertFalse(g.value[1] is f.value[1])  # should not have been copied
+        self.assertFalse(g.value[2] is f.value[2])  # should have been copied because it is mutable.
+        self.assertFalse((g.value[2] != f.value[2]).any())  # its contents should be identical
 
-        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        f(1, 2) # put them out of sync
-        self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
-        g(1, 2) # put them back in sync
-        self.assertTrue(f(3) == g(3)) # They should be in sync again.
+        self.assertTrue(f(2, 1) == g(2))  # they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2))  # they should be in sync, default value should be copied.
+        f(1, 2)  # put them out of sync
+        self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
+        g(1, 2)  # put them back in sync
+        self.assertTrue(f(3) == g(3))  # They should be in sync again.
 
     def test_deepcopy_shared_container(self):
         # Ensure that shared containers remain shared after a deep copy.
@@ -488,7 +488,7 @@ class T_picklefunction(unittest.TestCase):
         self.assertTrue(fc[ac] == 2)
 
     def test_pickle(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
@@ -513,17 +513,17 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(x in g.container)
         self.assertFalse(x in g.value)
 
-        self.assertFalse(g.value[1] is f.value[1]) # should not have been copied
-        self.assertFalse(g.value[2] is f.value[2]) # should have been copied because it is mutable.
-        self.assertFalse((g.value[2] != f.value[2]).any()) # its contents should be identical
+        self.assertFalse(g.value[1] is f.value[1])  # should not have been copied
+        self.assertFalse(g.value[2] is f.value[2])  # should have been copied because it is mutable.
+        self.assertFalse((g.value[2] != f.value[2]).any())  # its contents should be identical
 
-        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        self.assertTrue(f(2, 1) == g(2)) #they should be in sync, default value should be copied.
-        f(1, 2) # put them out of sync
-        self.assertFalse(f(1, 2) == g(1, 2)) #they should not be equal anymore.
+        self.assertTrue(f(2, 1) == g(2))  # they should be in sync, default value should be copied.
+        self.assertTrue(f(2, 1) == g(2))  # they should be in sync, default value should be copied.
+        f(1, 2)  # put them out of sync
+        self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
 
     def test_optimizations_preserved(self):
-        a = T.dvector() # the a is for 'anonymous' (un-named).
+        a = T.dvector()  # the a is for 'anonymous' (un-named).
         x = T.dvector('x')
         s = T.dvector('s')
         xm = T.dmatrix('x')
@@ -567,7 +567,7 @@ class T_picklefunction(unittest.TestCase):
 
 
     def test_multiple_functions(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
         v = T.vector('v')
 
@@ -698,7 +698,7 @@ class T_picklefunction(unittest.TestCase):
 
 class SomethingToPickle(object):
     def __init__(self):
-        a = T.scalar() # the a is for 'anonymous' (un-named).
+        a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
         v = T.vector('v')
 

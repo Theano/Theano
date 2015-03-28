@@ -93,7 +93,7 @@ class Kouh2008(object):
         p_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='p')
         q_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='q')
         r_unbounded = shared_uniform(low=-0.1, high=0.1, size=(n_out,), name='r')
-        k_unbounded = shared_uniform(low=-0.2, high=0.2, size=(n_out,), name='k') # biases
+        k_unbounded = shared_uniform(low=-0.2, high=0.2, size=(n_out,), name='k')  # biases
 
         p = tensor.nnet.sigmoid(p_unbounded) * e_range_mag + e_range_low
         q = tensor.nnet.sigmoid(q_unbounded) * e_range_mag + e_range_low
@@ -171,7 +171,7 @@ class Kouh2008(object):
         rval = cls.new_expbounds(rng, x_list, n_out, dtype=dtype, params=f_list + b_list,
                 exponent_range=exponent_range)
         rval.f_list = f_list
-        rval.input = input #add the input to the returned object
+        rval.input = input  # add the input to the returned object
         rval.filter_l1 = sum(abs(fi).sum() for fi in f_list)
         rval.filter_l2_sqr = sum((fi**2).sum() for fi in f_list)
         return rval
@@ -210,18 +210,18 @@ class Kouh2008(object):
                 out_c_high = out_c_low + filter_shape[1]
                 out_tile = out_array[out_r_low:out_r_high, out_c_low:out_c_high, :]
 
-                if c % 3 == 0: # linear filter
+                if c % 3 == 0:  # linear filter
                     if w_col < w.shape[1]:
                         out_tile[...] = pixel_range(w[:, w_col]).reshape(filter_shape+(1,))
                         w_col += 1
-                if c % 3 == 1: # E filters
+                if c % 3 == 1:  # E filters
                     if w_col < w.shape[1]:
                         # filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
                         for i in xrange(min(self.n_E_quadratic, 3)):
                             out_tile[:, :, i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
                         w_col += self.n_E_quadratic
-                if c % 3 == 2: # S filters
+                if c % 3 == 2:  # S filters
                     if w_col < w.shape[1]:
                         # filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
@@ -244,7 +244,7 @@ class Config(object):
     n_terms = 4
 
     ft_lr_t0 = 3e-3
-    ft_t_decay = 0 # 50 * 5000 # (units of minibatches) by this N'th pass through the training set
+    ft_t_decay = 0  # 50 * 5000 # (units of minibatches) by this N'th pass through the training set
     ft_lr_t_decay = 1e-3    # we will have this learning rate
     ft_cost_classif_l1 = 0
     ft_cost_classif_l2 = 0
@@ -255,11 +255,11 @@ class Config(object):
     ft_cost_in_l1_w = 0
     ft_cost_in_l2_w = 0
     ft_limit_iters = -1
-    ft_limit_walltime = 0 # in seconds 60*60*1 #1 hour
+    ft_limit_walltime = 0  # in seconds 60*60*1 #1 hour
 
     ft_batchsize = 30
     ft_epoch_len = 50000
-    ft_status_interval = 50 #property( lambda s:s.ft_epoch_len/s.ft_batchsize)
+    ft_status_interval = 50  # property( lambda s:s.ft_epoch_len/s.ft_batchsize)
     ft_validation_interval = property( lambda s: s.ft_epoch_len/s.ft_batchsize)
     ft_ntrain_limit = 0
     ft_test_lag1 = True

@@ -245,8 +245,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         stridesizes = [(2, 2), (2, 2), (1, 1), (1, 2), (2, 2)]
         paddingsizes = [(2, 2), (1, 2), (2, 1), (0, 0), (1, 1)]
         imgsizes = [(5, 5), (5, 5), (5, 6), (6, 5), (5, 5)]
-        m = 4 # minibatch
-        c = 10 # channel size
+        m = 4  # minibatch
+        c = 10  # channel size
         images = tensor.dtensor4()
         for indx in numpy.arange(len(maxpoolsizes)):
             imgsize = imgsizes[indx]

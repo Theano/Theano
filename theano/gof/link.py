@@ -685,7 +685,7 @@ class PerformLinker(LocalLinker):
         f = streamline(fgraph, thunks, order, post_thunk_old_storage,
                        no_recycling=no_recycling)
 
-        f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
+        f.allow_gc = self.allow_gc  # HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
         f.storage_map = storage_map
 

@@ -71,7 +71,7 @@ class NotVariable(Variable):
         self.name = name
         self.not_options = not_options
 
-class VariableInList: # not a subclass of Variable
+class VariableInList:  # not a subclass of Variable
     """
     This special kind of variable is matched against a list and unifies
     an inner Variable to an OrVariable of the values in the list. For
@@ -341,9 +341,9 @@ def unify_walk(v, o, U):
     """
     best_v = U[v]
     if v is not best_v:
-        return unify_walk(o, best_v, U) # reverse argument order so if o is a Variable this block of code is run again
+        return unify_walk(o, best_v, U)  # reverse argument order so if o is a Variable this block of code is run again
     else:
-        return FALL_THROUGH # call the next version of unify_walk that matches the type signature
+        return FALL_THROUGH  # call the next version of unify_walk that matches the type signature
 
 
 ################################
@@ -415,9 +415,9 @@ def unify_merge(v, o, U):
     """
     best_v = U[v]
     if v is not best_v:
-        return unify_merge(o, best_v, U) # reverse argument order so if o is a Variable this block of code is run again
+        return unify_merge(o, best_v, U)  # reverse argument order so if o is a Variable this block of code is run again
     else:
-        return FALL_THROUGH # call the next version of unify_walk that matches the type signature
+        return FALL_THROUGH  # call the next version of unify_walk that matches the type signature
 
 
 ################################

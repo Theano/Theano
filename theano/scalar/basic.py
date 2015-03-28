@@ -3162,7 +3162,7 @@ class Composite(ScalarOp):
             res = theano.compile.rebuild_collect_shared(
                 inputs=inputs,
                 outputs=outputs[0].owner.inputs,
-                copy_inputs_over=False) #  Clone also the inputs
+                copy_inputs_over=False)  # Clone also the inputs
             # 2. We continue this partial clone with the graph in
             # the inner Composite
             res2 = theano.compile.rebuild_collect_shared(
