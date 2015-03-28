@@ -71,6 +71,7 @@ def py_conv_valid_numpy(img, kern):
                     out[b, k, rr, cc] = innerprod
     return out
 
+
 def py_conv_pad_img(img, pad_h, pad_w):
     assert pad_h >= 0 and pad_w >= 0
     padded_img = numpy.zeros(
@@ -81,6 +82,7 @@ def py_conv_pad_img(img, pad_h, pad_w):
                pad_h: pad_h + img.shape[2],
                pad_w: pad_w + img.shape[3]] = img
     return padded_img
+
 
 def py_conv_full_numpy(img, kern):
     # manually pad the img with zeros all around, and then run it
@@ -647,6 +649,7 @@ class TestConv2DGPU(unittest.TestCase):
                                           compile_kshp=shapes[2])
         finally:
             theano_mode = theano_mode_orig
+
 
 class TestConvWithPadding(object):
     """test conv ops that support arbitrary padding via border_mode

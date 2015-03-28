@@ -1,5 +1,6 @@
 import warnings
 
+
 def render_string(string, sub):
     """
     string: a string, containing formatting instructions
@@ -29,6 +30,7 @@ def render_string(string, sub):
         assert False
     return finalCode
 
+
 def pretty_format(string):
     lines = string.split('\n')
 
@@ -48,6 +50,7 @@ def pretty_format(string):
     rval = '\n'.join(lines)
 
     return rval
+
 
 def strip_leading_white_space(line):
     while len(line) > 0 and (line[0] == ' ' or line[0] == '\t'):

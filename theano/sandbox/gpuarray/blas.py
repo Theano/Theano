@@ -286,6 +286,7 @@ def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
         return [gpugemm_inplace(*node.inputs)]
 
+
 @local_optimizer([gpuger_no_inplace], inplace=True)
 def local_inplace_gpuager(node):
     if node.op == gpuger_no_inplace:

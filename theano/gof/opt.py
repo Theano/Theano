@@ -827,6 +827,7 @@ theano.configparser.AddConfigVar('metaopt.verbose',
         "Enable verbose output for meta optimizers",
         theano.configparser.BoolParam(False), in_c_key=False)
 
+
 class LocalMetaOptimizer(LocalOptimizer):
     """Base class for meta-optimizers that try a set of LocalOptimizers
     to replace a node and choose the one that executes the fastest"""

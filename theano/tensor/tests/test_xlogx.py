@@ -10,6 +10,7 @@ import random
 import numpy.random
 from theano.tests import unittest_tools as utt
 
+
 class T_XlogX(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -24,6 +25,7 @@ class T_XlogX(unittest.TestCase):
 #            def make_node(self, a):
 #                return [xlogx(a)[:,2]]
         utt.verify_grad(xlogx, [numpy.random.rand(3, 4)])
+
 
 class T_XlogY0(unittest.TestCase):
     def setUp(self):

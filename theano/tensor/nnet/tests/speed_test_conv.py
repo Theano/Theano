@@ -9,6 +9,7 @@ from theano import function, Mode
 import theano.tensor as T
 from theano.tensor.nnet.conv import ConvOp
 
+
 def flip(kern, kshp):
     "flip the kernel as scipy.convolv2d do it flipped."
     flip = N.zeros(kern.shape)
@@ -41,6 +42,7 @@ def flip(kern, kshp):
 global_rng = N.random.RandomState(3423489)
 
 dmatrix4 = T.TensorType('float64', (False, False, False, False))
+
 
 def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
         unroll_batch=0, unroll_kern=0, img=T.dmatrix(), validate=True,
@@ -135,6 +137,7 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
             imgval = outval.reshape(bsize, outshp[0], outshp[1], outshp[2])
 
         return tctot, tpytot, ntot
+
 
 def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
         unroll_batch=0, unroll_kern=0, img=T.dmatrix(),

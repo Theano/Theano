@@ -8,6 +8,7 @@ from theano import tensor
 import numpy.fft
 import numpy
 
+
 class GradTodo(Op):
     def make_node(self, x):
         return Apply(self, [x], [x.type()])

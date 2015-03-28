@@ -39,11 +39,13 @@ class Variable:
     def __repr__(self):
         return str(self)
 
+
 class FreeVariable(Variable):
     """
     This Variable can take any value.
     """
     pass
+
 
 class BoundVariable(Variable):
     """
@@ -52,6 +54,7 @@ class BoundVariable(Variable):
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
 
 class OrVariable(Variable):
     """
@@ -62,6 +65,7 @@ class OrVariable(Variable):
         self.name = name
         self.options = options
 
+
 class NotVariable(Variable):
     """
     This Variable can take any value but a finite amount of forbidden
@@ -70,6 +74,7 @@ class NotVariable(Variable):
     def __init__(self, name, not_options):
         self.name = name
         self.not_options = not_options
+
 
 class VariableInList:  # not a subclass of Variable
     """
@@ -86,6 +91,7 @@ class VariableInList:  # not a subclass of Variable
 
 
 _all = {}
+
 
 def var_lookup(vartype, name, *args, **kwargs):
     sig = (vartype, name)
@@ -194,6 +200,7 @@ def unify_walk(a, b, U):
     else:
         return False
 
+
 @comm_guard(FreeVariable, ANY_TYPE)
 def unify_walk(fv, o, U):
     """
@@ -201,6 +208,7 @@ def unify_walk(fv, o, U):
     """
     v = BoundVariable("?", o)
     return U.merge(v, fv)
+
 
 @comm_guard(BoundVariable, ANY_TYPE)
 def unify_walk(bv, o, U):
@@ -211,6 +219,7 @@ def unify_walk(bv, o, U):
         return U
     else:
         return False
+
 
 @comm_guard(OrVariable, ANY_TYPE)
 def unify_walk(ov, o, U):
@@ -223,6 +232,7 @@ def unify_walk(ov, o, U):
     else:
         return False
 
+
 @comm_guard(NotVariable, ANY_TYPE)
 def unify_walk(nv, o, U):
     """
@@ -234,6 +244,7 @@ def unify_walk(nv, o, U):
         v = BoundVariable("?", o)
         return U.merge(v, nv)
 
+
 @comm_guard(FreeVariable, Variable)
 def unify_walk(fv, v, U):
     """
@@ -242,12 +253,14 @@ def unify_walk(fv, v, U):
     v = U[v]
     return U.merge(v, fv)
 
+
 @comm_guard(BoundVariable, Variable)
 def unify_walk(bv, v, U):
     """
     V is unified to BV.value
     """
     return unify_walk(v, bv.value, U)
+
 
 @comm_guard(OrVariable, OrVariable)
 def unify_walk(a, b, U):
@@ -263,6 +276,7 @@ def unify_walk(a, b, U):
         v = OrVariable("?", opt)
     return U.merge(v, a, b)
 
+
 @comm_guard(NotVariable, NotVariable)
 def unify_walk(a, b, U):
     """
@@ -271,6 +285,7 @@ def unify_walk(a, b, U):
     opt = union(a.not_options, b.not_options)
     v = NotVariable("?", opt)
     return U.merge(v, a, b)
+
 
 @comm_guard(OrVariable, NotVariable)
 def unify_walk(o, n, U):
@@ -286,6 +301,7 @@ def unify_walk(o, n, U):
         v = OrVariable("?", opt)
     return U.merge(v, o, n)
 
+
 @comm_guard(VariableInList, (list, tuple))
 def unify_walk(vil, l, U):
     """
@@ -294,6 +310,7 @@ def unify_walk(vil, l, U):
     v = vil.variable
     ov = OrVariable("?", l)
     return unify_walk(v, ov, U)
+
 
 @comm_guard((list, tuple), (list, tuple))
 def unify_walk(l1, l2, U):
@@ -308,6 +325,7 @@ def unify_walk(l1, l2, U):
             return False
     return U
 
+
 @comm_guard(dict, dict)
 def unify_walk(d1, d2, U):
     """
@@ -320,6 +338,7 @@ def unify_walk(d1, d2, U):
                 return False
     return U
 
+
 @comm_guard(ANY_TYPE, ANY_TYPE)
 def unify_walk(a, b, U):
     """
@@ -331,6 +350,7 @@ def unify_walk(a, b, U):
         return a.__unify_walk__(b, U)
     else:
         return FALL_THROUGH
+
 
 @comm_guard(Variable, ANY_TYPE)
 def unify_walk(v, o, U):
@@ -365,21 +385,26 @@ class FVar:
 def unify_merge(a, b, U):
     return a
 
+
 @comm_guard(Variable, ANY_TYPE)
 def unify_merge(v, o, U):
     return v
+
 
 @comm_guard(BoundVariable, ANY_TYPE)
 def unify_merge(bv, o, U):
     return bv.value
 
+
 @comm_guard(VariableInList, (list, tuple))
 def unify_merge(vil, l, U):
     return [unify_merge(x, x, U) for x in l]
 
+
 @comm_guard((list, tuple), (list, tuple))
 def unify_merge(l1, l2, U):
     return [unify_merge(x1, x2, U) for x1, x2 in zip(l1, l2)]
+
 
 @comm_guard(dict, dict)
 def unify_merge(d1, d2, U):
@@ -394,9 +419,11 @@ def unify_merge(d1, d2, U):
             d[k2] = unify_merge(v2, v2, U)
     return d
 
+
 @comm_guard(FVar, ANY_TYPE)
 def unify_merge(vs, o, U):
     return vs(U)
+
 
 @comm_guard(ANY_TYPE, ANY_TYPE)
 def unify_merge(a, b, U):
@@ -405,6 +432,7 @@ def unify_merge(a, b, U):
         return a.__unify_merge__(b, U)
     else:
         return FALL_THROUGH
+
 
 @comm_guard(Variable, ANY_TYPE)
 def unify_merge(v, o, U):

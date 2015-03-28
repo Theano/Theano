@@ -272,6 +272,7 @@ class TestPushOutScanOutputDot(object):
         utt.assert_allclose(output_opt[0], output_no_opt[0])
         utt.assert_allclose(output_opt[1], output_no_opt[1])
 
+
 class TestPushOutSumOfDot():
     """
     Test case for the PushOutScanOutput optimizer in the case where the scan

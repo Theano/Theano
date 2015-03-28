@@ -2,6 +2,7 @@ import theano
 from theano.compile.mode import Mode
 import theano.tensor as T
 
+
 def test_no_output_from_implace():
 
     x = T.matrix()

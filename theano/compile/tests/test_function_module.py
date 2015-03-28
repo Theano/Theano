@@ -20,6 +20,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 PatternOptimizer = lambda p1, p2, ign=True: gof.OpKeyOptimizer(gof.PatternSub(p1, p2), ignore_newtrees=ign)
 
+
 def checkfor(testcase, fn, E):
     try:
         fn()
@@ -419,6 +420,7 @@ class T_function(unittest.TestCase):
         for key, val in func.fn.storage_map.iteritems():
             if not isinstance(key, theano.gof.Constant):
                 assert (val[0] == None)
+
 
 class T_picklefunction(unittest.TestCase):
 

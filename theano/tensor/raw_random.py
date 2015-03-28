@@ -631,6 +631,7 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
                                                          broadcastable=bcast))
     return op(random_state, size, a, replace, p)
 
+
 def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     """
     Draw samples from a Poisson distribution.

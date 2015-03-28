@@ -4744,10 +4744,12 @@ def _is_minus1(expr):
     except NotScalarConstantError:
         return False
 
+
 def get_clients(node):
     "Used by erf/erfc opt to track less frequent op"
     return [c for c, i in node.outputs[0].clients
             if c != "output"]
+
 
 def get_clients2(node):
     "Used by erf/erfc opt to track less frequent op"
@@ -5630,6 +5632,7 @@ register_canonicalize(gof.OpRemove(theano.gradient.zero_grad_),
 
 register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
     'fast_compile', 'fast_run', name='remove_disconnected_grad')
+
 
 @register_canonicalize
 @gof.local_optimizer([theano.gradient.GradClip])

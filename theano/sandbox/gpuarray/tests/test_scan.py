@@ -12,6 +12,7 @@ from theano.sandbox.gpuarray.elemwise import GpuElemwise
 
 from theano.sandbox.gpuarray.tests.test_basic_ops import mode_with_gpu
 
+
 class T_Scan(TestCase):
     def setUp(self):
         utt.seed_rng()

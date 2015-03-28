@@ -440,6 +440,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
         } // END NESTED SCOPE
         """ % locals()
 
+
 @op_lifter([Images2Neibs])
 def use_gpu_images2neibs(node):
     if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:

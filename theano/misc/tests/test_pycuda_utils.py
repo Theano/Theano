@@ -14,6 +14,7 @@ if cuda.cuda_available == False:
 from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 import pycuda.gpuarray
 
+
 def test_to_gpuarray():
     cx = cuda.CudaNdarray.zeros((5, 4))
 

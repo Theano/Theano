@@ -7,10 +7,13 @@ from theano.gof.fg import FunctionGraph as Env
 from theano.gof.toolbox import *
 import theano.tensor.basic as T
 
+
 def as_variable(x):
     if not isinstance(x, Variable):
         raise TypeError("not a Variable", x)
     return x
+
+
 class MyType(Type):
 
     def filter(self, data):
@@ -18,6 +21,7 @@ class MyType(Type):
 
     def __eq__(self, other):
         return isinstance(other, MyType)
+
 
 class MyOp(Op):
 

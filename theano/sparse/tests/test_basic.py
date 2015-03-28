@@ -2672,6 +2672,7 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
 
     return Tester
 
+
 def test_hstack_vstack():
     """
     Tests sparse.hstack and sparse.vstack (as opposed to the HStack and VStack
@@ -2701,6 +2702,7 @@ def test_hstack_vstack():
             stacked_blocks = stack_function(blocks, dtype=to_dtype)
             expected_dtype = get_expected_dtype(blocks, to_dtype)
             assert stacked_blocks.dtype == expected_dtype
+
 
 def structure_function(f, index=0):
     """Decorator to structure a function wich

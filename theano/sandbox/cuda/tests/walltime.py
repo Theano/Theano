@@ -6,6 +6,7 @@ import numpy
 
 import theano.sandbox.cuda as tcn
 
+
 def compare_fns(fns, input, reps=10):
     times = {}
     for implname, impl in fns.iteritems():
@@ -22,9 +23,11 @@ def compare_fns(fns, input, reps=10):
         times[implname] = dt
     return times
 
+
 def showtimes(times):
     for impl, dt in times.iteritems():
         print impl, dt
+
 
 def cmp_sigmoids(shape):
     def numpy_sigmoid(input):
@@ -38,6 +41,8 @@ def cmp_sigmoids(shape):
                 ),
             input=shared_input.value)
     showtimes(times)
+
+
 def cmp_sigmoids_T(shape):
     def numpy_sigmoid(input):
         rval = 1.0 / (1.0 + numpy.exp(-input.T))

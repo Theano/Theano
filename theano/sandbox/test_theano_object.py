@@ -2,6 +2,8 @@ from theano_object import *
 
 
 RUN_TESTS = False
+
+
 def run(TF):
     def deco(f):
         if TF and RUN_TESTS:
@@ -40,6 +42,7 @@ class MyModule(TheanoObject):
     def use_submodule(self, x):
         return RVal(self.a + x + self.submodule.b)
 
+
 @run(True)
 def test_outputs():
     MM = MyModule(3, 4)
@@ -51,6 +54,7 @@ def test_outputs():
     MM.b.set(2)  # test set
     assert MM.b.get() == 2  # test get()
     assert MM.add(5) == 10  # test that b's container is shared between add and sub
+
 
 @run(True)
 def test_submodule():

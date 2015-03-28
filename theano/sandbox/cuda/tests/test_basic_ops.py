@@ -968,6 +968,8 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
 
 import theano.tensor.tests.test_subtensor
 # This is to don't duplicate test.
+
+
 class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
 
     # This prevents nose from printing method docstrings instead of method

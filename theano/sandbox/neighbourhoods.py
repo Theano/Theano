@@ -14,6 +14,7 @@ from theano import gof, Op, tensor, Variable, Apply
 import numpy
 import __builtin__
 
+
 class NeighbourhoodsFromImages(Op):
     def __init__(self, n_dims_before, dims_neighbourhoods,
                     strides=None, ignore_border=False, inverse=False):
@@ -275,6 +276,7 @@ class NeighbourhoodsFromImages(Op):
             return_val += "z[0][%s] = x[%s]\n" % (out_idx, input_idx)
 
         return return_val
+
 
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
     def __init__(self, n_dims_before, dims_neighbourhoods,

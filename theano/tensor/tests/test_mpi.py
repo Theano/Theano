@@ -20,6 +20,7 @@ def test_recv():
     assert recvnode.op.source == 0
     assert recvnode.op.tag    == 11
 
+
 def test_send():
     x = theano.tensor.matrix('x')
     y = send(x, 1, 11)
@@ -27,10 +28,12 @@ def test_send():
     assert sendnode.op.dest == 1
     assert sendnode.op.tag  == 11
 
+
 def test_can_make_function():
     x = recv((5, 5), 'float32', 0, 11)
     y = x+1
     assert theano.function([], [y])
+
 
 def test_mpi_roundtrip():
     if not mpi_enabled:
@@ -46,6 +49,7 @@ def test_mpi_roundtrip():
     result = theano.compat.decode(p.stdout.read())
     assert "True" in result, theano.compat.decode(p.stderr.read())
 
+
 def test_mpi_send_wait_cmp():
     x = theano.tensor.matrix('x')
     y = send(x, 1, 11)
@@ -56,6 +60,7 @@ def test_mpi_send_wait_cmp():
     assert mpi_send_wait_cmp(sendnode, addnode) < 0  # send happens first
     assert mpi_send_wait_cmp(waitnode, addnode) > 0  # wait happens last
 
+
 def test_mpi_tag_ordering():
     x = recv((2, 2), 'float32', 1, 12)
     y = recv((2, 2), 'float32', 1, 11)
@@ -65,6 +70,7 @@ def test_mpi_tag_ordering():
 
     assert all(node.op.tag == tag
             for node, tag in zip(nodes, (11, 12, 13, 11, 12, 13)))
+
 
 def test_mpi_schedule():
     x = theano.tensor.matrix('x')

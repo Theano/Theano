@@ -914,6 +914,7 @@ class PushOutScanOutput(gof.Optimizer):
 
         return new_scan_node
 
+
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
     def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):

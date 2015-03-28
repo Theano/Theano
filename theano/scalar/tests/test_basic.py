@@ -416,12 +416,14 @@ class test_div(unittest.TestCase):
         assert isinstance((f/c).owner.op, TrueDiv)
         assert isinstance((a/c).owner.op, TrueDiv)
 
+
 def test_grad_gt():
     x = float32(name='x')
     y = float32(name='y')
     z = x > y
     g = theano.gradient.grad(z, y)
     assert g.eval({ y : 1. }) == 0.
+
 
 def test_grad_switch():
 

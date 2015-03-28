@@ -21,11 +21,13 @@ from theano.sandbox.softsign import softsign
 
 _logger = logging.getLogger('theano.sandbox.cuda.tests.test_bench_loopfusion')
 
+
 def _shared_uniform(rng, low, high, size, dtype, name=None):
     return shared(
             theano._asarray(
                 rng.uniform(low=low, high=high, size=size),
                 dtype=dtype), name)
+
 
 class Kouh2008(object):
     """WRITEME
@@ -229,6 +231,7 @@ class Kouh2008(object):
                             out_tile[:, :, 2-i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
                         w_col += self.n_S_quadratic
         return Image.fromarray(out_array, 'RGB')
+
 
 class Config(object):
     use_gpu = True

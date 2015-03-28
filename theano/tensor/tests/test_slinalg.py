@@ -35,6 +35,7 @@ except ImportError:
     # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
     imported_scipy = False
 
+
 def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
     assert ch[0, pd.shape[1] - 1] == 0

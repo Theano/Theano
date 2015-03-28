@@ -23,6 +23,7 @@ from theano.compat.six import StringIO
 
 SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
 
+
 def get_parse_error(code):
     """
     Checks code for ambiguous tabs or other basic parsing issues.
@@ -52,6 +53,7 @@ def clean_diff_line_for_python_bug_2142(diff_line):
     else:
         return diff_line + "\n\\ No newline at end of file\n"
 
+
 def get_correct_indentation_diff(code, filename):
     """
     Generate a diff to make code correctly indented.
@@ -78,16 +80,20 @@ def get_correct_indentation_diff(code, filename):
     else:
         return None
 
+
 def is_merge():
     parent2 = os.environ.get("HG_PARENT2", None)
     return parent2 is not None and len(parent2) > 0
+
 
 def parent_commit():
     parent1 = os.environ.get("HG_PARENT1", None)
     return parent1
 
+
 class MercurialRuntimeError(Exception):
     pass
+
 
 def run_mercurial_command(hg_command):
     hg_executable = os.environ.get("HG", "hg")
@@ -109,26 +115,32 @@ def run_mercurial_command(hg_command):
         raise MercurialRuntimeError(hg_err)
     return hg_out
 
+
 def parse_stdout_filelist(hg_out_filelist):
     files = hg_out_filelist.split()
     files = [f.strip(string.whitespace + "'") for f in files]
     files = filter(operator.truth, files)  # get rid of empty entries
     return files
 
+
 def changed_files():
     hg_out = run_mercurial_command("tip --template '{file_mods}'")
     return parse_stdout_filelist(hg_out)
+
 
 def added_files():
     hg_out = run_mercurial_command("tip --template '{file_adds}'")
     return parse_stdout_filelist(hg_out)
 
+
 def is_python_file(filename):
     return filename.endswith(".py")
+
 
 def get_file_contents(filename, revision="tip"):
     hg_out = run_mercurial_command("cat -r %s %s" % (revision, filename))
     return hg_out
+
 
 def save_commit_message(filename):
     commit_message = run_mercurial_command("tip --template '{desc}'")
@@ -136,11 +148,13 @@ def save_commit_message(filename):
     save_file.write(commit_message)
     save_file.close()
 
+
 def save_diffs(diffs, filename):
     diff = "\n\n".join(diffs)
     diff_file = open(filename, "w")
     diff_file.write(diff)
     diff_file.close()
+
 
 def should_skip_commit():
     if not os.path.exists(SKIP_WHITESPACE_CHECK_FILENAME):
@@ -149,6 +163,7 @@ def should_skip_commit():
     whitespace_check_changeset = whitespace_check_file.read()
     whitespace_check_file.close()
     return whitespace_check_changeset == parent_commit()
+
 
 def save_skip_next_commit():
     whitespace_check_file = open(SKIP_WHITESPACE_CHECK_FILENAME, "w")

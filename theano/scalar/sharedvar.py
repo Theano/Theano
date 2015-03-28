@@ -25,6 +25,7 @@ import numpy
 from theano.compile import SharedVariable
 from basic import Scalar, _scalar_py_operators
 
+
 class ScalarSharedVariable(_scalar_py_operators, SharedVariable):
     pass
 
@@ -32,6 +33,8 @@ class ScalarSharedVariable(_scalar_py_operators, SharedVariable):
 # scalars are typically 0-d tensors.
 # still, in case you need a shared variable scalar, you can get one
 # by calling this function directly.
+
+
 def shared(value, name=None, strict=False, allow_downcast=None):
     """SharedVariable constructor for scalar values. Default: int64 or float64.
 

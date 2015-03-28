@@ -16,6 +16,7 @@ try:
 except ImportError:
     pass
 
+
 class _operators(tensor.basic._tensor_py_operators):
     """Define a few properties and conversion methods for CudaNdarray Variables.
 
@@ -40,8 +41,10 @@ class CudaNdarrayVariable(_operators, Variable):
     pass
 CudaNdarrayType.Variable = CudaNdarrayVariable
 
+
 class CudaNdarrayConstantSignature(tensor.TensorConstantSignature):
     pass
+
 
 class CudaNdarrayConstant(_operators, Constant):
     def signature(self):
@@ -55,6 +58,7 @@ class CudaNdarrayConstant(_operators, Constant):
             data = "error while transferring the value: " + str(e)
         return "CudaNdarrayConstant{"+data+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
+
 
 class CudaNdarraySharedVariable(_operators, SharedVariable):
     """
@@ -139,6 +143,7 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
 
 CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
+
 def cuda_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
     """SharedVariable Constructor for CudaNdarrayType"""
@@ -169,6 +174,7 @@ def cuda_shared_constructor(value, name=None, strict=False,
         print "ERROR", e
         raise
     return rval
+
 
 def float32_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):

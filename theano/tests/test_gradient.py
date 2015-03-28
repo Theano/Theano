@@ -28,6 +28,7 @@ def grad_sources_inputs(sources, inputs):
     return dict(zip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),
         wrt=inputs, consider_constant=inputs)))
 
+
 class testgrad_sources_inputs(unittest.TestCase):
 
     def test_retNone1(self):
@@ -482,6 +483,7 @@ def test_known_grads():
                     print v, ':', theano.function(inputs, known[v])(*values)
                 assert False
 
+
 def test_dxdx():
 
 
@@ -499,6 +501,7 @@ def test_dxdx():
     g = g.eval({ x : 12 })
 
     assert np.allclose(g, 1.)
+
 
 def test_known_grads_integers():
 
@@ -520,6 +523,7 @@ def test_known_grads_integers():
 
     assert np.allclose(g_actual, gv)
 
+
 def test_undefined_cost_grad():
 
         # Tests that if we say the cost is not differentiable via the
@@ -537,6 +541,7 @@ def test_undefined_cost_grad():
         except theano.gradient.NullTypeGradError:
             return
         raise AssertionError("An undefined gradient has been ignored.")
+
 
 def test_disconnected_cost_grad():
 
@@ -556,6 +561,7 @@ def test_disconnected_cost_grad():
         except theano.gradient.DisconnectedInputError:
             return
         raise AssertionError("A disconnected gradient has been ignored.")
+
 
 def test_subgraph_grad():
 

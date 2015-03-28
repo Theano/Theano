@@ -4,9 +4,11 @@ import theano.tensor as T
 
 #import klass
 
+
 def symbolic(f):
     f.__is_symbolic = True
     return f
+
 
 class InitGraph(type):
     def __init__(cls, name, bases, dct):
@@ -38,6 +40,7 @@ class InitGraph(type):
             else:
                 setattr(cls, key, val)
 
+
 class SymbolicModule(object):
     # installs class attributes from build_graph after declaration
     __metaclass__ = InitGraph
@@ -58,26 +61,32 @@ class SymbolicModule(object):
     def build_graph():
         return {}
 
+
 def issymbolicmodule(thing):
     try:
         return issubclass(thing, SymbolicModule)
     except Exception:
         return False
 
+
 def issymbolicmethod(thing):
     return getattr(thing, '__symbolic_method', False)
+
 
 def symbolic_module(f):
     class SymMod(SymbolicModule):
         build_graph = staticmethod(f)
     return SymMod
 
+
 def symbolicmethod(f):
     f.__symbolic_method = True
     return f
 
+
 class CompiledModule(object):
     pass
+
 
 def compile_fn(f, path_locals, common_inputs):
     (args, vararg, kwarg, default) = inspect.getargspec(f)
@@ -95,6 +104,7 @@ def compile_fn(f, path_locals, common_inputs):
     compiled_f = theano.function(inputs, outputs)
     updated = []
     return compiled_f, updated
+
 
 def compile(smod, initial_values=None):
     """
@@ -198,6 +208,7 @@ def compile(smod, initial_values=None):
     rval.__compiled_functions = compiled_functions
     return rval
 
+
 @symbolic_module
 def LR(x=None, y=None, v=None, c=None, l2_coef=None):
     # our points, one point per row
@@ -228,6 +239,7 @@ def LR(x=None, y=None, v=None, c=None, l2_coef=None):
 
     return locals()
 
+
 @symbolic_module
 def Layer(x=None, w=None, b=None):
     # our points, one point per row
@@ -243,6 +255,7 @@ def Layer(x=None, w=None, b=None):
     @symbolicmethod
     def params(): return [w, b]
     return locals()
+
 
 @symbolic_module
 def NNet(x=None, y=None, n_hid_layers=2):

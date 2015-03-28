@@ -6463,6 +6463,7 @@ def test_transpose():
     assert tensor.transpose(x3).name == 'x3.T'
     assert tensor.transpose(tensor.dmatrix()).name is None
 
+
 def test_stacklists():
     a, b, c, d = map(scalar, 'abcd')
     X = stacklists([[a, b],

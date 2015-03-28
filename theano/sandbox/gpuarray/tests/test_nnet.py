@@ -163,6 +163,7 @@ def test_softmax_with_bias_float32():
     softmax_with_bias_unittest_template(dtypeInput='float32',
                                         dtypeBias='float32')
 
+
 def test_softmax_with_bias_float64():
     softmax_with_bias_unittest_template(dtypeInput='float32',
                                         dtypeBias='float64')
@@ -170,6 +171,7 @@ def test_softmax_with_bias_float64():
                                         dtypeBias='float32')
     softmax_with_bias_unittest_template(dtypeInput='float64',
                                         dtypeBias='float64')
+
 
 def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
     """
@@ -236,8 +238,10 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
 def test_softmax_float32():
     softmax_unittest_template('float32')
 
+
 def test_softmax_float64():
     softmax_unittest_template('float64')
+
 
 def softmax_unittest_template(dtypeInput):
     """

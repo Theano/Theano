@@ -7,6 +7,7 @@ from theano.tensor.blas_scipy import ScipyGer
 from test_blas import TestCase, gemm_no_inplace, TestBlasStrides
 from theano.tests.unittest_tools import TestOptimizationMixin
 
+
 class TestScipyGer(TestCase, TestOptimizationMixin):
 
     def setUp(self):
@@ -56,6 +57,7 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
                 0.2 * self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, gemm_no_inplace)
         self.run_f(f)  # DebugMode tests correctness
+
 
 class TestBlasStridesScipy(TestBlasStrides):
     mode = theano.compile.get_default_mode()

@@ -88,6 +88,7 @@ def inputs():
 PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 
+
 class TestPatternOptimizer:
 
     def test_replace_output(self):
@@ -265,6 +266,7 @@ class TestPatternOptimizer:
 
 OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
 OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
+
 
 class TestOpSubOptimizer:
 

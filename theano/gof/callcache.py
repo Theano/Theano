@@ -2,6 +2,7 @@ import cPickle, logging
 
 _logger = logging.getLogger("theano.gof.callcache")
 
+
 class CallCache(object):
     def __init__(self, filename=None):
         self.filename = filename

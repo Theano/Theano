@@ -7,12 +7,14 @@ import theano
 from theano import tensor
 import numpy
 
+
 def theano_type(x):
     """Return a theano Type instance suitable for containing value `x`."""
     if type(x) is int:
         return tensor.lscalar
     else:
         raise NotImplementedError()
+
 
 class symbolic_fn_callable(object):
     """This is the class whose instance you get when you access a symbolic function in a
@@ -64,6 +66,7 @@ class symbolic_fn_callable(object):
     def updates(self, *args, **kwargs):
         return self.run_symbolic(*args, **kwargs)['updates']
 
+
 class symbolic_fn(object):
     """A property-like class for decorating symbolic functions in `TheanoObject`
     """
@@ -78,6 +81,7 @@ class symbolic_fn(object):
         pass
         # return NotImplemented
 
+
 def symbolic_fn_opts(**kwargs):
     """Return a decorator for symbolic_functions in a `TheanoObject`
 
@@ -86,6 +90,7 @@ def symbolic_fn_opts(**kwargs):
     def deco(f):
         return symbolic_fn(f, **kwargs)
     return deco
+
 
 class RVal(object):
     """A Return-Value object for a `symbolic_fn` """
@@ -106,6 +111,7 @@ class RVal(object):
         self.outputs = outputs
         assert type(updates) is dict
         self.updates = updates
+
 
 class TheanoObject(object):
     """Base for Theano-supported classes

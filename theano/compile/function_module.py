@@ -177,6 +177,8 @@ class AliasedMemoryError(Exception):
 
 
 DUPLICATE = ['DUPLICATE']  # unique id object used as a placeholder for duplicate entries
+
+
 class Function(object):
     """
     Type of the functions returned by theano.function or theano.FunctionMaker.create.
@@ -740,6 +742,7 @@ def _pickle_Function(f):
                             raise AliasedMemoryError(d_i, d_j)
     rval = (_constructor_Function, (f.maker, input_storage, inputs_data))
     return rval
+
 
 def _constructor_Function(maker, input_storage, inputs_data):
     if not theano.config.unpickle_function:

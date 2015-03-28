@@ -1376,6 +1376,7 @@ class MRG_RandomStreams(object):
 from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
                                          host_from_gpu as host_from_gpua)
 
+
 @register_gpua()
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
@@ -1389,6 +1390,8 @@ def local_gpua_mrg(node):
 
 
 MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)
+
+
 @local_optimizer(MRG_RNGs)
 def mrg_random_make_inplace(node):
     op = node.op

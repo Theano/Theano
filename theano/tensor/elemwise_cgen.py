@@ -172,6 +172,7 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
     }
     """ % dict(locals(), **sub)
 
+
 def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
     """
     Make a nested loop over several arrays and associate specific code

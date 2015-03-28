@@ -14,6 +14,7 @@ except ImportError:
 
 from theano.misc.may_share_memory import may_share_memory
 
+
 def test_may_share_memory():
     a = numpy.random.rand(5, 4)
     b = numpy.random.rand(5, 4)

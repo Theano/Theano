@@ -15,6 +15,8 @@ from theano.sparse import basic as sparse
 _is_sparse_variable = sparse._is_sparse_variable
 
 # This is tested in tests/test_opt.py:test_local_csm_properties_csm
+
+
 @gof.local_optimizer([csm_properties])
 def local_csm_properties_csm(node):
     """if we find csm_properties(CSM(*args)), then we can replace that with the

@@ -13,6 +13,7 @@ from theano.sandbox.cuda.basic_ops import (
 
 _one = scal.constant(numpy.asarray(1.0, dtype='float32'))
 
+
 def grab_cpu_scalar(v, nd):
     if v.owner is not None:
         n = v.owner

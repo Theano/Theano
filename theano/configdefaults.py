@@ -12,6 +12,7 @@ _logger = logging.getLogger('theano.configdefaults')
 
 config = TheanoConfigParser()
 
+
 def floatX_convert(s):
     if s == "32":
         return "float32"
@@ -60,6 +61,8 @@ AddConfigVar('int_division',
 # gpu means let the driver select the gpu. Needed in case of gpu in
 # exclusive mode.
 # gpuX mean use the gpu number X.
+
+
 class DeviceParam(ConfigParam):
     def __init__(self, default, *options, **kwargs):
         self.default = default

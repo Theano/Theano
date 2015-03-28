@@ -34,6 +34,7 @@ MATRIX_STRUCTURES = (
         'toeplitz',
         )
 
+
 class Cholesky(Op):
     """
     Return a triangular matrix square root of positive semi-definite `x`

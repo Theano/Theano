@@ -40,6 +40,7 @@ class MyType(Type):
     def __repr__(self):
         return 'R%s' % str(self.thingy)
 
+
 def MyVariable(thingy):
     return Variable(MyType(thingy), None, None)
 
@@ -63,6 +64,7 @@ MyOp = MyOp()
 ##########
 # inputs #
 ##########
+
 
 class TestInputs:
 
@@ -168,6 +170,7 @@ def prenode(obj):
             return [obj.owner]
     if isinstance(obj, Apply):
         return obj.inputs
+
 
 class TestToposort:
 

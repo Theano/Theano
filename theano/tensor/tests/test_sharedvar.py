@@ -11,6 +11,7 @@ import theano.sparse
 
 utt.seed_rng()
 
+
 def makeSharedTester(shared_constructor_,
                      dtype_,
                      get_value_borrow_true_alias_,

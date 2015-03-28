@@ -2905,9 +2905,11 @@ def div_proxy(x, y):
         as_tensor_variable(y).dtype in discrete_dtypes))
     return f(x, y)
 
+
 def divmod(x, y):
     """elementvise divmod, using floor_div and mod_check"""
     return floor_div(x, y), mod_check(x, y)
+
 
 @_scal_elemwise_with_nfunc('add', 2, 1)
 def add(a, *other_terms):

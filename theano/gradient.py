@@ -1989,6 +1989,7 @@ class GradClip(ViewOp):
                                    self.clip_upper_bound)
                 for g_out in g_outs]
 
+
 def grad_clip(x, lower_bound, upper_bound):
     """
     This op do a view in the forward, but clip the gradient.

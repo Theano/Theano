@@ -1608,6 +1608,7 @@ def test_local_useless_slice():
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list)
 
+
 def test_local_useless_inc_subtensor():
     x = tensor.matrix('x')
     y = tensor.matrix('y')

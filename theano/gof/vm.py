@@ -52,6 +52,7 @@ AddConfigVar('vm.lazy',
              ConfigParam('None', filter_vm_lazy),
              in_c_key=False)
 
+
 class VM(object):
 
     """

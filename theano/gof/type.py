@@ -13,6 +13,7 @@ from theano.gof import graph
 ########
 from theano.gof.op import CLinkerObject
 
+
 class CLinkerType(CLinkerObject):
     """Interface specification for Types that can be arguments to a `CLinkerOp`.
 

@@ -25,6 +25,7 @@ equal_computations = None
 
 NoContext = object()
 
+
 class Node(utils.object2):
     """A Node in a theano graph.
     Graphs contain two kinds of Nodes--

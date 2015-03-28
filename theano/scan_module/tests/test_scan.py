@@ -50,6 +50,7 @@ mode_with_gpu = mode_with_opt.including('gpu', 'scan')
 type_eps = {'float64': 1e-7,
             'float32': 3e-3}
 
+
 class multiple_outputs_numeric_grad:
     """WRITEME"""
     def __init__(self, f, pt, ndarray_mask=None, eps=None):

@@ -496,6 +496,7 @@ def test_getshape():
         subtest(shape_1)
         subtest(shape_2)
 
+
 def test_stride_manipulation():
 
     a = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
@@ -543,6 +544,7 @@ def test_copy_subtensor0():
 
     assert numpy.all(a[:, :, ::-1, ::-1] == numpy.asarray(a_view_copy))
 
+
 def test_mapping_getitem_ellipsis():
     a = theano._asarray(numpy.random.rand(5, 4, 3, 2), dtype='float32')
     a = cuda_ndarray.CudaNdarray(a)
@@ -551,6 +553,7 @@ def test_mapping_getitem_ellipsis():
     assert b._dev_data == a._dev_data
     assert b._strides == a._strides
     assert b.shape == a.shape
+
 
 def test_mapping_getitem_reverse_some_dims():
     dim = (5, 4, 3, 2)
@@ -561,6 +564,7 @@ def test_mapping_getitem_reverse_some_dims():
 
     b = numpy.asarray(_b)
     assert numpy.all(b == a[:, :, ::-1, ::-1])
+
 
 def test_mapping_getitem_w_int():
     def _cmp(x, y):
@@ -645,6 +649,7 @@ def test_mapping_getitem_w_int():
     _cmp(numpy.asarray(_a[-1, -1, -1, -2]), a[-1, -1, -1, -2])
     _cmp(numpy.asarray(_a[...]), a[...])
 
+
 def test_gemm_vector_vector():
     a = theano._asarray(numpy.random.rand(5, 1), dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
@@ -660,6 +665,7 @@ def test_gemm_vector_vector():
     assert numpy.allclose(_c, numpy.dot(b, a))
 
 # ---------------------------------------------------------------------
+
 
 def test_setitem_matrixscalar0():
     a = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
@@ -683,6 +689,7 @@ def test_setitem_matrixscalar0():
     _a[0:2] = 0
     _a[1:] = 0
 
+
 def test_setitem_matrixvector1():
     a = theano._asarray([[0, 1, 2], [3, 4, 5]], dtype='float32')
     _a = cuda_ndarray.CudaNdarray(a)
@@ -704,6 +711,7 @@ def test_setitem_matrixvector1():
     _a[1, :] = row
     a[1, :] = row
     assert numpy.allclose(a, numpy.asarray(_a))
+
 
 def test_setitem_matrix_tensor3():
     a = numpy.arange(27)
@@ -730,8 +738,10 @@ def test_setitem_matrix_tensor3():
     a[1, 1, :] = row
     assert numpy.allclose(a, numpy.asarray(_a))
 
+
 def test_setitem_from_numpy_error():
     pass
+
 
 def test_setitem_matrix_bad_shape():
     a = numpy.arange(27)
@@ -759,6 +769,7 @@ def test_setitem_matrix_bad_shape():
         # print e
         assert True
 
+
 def test_setitem_matrix_bad_ndim():
     a = numpy.arange(27)
     a.resize((3, 3, 3))
@@ -785,6 +796,7 @@ def test_setitem_matrix_bad_ndim():
         # print e
         assert True
 
+
 def test_setitem_matrix_bad_type():
     a = numpy.arange(27)
     a.resize((3, 3, 3))
@@ -801,6 +813,7 @@ def test_setitem_matrix_bad_type():
     except TypeError, e:
         # print e
         assert True
+
 
 def test_setitem_assign_to_slice():
     a = numpy.arange(27)
@@ -826,6 +839,7 @@ def test_setitem_assign_to_slice():
     _d[1, :] = b*10
     a[1, :, :][1, :] = b*10
     assert numpy.allclose(a, numpy.asarray(_a))
+
 
 def test_setitem_broadcast():
     # test scalar to vector without stride

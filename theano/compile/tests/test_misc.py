@@ -5,6 +5,7 @@ from theano.compile.sharedvalue import shared
 from theano import tensor
 from theano.tensor.nnet import sigmoid
 
+
 class NNet(object):
 
     def __init__(self,
@@ -36,6 +37,7 @@ class NNet(object):
         self.compute_output = pfunc([self.input],  self.output)
 
         self.output_from_hidden = pfunc([self.hidden], self.output)
+
 
 class TestNnet(unittest.TestCase):
 

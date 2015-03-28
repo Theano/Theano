@@ -1420,6 +1420,7 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
         else:
             return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
+
 class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
     """Gradient wrt. inputs for `GpuCorr3dMM`.
 

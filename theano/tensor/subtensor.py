@@ -1556,6 +1556,7 @@ class IncSubtensor(Op):
 
         return [gx, gy] + [DisconnectedType()()] * len(idx_list)
 
+
 def _sum_grad_over_bcasted_dims(x, gx):
     """Sum of gx over dimensions to reproduce x.broadcastable.
 

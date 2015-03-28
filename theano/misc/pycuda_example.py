@@ -40,6 +40,7 @@ from pycuda.compiler import SourceModule
 from pycuda.tools import VectorArg
 import pycuda.gpuarray
 
+
 def _replace_npy_types(c_arg):
     c_arg = c_arg.replace('npy_float32', 'float')
     c_arg = c_arg.replace('npy_float64', 'double')
@@ -50,6 +51,7 @@ def _replace_npy_types(c_arg):
     c_arg = c_arg.replace('npy_uint16', 'unsigned short')
     c_arg = c_arg.replace('npy_uint8', 'unsigned char')
     return c_arg
+
 
 def theano_parse_c_arg(c_arg):
     c_arg = _replace_npy_types(c_arg)

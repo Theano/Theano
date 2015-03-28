@@ -445,12 +445,14 @@ def register_shape_i_c_code(typ, code, check_input, version=()):
 # Scan can deal with.
 expandable_types = ()
 
+
 def load_back(mod, name):
     __import__(mod)
     import sys
     module = sys.modules[mod]
     obj = getattr(module, name)
     return obj
+
 
 class FromFunctionOp(gof.Op):
     """

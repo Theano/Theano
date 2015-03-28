@@ -6,6 +6,7 @@ import sys
 class DebugException(Exception):
     pass
 
+
 class DebugLinker(gof.WrapLinker):
 
     def __init__(self,
@@ -151,8 +152,10 @@ class DebugLinker(gof.WrapLinker):
 def print_info(i, node, *thunks):
     print "step %i, node %s" % (i, node)
 
+
 def print_from(i, node, *thunks):
     print "parents:", ", ".join(str(input.step) for input in node.inputs)
+
 
 def print_input_shapes(i, node, *thunks):
     shapes = []
@@ -163,13 +166,17 @@ def print_input_shapes(i, node, *thunks):
             shapes.append('N/A')
     print "input shapes:", ", ".join(shapes)
 
+
 def print_input_types(i, node, *thunks):
     print "input types:", ", ".join(str(type(input.value)) for input in node.inputs)
+
 
 def print_sep(i, node, *thunks):
     print "==================================="
 
 import numpy
+
+
 def numpy_compare(a, b, tolerance=1e-6):
     if isinstance(a, numpy.ndarray):
         return (abs(a - b) <= tolerance).all()

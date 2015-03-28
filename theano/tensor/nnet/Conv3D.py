@@ -535,6 +535,7 @@ class Conv3D(theano.Op):
 
 _conv3D = Conv3D()
 
+
 def conv3D(V, W, b, d):
     """
     3D "convolution" of multiple filters on a minibatch
@@ -561,6 +562,7 @@ def conv3D(V, W, b, d):
           <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
 """
     return _conv3D(V, W, b, d)
+
 
 def computeH(V, W, b, d):
     assert len(W.shape) == 5

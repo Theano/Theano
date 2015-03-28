@@ -14,6 +14,7 @@ if cuda_available:
                                      GpuDimShuffle)
     from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 
+
 class SparseBlockGemvSS(GpuOp):
     """
     This op computes the dot product of specified pieces of vectors

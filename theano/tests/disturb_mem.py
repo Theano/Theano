@@ -6,6 +6,7 @@ __email__ = "goodfeli@iro"
 
 from datetime import datetime
 
+
 def disturb_mem():
     # Allocate a time-dependent amount of objects to increase
     # chances of subsequently objects' ids changing from run

@@ -46,6 +46,7 @@ def to_gpuarray(x, copyif=False):
         px = pycuda.gpuarray.GPUArray(x.shape, x.dtype, base=x, gpudata=x.gpudata)
         return px
 
+
 def to_cudandarray(x):
     """ take a pycuda.gpuarray.GPUArray and make a CudaNdarray that point to its memory
 

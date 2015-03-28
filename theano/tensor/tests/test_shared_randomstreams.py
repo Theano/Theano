@@ -13,6 +13,7 @@ from theano import compile, config, gof
 
 from theano.tests import unittest_tools as utt
 
+
 class T_SharedRandomStreams(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()

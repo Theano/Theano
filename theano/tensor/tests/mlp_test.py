@@ -11,6 +11,7 @@ import theano
 import theano.tensor as T
 from theano.compat.python2x import any, OrderedDict
 
+
 def gen_data():
 
     # generate the dataset
@@ -47,6 +48,7 @@ def gen_data():
 
     rval = [(train_set_x, train_set_y), (valid_set_x, valid_set_y), (test_set_x, test_set_y)]
     return rval
+
 
 class LogisticRegression(object):
     """Multi-class Logistic Regression Class

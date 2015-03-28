@@ -57,6 +57,7 @@ def local_max_and_argmax(node):
             new = CAReduce(scal.maximum, axis)(node.inputs[0])
             return [new, None]
 
+
 @register_uncanonicalize
 @gof.local_optimizer([T.neg])
 def local_max_to_min(node):

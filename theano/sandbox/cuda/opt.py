@@ -1506,6 +1506,8 @@ def local_conv3d_fft(node):
 gpu_optimizer.register("conv3d_fft", local_conv3d_fft)
 
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
+
+
 @local_optimizer([ConvGrad3D])
 def local_convgrad3d_fft(node):
     try:
@@ -1534,6 +1536,8 @@ def local_convgrad3d_fft(node):
 gpu_optimizer.register("convgrad3d_fft", local_convgrad3d_fft)
 
 from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
+
+
 @local_optimizer([ConvTransp3D])
 def local_convtransp3d_fft(node):
     try:
@@ -1558,6 +1562,7 @@ def local_convtransp3d_fft(node):
 
 gpu_optimizer.register("convtransp3d_fft", local_convtransp3d_fft)
 
+
 @local_optimizer([Conv3D])
 def local_conv3d_gemm(node):
     if not isinstance(node.op, Conv3D):
@@ -1580,6 +1585,7 @@ def local_conv3d_gemm(node):
         return [rval.dimshuffle(0, 2, 3, 4, 1) + node.inputs[2]]
 
 gpu_optimizer.register("conv3d_gemm", local_conv3d_gemm)
+
 
 @local_optimizer([ConvGrad3D])
 def local_convgrad3d_gemm(node):
@@ -1604,6 +1610,7 @@ def local_convgrad3d_gemm(node):
         return [rval.dimshuffle(0, 2, 3, 4, 1)]
 
 gpu_optimizer.register("convgrad3d_gemm", local_convgrad3d_gemm)
+
 
 @local_optimizer([ConvTransp3D])
 def local_convtransp3d_gemm(node):
@@ -1738,6 +1745,8 @@ def local_gpu_join(node):
 
 # This is a copy of the same opt in tensor to make the tests happy,
 # but I'm not convinced it is actually needed.
+
+
 @register_opt()
 @local_optimizer([GpuJoin])
 def local_gpujoin_1(node):
@@ -1749,6 +1758,8 @@ def local_gpujoin_1(node):
 #   shared =  dimshuffle(gemm_inplace(dimshuffle(shared)))
 # which causes memory leaks (long term fix is to make the above not leak
 # memory)
+
+
 @local_optimizer([gpu_gemm_no_inplace], inplace=True)
 def local_inplace_gemm(node):
     if node.op == gpu_gemm_no_inplace:
@@ -1903,6 +1914,7 @@ gpu_elemwise_alloc = gof.local_optimizer([GpuElemwise])(
 )
 register_opt()(gpu_elemwise_alloc)
 tensor.opt.register_specialize_device(gpu_elemwise_alloc)
+
 
 @register_opt()
 @local_optimizer([tensor.alloc])
@@ -2089,11 +2101,13 @@ def local_gpu_extract_diagonal(node):
                 gpu_from_host(diag_node.inputs[0]))]
     return False
 
+
 def typeConstructor(broadcastable, dtype):
     if dtype == 'float32':
         return CudaNdarrayType(broadcastable=broadcastable)
     else:
         return tensor.TensorType(broadcastable=broadcastable, dtype=dtype)
+
 
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])

@@ -18,6 +18,7 @@ def max_pool2D(*args, **kwargs):
     print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
     return max_pool_2d(*args, **kwargs)
 
+
 def max_pool_2d_same_size(input, patch_size):
     """
     Takes as input a 4-D tensor. It sets all non maximum values 
@@ -35,6 +36,7 @@ def max_pool_2d_same_size(input, patch_size):
     output = DownsampleFactorMax(patch_size, True)(input)
     outs = DownsampleFactorMaxGrad(patch_size, True)(input, output, output)
     return outs
+
 
 def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0)):
     """

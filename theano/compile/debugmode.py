@@ -659,6 +659,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
     return file
 
+
 def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
     """Create an FunctionGraph for debugging.
 
@@ -2168,6 +2169,8 @@ class _Linker(gof.link.LocalLinker):
 
 
 _NODEFAULT = ['NODEFAULT']
+
+
 class _Maker(FunctionMaker):  # inheritance buys a few helper functions
     """Special debugging FunctionMaker
     """

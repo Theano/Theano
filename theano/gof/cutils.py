@@ -182,6 +182,7 @@ fail:
 
     return code
 
+
 def compile_cutils():
     """Do just the compilation of cutils_ext"""
     code = ("""
