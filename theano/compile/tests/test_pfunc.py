@@ -702,8 +702,8 @@ class Test_aliasing_rules(unittest.TestCase):
 
     def test_sparse_input_aliasing_affecting_inplace_operations(self):
         ##
-        ## Note this test will never fail because I am not aware of any
-        ## inplace op on sparse variables
+        # Note this test will never fail because I am not aware of any
+        # inplace op on sparse variables
         try:
             import scipy.sparse as sp
         except ImportError:
@@ -716,7 +716,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
         from theano import sparse
 
-        ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
+        # Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
         #        you need to make in inputs mutable (so that inplace
         #        operations are used) and to break the elemwise composition
         #        with some non-elemwise op (here dot)
@@ -726,7 +726,7 @@ class Test_aliasing_rules(unittest.TestCase):
         f = theano.function([theano.In(x, mutable=True),
                              theano.In(y, mutable=True)],
                             (x + y) + (x + y))
-        ## Test 1. If the same variable is given twice
+        # Test 1. If the same variable is given twice
 
         # Compute bogus values
         m = sp.csc_matrix(numpy.asarray(
@@ -752,7 +752,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
     def test_input_aliasing_affecting_inplace_operations(self):
 
-        ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
+        # Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
         #        you need to make in inputs mutable (so that inplace
         #        operations are used) and to break the elemwise composition
         #        with some non-elemwise op (here dot)
@@ -765,7 +765,7 @@ class Test_aliasing_rules(unittest.TestCase):
                              theano.In(m1, mutable=True),
                              theano.In(m2, mutable=True)],
                             theano.dot((x * 2), m1) + theano.dot((y * 3), m2))
-        ## Test 1. If the same variable is given twice
+        # Test 1. If the same variable is given twice
 
         # Compute bogus values
         v = numpy.asarray([1, 2, 3, 4, 5], dtype='float64')
@@ -792,7 +792,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
     def test_partial_input_aliasing_affecting_inplace_operations(self):
 
-        ## Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
+        # Note: to trigger this bug with theano rev 4586:2bc6fc7f218b,
         #        you need to make in inputs mutable ( so that inplace
         #        operations are used) and to break the elemwise composition
         #        with some non-elemwise op ( here dot )
@@ -803,7 +803,7 @@ class Test_aliasing_rules(unittest.TestCase):
         m2 = theano.tensor.dmatrix()
         m3 = theano.tensor.dmatrix()
 
-        ## Test 2. If variables only partial overlap
+        # Test 2. If variables only partial overlap
         #   more exactly we care about the case when we have a,b,c
         #   and a shares memory with b, b shares memory with c, but
         #   c does not share memory with a
@@ -950,7 +950,7 @@ class Test_aliasing_rules(unittest.TestCase):
         data_of_b = data_of(B)
 
         f = pfunc([], [], updates=[(A, B[:, ::-1]), (B, A.T)])
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         f()
         # correctness (doesn't actually test the view...)
         assert numpy.all(data_of(A) == -.5)

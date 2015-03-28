@@ -148,14 +148,14 @@ class test_grad(unittest.TestCase):
                 [a], b, on_unused_input='ignore')
 
     def test_undefined_grad_func(self):
-        #tests that function compilation catches undefined grads in the graph
+        # tests that function compilation catches undefined grads in the graph
         a = theano.tensor.vector()
         b = theano.gradient.grad_undefined(theano.tensor.add, 0, a)
         self.assertRaises(TypeError, theano.function,
                 [a], b, on_unused_input='ignore')
 
     def test_unimplemented_grad_grad(self):
-        #tests that unimplemented grads are caught in the grad method
+        # tests that unimplemented grads are caught in the grad method
 
         class DummyOp(gof.Op):
             def make_node(self, x):
@@ -171,7 +171,7 @@ class test_grad(unittest.TestCase):
         self.assertRaises(TypeError, theano.gradient.grad, b, a)
 
     def test_undefined_grad_grad(self):
-        #tests that undefined grads are caught in the grad method
+        # tests that undefined grads are caught in the grad method
 
         V = theano.tensor.TensorType(dtype=config.floatX,
                 broadcastable=(False, False, False, False, False))()
@@ -194,8 +194,8 @@ class test_grad(unittest.TestCase):
 
     def test_grad_duplicate_input(self):
 
-        #test that the grad works when a variable
-        #appears in more than one place in a node's input list
+        # test that the grad works when a variable
+        # appears in more than one place in a node's input list
 
         def output(x):
             return (x * x)
@@ -208,7 +208,7 @@ class test_grad(unittest.TestCase):
 
     def test_grad_quadratic(self):
 
-        #test the gradient on a tiny graph
+        # test the gradient on a tiny graph
 
         def cost(x, A):
             return theano.tensor.dot(x, theano.tensor.dot(A, x))
@@ -222,7 +222,7 @@ class test_grad(unittest.TestCase):
 
     def test_grad_quadratic_vector(self):
 
-        #test the gradient on a small graph
+        # test the gradient on a small graph
 
         def output(x, A):
             return theano.tensor.dot(x * x, A)
@@ -236,7 +236,7 @@ class test_grad(unittest.TestCase):
 
     def test_grad_cubic(self):
 
-        #test the gradient on a bigger graph
+        # test the gradient on a bigger graph
 
         def cost(x, A):
             return theano.tensor.dot(x * x, theano.tensor.dot(A, x))
@@ -250,7 +250,7 @@ class test_grad(unittest.TestCase):
 
     def test_grad_grad_quadratic(self):
 
-        #test the gradient on a graph constructed using the gradient
+        # test the gradient on a graph constructed using the gradient
 
         def output(x, A):
             orig_cost = theano.tensor.dot(x, theano.tensor.dot(A, x))
@@ -265,7 +265,7 @@ class test_grad(unittest.TestCase):
 
     def test_grad_grad_cubic(self):
 
-        #test the gradient on a bigger graph constructed using the gradient
+        # test the gradient on a bigger graph constructed using the gradient
 
         def output(x, A):
             orig_cost = theano.tensor.dot(x * x, theano.tensor.dot(A, x))
@@ -294,9 +294,9 @@ class test_grad(unittest.TestCase):
             return theano.function([X, W, b], g, on_unused_input='ignore')
 
         int_func = make_grad_func(theano.tensor.imatrix())
-        #we have to use float64 as the float type to get the results to match
-        #using an integer for the input makes all the later functions use
-        #float64
+        # we have to use float64 as the float type to get the results to match
+        # using an integer for the input makes all the later functions use
+        # float64
         float_func = make_grad_func(theano.tensor.matrix(dtype='float64'))
 
         m = 5
@@ -319,7 +319,7 @@ class test_grad(unittest.TestCase):
 
     def test_grad_disconnected(self):
 
-        #tests corner cases of gradient for shape and alloc
+        # tests corner cases of gradient for shape and alloc
 
         x = theano.tensor.vector(name='x')
         total = x.sum()
@@ -330,10 +330,10 @@ class test_grad(unittest.TestCase):
         silly_vector.name = 'silly_vector'
         cost = silly_vector.sum()
         cost.name = 'cost'
-        #note that cost simplifies to be the same as "total"
+        # note that cost simplifies to be the same as "total"
         g = gradient.grad(cost, x, add_names=False)
-        #we still need to pass in x because it determines the shape of
-        #the output
+        # we still need to pass in x because it determines the shape of
+        # the output
         f = theano.function([x], g)
         rng = np.random.RandomState([2012, 9, 5])
         x = np.cast[x.dtype](rng.randn(3))

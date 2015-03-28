@@ -8,36 +8,36 @@ from theano.misc import strutil
 from theano.gradient import grad_undefined
 
 
-#Note: not a true convolution because we don't bother with flipping the kernel
-#An op that takes a weight tensor W. a bias vector b, and a visible tensor V, produces a hidden unit tensor H
-#Also parmeterized by integer strides dr,dc,dt
-#H[i,r,c,t,j] = video i within the minibatch, feature map j, location and time within feature map (r,c,t)
-#W[j,k,l,m,z] = weights connecting H[i,r,c,t,j] to V[i,dr*r+k,dc*c+l,dt*t+m,z]
-#b[j] = bias of feature map j
-#V[i,r,c,t,j] = pixel at (r,c,t) within video featuremap j of video i within the minibatch
-#i.e., H[i,j,r,c,t] = b_j + sum_k sum_l sum_m sum_z W[j,k,l,m,z] V[i,z, dr*r+k,dc*c+l,dt*t+m]
-#The layouts of these variables are chosen to improve locality of reference.
-#numpy seems to put the largest stride on axis 0 and decrease the stride from there. If we do convolution
-#one filter at a time, one example at a time, then we want the largest strides to
-#be over the examples. We want the smallest stride to be over the input channel because as we change
-#the channel we re-visit the same location in the input.
-#The smallest stride being over the input channel means that the weights need to be formatted with the input
-#channel as the last index
+# Note: not a true convolution because we don't bother with flipping the kernel
+# An op that takes a weight tensor W. a bias vector b, and a visible tensor V, produces a hidden unit tensor H
+# Also parmeterized by integer strides dr,dc,dt
+# H[i,r,c,t,j] = video i within the minibatch, feature map j, location and time within feature map (r,c,t)
+# W[j,k,l,m,z] = weights connecting H[i,r,c,t,j] to V[i,dr*r+k,dc*c+l,dt*t+m,z]
+# b[j] = bias of feature map j
+# V[i,r,c,t,j] = pixel at (r,c,t) within video featuremap j of video i within the minibatch
+# i.e., H[i,j,r,c,t] = b_j + sum_k sum_l sum_m sum_z W[j,k,l,m,z] V[i,z, dr*r+k,dc*c+l,dt*t+m]
+# The layouts of these variables are chosen to improve locality of reference.
+# numpy seems to put the largest stride on axis 0 and decrease the stride from there. If we do convolution
+# one filter at a time, one example at a time, then we want the largest strides to
+# be over the examples. We want the smallest stride to be over the input channel because as we change
+# the channel we re-visit the same location in the input.
+# The smallest stride being over the input channel means that the weights need to be formatted with the input
+# channel as the last index
 
-#partial C / partial b_j =  sum_i sum_k sum_r sum_c sum_t (partial C / partial H[i,r,c,t,k] ) * ( partial H[i,r,c,t,k] / partial b_j )
+# partial C / partial b_j =  sum_i sum_k sum_r sum_c sum_t (partial C / partial H[i,r,c,t,k] ) * ( partial H[i,r,c,t,k] / partial b_j )
 # =  sum_i sum_k sum_r sum_c sum_t (partial C / partial H[i,r,c,t,k] )  * delta(k = j)
 # =  sum_i sum_r sum_c sum_t (partial C / partial H[i,r,c,t,j] )
 
 
-#partial C / partial W[j,k,l,m,z] = sum_i sum_n sum_p sum_q sum_r (partial C /partial H[i,p,q,r,n] ) * (partial H[i,p,q,r,n] / partial W[j,k,l,m,z])
+# partial C / partial W[j,k,l,m,z] = sum_i sum_n sum_p sum_q sum_r (partial C /partial H[i,p,q,r,n] ) * (partial H[i,p,q,r,n] / partial W[j,k,l,m,z])
 # = partial C / partial W[j,k,l,m,z] = sum_i sum_n sum_p sum_q sum_r (partial C /partial H[i,p,q,r,n] ) *
 # (partial sum_s sum_u sum_v sum_a  W[n,a, s,u,v] V[i, dr*p+s,dc*q+u,dt*r+v, a] ) / partial W[j,k,l,m,z])
 # = partial C / partial W[j,k,l,m,z] = sum_i sum_p sum_q sum_r (partial C /partial H[i,p,q,r,j] ) *
 # (partial sum_s sum_u sum_v sum_a W[j,a, s,u,v] V[i,dr*p+s,dc*q+u,dt*r+v,a] ) / partial W[j,k,l,m,z])
 # = partial C / partial W[j,k,l,m,z] = sum_i sum_p sum_q sum_r (partial C /partial H[i,p,q,r,j] ) *  V[i,dr*p+k,dc*q+l,dt*r+m,z]
 
-#derivatives wrt V unimplemented for now. derivatives wrt dr, dc, dt are undefined since
-#the output function is only defined when dr, dc, dt are natural numbers.
+# derivatives wrt V unimplemented for now. derivatives wrt dr, dc, dt are undefined since
+# the output function is only defined when dr, dc, dt are natural numbers.
 
 class Conv3D(theano.Op):
     """ 3D `convolution` of multiple filters on a minibatch
@@ -78,10 +78,10 @@ class Conv3D(theano.Op):
     def grad(self, inputs, output_gradients):
         V, W, b, d = inputs
         dCdH , = output_gradients
-        #make all of these ops support broadcasting of scalar b to vector b and eplace the zeros_like in all their grads
-        #print dCdH.broadcastable
-        #print "dCdH.broadcastable"
-        #quit(-1)
+        # make all of these ops support broadcasting of scalar b to vector b and eplace the zeros_like in all their grads
+        # print dCdH.broadcastable
+        # print "dCdH.broadcastable"
+        # quit(-1)
         #dCdH = printing.Print("dCdH = ",["shape"])
 
         # Make sure the broadcasting pattern of the gradient is the the same
@@ -597,13 +597,13 @@ def computeH(V, W, b, d):
     H =  N.zeros( (batchSize,  outputHeight,
         outputWidth, outputDur, outputChannels ), dtype=V.dtype )
 
-    #H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
+    # H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
     for i in xrange(0, H.shape[0]):
-        #print '\texample '+str(i+1)+'/'+str(H.shape[0])
+        # print '\texample '+str(i+1)+'/'+str(H.shape[0])
         for j in xrange(0, H.shape[4]):
-                #print '\t\tfeature map '+str(j+1)+'/'+str(H.shape[1])
+                # print '\t\tfeature map '+str(j+1)+'/'+str(H.shape[1])
             for x in xrange(0, H.shape[1]):
-                #print '\t\t\trow '+str(x+1)+'/'+str(H.shape[2])
+                # print '\t\t\trow '+str(x+1)+'/'+str(H.shape[2])
                 for y in xrange(0, H.shape[2]):
                     for t in xrange(0, H.shape[3]):
                         H[i, x, y, t, j] = b[j]
@@ -611,11 +611,11 @@ def computeH(V, W, b, d):
                             for l in xrange(0, filterWidth):
                                 for m in xrange(0, filterDur):
                                     for z in xrange(0, inputChannels):
-                                        #if (i,j,x,y,t) == (0,0,0,0,0):
+                                        # if (i,j,x,y,t) == (0,0,0,0,0):
                                         #    print (( W[j,z,k,l,m] , V[i,z,d[0]*x+k,d[1]*y+l,d[2]*t+m] ), (k,l,m) )
                                         w = W[j, k, l, m, z]
                                         v = V[i, d[0]*x+k, d[1]*y+l, d[2]*t+m, z]
-                                        #if i == 0 and x == 0 and y == 0 and t == 0 and j == 0:
+                                        # if i == 0 and x == 0 and y == 0 and t == 0 and j == 0:
                                         #    print 'setting H[0] += '+str(w*v)+'   W['+str((j,z,k,l,m))+']='+str(w)+'   V['+str((i,d[0]*x+k,d[1]*y+l,d[2]*t+m,z))+']='+str(v)
                                         H[i, x, y, t, j] += w * v
     return H

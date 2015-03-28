@@ -245,7 +245,7 @@ static struct PyModuleDef moduledef = {{
             print >> ofile, ('%4i' % (i + 1)), line
         ofile.flush()
 
-    #TODO: add_type
+    # TODO: add_type
 
 
 def dlimport(fullpath, suffix=None):
@@ -1446,14 +1446,14 @@ def std_lib_dirs_and_libs():
             # available, and the *.a files have to be found earlier than
             # the other ones.
 
-            #When Canopy is installed for the user:
-            #sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
-            #sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
-            #When Canopy is installed for all users:
-            #sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
-            #sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
-            #So we need to use sys.prefix as it support both cases.
-            #sys.base_prefix support only one case
+            # When Canopy is installed for the user:
+            # sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
+            # sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            # When Canopy is installed for all users:
+            # sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            # sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
+            # So we need to use sys.prefix as it support both cases.
+            # sys.base_prefix support only one case
             libdir = os.path.join(sys.prefix, 'libs')
 
             for f, lib in [('libpython27.a', 'libpython 1.2')]:
@@ -1638,7 +1638,7 @@ class GCC_compiler(Compiler):
         detect_march = GCC_compiler.march_flags is None
         if detect_march:
             for f in cxxflags:
-                #If the user give an -march=X parameter, don't add one ourself
+                # If the user give an -march=X parameter, don't add one ourself
                 if ((f.startswith("--march=") or f.startswith("-march="))):
                     _logger.warn(
                         "WARNING: your Theano flags `gcc.cxxflags` specify"
@@ -1825,14 +1825,14 @@ class GCC_compiler(Compiler):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
-        #Add the detected -march=native equivalent flags
+        # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
-        #NumPy 1.7 Deprecate the old API. I updated most of the places
-        #to use the new API, but not everywhere. When finished, enable
-        #the following macro to assert that we don't bring new code
-        #that use the old API.
+        # NumPy 1.7 Deprecate the old API. I updated most of the places
+        # to use the new API, but not everywhere. When finished, enable
+        # the following macro to assert that we don't bring new code
+        # that use the old API.
         cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
@@ -1919,7 +1919,7 @@ class GCC_compiler(Compiler):
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
         """
-        #TODO: Do not do the dlimport in this function
+        # TODO: Do not do the dlimport in this function
 
         if not theano.config.cxx:
             raise MissingGXX("g++ not available! We can't compile c code.")
@@ -1997,7 +1997,7 @@ class GCC_compiler(Compiler):
         if status:
             print '==============================='
             for i, l in enumerate(src_code.split('\n')):
-                #gcc put its messages to stderr, so we add ours now
+                # gcc put its messages to stderr, so we add ours now
                 print >> sys.stderr, '%05i\t%s' % (i + 1, l)
             print '==============================='
             print_command_line_error()
@@ -2013,7 +2013,7 @@ class GCC_compiler(Compiler):
             print compile_stderr
 
         if py_module:
-            #touch the __init__ file
+            # touch the __init__ file
             open(os.path.join(location, "__init__.py"), 'w').close()
             assert os.path.isfile(lib_filename)
             return dlimport(lib_filename)

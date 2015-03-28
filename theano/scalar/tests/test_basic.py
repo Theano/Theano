@@ -41,12 +41,12 @@ class test_ScalarOps(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
-    #This test is moved to theano.tensor.tests.test_basic.py:test_mod
-    #We move it their as under ubuntu the c_extract call of theano.scalar
-    #call PyInt_check and it fail under some os. If work in other case.
-    #As we use theano.scalar normally, but we use theano.tensor.scalar
-    #that is not important. Also this make the theano fct fail at call time
-    #so this is not a silent bug.
+    # This test is moved to theano.tensor.tests.test_basic.py:test_mod
+    # We move it their as under ubuntu the c_extract call of theano.scalar
+    # call PyInt_check and it fail under some os. If work in other case.
+    # As we use theano.scalar normally, but we use theano.tensor.scalar
+    # that is not important. Also this make the theano fct fail at call time
+    # so this is not a silent bug.
     # --> This is why it is purposedly named 'tes_mod' instead of 'test_mod'.
     def tes_mod(self):
         """
@@ -64,7 +64,7 @@ class test_ScalarOps(unittest.TestCase):
 
 
     def test_clip_grad(self):
-        #This is testing for the issue #633
+        # This is testing for the issue #633
         x, y = floats('xy')
         a = theano.tensor.clip(x, y, x)
         g = theano.gradient.grad(a, x)
@@ -85,10 +85,10 @@ class test_ScalarOps(unittest.TestCase):
         ntests = 50
         for i in xrange(ntests):
             xval = rng.rand(1)
-            #To ensure that the min < x .
+            # To ensure that the min < x .
             yval_mn = rng.rand(1) - 1.0
 
-            #To ensure that the max > x.
+            # To ensure that the max > x.
             yval_mx = rng.rand(1) + 1.0
 
             aval = fn(xval, yval_mn)
@@ -112,7 +112,7 @@ class test_composite(unittest.TestCase):
         assert fn(1.0, 2.0) == 1.5
 
     def test_flatten(self):
-        #Test that we flatten multiple Composite.
+        # Test that we flatten multiple Composite.
         x, y, z = inputs()
         C = Composite([x, y], [x + y])
         CC = Composite([x, y], [C(x * y, y)])
@@ -120,7 +120,7 @@ class test_composite(unittest.TestCase):
 
         # Test with multiple outputs
         CC = Composite([x, y, z], [C(x * y, y), C(x * z, y)])
-        #We don't flatten that case.
+        # We don't flatten that case.
         assert isinstance(CC.outputs[0].owner.op, Composite)
 
     def test_with_constants(self):

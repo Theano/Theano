@@ -830,7 +830,7 @@ def debug_error_message(msg):
 
     action = config.compute_test_value
 
-    #this message should never be called when the debugger is off
+    # this message should never be called when the debugger is off
     assert action != 'off'
 
     if action in ['raise', 'ignore']:

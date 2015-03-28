@@ -752,9 +752,9 @@ class CSMGrad(gof.op.Op):
 
     def __init__(self, kmap=None):
         self.kmap = kmap
-        #This class always allocate a new output.
-        #I keep this here to help GD understand what this kmap think is.
-        #if self.kmap is None:
+        # This class always allocate a new output.
+        # I keep this here to help GD understand what this kmap think is.
+        # if self.kmap is None:
         #    self.view_map = {0: [1]}
 
     def __eq__(self, other):
@@ -1874,8 +1874,8 @@ def clean(x):
 
 
 class AddSS(gof.op.Op):
-    #add(sparse, sparse).
-    #see the doc of add() for more detail.
+    # add(sparse, sparse).
+    # see the doc of add() for more detail.
     def __eq__(self, other):
         return (type(self) == type(other))
 
@@ -1968,8 +1968,8 @@ pattern.
 
 
 class AddSD(gof.op.Op):
-    #add(sparse, sparse).
-    #see the doc of add() for more detail.
+    # add(sparse, sparse).
+    # see the doc of add() for more detail.
     def __init__(self, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
 
@@ -2371,7 +2371,7 @@ class __ComparisonOpSS(gof.op.Op):
     :return: Comparison(x,y)
     """
 
-    #Function to override
+    # Function to override
     def comparison(self, x, y):
         raise NotImplementedError()
 
@@ -2415,7 +2415,7 @@ class __ComparisonOpSD(gof.op.Op):
     :return: Comparison(x,y)
     """
 
-    #Function to override
+    # Function to override
     def comparison(self, x, y):
         raise NotImplementedError()
 
@@ -3124,7 +3124,7 @@ class TrueDot(gof.op.Op):
         rval = x.dot(y)
         if not scipy.sparse.issparse(rval):
             rval = getattr(scipy.sparse, x.format + '_matrix')(rval)
-        #x.dot call tocsr() that will "upcast" to ['int8', 'uint8', 'short',
+        # x.dot call tocsr() that will "upcast" to ['int8', 'uint8', 'short',
         # 'ushort', 'intc', 'uintc', 'longlong', 'ulonglong', 'single',
         # 'double', 'longdouble', 'csingle', 'cdouble', 'clongdouble']
         # But ulonglong is uint64 on x86-64, but with a different typenum!

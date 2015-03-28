@@ -249,8 +249,8 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         return out_node
 
     def perform(self, node, inputs, out):
-        #TODO support broadcast!
-        #TODO assert all input have the same shape
+        # TODO support broadcast!
+        # TODO assert all input have the same shape
         z, = out
         if (z[0] is None or
             z[0].shape != inputs[0].shape or
@@ -311,8 +311,8 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         return out_node
 
     def make_thunk(self, node, storage_map, _, _2):
-        #TODO support broadcast!
-        #TODO assert all input have the same shape
+        # TODO support broadcast!
+        # TODO assert all input have the same shape
         fct_name = "pycuda_elemwise_%s" % str(self.scalar_op)
         in_name = ["i" + str(id) for id in range(len(node.inputs))]
         out_name = ["o" + str(id) for id in range(self.nout)]

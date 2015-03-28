@@ -172,7 +172,7 @@ class AliasedMemoryError(Exception):
 
 
 ###
-### Function
+# Function
 ###
 
 
@@ -308,7 +308,7 @@ class Function(object):
             input.distribute(value, indices, cs)
             for c in cs:
                 c.provided += 1
-        #def assign(c, v):
+        # def assign(c, v):
             #c.data = v
 
         # Store the list of names of named inputs.
@@ -349,7 +349,7 @@ class Function(object):
                     n_unnamed_inputs += 1
                 else:
                     named_inputs.append(input.name)
-                #backport
+                # backport
                 #finder[input.name] = c if input.name not in finder else DUPLICATE
                 # inv_finder maps the container to the input (useful for one error message)
                 inv_finder[c] = input
@@ -373,9 +373,9 @@ class Function(object):
                     finder[input.name] = f
                 else:
                     finder[input.name] = DUPLICATE
-                #backport
+                # backport
                 #finder[input.name] = f if input.name not in finder else DUPLICATE
-                #setters.append(f)
+                # setters.append(f)
                 # For each input in the kit and its corresponding container, we put an entry in finder.
                 # This allows the user to micro-manage elements of the kit if need be.
                 # All containers inherit the required field and have their own "provided" counter
@@ -386,7 +386,7 @@ class Function(object):
                         finder[sin.name] = c
                     else:
                         finder[sin.name] = DUPLICATE
-                    #backport
+                    # backport
                     #finder[sin.name] = c if sin.name not in finder else DUPLICATE
                     inv_finder[c] = input
                     c.required = required
@@ -500,7 +500,7 @@ class Function(object):
             # Set positional arguments
             i = 0
             for arg in args:
-                #TODO: provide a Param option for skipping the filter if we
+                # TODO: provide a Param option for skipping the filter if we
                 #      really want speed.
                 s = self.input_storage[i]
                 # see this emails for a discuation about None as input
@@ -516,13 +516,13 @@ class Function(object):
                         function_name = "theano function"
                         if self.name:
                             function_name += ' with name "' + self.name + '" '
-                        #end if
+                        # end if
                         e.args = tuple(["Bad input argument to " + function_name +
                                         " at index %d(0-based)" % i] +
                                        list(e.args))
                         raise
-                    #end except
-                #end if
+                    # end except
+                # end if
                 s.provided += 1
                 i += 1
 
@@ -534,7 +534,7 @@ class Function(object):
         if not self.trust_input and (
             not hasattr(self, '_check_for_aliased_inputs') or
             self._check_for_aliased_inputs):
-            ## Collect aliased inputs among the storage space
+            # Collect aliased inputs among the storage space
             args_share_memory = []
             for i in xrange(len(self.input_storage)):
                 i_var = self.maker.inputs[i].variable
@@ -705,7 +705,7 @@ class Function(object):
 # pickling/deepcopy support for Function
 
 def _pickle_Function(f):
-    #copy of the input storage list
+    # copy of the input storage list
     ins = list(f.input_storage)
     input_storage = []
 
@@ -756,7 +756,7 @@ copy_reg.pickle(Function, _pickle_Function)
 
 
 ###
-### FunctionMaker
+# FunctionMaker
 ###
 
 def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
@@ -894,8 +894,8 @@ class FunctionMaker(object):
         need_optimize = False
         get_lock()
         key = None
-        #Beginning of cache optimizations.
-        #Could be refactored in different functions.
+        # Beginning of cache optimizations.
+        # Could be refactored in different functions.
         def load_graph_db():
             if os.path.isfile(graph_db_file):
                 print 'graph_db already exists'
@@ -903,18 +903,18 @@ class FunctionMaker(object):
                 # create graph_db
                 f = open(graph_db_file, 'wb')
                 print 'create new graph_db in %s' % graph_db_file
-                #file needs to be open and closed for every pickle
+                # file needs to be open and closed for every pickle
                 f.close()
             # load the graph_db dictionary
             try:
                 f = open(graph_db_file, 'rb')
-                #Temporary hack to allow theano.scan_module.tests.test_scan.T_Scan
-                #to finish. Should be changed in definitive version.
+                # Temporary hack to allow theano.scan_module.tests.test_scan.T_Scan
+                # to finish. Should be changed in definitive version.
                 tmp = theano.config.unpickle_function
                 theano.config.unpickle_function = False
                 graph_db = cPickle.load(f)
                 
-                #hack end
+                # hack end
                 f.close()
                 print 'graph_db loaded and it is not empty'
             except EOFError, e:
@@ -969,13 +969,13 @@ class FunctionMaker(object):
                         graph_old.variables = set(gof.graph.variables(
                             graph_old.inputs, graph_old.outputs))
 
-                        #using clone allowed to avoid a lot of errors
-                        #deep copy seemed to had.
+                        # using clone allowed to avoid a lot of errors
+                        # deep copy seemed to had.
                         f2 = graph_old.clone(check_integrity=False)
                         t1 = output_new
                         t2 = f2.outputs[i]
 
-                        #Used to remove "already used by another graph error
+                        # Used to remove "already used by another graph error
                         def removeAllFgraph(remove):
                             if hasattr(remove, 'fgraph'):
                                 del remove.fgraph
@@ -1001,9 +1001,9 @@ class FunctionMaker(object):
                         temp = dict(zip(gof.graph.inputs([t1]),
                                     gof.graph.inputs([t2])))
 
-                        #hack to remove inconstent entry in givens
-                        #seems to work that but source of inconsistency
-                        #could be worth investigating.
+                        # hack to remove inconstent entry in givens
+                        # seems to work that but source of inconsistency
+                        # could be worth investigating.
                         for key, value in temp.iteritems():
                             if key.type != value.type:
                                 del givens[key]
@@ -1031,10 +1031,10 @@ class FunctionMaker(object):
             print 'graph not found in graph_db, optimizing the graph'
             self.fgraph.variables = set(gof.graph.variables(
                 self.fgraph.inputs, self.fgraph.outputs))
-            #check_integrity parameters was added to ignore 
+            # check_integrity parameters was added to ignore 
             #"excess cached variables" errors. Works that way
-            #but once again the error couldbe worth
-            #investigating.
+            # but once again the error couldbe worth
+            # investigating.
             before_opt = self.fgraph.clone(check_integrity=False)
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt: self.fgraph})
@@ -1167,7 +1167,7 @@ class FunctionMaker(object):
                         profile.optimizer_profile = (optimizer, optimizer_profile)
                 _logger.debug('Optimizing took %f seconds', opt_time)
 
-                #Add deep copy to respect the memory interface
+                # Add deep copy to respect the memory interface
                 insert_deepcopy(fgraph, inputs, outputs + additional_outputs)
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
@@ -1178,7 +1178,7 @@ class FunctionMaker(object):
             raise ValueError("'linker' parameter of FunctionMaker should be a Linker with an accept method " \
                              "or one of %s" % theano.compile.mode.predefined_linkers.keys())
 
-        #the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
+        # the 'no_borrow' outputs are the ones for which that we can't return the internal storage pointer.
         assert len(fgraph.outputs) == len(outputs + additional_outputs)
         no_borrow = [output for output, spec in zip(fgraph.outputs, outputs + additional_outputs) if not spec.borrow]
         if no_borrow:
@@ -1293,20 +1293,20 @@ class FunctionMaker(object):
 
             required = self.required[i]
             refeed = self.refeed[i]
-            #sanity check-- if an input is required it should not need to be refed
+            # sanity check-- if an input is required it should not need to be refed
             assert not (required and refeed)
 
-            #shared variables need neither be input by the user nor refed
+            # shared variables need neither be input by the user nor refed
             if input.shared:
                 assert not required
                 assert not refeed
                 storage = None
 
-            #if an input is required, it never need be refed
+            # if an input is required, it never need be refed
             if required:
                 storage = None
 
-            #make sure that we only store a value if we actually need it
+            # make sure that we only store a value if we actually need it
             if storage is not None:
                 assert refeed or not required
 

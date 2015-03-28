@@ -62,8 +62,8 @@ def check_uniform_basic(shape_as_symbolic, dim_as_symbolic=False):
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
 
-    #print v0list
-    #print v1list
+    # print v0list
+    # print v1list
     # assert that elements are different in a few ways
     assert numpy.all(v0list[0] != v0list[1])
     assert numpy.all(v1list[0] != v1list[1])
@@ -130,8 +130,8 @@ def check_normal_basic(shape_as_symbolic, dim_as_symbolic=False):
     v0list = [f0() for i in range(3)]
     v1list = [f1() for i in range(3)]
 
-    #print v0list
-    #print v1list
+    # print v0list
+    # print v1list
     # assert that elements are different in a few ways
     assert numpy.all(v0list[0] != v0list[1])
     assert numpy.all(v1list[0] != v1list[1])

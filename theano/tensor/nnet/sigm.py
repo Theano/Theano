@@ -533,7 +533,7 @@ def local_exp_over_1_plus_exp(node):
     # so we don't care to check client counts
     if node.op == tensor.true_div:
 
-        #find all the exp() terms in the numerator
+        # find all the exp() terms in the numerator
         num, denom = node.inputs
         num_exp_x, num_rest, num_neg = partition_num_or_denom(num, is_exp)
         denom_1pexp, denom_rest, \
@@ -673,7 +673,7 @@ def simplify_mul(tree):
             rval = [neg, s_inputs]
     else:
         rval = tree
-    #print 'simplify_mul: %s -> %s' % (tree, rval)
+    # print 'simplify_mul: %s -> %s' % (tree, rval)
     return rval
 
 

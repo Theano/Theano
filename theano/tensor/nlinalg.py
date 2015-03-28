@@ -88,7 +88,7 @@ class MatrixInverse(Op):
         x, = inputs
         xi = self(x)
         gz, = g_outputs
-        #TT.dot(gz.T,xi)
+        # TT.dot(gz.T,xi)
         return [-matrix_dot(xi, gz.T, xi).T]
 
     def R_op(self, inputs, eval_points):
@@ -225,7 +225,7 @@ class ExtractDiag(Op):
         return [(shp,)]
 
 extract_diag = ExtractDiag()
-#TODO: optimization to insert ExtractDiag with view=True
+# TODO: optimization to insert ExtractDiag with view=True
 
 
 def diag(x):

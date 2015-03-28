@@ -125,7 +125,7 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
             The inplace on gpu memory work when borrow is either True or False.
         """
         if not borrow:
-            #TODO: check for cuda_ndarray type
+            # TODO: check for cuda_ndarray type
             if not isinstance(value, numpy.ndarray):
                 # in case this is a cuda_ndarray, we copy it
                 value = copy.deepcopy(value)
@@ -148,7 +148,7 @@ def cuda_shared_constructor(value, name=None, strict=False,
     # THIS IS NOT THE DEFAULT BEHAVIOUR THAT WE WANT.
     # SEE float32_shared_constructor
 
-    #TODO: what should strict mean in this context, since we always have to make a copy?
+    # TODO: what should strict mean in this context, since we always have to make a copy?
     if strict:
         _value = value
     else:

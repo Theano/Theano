@@ -45,9 +45,9 @@ class Minimal(gof.Op):
 minimal = Minimal()
 
 
-## TODO: test dtype conversion
-## TODO: test that invalid types are rejected by make_node
-## TODO: test that each valid type for A and b works correctly
+# TODO: test dtype conversion
+# TODO: test that invalid types are rejected by make_node
+# TODO: test that each valid type for A and b works correctly
 from theano.tests import unittest_tools as utt
 class T_minimal(unittest.TestCase):
     def setUp(self):

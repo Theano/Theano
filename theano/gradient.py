@@ -283,7 +283,7 @@ def Rop(f, wrt, eval_points):
                 same_type_eval_points.append(y)
 
         seen_nodes[node] = op.R_op(node.inputs, same_type_eval_points)
-    #end _traverse
+    # end _traverse
 
     # Populate the dictionary
     for out in f:
@@ -839,8 +839,8 @@ def _populate_var_to_app_to_idx(outputs, wrt, consider_constant):
 
             for i, ipt in enumerate(app.inputs):
 
-                #don't process ipt if it is not a true
-                #parent of var
+                # don't process ipt if it is not a true
+                # parent of var
                 if not connection_pattern[i][var_idx]:
                     continue
 
@@ -964,12 +964,12 @@ def _populate_grad_dict(var_to_app_to_idx,
                 input_to_outputs in connection_pattern
             ]
 
-            #List of bools indicating if each output is an integer dtype
+            # List of bools indicating if each output is an integer dtype
             output_is_int = [hasattr(output.type, 'dtype') and
                              output.type.dtype in theano.tensor.discrete_dtypes
                              for output in node.outputs]
 
-            #List of bools indicating if each output is NullType
+            # List of bools indicating if each output is NullType
             ograd_is_nan = [isinstance(output.type, NullType)
                             for output in output_grads]
 
@@ -1194,8 +1194,8 @@ def _populate_grad_dict(var_to_app_to_idx,
 
                             raise ValueError(msg)
 
-            #Check that op.connection_pattern matches the connectivity
-            #logic driving the op.grad method
+            # Check that op.connection_pattern matches the connectivity
+            # logic driving the op.grad method
             for i, packed in enumerate(zip(inputs, input_grads,
                                            inputs_connected)):
                 ipt, ig, connected = packed
@@ -1223,7 +1223,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                         msg += 'connection_pattern method for it.'
                         warnings.warn(msg)
 
-            #cache the result
+            # cache the result
             term_dict[node] = input_grads
 
         return term_dict[node]
@@ -1251,7 +1251,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                                                     "encountered a NaN. " +
                                                     term.type.why_null)
 
-                        #Don't try to sum up DisconnectedType placeholders
+                        # Don't try to sum up DisconnectedType placeholders
                         if isinstance(term.type, DisconnectedType):
                             continue
 

@@ -18,7 +18,7 @@ class NNet(object):
         self.lr = shared(lr, 'learning_rate')
         self.w1 = shared(numpy.zeros((n_hidden, n_input)), 'w1')
         self.w2 = shared(numpy.zeros((n_output, n_hidden)), 'w2')
-        #print self.lr.type
+        # print self.lr.type
 
         self.hidden = sigmoid(tensor.dot(self.w1, self.input))
         self.output = tensor.dot(self.w2, self.hidden)
@@ -51,7 +51,7 @@ class TestNnet(unittest.TestCase):
                 output, cost = nnet.sgd_step(input, target)
                 mean_cost += cost
             mean_cost /= float(len(data))
-            #print 'Mean cost at epoch %s: %s' % (epoch, mean_cost)
+            # print 'Mean cost at epoch %s: %s' % (epoch, mean_cost)
         self.assertTrue(abs(mean_cost - 0.20588975452) < 1e-6)
         # Just call functions to make sure they do not crash.
         out = nnet.compute_output(input)

@@ -216,14 +216,14 @@ class Kouh2008(object):
                         w_col += 1
                 if c % 3 == 1: # E filters
                     if w_col < w.shape[1]:
-                        #filters after the 3rd do not get rendered, but are skipped over.
+                        # filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
                         for i in xrange(min(self.n_E_quadratic, 3)):
                             out_tile[:, :, i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
                         w_col += self.n_E_quadratic
                 if c % 3 == 2: # S filters
                     if w_col < w.shape[1]:
-                        #filters after the 3rd do not get rendered, but are skipped over.
+                        # filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
                         for i in xrange(min(self.n_S_quadratic, 3)):
                             out_tile[:, :, 2-i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)

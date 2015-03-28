@@ -40,9 +40,9 @@ class Cholesky(Op):
 
     L = cholesky(X, lower=True) implies dot(L, L.T) == X
     """
-    #TODO: inplace
-    #TODO: for specific dtypes
-    #TODO: LAPACK wrapper with in-place behavior, for solve also
+    # TODO: inplace
+    # TODO: for specific dtypes
+    # TODO: LAPACK wrapper with in-place behavior, for solve also
 
     __props__ = ('lower', 'destructive')
 
@@ -194,9 +194,9 @@ class Solve(Op):
 
 solve = Solve()  # general solve
 
-#TODO : SolveTriangular
+# TODO : SolveTriangular
 
-#TODO: Optimizations to replace multiplication by matrix inverse
+# TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)
 
 

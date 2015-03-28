@@ -90,7 +90,7 @@ def make_checks(loop_orders, dtypes, sub):
     for matches in zip(*loop_orders):
         to_compare = [(j, x) for j, x in enumerate(matches) if x != "x"]
 
-        #elements of to_compare are pairs ( input_variable_idx, input_variable_dim_idx )
+        # elements of to_compare are pairs ( input_variable_idx, input_variable_dim_idx )
         if len(to_compare) < 2:
             continue
         j0, x0 = to_compare[0]
@@ -294,7 +294,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     std::sort(%(ovar)s_loops.rbegin(), %(ovar)s_loops.rend());
     """ % locals()
 
-    ## Get the (sorted) total number of iterations of each loop
+    # Get the (sorted) total number of iterations of each loop
     # Get totals in the initial order
     # For each dimension, the tensors are either all broadcasted, in
     # which case there is only one iteration of the loop, or one or
@@ -331,7 +331,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         ++%(ovar)s_loops_it;
         """ % locals()
 
-    ## Get sorted strides
+    # Get sorted strides
     # Get strides in the initial order
     def get_loop_strides(loop_order, i):
         """

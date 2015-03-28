@@ -702,14 +702,14 @@ def compress_outs(op, not_required, inputs):
             curr_pos += 1
             info['n_mit_sot'] += 1
             info['tap_array'] += [op.tap_array[offset + idx]]
-            #input taps
+            # input taps
             for jdx in op.tap_array[offset + idx]:
                 op_inputs += [op.inputs[i_offset]]
                 i_offset += 1
-            #output taps
+            # output taps
             op_outputs += [op.outputs[o_offset]]
             o_offset += 1
-            #node inputs
+            # node inputs
             node_inputs += [inputs[ni_offset + idx]]
         else:
             o_offset += 1
@@ -723,13 +723,13 @@ def compress_outs(op, not_required, inputs):
             curr_pos += 1
             info['n_sit_sot'] += 1
             info['tap_array'] += [op.tap_array[offset + idx]]
-            #input taps
+            # input taps
             op_inputs += [op.inputs[i_offset]]
             i_offset += 1
-            #output taps
+            # output taps
             op_outputs += [op.outputs[o_offset]]
             o_offset += 1
-            #node inputs
+            # node inputs
             node_inputs += [inputs[ni_offset + idx]]
         else:
             o_offset += 1

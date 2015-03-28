@@ -184,9 +184,9 @@ class GpuElemwise(GpuOp):
     nout = property(lambda self: self.scalar_op.nout)
 
     def __init__(self, scalar_op, inplace_pattern=None, sync=None):
-        #TODO-- this looks like a bug-- either we should use the sync argument
+        # TODO-- this looks like a bug-- either we should use the sync argument
         # or get rid of it, we shouldn't let the client think they can control
-        #sync when they can't
+        # sync when they can't
         if inplace_pattern is None:
             inplace_pattern = {}
         sync = config.gpuelemwise.sync
@@ -211,7 +211,7 @@ class GpuElemwise(GpuOp):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        #old objects defaulted to sync behaviour
+        # old objects defaulted to sync behaviour
         self.sync = d.get('sync', True)
         self._rehash()
 
@@ -300,7 +300,7 @@ class GpuElemwise(GpuOp):
         return self.src_generator.c_code(*args, **kwargs)
 
     def c_compile_args(self):
-        #TODO: compile ptx file without constraint and then use the number of
+        # TODO: compile ptx file without constraint and then use the number of
         # registers required to inform the maximum number of threads per block.
         return ["--maxrregcount=32"]
 
@@ -361,7 +361,7 @@ class GpuDimShuffle(GpuOp):
                         "The broadcastable pattern of the "
                         "input is incorrect for this op. Expected %s, got %s."
                         % (self.input_broadcastable, ib)))
-                #else, expected == b or expected is False and b is True
+                # else, expected == b or expected is False and b is True
                 # Both case are good.
         ob = []
         if not isinstance(input.type, CudaNdarrayType):
@@ -401,7 +401,7 @@ class GpuDimShuffle(GpuOp):
         sio = StringIO()
         fail = sub['fail']
 
-        #check input
+        # check input
         print >> sio, """
         if (%(input)s->nd != %(nd_in)s)
         {
@@ -411,7 +411,7 @@ class GpuDimShuffle(GpuOp):
         }
         """ % locals()
 
-        #alloc an output
+        # alloc an output
         print >> sio, """
         if (%(res)s && (%(res)s->nd == %(nd_out)s))
         {
@@ -451,10 +451,10 @@ class GpuDimShuffle(GpuOp):
         }
         """ % locals()
 
-        #reassign the dimension and strides in the host pointers
+        # reassign the dimension and strides in the host pointers
         for i, o in enumerate(self.new_order):
             if o == 'x':
-                #TODO: remove this assertion
+                # TODO: remove this assertion
                 #      the correct thing to do is to insert a run-time check
                 #      that the size in this dimension is 1
                 assert node.outputs[0].type.broadcastable[i]
@@ -662,7 +662,7 @@ class GpuCAReduce(GpuOp):
         sio = StringIO()
         fail = sub['fail']
 
-        #check input
+        # check input
         print >> sio, """
         if (%(x)s->nd != %(nd_in)s)
         {
@@ -699,7 +699,7 @@ class GpuCAReduce(GpuOp):
            || (%(z)s->nd != %(nd_out)s)
         """ % locals()
 
-        #ensure that the output has the right non-reduced dimensions
+        # ensure that the output has the right non-reduced dimensions
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]:
@@ -736,7 +736,7 @@ class GpuCAReduce(GpuOp):
         # actually work to do
         if getattr(self.scalar_op, 'identity', None) == 0:
             zero_shp = "cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float))" % locals()
-        #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
+        # TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
             zero_shp = """
             PyErr_Format(PyExc_NotImplementedError,
@@ -756,9 +756,9 @@ class GpuCAReduce(GpuOp):
         #
 
         if all(i == 1 for i in self.reduce_mask):
-            #check if the tensor is ccontiguous, if true, use the c_code_reduce_ccontig code.
-            #TODO: check if we are ccontiguous when we un-dimshuffle
-            #TODO: if only some dims are ccontiguous, call version with less dims.
+            # check if the tensor is ccontiguous, if true, use the c_code_reduce_ccontig code.
+            # TODO: check if we are ccontiguous when we un-dimshuffle
+            # TODO: if only some dims are ccontiguous, call version with less dims.
             print >> sio, 'if(CudaNdarray_is_c_contiguous(%(x)s)){'%locals()
             self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
             print >> sio, "}else{"
@@ -1129,8 +1129,8 @@ class GpuCAReduce(GpuOp):
 
         return current_version
 
-    #Threads must be organized as: threadNum%nb_reduce correspond to the same sum
-    #nb_reduce<=warpSize
+    # Threads must be organized as: threadNum%nb_reduce correspond to the same sum
+    # nb_reduce<=warpSize
     def _k_reduce_buf_multiple(self, z_pos, node, name, nb_reduce):
         reduce_fct = self._assign_reduce(node, name, 'myresult',
                                          'buf[i]', {}, True)
@@ -1160,7 +1160,7 @@ class GpuCAReduce(GpuOp):
         """
         if getattr(self.scalar_op, 'identity', None) == 0:
             zero_shp = "cudaMemset(%(z)s->devdata, 0, CudaNdarray_SIZE(%(z)s) * sizeof(float))" % locals()
-        #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
+        # TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
             zero_shp = """
             PyErr_Format(PyExc_NotImplementedError,
@@ -1757,7 +1757,7 @@ class GpuCAReduce(GpuOp):
         sio = StringIO()
         nd_in = len(self.reduce_mask)
         if all(i == 1 for i in self.reduce_mask):
-            #this kernel is ok for up to a few thousand elements, but
+            # this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
@@ -1788,7 +1788,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1,):
-            #this kernel is ok for up to a few thousand elements, but
+            # this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
@@ -1819,7 +1819,7 @@ class GpuCAReduce(GpuOp):
             }
             """ % locals()
         if self.reduce_mask == (1, 1):
-            #this kernel is ok for up to a few thousand elements, but
+            # this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
@@ -1930,7 +1930,7 @@ class GpuCAReduce(GpuOp):
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
-            #TODO: This kernel is pretty inefficient in terms of reading, because if A is
+            # TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]',
@@ -2025,10 +2025,10 @@ class GpuCAReduce(GpuOp):
             # this kernel uses one block for multiple column(up to 32TODO),
             # threads per block for each element per column.
 
-#thread.x = dim 2 contiguous
-#thread.y = dim 1
-#block.x = dim 0
-#block.y = dim 1 rest
+# thread.x = dim 2 contiguous
+# thread.y = dim 1
+# block.x = dim 0
+# block.y = dim 1 rest
             init = self._k_init(node, nodename)
             decl = self._k_decl(node, nodename, pattern="010_inner")
             reducebuf = self._k_reduce_buf_multiple('Z[i0 * sZ0 + i2*sZ1]',
@@ -2066,7 +2066,7 @@ class GpuCAReduce(GpuOp):
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
-            #TODO: This kernel is pretty inefficient in terms of reading, because if A is
+            # TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub = {})
@@ -2494,8 +2494,8 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     """
     Implement AdvancedSubtensor1 on the gpu.
     """
-    #If True or False, we assert that we use the take version or not
-    #If None, we choose the best one applicable
+    # If True or False, we assert that we use the take version or not
+    # If None, we choose the best one applicable
     perform_using_take = None
     max_threads = 0
 
@@ -2520,8 +2520,8 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         x, idx = inp
         out, = out_
         x_orig = x
-        #TODO: if more than 3 dims, reshape the inputs even if not all
-        #dimensions are c contiguous
+        # TODO: if more than 3 dims, reshape the inputs even if not all
+        # dimensions are c contiguous
         if x.ndim > 3 and x.is_c_contiguous():
             x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
         out_shape = (len(idx),) + x_orig.shape[1:]
@@ -3346,7 +3346,7 @@ class GpuAlloc(GpuAllocEmpty):
         self.memset_0 = memset_0
 
     def __str__(self):
-        #Hide the memset parameter when not used to prevent confusion.
+        # Hide the memset parameter when not used to prevent confusion.
         if self.memset_0:
             s = "%s{memset_0=%s}" % (self.__class__.__name__, self.memset_0)
         else:
@@ -3354,8 +3354,8 @@ class GpuAlloc(GpuAllocEmpty):
         return s
 
     def make_node(self, value, *shape):
-        #if there is unneeded transfert generated by the next line
-        #the optimizer will remove them.
+        # if there is unneeded transfert generated by the next line
+        # the optimizer will remove them.
         v = as_cuda_ndarray_variable(value)
         shape, output = self.validate_shape(shape)
         return Apply(self, [v] + shape, [output])
@@ -3418,14 +3418,14 @@ class GpuAlloc(GpuAllocEmpty):
             elif (#The following ops work inplace of their input id 0.
                   client[1] == 0 and
                   isinstance(client[0].op, (
-                    #Ops that will work inplace on the Alloc. So if they
-                    #get constant_folded, they would copy the
-                    #constant and this is less efficients.
+                    # Ops that will work inplace on the Alloc. So if they
+                    # get constant_folded, they would copy the
+                    # constant and this is less efficients.
 
-                    #Not doing the constant folding could also lower
-                    #the peak memory usage, as we the "constant" won't
-                    #always exists.
-                      #theano.tensor.subtensor.AdvancedIncSubtensor,
+                    # Not doing the constant folding could also lower
+                    # the peak memory usage, as we the "constant" won't
+                    # always exists.
+                      # theano.tensor.subtensor.AdvancedIncSubtensor,
                       GpuIncSubtensor,
                       GpuAdvancedIncSubtensor1,
                       theano.sandbox.cuda.blas.GpuGemm,
@@ -3433,8 +3433,8 @@ class GpuAlloc(GpuAllocEmpty):
                       theano.sandbox.cuda.blas.GpuGer,
                   ))):
                 return False
-            #If the clients is a transfer, we don't want to fold. We
-            #let the moving opt finish before deciding what to do.
+            # If the clients is a transfer, we don't want to fold. We
+            # let the moving opt finish before deciding what to do.
             elif isinstance(client[0].op, HostFromGpu):
                 return False
         return True

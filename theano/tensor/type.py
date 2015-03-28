@@ -39,7 +39,7 @@ class TensorType(Type):
         self.dtype = str(dtype)
         if self.dtype == 'floatX':
             self.dtype = config.floatX
-        ###    broadcastable is immutable, and all elements are either
+        # broadcastable is immutable, and all elements are either
         ###    True or False
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.dtype_specs()  # error checking is done there

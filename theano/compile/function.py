@@ -251,7 +251,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                            mode=mode,
                            accept_inplace=accept_inplace, name=name)
     else:
-        #note: pfunc will also call orig_function-- orig_function is a choke point
+        # note: pfunc will also call orig_function-- orig_function is a choke point
         #      that all compilation must pass through
         fn = pfunc(params=inputs,
                 outputs=outputs,

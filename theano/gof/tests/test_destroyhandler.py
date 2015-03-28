@@ -113,23 +113,23 @@ class FailureWatch:
 
 
 def consistent(g):
-    #print "Testing consistent:", g
+    # print "Testing consistent:", g
     try:
         assert g.consistent()
     except AssertionError:
         print "Test failed! The graph was marked as NOT consistent."
         raise
-    #print "Test OK"
+    # print "Test OK"
 
 
 def inconsistent(g):
-    #print "Testing NOT consistent:", g
+    # print "Testing NOT consistent:", g
     try:
         assert not g.consistent()
     except AssertionError:
         print "Test failed! The graph was marked as consistent."
         raise
-    #print "Test OK"
+    # print "Test OK"
 
 #################
 # Test protocol #

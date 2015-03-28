@@ -1,5 +1,5 @@
-#definition theano.scalar op that have their python implementation taked from scipy
-#as scipy is not always available, we treat them separatly
+# definition theano.scalar op that have their python implementation taked from scipy
+# as scipy is not always available, we treat them separatly
 import numpy
 
 import theano
@@ -117,7 +117,7 @@ class Erfinv(UnaryScalarOp):
         return gz * cst * exp(erfinv(x) ** 2),
 
     # TODO: erfinv() is not provided by the C standard library
-    #def c_code(self, node, name, inp, out, sub):
+    # def c_code(self, node, name, inp, out, sub):
     #    x, = inp
     #    z, = out
     #    if node.inputs[0].type in complex_types:
@@ -150,7 +150,7 @@ class Erfcinv(UnaryScalarOp):
         return - gz * cst * exp(erfcinv(x) ** 2),
 
     # TODO: erfcinv() is not provided by the C standard library
-    #def c_code(self, node, name, inp, out, sub):
+    # def c_code(self, node, name, inp, out, sub):
     #    x, = inp
     #    z, = out
     #    if node.inputs[0].type in complex_types:

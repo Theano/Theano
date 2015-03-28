@@ -10,7 +10,7 @@ def symbolic(f):
 
 class InitGraph(type):
     def __init__(cls, name, bases, dct):
-        #print 'INITIALIZING', name
+        # print 'INITIALIZING', name
         super(InitGraph, cls).__init__(name, bases, dct)
         def just_symbolic(dct):
             def filter(k, v):
@@ -30,7 +30,7 @@ class InitGraph(type):
             raise TypeError('%s.build_graph did not return dictionary' % cls)
         dct = just_symbolic(build_graph_rval)
         for key, val in dct.items():
-            #print '  adding class attribute', key
+            # print '  adding class attribute', key
             if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
             if callable(val):
@@ -39,16 +39,16 @@ class InitGraph(type):
                 setattr(cls, key, val)
 
 class SymbolicModule(object):
-    #installs class attributes from build_graph after declaration
+    # installs class attributes from build_graph after declaration
     __metaclass__ = InitGraph
 
-    #if we call this function, it will return a new SymbolicModule
+    # if we call this function, it will return a new SymbolicModule
     def __new__(self, **kwargs):
         class SymMod(SymbolicModule):
             @staticmethod
             def build_graph(*bg_args, **bg_kwargs):
-                #this one is like self.build_graph,
-                #except that the kwargs are automatically inserted
+                # this one is like self.build_graph,
+                # except that the kwargs are automatically inserted
                 kwcopy = copy.copy(kwargs)
                 kwcopy.update(bg_kwargs)
                 return self.build_graph(*bg_args, **kwcopy)
@@ -82,16 +82,16 @@ class CompiledModule(object):
 def compile_fn(f, path_locals, common_inputs):
     (args, vararg, kwarg, default) = inspect.getargspec(f)
     if default:
-        #this can be handled correctly, in that default arguments trump path_locals
+        # this can be handled correctly, in that default arguments trump path_locals
         raise NotImplementedError()
-    #make new inputs for the vars named in args
+    # make new inputs for the vars named in args
     # this has the effect of creating new storage for these arguments
     # The common storage doesn't get messed with.
     inputs = [In(path_locals.get(name, name)) for name in args]
     inputs.extend([v for k, v in common_inputs.items() if k not in args])
     outputs = f()
-    #print 'inputs', inputs
-    #print 'outputs', outputs
+    # print 'inputs', inputs
+    # print 'outputs', outputs
     compiled_f = theano.function(inputs, outputs)
     updated = []
     return compiled_f, updated
@@ -134,7 +134,7 @@ def compile(smod, initial_values=None):
         for blah in modwalker(root.__dict__, [v for k, v in sym_items(root)]):
             yield blah
 
-    #Locate all the starting nodes, and create containers entries for their values
+    # Locate all the starting nodes, and create containers entries for their values
     inputs = {}
     for path_locals, val in walker(smod):
         if isinstance(val, theano.Variable) and (val.owner is None) and (val not in inputs):
@@ -142,31 +142,31 @@ def compile(smod, initial_values=None):
 
     assert len(inputs) == len([v for v in inputs.items()])
 
-    #Locate all the functions to compile, and compile them
+    # Locate all the functions to compile, and compile them
     compiled_functions = {}
     for path_locals, val in walker(smod):
         if issymbolicmethod(val):
             f, update_expressions = compile_fn(val, path_locals, inputs)
             compiled_functions[val] = f
 
-    #Now replicate the nested structure of the SymbolicModule smod
-    #with CompiledModules instead
+    # Now replicate the nested structure of the SymbolicModule smod
+    # with CompiledModules instead
 
     reflected = {}
     def reflect(thing):
-        #UNHASHABLE TYPES
+        # UNHASHABLE TYPES
         if isinstance(thing, list):
             return [reflect(e) for e in thing]
         if isinstance(thing, dict):
             raise NotImplementedError()
 
-        #HASHABLE TYPES
+        # HASHABLE TYPES
         if thing not in reflected:
             if issymbolicmodule(thing):
                 class CMod(CompiledModule):
                     pass
                 setattr(CMod, '__name__', thing.__name__ + '_compiled')
-                #TODO: consider an instance of the class, or the class itself?
+                # TODO: consider an instance of the class, or the class itself?
                 # which is easier for copying?
                 cmod = CMod()
                 reflected[thing] = cmod
@@ -288,7 +288,7 @@ if 0:
     def deco(f):
         class SymMod(SymbolicModule):
             def __call__(self, *args, **kwargs):
-                #return another SymbolicModule built like self
+                # return another SymbolicModule built like self
                 def dummy(*dargs, **dkwargs):
                     print 'args', args, dargs
                     print 'kwargs', kwargs, dkwargs
@@ -410,7 +410,7 @@ if 0:
 
         return locals()
 
-    #at this point there is a neural_net module all built and compiled,
+    # at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
     @SymbolicModule_fromFn
@@ -418,25 +418,25 @@ if 0:
             x = T.dmatrix(),
             var_thresh = T.dscalar()
             ):
-        #naive version, yes
+        # naive version, yes
         s, v, d = T.svd(x)
         acc = T.accumulate(v)
         npc = T.lsearch(acc, var_thresh * T.sum(v))
         y = s[:, :npc]
-        #transform will map future points x into the principle components space
+        # transform will map future points x into the principle components space
         transform = d[:npc, :].T / v[:npc]
         return locals()
 
-    #at this point there is a neural_net module all built and compiled,
+    # at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
 
-    #running this means:
+    # running this means:
     nnet_on_pca = neural_net(x=PCA.y, submodules=[PCA])
     #nnet_on_pca = SymbolicModule()
-    #nnet_on_pca.include(PCA) #an already-instantiated Module
-    #nnet_on_pca.x = nnet_on_pca.PCA.y #configure this Module
-    #nnet_on_pca.build(neural_net) # instantiate this module
+    # nnet_on_pca.include(PCA) #an already-instantiated Module
+    # nnet_on_pca.x = nnet_on_pca.PCA.y #configure this Module
+    # nnet_on_pca.build(neural_net) # instantiate this module
 
     nnet_on_pca = neural_net(
             substitute=dict(x=PCA.x),

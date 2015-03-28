@@ -182,7 +182,7 @@ class BadThunkOutput(DebugModeError):
         print >> sio, "  thunk1  :", self.thunk1
         print >> sio, "  thunk2  :", self.thunk2
 
-        #Don't import it at the top of the file to prevent circular import.
+        # Don't import it at the top of the file to prevent circular import.
         utt = theano.tests.unittest_tools
         print >> sio, utt.str_diagnostic(self.val1, self.val2, None, None)
         ret = sio.getvalue()
@@ -653,7 +653,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                profile=profile)
 
     else:
-        #this is an input variable
+        # this is an input variable
         id_str = get_id_str(r)
         print >> file, '%s%s %s%s' % (prefix, r, id_str, type_str)
 
@@ -684,7 +684,7 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
             # This results in a big speed gain.
             # If inplace operations are accepted and present, however,
             # DestroyHandler will be inserted in the loop below.
-            #features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])
+            # features=[equivalence_tracker, gof.DestroyHandler(do_imports_on_attach=False)])
             features=[equivalence_tracker])
 
     if not accept_inplace:
@@ -845,7 +845,7 @@ def _check_viewmap(node, storage_map):
 
                     good_alias[nodeid] = bad_alias.pop(nodeid)
 
-        #TODO: make sure this is correct
+        # TODO: make sure this is correct
         # According to OB, duplicate inputs are rejected on build graph time
         # if they cause problems. So if they are here it should be ok.
         for key, val in good_alias.iteritems():
@@ -853,7 +853,7 @@ def _check_viewmap(node, storage_map):
         if bad_alias:
             raise BadViewMap(node, oi, outstorage, bad_alias.values())
 
-        #if its not aliased to input, check output->output aliasing
+        # if its not aliased to input, check output->output aliasing
         if not good_alias and _is_used_in_graph(onode):
             for other_oi, other_onode in enumerate(node.outputs):
                 if other_oi == oi:
@@ -939,7 +939,7 @@ def _find_bad_optimizations0(order, reasons, r_vals):
     for i, node in enumerate(order):
         for new_r in node.outputs:
             for reason, r, old_graph_str, new_graph_str in reasons[new_r]:
-                #check if the value for new_r doesn't match the value for r
+                # check if the value for new_r doesn't match the value for r
                 new_r_val = r_vals[new_r]
                 r_val = r_vals[r]
                 assert r.type == new_r.type
@@ -963,7 +963,7 @@ def _find_bad_optimizations1(order, reasons, r_vals):
     # values of the variables they replaced.  This is the sign of a
     # broken optimization.
 
-    #identify sets of variables that are supposed to be equivalent
+    # identify sets of variables that are supposed to be equivalent
     equivalence_sets = {}
     program_position = {}  # node -> order idx
 
@@ -977,14 +977,14 @@ def _find_bad_optimizations1(order, reasons, r_vals):
                 for er in equivalence_sets[r]:
                     equivalence_sets[er] = equivalence_sets[new_r]
 
-    #identify equivalence sets that are broken
+    # identify equivalence sets that are broken
     equivalence_sets_broken = {}  # id(set) -> Bool
     there_is_a_problem = False
     for r, r_equiv in equivalence_sets.iteritems():
         if id(r_equiv) not in equivalence_sets_broken:
             equivalence_sets_broken[id(r_equiv)] = False
-            #loop over the variables in the set comparing them to be
-            #equal enough
+            # loop over the variables in the set comparing them to be
+            # equal enough
             re0 = None
             for re in r_equiv:
                 if re0:
@@ -1004,7 +1004,7 @@ def _find_bad_optimizations1(order, reasons, r_vals):
                 r_equiv = equivalence_sets[r]
                 if equivalence_sets_broken[id(r_equiv)]:
                     first_broken_set = r_equiv
-        #TODO finish this to produce good diagnostic information
+        # TODO finish this to produce good diagnostic information
         print first_broken_set
         raise Exception('broken')
 
@@ -1049,7 +1049,7 @@ def _find_bad_optimizations2(order, reasons, r_vals):
 
         for var_that_could_make_r_look_bad in \
               list_of_vars:
-                #backport
+                # backport
                 #[old_r for (reason, old_r, olds, news) in reasons[r]] \
                 #+ ([] if (None is r.owner) else r.owner.inputs):
             check_variable(var_that_could_make_r_look_bad)
@@ -1435,8 +1435,8 @@ class _FunctionGraphEvent(object):
                 str(self.op),
                 str(self.idx),
                 msg])
-                #backport
-                #str(len(self.node.inputs)) if (self.op != 'output') else ''])
+                # backport
+                # str(len(self.node.inputs)) if (self.op != 'output') else ''])
         else:
             return str(self.__dict__)
 
@@ -1504,7 +1504,7 @@ class _VariableEquivalenceTracker(object):
     def on_prune(self, fgraph, node, reason):
         self.event_list.append(_FunctionGraphEvent('prune', node,
                                                    reason=reason))
-        #print 'PRUNING NODE', node, id(node)
+        # print 'PRUNING NODE', node, id(node)
         assert node in self.active_nodes
         assert node not in self.inactive_nodes
         self.active_nodes.remove(node)
@@ -1514,7 +1514,7 @@ class _VariableEquivalenceTracker(object):
         self.event_list.append(_FunctionGraphEvent('import', node,
                                                    reason=reason))
 
-        #print 'NEW NODE', node, id(node)
+        # print 'NEW NODE', node, id(node)
         assert node not in self.active_nodes
         self.active_nodes.add(node)
 
@@ -1534,7 +1534,7 @@ class _VariableEquivalenceTracker(object):
                 self.replaced_by.setdefault(r, [])
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
-        #print 'CHANGE by', reason, 'to use', new_r, type(new_r)
+        # print 'CHANGE by', reason, 'to use', new_r, type(new_r)
         self.event_list.append(_FunctionGraphEvent('change', node,
                                          reason=str(reason), idx=i))
 
@@ -1587,9 +1587,9 @@ class _VariableEquivalenceTracker(object):
                 print '  ', e
 
 
-#List of default version of make thunk.
-#This is needed to know if the user overrided it.
-#The GpuOp will be added here when theano.sandbox.cuda is imported.
+# List of default version of make thunk.
+# This is needed to know if the user overrided it.
+# The GpuOp will be added here when theano.sandbox.cuda is imported.
 default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk),
                       get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
 
@@ -1628,7 +1628,7 @@ class _Linker(gof.link.LocalLinker):
                  , output_storage = None):
 
         if 1:
-            #can't import at toplevel because of circular import TODO:
+            # can't import at toplevel because of circular import TODO:
             # don't do this ugly hacky way of setting the
             # filter_checks_isfinite
             from theano.tensor import TensorType  # to set filter_check_isfinite
@@ -1637,8 +1637,8 @@ class _Linker(gof.link.LocalLinker):
         output_storage_ = output_storage
         #order = self.schedule(fgraph)
 
-        #Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
-        #This will be OK, because every thunk is evaluated on a copy of its input.
+        # Compute a topological ordering that IGNORES the destroy_map of destructive Ops.
+        # This will be OK, because every thunk is evaluated on a copy of its input.
         order_outputs = copy.copy(fgraph.equivalence_tracker.all_variables_ever)
         order_outputs.reverse()
         order = graph.io_toposort(fgraph.inputs, order_outputs)
@@ -1742,7 +1742,7 @@ class _Linker(gof.link.LocalLinker):
                 # how python works to understand why. A bunch of tests fail
                 # because of this, one of them being
                 # theano/scan_module/tests/scan_tests.py:T_Scan.test_backwards
-                #def wrap_thunk():
+                # def wrap_thunk():
                 #    for k in node.outputs:
                 #        compute_map[k] = [False]
                 #    thunk()
@@ -1843,7 +1843,7 @@ class _Linker(gof.link.LocalLinker):
                         print r, s
                     assert s[0] is None
 
-                #try:
+                # try:
                 # compute the value of all variables
                 for i, (thunk_py, thunk_c, node) in enumerate(zip(thunks_py,
                                                                   thunks_c,
@@ -1863,8 +1863,8 @@ class _Linker(gof.link.LocalLinker):
                             raise InvalidValueError(r, storage_map[r][0],
                                                     client_node=node)
 
-                    ## On the first call to thunk_py(), its output
-                    ## storage will be None
+                    # On the first call to thunk_py(), its output
+                    # storage will be None
                     if thunk_py:
                         _logger.debug("%i - running thunk_py with None as "
                                 "output storage", i)
@@ -1969,7 +1969,7 @@ class _Linker(gof.link.LocalLinker):
                             clobber = False
 
                         _logger.debug("%i - running thunk_c", i)
-                        ## First time, with None in output_storage
+                        # First time, with None in output_storage
                         try:
                             thunk_c()
                         except Exception, e:
@@ -2030,7 +2030,7 @@ class _Linker(gof.link.LocalLinker):
                                             inputs_val=inputs_val)
                             else:
                                 #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
-                                #retrieve each output from the storage_map
+                                # retrieve each output from the storage_map
                                 r_vals[r] = storage_map[r][0]
                             storage_map[r][0] = None #clear the storage_map for the thunk_c
 
@@ -2071,8 +2071,8 @@ class _Linker(gof.link.LocalLinker):
                     _logger.debug("%i - done with node", i)
 
                 if False:
-                    #This could be useful to help finding refcount problem.
-                    #But it is very slow and it is not sure it will help.
+                    # This could be useful to help finding refcount problem.
+                    # But it is very slow and it is not sure it will help.
                     gc.collect()
 
                 _find_bad_optimizations(order, fgraph.equivalence_tracker.reasons,
@@ -2105,7 +2105,7 @@ class _Linker(gof.link.LocalLinker):
                     assert dr_vals[r][0] is not None
                     if r.owner is None:
                         assert r in fgraph.inputs
-                        #HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
+                        # HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION TOOK PLACE
                         if type(dr_vals[r][0]) in (numpy.ndarray, numpy.memmap) \
                                 and dr_vals[r][0].dtype == storage_map[r][0].dtype \
                                 and dr_vals[r][0].shape == storage_map[r][0].shape:
@@ -2127,10 +2127,10 @@ class _Linker(gof.link.LocalLinker):
                         storage_map[r][0] = None
                 raise
 
-            #print ""
-            #print output_storage
-            #print dr_vals
-            #print storage_map
+            # print ""
+            # print output_storage
+            # print dr_vals
+            # print storage_map
             for r in storage_map:
                 if (r.owner is None):
                     if not r.type.is_valid_value(None):
@@ -2159,7 +2159,7 @@ class _Linker(gof.link.LocalLinker):
         f.allow_gc = True
         assert len(fgraph.inputs) == len(input_storage)
         assert len(fgraph.outputs) == len(output_storage)
-        #print 'make_all returning output', [id(z) for z in output_storage]
+        # print 'make_all returning output', [id(z) for z in output_storage]
         return f, [link.Container(input, storage, readonly=False)
                    for input, storage in zip(fgraph.inputs, input_storage)], \
                   [link.Container(output, storage, readonly=True)
@@ -2264,14 +2264,14 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                             print >>infolog, '   ', str(l0[j])
                             print >>infolog, '   ', str(li[j])
                             #print >> infolog, "* ", j,
-                            #if j < len(li):
+                            # if j < len(li):
                             #  msg =  str(li[j])
-                            #else:
+                            # else:
                             #  msg = '-'
                             #print >> infolog, "  ", msg
-                            #if j < len(l0):
+                            # if j < len(l0):
                             #  msg = str(l0[j])
-                            #else:
+                            # else:
                             #  msg = '-'
                             #print >> infolog, "  ", msg
                         else:
@@ -2286,7 +2286,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
         del fgraph0
         self.fgraph = fgraph
-        #equivalence_tracker.printstuff()
+        # equivalence_tracker.printstuff()
 
         linker = _Linker(self)
 

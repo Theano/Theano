@@ -330,7 +330,7 @@ class TestEval(unittest.TestCase):
 class TestAutoName:
 
     def test_auto_name(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1, r2 = MyVariable(1), MyVariable(2)
@@ -338,7 +338,7 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_constant(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = tensor.constant(1.5)
@@ -347,7 +347,7 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_tensorvariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = tensor.TensorType(dtype='int32', broadcastable=())('myvar')
@@ -360,7 +360,7 @@ class TestAutoName:
 
 
     def test_sparsevariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = sparse.csc_matrix(name='x', dtype='float32')
@@ -371,7 +371,7 @@ class TestAutoName:
         assert r3.auto_name == "auto_" + str(autoname_id + 2)
 
     def test_cudandarrayvariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         mytype = tensor.TensorType(dtype='int32', broadcastable=())
@@ -387,7 +387,7 @@ class TestAutoName:
         assert r4.auto_name == "auto_" + str(autoname_id + 3)
 
     def test_randomvariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         mytype = tensor.TensorType(dtype='int32', broadcastable=())
@@ -404,7 +404,7 @@ class TestAutoName:
 
 
     def test_clone(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = MyVariable(1)

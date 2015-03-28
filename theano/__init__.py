@@ -72,7 +72,7 @@ from theano.updates import OrderedUpdates
 # scan_module import above initializes tensor and scalar making these imports redundant
 #import tensor
 #import scalar
-#we don't import by default as we don't want to force having scipy installed.
+# we don't import by default as we don't want to force having scipy installed.
 #import sparse
 
 from theano.gradient import Rop, Lop, grad, subgraph_grad
@@ -134,7 +134,7 @@ del _all, _divide, _over, _under, _invalid
 
 ## import scalar_opt
 
-### This is defined here because it is designed to work across symbolic
+# This is defined here because it is designed to work across symbolic
 #   datatypes (Sparse and Tensor)
 
 

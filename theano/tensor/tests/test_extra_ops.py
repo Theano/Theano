@@ -478,7 +478,7 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class)
         self._compile_and_check([z, y], [self.op(z, y)],
-                                #must be square when nd>2
+                                # must be square when nd>2
                                 [numpy.random.rand(8, 8, 8),
                                  numpy.random.rand()],
                                 self.op_class,

@@ -33,7 +33,7 @@ SigmoidTester = makeBroadcastTester(
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, 1 / (1 + numpy.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
-    #grad=_grad_broadcast_unary_normal,
+    # grad=_grad_broadcast_unary_normal,
     name='SigmoidTester',
 )
 
@@ -42,7 +42,7 @@ UltraFastSigmoidTester = makeBroadcastTester(
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, 1 / (1 + numpy.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
-    #grad=_grad_broadcast_unary_normal,
+    # grad=_grad_broadcast_unary_normal,
     name='UltraFastSigmoidTester',
 # This is an approx of the sigmoid. That is why we raise eps
     eps=5e-2)
@@ -52,7 +52,7 @@ HardSigmoidTester = makeBroadcastTester(
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, 1 / (1 + numpy.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
-    #grad=_grad_broadcast_unary_normal,
+    # grad=_grad_broadcast_unary_normal,
     name='HardSigmoidTester',
 # This is an approx of the sigmoid. That is why we raise eps
     eps=1e-1)
@@ -64,7 +64,7 @@ SoftplusTester = makeBroadcastTester(
         inputs, numpy.log1p(numpy.exp(inputs)))),
     good=dict(_good_broadcast_unary_normal_no_complex,
               int8=[numpy.arange(-127, 89, dtype='int8')]),
-    #grad=_grad_broadcast_unary_normal,
+    # grad=_grad_broadcast_unary_normal,
     name='SoftplusTester',
 )
 
@@ -219,7 +219,7 @@ class T_sigmoid_opts(unittest.TestCase):
         exp(-x) * sigm(x) -> sigm(-x)
         """
         def match(func, ops):
-            #print [node.op.scalar_op for node in func.maker.fgraph.toposort()]
+            # print [node.op.scalar_op for node in func.maker.fgraph.toposort()]
             assert [node.op for node in func.maker.fgraph.toposort()] == ops
         m = self.get_mode(excluding=['local_elemwise_fusion', 'inplace'])
         x, y = tensor.vectors('x', 'y')

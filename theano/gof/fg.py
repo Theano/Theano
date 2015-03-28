@@ -285,8 +285,8 @@ class FunctionGraph(utils.object2):
                         not isinstance(r, graph.Constant) and
                         r not in self.inputs):
 
-                        #Verbose error message
-                        #Show a complete chain of variables from the missing input to an output
+                        # Verbose error message
+                        # Show a complete chain of variables from the missing input to an output
                         if config.exception_verbosity == 'high':
 
                             def find_path_to(output_var, input_var):
@@ -295,25 +295,25 @@ class FunctionGraph(utils.object2):
                                     list has the preceding variable as one of its inputs.
                                     Returns None if no path exists"""
 
-                                #If output and input are the same we have a singleton path
+                                # If output and input are the same we have a singleton path
                                 if output_var is input_var:
                                     return [output_var]
 
-                                #If output has no inputs then there is no path
+                                # If output has no inputs then there is no path
                                 owner = output_var.owner
 
                                 if owner is None:
                                     return None
 
-                                #If input_var is an input to the output node, there is a
-                                #simple two element path
+                                # If input_var is an input to the output node, there is a
+                                # simple two element path
                                 inputs = owner.inputs
 
                                 if input_var in inputs:
                                     return [input_var, output_var]
 
-                                #Otherwise we must recurse by searching for a path to one
-                                #of our inputs, then appending the output to that path
+                                # Otherwise we must recurse by searching for a path to one
+                                # of our inputs, then appending the output to that path
                                 for ipt in inputs:
                                     path = find_path_to(ipt, input_var)
 
@@ -322,18 +322,18 @@ class FunctionGraph(utils.object2):
 
                                         return path
 
-                                #Since none of the above methods returned a path, there is none
+                                # Since none of the above methods returned a path, there is none
                                 return None
 
-                            #Try different outputs until we find one that has a path to the missing input
+                            # Try different outputs until we find one that has a path to the missing input
                             for output in self.outputs:
                                 path = find_path_to(output, r)
 
                                 if path is not None:
                                     break
 
-                            #if there is no path then r isn't really a graph input so we shouldn't be running error
-                            #handler code in the first place
+                            # if there is no path then r isn't really a graph input so we shouldn't be running error
+                            # handler code in the first place
                             assert path is not None
                             tr = getattr(r.tag, 'trace', None)
                             detailed_err_msg = ""
@@ -352,7 +352,7 @@ class FunctionGraph(utils.object2):
                                 'This chain may not be unique' % str(path) +
                                 detailed_err_msg)
 
-                        #Standard error message
+                        # Standard error message
                         raise MissingInputError((
                             "An input of the graph, used to compute %s, "
                             "was not provided and not given a value."
@@ -404,7 +404,7 @@ class FunctionGraph(utils.object2):
 
         for i, input in enumerate(node.inputs):
             self.__remove_clients__(input, [(node, i)], reason=reason)
-        #self.__prune_r__(node.inputs)
+        # self.__prune_r__(node.inputs)
 
     ### change input ###
     def change_input(self, node, i, new_r, reason=None):
@@ -503,7 +503,7 @@ class FunctionGraph(utils.object2):
 
         # sometimes the following is triggered.  If you understand why, please explain to James.
         # He's curious... -JB20090331
-        #if len(r.clients) != 0:
+        # if len(r.clients) != 0:
         #    print >> sys.stderr, "WARNING: CLIENTS LEFT AFTER REPLACE", r, r.clients
 
     def replace_all(self, pairs, reason=None):
@@ -532,9 +532,9 @@ class FunctionGraph(utils.object2):
             except toolbox.AlreadyThere:
                 return
         self.execute_callbacks_times.setdefault(feature, 0)
-        #it would be nice if we could require a specific class instead of
-        #a "workalike" so we could do actual error checking
-        #if not isinstance(feature, toolbox.Feature):
+        # it would be nice if we could require a specific class instead of
+        # a "workalike" so we could do actual error checking
+        # if not isinstance(feature, toolbox.Feature):
         #    raise TypeError("Expected gof.toolbox.Feature instance, got "+\
         #            str(type(feature)))
 

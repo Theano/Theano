@@ -54,14 +54,14 @@ class GpuConv(gof.Op):
         self.subsample = subsample
         if logical_img_hw is not None:
             h, w = logical_img_hw
-            #TODO: reconsider this... since shapes are not given in
+            # TODO: reconsider this... since shapes are not given in
             # constructor, maybe a multiplier + offset is a more
             # appropriate way of passing this logical grid
             logical_img_hw = tuple(logical_img_hw)
         self.logical_img_hw = logical_img_hw
         if logical_kern_hw is not None:
             h, w = logical_kern_hw
-            #TODO: reconsider this... since shapes are not given in
+            # TODO: reconsider this... since shapes are not given in
             # constructor, maybe a multiplier + offset is a more
             # appropriate way of passing this logical grid
             logical_kern_hw = tuple(logical_kern_hw)

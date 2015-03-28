@@ -238,7 +238,7 @@ class InferShapeTester(unittest.TestCase):
         outputs_function = theano.function(inputs, outputs, mode=mode)
         shapes_function = theano.function(inputs, [o.shape for o in outputs],
                                           mode=mode)
-        #theano.printing.debugprint(shapes_function)
+        # theano.printing.debugprint(shapes_function)
         # Check that the Op is removed from the compiled function.
         if check_topo:
             topo_shape = shapes_function.maker.fgraph.toposort()
@@ -309,7 +309,7 @@ def str_diagnostic(expected, value, rtol, atol):
         print >> sio, ssio.getvalue()
     except Exception:
         pass
-    #Use the same formula as in _allclose to find the tolerance used
+    # Use the same formula as in _allclose to find the tolerance used
     narrow = 'float32', 'complex64'
     if ((str(expected.dtype) in narrow) or
         (str(value.dtype) in narrow)):

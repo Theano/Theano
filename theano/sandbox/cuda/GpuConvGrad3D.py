@@ -35,7 +35,7 @@ class GpuConvGrad3D(GpuOp):
         V, d, WShape, dCdH = inputs
         print "GpuConvGrad3D python code (warning not updated to new format)"
 
-        #partial C / partial W[j,z,k,l,m] = sum_i sum_p sum_q sum_r (partial C /partial H[i,j,p,q,r] ) *  V[i,z,dr*p+k,dc*q+l,dt*r+m]
+        # partial C / partial W[j,z,k,l,m] = sum_i sum_p sum_q sum_r (partial C /partial H[i,j,p,q,r] ) *  V[i,z,dr*p+k,dc*q+l,dt*r+m]
 
         batchSize = dCdH.shape[0]
         outputFilters = dCdH.shape[1]

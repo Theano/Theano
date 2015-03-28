@@ -141,7 +141,7 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount):
     :note2: We use __i as an int variable in a loop
     """
     return [
-            #get max of buf (trashing all but buf[0])
+            # get max of buf (trashing all but buf[0])
             inline_reduce_max(N, buf, threadPos, threadCount),
             '__syncthreads()',
             'float row_max = ' + buf + '[0]',
@@ -283,7 +283,7 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x,
     :note2: We use tx as an int variable in a loop
     """
     ret = [
-        #get max of buf (trashing all but buf[0])
+        # get max of buf (trashing all but buf[0])
         inline_reduce_fixed_shared_max(N, buf, x, stride_x,
                                        threadPos, threadCount, b, stride_b),
         '__syncthreads()',

@@ -101,11 +101,11 @@ class OpFromGraph(gof.Op):
 
 
     def __eq__(self, other):
-        #TODO: recognize a copy
+        # TODO: recognize a copy
         return self is other
 
     def __hash__(self):
-        #TODO: use internal variables in hash
+        # TODO: use internal variables in hash
         return hash(type(self))
 
     def make_node(self, *inputs):
@@ -130,7 +130,7 @@ class OpFromGraph(gof.Op):
         variables = self.fn(*inputs)
         assert len(variables) == len(outputs)
         for output, variable in zip(outputs, variables):
-            ##TODO: when function's output-borrowing semantics are correct,
+            # TODO: when function's output-borrowing semantics are correct,
             # we wont need this copy anymore
             output[0] = variable.copy()
 

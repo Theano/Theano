@@ -731,7 +731,7 @@ class T_examples(unittest.TestCase):
         g2 = Graph(seed=987)
         f2 = theano.function([], g2.y)
 
-        #print 'By default, the two functions are out of sync.'
+        # print 'By default, the two functions are out of sync.'
         v1 =  f1()
         v2 =  f2()
 
@@ -741,7 +741,7 @@ class T_examples(unittest.TestCase):
             for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
                 su2[0].set_value(su1[0].get_value())
 
-        #print 'We now copy the state of the theano random number generators.'
+        # print 'We now copy the state of the theano random number generators.'
         copy_random_state(g1, g2)
         v3 = f1()
         v4 = f2()
@@ -1162,7 +1162,7 @@ class T_fibby(unittest.TestCase):
         # Test it does not apply when not needed
         x = T.dvector()
         f = function([x], fibby(x))
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
 
         # We call the function to make sure it runs.
         # If you run in DebugMode, it will compare the C and Python outputs.
@@ -1173,7 +1173,7 @@ class T_fibby(unittest.TestCase):
 
         # Test that the optimization gets applied.
         f_zero = function([], fibby(T.zeros([5])))
-        #theano.printing.debugprint(f_zero)
+        # theano.printing.debugprint(f_zero)
 
         # If you run in DebugMode, it will compare the output before
         # and after the optimization.

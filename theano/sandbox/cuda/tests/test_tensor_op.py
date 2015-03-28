@@ -81,10 +81,10 @@ def test_may_share_memory_cuda():
     ra = a.reshape((4, 3))
     rb = b.reshape((4, 3))
 
-    #can't test the transpose as ta._strides = is not implemented
-    #manual transpose of a
+    # can't test the transpose as ta._strides = is not implemented
+    # manual transpose of a
     #ta = a.reshape((4,3))
-    #ta._strides = (ta._strides[1],ta._strides[0])#not implemented
+    # ta._strides = (ta._strides[1],ta._strides[0])#not implemented
     #elem_size=elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
     #ta.gpudata += ta.size*elem_size
 
@@ -99,7 +99,7 @@ def test_may_share_memory_cuda():
         assert may_share_memory(a_, b_) == rep
         assert may_share_memory(b_, a_) == rep
 
-    #test that it raise error when needed.
+    # test that it raise error when needed.
     for a_, b_, rep in [(a, (0,), False), (a, 1, False), (a, None, False)]:
         assert may_share_memory(a_, b_, False) == rep
         assert may_share_memory(b_, a_, False) == rep

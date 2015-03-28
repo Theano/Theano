@@ -24,7 +24,7 @@ from theano.compat.python2x import partial, any, all
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
-#For history
+# For history
 from theano.compile import Rebroadcast, Shape, shape
 
 
@@ -34,7 +34,7 @@ from theano.gradient import grad_undefined
 from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
-### set up the external interface
+# set up the external interface
 from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduce, Sum
 
 import logging
@@ -665,7 +665,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                         if isinstance(idx, gof.Type):
                             idx = get_scalar_constant_value(v.owner.inputs[1])
                         try:
-                            #TODO: assert joined axis is 0.
+                            # TODO: assert joined axis is 0.
                             length = 0
                             for joined in v.owner.inputs[0].owner.inputs[1:]:
                                 ll = get_vector_length(joined)
@@ -1955,7 +1955,7 @@ def chi2sf(x, k):
     """chi squared survival function"""
 
 
-#numpy.real(float32) return a view on the inputs.
+# numpy.real(float32) return a view on the inputs.
 #@_scal_elemwise_with_nfunc('real', 1, 1)
 @_scal_elemwise
 def real(z):
@@ -2504,13 +2504,13 @@ class Alloc(gof.Op):
         x = inputs[0]
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
-        #The number of dimensions added
+        # The number of dimensions added
         axis = range(n_axes_to_sum)
-        #The broadcasted dimensions
+        # The broadcasted dimensions
         axis_broadcasted = []
         for i, (ib, gb) in enumerate(
             zip(inputs[0].broadcastable,
-                #We need the dimensions corresponding to x
+                # We need the dimensions corresponding to x
                 grads[0].broadcastable[-inputs[0].ndim:])):
             if ib and not gb:
                 axis_broadcasted.append(i + n_axes_to_sum)
@@ -2525,11 +2525,11 @@ class Alloc(gof.Op):
                 else:
                     new_order[i] = 'x'
             gx = gx.dimshuffle(new_order)
-            #Dimshuffle to add back the broadcasted dims
-        #The *elements* of the output are not connected to
-        #the inputs that specify the shape. If you grow the
-        #shape by epsilon, the existing elements do not
-        #change.
+            # Dimshuffle to add back the broadcasted dims
+        # The *elements* of the output are not connected to
+        # the inputs that specify the shape. If you grow the
+        # shape by epsilon, the existing elements do not
+        # change.
         return [gx] + [DisconnectedType()() for i in inputs[1:]]
 
     def __call__(self, val, *shapes, **kwargs):
@@ -2589,9 +2589,9 @@ class Alloc(gof.Op):
                     theano.tensor.blas_c.CGer,
                     theano.tensor.blas_scipy.ScipyGer))):
                 return False
-            #If the clients is a transfer to the GPU, we don't want to
-            #fold. We let the Alloc being moved to the GPU, then we
-            #let the GPU algo decide if it need to fold it or not.
+            # If the clients is a transfer to the GPU, we don't want to
+            # fold. We let the Alloc being moved to the GPU, then we
+            # let the GPU algo decide if it need to fold it or not.
             elif client[0].op.__class__.__name__.lower().startswith("gpu"):
                 return False
         return True
@@ -4227,10 +4227,10 @@ class Tile(Op):
 
         # Note: if reps were to be allowed not to be a constant and x.shape
         # and reps to be unequal, the following block of code could be used:
-        ## prepend 1 to x.shape if needed
+        # prepend 1 to x.shape if needed
         # if self.ndim > x.ndim:
         # shp = concatenate(ones(self.ndim - x.ndim), shp)
-        ## prepend 1 to reps if needed
+        # prepend 1 to reps if needed
         # reps = concatenate(ones(self.ndim - reps.shape[0]), reps)
 
         x, reps = node.inputs
@@ -4705,7 +4705,7 @@ class Dot(Op):
         gz, = grads
         xdim, ydim, gdim = x.type.ndim, y.type.ndim, gz.type.ndim
 
-        #grad is scalar, so x is vector and y is vector
+        # grad is scalar, so x is vector and y is vector
         if gdim == 0:
             xgrad = gz * y
             ygrad = gz * x
@@ -5018,13 +5018,13 @@ def tensordot(a, b, axes=2):
     # if 'axes' is a list, transpose a and b such that the summed axes of a
     # are last and the summed axes of b are first.
     else:
-        #get first axis element as a tuple
+        # get first axis element as a tuple
         try:
             a_axes = tuple(axes[0])
         except TypeError:
             a_axes = tuple([axes[0]])
 
-        #get second axis element as a tuple
+        # get second axis element as a tuple
         try:
             b_axes = tuple(axes[1])
         except TypeError:

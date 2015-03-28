@@ -10,10 +10,10 @@ class Solve(gof.Op):
     It use numpy.solve to find the solution.
     """
 
-    #TODO: Add class options to use the performance-enhancing flags
+    # TODO: Add class options to use the performance-enhancing flags
     #     sym_pos, lower, overwrite_a, overwrite_b
 
-    #TODO: Add C code that calls the underlying LAPACK routines
+    # TODO: Add C code that calls the underlying LAPACK routines
     #      and keeps a memory workspace from call to call as a non-default Op output
 
     def __eq__(self, other):
@@ -45,9 +45,9 @@ class Solve(gof.Op):
 solve = Solve()
 
 
-## TODO: test dtype conversion
-## TODO: test that invalid types are rejected by make_node
-## TODO: test that each valid type for A and b works correctly
+# TODO: test dtype conversion
+# TODO: test that invalid types are rejected by make_node
+# TODO: test that each valid type for A and b works correctly
 from theano.tests import unittest_tools as utt
 class T_solve(unittest.TestCase):
     def setUp(self):
@@ -60,5 +60,5 @@ class T_solve(unittest.TestCase):
         Ax = numpy.dot(A, x)
         are = tensor.numeric_grad.abs_rel_err(Ax, b)
         self.assertTrue(numpy.all(are < 1.0e-5), (are, Ax, b))
-        #print A,b
-        #print numpy.dot(A,x)
+        # print A,b
+        # print numpy.dot(A,x)

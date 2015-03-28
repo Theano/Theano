@@ -70,7 +70,7 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
             w = global_rng.random_sample(N.r_[nkern, imshp[0], kshp])
             w_flip = flip(w, kshp).reshape(w.shape)
 
-            ## manual implementation
+            # manual implementation
             # check first stage
             padimg = imgval
             if conv_mode == 'full':
@@ -222,7 +222,7 @@ def speed_multilayer_conv():
     
         timing = N.zeros((len(unroll_batch), len(unroll_kern), 3, len(convmodes)*len(ssizes)))
         t_b_k=[]
-        #calculate the timing with unrolling
+        # calculate the timing with unrolling
 
         print 'time unroll batch kern'
         best=[]
@@ -241,10 +241,10 @@ def speed_multilayer_conv():
                             tpytot+=[tpytot_]
                             ntot+=[ntot_]
                     if unroll_b==4 and unroll_k==4:
-                        #print "unroll 4/4",tctot
+                        # print "unroll 4/4",tctot
                         best=tctot
                     if unroll_b==1 and unroll_k==1:
-                        #print "unroll 1/1",tctot
+                        # print "unroll 1/1",tctot
                         worst=tctot
                     timing[n_b, n_k]=[tctot, tpytot, ntot]#[sum(tctot), sum(tpytot), sum(ntot)]
         if not t_:
@@ -252,7 +252,7 @@ def speed_multilayer_conv():
         else:
             t=t_
         t=N.asarray(t)
-        #calculate the old timing
+        # calculate the old timing
         print 'time old version'
         tctot, tpytot, ntot=[], [], []
         tctot_=[]
@@ -280,7 +280,7 @@ def speed_multilayer_conv():
         print "speedup vs (1/1)%.3fx, vs old %.3fx"% (t.max()/t.min(), sum(tctot)/t.min())
         print worst/best, tctot/best
 
-        #calculate the timing of unroll_patch
+        # calculate the timing of unroll_patch
         print 'time unroll_patch'
         tctot_patch = []
         tctot_patch_size = []

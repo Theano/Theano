@@ -54,7 +54,7 @@ def cmp_sigmoids_T(shape):
 
 if __name__ == '__main__':
     eval(sys.argv[1])
-    #cmp_sigmoids((640, 64*64)) # looks great in profiler
+    # cmp_sigmoids((640, 64*64)) # looks great in profiler
     #cmp_sigmoids((173, 74*49))
     #cmp_sigmoids_T((173, 74*49))
 

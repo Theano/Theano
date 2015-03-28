@@ -66,8 +66,8 @@ def rebuild_collect_shared(outputs,
     if isinstance(outputs, tuple):
         outputs = list(outputs)
 
-    ## This function implements similar functionality as graph.clone
-    ## and it should be merged with that
+    # This function implements similar functionality as graph.clone
+    # and it should be merged with that
     clone_d = {}
     update_d = {}
     update_expr = []
@@ -113,8 +113,8 @@ def rebuild_collect_shared(outputs,
                         update_expr.append((v, v_update))
         if not copy_inputs_over or (isinstance(v, Constant) and
                                     hasattr(v, 'fgraph')):
-            ### Cloning shared variables implies copying their underlying
-            ### memory buffer ?? No.
+            # Cloning shared variables implies copying their underlying
+            # memory buffer ?? No.
             return clone_d.setdefault(v, v.clone())
         else:
             return clone_d.setdefault(v, v)
@@ -235,17 +235,17 @@ def rebuild_collect_shared(outputs,
                 raise TypeError('Outputs must be theano Variable or '
                                 'Out instances. Received ' + str(v)
                                 + ' of type ' + str(type(v)))
-            #computed_list.append(cloned_v)
+            # computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
             cloned_v = clone_v_get_shared_updates(outputs, copy_inputs_over)
             cloned_outputs = cloned_v
-            #computed_list.append(cloned_v)
+            # computed_list.append(cloned_v)
         elif isinstance(outputs, Out):
             cloned_v = clone_v_get_shared_updates(outputs.variable,
                                                   copy_inputs_over)
             cloned_outputs = Out(cloned_v, borrow=outputs.borrow)
-            #computed_list.append(cloned_v)
+            # computed_list.append(cloned_v)
         elif outputs is None:
             cloned_outputs = []  # TODO: get Function.__call__ to return None
         else:
@@ -495,9 +495,9 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         i.variable = iv
 
     for sv in shared_inputs:
-        #pass value of None here
-        #value will be stored in the resulting functions' defaults list
-        #but since the value of shared variables never needs to be refed, it is not needed
+        # pass value of None here
+        # value will be stored in the resulting functions' defaults list
+        # but since the value of shared variables never needs to be refed, it is not needed
         if sv in update_d:
             si = In(variable=sv, value=sv.container, mutable=True,
                     borrow=True, update=update_d[sv], shared=True)

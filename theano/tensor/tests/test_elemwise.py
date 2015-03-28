@@ -44,7 +44,7 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
             e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
-            #test that DimShuffle.infer_shape work correctly
+            # test that DimShuffle.infer_shape work correctly
             x = TensorType('float64', ib)('x')
             e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x],
@@ -195,8 +195,8 @@ class test_Broadcast(unittest.TestCase):
 
             unittest_tools.assert_allclose(f(xv, yv), zv)
 
-            #test Elemwise.infer_shape
-            #the Shape op don't implement c_code!
+            # test Elemwise.infer_shape
+            # the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
                 x = type('float64', [(entry == 1) for entry in xsh])('x')
                 y = type('float64', [(entry == 1) for entry in ysh])('y')
@@ -225,8 +225,8 @@ class test_Broadcast(unittest.TestCase):
             f(xv, yv)
 
             self.assertTrue((xv == zv).all())
-            #test Elemwise.infer_shape
-            #the Shape op don't implement c_code!
+            # test Elemwise.infer_shape
+            # the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
                 x = type('float64', [(entry == 1) for entry in xsh])('x')
                 y = type('float64', [(entry == 1) for entry in ysh])('y')
@@ -367,8 +367,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 zv = Elemwise(scalar_op=pre_scalar_op)(x).eval({x: xv})
             numpy_raised = False
             if len(tosum) > 1 and any([a < 0 for a in tosum]):
-                #In that case, we need to use the good order of axis
-                #in the reduction.
+                # In that case, we need to use the good order of axis
+                # in the reduction.
                 axis2 = []
                 for a in tosum:
                     if a < 0:
@@ -595,14 +595,14 @@ class test_Prod(unittest.TestCase):
         p = Prod(axis=1)(x)
         p2 = Prod(axis=1)(x2)
         fn = theano.function([x, x2], [p - p2], mode=self.mode)
-        #print "hand computed diff for each row"
+        # print "hand computed diff for each row"
         x2_val = numpy.asarray([[1., 2., 3.003], [0.003, 5., 6], [
             0., 0., 9.01]])
-        #print fn(x_val, x2_val)
+        # print fn(x_val, x2_val)
         fn2 = theano.function([x], [theano.tensor.grad(p.sum(), x)],
              mode=self.mode)
-        #print "real grad"
-        #print fn2(x_val)
+        # print "real grad"
+        # print fn2(x_val)
         fn3 = theano.function([x], [p], mode=self.mode)
         assert numpy.allclose(fn3(x_val), [6., 0., 0.])
 
@@ -611,15 +611,15 @@ class test_Prod(unittest.TestCase):
 
         # second time, with some added complexity
         # verify_grad takes the sum of the matrices anyway
-        #def fn5(x5):
+        # def fn5(x5):
         #    return theano.tensor.sqr(Prod(axis=1)(x5))
 
         #x4 = theano.tensor.dmatrix()
         #p4 = theano.tensor.sqr(Prod(axis=1)(x4))
         #fn4 = theano.function([x4], p4)
-        #print "with sqr"
-        #print fn4(x_val)
-        #print fn4(x2_val)
+        # print "with sqr"
+        # print fn4(x_val)
+        # print fn4(x2_val)
 
         #unittest_tools.verify_grad(fn5, [x_val])
 
@@ -786,7 +786,7 @@ class T_reduce_dtype(unittest.TestCase):
                 f(data)
 
     def test_reduce_default_acc_dtype(self):
-        ##Test the default acc_dtype of a reduce().
+        # Test the default acc_dtype of a reduce().
         # We try multiple axis combinations even though axis should not matter.
         for method in self.methods:
             for idx, dtype in enumerate(self.dtypes):

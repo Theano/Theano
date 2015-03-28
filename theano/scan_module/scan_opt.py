@@ -1238,10 +1238,10 @@ class ScanSaveMem(gof.Optimizer):
                         # FB: This need good testing, left to later.
                         #     call get_scalar_constant_value()? it can
                         # return python/numpy scalar or numpy.ndarray currently.
-                        #pval = pre_greedy_local_optimizer(list_opt_slice,
+                        # pval = pre_greedy_local_optimizer(list_opt_slice,
                         #                                  pval)
                         #pval = pre_constant_merge([pval])[0]
-                        #if (isinstance(pval, theano.tensor.TensorConstant) and
+                        # if (isinstance(pval, theano.tensor.TensorConstant) and
                         #    pval.dtype.startswith('int')):
                         #    try:
                         #        pval = int(pval.data)
@@ -1286,7 +1286,7 @@ class ScanSaveMem(gof.Optimizer):
                         #      can replace the initial tensor by a slice,
                         #   b) it is not, and we simply take a slice of it.
 
-                        #TODO: commit change below with Razvan
+                        # TODO: commit change below with Razvan
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
                                        tensor.IncSubtensor) and

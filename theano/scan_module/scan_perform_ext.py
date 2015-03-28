@@ -91,7 +91,7 @@ except ImportError:
             # by Theano. As by default, we tell NumPy to don't import
             # the old interface.
             if False:
-                #During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
+                # During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
                 preargs.remove('-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
             else:
                 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]

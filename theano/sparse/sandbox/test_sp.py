@@ -98,26 +98,26 @@ class TestSP(unittest.TestCase):
                     #vis = tensor.grad(output, input, output)
                     #downprop = function([kerns,input], vis, mode=mode)
                     #visval = downprop(filters,img1d)
-                    ## test downward propagation -- reference implementation
+                    # test downward propagation -- reference implementation
                     #pshape = (img1d.shape[0],numpy.prod(outshp[1:]),numpy.prod(kshp))
                     #patchstack = numpy.zeros(pshape)
-                    #for bi in numpy.arange(pshape[0]): # batch index
+                    # for bi in numpy.arange(pshape[0]): # batch index
                         #abspos = 0
-                        #for outy in numpy.arange(outshp[1]):
-                            #for outx in numpy.arange(outshp[2]):
-                                #for ni in numpy.arange(nkern):
-                                    #print 'filters[n,:].shape = ', filters[n,:].shape
-                                    #print 'out1[bi,abspos].shape =',out1[bi,abspos].shape
+                        # for outy in numpy.arange(outshp[1]):
+                            # for outx in numpy.arange(outshp[2]):
+                                # for ni in numpy.arange(nkern):
+                                    # print 'filters[n,:].shape = ', filters[n,:].shape
+                                    # print 'out1[bi,abspos].shape =',out1[bi,abspos].shape
                                     #patchstack[bi,abspos,:] = filters[n,:]*out1[bi,abspos]
-                                    #abspos+=1
+                                    # abspos+=1
                     #patchstack = patchstack.reshape(1,-1)
-                    #indices, indptr, spmat_shape, sptype, outshp = \
-                            #sp.convolution_indices.conv_eval(imshp,kshp,ss,conv_mode)
+                    # indices, indptr, spmat_shape, sptype, outshp = \
+                            # sp.convolution_indices.conv_eval(imshp,kshp,ss,conv_mode)
                     #spmat = sparse.csc_matrix((numpy.ones_like(indices),indices,indptr),spmat_shape)
                     #visref = numpy.dot(patchstack, spmat.todense())
 
-                    #print 'visval = ', visval
-                    #print 'visref = ', visref
+                    # print 'visval = ', visval
+                    # print 'visref = ', visref
 
                     #assert numpy.all(visref==visval)
 
@@ -126,7 +126,7 @@ class TestSP(unittest.TestCase):
 #            print 'Numpy processing time: ', ntot
 #            print 'Theano processing time: ', ttot
 
-        #profmode.print_summary()
+        # profmode.print_summary()
 
 
     @attr('slow')
@@ -217,7 +217,7 @@ class TestSP(unittest.TestCase):
 #            print '**** Sparse Profiling Results (',mode,') ****'
 #            print 'Numpy processing time: ', ntot
 #            print 'Theano processing time: ', ttot
-        #profmode.print_summary()
+        # profmode.print_summary()
 
 
     def test_multilayer_sparse(self):

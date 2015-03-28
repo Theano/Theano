@@ -44,7 +44,7 @@ class BROKEN_ON_PURPOSE_Add(gof.Op):
         a, b = inp
         out, = out_
         z = a + b
-        #ERROR TO ADD THIS CRAPPY OFFSET
+        # ERROR TO ADD THIS CRAPPY OFFSET
         if self.py_offset:
             out[0] = z + 0.5
         else:
@@ -209,7 +209,7 @@ def test_badthunkoutput():
             inconsistent(a, b),
             mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
 
-    #this should evaluate with no error
+    # this should evaluate with no error
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
@@ -217,7 +217,7 @@ def test_badthunkoutput():
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
     except debugmode.BadThunkOutput, e:
-        #print repr(e)
+        # print repr(e)
         assert e.r.owner.op is inconsistent
         return  # TEST PASS
 
@@ -535,7 +535,7 @@ class Test_ViewMap(unittest.TestCase):
             f([1, 2, 3, 4], [5, 6, 7, 8])
             assert False  # DebugMode should have caught the error
         except debugmode.BadViewMap, e:
-            #print e
+            # print e
             pass
 
         # the situation can be rescued by picking one of the inputs and
@@ -543,7 +543,7 @@ class Test_ViewMap(unittest.TestCase):
         # This unfairly disables any destructive operations on the
         # input, but guarantees correctness.
         #custom_op.view_map = {0:[0], 1:[1]}
-        #f([1,2,3,4],[5,6,7,8])
+        # f([1,2,3,4],[5,6,7,8])
 
 
 class Test_check_isfinite(unittest.TestCase):
@@ -594,12 +594,12 @@ class Test_check_isfinite(unittest.TestCase):
         f = theano.function([x], (x + 2) * 5,
                 mode=debugmode.DebugMode(check_isfinite=False))
 
-        #nan should go through
+        # nan should go through
         f(numpy.log([3, -4, 5]))
 
-        #inf should go through
+        # inf should go through
         infs = numpy.asarray([1.0, 1., 1.]) / 0
-        #print infs
+        # print infs
         f(infs)
         return
 
@@ -621,11 +621,11 @@ class BrokenCImplementationAdd(gof.Op):
         return r
 
     def perform(self, node, inp, out_):
-        #print 'executing python perform'
+        # print 'executing python perform'
         a, b = inp
         out, = out_
         z = a + b
-        #print 'out[0] was:', out[0]
+        # print 'out[0] was:', out[0]
         out[0] = z
 
     def c_code_cache_version(self):
@@ -755,8 +755,8 @@ class Test_preallocated_output(unittest.TestCase):
 
         f = theano.function([a, b], out, mode=mode)
         out_val = f(a_val, b_val)
-        #print 'out_val =', out_val
-        #print out_val.strides
+        # print 'out_val =', out_val
+        # print out_val.strides
 
         # Should raise an Exception, since the output buffer is
         # used incorrectly.
@@ -787,8 +787,8 @@ class Test_preallocated_output(unittest.TestCase):
 
         f = theano.function([a, b], out, mode=mode)
         out_val = f(a_val, b_val)
-        #print 'out_val =', out_val
-        #print out_val.strides
+        # print 'out_val =', out_val
+        # print out_val.strides
 
         # Should raise an Exception, since the output buffer is
         # used incorrectly.

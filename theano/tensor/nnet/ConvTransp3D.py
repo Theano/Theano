@@ -329,7 +329,7 @@ class ConvTransp3D(theano.Op):
 
 convTransp3D = ConvTransp3D()
 
-#If the input size wasn't a multiple of D we may need to cause some automatic padding to get the right size of reconstruction
+# If the input size wasn't a multiple of D we may need to cause some automatic padding to get the right size of reconstruction
 
 
 def computeR(W, b, d, H, Rshape=None):
@@ -361,24 +361,24 @@ def computeR(W, b, d, H, Rshape=None):
         assert Rshape[1] >= videoWidth
         assert Rshape[2] >= videoDur
 
-        #print "setting video size to Rshape = "+str(Rshape)
+        # print "setting video size to Rshape = "+str(Rshape)
 
         videoHeight, videoWidth, videoDur = Rshape
-    #else:
+    # else:
     #       print "No Rshape passed in"
 
-    #print "video size: "+str((videoHeight, videoWidth, videoDur))
+    # print "video size: "+str((videoHeight, videoWidth, videoDur))
 
     R = N.zeros((batchSize, videoHeight,
             videoWidth, videoDur, inputChannels), dtype=H.dtype)
 
-    #R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
+    # R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
     for i in xrange(0, batchSize):
-        #print '\texample '+str(i+1)+'/'+str(batchSize)
+        # print '\texample '+str(i+1)+'/'+str(batchSize)
         for j in xrange(0, inputChannels):
-            #print '\t\tfeature map '+str(j+1)+'/'+str(inputChannels)
+            # print '\t\tfeature map '+str(j+1)+'/'+str(inputChannels)
             for r in xrange(0, videoHeight):
-                #print '\t\t\trow '+str(r+1)+'/'+str(videoHeight)
+                # print '\t\t\trow '+str(r+1)+'/'+str(videoHeight)
                 for c in xrange(0, videoWidth):
                     for t in xrange(0, videoDur):
                         R[i, r, c, t, j] = b[j]

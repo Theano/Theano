@@ -653,7 +653,7 @@ if cuda_available:
 #    @alpha_merge(SparseBlockOuterSS, alpha_in=5, beta_in=?, nd=4)
 #    def local_merge_blocksparse_alpha(node, *inputs):
 #        """
-#GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
+# GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
 #        """
 #        return [sparse_block_outer_ss(*inputs)]
 

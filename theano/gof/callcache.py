@@ -18,7 +18,7 @@ class CallCache(object):
         if filename is None:
             filename = self.filename
 
-        #backport
+        # backport
         #filename = self.filename if filename is None else filename
         f = open(filename, 'w')
         cPickle.dump(self.cache, f)
@@ -28,7 +28,7 @@ class CallCache(object):
         if key is None:
             key = (fn, tuple(args))
 
-        #backport
+        # backport
         #key = (fn, tuple(args)) if key is None else key
         if key not in self.cache:
             _logger.debug('cache miss %i', len(self.cache))

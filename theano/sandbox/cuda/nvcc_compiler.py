@@ -98,7 +98,7 @@ def is_nvcc_available():
         set_version()
         return True
     except Exception:
-        #try to find nvcc into cuda.root
+        # try to find nvcc into cuda.root
         p = os.path.join(config.cuda.root, 'bin', 'nvcc')
         if os.path.exists(p):
             global nvcc_path
@@ -250,8 +250,8 @@ class NVCC_compiler(Compiler):
             preargs.append('-fPIC')
         cuda_root = config.cuda.root
 
-        #The include dirs gived by the user should have precedence over
-        #the standards ones.
+        # The include dirs gived by the user should have precedence over
+        # the standards ones.
         include_dirs = include_dirs + std_include_dirs()
         if os.path.abspath(os.path.split(__file__)[0]) not in include_dirs:
             include_dirs.append(os.path.abspath(os.path.split(__file__)[0]))
@@ -291,7 +291,7 @@ class NVCC_compiler(Compiler):
         # TODO: Why do these args cause failure on gtx285 that has 1.3
         # compute capability? '--gpu-architecture=compute_13',
         # '--gpu-code=compute_13',
-        #nvcc argument
+        # nvcc argument
         preargs1 = []
         for pa in preargs:
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
@@ -375,8 +375,8 @@ class NVCC_compiler(Compiler):
         if sys.platform == 'darwin' and nvcc_version >= '4.1':
             cmd.extend(['-Xlinker', '-pie'])
 
-        #cmd.append("--ptxas-options=-v") #uncomment this to see
-        #register and shared-mem requirements
+        # cmd.append("--ptxas-options=-v") #uncomment this to see
+        # register and shared-mem requirements
         _logger.debug('Running cmd %s', ' '.join(cmd))
         orig_dir = os.getcwd()
         try:
@@ -391,7 +391,7 @@ class NVCC_compiler(Compiler):
             if not eline:
                 continue
             if 'skipping incompatible' in eline:
-                #ld is skipping an incompatible library
+                # ld is skipping an incompatible library
                 continue
             if 'declared but never referenced' in eline:
                 continue
@@ -429,6 +429,6 @@ class NVCC_compiler(Compiler):
             print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
 
         if py_module:
-            #touch the __init__ file
+            # touch the __init__ file
             open(os.path.join(location, "__init__.py"), 'w').close()
             return dlimport(lib_filename)

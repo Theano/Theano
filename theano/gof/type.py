@@ -254,7 +254,7 @@ class PureType(object):
     # of this writing this is used only when we transfer new data to a
     # shared variable on the gpu.
 
-    #def filter_inplace(value, storage, strict=False, allow_downcast=None)
+    # def filter_inplace(value, storage, strict=False, allow_downcast=None)
 
     def filter_variable(self, other):
         """Convert a symbolic variable into this Type, if compatible.

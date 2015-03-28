@@ -225,8 +225,8 @@ class GpuGemm(GpuOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
-        #inplace version, set set z_out = z_in
-        #not inplace version, we copy z_in to z_out.
+        # inplace version, set set z_out = z_in
+        # not inplace version, we copy z_in to z_out.
         z_in, a, x, y, b = inputs
         z_out, = outputs
         inplace = int(self.inplace)
@@ -342,8 +342,8 @@ class GpuGemv(GpuOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
-        #inplace version, set set z_out = z_in
-        #not inplace version, we copy z_in to z_out.
+        # inplace version, set set z_out = z_in
+        # not inplace version, we copy z_in to z_out.
         z_in, a, x, y, b = inputs
         z_out, = outputs
         inplace = int(self.inplace)
@@ -439,8 +439,8 @@ class GpuGer(GpuOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         #z_out = alpha * dot(x,y) + beta * z_in
-        #inplace version, set set z_out = z_in
-        #not inplace version, we copy z_in to z_out.
+        # inplace version, set set z_out = z_in
+        # not inplace version, we copy z_in to z_out.
         z_in, a, x, y = inputs
         z_out, = outputs
         inplace = int(self.inplace)
@@ -1556,14 +1556,14 @@ class GpuConv(GpuOp):
         self.subsample = subsample
         if logical_img_hw is not None:
             h, w = logical_img_hw
-            #TODO: reconsider this... since shapes are not given in
+            # TODO: reconsider this... since shapes are not given in
             # constructor, maybe a multiplier + offset is a more
             # appropriate way of passing this logical grid
             logical_img_hw = tuple(logical_img_hw)
         self.logical_img_hw = logical_img_hw
         if logical_kern_hw is not None:
             h, w = logical_kern_hw
-            #TODO: reconsider this... since shapes are not given in
+            # TODO: reconsider this... since shapes are not given in
             # constructor, maybe a multiplier + offset is a more
             # appropriate way of passing this logical grid
             logical_kern_hw = tuple(logical_kern_hw)
@@ -1771,7 +1771,7 @@ class GpuDownsampleFactorMax(GpuOp):
             raise TypeError()
         return Apply(self, [x], [x.type()])
 
-    #def perform(self, node, input_storage, output_storage):
+    # def perform(self, node, input_storage, output_storage):
         #raise NotImplementedError('only C is implemented')
     def c_code_cache_version(self):
         return (6)

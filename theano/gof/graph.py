@@ -98,14 +98,14 @@ class Apply(Node):
         if not isinstance(outputs, (list, tuple)):
             raise TypeError("The output of an Apply must be a list or tuple")
 
-        ## filter inputs to make sure each element is a Variable
+        # filter inputs to make sure each element is a Variable
         for input in inputs:
             if isinstance(input, Variable):
                 self.inputs.append(input)
             else:
                 raise TypeError("The 'inputs' argument to Apply must contain Variable instances, not %s" % input)
         self.outputs = []
-        ## filter outputs to make sure each element is a Variable
+        # filter outputs to make sure each element is a Variable
         for i, output in enumerate(outputs):
             if isinstance(output, Variable):
                 if output.owner is None:
@@ -222,7 +222,7 @@ class Apply(Node):
     def get_parents(self):
         return list(self.inputs)
 
-    #convenience properties
+    # convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
     """property: Number of inputs"""
 
@@ -369,7 +369,7 @@ class Variable(Node):
         :note: tags are copied to the returned instance.
         :note: name is copied to the returned instance.
         """
-        #return copy(self)
+        # return copy(self)
         cp = self.__class__(self.type, None, None, self.name)
         cp.tag = copy(self.tag)
         return cp
@@ -785,7 +785,7 @@ def io_toposort(inputs, outputs, orderings=None):
     if orderings is None:
         orderings = {}
 
-    #the inputs are used only here in the function that decides what 'predecessors' to explore
+    # the inputs are used only here in the function that decides what 'predecessors' to explore
     iset = set(inputs)
 
     def deps(obj):

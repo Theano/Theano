@@ -62,7 +62,7 @@ class Profile_Maker(FunctionMaker):
         self.mode.profile_stats[ret] = profile
         ret.profile = profile
 
-        #initialize the timers
+        # initialize the timers
         for i, node in enumerate(ret.maker.fgraph.toposort()):
             profile.apply_time[node] = 0.0
 
@@ -78,8 +78,8 @@ class Profile_Maker(FunctionMaker):
         # functions and is not function-specific)  work with ProfileStats
         # objects which are function-specific.
 
-        #capture old fn in closure. This is important since new_fn is about to
-        #take its place as ret.fn.
+        # capture old fn in closure. This is important since new_fn is about to
+        # take its place as ret.fn.
         ret_fn = ret.fn
 
         def new_fn():
@@ -133,7 +133,7 @@ class ProfileMode(Mode):
     local_time = property(__get_local_time)
 
     def __getstate__(self):
-        #print "__getstate__",self.provided_linker,self.provided_optimizer
+        # print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker,
                 self.provided_optimizer,
                 self.message,
@@ -279,7 +279,7 @@ class ProfileMode(Mode):
                 tb = b_time.pop(a, 0)
                 r[a] += ta - tb
 
-            #they are missing in a
+            # they are missing in a
             for a, t in b_time.items():
                 r.setdefault(a, 0)
                 r[a] += t
@@ -581,18 +581,18 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                 return any([s_op.__class__ in [scal.Exp] for s_op in l])
 
         printed_tip = False
-        #tip 1
+        # tip 1
         if config.floatX == 'float64':
             print "  - Try the Theano flag floatX=float32"
             printed_tip = True
 
-        #tip 2
+        # tip 2
         if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i, a
                                            in apply_time]):
             print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speeds up only some Elemwise operation."
             printed_tip = True
 
-        #tip 3
+        # tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and
                                            a.inputs[0].dtype == 'float32'
                                            for i, a in apply_time]):
@@ -601,7 +601,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                    "install amdlibm and set the theano flags lib.amdlibm=True")
             printed_tip = True
 
-        #tip 4
+        # tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
             if (isinstance(node.op, T.Dot) and
@@ -613,7 +613,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                        [i.type for i in node.inputs])
                 printed_tip = True
 
-        #tip 5
+        # tip 5
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, RandomFunction):
@@ -633,7 +633,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
 register_mode('PROFILE_MODE', ProfileMode())
 
 
-#needed to print the profile at the end automatically
+# needed to print the profile at the end automatically
 prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
 
 
@@ -647,8 +647,8 @@ def atexit_print_default_profile_mode():
         if prof_mode.local_time > 0:
             prof_mode.print_summary()
 
-#Register atexit_print_default_profile_mode to have the summary of the
-#predefined mode ProfileMode if it is used printed when the program terminate.
+# Register atexit_print_default_profile_mode to have the summary of the
+# predefined mode ProfileMode if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
 
 

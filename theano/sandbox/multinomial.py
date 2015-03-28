@@ -193,9 +193,9 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         return Apply(self, [pvals, unis], [out])
 
     def perform(self, node, ins, outs):
-        #The perform from parent don't work with CudaNdarray.  We
-        #don't need it as DebugMode will test again it as an
-        #optimization insert the GPU op.
+        # The perform from parent don't work with CudaNdarray.  We
+        # don't need it as DebugMode will test again it as an
+        # optimization insert the GPU op.
         return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):

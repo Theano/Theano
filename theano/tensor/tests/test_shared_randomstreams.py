@@ -45,10 +45,10 @@ class T_SharedRandomStreams(unittest.TestCase):
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed)) #int() is for 32bit
 
-        #print fn_val0
+        # print fn_val0
         numpy_val0 = rng.uniform(size=(2, 2))
         numpy_val1 = rng.uniform(size=(2, 2))
-        #print numpy_val0
+        # print numpy_val0
 
         assert numpy.allclose(fn_val0, numpy_val0)
         print fn_val0
@@ -69,10 +69,10 @@ class T_SharedRandomStreams(unittest.TestCase):
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed))  #int() is for 32bit
 
-        #print fn_val0
+        # print fn_val0
         numpy_val0 = rng.uniform(size=(2, 2))
         numpy_val1 = rng.uniform(size=(2, 2))
-        #print numpy_val0
+        # print numpy_val0
 
         assert numpy.allclose(fn_val0, numpy_val0)
         assert numpy.allclose(fn_val1, numpy_val1)
@@ -407,7 +407,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         f = function([], random.uniform())
         g = function([], random.multinomial())
 
-        #seed_rng is generator for generating *seeds* for RandomStates
+        # seed_rng is generator for generating *seeds* for RandomStates
         seed_rng = numpy.random.RandomState(utt.fetch_seed())
         uniform_rng = numpy.random.RandomState(int(seed_rng.randint(2**30)))
         multinomial_rng = numpy.random.RandomState(int(seed_rng.randint(2**30)))
@@ -453,7 +453,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(val0b == numpy_val0b)
         assert numpy.all(val1b == numpy_val1b)
         self.assertRaises(ValueError, fb, [-4., -2], [-1, 0, 1])
-        #TODO: do we want that?
+        # TODO: do we want that?
         #self.assertRaises(ValueError, fb, [-4., -2], [-1])
 
         size = tensor.lvector()
@@ -471,7 +471,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [1, 2])
         self.assertRaises(ValueError, fc, [-4., -2], [-1, 0], [2, 1])
         self.assertRaises(ValueError, fc, [-4., -2], [-1], [1])
-        #TODO: do we want that?
+        # TODO: do we want that?
         #self.assertRaises(ValueError, fc, [-4., -2], [-1], [2])
 
     def test_broadcast_arguments(self):
@@ -737,13 +737,13 @@ class T_SharedRandomStreams(unittest.TestCase):
         r_T = s_rng.get_value(borrow=True)
         r_F = s_rng.get_value(borrow=False)
 
-        #the contract requires that borrow=False returns a copy
+        # the contract requires that borrow=False returns a copy
         assert r_ is not r_F
 
         # the current implementation allows for True to return the real thing
         assert r_ is r_T
 
-        #either way, the rngs should all be in the same state
+        # either way, the rngs should all be in the same state
         assert r_.rand() == r_F.rand()
 
     def test_get_value_internal_type(self):
@@ -757,13 +757,13 @@ class T_SharedRandomStreams(unittest.TestCase):
         r_T = s_rng.get_value(borrow=True, return_internal_type=True)
         r_F = s_rng.get_value(borrow=False, return_internal_type=True)
 
-        #the contract requires that borrow=False returns a copy
+        # the contract requires that borrow=False returns a copy
         assert r_ is not r_F
 
         # the current implementation allows for True to return the real thing
         assert r_ is r_T
 
-        #either way, the rngs should all be in the same state
+        # either way, the rngs should all be in the same state
         assert r_.rand() == r_F.rand()
 
     def test_set_value_borrow(self):

@@ -926,7 +926,7 @@ class Scan(PureOp):
         i = 0
         cond = True
         ############## THE MAIN LOOP #########################
-        #for i in xrange(n_steps):
+        # for i in xrange(n_steps):
         while (i < n_steps) and cond:
             # sequences over which scan iterates
             # 3. collect input slices
@@ -1166,7 +1166,7 @@ class Scan(PureOp):
                 self.fn.fn.update_profile(profile)
 
         #/* Old ProfileMode
-        #if hasattr(self.fn.maker.mode,'fct_call_time'):
+        # if hasattr(self.fn.maker.mode,'fct_call_time'):
         #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
         #    self.fn.maker.mode.fct_call[self.fn] += n_steps
 
@@ -1176,7 +1176,7 @@ class Scan(PureOp):
         self.t_call = t_call
         self.t_fn = t_fn
 
-    ### Infer Shape
+    # Infer Shape
     def infer_shape(self, node, input_shapes):
         # input_shapes correspond to the shapes of node.inputs
         # Here, we build a list inner_ins_shape, such that inner_ins_shape[i]
@@ -1536,7 +1536,7 @@ class Scan(PureOp):
 
         return output
 
-    ### GRAD FUNCTION
+    # GRAD FUNCTION
     def grad(self, inputs, dC_douts):
         outs = self(*inputs)
         if not isinstance(outs, (list, tuple)):
@@ -1566,7 +1566,7 @@ class Scan(PureOp):
                                             self.outputs)
         self_inputs = rval[0]
         self_outputs = rval[1]
-        #differentiable inputs
+        # differentiable inputs
         diff_inputs = (self.inner_seqs(self_inputs) +
                        self.inner_mitmot(self_inputs) +
                        self.inner_mitsot(self_inputs) +
@@ -2287,7 +2287,7 @@ class Scan(PureOp):
         scan_mit_sot = inputs[b:e] + eval_points[b:e]
         inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        #SIT_SOT sequences ...
+        # SIT_SOT sequences ...
         b = e
         e = e + self.n_sit_sot
         ib = ie

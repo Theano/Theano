@@ -94,7 +94,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     """
 
-    #accept Constant value for image_shape and filter_shape.
+    # accept Constant value for image_shape and filter_shape.
     if image_shape is not None:
         image_shape = list(image_shape)
         for i in xrange(len(image_shape)):
@@ -180,15 +180,15 @@ class ConvOp(OpenMPOp):
     given inputs. Do not set openmp here.
     """
 
-#the value of speed_unroll_batch_kern,speed_unroll_patch_noshape,speed_unroll_patch_shape
-#have bean calculated on maggie36 when their is only 1 session logged on and only this was running.
-#It is an Intel(R) Xeon(R) CPU E5430 @ 2.66GHz. It is computer with theano/tensor/nnet/tests/speed_test_conv.py
+# the value of speed_unroll_batch_kern,speed_unroll_patch_noshape,speed_unroll_patch_shape
+# have bean calculated on maggie36 when their is only 1 session logged on and only this was running.
+# It is an Intel(R) Xeon(R) CPU E5430 @ 2.66GHz. It is computer with theano/tensor/nnet/tests/speed_test_conv.py
 # and took 5 minutes to run.
-#TODO: we should compute this table for each computer/os as this can change.
+# TODO: we should compute this table for each computer/os as this can change.
 #      I saw on one computer that the speed with the shape can be slower than without!
 #      using the real shape and the same dtype could also help.
 
-#unroll_batch, unroll_kern, valid time, full time
+# unroll_batch, unroll_kern, valid time, full time
     speed_unroll_batch_kern = [(1, 1, 2.4661250114440918, 6.5472931861877441),
                                (1, 2, 1.5869178771972656, 5.1499760150909424),
                                (1, 3, 1.4270510673522949, 3.6593470573425293),
@@ -239,9 +239,9 @@ class ConvOp(OpenMPOp):
                                (10, 6, 1.5214400291442871, 2.7243161201477051),
                                (10, 10, 1.6116268634796143, 2.956165075302124)]
 
-    #valid time, full time
+    # valid time, full time
     speed_unroll_patch_noshape = [2.0109100341796875, 5.8175678253173828]
-    #valid time, full time
+    # valid time, full time
     speed_unroll_patch_shape = [1.2967290878295898, 5.5283889770507812]
 
     @staticmethod
@@ -414,7 +414,7 @@ class ConvOp(OpenMPOp):
             raise Exception("In ConvOp, when using unroll_batch and"
                             " unroll_nkern, all shape are needed")
 
-        #Init the openmp attribute
+        # Init the openmp attribute
         super(ConvOp, self).__init__(openmp=openmp)
         if not all_shape or self.openmp:
             # Only this version is parallelized
@@ -466,7 +466,7 @@ class ConvOp(OpenMPOp):
             if self.bsize <= self.unroll_batch:
                 self.unroll_batch = self.bsize
             else:
-                #find the maximum value under unroll_batch that would work
+                # find the maximum value under unroll_batch that would work
                 new = self.unroll_batch
                 assert(new >= 1)
                 while self.bsize % new != 0:
@@ -480,13 +480,13 @@ class ConvOp(OpenMPOp):
 
                 self.unroll_batch = new
 
-        #downcast unroll_kern if not a divisor of nb of kernel
+        # downcast unroll_kern if not a divisor of nb of kernel
         if self.unroll_kern is not None and self.unroll_kern > 0 and self.nkern % self.unroll_kern != 0:
 
             if self.nkern <= self.unroll_kern:
                 self.unroll_kern = self.nkern
             else:
-                #find the maximum value under unroll_kern that would work
+                # find the maximum value under unroll_kern that would work
                 new = self.unroll_kern
                 assert(new >= 1)
                 while self.nkern % new != 0:
@@ -522,7 +522,7 @@ class ConvOp(OpenMPOp):
             self.unroll_batch is None and
             self.unroll_patch is None):
 
-            #no version specified. Find the faster we have
+            # no version specified. Find the faster we have
             if self.bsize is None and self.nkern is None:
                 self.unroll_patch = True
             elif self.bsize is not None and self.nkern is not None:
@@ -596,7 +596,7 @@ class ConvOp(OpenMPOp):
         if self.out_mode == "valid":
             # nb mul and add by output pixel
             flops = kerns[2] * kerns[3] * 2
-            #nb flops by output image
+            # nb flops by output image
             flops *= out[2] * out[3]
             # nb patch multiplied
             flops *= images[1] * kerns[0] * images[0]
@@ -788,10 +788,10 @@ class ConvOp(OpenMPOp):
                                 zz[b, n, row, col] += (img2d[b, im0, row:row + kshp[0], col:col + kshp[1]] *
                                                             filtersflipped[n, im0, ::-1, ::-1]).sum()
 
-        #We copy it to remove the Stride mismatch warning from DEBUG_MODE.
-        #The copy make that we return an object with the same stride as the c version.
-        #The copy don't affect the performence during our experience as in that case we
-        #execute the c version which is much faster.
+        # We copy it to remove the Stride mismatch warning from DEBUG_MODE.
+        # The copy make that we return an object with the same stride as the c version.
+        # The copy don't affect the performence during our experience as in that case we
+        # execute the c version which is much faster.
         if self.dx > 1 or self.dy > 1:
             zz = zz[:, :, 0::self.dx, 0::self.dy].copy()
         z[0] = zz
@@ -1007,9 +1007,9 @@ using namespace std;
     def use_blas(self):
         """ Return True if we will generate code that use gemm.
         """
-        #the gemm version only support that case
+        # the gemm version only support that case
         if self.out_mode == 'valid' and self.dx == 0 and self.dy == 0:
-            #We use a faster version in those case.
+            # We use a faster version in those case.
             if (self.imshp != self.imshp_logical or
                 self.kshp != self.kshp_logical or
                 self.unroll_patch or
@@ -1026,8 +1026,8 @@ using namespace std;
         return []
 
     def c_no_compile_args(self):
-        #when the ksph==(1,1) gcc 4.3.0 segfault during the
-        #compilation with -O3.  This don't happen at -O2
+        # when the ksph==(1,1) gcc 4.3.0 segfault during the
+        # compilation with -O3.  This don't happen at -O2
         if (theano.gof.cmodule.gcc_version() in ['4.3.0'] and
             self.kshp == (1, 1)):
 
@@ -1043,7 +1043,7 @@ using namespace std;
         if (theano.gof.cmodule.gcc_version() in ['4.3.0'] and
             self.kshp == (1, 1)):
             ret += ['-O2']
-        #Add the -fopenmp flags
+        # Add the -fopenmp flags
         ret += super(ConvOp, self).c_compile_args()
 
         return ret
@@ -1228,7 +1228,7 @@ if(%(value)s != %(expected)s){
             d["self_kshp_logical_stride_c"] = int(numpy.ceil(
                 self.kshp_logical[1] / float(self.kshp[1])))
             d["self_imshp_logical_r"] = self.imshp_logical[1]
-                #numpy.B. 1  not 0
+                # numpy.B. 1  not 0
             d["self_imshp_logical_c"] = self.imshp_logical[2]
                 # numpy.B. 2  not 1
             d["self_imshp_logical_stride_r"] = int(numpy.ceil(
@@ -1309,7 +1309,7 @@ if(kerns_dim[1] != img2d_dim[1]){
             return gen_conv_code_unroll_batch_kern(d, self.unroll_batch,
                                                    self.unroll_kern)
 
-        #TODO: should we choose the unroll size automatically with the bigger divisor under 5?
+        # TODO: should we choose the unroll size automatically with the bigger divisor under 5?
         if self.out_mode == 'valid' and self.dx == 0 and self.dy == 0:
             if self.verbose:
                 _logger.debug("return gemm version")
@@ -1594,7 +1594,7 @@ Py_XDECREF(filtersflipped);
 
 
 #########
-#########  ConvOp c_code for valid mode (uses gemm)
+# ConvOp c_code for valid mode (uses gemm)
 #########
 
 _conv_op_code_valid_gemm = """

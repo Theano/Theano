@@ -37,7 +37,7 @@ def test_multinomial_0():
     m = multinomial.MultinomialFromUniform('auto')(p, u)
 
     def body(mode, gpu):
-        #the m*2 allows the multinomial to reuse output
+        # the m*2 allows the multinomial to reuse output
         f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
@@ -55,7 +55,7 @@ def test_multinomial_0():
         r = f([[.2, .8], [.3, .7]], [.21, .21])
         assert numpy.allclose(r, [[0, 2], [2, 0]]), r
 
-        #change the size to make sure output gets reallocated ok
+        # change the size to make sure output gets reallocated ok
         # and also make sure that the GPU version doesn't screw up the
         # transposed-ness
         r = f([[.2, .8]], [.25])
@@ -66,7 +66,7 @@ def test_multinomial_0():
         run_with_c(body, True)
 
 
-#TODO: check a bigger example (make sure blocking on GPU is handled correctly)
+# TODO: check a bigger example (make sure blocking on GPU is handled correctly)
 def test_multinomial_large():
     # DEBUG_MODE will test this on GPU
     def body(mode, gpu):

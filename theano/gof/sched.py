@@ -2,7 +2,7 @@ from theano.gof.graph import list_of_nodes
 from theano.compat.python2x import any, defaultdict
 from theano.compat import cmp
 
-## {{{ http://code.activestate.com/recipes/578231/ (r1)
+# {{{ http://code.activestate.com/recipes/578231/ (r1)
 # Copyright (c) Oren Tirosh 2012
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -31,7 +31,7 @@ def memodict(f):
             ret = self[key] = f(key)
             return ret
     return memodict().__getitem__
-## end of http://code.activestate.com/recipes/578231/ }}}
+# end of http://code.activestate.com/recipes/578231/ }}}
 
 
 def make_depends():

@@ -36,7 +36,7 @@ class T_bunch_of_modes(unittest.TestCase):
             # test that it runs something
             f([[1, 2], [3, 4]], [5, 6])
             linker_classes_involved.append(f.maker.mode.linker.__class__)
-            #print 'MODE:', mode, f.maker.mode.linker, 'stop'
+            # print 'MODE:', mode, f.maker.mode.linker, 'stop'
 
         # regression check:
         # there should be

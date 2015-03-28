@@ -73,7 +73,7 @@ class NaiveAlgo(object):
 
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO()
-        #print 'C_SRC_KERNEL', sio.getvalue()
+        # print 'C_SRC_KERNEL', sio.getvalue()
 
         for ipos, i in enumerate(node.inputs):
             print >> sio, "//    Input  ", ipos, str(i.type)
@@ -84,12 +84,12 @@ class NaiveAlgo(object):
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i
                                            for i in xrange(nd))
-        #declare inputs
+        # declare inputs
         for ipos, i in enumerate(node.inputs):
             s = ", ".join(["const float * i%i_data" % ipos] +
                           ["int i%i_str_%i" % (ipos, d) for d in xrange(nd)])
             print >> sio, "\t,", s
-        #declare outputs
+        # declare outputs
         for ipos, i in enumerate(node.outputs):
             s = ", ".join(["float * o%i_data" % ipos] +
                           ["int o%i_str_%i" % (ipos, d) for d in xrange(nd)])
@@ -106,7 +106,7 @@ class NaiveAlgo(object):
             if _logical_scalar(i):
                 print >> sio, "    const float ii_i%i_value = i%i_data[0];" % (ipos, ipos)
 
-        #loop over the elements to be treated by this kernel call
+        # loop over the elements to be treated by this kernel call
         print >> sio, "    for (int i = idx; i < numEls; i += numThreads) {"
         # calculate the data pointers for all arguments
         print >> sio, "        int ii = i;"
@@ -129,7 +129,7 @@ class NaiveAlgo(object):
                 print >> sio, "        ii_o%i_data += pos%i * o%i_str_%i;" % (ipos, d, ipos, d)
 
         # perform the scalar operation on the input and output references
-        #TODO: What if the scalar_op needs support_code??
+        # TODO: What if the scalar_op needs support_code??
         task_code = self.scalar_op.c_code(
             Apply(self.scalar_op,
                   [scalar.Scalar(dtype=input.type.dtype).make_variable()
@@ -144,17 +144,17 @@ class NaiveAlgo(object):
         print >> sio, "    }"
 
         #indent = " "*(4*d+7)
-        #for ipos, i in enumerate(node.inputs):
+        # for ipos, i in enumerate(node.inputs):
             #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
         print >> sio, "}"
 
-        #print sio.getvalue()
+        # print sio.getvalue()
         return sio.getvalue()
 
     def c_src_kernel_tiling(self, node, nodename):
         """ The kernel applies to problems with <= 5 dimensions """
 
-        #The kernel is intended to be structured roughly like this:
+        # The kernel is intended to be structured roughly like this:
         """
         static __global__ void kernel()
         {
@@ -180,7 +180,7 @@ class NaiveAlgo(object):
 
         nd = node.outputs[0].type.ndim
         sio = StringIO()
-        #print 'C_SRC_KERNEL', sio.getvalue()
+        # print 'C_SRC_KERNEL', sio.getvalue()
 
         if nd in (4,):
             # print some leading comments to make the code easier to read
@@ -194,11 +194,11 @@ class NaiveAlgo(object):
                     'tiling%i'%nd)
             if (nd):
                 print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
-            #declare inputs
+            # declare inputs
             for ipos, i in enumerate(node.inputs):
                 s = ", ".join(["const float * i%i_data" % ipos] + list("int i%i_str_%i" % (ipos, d) for d in xrange(nd)))
                 print >> sio, "\t,", s
-            #declare outputs
+            # declare outputs
             for ipos, i in enumerate(node.outputs):
                 s = ", ".join(["float * o%i_data" % ipos] + list("int o%i_str_%i" % (ipos, d) for d in xrange(nd)))
                 print >> sio, "\t,", s
@@ -250,7 +250,7 @@ class NaiveAlgo(object):
                     print >> sio, "        ii_o%i_data += pos%i * o%i_str_%i;" % (ipos, d, ipos, d)
 
             # perform the scalar operation on the input and output references
-            #TODO: What if the scalar_op needs support_code??
+            # TODO: What if the scalar_op needs support_code??
             task_code = self.scalar_op.c_code(
                     Apply(self.scalar_op,
                         [scalar.Scalar(dtype = input.type.dtype).make_variable()
@@ -265,11 +265,11 @@ class NaiveAlgo(object):
 
             print >> sio, "    }" * nd
 
-            #TODO: insert runtime stride checks that select the best loop order either here, or in
+            # TODO: insert runtime stride checks that select the best loop order either here, or in
             # the host code that launched the  kernel (host code probably better spot)
 
             #indent = " "*(4*d+7)
-            #for ipos, i in enumerate(node.inputs):
+            # for ipos, i in enumerate(node.inputs):
                 #print >> sio, indent, "const float * i%i" % ipos, '= i%i_data', ''
             print >> sio, "}"
 
@@ -298,11 +298,11 @@ class NaiveAlgo(object):
                 'tiling%i_less_registers'%nd)
         if (nd):
             print >> sio, "\t,", ", ".join("const int dim%i" % i for i in xrange(nd))
-        #declare inputs
+        # declare inputs
         for ipos, i in enumerate(node.inputs):
             s = ", ".join(["const float * i%i_data_0" % ipos] + list("int i%i_str_%i" % (ipos, d) for d in xrange(nd)))
             print >> sio, "\t,", s
-        #declare outputs
+        # declare outputs
         for ipos, i in enumerate(node.outputs):
             s = ", ".join(["float * o%i_data_0" % ipos] + list("int o%i_str_%i" % (ipos, d) for d in xrange(nd)))
             print >> sio, "\t,", s
@@ -435,17 +435,17 @@ class NaiveAlgo(object):
 
     def c_src_kernel_Ccontiguous(self, node, nodename):
         sio = StringIO()
-        #print 'C_SRC_KERNEL', sio.getvalue()
+        # print 'C_SRC_KERNEL', sio.getvalue()
 
         for ipos, i in enumerate(node.inputs):
             print >> sio, "//    Input  ", ipos, str(i.type)
         for ipos, i in enumerate(node.outputs):
             print >> sio, "//    Output ", ipos, str(i.type)
         print >> sio, "static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" %(self.scalar_op.__class__.__name__, nodename)
-        #declare inputs
+        # declare inputs
         for ipos, i in enumerate(node.inputs):
             print >> sio, "\t,", "const float * i%i_data" % ipos
-        #declare outputs
+        # declare outputs
         for ipos, i in enumerate(node.outputs):
             print >> sio, "\t,", "float * o%i_data" % ipos
         print >> sio, "\t)\n{"
@@ -459,10 +459,10 @@ class NaiveAlgo(object):
                 print >> sio, "    const float ii_i%i_value = i%i_data[0];" % (ipos, ipos)
 
 
-        #loop over the elements to be treated by this kernel call
+        # loop over the elements to be treated by this kernel call
         print >> sio, "    for (int i = idx; i < numEls; i += numThreads) {"
         # perform the scalar operation on the input and output references
-        #TODO: What if the scalar_op needs support_code??
+        # TODO: What if the scalar_op needs support_code??
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
                     [scalar.Scalar(dtype = input.type.dtype).make_variable()
@@ -478,7 +478,7 @@ class NaiveAlgo(object):
         print >> sio, "    }"
         print >> sio, "}"
 
-        #print sio.getvalue()
+        # print sio.getvalue()
         return sio.getvalue()
 
     def c_src_callkernel(self, node, nodename):
@@ -499,19 +499,19 @@ class NaiveAlgo(object):
         # The thrid is to make a special case for scalar element. We allow the collapsing of them.
         # In the ccontiguous and not contiguous case, we use registers to lower the number of memory access.
 
-        #TODO: make a special case for broadcasting, to store the data in shared memory.
+        # TODO: make a special case for broadcasting, to store the data in shared memory.
 
         nd = node.outputs[0].type.ndim
         nb_inputs = len(node.inputs)
         nb_outputs = len(node.outputs)
         d = dict()
-        #input_params and output_params go into the function declaration/definition
+        # input_params and output_params go into the function declaration/definition
         input_params = ", ".join("const float * i%i_data, const int * i%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.inputs)))
         output_params = ", ".join("float * o%i_data, const int * o%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.outputs)))
 
-        #input_args and output_args go into the recursive call.
+        # input_args and output_args go into the recursive call.
         input_args = ", ".join("i%i_data, i%i_str"%(ipos, ipos)
                 for ipos in xrange(len(node.inputs)))
         output_args = ", ".join("o%i_data, o%i_str"%(ipos, ipos)
@@ -713,7 +713,7 @@ nd_collapse_[i]=0;
         }
         """%locals()
 
-    #update the new number of dim
+    # update the new number of dim
         print >> sio, """
         for(int i=1, end=nd_collapse;i<end;i++){
           if(nd_collapse_[i]==1)nd_collapse--;
@@ -800,7 +800,7 @@ nd_collapse_[i]=0;
                     std::cerr << "   Running general version with %(force_nd)s  dims\\n";
                     """%locals()
                 print >> sio, "std::cerr << "+ ' << " " << '.join(kernel_call_args)+' << "\\n";'
-                #std::cerr << numEls << dims[0] << i0_data, i0_str[0] << o0_data, o0_str[0]\n;
+                # std::cerr << numEls << dims[0] << i0_data, i0_str[0] << o0_data, o0_str[0]\n;
 
             kernel_call_args = ", ".join(kernel_call_args)
 
@@ -848,7 +848,7 @@ nd_collapse_[i]=0;
         print >> sio, "return -2;"  # should not get to this point
         print >> sio, "}"#end fct
 
-        #N.B. cudaGetLastError is called by c_code
+        # N.B. cudaGetLastError is called by c_code
         return sio.getvalue()
 
     def c_support_code_apply(self, node, nodename):
@@ -890,7 +890,7 @@ nd_collapse_[i]=0;
             int *dims = NULL;
             """
 
-        #check that all inputs have valid dimensions
+        # check that all inputs have valid dimensions
         emitted_inames = {}
         for id, iname in enumerate(inputs):
             if iname in emitted_inames:
@@ -912,7 +912,7 @@ nd_collapse_[i]=0;
                 """ % locals()
             emitted_inames[iname] = node.inputs[id]
 
-        #check that all inputs have valid dimensions
+        # check that all inputs have valid dimensions
         emitted_inames = {}
         for id, iname in enumerate(inputs):
             if iname in emitted_inames:
@@ -947,7 +947,7 @@ nd_collapse_[i]=0;
             """ % locals()
             emitted_inames[iname] = True
 
-        #check that all outputs have valid dimensions
+        # check that all outputs have valid dimensions
         for idx, oname in enumerate(outputs):
             if idx not in self.inplace_pattern.keys():
                 print >> sio, """
@@ -1043,7 +1043,7 @@ nd_collapse_[i]=0;
         }
         //std::cerr << "C_CODE %(opname)s END\\n";
         """ % locals()
-        #print sio.getvalue()
+        # print sio.getvalue()
         return sio.getvalue()
 
 

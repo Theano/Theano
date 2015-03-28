@@ -76,7 +76,7 @@ __global__ void multiply_them(float *dest, float *a, float *b)
 
 
 def test_pycuda_memory_to_theano():
-    #Test that we can use the GpuArray memory space in pycuda in a CudaNdarray
+    # Test that we can use the GpuArray memory space in pycuda in a CudaNdarray
     y = pycuda.gpuarray.zeros((3, 4, 5), 'float32')
     print sys.getrefcount(y)
     # This increase the ref count with never pycuda. Do pycuda also

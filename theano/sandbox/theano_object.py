@@ -76,7 +76,7 @@ class symbolic_fn(object):
 
     def __set__(self, o_self, new_val):
         pass
-        #return NotImplemented
+        # return NotImplemented
 
 def symbolic_fn_opts(**kwargs):
     """Return a decorator for symbolic_functions in a `TheanoObject`

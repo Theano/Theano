@@ -66,7 +66,7 @@ except ImportError:
     pass
 
 
-#optdb.print_summary()  # shows what is currently registered
+# optdb.print_summary()  # shows what is currently registered
 
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
@@ -86,13 +86,13 @@ optdb.register('gpu_after_fusion',
                optdb.__position__.get('elemwise_fusion', 49) + .1,
                'gpu')
 
-## Register merge_optimizer as a global opt
+# Register merge_optimizer as a global opt
 gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer,
                        'fast_run', 'fast_compile')
 
 
-#register local_track_shape_i at this level too
-#to make multi-level lift of shape work.
+# register local_track_shape_i at this level too
+# to make multi-level lift of shape work.
 register_opt()(theano.tensor.opt.local_track_shape_i)
 register_opt(name='gpu_constant_folding')(
     tensor.opt.constant_folding)
@@ -153,8 +153,8 @@ class InputToGpuOptimizer(Optimizer):
                     fgraph.replace_validate(input, new_input,
                                             "InputToGpuOptimizer")
             except TypeError:
-                #as we currently only support float32, this can fail.
-                #Using try except make that we won't need
+                # as we currently only support float32, this can fail.
+                # Using try except make that we won't need
                 pass
 
 # we register it before all other gpu optimizer to be sure that the input
@@ -178,8 +178,8 @@ gpu_cut_copies.register('cut_gpu_host_transfers', local_cut_gpu_host_gpu,
 gpu_cut_copies.register('cut_gpu_constant_transfers',
                         tensor.opt.constant_folding,
                         'fast_run', 'fast_compile', 'gpu')
-#register it into canonicalize to allow other optimization to work without
-#botering with this useless pattern.
+# register it into canonicalize to allow other optimization to work without
+# botering with this useless pattern.
 optdb['canonicalize'].register('local_cut_gpu_host_gpu',
                                local_cut_gpu_host_gpu,
                                'fast_run', 'fast_compile', 'gpu')
@@ -244,7 +244,7 @@ def local_gpu_elemwise_0(node):
                                   'uint16'])
                 # case 1 - all inputs are already float32
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
-                    #TODO: change this when fusion makes Elemwise with multiple
+                    # TODO: change this when fusion makes Elemwise with multiple
                     # outputs
                     gpu_elemwise = new_op(*(gpu_from_host(i)
                                             for i in node.inputs))
@@ -1258,8 +1258,8 @@ def local_gpu_conv(node):
 
         if op.kshp_logical is not None and op.kshp_logical != op.kshp:
             return None
-        #print op.kshp, op.imshp[1:3]
-        #print op.kshp_logical, logical_img_hw
+        # print op.kshp, op.imshp[1:3]
+        # print op.kshp_logical, logical_img_hw
         ret = GpuConv(border_mode=op.out_mode,
                     subsample=(op.dx, op.dy),
                     logical_img_hw=logical_img_hw,
@@ -1278,7 +1278,7 @@ def local_gpu_conv(node):
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
                 # this case is not implemented
-                #return None
+                # return None
                 rstride = int(numpy.ceil(op.imshp_logical[1] /
                                          float(op.imshp[1])))
                 cstride = int(numpy.ceil(op.imshp_logical[2] /
@@ -1296,7 +1296,7 @@ def local_gpu_conv(node):
         return ret
 
     if isinstance(node.op, GpuFromHost):
-        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
+        # gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, conv.ConvOp):
             gpu_conv = GpuConvOp_from_ConvOp(host_input.owner.op)
@@ -1313,7 +1313,7 @@ def local_gpu_conv(node):
             return [out]
 
     if isinstance(node.op, conv.ConvOp):
-        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+        # conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         img, kern = node.inputs
         img_on_gpu = (img.owner and isinstance(img.owner.op, HostFromGpu))
         kern_on_gpu = (kern.owner and isinstance(kern.owner.op, HostFromGpu))
@@ -1717,11 +1717,11 @@ def local_gpu_join(node):
 
         axis_and_tensors = node.inputs
 
-        #print "OPT: axis_and_tensors=", axis_and_tensors
+        # print "OPT: axis_and_tensors=", axis_and_tensors
 
         matches = [(not t.owner is None and isinstance(t.owner.op, HostFromGpu)) or
                    isinstance(t, gof.Constant) for t in axis_and_tensors[1:]]
-        #print "OPT: matches =", matches
+        # print "OPT: matches =", matches
 
         # if all input tensors are host_from_gpu'ified
         if all(matches):
@@ -1869,13 +1869,13 @@ def split_huge_add_or_mul(node):
             node = node.op(*inner_op).owner
     return node
 
-#GpuElemwise fusion
+# GpuElemwise fusion
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
         GpuElemwise,
         max_inputs_to_GpuElemwise)
 if config.gpu.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion of gpu elemwise in fast_run")
-    #Must be after cpu fusion at 40, gpu at 48.5 and before AddDestroyHandler at 49.5
+    # Must be after cpu fusion at 40, gpu at 48.5 and before AddDestroyHandler at 49.5
     optdb.register('gpu_elemwise_fusion',
                    tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
                    49, 'fast_run', 'fusion',
@@ -1887,7 +1887,7 @@ else:
                    tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
                    71.00, 'fusion', 'local_elemwise_fusion')
 
-#GpuElemwise inplace
+# GpuElemwise inplace
 gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
         GpuElemwise)
 # DO NOT PLACE add a 'gpu' tag here! This would enable it in fast_compile.
@@ -1946,7 +1946,7 @@ def local_gpualloc(node):
                                     new_out.type.broadcastable):
                 assert b_new or (not b_old)
             new_out = tensor.patternbroadcast(new_out, old_out.broadcastable)
-        #if old_out.type != new_out.type:
+        # if old_out.type != new_out.type:
             #import pdb; pdb.set_trace()
         return [new_out]
 
@@ -2103,7 +2103,7 @@ def gpuScanOptimization(node):
     gpu_from_host(scan) -> GPUscan(gpu_from_host)
     """
 
-    #gpu_from_host(scan) -> GPUscan(gpu_from_host)
+    # gpu_from_host(scan) -> GPUscan(gpu_from_host)
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if (host_input.owner and
@@ -2160,7 +2160,7 @@ def gpuScanOptimization(node):
             _outputs = nw_op.outputs
             return _outputs
 
-    #scan(host_from_gpu) -> host_from_gpu(GPUscan)
+    # scan(host_from_gpu) -> host_from_gpu(GPUscan)
     if (type(node.op) == scan_op.Scan
         and not node.op.info['gpu']):
         if any([(i.owner and isinstance(i.owner.op, HostFromGpu))

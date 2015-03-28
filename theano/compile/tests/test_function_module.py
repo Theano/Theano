@@ -140,7 +140,7 @@ class T_function(unittest.TestCase):
         a = T.scalar() # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
-        #x's name is ignored because it is followed by anonymous parameter a.
+        # x's name is ignored because it is followed by anonymous parameter a.
         # Ignore unused input x, as it hides the other error
         f = function([x, a, s], a/s, on_unused_input='ignore')
         self.assertTrue(f(9, 1, 2) == 0.5)
@@ -153,7 +153,7 @@ class T_function(unittest.TestCase):
         a = T.scalar() # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
 
-        #x's name is not ignored (as in test_naming_rule2) because a has a default value.
+        # x's name is not ignored (as in test_naming_rule2) because a has a default value.
         f = function([x, In(a, value=1.0), s], a/s+x)
         self.assertTrue(f(9, 2, 4) == 9.5) #can specify all args in order
         self.assertTrue(f(9, 2, s=4) == 9.5) # can give s as kwarg
@@ -200,7 +200,7 @@ class T_function(unittest.TestCase):
 
     def test_same_names(self):
         a, x, s = T.scalars('xxx')
-        #implicit names would cause error.  What do we do?
+        # implicit names would cause error.  What do we do?
         f = function([a, x, s], a+x+s)
         self.assertTrue(f(1, 2, 3) == 6)
         checkfor(self, lambda: f(1, 2, x=3), TypeError)
@@ -223,7 +223,7 @@ class T_function(unittest.TestCase):
         f = function([x, In(a, value=1.0, name='a'), In(s, value=0.0, update=s+a*x, mutable=True)], s+a*x)
 
         g = copy.copy(f)
-        #if they both return, assume  that they return equivalent things.
+        # if they both return, assume  that they return equivalent things.
 
         self.assertFalse(g.container[x].storage is f.container[x].storage)
         self.assertFalse(g.container[a].storage is f.container[a].storage)
@@ -307,7 +307,7 @@ class T_function(unittest.TestCase):
     def test_constant_output(self):
         # Test that if the output is a constant, we respect the theano memory interface
         f = theano.function([], theano.tensor.constant([4]))
-        #print f.maker.fgraph.toposort()
+        # print f.maker.fgraph.toposort()
         out = f()
         assert (out==4).all()
         out[0]=3
@@ -318,7 +318,7 @@ class T_function(unittest.TestCase):
 
         # Test that if the output is a constant and borrow, we respect the theano memory interface
         f = theano.function([], Out(theano.tensor.constant([4]), borrow=True))
-        #print f.maker.fgraph.toposort()
+        # print f.maker.fgraph.toposort()
         out = f()
         assert (out==4).all()
         out[0]=3
@@ -435,9 +435,9 @@ class T_picklefunction(unittest.TestCase):
                 return
             else:
                 raise
-        #if they both return, assume  that they return equivalent things.
-        #print [(k,id(k)) for k in f.finder.keys()]
-        #print [(k,id(k)) for k in g.finder.keys()]
+        # if they both return, assume  that they return equivalent things.
+        # print [(k,id(k)) for k in f.finder.keys()]
+        # print [(k,id(k)) for k in g.finder.keys()]
 
         self.assertFalse(g.container[0].storage is f.container[0].storage)
         self.assertFalse(g.container[1].storage is f.container[1].storage)
@@ -445,8 +445,8 @@ class T_picklefunction(unittest.TestCase):
         self.assertFalse(x in g.container)
         self.assertFalse(x in g.value)
         self.assertTrue(len(f.defaults) == len(g.defaults))
-        #print 'f.defaults = %s' % (f.defaults, )
-        #print 'g.defaults = %s' % (g.defaults, )
+        # print 'f.defaults = %s' % (f.defaults, )
+        # print 'g.defaults = %s' % (g.defaults, )
         self.assertTrue(all([f_req == g_req and f_feed == g_feed and
             f_val == g_val
             for ((f_req, f_feed, f_val), (g_req, g_feed, g_val)) in zip(
@@ -503,9 +503,9 @@ class T_picklefunction(unittest.TestCase):
                 return
             else:
                 raise
-        #if they both return, assume  that they return equivalent things.
-        #print [(k,id(k)) for k in f.finder.keys()]
-        #print [(k,id(k)) for k in g.finder.keys()]
+        # if they both return, assume  that they return equivalent things.
+        # print [(k,id(k)) for k in f.finder.keys()]
+        # print [(k,id(k)) for k in g.finder.keys()]
 
         self.assertFalse(g.container[0].storage is f.container[0].storage)
         self.assertFalse(g.container[1].storage is f.container[1].storage)
@@ -540,8 +540,8 @@ class T_picklefunction(unittest.TestCase):
                 config.linker = 'py'
                 config.optimizer = 'None'
                 g = cPickle.loads(str_f)
-                #print g.maker.mode
-                #print compile.mode.default_mode
+                # print g.maker.mode
+                # print compile.mode.default_mode
             except NotImplementedError, e:
                 if e[0].startswith('DebugMode is not pickl'):
                     g = 'ok'

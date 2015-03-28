@@ -55,7 +55,7 @@ class ScipyGer(Ger):
             for o in node_output_compute:
                 o[0] = True
 
-        #TODO: If this is currently an unofficial part of the thunk API,
+        # TODO: If this is currently an unofficial part of the thunk API,
         #      then maybe it should be documented and made official?
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage

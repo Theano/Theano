@@ -79,7 +79,7 @@ if 0:
                 runs = None
 
             def importer(node):
-                #print 'IMPORTING', node
+                # print 'IMPORTING', node
                 self.backtrack(node, tasks)
             def pruner(node):
                 try:

@@ -6,7 +6,7 @@ from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
 
 
-#TODO: speed up by reordering loops. Should pass through the videos once, incrementing all weight gradients, rather
+# TODO: speed up by reordering loops. Should pass through the videos once, incrementing all weight gradients, rather
 # than visiting each weight gradient element once and passing through whole video
 
 class ConvGrad3D(theano.Op):
@@ -54,7 +54,7 @@ class ConvGrad3D(theano.Op):
         V, d, WShape, dCdH = inputs
 #        print "ConvGradW3D python code"
 
-        #partial C / partial W[j,z,k,l,m] = sum_i sum_p sum_q sum_r (partial C /partial H[i,j,p,q,r] ) *  V[i,z,dr*p+k,dc*q+l,dt*r+m]
+        # partial C / partial W[j,z,k,l,m] = sum_i sum_p sum_q sum_r (partial C /partial H[i,j,p,q,r] ) *  V[i,z,dr*p+k,dc*q+l,dt*r+m]
 
         batchSize = dCdH.shape[0]
         outputFilters = dCdH.shape[4]
@@ -70,7 +70,7 @@ class ConvGrad3D(theano.Op):
 
         dCdW = N.zeros(WShape, dtype=V.dtype)
 
-        #print 'computing output of shape '+str(WShape)
+        # print 'computing output of shape '+str(WShape)
 
         for k in xrange(0, WShape[1]):
             for l in xrange(0, WShape[2]):

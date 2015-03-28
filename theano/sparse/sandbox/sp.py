@@ -6,7 +6,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 
 @todo: Automatic methods for determining best sparse format?
 """
-#### COPIED FROM hpu/icml09/sp.py
+# COPIED FROM hpu/icml09/sp.py
 
 import numpy
 import scipy
@@ -229,7 +229,7 @@ class ConvolutionIndices(Op):
         else:
             kmap = N.zeros(ntaps, dtype='int')
             k = 0
-            #print 'TEMPORARY BUGFIX: REMOVE !!!'
+            # print 'TEMPORARY BUGFIX: REMOVE !!!'
             for j in xrange(spmat.shape[1]):
                 for i_idx in xrange(spmat.indptr[j], spmat.indptr[j + 1]):
                     if spmat.data[i_idx] != 0:
