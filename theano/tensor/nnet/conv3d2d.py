@@ -4,7 +4,7 @@ from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply, TopoOptimizer
 from theano import tensor
 import theano.sandbox.cuda as cuda
-
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
 
 def get_diagonal_subtensor_view(x, i0, i1):
     """Helper function for DiagonalSubtensor and
@@ -161,8 +161,9 @@ inc_diagonal_subtensor = IncDiagonalSubtensor(False)
 
 def conv3d(signals, filters,
            signals_shape=None, filters_shape=None,
-           border_mode='valid'):
+           stride=None, border_mode='valid'):
     """Convolve spatio-temporal filters with a movie.
+    this version enables to perform spatial strided convolution using conv2d op
 
     It flips the filters.
 
@@ -172,6 +173,7 @@ def conv3d(signals, filters,
             shape: [Nf, Tf, C, Hf, Wf]
     :param signals_shape: None or a tuple/list with the shape of signals
     :param filters_shape: None or a tuple/list with the shape of filters
+    :param stride:None or 2d spatial stride (x,y) such as (2,2)
     :param border_mode: The only one tested is 'valid'.
 
     :note: Another way to define signals: (batch,  time, in channel, row, column)
@@ -197,6 +199,11 @@ def conv3d(signals, filters,
         _filters_shape_5d = filters.shape
     else:
         _filters_shape_5d = filters_shape
+		
+    if stride is None:
+        _stride = (1,1)
+    else:  
+        _stride= stride
 
     _signals_shape_4d = (
         _signals_shape_5d[0] * _signals_shape_5d[1],
@@ -219,13 +226,14 @@ def conv3d(signals, filters,
         conv2d_signal_shape = None
     if filters_shape is None:
         conv2d_filter_shape = None
-
+    assert len(_stride) == 2
     out_4d = tensor.nnet.conv2d(
         signals.reshape(_signals_shape_4d),
         filters.reshape(_filters_shape_4d),
         image_shape=conv2d_signal_shape,
         filter_shape=conv2d_filter_shape,
-        border_mode = border_mode[1])  # ignoring border_mode[2]
+        border_mode = border_mode[1],
+        subsample=_stride)  # ignoring border_mode[2]
 
     # reshape the output to restore its original size
     # shape = Ns, Ts, Nf, Tf, W-Wf+1, H-Hf+1
@@ -235,8 +243,8 @@ def conv3d(signals, filters,
             _signals_shape_5d[1],  # Ts
             _filters_shape_5d[0],  # Nf
             _filters_shape_5d[1],  # Tf
-            _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
-            _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
+            (theano.tensor.cast(((_signals_shape_5d[3] - _filters_shape_5d[3])/float(_stride[0])),'int64') + 1),
+            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[1])),'int64') + 1),
             ))
     elif border_mode[1] == 'full':
         out_tmp = out_4d.reshape((
@@ -262,6 +270,113 @@ def conv3d(signals, filters,
         raise ValueError('invalid border mode', border_mode[1])
     return out_5d
 
+def corr3d(signals, filters,
+           signals_shape=None, filters_shape=None,
+           stride=None,border_mode='valid'):
+    """correlation spatio-temporal filters with a movie.
+     This correlation op is so similar to conv3d2d with slight
+     difference that perform correlation instead of convolution
+     through GpuCorrMM op. in order to do the convolution you just
+     need to flip the filter. corr3d also enables spatial strided 
+     correlation.   	
+
+    It flips the filters.
+
+    :param signals: timeseries of images whose pixels have color channels.
+            shape: [Ns, Ts, C, Hs, Ws]
+    :param filters: spatio-temporal filters
+            shape: [Nf, Tf, C, Hf, Wf]
+    :param signals_shape: None or a tuple/list with the shape of signals
+    :param filters_shape: None or a tuple/list with the shape of filters
+    :param stride:None or 2d spatial stride (x,y) such as (2,2)
+    :param border_mode: The only one tested is 'valid'.
+
+    :note: Work on the GPU.
+           Another way to define signals: (batch,  time, in channel, row, column)
+           Another way to define filters: (out channel,time,in channel, row, column)
+
+    :see: Someone made a script that shows how to swap the axes between
+          both 3d convolution implementations in Theano. See the last
+          `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+
+    """
+
+    if isinstance(border_mode, str):
+        border_mode = (border_mode, border_mode, border_mode)
+
+    if signals_shape is None:
+        _signals_shape_5d = signals.shape
+    else:
+        _signals_shape_5d = signals_shape
+
+    if filters_shape is None:
+        _filters_shape_5d = filters.shape
+    else:
+        _filters_shape_5d = filters_shape
+		
+    if stride is None:
+        _stride =(1,1)
+    else:  
+        _stride = stride
+
+    _signals_shape_4d = (
+        _signals_shape_5d[0] * _signals_shape_5d[1],
+        _signals_shape_5d[2],
+        _signals_shape_5d[3],
+        _signals_shape_5d[4],
+        )
+    _filters_shape_4d = (
+        _filters_shape_5d[0] * _filters_shape_5d[1],
+        _filters_shape_5d[2],
+        _filters_shape_5d[3],
+        _filters_shape_5d[4],
+        )
+
+    if border_mode[1] != border_mode[2]:
+        raise NotImplementedError('height and width bordermodes must match')
+    conv2d_signal_shape = _signals_shape_4d
+    conv2d_filter_shape = _filters_shape_4d
+    if signals_shape is None:
+        conv2d_signal_shape = None
+    if filters_shape is None:
+        conv2d_filter_shape = None
+    assert len(_stride) == 2
+    # correlation
+    out_4d = cuda.blas.GpuCorrMM(border_mode= border_mode[1], subsample = _stride)(signals.reshape(_signals_shape_4d),filters.reshape(_filters_shape_4d)) # ignoring border_mode[2]
+    # reshape the output to restore its original size
+    # shape = Ns, Ts, Nf, Tf, W-Wf+1, H-Hf+1
+    if border_mode[1] == 'valid':
+        out_tmp = out_4d.reshape((
+            _signals_shape_5d[0],  # Ns
+            _signals_shape_5d[1],  # Ts
+            _filters_shape_5d[0],  # Nf
+            _filters_shape_5d[1],  # Tf
+            (theano.tensor.cast(((_signals_shape_5d[3] - _filters_shape_5d[3])/float(_stride[0])),'int64') + 1),
+            (theano.tensor.cast(((_signals_shape_5d[4] - _filters_shape_5d[4])/float(_stride[1])), 'int64') + 1),
+            ))
+    elif border_mode[1] == 'full':
+        out_tmp = out_4d.reshape((
+            _signals_shape_5d[0],  # Ns
+            _signals_shape_5d[1],  # Ts
+            _filters_shape_5d[0],  # Nf
+            _filters_shape_5d[1],  # Tf
+            _signals_shape_5d[3] + _filters_shape_5d[3] - 1,
+            _signals_shape_5d[4] + _filters_shape_5d[4] - 1,
+            ))
+    elif border_mode[1] == 'same':
+        raise NotImplementedError()
+    else:
+        raise ValueError('invalid border mode', border_mode[1])
+
+    # now sum out along the Tf to get the output
+    # but we have to sum on a diagonal through the Tf and Ts submatrix.
+    if border_mode[0] == 'valid':
+        out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
+    elif border_mode[0] in ('full', 'same'):
+        raise NotImplementedError('sequence border mode', border_mode[0])
+    else:
+        raise ValueError('invalid border mode', border_mode[1])
+    return out_5d	
 
 def make_gpu_optimizer(op, to_gpu):
     """This function create optimizer that move some inputs to the GPU
