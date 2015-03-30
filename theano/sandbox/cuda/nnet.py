@@ -2,12 +2,11 @@ import theano
 from theano import Op, Apply
 from theano import tensor as T
 from theano.compat.six import StringIO
-from theano.sandbox.cuda.blocksparse import sparse_block_dot_SS
 from theano.tensor.nnet import softmax
 
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-
+from theano.sandbox.cuda.blocksparse import sparse_block_dot_SS
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
                                                 inline_softmax_fixed_shared)
