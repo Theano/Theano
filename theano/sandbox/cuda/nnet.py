@@ -783,8 +783,11 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
 
     """
 
-    if theano.config.device != 'gpu':
-        raise Exception('The multiclass softmax only works on gpu.')
+    W1 = as_cuda_ndarray_variable(W1)
+    b1 = as_cuda_ndarray_variable(b1)
+    W2 = as_cuda_ndarray_variable(W2)
+    b2 = as_cuda_ndarray_variable(b2)
+    x = as_cuda_ndarray_variable(x)
 
     batch_size = x.shape[0]
 
