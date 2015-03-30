@@ -1600,22 +1600,12 @@ def _sum_grad_over_bcasted_dims(x, gx):
 
 class AdvancedSubtensor1(Op):
     """Implement x[ilist] where ilist is a vector of integers."""
+    # sparse_grad doesn't go in here since it only affects the output
+    # of the grad() method.
+    __props__ = ()
 
     def __init__(self, sparse_grad=False):
         self.sparse_grad = sparse_grad
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        # Don't check the sparse_grad attribute as
-        # This don't change the output of this op
-        # So we want the merge optimier to merge two op
-        # that differ from there sparse_grad attribute.
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, x, ilist):
         x_ = theano.tensor.as_tensor_variable(x)
@@ -1794,19 +1784,13 @@ advanced_subtensor1 = AdvancedSubtensor1()
 
 class AdvancedIncSubtensor1(Op):
     """Increments a subtensor using advanced slicing (list of index)"""
+    __props__ = ('inplace', 'set_instead_of_inc')
+
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
         self.set_instead_of_inc = set_instead_of_inc
         if inplace:
             self.destroy_map = {0: [0]}
-
-    def __hash__(self):
-        return hash((type(self), self.inplace, self.set_instead_of_inc))
-
-    def __eq__(self, other):
-        return (type(self) == type(other)
-                and self.inplace == other.inplace
-                and self.set_instead_of_inc == other.set_instead_of_inc)
 
     def clone_inplace(self):
         return self.__class__(
