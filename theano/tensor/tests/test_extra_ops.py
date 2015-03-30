@@ -139,9 +139,11 @@ class TestBinCountOp(utt.InferShapeTester):
                 f4 = theano.function([x], bincount(x, minlength=5))
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
-                a[0] = -1
-                f5 = theano.function([x], bincount(x, assert_nonneg=True))
-                self.assertRaises(AssertionError, f5, a)
+                # skip the following test when using unsigned ints
+                if not dtype.startswith('u'):
+                    a[0] = -1
+                    f5 = theano.function([x], bincount(x, assert_nonneg=True))
+                    self.assertRaises(AssertionError, f5, a)
 
     def test_bincountOp(self):
         w = T.vector('w')
