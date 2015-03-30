@@ -14,7 +14,6 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      to_one_hot)
 from theano import tensor as T
 from theano import config, tensor, function
-from nose.tools import assert_raises
 
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
