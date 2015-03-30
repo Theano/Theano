@@ -1,4 +1,4 @@
-import unittest, os
+import unittest, os, time
 import numpy
 import cPickle
 from theano.compat.python2x import DictMixin, OrderedDict
@@ -6,10 +6,8 @@ floatX = 'float32'
 import theano
 import theano.tensor as T
 
-
-
 def test_graph_opt_caching():
-    opt_db_file = theano.config.compiledir+'/optimized_graphs.pkl'
+    opt_db_file = theano.config.compiledir+'/*.pkl'
     os.system('rm %s'%opt_db_file)
     
     mode = theano.config.mode
@@ -24,7 +22,10 @@ def test_graph_opt_caching():
         d = theano.shared(numpy.ones((10, 10), dtype=floatX))
         e = T.sum(T.sum(T.sum(a ** 2 + b) + c) + d)
         f1 = theano.function([a, b], e, mode=mode)
+        time.sleep(5)
 
+        print
+        
         m = T.fmatrix('x1')
         n = T.fmatrix('x2')
         p = theano.shared(numpy.ones((10, 10), dtype=floatX))

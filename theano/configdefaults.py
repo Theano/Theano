@@ -580,4 +580,4 @@ AddConfigVar('cache_optimizations',
              "any optimized graph and its optimization. Actually slow downs a lot "
              "the first optimization, and could possibly still contains some bugs. "
              "Use at your own risks.",
-             BoolParam(False))
+             BoolParam(True))
