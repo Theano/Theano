@@ -572,7 +572,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
         valid_shape[2] = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
         valid_shape[3] = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
         output_4d = output_2d.reshape(valid_shape)
-        #padding the borders with zeros
+        # padding the borders with zeros
         for d in [2, 3]:
             pad_shape = list(output_4d.shape)
             pad_shape[d] = original_shape[d] - valid_shape[d]

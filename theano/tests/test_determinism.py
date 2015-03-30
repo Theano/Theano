@@ -11,6 +11,7 @@ from theano import config
 from theano import shared
 from theano.compat.six import StringIO
 
+
 def sharedX(x, name=None):
     x = np.cast[config.floatX](x)
     return shared(x, name)

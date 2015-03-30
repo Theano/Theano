@@ -46,7 +46,7 @@ class OrderedUpdates(OrderedDict):
     def __setitem__(self, key, value):
         if isinstance(key, SharedVariable):
 
-            #TODO: consider doing error-checking on value.
+            # TODO: consider doing error-checking on value.
             # insist that it is a Theano variable? Have the right type?
             # This could have weird consequences - for example a
             # GPU SharedVariable is customarily associated with a TensorType

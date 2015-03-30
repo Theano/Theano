@@ -158,7 +158,7 @@ class RecordMode(Mode):
         self.record = record
         self.known_fgraphs = set([])
 
-    def __init__(self, record = None, **kwargs):
+    def __init__(self, record=None, **kwargs):
         """
         Takes either a Record object or the keyword arguments to make one.
 

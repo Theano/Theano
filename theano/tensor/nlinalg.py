@@ -88,7 +88,7 @@ class MatrixInverse(Op):
         x, = inputs
         xi = self(x)
         gz, = g_outputs
-        #TT.dot(gz.T,xi)
+        # TT.dot(gz.T,xi)
         return [-matrix_dot(xi, gz.T, xi).T]
 
     def R_op(self, inputs, eval_points):
@@ -225,7 +225,7 @@ class ExtractDiag(Op):
         return [(shp,)]
 
 extract_diag = ExtractDiag()
-#TODO: optimization to insert ExtractDiag with view=True
+# TODO: optimization to insert ExtractDiag with view=True
 
 
 def diag(x):
@@ -558,7 +558,7 @@ def qr(a, mode="full"):
       The upper-triangular matrix.
     """
     x = [[2, 1], [3, 4]]
-    if isinstance(numpy.linalg.qr(x,mode), tuple):
+    if isinstance(numpy.linalg.qr(x, mode), tuple):
         return QRFull(mode)(a)
     else:
         return QRIncomplete(mode)(a)
@@ -665,7 +665,7 @@ def matrix_power(M, n):
     return result
 
 
-def norm(x,ord):
+def norm(x, ord):
     x = as_tensor_variable(x)
     ndim = x.ndim
     if ndim == 0:
@@ -695,7 +695,7 @@ def norm(x,ord):
         elif ord == 1:
             return tensor.max(tensor.sum(abs(x), 0))
         elif ord == -1:
-            return tensor.min(tensor.sum(abs(x),0))
+            return tensor.min(tensor.sum(abs(x), 0))
         else:
             raise ValueError(0)
     elif ndim > 2:

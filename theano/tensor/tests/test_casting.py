@@ -55,7 +55,7 @@ class test_casting(unittest.TestCase):
         vec128 = TensorType('complex128', (False, ))()
 
         f = function([vec64], basic._convert_to_complex128(vec64))
-        #we need to compare with the same type.
+        # we need to compare with the same type.
         assert vec64.type.values_eq_approx(val128, f(val64))
 
         f = function([vec128], basic._convert_to_complex128(vec128))

@@ -1,4 +1,4 @@
-## PENDING REWRITE OF tensor_opt.py
+# PENDING REWRITE OF tensor_opt.py
 
 import copy
 import logging
@@ -167,24 +167,24 @@ class test_greedy_distribute(unittest.TestCase):
     def test_main(self):
         a, b, c, d, x, y, z = matrices('abcdxyz')
 
-        #1. ((a/x + b/y) * x * y) --> a*y + b*x
+        # 1. ((a/x + b/y) * x * y) --> a*y + b*x
         e = (a / z + b / x) * x * z
         g = FunctionGraph([a, b, c, d, x, y, z], [e])
-        #print pprint(g.outputs[0])
+        # print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor),
                           order='out_to_in').optimize(g)
-        #print pprint(g.outputs[0])
+        # print pprint(g.outputs[0])
         assert str(pprint(g.outputs[0])) == "((a * x) + (b * z))"
 
-        #2. ((a/x + b) * x) --> a + b*x
+        # 2. ((a/x + b) * x) --> a + b*x
         e = (a / x + b) * x
         g = FunctionGraph([a, b, x], [e])
-        #print pprint(g.outputs[0])
+        # print pprint(g.outputs[0])
         mul_canonizer.optimize(g)
         gof.TopoOptimizer(gof.LocalOptGroup(local_greedy_distributor),
                           order='out_to_in').optimize(g)
-        #print pprint(g.outputs[0])
+        # print pprint(g.outputs[0])
         assert str(pprint(g.outputs[0])) == "(a + (b * x))"
 
     def test_kording_bug(self):
@@ -252,13 +252,11 @@ class test_canonize(unittest.TestCase):
         fxv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
-        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                              'float32').reshape(1, shp[0])
+        fvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float32').reshape(1, shp[0])
         dxv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
-        dvv = theano._asarray(numpy.random.rand(shp[0]), dtype=
-                              'float64').reshape(1, shp[0])
+        dvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float64').reshape(1, shp[0])
         cases = [
             (fx + fy, (fx, fy), (fxv, fyv), 1, 'float32'),
             (fx * fy, (fx, fy), (fxv, fyv), 1, 'float32'),
@@ -270,7 +268,7 @@ class test_canonize(unittest.TestCase):
 #            (dx*dy*(dx+dy+dz),(dx,dy,dz),(dxv,dyv,dzv),2,'float64'),
 #            (fx*fy*(fx+fy+dz),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type add
 #            (dz*fy*(fx+fy),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type mul
-            #check with dimshuffle of constant
+            # check with dimshuffle of constant
             (fx + fy + fz + 2, (fx, fy, fz), (fxv, fyv, fzv), 1, {'custom':
                  'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (fx * fy * fz * 2, (fx, fy, fz), (fxv, fyv, fzv), 1, {'custom':
@@ -286,7 +284,7 @@ class test_canonize(unittest.TestCase):
             (fx * fy * 2 * (fx + fy + fz+2), (fx, fy, fz), (fxv, fyv, fzv), 2, {
                 'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
-            #check with broadcast of row
+            # check with broadcast of row
 #            (fx+fy+fz+fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
 #            (fx*fy*fz*fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
 #            (fv+fx+fy+fz,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
@@ -304,7 +302,7 @@ class test_canonize(unittest.TestCase):
             ]  # [10:11]
 #        print cases
 
-        #We must be sure that the Canonizer is working, but that we don't have other
+        # We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode = compile.mode.get_default_mode()
         old_optimizer = mode._optimizer
@@ -316,7 +314,7 @@ class test_canonize(unittest.TestCase):
                 if isinstance(out_dtype, dict):
                     out_dtype = out_dtype[config.cast_policy]
                 f = compile.function(list(sym_inputs), g,
-                                     #we need the optimisation enabled, debug do this.
+                                     # we need the optimisation enabled, debug do this.
                                      mode=mode)
 
                 out = f(*val_inputs)
@@ -362,7 +360,7 @@ class test_canonize(unittest.TestCase):
                 'float64'),  # check mixed type add
             (dz * fy * (fx + fy), (fx, fy, dz), (dxv, dyv, dzv), 2,
                 'float64'),  # check mixed type mul
-            #check with dimshuffle of constant
+            # check with dimshuffle of constant
             (fx + fy + fz + 2, (fx, fy, fz), (fxv, fyv, fzv), 1, 'float32'),
             (fx * fy * fz * 2, (fx, fy, fz), (fxv, fyv, fzv), 1, 'float32'),
             (2 + fx + fy + fz, (fx, fy, fz), (fxv, fyv, fzv), 1, 'float32'),
@@ -377,7 +375,7 @@ class test_canonize(unittest.TestCase):
             (fx*fy*2*(fx+fy+fz+2), (fx, fy, fz), (fxv, fyv,
                  fzv), 2, 'float32'),
 
-            #check with broadcast of row
+            # check with broadcast of row
             (fx+fy+fz+fv, (fx, fy, fz, fv), (fxv, fyv, fzv,
                  fvv), 1, 'float32'),
             (fx*fy*fz*fv, (fx, fy, fz, fv), (fxv, fyv, fzv,
@@ -410,14 +408,14 @@ class test_canonize(unittest.TestCase):
             ]  # [10:11]
 #        print cases
 
-        #We must be sure that the Canonizer is working, but that we don't have other
+        # We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode = compile.mode.get_default_mode()
         mode._optimizer = gof.Query(["canonicalize"])
         mode._optimizer = mode._optimizer.excluding('local_elemwise_fusion')
         for id, [g, sym_inputs, val_inputs, nb_elemwise, out_dtype] in enumerate(cases):
             f = compile.function(list(sym_inputs), g,
-                                 #we need the optimisation enabled, debug do this.
+                                 # we need the optimisation enabled, debug do this.
                                  mode=mode)
 
             out = f(*val_inputs)
@@ -455,7 +453,7 @@ class test_canonize(unittest.TestCase):
         dwv = theano._asarray(numpy.random.rand(*shp), dtype='float64')
         dvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float64').reshape(1, shp[0])
 
-        #We must be sure that the Canonizer is working, but that we don't have other
+        # We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode = compile.mode.get_default_mode()
         old_optimizer = mode._optimizer
@@ -465,11 +463,11 @@ class test_canonize(unittest.TestCase):
             mode._optimizer = mode._optimizer.excluding(
                 'local_elemwise_fusion')
 
-            #test x / x -> 1
-            for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx,[fx],[fxv],'float32'),
-                                                           (dx/dx,[dx],[dxv],'float64'),
-                                                           (fv/fv,[fv],[fvv],'float32'),
-                                                           (dv/dv,[dv],[dvv],'float64'),
+            # test x / x -> 1
+            for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([(fx/fx, [fx], [fxv], 'float32'),
+                                                           (dx/dx, [dx], [dxv], 'float64'),
+                                                           (fv/fv, [fv], [fvv], 'float32'),
+                                                           (dv/dv, [dv], [dvv], 'float64'),
                                                            ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -487,17 +485,17 @@ class test_canonize(unittest.TestCase):
                     assert isinstance(topo[2].op, tensor.Alloc)
                 assert(out_dtype == out.dtype)
 
-            #test (x * y) / x -> y
-            for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
-                                                           ((dx*dy)/dx,[dx,dy],[dxv,dyv],0,'float64'),
-                                                           ((fx*fy)/fx,[fx,fy],[fxv,fyv],0,'float32'),
-                                                           ((dv*dy)/dv,[dv,dy],[dvv,dyv],0,'float64'),
-                                                           ((fv*fy)/fv,[fv,fy],[fvv,fyv],0,'float32'),
-                #must broadcast as their is a dimshuffle in the computation
-                                                           ((dx*dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
-                #topo: [Elemwise{second,no_inplace}(x, <TensorType(float64, row)>)]
-                                                           ((fx*fv)/fx,[fx,fv],[fxv,fvv],1,'float32')
-                #topo: [Elemwise{second,no_inplace}(x, <TensorType(float32, row)>)]
+            # test (x * y) / x -> y
+            for id, (g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
+                                                           ((dx*dy)/dx, [dx, dy], [dxv, dyv], 0, 'float64'),
+                                                           ((fx*fy)/fx, [fx, fy], [fxv, fyv], 0, 'float32'),
+                                                           ((dv*dy)/dv, [dv, dy], [dvv, dyv], 0, 'float64'),
+                                                           ((fv*fy)/fv, [fv, fy], [fvv, fyv], 0, 'float32'),
+                # must broadcast as their is a dimshuffle in the computation
+                                                           ((dx*dv)/dx, [dx, dv], [dxv, dvv], 1, 'float64'),
+                # topo: [Elemwise{second,no_inplace}(x, <TensorType(float64, row)>)]
+                                                           ((fx*fv)/fx, [fx, fv], [fxv, fvv], 1, 'float32')
+                # topo: [Elemwise{second,no_inplace}(x, <TensorType(float32, row)>)]
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -505,23 +503,23 @@ class test_canonize(unittest.TestCase):
                 assert(out_dtype == out.dtype)
                 assert numpy.allclose(out, val_inputs[1])
                 topo = f.maker.fgraph.toposort()
-                if topo and not(len(topo)==1 and topo[0].op==deep_copy_op):
+                if topo and not(len(topo) == 1 and topo[0].op == deep_copy_op):
                     for node in topo[:-1]:
                         assert isinstance(node.op, Shape_i)
                     assert isinstance(topo[-1].op, tensor.Alloc)
 
-            #test x / y / x -> 1 / y
-            for id,(g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
-                                                           ((dx/dy)/dx,[dx,dy],[dxv,dyv],1,'float64'),
-                                                           ((fx/fy)/fx,[fx,fy],[fxv,fyv],1,'float32'),
-                                                           ((dv/dy)/dv,[dv,dy],[dvv,dyv],1,'float64'),
-                                                           ((fv/fy)/fv,[fv,fy],[fvv,fyv],1,'float32'),
-                            #must broadcast as their is a dimshuffle in the computation
+            # test x / y / x -> 1 / y
+            for id, (g, sym_inputs, val_inputs, nb_elemwise, out_dtype) in enumerate([
+                                                           ((dx/dy)/dx, [dx, dy], [dxv, dyv], 1, 'float64'),
+                                                           ((fx/fy)/fx, [fx, fy], [fxv, fyv], 1, 'float32'),
+                                                           ((dv/dy)/dv, [dv, dy], [dvv, dyv], 1, 'float64'),
+                                                           ((fv/fy)/fv, [fv, fy], [fvv, fyv], 1, 'float32'),
+                            # must broadcast as their is a dimshuffle in the computation
 
-                                                           ((dx/dv)/dx,[dx,dv],[dxv,dvv],1,'float64'),
-    #topo:            [Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Alloc]
-                                                           ((fx/fv)/fx,[fx,fv],[fxv,fvv],1,'float32'),
-                #topo:[Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Alloc]
+                                                           ((dx/dv)/dx, [dx, dv], [dxv, dvv], 1, 'float64'),
+    # topo:            [Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float64, row)>), Alloc]
+                                                           ((fx/fv)/fx, [fx, fv], [fxv, fvv], 1, 'float32'),
+                # topo:[Shape_i, Shape_i, Elemwise{inv,no_inplace}(<TensorType(float32, row)>), Alloc]
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -535,18 +533,18 @@ class test_canonize(unittest.TestCase):
                     theano.scalar.basic.Inv, theano.scalar.basic.TrueDiv))
                 assert(out_dtype == out.dtype)
 
-            #test (a / b) * (b / c) * (c / d) -> a / d
+            # test (a / b) * (b / c) * (c / d) -> a / d
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           ((dx / dy) * (dy / dz) * (dz / dw),[dx,dy,dz,dw],[dxv,dyv,dzv,dwv],'float64'),
-                                                           ((fx / fy) * (fy / fz) * (fz / fw),[fx,fy,fz,fw],[fxv,fyv,fzv,fwv],'float32'),
-                                                           ((dv / dy) * (dy / dz) * (dz / dw),[dv,dy,dz,dw],[dvv,dyv,dzv,dwv],'float64'),
-                                                           ((fv / fy) * (fy / fz) * (fz / fw),[fv,fy,fz,fw],[fvv,fyv,fzv,fwv],'float32'),
-                                                           ((dx / dv) * (dv / dz) * (dz / dw),[dx,dv,dz,dw],[dxv,dvv,dzv,dwv],'float64'),
-                                                           ((fx / fv) * (fv / fz) * (fz / fw),[fx,fv,fz,fw],[fxv,fvv,fzv,fwv],'float32'),
-                                                           ((dx / dy) * (dy / dv) * (dv / dw),[dx,dy,dv,dw],[dxv,dyv,dvv,dwv],'float64'),
-                                                           ((fx / fy) * (fy / fv) * (fv / fw),[fx,fy,fv,fw],[fxv,fyv,fvv,fwv],'float32'),
-                                                           ((dx / dy) * (dy / dz) * (dz / dv),[dx,dy,dz,dv],[dxv,dyv,dzv,dvv],'float64'),
-                                                           ((fx / fy) * (fy / fz) * (fz / fv),[fx,fy,fz,fv],[fxv,fyv,fzv,fvv],'float32'),
+                                                           ((dx / dy) * (dy / dz) * (dz / dw), [dx, dy, dz, dw], [dxv, dyv, dzv, dwv], 'float64'),
+                                                           ((fx / fy) * (fy / fz) * (fz / fw), [fx, fy, fz, fw], [fxv, fyv, fzv, fwv], 'float32'),
+                                                           ((dv / dy) * (dy / dz) * (dz / dw), [dv, dy, dz, dw], [dvv, dyv, dzv, dwv], 'float64'),
+                                                           ((fv / fy) * (fy / fz) * (fz / fw), [fv, fy, fz, fw], [fvv, fyv, fzv, fwv], 'float32'),
+                                                           ((dx / dv) * (dv / dz) * (dz / dw), [dx, dv, dz, dw], [dxv, dvv, dzv, dwv], 'float64'),
+                                                           ((fx / fv) * (fv / fz) * (fz / fw), [fx, fv, fz, fw], [fxv, fvv, fzv, fwv], 'float32'),
+                                                           ((dx / dy) * (dy / dv) * (dv / dw), [dx, dy, dv, dw], [dxv, dyv, dvv, dwv], 'float64'),
+                                                           ((fx / fy) * (fy / fv) * (fv / fw), [fx, fy, fv, fw], [fxv, fyv, fvv, fwv], 'float32'),
+                                                           ((dx / dy) * (dy / dz) * (dz / dv), [dx, dy, dz, dv], [dxv, dyv, dzv, dvv], 'float64'),
+                                                           ((fx / fy) * (fy / fz) * (fz / fv), [fx, fy, fz, fv], [fxv, fyv, fzv, fvv], 'float32'),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -560,14 +558,14 @@ class test_canonize(unittest.TestCase):
                 assert len(topo[0].inputs) == 2
                 assert(out_dtype == out.dtype)
 
-            #test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
+            # test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           (((2.0*dx)/(4.0*dy)),[dx,dy],[dxv,dyv],'float64'),
-                                                           (((2.0*fx)/(4.0*fy)),[fx,fy],[fxv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-                                                           (((2.0*dv)/(4.0*dy)),[dv,dy],[dvv,dyv],'float64'),
-                                                           (((2.0*fv)/(4.0*fy)),[fv,fy],[fvv,fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-                                                           (((2.0*dx)/(4.0*dv)),[dx,dv],[dxv,dvv],'float64'),
-                                                           (((2.0*fx)/(4.0*fv)),[fx,fv],[fxv,fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (((2.0*dx)/(4.0*dy)), [dx, dy], [dxv, dyv], 'float64'),
+                                                           (((2.0*fx)/(4.0*fy)), [fx, fy], [fxv, fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (((2.0*dv)/(4.0*dy)), [dv, dy], [dvv, dyv], 'float64'),
+                                                           (((2.0*fv)/(4.0*fy)), [fv, fy], [fvv, fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           (((2.0*dx)/(4.0*dv)), [dx, dv], [dxv, dvv], 'float64'),
+                                                           (((2.0*fx)/(4.0*fv)), [fx, fv], [fxv, fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
 
                 if isinstance(out_dtype, dict):
@@ -589,12 +587,12 @@ class test_canonize(unittest.TestCase):
                 assert len(topo[1].inputs) == 2
                 assert(out_dtype == out.dtype)
 
-            #test 2 * x / 2 -> x
+            # test 2 * x / 2 -> x
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           ((2*dx)/2,[dx],[dxv],'float64'),
-                                                           ((2*fx)/2,[fx],[fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-                                                           ((2*dv)/2,[dv],[dvv],'float64'),
-                                                           ((2*fv)/2,[fv],[fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           ((2*dx)/2, [dx], [dxv], 'float64'),
+                                                           ((2*fx)/2, [fx], [fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+                                                           ((2*dv)/2, [dv], [dvv], 'float64'),
+                                                           ((2*fv)/2, [fv], [fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ]):
                 if isinstance(out_dtype, dict):
                     out_dtype = out_dtype[config.cast_policy]
@@ -607,14 +605,14 @@ class test_canonize(unittest.TestCase):
                 topo[0].op == deep_copy_op
                 assert(out_dtype == out.dtype)
 
-            #test x / abs(x) -> sign(x)
+            # test x / abs(x) -> sign(x)
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
-                                                           (dx/abs(dx),[dx],[0.5-dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.5-fxv], 'float32'),
-                                                           (dx/abs(dx),[dx],[0.1*dxv],'float64'),
-                                                           (fx/abs(fx),[fx],[0.1*fxv], 'float32'),
-                                                           (dv/abs(dv),[dv],[0.5-dvv],'float64'),
-                                                           (fv/abs(fv),[fv],[0.5-fvv], 'float32'),
+                                                           (dx/abs(dx), [dx], [0.5-dxv], 'float64'),
+                                                           (fx/abs(fx), [fx], [0.5-fxv], 'float32'),
+                                                           (dx/abs(dx), [dx], [0.1*dxv], 'float64'),
+                                                           (fx/abs(fx), [fx], [0.1*fxv], 'float32'),
+                                                           (dv/abs(dv), [dv], [0.5-dvv], 'float64'),
+                                                           (fv/abs(fv), [fv], [0.5-fvv], 'float32'),
                 ]):
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -624,7 +622,7 @@ class test_canonize(unittest.TestCase):
                 assert(out_dtype == out.dtype)
                 assert len(f.maker.fgraph.toposort()) == 1
 
-            #test (2*x) / (3*abs(x)) -> sign(x)
+            # test (2*x) / (3*abs(x)) -> sign(x)
             for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
                     ((2 * dx) / (3 * abs(dx)), [dx], [0.5 - dxv], 'float64'),
                     ((2 * fx) / (3 * abs(fx)), [fx], [0.5 - fxv],
@@ -670,8 +668,8 @@ class test_canonize(unittest.TestCase):
         print
         f(.1)
         f(-1)
-        #some stabilization optimization make the output be finite instead of nan
-        #debug_mode will raise an error when he see nan
+        # some stabilization optimization make the output be finite instead of nan
+        # debug_mode will raise an error when he see nan
         if not isinstance(mode, theano.compile.debugmode.DebugMode):
             assert numpy.isfinite(f(0))
 
@@ -683,8 +681,8 @@ class test_canonize(unittest.TestCase):
         print
         f(.1)
         f(-1)
-        #some stabilization optimization make the output be finite instead of nan
-        #debug_mode will raise an error when he see nan
+        # some stabilization optimization make the output be finite instead of nan
+        # debug_mode will raise an error when he see nan
         if not isinstance(mode, theano.compile.debugmode.DebugMode):
             assert numpy.isfinite(f(0))
 
@@ -705,7 +703,7 @@ class test_canonize(unittest.TestCase):
         dyv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         dzv = theano._asarray(numpy.random.rand(*shp), dtype='float32')
         fvv = theano._asarray(numpy.random.rand(shp[0]), dtype='float32').reshape(1, shp[0])
-        #We must be sure that the Canonizer is working, but that we don't have other
+        # We must be sure that the Canonizer is working, but that we don't have other
         # optimisation that could hide bug in the Canonizer as local_elemwise_fusion
         mode = compile.mode.get_default_mode()
         old_optimizer = mode._optimizer
@@ -714,11 +712,11 @@ class test_canonize(unittest.TestCase):
             mode._optimizer = mode._optimizer.excluding(
                 'local_elemwise_fusion')
 
-    #test fail!
-            #test x / y / z -> x / (y * z)
+    # test fail!
+            # test x / y / z -> x / (y * z)
             for (g, sym_inputs, val_inputs, out_dtype) in [
-                                                           ((dx/dy)/dz,[dx,dy,dz],[dxv,dyv,dzv],'float64'),
-                                                           ((fx/fy)/fz,[fx,fy,fz],[fxv,fyv,fzv],'float32')
+                                                           ((dx/dy)/dz, [dx, dy, dz], [dxv, dyv, dzv], 'float64'),
+                                                           ((fx/fy)/fz, [fx, fy, fz], [fxv, fyv, fzv], 'float32')
                 ]:
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -733,10 +731,10 @@ class test_canonize(unittest.TestCase):
                 assert len(topo[0].inputs) == 1
                 assert(out_dtype == out.dtype)
 
-            #test x / (y / z) -> (x * z) / y
+            # test x / (y / z) -> (x * z) / y
             for (g, sym_inputs, val_inputs, out_dtype) in [
-                                                           (dx/(dy/dz),[dx,dy,dz],[dxv,dyv,dzv],'float64'),
-                                                           (fx/(fy/fz),[fx,fy,fz],[fxv,fyv,fzv],'float32')
+                                                           (dx/(dy/dz), [dx, dy, dz], [dxv, dyv, dzv], 'float64'),
+                                                           (fx/(fy/fz), [fx, fy, fz], [fxv, fyv, fzv], 'float32')
                 ]:
                 f = compile.function(list(sym_inputs), g,
                                      mode=mode)
@@ -862,7 +860,7 @@ class test_fusion(unittest.TestCase):
         verify that the elemwise fusion work
         Test with and without DimShuffle
         """
-        #TODO: disable the canonizer?
+        # TODO: disable the canonizer?
         def my_init(shp, dtype='float64', num=0):
             #ret = theano._asarray(numpy.random.rand(*shp),dtype=dtype)
             ret = numpy.zeros(shp, dtype=dtype) + num
@@ -924,132 +922,132 @@ class test_fusion(unittest.TestCase):
                 fxv * fyv + fzv + fyv, 'float32'),
             (fx*fy*fz*fw+fx+fy+fz+fw, (fw, fx, fy, fz), (fwv, fxv,
                 fyv, fzv), 1, fxv*fyv*fzv*fwv+fxv+fyv+fzv+fwv, 'float32'),  # 15
-            #test with constant
-            ((fw+fx)+(fy+fz)+ 2.,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            (((fw+fx)+2.+fy)+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+2.+fy))+fz,(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            ((fw+(fx+fy)+2+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            (fw+(fx+(fy+fz)+2.),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),  # 20
-            (2+(fw+fx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,fyv,fzv),
-                1,fwv+fxv+fyv+fzv+2,'float32'),
-            #mix float32 and float64
-            (2+(dw+fx)+(fy+fz),(dw,fx,fy,fz),(dwv,fxv,fyv,fzv),
-                1,dwv+fxv+fyv+fzv+2,'float64'),
-            (2+(fw+dw)+(fy+fz),(fw,dw,fy,fz),(fwv,dwv,fyv,fzv),
-                1,fwv+dwv+fyv+fzv+2,'float64'),
-            (2+(fw+fx)+(dw+fz),(fw,fx,dw,fz),(fwv,fxv,dwv,fzv),
-                1,fwv+fxv+dwv+fzv+2,'float64'),
-            (2+(fw+fx)+(fy+dw),(fw,fx,fy,dw),(fwv,fxv,fyv,dwv),
-                1,fwv+fxv+fyv+dwv+2,'float64'),  # 25
-            #test when their is other op then elemwise.
-            #the good output for the next test.
+            # test with constant
+            ((fw+fx)+(fy+fz) + 2., (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            (((fw+fx)+2.+fy)+fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            ((fw+(fx+2.+fy))+fz, (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            ((fw+(fx+fy)+2+fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            (fw+(fx+(fy+fz)+2.), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),  # 20
+            (2+(fw+fx)+(fy+fz), (fw, fx, fy, fz), (fwv, fxv, fyv, fzv),
+                1, fwv+fxv+fyv+fzv+2, 'float32'),
+            # mix float32 and float64
+            (2+(dw+fx)+(fy+fz), (dw, fx, fy, fz), (dwv, fxv, fyv, fzv),
+                1, dwv+fxv+fyv+fzv+2, 'float64'),
+            (2+(fw+dw)+(fy+fz), (fw, dw, fy, fz), (fwv, dwv, fyv, fzv),
+                1, fwv+dwv+fyv+fzv+2, 'float64'),
+            (2+(fw+fx)+(dw+fz), (fw, fx, dw, fz), (fwv, fxv, dwv, fzv),
+                1, fwv+fxv+dwv+fzv+2, 'float64'),
+            (2+(fw+fx)+(fy+dw), (fw, fx, fy, dw), (fwv, fxv, fyv, dwv),
+                1, fwv+fxv+fyv+dwv+2, 'float64'),  # 25
+            # test when their is other op then elemwise.
+            # the good output for the next test.
 #            (Pdb) p f.maker.fgraph.toposort()
 #[Elemwise{add,no_inplace}(w, x), Sum(Elemwise{add,no_inplace}.0), InplaceDimShuffle{x,x}(Sum.0), Elemwise{Composite{_impls=[<function <lambda> at 0x2c5c8c0>], nin=4, _c_code={
-#npy_float32 V%(id)s_tmp1;
-#V%(id)s_tmp1 = %(i2)s + %(i3)s;
-#npy_float32 V%(id)s_tmp2;
-#V%(id)s_tmp2 = %(i0)s + %(i1)s;
+# npy_float32 V%(id)s_tmp1;
+# V%(id)s_tmp1 = %(i2)s + %(i3)s;
+# npy_float32 V%(id)s_tmp2;
+# V%(id)s_tmp2 = %(i0)s + %(i1)s;
 #%(o0)s = V%(id)s_tmp2 + V%(id)s_tmp1;
 #}
 #, nout=1, fgraph=[add(add(<float32>, <float32>), add(<float32>, <float32>))]}}(InplaceDimShuffle{x,x}.0, Elemwise{add,no_inplace}.0, y, z)]
-            ((fwx.sum())+(fwx)+(fy+fz),(fw,fx,fy,fz),(fwv,fxv,
-                fyv,fzv),4,(fwv+fxv).sum()+fwv+fxv+fyv+fzv,'float32'),
-            #test other elemwise op
-            (fx+fy+tensor.cos(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv+fyv+numpy.cos(fzv),'float32'),
-            (fx+fy+tensor.cosh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv+fyv+numpy.cosh(fzv),'float32'),
-            (fx+fy+abs(fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv+
-                numpy.absolute(fzv),'float32'),
-            (ix+iy+abs(iz),(ix,iy,iz),(ixv,iyv,izv),1,ixv+iyv+
-                numpy.absolute(izv),'int32'),  # 30
-            (fx+fy+theano.tensor.log(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.log(fzv),'float32'),
-            (fx+fy+theano.tensor.log2(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.log2(fzv),'float32'),
-            (fx+fy+theano.tensor.log10(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.log10(fzv),'float32'),
-            (fx+fy**fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv+fyv**fzv,
+            ((fwx.sum())+(fwx)+(fy+fz), (fw, fx, fy, fz), (fwv, fxv,
+                fyv, fzv), 4, (fwv+fxv).sum()+fwv+fxv+fyv+fzv, 'float32'),
+            # test other elemwise op
+            (fx+fy+tensor.cos(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv+fyv+numpy.cos(fzv), 'float32'),
+            (fx+fy+tensor.cosh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv+fyv+numpy.cosh(fzv), 'float32'),
+            (fx+fy+abs(fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv+fyv +
+                numpy.absolute(fzv), 'float32'),
+            (ix+iy+abs(iz), (ix, iy, iz), (ixv, iyv, izv), 1, ixv+iyv +
+                numpy.absolute(izv), 'int32'),  # 30
+            (fx+fy+theano.tensor.log(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.log(fzv), 'float32'),
+            (fx+fy+theano.tensor.log2(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.log2(fzv), 'float32'),
+            (fx+fy+theano.tensor.log10(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.log10(fzv), 'float32'),
+            (fx+fy**fz, (fx, fy, fz), (fxv, fyv, fzv), 1, fxv+fyv**fzv,
                 'float32'),  # pow
-            (fx+fy+theano.tensor.exp(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv+fyv+numpy.exp(fzv),'float32'),  # 35
-            (fx-fy-fz,(fx,fy,fz),(fxv,fyv,fzv),1,fxv-fyv-fzv,'float32'),
-            (fx-(fy/fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.true_div(fy,2),(fx,fy),(fxv,fyv),
-                1,fxv-(fyv/2),'float32'),
-            (fx-theano.tensor.true_div(fy,fz),(fx,fy,fz),(fxv,
-                fyv,fzv),1,fxv-(fyv/fzv),'float32'),
-            (fx-theano.tensor.int_div(ix*100,iy*1000),(fx,ix,
-                iy),(fxv,ixv,iyv),1,fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}), #40
-            (fx-(fy/2),(fx,fy),(fxv,fyv),1,fxv-(fyv/2),'float32'),
-            (fx-(fy%fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv%fzv),'float32'),
-            (fx-(fy>fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>fzv),'float32'),
-            (fx-(fy>=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv>=fzv),'float32'),
-            (fx-(fy<fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<fzv),'float32'),#45
-            (fx-(fy<=fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(fyv<=fzv),'float32'),
-            (fx-T.eq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(
-                fyv==fzv),'float32'),
-            (fx-T.neq(fy,fz),(fx,fy,fz),(fxv,fyv,fzv),1,fxv-(
-                fyv!=fzv),'float32'),
-            (fx-fy+tensor.tan(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.tan(fzv),'float32'),
-            (fx-fy+tensor.tanh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.tanh(fzv),'float32'),#50
-            (fx-fy+tensor.sin(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.sin(fzv),'float32'),
-            (fx-fy+tensor.sinh(fz),(fx,fy,fz),(fxv,fyv,fzv),1,
-                fxv-fyv+numpy.sinh(fzv),'float32'),
-            (fx-fy+theano.tensor.sqr(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+(fzv*fzv),'float32'),
-            (fx-fy+theano.tensor.sqrt(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+numpy.sqrt(fzv),'float32'),
-            (fx-fy+theano.tensor.inv(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+(1/fzv),'float32'),#55
-            (fx-fy+theano.tensor.neg(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+(-fzv),'float32'),
-            (fx-fy+theano.tensor.round(fz),(fx,fy,fz),(fxv,fyv,
-                fzv),1,fxv-fyv+numpy.round(fzv),'float32'),
-            (ix-iy+theano.tensor.iround(fz),(ix,iy,fz),(ixv,
-                iyv,fzv),1,ixv-iyv+numpy.round(fzv),'int64'),
+            (fx+fy+theano.tensor.exp(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv+fyv+numpy.exp(fzv), 'float32'),  # 35
+            (fx-fy-fz, (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-fyv-fzv, 'float32'),
+            (fx-(fy/fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv/fzv), 'float32'),
+            (fx-theano.tensor.true_div(fy, 2), (fx, fy), (fxv, fyv),
+                1, fxv-(fyv/2), 'float32'),
+            (fx-theano.tensor.true_div(fy, fz), (fx, fy, fz), (fxv,
+                fyv, fzv), 1, fxv-(fyv/fzv), 'float32'),
+            (fx-theano.tensor.int_div(ix*100, iy*1000), (fx, ix,
+                iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 40
+            (fx-(fy/2), (fx, fy), (fxv, fyv), 1, fxv-(fyv/2), 'float32'),
+            (fx-(fy%fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv%fzv), 'float32'),
+            (fx-(fy > fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv > fzv), 'float32'),
+            (fx-(fy >= fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv >= fzv), 'float32'),
+            (fx-(fy < fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv < fzv), 'float32'),  # 45
+            (fx-(fy <= fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv <= fzv), 'float32'),
+            (fx-T.eq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
+                fyv == fzv), 'float32'),
+            (fx-T.neq(fy, fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(
+                fyv != fzv), 'float32'),
+            (fx-fy+tensor.tan(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.tan(fzv), 'float32'),
+            (fx-fy+tensor.tanh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.tanh(fzv), 'float32'),  # 50
+            (fx-fy+tensor.sin(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.sin(fzv), 'float32'),
+            (fx-fy+tensor.sinh(fz), (fx, fy, fz), (fxv, fyv, fzv), 1,
+                fxv-fyv+numpy.sinh(fzv), 'float32'),
+            (fx-fy+theano.tensor.sqr(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+(fzv*fzv), 'float32'),
+            (fx-fy+theano.tensor.sqrt(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+numpy.sqrt(fzv), 'float32'),
+            (fx-fy+theano.tensor.inv(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+(1/fzv), 'float32'),  # 55
+            (fx-fy+theano.tensor.neg(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+(-fzv), 'float32'),
+            (fx-fy+theano.tensor.round(fz), (fx, fy, fz), (fxv, fyv,
+                fzv), 1, fxv-fyv+numpy.round(fzv), 'float32'),
+            (ix-iy+theano.tensor.iround(fz), (ix, iy, fz), (ixv,
+                iyv, fzv), 1, ixv-iyv+numpy.round(fzv), 'int64'),
             # Bit op
-            (fx-theano.tensor.or_(iy,iz),(fx,iy,iz),(fxv,iyv,
-                izv),1,fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-            (fx-theano.tensor.xor(iy,iz),(fx,iy,iz),(fxv,iyv,
-                izv),1,fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),#60
-            (fx-theano.tensor.and_(iy,iz),(fx,iy,iz),(fxv,iyv,
-                izv),1,fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
-            (fx-theano.tensor.invert(iy),(fx,iy),(fxv,iyv),1,
+            (fx-theano.tensor.or_(iy, iz), (fx, iy, iz), (fxv, iyv,
+                izv), 1, fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.xor(iy, iz), (fx, iy, iz), (fxv, iyv,
+                izv), 1, fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 60
+            (fx-theano.tensor.and_(iy, iz), (fx, iy, iz), (fxv, iyv,
+                izv), 1, fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
+            (fx-theano.tensor.invert(iy), (fx, iy), (fxv, iyv), 1,
                 fxv-(~iyv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
-            (fx-theano.tensor.cast(fy,dtype='float64'),(fx,fy),(fxv,fyv),1,
-                              fxv-numpy.asarray(fyv,'float64'),'float64'),
-            (theano.tensor.pow(fx*fy+fz,fx*fy),(fx,fy,fz),(fxv,
-                fyv,fzv),1,numpy.power(fxv*fyv+fzv,fxv*fyv),'float32'),
-            (fv+fy**fz,(fv,fy,fz),(fvv,fyv,fzv),2,fvv+fyv**fzv,
-                'float32'),#fused with a dimshuffle #65
-            (fv-fy+tensor.tanh(fz),(fv,fy,fz),(fvv,fyv,fzv),2,
-                fvv-fyv+numpy.tanh(fzv),'float32'),#fused with a dimshuffle
+            (fx-theano.tensor.cast(fy, dtype='float64'), (fx, fy), (fxv, fyv), 1,
+                              fxv-numpy.asarray(fyv, 'float64'), 'float64'),
+            (theano.tensor.pow(fx*fy+fz, fx*fy), (fx, fy, fz), (fxv,
+                fyv, fzv), 1, numpy.power(fxv*fyv+fzv, fxv*fyv), 'float32'),
+            (fv+fy**fz, (fv, fy, fz), (fvv, fyv, fzv), 2, fvv+fyv**fzv,
+                'float32'),  # fused with a dimshuffle #65
+            (fv-fy+tensor.tanh(fz), (fv, fy, fz), (fvv, fyv, fzv), 2,
+                fvv-fyv+numpy.tanh(fzv), 'float32'),  # fused with a dimshuffle
 
             # Cases where the same input is reused many times.
-            (theano.tensor.mul(fx,fx,fx,fx),(fx,),(fxv,),1,fxv*
-                fxv*fxv*fxv,'float32'),
-            (theano.tensor.mul(fx,ftanx,ftanx),(fx,),(fxv,),1,
-                fxv*numpy.tan(fxv)*numpy.tan(fxv),'float32'),
-            (theano.tensor.mul(fx,ftanx,ftanx,fx),(fx,),(fxv,),
-                1,fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv,'float32'),
-            (theano.tensor.mul(ftanx,ftanx,fx+fy),(fx,fy),(fxv,
-                fyv),1,numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv),'float32'), # 70
+            (theano.tensor.mul(fx, fx, fx, fx), (fx,), (fxv,), 1, fxv *
+                fxv*fxv*fxv, 'float32'),
+            (theano.tensor.mul(fx, ftanx, ftanx), (fx,), (fxv,), 1,
+                fxv*numpy.tan(fxv)*numpy.tan(fxv), 'float32'),
+            (theano.tensor.mul(fx, ftanx, ftanx, fx), (fx,), (fxv,),
+                1, fxv*numpy.tan(fxv)*numpy.tan(fxv)*fxv, 'float32'),
+            (theano.tensor.mul(ftanx, ftanx, fx+fy), (fx, fy), (fxv,
+                fyv), 1, numpy.tan(fxv)*numpy.tan(fxv)*(fxv+fyv), 'float32'),  # 70
 
-            #Cases with different broadcast pattern. They should not
-            #be merged as this would duplicate computation
-            #The graph should have 2 elemwise and 1 dimshuffle
-            (fx*theano.tensor.sin(fs),(fx,fs),(fxv,
-                fsv),3,fxv*numpy.sin(fsv),'float32'),
+            # Cases with different broadcast pattern. They should not
+            # be merged as this would duplicate computation
+            # The graph should have 2 elemwise and 1 dimshuffle
+            (fx*theano.tensor.sin(fs), (fx, fs), (fxv,
+                fsv), 3, fxv*numpy.sin(fsv), 'float32'),
             ]
         if slice:
             cases = cases[slice]
@@ -1084,9 +1082,9 @@ class test_fusion(unittest.TestCase):
                 t1 = time.time()
                 out = out.get_value()
 
-            #print "CASE2/3", f.maker.fgraph.toposort()
-            #print 'CASE2/3', f.maker.fgraph
-            #print 'CASE2/3', f.maker.fgraph.toposort()[3].op.scalar_op.fgraph
+            # print "CASE2/3", f.maker.fgraph.toposort()
+            # print 'CASE2/3', f.maker.fgraph
+            # print 'CASE2/3', f.maker.fgraph.toposort()[3].op.scalar_op.fgraph
 
             times[id] = t1 - t0
             atol = 1e-8
@@ -1138,8 +1136,8 @@ class test_fusion(unittest.TestCase):
     def test_elemwise_fusion(self):
         shp = (5, 5)
         mode = copy.copy(compile.mode.get_default_mode())
-        #we need the optimisation enabled and the canonicalize.
-        #the canonicalize is needed to merge multiplication/addition by constant.
+        # we need the optimisation enabled and the canonicalize.
+        # the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
             'local_elemwise_fusion', 'composite_elemwise_fusion',
             'canonicalize')
@@ -1149,8 +1147,8 @@ class test_fusion(unittest.TestCase):
     def test_elemwise_fusion_4d(self):
         shp = (3, 3, 3, 3)
         mode = copy.copy(compile.mode.get_default_mode())
-        #we need the optimisation enabled and the canonicalize.
-        #the canonicalize is needed to merge multiplication/addition by constant.
+        # we need the optimisation enabled and the canonicalize.
+        # the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
             'local_elemwise_fusion', 'composite_elemwise_fusion',
             'canonicalize')
@@ -1158,7 +1156,7 @@ class test_fusion(unittest.TestCase):
 
     def test_gpu_fusion(self):
         shp = (5, 5)
-        #we need the optimisation enabled, debug do this.
+        # we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including(
                 'local_elemwise_fusion',  'composite_elemwise_fusion',
@@ -1175,7 +1173,7 @@ class test_fusion(unittest.TestCase):
 
     @attr('slow')
     def test_gpu_fusion_Xd(self):
-        #we need the optimisation enabled, debug do this.
+        # we need the optimisation enabled, debug do this.
         if theano.config.mode == "FAST_COMPILE":
             mode = theano.compile.mode.get_mode("FAST_RUN").including(
                 'local_elemwise_fusion',  'composite_elemwise_fusion',
@@ -1254,10 +1252,10 @@ class test_fusion(unittest.TestCase):
 
         mode1 = copy.copy(compile.get_default_mode())
         mode1._optimizer = mode1._optimizer.including('local_elemwise_fusion')
-        #TODO:clinker is much faster... but use to much memory
-        #Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
-        #More plausible cause: we keep a link to the output data?
-        #Follow up. Clinker do the same... second cause?
+        # TODO:clinker is much faster... but use to much memory
+        # Possible cause: as their is do deletion of intermediate value when we don't keep the fct.
+        # More plausible cause: we keep a link to the output data?
+        # Follow up. Clinker do the same... second cause?
         mode2 = copy.copy(compile.get_default_mode())
         mode2._optimizer = mode2._optimizer.excluding('local_elemwise_fusion')
         print "test with linker", str(mode1.linker)
@@ -1278,8 +1276,8 @@ class test_fusion(unittest.TestCase):
 
     def test_fusion_inplace(self):
         mode = copy.copy(compile.mode.get_default_mode())
-        #we need the optimisation enabled and the canonicalize.
-        #the canonicalize is needed to merge multiplication/addition by constant.
+        # we need the optimisation enabled and the canonicalize.
+        # the canonicalize is needed to merge multiplication/addition by constant.
         mode._optimizer = mode._optimizer.including(
             'local_elemwise_fusion',  'composite_elemwise_fusion',
             'canonicalize', 'inplace')
@@ -1307,14 +1305,14 @@ class test_fusion(unittest.TestCase):
                               assert_len_topo=False, slice=s, nb_repeat=100)
 
     def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'),
-                        shared_fn=shared, shp=(3000,3000), gpu=False,
+                        shared_fn=shared, shp=(3000, 3000), gpu=False,
                         nb_repeat=30, assert_len_topo=True, slice=None):
         """
         param shared_fn: if None, will use compile.function
         verify that the elemwise fusion work
         Test with and without DimShuffle
         """
-        #TODO: disable the canonizer?
+        # TODO: disable the canonizer?
         fx = fmatrices('x')
         fy = fmatrices('y')
         fxv = numpy.zeros(shp, dtype='float32') + 2
@@ -1329,7 +1327,7 @@ class test_fusion(unittest.TestCase):
         dl = []
         v1 = None
         mode = compile.mode.Mode('c', 'merge')
-        #TODO: if mode is Mode('py','merge') then their is no memory leak!
+        # TODO: if mode is Mode('py','merge') then their is no memory leak!
         from theano.compile.function_module import orig_function
         for id, [g, sym_inputs, val_inputs, out_dtype] in enumerate(cases):
             for zzzz in range(nb_repeat):
@@ -1340,10 +1338,10 @@ class test_fusion(unittest.TestCase):
 #                print 'v1',v1
                 v1 = weakref.ref(v)
                 pdb.set_trace()
-                #f = orig_function([compile.In(fx),compile.In(variable=fy, value=None)],
+                # f = orig_function([compile.In(fx),compile.In(variable=fy, value=None)],
                 #            [fy+fx],mode=mode)#no memory leak
-                f = orig_function([compile.In(fx),compile.In(variable=fy, value=v)],
-                            [fy + fx],mode=mode)  # memory leak
+                f = orig_function([compile.In(fx), compile.In(variable=fy, value=v)],
+                            [fy + fx], mode=mode)  # memory leak
                 del v
                 gc.collect()
                 gc.collect()
@@ -1357,7 +1355,7 @@ class test_fusion(unittest.TestCase):
                     nd = objgraph.typestats()
                     print 'key, old val, new val, diff'
                     for key in set(d.keys() + nd.keys()):
-                        if d.has_key(key) and nd.has_key(key) and nd[key]!=d[key]:
+                        if d.has_key(key) and nd.has_key(key) and nd[key] != d[key]:
                             print key, d.get(key), nd.get(key),
                             if d.has_key(
                                 key) and nd.has_key(key):
@@ -1406,7 +1404,7 @@ class test_fusion(unittest.TestCase):
                 gc.collect()
 
 #            cases[id]=None #to remove g, that link to out that link to the ndarray!
-            #g.owner.inputs[0] is out... make owner a weakref?
+            # g.owner.inputs[0] is out... make owner a weakref?
 
 
 class TimesN(theano.scalar.basic.UnaryScalarOp):
@@ -1542,7 +1540,7 @@ def test_log_add():
     m = compile.mode.get_mode(m)
     m = m.excluding('fusion')
     m = copy.copy(m)
-    #No need to put them back as we have a new object
+    # No need to put them back as we have a new object
     m.check_isfinite = False
 
     # check some basic cases
@@ -1554,7 +1552,7 @@ def test_log_add():
     assert numpy.isfinite(f([10000], [10000]))
     assert numpy.allclose(f([10000], [10000]), 10000 + numpy.log1p(1))
 
-    #test that it give the same result when it don't overflow
+    # test that it give the same result when it don't overflow
     f([10], [10])  # don't causes overflow
     assert numpy.allclose(f([10], [10]), 10 + numpy.log1p(1))
 
@@ -1571,9 +1569,9 @@ def test_log_add():
         raise KnownFailureTest(('log(add(exp)) is not stabilized when adding '
                 'more than 2 elements, see #623'))
 
-    #TODO: test that the optimization works in the presence of broadcasting.
+    # TODO: test that the optimization works in the presence of broadcasting.
 
-    #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
+    # TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 
 def test_local_useless_slice():
@@ -1588,7 +1586,7 @@ def test_local_useless_slice():
     f_opt = theano.function([x], o, mode=mode_opt)
     test_inp = numpy.random.randint(-10, 10, (4, 4)).astype('float32')
     assert all(f_opt(test_inp)  == f_unopt(test_inp)),\
-           "The optimization caused a mismatch in the result" 
+           "The optimization caused a mismatch in the result"
     # test to see if the slice is truely gone
     apply_node = f_opt.maker.fgraph.toposort()[0]
     subtens = apply_node.op
@@ -1601,7 +1599,7 @@ def test_local_useless_slice():
     f_opt_check = theano.function([z], o2, mode=mode_opt)
     f_opt_check_apply = theano.function([z], o3, mode=mode_opt)
 
-    # The optimization shouldn't apply here 
+    # The optimization shouldn't apply here
     apply_node = f_opt_check.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert [isinstance(idx, slice) for idx in subtens.idx_list].count(True) == 2
@@ -1609,6 +1607,7 @@ def test_local_useless_slice():
     apply_node = f_opt_check_apply.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list)
+
 
 def test_local_useless_inc_subtensor():
     x = tensor.matrix('x')
@@ -1666,7 +1665,7 @@ def test_local_useless_subtensor():
                  (slice(0, None), slice(0, None)),
                  ]:
         f = function([x], tensor.exp(x).__getitem__(dims), mode=mode_opt)
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         assert prog[0].op == tensor.exp
         assert len(prog) == 1
@@ -1684,7 +1683,7 @@ def test_local_useless_subtensor():
                  ((slice(0, 1), 1), False),
                  ]:
         f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert isinstance(prog[0].op, theano.tensor.SpecifyShape), dims
@@ -1708,7 +1707,7 @@ def test_local_useless_subtensor():
             ((slice(0, T.scalar_from_tensor(x.shape[0])), ), True),
             ]):
         f = function([x], tensor.exp(x).__getitem__(dims), mode=mode_opt)
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert prog[0].op == tensor.exp, dims
@@ -1723,7 +1722,7 @@ def test_local_useless_subtensor():
             ((slice(0, 3), slice(0, x.shape[1])), False),
             ]):
         f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert prog[0].op == tensor.exp, dims
@@ -1738,7 +1737,7 @@ def test_local_useless_subtensor():
             ((slice(0, s), ), False),
             ]):
         f = function([x, s], tensor.exp(x).__getitem__(dims), mode=mode_opt)
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert prog[0].op == tensor.exp, dims
@@ -1760,7 +1759,7 @@ def test_local_useless_subtensor():
                       (T.arange(0, 2, -1), False),
                       (T.arange(1, 2), False)):
         f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert isinstance(prog[0].op, theano.tensor.SpecifyShape), dims
@@ -2035,10 +2034,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
-        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
-        #print topo[-1].op
+        # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
@@ -2063,10 +2062,10 @@ class test_local_subtensor_merge(unittest.TestCase):
 
             #theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
-            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo
                         if isinstance(t.op, tensor.Subtensor)]) == 1
-            #print topo[-1].op
+            # print topo[-1].op
             assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
@@ -2090,10 +2089,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
-        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
-        #print topo[-1].op
+        # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
@@ -2113,10 +2112,10 @@ class test_local_subtensor_merge(unittest.TestCase):
 
             #theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
-            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo
                         if isinstance(t.op, tensor.Subtensor)]) == 1
-            #print topo[-1].op
+            # print topo[-1].op
             assert isinstance(topo[-1].op, DeepCopyOp)
 
             for x_s in self.x_shapes:
@@ -2131,10 +2130,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
-        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
-        #print topo[-1].op
+        # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
@@ -2151,10 +2150,10 @@ class test_local_subtensor_merge(unittest.TestCase):
 
                 #theano.printing.debugprint(f, print_type=True)
                 topo = f.maker.fgraph.toposort()
-                #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+                # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
                 assert len([t for t in topo
                             if isinstance(t.op, tensor.Subtensor)]) == 1
-                #print topo[-1].op
+                # print topo[-1].op
                 assert isinstance(topo[-1].op, DeepCopyOp)
 
                 for x_s in self.x_shapes:
@@ -2170,10 +2169,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
-        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo
                     if isinstance(t.op, tensor.Subtensor)]) == 1
-        #print topo[-1].op
+        # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
         for x_s in self.x_shapes:
@@ -2214,10 +2213,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
-        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo if isinstance(t.op, tensor.
                                                   Subtensor)]) == 1
-        #print topo[-1].op
+        # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
         b1r = self.rng.permutation(range(-8, 8))[:2]
@@ -2297,10 +2296,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
-        #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+        # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo if isinstance(t.op, tensor.
                                                   Subtensor)]) == 1
-        #print topo[-1].op
+        # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
         b_r = self.rng.permutation(range(-4, 4))[:3]
@@ -2332,8 +2331,8 @@ class test_local_subtensor_merge(unittest.TestCase):
                                 n_ok += 1
                                 f(x_val, b_v, e_v, s_v, i_v)
 
-            #print 'shape: %s' % (x_s,)
-            #print '%% OK: %f' % (float(n_ok) * 100 / (n_ok + n_index_err))
+            # print 'shape: %s' % (x_s,)
+            # print '%% OK: %f' % (float(n_ok) * 100 / (n_ok + n_index_err))
 
     @attr('slow')
     def test_none_slice(self):
@@ -2386,7 +2385,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             topo = f.maker.fgraph.toposort()
-            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo if isinstance(t.op,
                                                       tensor.Subtensor)]) <= 1
             assert isinstance(topo[-1].op, DeepCopyOp)
@@ -2443,7 +2442,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             topo = f.maker.fgraph.toposort()
-            #print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
+            # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo if isinstance(t.op,
                                                       tensor.Subtensor)]) <= 1
             assert isinstance(topo[-1].op, DeepCopyOp)
@@ -2720,7 +2719,7 @@ class Test_alloc_zero(unittest.TestCase):
                     assert numpy.all([not isinstance(n.op, tensor.Dot) for n in
                                       f.maker.fgraph.toposort()])
 
-                    #test that we don't remove shape errors
+                    # test that we don't remove shape errors
                     self.assertRaises((ValueError, AssertionError), f,
                                       _e1[1], _e2[2])
                     self.assertRaises((ValueError, AssertionError), f,
@@ -2811,14 +2810,14 @@ def test_local_subtensor_of_dot():
     m1 = theano.tensor.tensor3()
     m2 = theano.tensor.tensor3()
     idx = theano.tensor.iscalar()
-    d1 = numpy.arange(30).reshape(2,5,3).astype(config.floatX)
-    d2 = numpy.arange(72).reshape(4,3,6).astype(config.floatX) + 100
+    d1 = numpy.arange(30).reshape(2, 5, 3).astype(config.floatX)
+    d2 = numpy.arange(72).reshape(4, 3, 6).astype(config.floatX) + 100
 
-    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx,1:4,:,idx:], mode=mode)
-    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1,1:4,:,1:])
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx, 1:4, :, idx:], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1, 1:4, :, 1:])
 
-    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4,:,idx:,idx], mode=mode)
-    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4,:,1:,1])
+    f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4, :, idx:, idx], mode=mode)
+    assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4, :, 1:, 1])
 
 
 class Test_local_elemwise_alloc(unittest.TestCase):
@@ -3040,7 +3039,7 @@ def test_local_subtensor_of_alloc():
 
 
 def test_local_fill_useless():
-    #Test opt local_fill_cut
+    # Test opt local_fill_cut
     x = dvector()
     y = dvector()
     z = lvector()
@@ -3210,13 +3209,13 @@ class test_shapeoptimizer(unittest.TestCase):
         return mx
 
     def test_broadcasted_dims(self):
-        #This test a case that caused a crash during optimization
+        # This test a case that caused a crash during optimization
         shp = (1, 1, 1, 1)
         rng = numpy.random.RandomState(utt.fetch_seed())
         a = shared(rng.rand(*shp).astype(config.floatX))
         out = self.max_pool_c01b(a, 1, 1, 1)
 
-        #max_pool_c01b use -inf and this will trigger DebugMode error.
+        # max_pool_c01b use -inf and this will trigger DebugMode error.
         mode = copy.copy(theano.compile.get_default_mode())
         mode.check_isfinite = False
         f = theano.function([], out, mode=mode)
@@ -3242,8 +3241,8 @@ class test_shapeoptimizer(unittest.TestCase):
                 x, = inp
                 out, = out_
                 out[0] = x.copy()
-            #def infer_shape(self, node, (xshp,)):
-                #return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
+            # def infer_shape(self, node, (xshp,)):
+                # return [tuple([self.shape_i(i)(r) for i in xrange(r.ndim)])]
         identity_noshape = IdentityNoShape()
 
         class IdentityShape(gof.Op):
@@ -3298,7 +3297,7 @@ class test_shapeoptimizer(unittest.TestCase):
         assert identity_noshape not in g_ops
         assert identity_shape not in g_ops
 
-        ###test multiple level of op without infer_shape
+        # test multiple level of op without infer_shape
         ins_x3 = identity_noshape(identity_noshape(identity_noshape(x)))
         h = theano.function([x], ins_x3.shape, mode=mode)
         xval = rng.randn(6, 1, 2).astype(config.floatX)
@@ -3690,7 +3689,7 @@ class T_useless_elemwise(unittest.TestCase):
         f2 = theano.function([x], T.eq(x, x), mode=self.mode)
         assert numpy.all(f2(vx) == numpy.ones((5, 4)))
         topo2 = f2.maker.fgraph.toposort()
-        #Shape_i{1}(<TensorType(float64, matrix)>), Shape_i{0}(<TensorType(float64, matrix)>), Alloc([[1]], Shape_i{0}.0, Shape_i{1}.0
+        # Shape_i{1}(<TensorType(float64, matrix)>), Shape_i{0}(<TensorType(float64, matrix)>), Alloc([[1]], Shape_i{0}.0, Shape_i{1}.0
         assert len(topo2) == 3
         assert isinstance(topo2[-1].op, T.Alloc)
 
@@ -3829,7 +3828,7 @@ def test_constant_get_stabilized():
         assert len(f.maker.fgraph.toposort()) == 0
         assert numpy.isinf(f())
 
-        #When this error is fixed, the following line should be ok.
+        # When this error is fixed, the following line should be ok.
         assert f() == 800, f()
 
     except (AssertionError, theano.compile.debugmode.InvalidValueError):
@@ -3853,11 +3852,11 @@ class T_local_switch_sink(unittest.TestCase):
         self.xs = 1.
 
         # expected results
-        self.resm = [numpy.asarray([[1,0,1,0],[0,0,0,0],[1,1,1,1]])]*3 + [numpy.asarray([[1,0,1,0],[1,0,1,0],[1,0,1,0]])] + \
-                    2*[numpy.asarray([[1,0,1,0]])] + [[numpy.ones((3,4)),numpy.zeros((3,4)),numpy.ones((3,4)),numpy.zeros((3,4))]] + \
-                    [[numpy.ones((4,)),numpy.zeros((4,)),numpy.ones((4,)),numpy.zeros((4,))]] + \
-                    [[numpy.asarray(1.0),numpy.asarray(
-                        0.0),numpy.asarray(1.0),numpy.asarray(0.0)]]
+        self.resm = [numpy.asarray([[1, 0, 1, 0], [0, 0, 0, 0], [1, 1, 1, 1]])]*3 + [numpy.asarray([[1, 0, 1, 0], [1, 0, 1, 0], [1, 0, 1, 0]])] + \
+                    2*[numpy.asarray([[1, 0, 1, 0]])] + [[numpy.ones((3, 4)), numpy.zeros((3, 4)), numpy.ones((3, 4)), numpy.zeros((3, 4))]] + \
+                    [[numpy.ones((4,)), numpy.zeros((4,)), numpy.ones((4,)), numpy.zeros((4,))]] + \
+                    [[numpy.asarray(1.0), numpy.asarray(
+                        0.0), numpy.asarray(1.0), numpy.asarray(0.0)]]
 
         self.mode = theano.compile.mode.get_default_mode().including(
                 'canonicalize', 'fast_run').excluding('gpu', 'fusion')
@@ -3867,10 +3866,10 @@ class T_local_switch_sink(unittest.TestCase):
     def test_local_mul_switch_sink(self):
         c = T.dscalar()
         idx = 0
-        for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
-            for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
+        for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
+            for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.mul(T.switch(condition[0] > 0, 1. * x[0],
-                    0. *x[0]), T.switch(condition[0]>0, 1.*x[0], T.log(c)*x[0]))
+                    0. * x[0]), T.switch(condition[0] > 0, 1.*x[0], T.log(c)*x[0]))
                 f = theano.function([condition[0], x[0], c]
                     , [y], mode=self.mode)
                 if type(condition[1]) is list:
@@ -3888,10 +3887,10 @@ class T_local_switch_sink(unittest.TestCase):
     def test_local_div_switch_sink(self):
         c = T.dscalar()
         idx = 0
-        for condition in [(T.dmatrix('cond'),self.condm),(T.dvector('cond'),self.condv),(T.dscalar('cond'),self.conds)]:
-            for x in [(T.dmatrix('x'),self.xm),(T.dvector('x'),self.xv),(T.dscalar('x'),self.xs)]:
+        for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
+            for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.true_div(T.switch(condition[0] > 0, 1. *
-                    x[0],0.*x[0]),T.switch(condition[0]>0,1.*x[0],T.log(c)*x[0]))
+                    x[0], 0.*x[0]), T.switch(condition[0] > 0, 1.*x[0], T.log(c)*x[0]))
                 f = theano.function([condition[0], x[0], c]
                     , [y], mode=self.mode)
                 if type(condition[1]) is list:
@@ -4054,12 +4053,12 @@ class T_local_erfc(unittest.TestCase):
         val = [-30, -27, -26, -11, -10, -3, -2, -1, 0, 1, 2, 3, 10,
              11, 26, 27, 28, 30]
         if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
-            #python mode don't like the inv(0)
+            # python mode don't like the inv(0)
             val.remove(0)
         val = numpy.asarray(val, dtype=config.floatX)
         x = T.vector('x')
 
-        #their is some nan that will happear in the graph for the log of the negatives values
+        # their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
         mode.check_isfinite = False
         mode_fusion = copy.copy(self.mode_fusion)
@@ -4079,9 +4078,9 @@ class T_local_erfc(unittest.TestCase):
         assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert len(f.maker.fgraph.toposort()[0].fgraph.toposort()[
-            0].op.scalar_op.fgraph.apply_nodes)==22,len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
-        #TODO: fix this problem
-        if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+            0].op.scalar_op.fgraph.apply_nodes) == 22, len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
+        # TODO: fix this problem
+        if theano.config.floatX == "float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             raise KnownFailureTest(
                 "the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error.")
         assert all(numpy.isfinite(f(val)))
@@ -4090,9 +4089,9 @@ class T_local_erfc(unittest.TestCase):
         val = [-100, -30, -27, -26.4, -26.2, -26, -11, -10, -9, -3, -2, -1, 0,
             1, 2, 3, 9, 10, 11, 27, 26.4, 26.2, 26, 28, 30, 100]
         if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
-#python mode don't like the inv(0) in computation, but the switch don't select this value. So it is computed for no good reason.
+# python mode don't like the inv(0) in computation, but the switch don't select this value. So it is computed for no good reason.
             val.remove(0)
-        if theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.floatX=='float32':
+        if theano.config.mode in ["DebugMode", "DEBUG_MODE"] and theano.config.floatX == 'float32':
             # In float32 their is a plage of values close to 10 that we stabilize as it give bigger error then the stabilized version.
             # The orig value in float32 -30.0, the stab value -20.1 the orig value in float64 -18.1.
             val.remove(10)
@@ -4100,7 +4099,7 @@ class T_local_erfc(unittest.TestCase):
         x = T.vector('x')
         y = T.vector('y')
 
-        #their is some nan that will happear in the graph for the log of the negatives values
+        # their is some nan that will happear in the graph for the log of the negatives values
         mode = copy.copy(self.mode)
         mode.check_isfinite = False
         mode_fusion = copy.copy(self.mode_fusion)
@@ -4111,33 +4110,33 @@ class T_local_erfc(unittest.TestCase):
         assert all(numpy.isfinite(f(val)))
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
-        #test with a different mul constant
+        # test with a different mul constant
         f = theano.function([x], T.mul(T.exp(T.neg(T.sqr(x))), -
             10.12837917) / T.erfc(x), mode=mode)
         assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
-        #test that we work without the mul
+        # test that we work without the mul
         f = theano.function([x], T.exp(T.neg(T.sqr(x))) / T.erfc(x), mode=mode)
         assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
-        #test that we don't work if x!=y
+        # test that we don't work if x!=y
         f = theano.function([x, y], T.exp(T.neg(T.sqr(x))) / T.erfc(
             y), mode=mode)
         assert len(f.maker.fgraph.apply_nodes) == 5, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         f(val, val - 3)
 
-        #test that we work without the sqr and neg
+        # test that we work without the sqr and neg
         f = theano.function([x], T.exp(T.mul(-1, x, x)) / T.erfc(x), mode=mode)
         assert len(f.maker.fgraph.apply_nodes) == 22, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
-        #test that it work correctly if x is x*2 in the graph.
+        # test that it work correctly if x is x*2 in the graph.
         f = theano.function([x], T.grad(T.log(T.erfc(2 * x)).sum(),
              x), mode=mode)
         assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
@@ -4149,9 +4148,9 @@ class T_local_erfc(unittest.TestCase):
         assert len(f.maker.fgraph.apply_nodes) == 1, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
-        #TODO: fix this problem
-        if theano.config.floatX=="float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
-            #Showing this test error is a duplicate of the one in test_local_log_erfc. We hide it.
+        # TODO: fix this problem
+        if theano.config.floatX == "float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+            # Showing this test error is a duplicate of the one in test_local_log_erfc. We hide it.
             #raise KnownFailureTest("the python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error. This happen in an intermediate step that don't show in the final result.")
             pass
         else:
@@ -4212,7 +4211,7 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
                 assert numpy.all(f(vx, vy) == vx)
 
     def test_broadcast1(self):
-        #test switch(cst, matrix, row)
+        # test switch(cst, matrix, row)
         x = theano.tensor.matrix('x', dtype='int32')
         y = theano.tensor.vector('y', dtype='int64')
 
@@ -4220,7 +4219,7 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         f = theano.function([x, y], z, mode=self.mode)
         assert len([node.op for node in f.maker.fgraph.toposort() if
                     isinstance(node.op, theano.tensor.Elemwise) and
-                    not isinstance(node.op.scalar_op,theano.scalar.basic.Cast)]) == 0
+                    not isinstance(node.op.scalar_op, theano.scalar.basic.Cast)]) == 0
         vx = numpy.array([[1, 2, 3], [4, 5, 6]], dtype='int32')
         vy = numpy.array([10, 11, 12], dtype='int64')
         assert numpy.all(f(vx, vy) == vx)
@@ -4234,16 +4233,16 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         assert numpy.all(f(vx, vy) == vy)
 
     def test_broadcast2(self):
-        #test switch(cst, vector, matrix)
+        # test switch(cst, vector, matrix)
 
-        #This case is not optimized for now.
+        # This case is not optimized for now.
         x = theano.tensor.vector('x', dtype='int32')
         y = theano.tensor.matrix('y', dtype='int64')
         z = theano.tensor.switch(1, x, y)
         f = theano.function([x, y], z, mode=self.mode)
         assert len([node.op for node in f.maker.fgraph.toposort() if
                     isinstance(node.op, theano.tensor.Elemwise) and
-                    not isinstance(node.op.scalar_op,theano.scalar.basic.Cast)]) == 0
+                    not isinstance(node.op.scalar_op, theano.scalar.basic.Cast)]) == 0
         vx = numpy.array([4, 5, 6], dtype='int32')
         vy = numpy.array([[7, 8, 9], [10, 11, 12]], dtype='int64')
         assert numpy.all(f(vx, vy) == vx)
@@ -4330,8 +4329,8 @@ class T_local_sum(unittest.TestCase):
                               dtype='float64')
         mode = self.mode.including('specialize').excluding('fusion')
 
-        for t_like,n_like,nb_nodes in [(tensor.zeros_like,numpy.zeros_like,(1,3,3,2)),
-                                       (tensor.ones_like,numpy.ones_like,(5,5,5,6))]:
+        for t_like, n_like, nb_nodes in [(tensor.zeros_like, numpy.zeros_like, (1, 3, 3, 2)),
+                                       (tensor.ones_like, numpy.ones_like, (5, 5, 5, 6))]:
 
             f = theano.function([a], t_like(a).sum(None), mode=mode)
             assert numpy.allclose(f(input), n_like(input).sum())
@@ -4612,7 +4611,7 @@ class TestMakeVector(utt.InferShapeTester):
         i = T.iscalar()
         d = T.dscalar()
 
-        #TODO: draw random values instead. Not really important.
+        # TODO: draw random values instead. Not really important.
         val = {b: 2,
                i: -3,
                d: 0.7}
@@ -4631,19 +4630,19 @@ class TestMakeVector(utt.InferShapeTester):
             assert mv.dtype == dtype
             f = theano.function([b, i, d], mv, on_unused_input='ignore')
             f_val = f(val[b], val[i], val[d])
-            #print 'f_val =', f_val
+            # print 'f_val =', f_val
 
             s = mv.sum()
             gb = T.grad(s, b, disconnected_inputs='ignore')
             gi = T.grad(s, i, disconnected_inputs='ignore')
             gd = T.grad(s, d, disconnected_inputs='ignore')
-            #print 'gb =', gb
-            #print 'gi =', gi
-            #print 'gd =', gd
+            # print 'gb =', gb
+            # print 'gi =', gi
+            # print 'gd =', gd
 
             g = theano.function([b, i, d], [gb, gi, gd])
             g_val = g(val[b], val[i], val[d])
-            #print 'g_val =', g_val
+            # print 'g_val =', g_val
 
             if dtype.startswith('int'):
                 # The gradient should be 0
@@ -4678,7 +4677,7 @@ class TestMakeVector(utt.InferShapeTester):
 
                     utt.verify_grad(fun, [val[ri] for ri in float_inputs])
 
-        #should fail
+        # should fail
         for (dtype, inputs) in [("int8", (b, i)),
                             ("int8", (i, b)),
                             ("int8", (b, d)),
@@ -4721,7 +4720,7 @@ class TestMakeVector(utt.InferShapeTester):
 
 
 def test_local_join_1():
-    #test for vector
+    # test for vector
     a = tensor.vector('a')
     s = tensor.stack(a)
     f = function([a], s, mode=mode_opt)
@@ -4731,7 +4730,7 @@ def test_local_join_1():
     assert len([n for n in e if isinstance(n.op, Join)]) == 0
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-    #test for matrix join(0,a)
+    # test for matrix join(0,a)
     a = tensor.matrix('a')
     s = join(0, a)
     f = function([a], s, mode=mode_opt)
@@ -4741,7 +4740,7 @@ def test_local_join_1():
     assert len([n for n in e if isinstance(n.op, Join)]) == 0
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-    #test for matrix join(1,a)
+    # test for matrix join(1,a)
     s = join(1, a)
     f = function([a], s, mode=mode_opt)
     val = f([[1]])
@@ -4750,7 +4749,7 @@ def test_local_join_1():
     assert len([n for n in e if isinstance(n.op, Join)]) == 0
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-    #test we don't apply when their is 2 inputs
+    # test we don't apply when their is 2 inputs
     s = join(1, a, a)
     f = function([a], s, mode=mode_opt)
     val = f([[1]])
@@ -4761,7 +4760,7 @@ def test_local_join_1():
 
 
 def test_local_join_empty():
-    #test for vector, vector, empty to vector
+    # test for vector, vector, empty to vector
     empty_vec = numpy.asarray([], dtype=config.floatX)
     a = tensor.vector('a')
     s = tensor.join(0, a, a, empty_vec)
@@ -4774,7 +4773,7 @@ def test_local_join_empty():
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-    #test for matrix join(1,a)
+    # test for matrix join(1,a)
     empty_mat = numpy.asarray([[]], dtype=config.floatX)
     m = tensor.matrix('m')
     s = join(1, empty_mat, m, m, m)
@@ -4787,7 +4786,7 @@ def test_local_join_empty():
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-    #test for vector, vector, empty to matrix
+    # test for vector, vector, empty to matrix
     # We can't optimize this case.
     s = tensor.stack(a, a, empty_vec)
     f = function([a], s, mode=mode_opt)
@@ -4799,7 +4798,7 @@ def test_local_join_empty():
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-    #test for matrix join(0,a)
+    # test for matrix join(0,a)
     # We can't optimize this case.
     s = join(0, m, numpy.asarray([[2.]], dtype=config.floatX), m)
     f = function([m], s, mode=mode_opt)
@@ -5020,7 +5019,7 @@ class TestShape_i(utt.InferShapeTester):
 if __name__ == '__main__':
     t = TestMakeVector('setUp')
     t.setUp()
-    #t.test_perform()
+    # t.test_perform()
     t.test_infer_shape()
 
     """

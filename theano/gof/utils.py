@@ -204,8 +204,8 @@ def uniq(seq):
     If we just exchange other values, but keep the same pattern of duplication,
     we must keep the same order.
     """
-    #TODO: consider building a set out of seq so that the if condition
-    #is constant time -JB
+    # TODO: consider building a set out of seq so that the if condition
+    # is constant time -JB
     return [x for i, x in enumerate(seq) if seq.index(x) == i]
 
 

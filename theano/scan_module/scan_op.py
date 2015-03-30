@@ -497,7 +497,6 @@ class Scan(PureOp):
                                              self.inputs,
                                              other.inputs)
 
-
     def __str__(self):
         if self.gpu:
             gpu_str = 'gpu'
@@ -926,7 +925,7 @@ class Scan(PureOp):
         i = 0
         cond = True
         ############## THE MAIN LOOP #########################
-        #for i in xrange(n_steps):
+        # for i in xrange(n_steps):
         while (i < n_steps) and cond:
             # sequences over which scan iterates
             # 3. collect input slices
@@ -1166,7 +1165,7 @@ class Scan(PureOp):
                 self.fn.fn.update_profile(profile)
 
         #/* Old ProfileMode
-        #if hasattr(self.fn.maker.mode,'fct_call_time'):
+        # if hasattr(self.fn.maker.mode,'fct_call_time'):
         #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
         #    self.fn.maker.mode.fct_call[self.fn] += n_steps
 
@@ -1176,7 +1175,7 @@ class Scan(PureOp):
         self.t_call = t_call
         self.t_fn = t_fn
 
-    ### Infer Shape
+    # Infer Shape
     def infer_shape(self, node, input_shapes):
         # input_shapes correspond to the shapes of node.inputs
         # Here, we build a list inner_ins_shape, such that inner_ins_shape[i]
@@ -1344,7 +1343,7 @@ class Scan(PureOp):
 
         for i in range(nb_inputs):
             input = self.inputs[i]
-            inp_connection_pattern = [i==j for j in range(nb_inputs)]
+            inp_connection_pattern = [i == j for j in range(nb_inputs)]
             connect_pattern_by_var[input] = inp_connection_pattern
 
         # Iterate through the nodes used to produce the outputs from the
@@ -1465,7 +1464,6 @@ class Scan(PureOp):
                     if connection_pattern[outer_iidx][outer_oidx]:
                         break
 
-
         # Applying Floyd-Warshall to find all paths connecting inputs to
         # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
         # input to `z_t` then `x` is an input to `z_t`.
@@ -1506,7 +1504,7 @@ class Scan(PureOp):
         """
 
         output = []
-        outer_inp_idx = 1 # First outer input is timestep index, skip it
+        outer_inp_idx = 1  # First outer input is timestep index, skip it
 
         # Handle sequences inputs
         for i in range(self.info['n_seqs']):
@@ -1536,7 +1534,7 @@ class Scan(PureOp):
 
         return output
 
-    ### GRAD FUNCTION
+    # GRAD FUNCTION
     def grad(self, inputs, dC_douts):
         outs = self(*inputs)
         if not isinstance(outs, (list, tuple)):
@@ -1566,7 +1564,7 @@ class Scan(PureOp):
                                             self.outputs)
         self_inputs = rval[0]
         self_outputs = rval[1]
-        #differentiable inputs
+        # differentiable inputs
         diff_inputs = (self.inner_seqs(self_inputs) +
                        self.inner_mitmot(self_inputs) +
                        self.inner_mitsot(self_inputs) +
@@ -1759,7 +1757,7 @@ class Scan(PureOp):
                 outmaxtap = 0
             seq = outs[idx]
             for k in self.tap_array[idx]:
-                if outmaxtap -k != 0:
+                if outmaxtap - k != 0:
                     nw_seq = seq[k - mintap: -(outmaxtap-k)][::-1]
                 else:
                     nw_seq = seq[k - mintap:][::-1]
@@ -2287,7 +2285,7 @@ class Scan(PureOp):
         scan_mit_sot = inputs[b:e] + eval_points[b:e]
         inner_mit_sot = self_inputs[ib:ie] + inner_eval_points[ib:ie]
 
-        #SIT_SOT sequences ...
+        # SIT_SOT sequences ...
         b = e
         e = e + self.n_sit_sot
         ib = ie

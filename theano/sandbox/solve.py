@@ -10,10 +10,10 @@ class Solve(gof.Op):
     It use numpy.solve to find the solution.
     """
 
-    #TODO: Add class options to use the performance-enhancing flags
+    # TODO: Add class options to use the performance-enhancing flags
     #     sym_pos, lower, overwrite_a, overwrite_b
 
-    #TODO: Add C code that calls the underlying LAPACK routines
+    # TODO: Add C code that calls the underlying LAPACK routines
     #      and keeps a memory workspace from call to call as a non-default Op output
 
     def __eq__(self, other):
@@ -36,29 +36,31 @@ class Solve(gof.Op):
     def perform(self, node, inp, out):
         A, b = inp
         output, = out
-        ret=scipy.linalg.solve(A,b)
+        ret = scipy.linalg.solve(A, b)
         if ret.dtype != node.outputs[0].dtype:
             print >> sys.stderr, "WARNING: Solve.perform() required cast."
             ret = theano._asarray(ret, dtype=node.outputs[0].dtype)
-        output[0]=ret
+        output[0] = ret
 
 solve = Solve()
 
 
-## TODO: test dtype conversion
-## TODO: test that invalid types are rejected by make_node
-## TODO: test that each valid type for A and b works correctly
+# TODO: test dtype conversion
+# TODO: test that invalid types are rejected by make_node
+# TODO: test that each valid type for A and b works correctly
 from theano.tests import unittest_tools as utt
+
+
 class T_solve(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):
-        A=self.rng.randn(5,5)
-        b=numpy.array(range(5),dtype=float)
-        x=scipy.linalg.solve(A,b)
-        Ax = numpy.dot(A,x)
+        A = self.rng.randn(5, 5)
+        b = numpy.array(range(5), dtype=float)
+        x = scipy.linalg.solve(A, b)
+        Ax = numpy.dot(A, x)
         are = tensor.numeric_grad.abs_rel_err(Ax, b)
         self.assertTrue(numpy.all(are < 1.0e-5), (are, Ax, b))
-        #print A,b
-        #print numpy.dot(A,x)
+        # print A,b
+        # print numpy.dot(A,x)

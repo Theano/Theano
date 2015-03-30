@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-#print info to check we link with witch version of blas
-#test the speed of the blas gemm fct:
-#C=a*C+dot(A,B)*b
-#A,B,C matrix
-#a,b scalar
+# print info to check we link with witch version of blas
+# test the speed of the blas gemm fct:
+# C=a*C+dot(A,B)*b
+# A,B,C matrix
+# a,b scalar
 
 s = """
 result for shapes=(2000,2000) and iters=100

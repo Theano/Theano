@@ -319,7 +319,7 @@ class GpuIncSubtensor(IncSubtensor):
                                                     PyGpuArrayObject* src){
            PyGpuArrayObject* ret = NULL;
         """ % locals()
-        #def c_code(self, node, name, inputs, outputs, sub):
+        # def c_code(self, node, name, inputs, outputs, sub):
         inputs = ["dst", "src"]
         outputs = ["ret"]
         sub = {"fail": "return NULL;"}
@@ -331,7 +331,7 @@ class GpuIncSubtensor(IncSubtensor):
         return ret
 
     def add_to_zview(self, nodename, x, fail):
-        #TODO
+        # TODO
         return """
         PyGpuArrayObject * add_result = inc_sub_iadd_%(nodename)s(zview, %(x)s);
 

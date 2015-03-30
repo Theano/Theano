@@ -15,6 +15,8 @@ from theano.sparse import basic as sparse
 _is_sparse_variable = sparse._is_sparse_variable
 
 # This is tested in tests/test_opt.py:test_local_csm_properties_csm
+
+
 @gof.local_optimizer([csm_properties])
 def local_csm_properties_csm(node):
     """if we find csm_properties(CSM(*args)), then we can replace that with the
@@ -64,7 +66,7 @@ class AddSD_ccode(gof.op.Op):
     """
     def __init__(self, format, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
-        #Should we do inplace addition or not ?
+        # Should we do inplace addition or not ?
         self.inplace = inplace
         self.format = format
         if self.inplace:
@@ -198,7 +200,7 @@ def local_addsd_ccode(node):
     return False
 theano.compile.optdb.register('local_addsd_ccode',
                               gof.TopoOptimizer(local_addsd_ccode),
-                              #Must be after local_inplace_addsd_ccode at 60
+                              # Must be after local_inplace_addsd_ccode at 60
                               61, 'fast_run')
 
 
@@ -254,7 +256,6 @@ class StructuredDotCSC(gof.Op):
         # @param b: dense matrix to perform dot product with, as in dot(a, b)
         # @param z: return value
         # @param sub: TODO, not too sure, something to do with weave probably
-
 
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a_val')
@@ -573,7 +574,7 @@ def local_structured_dot(node):
 # slower, and
 # b) the resulting graphs make it very difficult for an op to do size checking
 # on the matrices involved.  dimension mismatches are hard to detect sensibly.
-#register_specialize(local_structured_dot)
+# register_specialize(local_structured_dot)
 
 
 class UsmmCscDense(gof.Op):
@@ -1007,7 +1008,7 @@ def local_csm_grad_c(node):
     if node.op == csm_grad(None):
         return [csm_grad_c(*node.inputs)]
     return False
-#DISABLED AS IT IS BROKEN FOR UNSORTED INDICES!
+# DISABLED AS IT IS BROKEN FOR UNSORTED INDICES!
 #register_specialize(local_csm_grad_c, 'cxx_only')
 
 
@@ -1043,7 +1044,7 @@ class MulSDCSC(gof.Op):
     def c_code_cache_version(self):
         return (2,)
 
-    #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
+    # def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
 
     def c_code(self, node, name, (_data, _indices, _indptr, _b,),
@@ -1159,7 +1160,7 @@ class MulSDCSR(gof.Op):
     def c_code_cache_version(self):
         return (2,)
 
-    #def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
+    # def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
 
     def c_code(self, node, name, (_data, _indices, _indptr, _b,),
@@ -1269,7 +1270,7 @@ def local_mul_s_d(node):
         else:
             raise NotImplemented()
         if x.dtype != y.dtype:
-            #mul_s_d_csx don't support that case
+            # mul_s_d_csx don't support that case
             return
 
         c_data = mul_s_d_csx(sparse.csm_data(svar),

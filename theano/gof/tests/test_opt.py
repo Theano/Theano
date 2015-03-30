@@ -26,7 +26,7 @@ class MyType(Type):
 
 
 def MyVariable(name):
-    return Variable(MyType(), None, None, name = name)
+    return Variable(MyType(), None, None, name=name)
 
 
 class MyOp(Op):
@@ -58,7 +58,7 @@ class MyOp(Op):
         return rval
 
     def __hash__(self):
-        #return hash(self.x if self.x is not None else id(self)) ^ hash(self.name)
+        # return hash(self.x if self.x is not None else id(self)) ^ hash(self.name)
         if self.x is not None:
             return hash(self.x)
         else:
@@ -73,9 +73,8 @@ op5 = MyOp('Op5')
 op6 = MyOp('Op6')
 op_d = MyOp('OpD', {0: [0]})
 
-op_y = MyOp('OpY', x = 1)
-op_z = MyOp('OpZ', x = 1)
-
+op_y = MyOp('OpY', x=1)
+op_z = MyOp('OpZ', x=1)
 
 
 def inputs():
@@ -87,6 +86,7 @@ def inputs():
 
 PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+
 
 class TestPatternOptimizer:
 
@@ -109,18 +109,18 @@ class TestPatternOptimizer:
 
     def test_unification_1(self):
         x, y, z = inputs()
-        e = op1(op2(x, x), z) # the arguments to op2 are the same
+        e = op1(op2(x, x), z)  # the arguments to op2 are the same
         g = Env([x, y, z], [e])
-        PatternOptimizer((op1, (op2, '1', '1'), '2'), # they are the same in the pattern
+        PatternOptimizer((op1, (op2, '1', '1'), '2'),  # they are the same in the pattern
                          (op4, '2', '1')).optimize(g)
         # So the replacement should occur
         assert str(g) == "[Op4(z, x)]"
 
     def test_unification_2(self):
         x, y, z = inputs()
-        e = op1(op2(x, y), z) # the arguments to op2 are different
+        e = op1(op2(x, y), z)  # the arguments to op2 are different
         g = Env([x, y, z], [e])
-        PatternOptimizer((op1, (op2, '1', '1'), '2'), # they are the same in the pattern
+        PatternOptimizer((op1, (op2, '1', '1'), '2'),  # they are the same in the pattern
                          (op4, '2', '1')).optimize(g)
         # The replacement should NOT occur
         assert str(g) == "[Op1(Op2(x, y), z)]"
@@ -192,9 +192,9 @@ class TestPatternOptimizer:
         assert str(g) == "[Op1(x)]"
 
     def test_constant_unification(self):
-        x = Constant(MyType(), 2, name = 'x')
+        x = Constant(MyType(), 2, name='x')
         y = MyVariable('y')
-        z = Constant(MyType(), 2, name = 'z')
+        z = Constant(MyType(), 2, name='z')
         e = op1(op1(x, y), y)
         g = Env([y], [e])
         PatternOptimizer((op1, z, '1'),
@@ -266,6 +266,7 @@ class TestPatternOptimizer:
 OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
 OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
 
+
 class TestOpSubOptimizer:
 
     def test_straightforward(self):
@@ -294,8 +295,8 @@ class TestMergeOptimizer:
 
     def test_constant_merging(self):
         x = MyVariable('x')
-        y = Constant(MyType(), 2, name = 'y')
-        z = Constant(MyType(), 2, name = 'z')
+        y = Constant(MyType(), 2, name='y')
+        z = Constant(MyType(), 2, name='z')
         e = op1(op2(x, y), op2(x, y), op2(x, z))
         g = Env([x, y, z], [e])
         MergeOptimizer().optimize(g)
@@ -340,8 +341,8 @@ class TestMergeOptimizer:
 
     def test_identical_constant_args(self):
         x = MyVariable('x')
-        y = Constant(MyType(), 2, name = 'y')
-        z = Constant(MyType(), 2, name = 'z')
+        y = Constant(MyType(), 2, name='y')
+        z = Constant(MyType(), 2, name='z')
         ctv_backup = config.compute_test_value
         config.compute_test_value = 'off'
         try:
@@ -360,22 +361,22 @@ class TestEquilibrium(object):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
-        #print g
+        # print g
         opt = EquilibriumOptimizer(
             [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
              PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
              PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
              ],
-            max_use_ratio = 10)
+            max_use_ratio=10)
         opt.optimize(g)
-        #print g
+        # print g
         assert str(g) == '[Op2(x, y)]'
 
     def test_2(self):
         x, y, z = map(MyVariable, 'xyz')
         e = op1(op1(op3(x, y)))
         g = Env([x, y, z], [e])
-        #print g
+        # print g
         opt = EquilibriumOptimizer(
             [PatternSub((op1, (op2, 'x', 'y')), (op4, 'x', 'y')),
              PatternSub((op3, 'x', 'y'), (op4, 'x', 'y')),
@@ -383,7 +384,7 @@ class TestEquilibrium(object):
              PatternSub((op5, 'x', 'y'), (op6, 'x', 'y')),
              PatternSub((op6, 'x', 'y'), (op2, 'x', 'y'))
              ],
-            max_use_ratio = 10)
+            max_use_ratio=10)
         opt.optimize(g)
         assert str(g) == '[Op2(x, y)]'
 
@@ -391,7 +392,7 @@ class TestEquilibrium(object):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = Env([x, y, z], [e])
-        #print 'before', g
+        # print 'before', g
         # display pesky warnings along with stdout
         # also silence logger for 'theano.gof.opt'
         _logger = logging.getLogger('theano.gof.opt')
@@ -403,11 +404,11 @@ class TestEquilibrium(object):
                  PatternSub((op4, 'x', 'y'), (op1, 'x', 'y')),
                  PatternSub((op3, (op2, 'x', 'y')), (op4, 'x', 'y'))
                  ],
-                max_use_ratio = 1. / len(g.apply_nodes)) # each opt can only be applied once
+                max_use_ratio=1. / len(g.apply_nodes))  # each opt can only be applied once
             opt.optimize(g)
         finally:
             _logger.setLevel(oldlevel)
-        #print 'after', g
+        # print 'after', g
         assert str(g) == '[Op1(x, y)]'
 
 

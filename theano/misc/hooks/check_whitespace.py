@@ -23,6 +23,7 @@ from theano.compat.six import StringIO
 
 SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
 
+
 def get_parse_error(code):
     """
     Checks code for ambiguous tabs or other basic parsing issues.
@@ -52,6 +53,7 @@ def clean_diff_line_for_python_bug_2142(diff_line):
     else:
         return diff_line + "\n\\ No newline at end of file\n"
 
+
 def get_correct_indentation_diff(code, filename):
     """
     Generate a diff to make code correctly indented.
@@ -78,23 +80,27 @@ def get_correct_indentation_diff(code, filename):
     else:
         return None
 
+
 def is_merge():
     parent2 = os.environ.get("HG_PARENT2", None)
     return parent2 is not None and len(parent2) > 0
+
 
 def parent_commit():
     parent1 = os.environ.get("HG_PARENT1", None)
     return parent1
 
+
 class MercurialRuntimeError(Exception):
     pass
+
 
 def run_mercurial_command(hg_command):
     hg_executable = os.environ.get("HG", "hg")
     hg_command_tuple = hg_command.split()
     hg_command_tuple.insert(0, hg_executable)
-    #If you install your own mercurial version in your home
-    #hg_executable does not always have execution permission.
+    # If you install your own mercurial version in your home
+    # hg_executable does not always have execution permission.
     if not os.access(hg_executable, os.X_OK):
         hg_command_tuple.insert(0, sys.executable)
     try:
@@ -109,26 +115,32 @@ def run_mercurial_command(hg_command):
         raise MercurialRuntimeError(hg_err)
     return hg_out
 
+
 def parse_stdout_filelist(hg_out_filelist):
     files = hg_out_filelist.split()
     files = [f.strip(string.whitespace + "'") for f in files]
-    files = filter(operator.truth, files) # get rid of empty entries
+    files = filter(operator.truth, files)  # get rid of empty entries
     return files
+
 
 def changed_files():
     hg_out = run_mercurial_command("tip --template '{file_mods}'")
     return parse_stdout_filelist(hg_out)
 
+
 def added_files():
     hg_out = run_mercurial_command("tip --template '{file_adds}'")
     return parse_stdout_filelist(hg_out)
 
+
 def is_python_file(filename):
     return filename.endswith(".py")
+
 
 def get_file_contents(filename, revision="tip"):
     hg_out = run_mercurial_command("cat -r %s %s" % (revision, filename))
     return hg_out
+
 
 def save_commit_message(filename):
     commit_message = run_mercurial_command("tip --template '{desc}'")
@@ -136,11 +148,13 @@ def save_commit_message(filename):
     save_file.write(commit_message)
     save_file.close()
 
+
 def save_diffs(diffs, filename):
     diff = "\n\n".join(diffs)
     diff_file = open(filename, "w")
     diff_file.write(diff)
     diff_file.close()
+
 
 def should_skip_commit():
     if not os.path.exists(SKIP_WHITESPACE_CHECK_FILENAME):
@@ -149,6 +163,7 @@ def should_skip_commit():
     whitespace_check_changeset = whitespace_check_file.read()
     whitespace_check_file.close()
     return whitespace_check_changeset == parent_commit()
+
 
 def save_skip_next_commit():
     whitespace_check_file = open(SKIP_WHITESPACE_CHECK_FILENAME, "w")
@@ -221,14 +236,14 @@ def main(argv=None):
         else:
             # parsing succeeded, it is safe to check indentation
             if not args.no_indentation:
-                was_clean = None # unknown
+                was_clean = None  # unknown
                 # only calculate was_clean if it will matter to us
                 if args.incremental or args.incremental_with_patch:
                     if filename in changed_filenames:
                         old_file_contents = get_file_contents(filename, revision=parent_commit())
                         was_clean = get_correct_indentation_diff(old_file_contents, "") is None
                     else:
-                        was_clean = True # by default -- it was newly added and thus had no prior problems
+                        was_clean = True  # by default -- it was newly added and thus had no prior problems
 
                 check_indentation = was_clean or not args.incremental
                 if check_indentation:

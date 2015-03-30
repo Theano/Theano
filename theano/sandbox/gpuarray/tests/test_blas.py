@@ -30,6 +30,7 @@ GpuGemvTester = makeTester('GpuGemvTester',
         )
 )
 
+
 class TestGpuSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
     mode = mode_with_gpu
     dtype = 'float32'
@@ -64,6 +65,7 @@ GpuGemmTester = makeTester('GpuGemmTester',
         )
 )
 
+
 class TestGpuSger(TestGer):
     def setUp(self):
         self.mode = mode_with_gpu
@@ -85,8 +87,10 @@ class TestGpuSger(TestGer):
     def test_f32_0_1(self):
         raise SkipTest('0-sized objects not supported')
 
+
 class TestGpuSgerNoTransfer(TestGpuSger):
     shared = staticmethod(gpuarray_shared_constructor)
+
 
 class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):

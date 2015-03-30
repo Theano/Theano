@@ -197,8 +197,8 @@ class In(SymbolicInput):
             mutable=None, strict=False, allow_downcast=None, autoname=True,
             implicit=None, borrow=None, shared=False):
 
-        #if shared, an input's value comes from its persistent storage, not from a default stored
-        #in the function or from the caller
+        # if shared, an input's value comes from its persistent storage, not from a default stored
+        # in the function or from the caller
         self.shared = shared
 
         if borrow is None:

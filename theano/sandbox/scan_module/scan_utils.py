@@ -244,7 +244,7 @@ def canonical_arguments(sequences,
                     if maxtap > 0:
                         ed = - (maxtap + offset_min - st)
                     else:
-                        ed = - (offset_min -st)
+                        ed = - (offset_min - st)
                     if ed != 0:
                         nw_input = nw_input[st:ed]
                     else:

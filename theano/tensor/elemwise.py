@@ -194,7 +194,7 @@ class DimShuffle(Op):
                         "The broadcastable pattern of the "
                         "input is incorrect for this op. Expected %s, got %s."
                         % (self.input_broadcastable, ib)))
-                #else, expected == b or expected is False and b is True
+                # else, expected == b or expected is False and b is True
                 # Both case are good.
 
         ob = []
@@ -288,7 +288,7 @@ class DimShuffle(Op):
 
         clear_output = ['if (%(res)s) {Py_XDECREF(%(res)s);}']
 
-        #get the copy / view of the input depending on whether we're doingi
+        # get the copy / view of the input depending on whether we're doingi
         # things inplace or not.
         if self.inplace:
             get_base = [
@@ -307,7 +307,7 @@ class DimShuffle(Op):
 
         strides_statements = ['npy_intp strides[%i]' % nd_out]
 
-        #set the strides of the non-broadcasted dimensions
+        # set the strides of the non-broadcasted dimensions
         for i, o in enumerate(self.new_order):
             if o != 'x':
                 strides_statements += [('strides[' + str(i)
@@ -336,18 +336,18 @@ class DimShuffle(Op):
         #                       npy_intp* strides, void* data, int itemsize, int flags, PyObject* obj)
         #
         close_bracket = [
-                #create a new array,
+                # create a new array,
                 ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
                             '' + str(nd_out) + ', dimensions, '
                             'PyArray_TYPE(%(basename)s), strides, '
                             'PyArray_DATA(%(basename)s), PyArray_ITEMSIZE(%(basename)s), '
-                            #borrow only the writable flag from the base
+                            # borrow only the writable flag from the base
                             # the NPY_OWNDATA flag will default to 0.
                             '(NPY_ARRAY_WRITEABLE*PyArray_ISWRITEABLE(%(basename)s)), NULL)'),
                 'if (%(res)s == NULL) %(fail)s;',
-                #recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
+                # recalculate flags: CONTIGUOUS, FORTRAN, ALIGNED
                 'PyArray_UpdateFlags(%(res)s, NPY_ARRAY_UPDATE_ALL)',
-                #we are making a view in both inplace and non-inplace cases
+                # we are making a view in both inplace and non-inplace cases
 """
 #if NPY_API_VERSION < 0x00000007
 PyArray_BASE(%(res)s) = (PyObject*)%(basename)s;
@@ -495,9 +495,9 @@ class Elemwise(OpenMPOp):
             self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin,
                     scalar_op.nout)
 
-        #precompute the hash of this node
+        # precompute the hash of this node
         self._rehash()
-        super(Elemwise,self).__init__(openmp=openmp)
+        super(Elemwise, self).__init__(openmp=openmp)
 
     def __getstate__(self):
         d = copy(self.__dict__)
@@ -545,7 +545,7 @@ class Elemwise(OpenMPOp):
                     inplace=False)(input))
         inputs = args
 
-        #HERE: all the broadcast dims have the same length now
+        # HERE: all the broadcast dims have the same length now
 
         # cleverness: we iterate over the first, second, third broadcast flag
         # of all inputs in parallel... the all() gives us each output
@@ -557,7 +557,7 @@ class Elemwise(OpenMPOp):
             for bcast in izip(*[input.type.broadcastable
                 for input in inputs])]] * shadow.nout
 
-        #inplace_pattern maps output idx -> input idx
+        # inplace_pattern maps output idx -> input idx
         inplace_pattern = self.inplace_pattern
         if inplace_pattern:
             for overwriter, overwritten in inplace_pattern.items():
@@ -658,7 +658,7 @@ class Elemwise(OpenMPOp):
         if not isinstance(outs, (list, tuple)):
             outs = [outs]
 
-        #compute grad with respect to broadcasted input
+        # compute grad with respect to broadcasted input
         rval = self._bgrad(inputs, ograds)
 
         # TODO: make sure that zeros are clearly identifiable
@@ -687,7 +687,7 @@ class Elemwise(OpenMPOp):
                     new_rval.append(elem)
             return new_rval
 
-        #sum out the broadcasted dimensions
+        # sum out the broadcasted dimensions
         for i, ipt in enumerate(inputs):
             if isinstance(rval[i].type, (NullType, DisconnectedType)):
                 continue
@@ -707,14 +707,14 @@ class Elemwise(OpenMPOp):
                     else:
                         shuffle.append(j)
                         j += 1
-                    #close if
-                #close for
+                    # close if
+                # close for
                 sr = Sum(axis=to_sum)(rval[i])
                 sr = sr.dimshuffle(shuffle)
                 #sr = DimShuffle(sr.type.broadcastable, shuffle)(sr)
                 rval[i] = sr
-            #close if
-        #close for
+            # close if
+        # close for
 
         return rval
 
@@ -922,8 +922,8 @@ class Elemwise(OpenMPOp):
         # This is to protect again futur change of uniq.
         assert len(inames) == len(inputs)
         ii, iii = zip(*gof.utils.uniq(zip(_inames, node.inputs)))
-        assert all([x == y for x,y in zip(ii, inames)])
-        assert all([x == y for x,y in zip(iii, inputs)])
+        assert all([x == y for x, y in zip(ii, inames)])
+        assert all([x == y for x, y in zip(iii, inputs)])
 
         defines = ""
         undefs = ""
@@ -1057,7 +1057,7 @@ class Elemwise(OpenMPOp):
             else:
                 all_code = [code]
             if len(all_code) == 1:
-                #No loops
+                # No loops
                 task_decl = "".join([
                     "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
                     for name, dtype in izip(inames + list(real_onames),

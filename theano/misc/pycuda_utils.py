@@ -46,6 +46,7 @@ def to_gpuarray(x, copyif=False):
         px = pycuda.gpuarray.GPUArray(x.shape, x.dtype, base=x, gpudata=x.gpudata)
         return px
 
+
 def to_cudandarray(x):
     """ take a pycuda.gpuarray.GPUArray and make a CudaNdarray that point to its memory
 
@@ -60,6 +61,6 @@ def to_cudandarray(x):
         for i in x.shape[::-1][:-1]:
             strides.append(strides[-1]*i)
         strides = tuple(strides[::-1])
-        ptr = int(x.gpudata) # in pycuda trunk, y.ptr also works, which is a little cleaner
+        ptr = int(x.gpudata)  # in pycuda trunk, y.ptr also works, which is a little cleaner
         z = cuda.from_gpu_pointer(ptr, x.shape, strides, x)
         return z

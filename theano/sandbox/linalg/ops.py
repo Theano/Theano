@@ -243,7 +243,7 @@ def is_symmetric(v):
 def is_positive(v):
     if hints(v).get('positive', False):
         return True
-    #TODO: how to handle this - a registry?
+    # TODO: how to handle this - a registry?
     #      infer_hints on Ops?
     logger.debug('is_positive: %s' % str(v))
     if v.owner and v.owner.op == tensor.pow:
@@ -318,19 +318,19 @@ def no_transpose_symmetric(node):
     if isinstance(node.op, DimShuffle):
         x = node.inputs[0]
         if x.type.ndim == 2 and is_symmetric(x):
-            #print 'UNDOING TRANSPOSE', is_symmetric(x), x.ndim
+            # print 'UNDOING TRANSPOSE', is_symmetric(x), x.ndim
             if node.op.new_order == [1, 0]:
                 return [x]
 
 
 @register_stabilize
-@local_optimizer(None) # XXX: solve is defined later and can't be used here
+@local_optimizer(None)  # XXX: solve is defined later and can't be used here
 def psd_solve_with_chol(node):
     if node.op == solve:
         A, b = node.inputs  # result is solution Ax=b
         if is_psd(A):
             L = cholesky(A)
-            #N.B. this can be further reduced to a yet-unwritten cho_solve Op
+            # N.B. this can be further reduced to a yet-unwritten cho_solve Op
             #     __if__ no other Op makes use of the the L matrix during the
             #     stabilization
             Li_b = Solve('lower_triangular')(L, b)
@@ -340,7 +340,7 @@ def psd_solve_with_chol(node):
 
 @register_stabilize
 @register_specialize
-@local_optimizer(None) # XXX: det is defined later and can't be used here
+@local_optimizer(None)  # XXX: det is defined later and can't be used here
 def local_det_chol(node):
     """
     If we have det(X) and there is already an L=cholesky(X)
@@ -371,7 +371,7 @@ def local_log_prod_sqr(node):
             if is_positive(p):
                 return [tensor.log(p).sum(axis=x.owner.op.axis)]
 
-            #TODO: have a reduction like prod and sum that simply
+            # TODO: have a reduction like prod and sum that simply
             #      returns the sign of the prod multiplication.
 
 
@@ -384,7 +384,7 @@ def local_log_pow(node):
         x, = node.inputs
         if x.owner and x.owner.op == tensor.pow:
             base, exponent = x.owner.inputs
-            #TODO: reason to be careful with dtypes?
+            # TODO: reason to be careful with dtypes?
             return [exponent * tensor.log(base)]
 
 

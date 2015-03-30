@@ -204,9 +204,9 @@ class test_RopLop(RopLop_checker):
                            self.in_shape)
 
     def test_max(self):
-        ## If we call max directly, we will return an CAReduce object
-        ## and he don't have R_op implemented!
-        #self.check_mat_rop_lop(tensor.max(self.mx, axis=[0,1])[0],
+        # If we call max directly, we will return an CAReduce object
+        # and he don't have R_op implemented!
+        # self.check_mat_rop_lop(tensor.max(self.mx, axis=[0,1])[0],
         #                       ())
         self.check_mat_rop_lop(tensor.max(self.mx, axis=0),
                                (self.mat_in_shape[1],))
@@ -293,7 +293,7 @@ class test_RopLop(RopLop_checker):
                 lambda i, y, x1, x2, v1, v2:
                     (tensor.grad(y[i], x1) * v1).sum() + \
                     (tensor.grad(y[i], x2) * v2).sum(),
-                                sequences = tensor.arange(output.shape[0]),
+                                sequences=tensor.arange(output.shape[0]),
                                 non_sequences=[output, input, filters,
                                                ev_input, ev_filters])
             scan_f = function([input, filters, ev_input, ev_filters], sy,
@@ -309,7 +309,7 @@ class test_RopLop(RopLop_checker):
             v2 = scan_f(image_data, filter_data, ev_image_data,
                         ev_filter_data)
             assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
-                                            (v1,v2))
+                                            (v1, v2))
 
     def test_join(self):
         tv = numpy.asarray(self.rng.uniform(size=(10,)),

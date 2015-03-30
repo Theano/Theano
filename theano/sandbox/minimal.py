@@ -40,28 +40,30 @@ class Minimal(gof.Op):
 
         # return some computed value.
         # do not return something that is aliased to one of the inputs.
-        output[0]=numpy.asarray(0, dtype='int64')
+        output[0] = numpy.asarray(0, dtype='int64')
 
 minimal = Minimal()
 
 
-## TODO: test dtype conversion
-## TODO: test that invalid types are rejected by make_node
-## TODO: test that each valid type for A and b works correctly
+# TODO: test dtype conversion
+# TODO: test that invalid types are rejected by make_node
+# TODO: test that each valid type for A and b works correctly
 from theano.tests import unittest_tools as utt
+
+
 class T_minimal(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):
-        A=tensor.matrix()
-        b=tensor.vector()
+        A = tensor.matrix()
+        b = tensor.vector()
 
         print 'building function'
         f = function([A, b], minimal(A, A, b, b, A))
         print 'built'
 
-        Aval=self.rng.randn(5,5)
-        bval=numpy.array(range(5),dtype=float)
-        f(Aval,bval)
+        Aval = self.rng.randn(5, 5)
+        bval = numpy.array(range(5), dtype=float)
+        f(Aval, bval)
         print 'done'

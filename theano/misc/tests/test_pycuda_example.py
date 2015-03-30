@@ -64,8 +64,8 @@ def test_pycuda_elemwise_source_module():
             assert numpy.allclose(f(val1, val2), f2(val1, val2))
             assert numpy.allclose(f(val1, val2), f3(val1, val2))
             assert numpy.allclose(f(val1, val2), f4(val1, val2))
-            #print f(val1,val2)
-            #print f2(val1,val2)
+            # print f(val1,val2)
+            # print f2(val1,val2)
 
 """
 #commented as it work only with old pycuda version.

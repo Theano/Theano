@@ -46,7 +46,7 @@ class TestCGer(TestCase, TestOptimizationMixin):
     def function(self, inputs, outputs):
         return theano.function(inputs, outputs,
                 mode=self.mode,
-                #allow_inplace=True,
+                # allow_inplace=True,
                 )
 
     def run_f(self, f):
@@ -199,7 +199,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         topo = [n.op for n in f.maker.fgraph.toposort()]
         assert topo == [CGemv(inplace=False)], topo
 
-        #test the inplace version
+        # test the inplace version
         g = theano.function([], [],
                 updates=[(v2, v2 + theano.dot(m, v1))],
                 mode=self.mode)

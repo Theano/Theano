@@ -157,8 +157,8 @@ class GpuElemwise(HideC, Elemwise):
 
 """
         try:
-            #We accept only some c_support_code().
-            #This filter is done in the make_node()
+            # We accept only some c_support_code().
+            # This filter is done in the make_node()
             support_code += self.scalar_op.c_support_code()
         except MethodNotDefined:
             pass
@@ -243,7 +243,7 @@ class GpuElemwise(HideC, Elemwise):
         initial_dims = ','.join('1' for i in xrange(nd))
         opname = str(self.scalar_op)
 
-        #check that all inputs have valid dimensions
+        # check that all inputs have valid dimensions
         emitted_inames = {}
         code = """
         int n_blocks = 0;
@@ -276,7 +276,7 @@ class GpuElemwise(HideC, Elemwise):
                 """ % locals()
             emitted_inames[iname] = node.inputs[idx]
 
-        #check that all inputs have valid dimensions
+        # check that all inputs have valid dimensions
         emitted_inames = {}
         for idx, iname in enumerate(inputs):
             if iname in emitted_inames:
@@ -311,7 +311,7 @@ class GpuElemwise(HideC, Elemwise):
         }
             """ % locals()
             emitted_inames[iname] = True
-        #check that all outputs have valid dimensions
+        # check that all outputs have valid dimensions
         for idx, oname in enumerate(outputs):
             typecode = dtype_to_typecode(node.outputs[idx].dtype)
             if idx not in self.inplace_pattern.keys():
@@ -620,7 +620,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         ax = ''
         if self.axis is not None:
             ax = '{%s}' % (', '.join(str(x) for x in self.axis),)
-        return "GpuCAReduceCuda{%s%s}%s" % (pre,str(self.scalar_op), ax)
+        return "GpuCAReduceCuda{%s%s}%s" % (pre, str(self.scalar_op), ax)
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -736,7 +736,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         sio = StringIO()
         fail = sub['fail']
 
-        #check input
+        # check input
         print >> sio, """
         if (PyGpuArray_NDIM(%(x)s) != %(nd_in)s)
         {
@@ -761,7 +761,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                 PyErr_Format(PyExc_ValueError," tried to reduce a 0-length axis.");
                 %(fail)s;
             }
-            """ %locals()
+            """ % locals()
 
         #
         # alloc an output if we need one
@@ -773,7 +773,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
            || (PyGpuArray_NDIM(%(z)s) != %(nd_out)s)
         """ % locals()
 
-        #ensure that the output has the right non-reduced dimensions
+        # ensure that the output has the right non-reduced dimensions
         j = 0
         for i in xrange(nd_in):
             if not self.reduce_mask[i]:
@@ -813,7 +813,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         # actually work to do
         if getattr(self.scalar_op, 'identity', None) == 0:
             zero_shp = "cudaMemset((%(out_dtype)s *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset), 0, PyGpuArray_SIZE(%(z)s) * sizeof(%(out_dtype)s))" % locals()
-        #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
+        # TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
             scalar_op = self.scalar_op
             zero_shp = """
@@ -835,9 +835,9 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         #
 
         if all(i == 1 for i in self.reduce_mask):
-            #check if the tensor is ccontiguous, if true, use the c_code_reduce_ccontig code.
-            #TODO: check if we are ccontiguous when we un-dimshuffle
-            #TODO: if only some dims are ccontiguous, call version with less dims.
+            # check if the tensor is ccontiguous, if true, use the c_code_reduce_ccontig code.
+            # TODO: check if we are ccontiguous when we un-dimshuffle
+            # TODO: if only some dims are ccontiguous, call version with less dims.
             print >> sio, 'if(%(x)s->ga.flags & GA_C_CONTIGUOUS){'%locals()
             self.c_code_reduce_ccontig(sio, node, name, x, z, fail)
             print >> sio, "}else{"
@@ -1048,7 +1048,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         else:
             assert isinstance(self.scalar_op, (scal.Maximum,
                                                scal.Minimum))
-            if self.pre_scalar_op: # TODO, multi_dtype!
+            if self.pre_scalar_op:  # TODO, multi_dtype!
                 #dtype = node.inputs[0].dtype
                 dtype = 'float32'
 
@@ -1214,7 +1214,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         for num in [16, 8, 4, 2, 1]:
             this_if = "if (threadNum + %d < threadCount) " % num + \
                 self._assign_reduce(node, name,
-                                    'buf[threadNum]','buf[threadNum+%d]' % num,
+                                    'buf[threadNum]', 'buf[threadNum+%d]' % num,
                                     sub, False)
             current_version += this_if
             current_version += """
@@ -1232,8 +1232,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
         return current_version
 
-    #Threads must be organized as: threadNum%nb_reduce correspond to the same sum
-    #nb_reduce<=warpSize
+    # Threads must be organized as: threadNum%nb_reduce correspond to the same sum
+    # nb_reduce<=warpSize
     def _k_reduce_buf_multiple(self, z_pos, node, name, nb_reduce):
         reduce_fct = self._assign_reduce(node, name, 'myresult', 'buf[i]', {}, False)
         return """
@@ -1264,7 +1264,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         out_dtype = "npy_" + node.outputs[0].dtype
         if getattr(self.scalar_op, 'identity', None) == 0:
             zero_shp = "cudaMemset((%(out_dtype)s *)(((char *)cuda_get_ptr(%(z)s->ga.data))+%(z)s->ga.offset), 0, PyGpuArray_SIZE(%(z)s) * sizeof(%(out_dtype)s))" % locals()
-        #TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
+        # TODO: elif getattr(self.scalar_op, 'identity', None) == 1:
         else:
             zero_shp = """
             PyErr_Format(PyExc_NotImplementedError,
@@ -1888,7 +1888,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         acc_dtype = "npy_" + self._acc_dtype(node.inputs[0].dtype)
 
         if all(i == 1 for i in self.reduce_mask):
-            #this kernel is ok for up to a few thousand elements, but
+            # this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
@@ -1919,7 +1919,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             }
             """ % locals()
         if self.reduce_mask == (1,):
-            #this kernel is ok for up to a few thousand elements, but
+            # this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
@@ -1950,7 +1950,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             }
             """ % locals()
         if self.reduce_mask == (1, 1):
-            #this kernel is ok for up to a few thousand elements, but
+            # this kernel is ok for up to a few thousand elements, but
             # it only runs on ONE multiprocessor
             reducebuf = self._k_reduce_buf('Z[0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
@@ -2060,7 +2060,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
-            #TODO: This kernel is pretty inefficient in terms of reading, because if A is
+            # TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[i0 * sZ0 + i2*sZ1]',
@@ -2155,10 +2155,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             # this kernel uses one block for multiple column(up to 32TODO),
             # threads per block for each element per column.
 
-#thread.x = dim 2 contiguous
-#thread.y = dim 1
-#block.x = dim 0
-#block.y = dim 1 rest
+# thread.x = dim 2 contiguous
+# thread.y = dim 1
+# block.x = dim 0
+# block.y = dim 1 rest
             init = self._k_init(node, nodename)
             decl = self._k_decl(node, nodename, pattern="010_inner")
             reducebuf = self._k_reduce_buf_multiple('Z[i0 * sZ0 + i2*sZ1]',
@@ -2196,10 +2196,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             # this kernel uses one block for each column,
             # threads per block for each element per column.
 
-            #TODO: This kernel is pretty inefficient in terms of reading, because if A is
+            # TODO: This kernel is pretty inefficient in terms of reading, because if A is
             #      c_contiguous (typical case) then each warp is accessing non-contigous
             #      memory (a segment of a column).
-            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub = {})
+            reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              "A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2]",
                                              {}, True)

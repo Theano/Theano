@@ -41,12 +41,12 @@ class test_ScalarOps(unittest.TestCase):
         fn = gof.DualLinker().accept(g).make_function()
         assert fn(1.0, 2.0) == 1.5
 
-    #This test is moved to theano.tensor.tests.test_basic.py:test_mod
-    #We move it their as under ubuntu the c_extract call of theano.scalar
-    #call PyInt_check and it fail under some os. If work in other case.
-    #As we use theano.scalar normally, but we use theano.tensor.scalar
-    #that is not important. Also this make the theano fct fail at call time
-    #so this is not a silent bug.
+    # This test is moved to theano.tensor.tests.test_basic.py:test_mod
+    # We move it their as under ubuntu the c_extract call of theano.scalar
+    # call PyInt_check and it fail under some os. If work in other case.
+    # As we use theano.scalar normally, but we use theano.tensor.scalar
+    # that is not important. Also this make the theano fct fail at call time
+    # so this is not a silent bug.
     # --> This is why it is purposedly named 'tes_mod' instead of 'test_mod'.
     def tes_mod(self):
         """
@@ -55,16 +55,15 @@ class test_ScalarOps(unittest.TestCase):
         as Python. That is what we want.
         """
         x, y = ints('xy')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x%y])).make_function()
-        for a,b in ((0,1), (1,1), (0,-1), (1,-1), (-1,-1),
-                    (1,2), (-1,2), (1,-2), (-1,-2),
-                    (5,3), (-5,3), (5,-3), (-5,-3)
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x%y])).make_function()
+        for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
+                    (1, 2), (-1, 2), (1, -2), (-1, -2),
+                    (5, 3), (-5, 3), (5, -3), (-5, -3)
                     ):
-            self.assertTrue(fn(a,b) == a%b, (a,))
-
+            self.assertTrue(fn(a, b) == a%b, (a,))
 
     def test_clip_grad(self):
-        #This is testing for the issue #633
+        # This is testing for the issue #633
         x, y = floats('xy')
         a = theano.tensor.clip(x, y, x)
         g = theano.gradient.grad(a, x)
@@ -85,10 +84,10 @@ class test_ScalarOps(unittest.TestCase):
         ntests = 50
         for i in xrange(ntests):
             xval = rng.rand(1)
-            #To ensure that the min < x .
+            # To ensure that the min < x .
             yval_mn = rng.rand(1) - 1.0
 
-            #To ensure that the max > x.
+            # To ensure that the max > x.
             yval_mx = rng.rand(1) + 1.0
 
             aval = fn(xval, yval_mn)
@@ -112,7 +111,7 @@ class test_composite(unittest.TestCase):
         assert fn(1.0, 2.0) == 1.5
 
     def test_flatten(self):
-        #Test that we flatten multiple Composite.
+        # Test that we flatten multiple Composite.
         x, y, z = inputs()
         C = Composite([x, y], [x + y])
         CC = Composite([x, y], [C(x * y, y)])
@@ -120,7 +119,7 @@ class test_composite(unittest.TestCase):
 
         # Test with multiple outputs
         CC = Composite([x, y, z], [C(x * y, y), C(x * z, y)])
-        #We don't flatten that case.
+        # We don't flatten that case.
         assert isinstance(CC.outputs[0].owner.op, Composite)
 
     def test_with_constants(self):
@@ -128,7 +127,7 @@ class test_composite(unittest.TestCase):
         e = mul(add(70.0, y), div_proxy(x, y))
         C = Composite([x, y], [e])
         c = C.make_node(x, y)
-        assert "70.0" in c.op.c_code(c, 'dummy', ['x', 'y'], ['z'], dict(id = 0))
+        assert "70.0" in c.op.c_code(c, 'dummy', ['x', 'y'], ['z'], dict(id=0))
         # print c.c_code(['x', 'y'], ['z'], dict(id = 0))
         g = FunctionGraph([x, y], [c.out])
         fn = gof.DualLinker().accept(g).make_function()
@@ -192,74 +191,73 @@ class test_composite(unittest.TestCase):
 class test_logical(unittest.TestCase):
     def test_gt(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x > y])).make_function()
-        for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.assertTrue(fn(a,b) == (a>b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x > y])).make_function()
+        for a, b in ((3., 9), (3, 0.9), (3, 3)):
+            self.assertTrue(fn(a, b) == (a > b))
 
     def test_lt(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x < y])).make_function()
-        for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.assertTrue(fn(a,b) == (a<b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x < y])).make_function()
+        for a, b in ((3., 9), (3, 0.9), (3, 3)):
+            self.assertTrue(fn(a, b) == (a < b))
 
     def test_le(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x <= y])).make_function()
-        for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.assertTrue(fn(a,b) == (a<=b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x <= y])).make_function()
+        for a, b in ((3., 9), (3, 0.9), (3, 3)):
+            self.assertTrue(fn(a, b) == (a <= b))
 
     def test_ge(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x >= y])).make_function()
-        for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.assertTrue(fn(a,b) == (a>=b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x >= y])).make_function()
+        for a, b in ((3., 9), (3, 0.9), (3, 3)):
+            self.assertTrue(fn(a, b) == (a >= b))
 
     def test_eq(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [eq(x,y)])).make_function()
-        for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.assertTrue(fn(a,b) == (a==b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [eq(x, y)])).make_function()
+        for a, b in ((3., 9), (3, 0.9), (3, 3)):
+            self.assertTrue(fn(a, b) == (a == b))
 
     def test_neq(self):
         x, y, z = inputs()
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [neq(x,y)])).make_function()
-        for a,b in ((3.,9), (3,0.9), (3,3)):
-            self.assertTrue(fn(a,b) == (a!=b))
-
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [neq(x, y)])).make_function()
+        for a, b in ((3., 9), (3, 0.9), (3, 3)):
+            self.assertTrue(fn(a, b) == (a != b))
 
     def test_or(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x|y])).make_function()
-        for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.assertTrue(fn(a,b) == (a|b), (a,b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x|y])).make_function()
+        for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
+            self.assertTrue(fn(a, b) == (a|b), (a, b))
 
     def test_xor(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x^y])).make_function()
-        for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.assertTrue(fn(a,b) == (a ^ b), (a,b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x^y])).make_function()
+        for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
+            self.assertTrue(fn(a, b) == (a ^ b), (a, b))
 
     def test_and(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [and_(x, y)])).make_function()
-        for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.assertTrue(fn(a,b) == (a & b), (a,b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [and_(x, y)])).make_function()
+        for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
+            self.assertTrue(fn(a, b) == (a & b), (a, b))
 
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [x & y])).make_function()
-        for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.assertTrue(fn(a,b) == (a & b), (a,b))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x & y])).make_function()
+        for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
+            self.assertTrue(fn(a, b) == (a & b), (a, b))
 
     def test_not(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [invert(x)])).make_function()
-        for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.assertTrue(fn(a,b) == ~a, (a,))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [invert(x)])).make_function()
+        for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
+            self.assertTrue(fn(a, b) == ~a, (a,))
 
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x,y], [~x])).make_function()
-        for a,b in ((0,1), (0,0), (1,0), (1,1)):
-            self.assertTrue(fn(a,b) == ~a, (a,))
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [~x])).make_function()
+        for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
+            self.assertTrue(fn(a, b) == ~a, (a,))
 
 
 # This class does not inherit from unittest.TestCase, because it would
@@ -416,12 +414,14 @@ class test_div(unittest.TestCase):
         assert isinstance((f/c).owner.op, TrueDiv)
         assert isinstance((a/c).owner.op, TrueDiv)
 
+
 def test_grad_gt():
-    x = float32(name = 'x')
-    y = float32(name = 'y')
+    x = float32(name='x')
+    y = float32(name='y')
     z = x > y
     g = theano.gradient.grad(z, y)
     assert g.eval({ y : 1. }) == 0.
+
 
 def test_grad_switch():
 

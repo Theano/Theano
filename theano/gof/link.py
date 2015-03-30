@@ -241,7 +241,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             "HINT: Use the Theano flag 'exception_verbosity=high'"
             " for a debugprint and storage map footprint of this apply node.")
 
-
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
     raise exc_type, exc_value, exc_trace
@@ -303,7 +302,7 @@ class Linker(object):
         def execute(*args):
             def e_arity(takes, got):
                 return 'Function call takes exactly %i %s (%i given)' \
-                        % (takes, ['argument','arguments'][takes>1], got)
+                        % (takes, ['argument', 'arguments'][takes > 1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
             for arg, variable in zip(args, inputs):
@@ -324,7 +323,7 @@ class Linker(object):
         return fgraph.toposort()
 
 
-#TODO: Move this class to the compile module, where it is used (and for which it exists).
+# TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
     """This class joins a variable with its computed value.
     It is used in linkers, especially for the inputs and outputs of a Function.
@@ -442,7 +441,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
     This function also returns `output_storage` which is a list of storages corresponding to fgraph.outputs.
 
     """
-    #each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
+    # each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
 
     # input_storage is a list of data-containers for the inputs.
     if input_storage is None:
@@ -539,7 +538,7 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
         f = streamline_nice_errors_f
     else:
         # don't worry about raise_with_op, just go a little faster.
-        #there is a mix of python and c thunks
+        # there is a mix of python and c thunks
         def streamline_fast_f():
             for x in no_recycling:
                 x[0] = None
@@ -582,7 +581,7 @@ def gc_helper(node_list):
 
     This is used to allow garbage collection within graphs.
     """
-    #for freeing memory
+    # for freeing memory
     last_user = {}
     computed = set()
     for node in node_list:
@@ -685,7 +684,7 @@ class PerformLinker(LocalLinker):
         f = streamline(fgraph, thunks, order, post_thunk_old_storage,
                        no_recycling=no_recycling)
 
-        f.allow_gc = self.allow_gc #HACK: this is a way of passing an arg to Function.__call__
+        f.allow_gc = self.allow_gc  # HACK: this is a way of passing an arg to Function.__call__
         add_clear_storage(f, computed, storage_map)
         f.storage_map = storage_map
 

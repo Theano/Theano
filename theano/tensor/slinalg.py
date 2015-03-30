@@ -34,15 +34,16 @@ MATRIX_STRUCTURES = (
         'toeplitz',
         )
 
+
 class Cholesky(Op):
     """
     Return a triangular matrix square root of positive semi-definite `x`
 
     L = cholesky(X, lower=True) implies dot(L, L.T) == X
     """
-    #TODO: inplace
-    #TODO: for specific dtypes
-    #TODO: LAPACK wrapper with in-place behavior, for solve also
+    # TODO: inplace
+    # TODO: for specific dtypes
+    # TODO: LAPACK wrapper with in-place behavior, for solve also
 
     __props__ = ('lower', 'destructive')
 
@@ -194,9 +195,9 @@ class Solve(Op):
 
 solve = Solve()  # general solve
 
-#TODO : SolveTriangular
+# TODO : SolveTriangular
 
-#TODO: Optimizations to replace multiplication by matrix inverse
+# TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)
 
 
@@ -350,7 +351,7 @@ class Expm(Op):
         A = as_tensor_variable(A)
         assert A.ndim == 2
         expm = theano.tensor.matrix(dtype=A.dtype)
-        return Apply(self, [A,], [expm,])
+        return Apply(self, [A, ], [expm, ])
 
     def perform(self, node, (A,), (expm,)):
         expm[0] = scipy.linalg.expm(A)
@@ -372,7 +373,7 @@ class ExpmGrad(Op):
         A = as_tensor_variable(A)
         assert A.ndim == 2
         out = theano.tensor.matrix(dtype=A.dtype)
-        return Apply(self, [A, gw], [out,])
+        return Apply(self, [A, gw], [out, ])
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]

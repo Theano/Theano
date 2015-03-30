@@ -295,7 +295,6 @@ if sys.version_info[:2] < (2, 7):
         def __ne__(self, other):
             return not self == other
 
-
     # The following implementation of Counter compatible with python 2.4
     # was taken from http://code.activestate.com/recipes/576611/
     # It is under the MIT license.
@@ -405,7 +404,7 @@ if sys.version_info[:2] < (2, 7):
                         for elem, count in iterable.iteritems():
                             self[elem] = self_get(elem, 0) + count
                     else:
-                        dict.update(self, iterable) # fast path when counter is empty
+                        dict.update(self, iterable)  # fast path when counter is empty
                 else:
                     self_get = self.get
                     for elem in iterable:
@@ -516,6 +515,7 @@ else:
     from collections import Counter
 
 __all__ += ['DictMixin', 'OrderedDict', 'Counter']
+
 
 class DefaultOrderedDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):

@@ -42,7 +42,7 @@ class Test_SharedVariable(unittest.TestCase):
 
     def test_strict_generic(self):
 
-        #this should work, because
+        # this should work, because
         # generic can hold anything even when strict=True
 
         u = shared('asdf', strict=False)
@@ -184,12 +184,12 @@ class Test_SharedVariable(unittest.TestCase):
         assert b.type == theano.tensor.fvector
         self.assertRaises(TypeError, f, b, 8)
 
-#numpy.float([7.234]) don't work
+# numpy.float([7.234]) don't work
 #        b = shared(numpy.float([7.234]), strict=True)
 #        assert b.type == theano.tensor.dvector
 #        self.assertRaises(TypeError, f, b, 8)
 
-#This generate a generic type. Should we cast? I don't think.
+# This generate a generic type. Should we cast? I don't think.
 #        b = shared([7.234], strict=True)
 #        assert b.type == theano.tensor.dvector
 #        self.assertRaises(TypeError, f, b, 8)
@@ -287,12 +287,12 @@ class Test_SharedVariable(unittest.TestCase):
         f(b, [8])
         assert b.get_value() == 8
 
-#numpy.float([7.234]) don't work
+# numpy.float([7.234]) don't work
 #        b = shared(numpy.float([7.234]))
 #        assert b.type == theano.tensor.dvector
 #        f(b,[8])
 
-#This generate a generic type. Should we cast? I don't think.
+# This generate a generic type. Should we cast? I don't think.
 #        b = shared([7.234])
 #        assert b.type == theano.tensor.dvector
 #        f(b,[8])

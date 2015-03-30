@@ -50,6 +50,7 @@ mode_with_gpu = mode_with_opt.including('gpu', 'scan')
 type_eps = {'float64': 1e-7,
             'float32': 3e-3}
 
+
 class multiple_outputs_numeric_grad:
     """WRITEME"""
     def __init__(self, f, pt, ndarray_mask=None, eps=None):
@@ -370,9 +371,9 @@ class T_Scan(unittest.TestCase):
     @attr('slow')
     def test_only_nonseq_inputs(self):
         # Compile the Theano function
-        n_steps=2
+        n_steps = 2
         inp = tensor.matrix()
-        broadcasted_inp, _ = theano.scan(lambda x:x,
+        broadcasted_inp, _ = theano.scan(lambda x: x,
                                          non_sequences=[inp],
                                          n_steps=n_steps)
         out = broadcasted_inp.sum()
@@ -1129,7 +1130,7 @@ class T_Scan(unittest.TestCase):
 
         # Their is a bug when floatX=float32 when we remove this line.
         # The trace back is:
-#Traceback (most recent call last):
+# Traceback (most recent call last):
 #  File "/u/bastienf/repos/Theano/theano/tests/test_scan.py", line 434, in test_shared_arguments_with_updates
 #    theano_y0,theano_y1,theano_y2 = f10(vu2, vy0)
 #  File "/u/bastienf/repos/theano/compile/function_module.py", line 480, in __call__
@@ -1152,7 +1153,7 @@ class T_Scan(unittest.TestCase):
 #    rval = numpy.asarray(a, dtype=dtype, order=order)
 #  File "/u/lisa/local/byhost/ceylon.iro.umontreal.ca//lib64/python2.5/site-packages/numpy/core/numeric.py", line 230, in asarray
 #    return array(a, dtype, copy=False, order=order)
-#TypeError: ('__array__() takes no arguments (1 given)', <theano.scan.Scan object at 0x3dbbf90>(?_steps, u1, u2, y0, y1, 0.0, W1, W2), 'Sequence id of Apply node=0')
+# TypeError: ('__array__() takes no arguments (1 given)', <theano.scan.Scan object at 0x3dbbf90>(?_steps, u1, u2, y0, y1, 0.0, W1, W2), 'Sequence id of Apply node=0')
 #
 #  This don't seam to be a theano related bug...
         vu1 = asarrayX(rng.rand(3, 2))
@@ -1946,10 +1947,10 @@ class T_Scan(unittest.TestCase):
         # hidden and outputs of the entire sequence
         [h, y], _ = theano.scan(
             fn=one_step,
-            sequences = dict(input=x),
+            sequences=dict(input=x),
             # corresponds to the return type of one_step
-            outputs_info = [dict(initial=h0, taps=[-2, -1]), None],
-            non_sequences = [W_ih, W_hh, b_h, W_ho, b_o])
+            outputs_info=[dict(initial=h0, taps=[-2, -1]), None],
+            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o])
 
         # target values
         t = tensor.matrix()
@@ -2231,7 +2232,7 @@ class T_Scan(unittest.TestCase):
         assert not x  in f2_inp
         assert not y2 in f2_inp
 
-    ### TEST RE-ordering of inputs
+    # TEST RE-ordering of inputs
     # some rnn with multiple outputs and multiple inputs; other
     # dimension instead of scalars/vectors
     def test_reordering(self):
@@ -2760,7 +2761,7 @@ class T_Scan(unittest.TestCase):
 
         # Validate that the PushOutScanOutput optimization has been applied
         # by checking the number of outputs of the grad Scan node in the
-        #compiled function.
+        # compiled function.
         nodes = feval_backprop.maker.fgraph.toposort()
         scan_nodes = [n for n in nodes if isinstance(
                       n.op, theano.scan_module.scan_op.Scan)]
@@ -3267,11 +3268,11 @@ class T_Scan(unittest.TestCase):
         orig = tensor.fmatrix('PARAM')
         # = gpu_from_host(orig)  # <-- this doesn't work
         W = orig + 2  # <-- has same effect but it works on CPU as well
-        #W = T.fmatrix('PARAM') # <-- this line works
+        # W = T.fmatrix('PARAM') # <-- this line works
 
         def one_step(v, W):
             o = v + 1 + W.sum()  # <-- this doesn't work
-            #o = v + 1  # <-- this line works
+            # o = v + 1  # <-- this line works
             return o
 
         OS, updates = theano.scan(
@@ -3438,7 +3439,7 @@ class T_Scan(unittest.TestCase):
         # Validate the connnection pattern is as it should be
         node = scan_outputs[0].owner
         connection_pattern = node.op.connection_pattern(node)
-        expected_connection_pattern = [[(j in [1,2,3,4]) for i in range(6)]
+        expected_connection_pattern = [[(j in [1, 2, 3, 4]) for i in range(6)]
                                        for j in range(7)]
 
         assert connection_pattern == expected_connection_pattern
@@ -3783,16 +3784,15 @@ class T_Scan(unittest.TestCase):
     def test_dot_optimization(self):
         A = tensor.matrix('A')
         B = tensor.matrix('B')
-        S, _ = theano.scan(lambda x1,x2, u: u + tensor.dot(x1,x2),
-                           sequences = [A.dimshuffle(0, 1, 'x'),
-                                        B.dimshuffle(0,'x', 1)],
+        S, _ = theano.scan(lambda x1, x2, u: u + tensor.dot(x1, x2),
+                           sequences=[A.dimshuffle(0, 1, 'x'),
+                                        B.dimshuffle(0, 'x', 1)],
                            outputs_info=[tensor.zeros_like(A)])
-        f = theano.function([A,B], S.owner.inputs[0][-1])
+        f = theano.function([A, B], S.owner.inputs[0][-1])
         rng = numpy.random.RandomState(utt.fetch_seed())
         vA = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         utt.assert_allclose(f(vA, vB), numpy.dot(vA.T, vB))
-
 
     def test_pregreedy_optimizer(self):
         W = tensor.zeros((5, 4))
@@ -3890,9 +3890,9 @@ class T_Scan(unittest.TestCase):
         v = theano.tensor.ivector(name='v')
         y, _ = theano.scan(lambda i, W: W[i], sequences=v, outputs_info=None, non_sequences=W)
 
-        #This used to raise an exception
+        # This used to raise an exception
         f = theano.function([v], theano.tensor.grad(y.sum(), W))
-        utt.assert_allclose(f([1,2]), [[0,0,0],[1,1,1],[1,1,1]])
+        utt.assert_allclose(f([1, 2]), [[0, 0, 0], [1, 1, 1], [1, 1, 1]])
 
     def test_clone(self):
         def test(x, y, mention_y):
@@ -3900,8 +3900,8 @@ class T_Scan(unittest.TestCase):
                 d = 0.1 + 0 * y
             else:
                 d = 0.1
-            out = theano.clone(y, replace={x:x + d})
-            #theano.printing.debugprint(out)
+            out = theano.clone(y, replace={x: x + d})
+            # theano.printing.debugprint(out)
             return theano.function([], out)()
 
         x = theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
@@ -3924,15 +3924,15 @@ class T_Scan(unittest.TestCase):
     def test_scan_merge_nodes(self):
         inps = tensor.vector()
         state = tensor.scalar()
-        y1, _ = theano.scan(lambda x,y: x*y,
-                            sequences = inps,
-                            outputs_info = state,
-                            n_steps = 5)
+        y1, _ = theano.scan(lambda x, y: x*y,
+                            sequences=inps,
+                            outputs_info=state,
+                            n_steps=5)
 
-        y2, _ = theano.scan(lambda x,y : (x+y, theano.scan_module.until(x>0)),
-                            sequences = inps,
-                            outputs_info = state,
-                            n_steps = 5)
+        y2, _ = theano.scan(lambda x, y : (x+y, theano.scan_module.until(x > 0)),
+                            sequences=inps,
+                            outputs_info=state,
+                            n_steps=5)
         scan_node1 = y1.owner.inputs[0].owner
         assert isinstance(scan_node1.op, theano.scan_module.scan_op.Scan)
         scan_node2 = y2.owner.inputs[0].owner
@@ -3944,8 +3944,8 @@ class T_Scan(unittest.TestCase):
         assert not opt_obj.belongs_to_set(scan_node2, [scan_node1])
 
     def test_remove_constants_and_unused_inputs_scan_non_seqs(self):
-        #Test the opt remove_constants_and_unused_inputs_scan for
-        #non sequences.
+        # Test the opt remove_constants_and_unused_inputs_scan for
+        # non sequences.
         W = theano.tensor.matrix(name='W')
         v = theano.tensor.ivector(name='v')
         y1, _ = theano.scan(lambda i, W: W[i], sequences=v,
@@ -3962,10 +3962,10 @@ class T_Scan(unittest.TestCase):
                             outputs_info=None, non_sequences=[W, W[0], W[0]])
         # TODO: y7 have problem during run time. I think it should
         # raise an error during the scan construction.
-        #y7, _ = theano.scan(lambda i, W, _, _2: W[i], sequences=v,
+        # y7, _ = theano.scan(lambda i, W, _, _2: W[i], sequences=v,
         #                    outputs_info=None, non_sequences=[v, W[0], W])
         for out in [y1, y2, y3, y4, y5, y6]:
-            #This used to raise an exception
+            # This used to raise an exception
             f = theano.function([W, v], out, mode=mode_with_opt)
             f(numpy.zeros((3, 3), dtype=theano.config.floatX), [1, 2])
             scan_node = f.maker.fgraph.toposort()[-1]
@@ -3981,7 +3981,7 @@ class T_Scan(unittest.TestCase):
             assert (len(inp) == len(set(inp)))
 
     def test_remove_constants_and_unused_inputs_scan_seqs(self):
-        #Test the opt remove_constants_and_unused_inputs_scan for sequences.
+        # Test the opt remove_constants_and_unused_inputs_scan for sequences.
         W = theano.tensor.matrix(name='W')
         v = theano.tensor.ivector(name='v')
         vv = theano.tensor.matrix(name='vv')
@@ -4003,7 +4003,7 @@ class T_Scan(unittest.TestCase):
         y8, _ = theano.scan(lambda _, i, W, _2, _3: W[i], sequences=[vv[0], v],
                             outputs_info=None, non_sequences=[W, W[0], W[0]])
         for out in [y1, y2, y3, y4, y5, y6, y7, y8]:
-            #This used to raise an exception
+            # This used to raise an exception
             f = theano.function([W, v, vv], out, on_unused_input='ignore',
                                 mode=mode_with_opt)
             f(numpy.zeros((3, 3), theano.config.floatX),
@@ -4025,7 +4025,7 @@ class T_Scan(unittest.TestCase):
 
     @attr('slow')
     def test_hessian_bug_grad_grad_two_scans(self):
-        #Bug reported by Bitton Tenessi
+        # Bug reported by Bitton Tenessi
         # NOTE : The test to reproduce the bug reported by Bitton Tenessi
         # was modified from its original version to be faster to run.
 
@@ -4064,9 +4064,9 @@ class T_Scan(unittest.TestCase):
     def test_strict_mode(self):
         n = 10
 
-        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w = numpy.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
         w_ = theano.shared(w)
-        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0 = numpy.array([1, 2]).astype(theano.config.floatX)
         x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
 
         def _scan_loose(x):
@@ -4101,9 +4101,9 @@ class T_Scan(unittest.TestCase):
     def test_strict_mode_ex(self):
         n = 10
 
-        w = numpy.array([[-1,2],[3,-4]]).astype(theano.config.floatX)
+        w = numpy.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
         w_ = theano.shared(w)
-        x0 = numpy.array([1,2]).astype(theano.config.floatX)
+        x0 = numpy.array([1, 2]).astype(theano.config.floatX)
         x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
 
         def _scan_loose(x):
@@ -4132,7 +4132,7 @@ def test_speed():
     # The computation being tested here is a recurrent addition.
     #
     #
-    #We need the CVM for this speed test
+    # We need the CVM for this speed test
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
 
@@ -4186,7 +4186,7 @@ def test_speed():
         s_i = theano.shared(numpy.array(1))
         s_rinc = tensor.inc_subtensor(shared_r[s_i], shared_r[s_i - 1],
                 tolerate_inplace_aliasing=True)
-        #theano.printing.debugprint(s_rinc)
+        # theano.printing.debugprint(s_rinc)
         f = theano.function([],
                             [],
                             updates=OrderedDict([
@@ -4201,7 +4201,7 @@ def test_speed():
         f()  # 999 to update the profiling timers
         t3 = time.time()
         print 'theano (updates, cvm)', t3 - t2
-        #print shared_r.get_value()
+        # print shared_r.get_value()
 
 
 def test_speed_rnn():
@@ -4219,7 +4219,7 @@ def test_speed_rnn():
     # multiplication - the heart of an ESN or RNN.
     #
 
-    #We need the CVM for this speed test
+    # We need the CVM for this speed test
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
 
@@ -4269,15 +4269,15 @@ def test_speed_rnn():
                     (s_i, s_i + 1),
                     (shared_r, s_rinc)]),
                 mode=theano.Mode(linker='cvm'))
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         f_fn = f.fn
-        #print f_fn
+        # print f_fn
         t2 = time.time()
         f_fn(n_calls=L - 2)
         f()  # 999 to update the profiling timers
         t3 = time.time()
         print 'theano (updates, cvm)', t3 - t2
-        #print shared_r.get_value()
+        # print shared_r.get_value()
 
 
 def test_speed_batchrnn():
@@ -4298,7 +4298,7 @@ def test_speed_batchrnn():
     # multiplication - the heart of an ESN or RNN.
     #
 
-    #We need the CVM for this speed test
+    # We need the CVM for this speed test
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
     L = 100
@@ -4334,9 +4334,9 @@ def test_speed_batchrnn():
                                 (s_i, s_i + 1),
                                 (shared_r, s_rinc)],
                 mode=theano.Mode(linker='cvm'))
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
         f_fn = f.fn
-        #print f_fn
+        # print f_fn
         t2 = time.time()
         f_fn(n_calls=L - 2)
         f()  # 999 to update the profiling timers
@@ -4491,7 +4491,7 @@ def test_compute_test_value():
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)
-        #print f(xv)
+        # print f(xv)
     finally:
         theano.config.compute_test_value = backup
 
@@ -4516,7 +4516,7 @@ def test_compute_test_value_nonseq():
         # The gradient computation used to crash before 6af465e.
         g = tensor.grad(z.sum(), x)
         #f = theano.function([x], g)
-        #print f(xv)
+        # print f(xv)
     finally:
         theano.config.compute_test_value = backup
 

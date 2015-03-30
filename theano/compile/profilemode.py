@@ -62,7 +62,7 @@ class Profile_Maker(FunctionMaker):
         self.mode.profile_stats[ret] = profile
         ret.profile = profile
 
-        #initialize the timers
+        # initialize the timers
         for i, node in enumerate(ret.maker.fgraph.toposort()):
             profile.apply_time[node] = 0.0
 
@@ -78,8 +78,8 @@ class Profile_Maker(FunctionMaker):
         # functions and is not function-specific)  work with ProfileStats
         # objects which are function-specific.
 
-        #capture old fn in closure. This is important since new_fn is about to
-        #take its place as ret.fn.
+        # capture old fn in closure. This is important since new_fn is about to
+        # take its place as ret.fn.
         ret_fn = ret.fn
 
         def new_fn():
@@ -133,7 +133,7 @@ class ProfileMode(Mode):
     local_time = property(__get_local_time)
 
     def __getstate__(self):
-        #print "__getstate__",self.provided_linker,self.provided_optimizer
+        # print "__getstate__",self.provided_linker,self.provided_optimizer
         return (self.provided_linker,
                 self.provided_optimizer,
                 self.message,
@@ -279,7 +279,7 @@ class ProfileMode(Mode):
                 tb = b_time.pop(a, 0)
                 r[a] += ta - tb
 
-            #they are missing in a
+            # they are missing in a
             for a, t in b_time.items():
                 r.setdefault(a, 0)
                 r[a] += t
@@ -349,7 +349,7 @@ class ProfileMode(Mode):
             time_per_call = 0
 
         print
-        print 'ProfileMode.%s(%s)' % (fct_name,message)
+        print 'ProfileMode.%s(%s)' % (fct_name, message)
         print '---------------------------'
         print
         print 'Time since import %.3fs'%(total_time)
@@ -357,9 +357,9 @@ class ProfileMode(Mode):
         print '    Optimization time: %.3fs'%(other_time['optimizer_time'])
         print '    Linker time: %.3fs'%(other_time['linker_time'])
         print 'Theano fct call %.3fs (%.1f%% since import)'%(total_fct_time, total_fct_time/total_time*100)
-        print '   Theano Op time %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+        print '   Theano Op time %.3fs %.1f%%(since import) %.1f%%(of fct call)' % (
             local_time, local_time/total_time*100, time_pr_in_fct)
-        print '   Theano function overhead in ProfileMode %.3fs %.1f%%(since import) %.1f%%(of fct call)'% (
+        print '   Theano function overhead in ProfileMode %.3fs %.1f%%(since import) %.1f%%(of fct call)' % (
             overhead_time, overhead_time/total_time*100, overhead_time_pourcent_fct_time)
         print '%i Theano fct call, %.3fs per call'%(total_fct_call, time_per_call)
         print 'Rest of the time since import %.3fs %.1f%%'%(unknown_time, unknown_time/total_time*100)
@@ -368,12 +368,11 @@ class ProfileMode(Mode):
         print 'Theano fct summary:'
         print '<% total fct time> <total time> <time per call> <nb call> <fct name>'
         for key in fct_call.keys():
-            if fct_call[key]>0:
-                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 ,fct_call_time[key],
+            if fct_call[key] > 0:
+                print '   %4.1f%% %.3fs %.2es %d %s'%(fct_call_time[key]/total_fct_time*100 , fct_call_time[key],
                                                       fct_call_time[key]/fct_call[key], fct_call[key], key.name)
             else:
-                print '   NOT CALLED',key.name
-
+                print '   NOT CALLED', key.name
 
         # Compute stats per op.
         op_time = {}
@@ -381,17 +380,17 @@ class ProfileMode(Mode):
         op_apply = {}
         op_cimpl = {}
         sop_apply = {}
-        for (i,a),t in apply_time.items():
-            op=a.op
-            op_time.setdefault(op,0)
-            op_call.setdefault(op,0)
-            op_apply.setdefault(op,0)
-            sop_apply.setdefault(type(a.op),0)
-            op_time[op]+=t
-            nb_call = [v for k,v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
+        for (i, a), t in apply_time.items():
+            op = a.op
+            op_time.setdefault(op, 0)
+            op_call.setdefault(op, 0)
+            op_apply.setdefault(op, 0)
+            sop_apply.setdefault(type(a.op), 0)
+            op_time[op] += t
+            nb_call = [v for k, v in fct_call.items() if k.maker.fgraph is a.fgraph][0]
             op_cimpl.setdefault(a.op, True)
             op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
-            if t==0:
+            if t == 0:
                 assert nb_call == 0, nb_call
             else:
                 op_call[op] += nb_call
@@ -399,20 +398,19 @@ class ProfileMode(Mode):
                 sop_apply[type(a.op)] += 1
 
         # Compute stats per op class
-        sop_time={}
-        sop_call={}
+        sop_time = {}
+        sop_call = {}
         sop_op = {}
-        sop_cimpl={} #map each op class to Bool. True iff all applies were done in c.
-        for a,t in op_time.items():
+        sop_cimpl = {}  # map each op class to Bool. True iff all applies were done in c.
+        for a, t in op_time.items():
             typ = type(a)
-            sop_time.setdefault(typ,0)
-            sop_time[typ]+=t
-            sop_op.setdefault(typ,0)
-            sop_op[typ]+=1
-            sop_cimpl.setdefault(typ,True)
-            sop_cimpl[typ]=sop_cimpl[typ] and op_cimpl.get(a, False)
-            sop_call[typ]=sop_call.get(typ,0)+op_call[a]
-
+            sop_time.setdefault(typ, 0)
+            sop_time[typ] += t
+            sop_op.setdefault(typ, 0)
+            sop_op[typ] += 1
+            sop_cimpl.setdefault(typ, True)
+            sop_cimpl[typ] = sop_cimpl[typ] and op_cimpl.get(a, False)
+            sop_call[typ] = sop_call.get(typ, 0)+op_call[a]
 
         # Print the summary per op class.
         print
@@ -421,77 +419,75 @@ class ProfileMode(Mode):
         sotimes = [(t*100/local_time, t, a, sop_cimpl[a], sop_call[a], sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
         sotimes.sort()
         sotimes.reverse()
-        tot=0
-        for f,t,a,ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
+        tot = 0
+        for f, t, a, ci, nb_call, nb_op, nb_apply in sotimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
-            tot+=t
-            ftot=tot*100/local_time
+            tot += t
+            ftot = tot*100/local_time
             if ci:
                 msg = '*'
             else:
                 msg = ' '
             print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_op, nb_apply, a)
         print '   ... (remaining %i single Op account for %.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(sotimes)-n_ops_to_print),
+                % (max(0, len(sotimes)-n_ops_to_print),
                   sum(soinfo[0] for soinfo in sotimes[n_ops_to_print:]),
                   sum(soinfo[1] for soinfo in sotimes[n_ops_to_print:]))
 
         print '(*) Op is running a c implementation'
 
-
         # The summary per op
         op_flops = {}
-        for a,t in op_time.items():
-            if hasattr(a,'flops'):
-                op_flops[a]=a.flops*op_call[a]/t/1e6
-        flops_msg=''
+        for a, t in op_time.items():
+            if hasattr(a, 'flops'):
+                op_flops[a] = a.flops*op_call[a]/t/1e6
+        flops_msg = ''
         if op_flops:
-            flops_msg=' <MFlops/s>'
+            flops_msg = ' <MFlops/s>'
             print '\nHACK WARNING: we print the flops for some OP, but the logic don\'t always work. You need to know the internal of Theano to make it work correctly. Otherwise don\'t use!'
         print
         print 'Op-wise summary:'
         print '<%% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> [*] %s <nb_call> <nb apply> <Op name>'%(flops_msg)
 
-        otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a,0))
+        otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0), op_call.get(a, 0), op_apply.get(a, 0))
                 for a, t in op_time.items()]
         otimes.sort()
         otimes.reverse()
-        tot=0
-        for f,t,a,ci,nb_call,nb_apply in otimes[:n_ops_to_print]:
+        tot = 0
+        for f, t, a, ci, nb_call, nb_apply in otimes[:n_ops_to_print]:
             if nb_call == 0:
                 assert t == 0
                 continue
-            tot+=t
-            ftot=tot*100/local_time
+            tot += t
+            ftot = tot*100/local_time
             if ci:
                 msg = '*'
             else:
                 msg = ' '
             if op_flops:
-                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a,-1), nb_call, nb_apply, a)
+                print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %7.1f %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, op_flops.get(a, -1), nb_call, nb_apply, a)
             else:
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs  %.2es %s %5d %2d %s' % (f, ftot, t, tot, t/nb_call, msg, nb_call, nb_apply, a)
         print '   ... (remaining %i Op account for %6.2f%%(%.2fs) of the runtime)'\
-                %(max(0, len(otimes)-n_ops_to_print),
+                % (max(0, len(otimes)-n_ops_to_print),
                   sum(f for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]),
                   sum(t for f, t, a, ci, nb_call, nb_op in otimes[n_ops_to_print:]))
         print '(*) Op is running a c implementation'
-
 
         if print_apply:
             print
             print 'Apply-wise summary:'
             print '<% of local_time spent at this position> <cumulative %%> <apply time> <cumulative seconds> <time per call> [*] <nb_call> <Apply position> <Apply Op name>'
-            atimes = [(t*100/local_time, t, a, [v for k,v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
+            atimes = [(t*100/local_time, t, a, [v for k, v in fct_call.items() if k.maker.fgraph is a[1].fgraph][0]) for a, t in apply_time.items()]
             atimes.sort()
             atimes.reverse()
-            tot=0
-            for f,t,a,nb_call in atimes[:n_apply_to_print]:
-                tot+=t
-                ftot=tot*100/local_time
-                if nb_call==0:
+            tot = 0
+            for f, t, a, nb_call in atimes[:n_apply_to_print]:
+                tot += t
+                ftot = tot*100/local_time
+                if nb_call == 0:
                     continue
                 if apply_cimpl.get(a[1], False):
                     msg = '*'
@@ -500,7 +496,7 @@ class ProfileMode(Mode):
                 print '   %4.1f%%  %5.1f%%  %5.3fs  %5.3fs %.2es  %s %i  %2i %s' % (
                     f, ftot, t, tot, t/nb_call, msg, nb_call, a[0], str(a[1]))
             print '   ... (remaining %i Apply instances account for %.2f%%(%.2fs) of the runtime)'\
-                    %(max(0, len(atimes)-n_apply_to_print),
+                    % (max(0, len(atimes)-n_apply_to_print),
                       sum(f for f, t, a, nb_call in atimes[n_apply_to_print:]),
                       sum(t for f, t, a, nb_call in atimes[n_apply_to_print:]))
             print '(*) Op is running a c implementation'
@@ -581,18 +577,18 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                 return any([s_op.__class__ in [scal.Exp] for s_op in l])
 
         printed_tip = False
-        #tip 1
+        # tip 1
         if config.floatX == 'float64':
             print "  - Try the Theano flag floatX=float32"
             printed_tip = True
 
-        #tip 2
+        # tip 2
         if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i, a
                                            in apply_time]):
             print "  - Try installing amdlibm and set the Theano flag lib.amdlibm=True. This speeds up only some Elemwise operation."
             printed_tip = True
 
-        #tip 3
+        # tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and
                                            a.inputs[0].dtype == 'float32'
                                            for i, a in apply_time]):
@@ -601,7 +597,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                    "install amdlibm and set the theano flags lib.amdlibm=True")
             printed_tip = True
 
-        #tip 4
+        # tip 4
         for a, t in apply_time.iteritems():
             node = a[1]
             if (isinstance(node.op, T.Dot) and
@@ -613,7 +609,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
                        [i.type for i in node.inputs])
                 printed_tip = True
 
-        #tip 5
+        # tip 5
         for a, t in apply_time.iteritems():
             node = a[1]
             if isinstance(node.op, RandomFunction):
@@ -633,7 +629,7 @@ Test them first, as they are not guaranteed to always provide a speedup."""
 register_mode('PROFILE_MODE', ProfileMode())
 
 
-#needed to print the profile at the end automatically
+# needed to print the profile at the end automatically
 prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
 
 
@@ -647,8 +643,8 @@ def atexit_print_default_profile_mode():
         if prof_mode.local_time > 0:
             prof_mode.print_summary()
 
-#Register atexit_print_default_profile_mode to have the summary of the
-#predefined mode ProfileMode if it is used printed when the program terminate.
+# Register atexit_print_default_profile_mode to have the summary of the
+# predefined mode ProfileMode if it is used printed when the program terminate.
 atexit.register(atexit_print_default_profile_mode)
 
 

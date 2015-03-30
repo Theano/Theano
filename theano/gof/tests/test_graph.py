@@ -18,9 +18,6 @@ from theano.sandbox.cuda.var import (
         CudaNdarrayVariable, CudaNdarrayConstant, CudaNdarraySharedVariable)
 
 
-
-
-
 def as_variable(x):
     assert isinstance(x, Variable)
     return x
@@ -39,6 +36,7 @@ class MyType(Type):
 
     def __repr__(self):
         return 'R%s' % str(self.thingy)
+
 
 def MyVariable(thingy):
     return Variable(MyType(thingy), None, None)
@@ -63,6 +61,7 @@ MyOp = MyOp()
 ##########
 # inputs #
 ##########
+
 
 class TestInputs:
 
@@ -92,8 +91,8 @@ class X:
 
     def str(self, inputs, outputs):
         return as_string(inputs, outputs,
-                         leaf_formatter = self.leaf_formatter,
-                         node_formatter = self.node_formatter)
+                         leaf_formatter=self.leaf_formatter,
+                         node_formatter=self.node_formatter)
 
 
 class TestStr(X):
@@ -142,10 +141,10 @@ class TestClone(X):
         node = MyOp.make_node(r1, r2)
         node2 = MyOp.make_node(node.outputs[0], r5)
         _, new = clone([r1, r2, r5], node2.outputs, False)
-        assert node2.outputs[0].type == new[0].type and node2.outputs[0] is not new[0] # the new output is like the old one but not the same object
-        assert node2 is not new[0].owner # the new output has a new owner
-        assert new[0].owner.inputs[1] is r5 # the inputs are not copied
-        assert new[0].owner.inputs[0].type == node.outputs[0].type and new[0].owner.inputs[0] is not node.outputs[0] # check that we copied deeper too
+        assert node2.outputs[0].type == new[0].type and node2.outputs[0] is not new[0]  # the new output is like the old one but not the same object
+        assert node2 is not new[0].owner  # the new output has a new owner
+        assert new[0].owner.inputs[1] is r5  # the inputs are not copied
+        assert new[0].owner.inputs[0].type == node.outputs[0].type and new[0].owner.inputs[0] is not node.outputs[0]  # check that we copied deeper too
 
     def test_not_destructive(self):
         # Checks that manipulating a cloned graph leaves the original unchanged.
@@ -168,6 +167,7 @@ def prenode(obj):
             return [obj.owner]
     if isinstance(obj, Apply):
         return obj.inputs
+
 
 class TestToposort:
 
@@ -210,7 +210,7 @@ class TestToposort:
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
-        assert all == [o1,o0]
+        assert all == [o1, o0]
 
     def test_4(self):
         """Test inputs and outputs mixed together in a chain graph"""
@@ -330,7 +330,7 @@ class TestEval(unittest.TestCase):
 class TestAutoName:
 
     def test_auto_name(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1, r2 = MyVariable(1), MyVariable(2)
@@ -338,7 +338,7 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_constant(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = tensor.constant(1.5)
@@ -347,20 +347,19 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_tensorvariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = tensor.TensorType(dtype='int32', broadcastable=())('myvar')
         r2 = tensor.TensorVariable(tensor.TensorType(dtype='int32',
                                                      broadcastable=()))
-        r3 = shared(numpy.random.randn(3,4))
+        r3 = shared(numpy.random.randn(3, 4))
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
         assert r3.auto_name == "auto_" + str(autoname_id + 2)
 
-
     def test_sparsevariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = sparse.csc_matrix(name='x', dtype='float32')
@@ -371,7 +370,7 @@ class TestAutoName:
         assert r3.auto_name == "auto_" + str(autoname_id + 2)
 
     def test_cudandarrayvariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         mytype = tensor.TensorType(dtype='int32', broadcastable=())
@@ -387,7 +386,7 @@ class TestAutoName:
         assert r4.auto_name == "auto_" + str(autoname_id + 3)
 
     def test_randomvariable(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         mytype = tensor.TensorType(dtype='int32', broadcastable=())
@@ -402,9 +401,8 @@ class TestAutoName:
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
-
     def test_clone(self):
-        ## Get counter value
+        # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = MyVariable(1)

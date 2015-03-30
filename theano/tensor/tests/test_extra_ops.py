@@ -19,6 +19,7 @@ from theano import config, tensor, function
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
 
+
 class TestCumsumOp(utt.InferShapeTester):
 
     def setUp(self):
@@ -478,11 +479,12 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class)
         self._compile_and_check([z, y], [self.op(z, y)],
-                                #must be square when nd>2
+                                # must be square when nd>2
                                 [numpy.random.rand(8, 8, 8),
                                  numpy.random.rand()],
                                 self.op_class,
                                 warn=False)
+
 
 class TestFillDiagonalOffset(utt.InferShapeTester):
 

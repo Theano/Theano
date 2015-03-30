@@ -156,9 +156,9 @@ class CudaNdarrayType(Type):
     def bound(a):
         high = a.gpudata
         low = a.gpudata
-        #stride is in the number of element.
-        #we must convert that to bytes in case we
-        #will view the element as a different type.
+        # stride is in the number of element.
+        # we must convert that to bytes in case we
+        # will view the element as a different type.
         elem_size = numpy.zeros(0, dtype=a.dtype).dtype.itemsize
 
         for stri, shp in zip(a._strides, a.shape):
@@ -170,8 +170,8 @@ class CudaNdarrayType(Type):
 
     @staticmethod
     def may_share_memory(a, b):
-        #when this is called with a an ndarray and b
-        #a sparce matrix, numpy.may_share_memory fail.
+        # when this is called with a an ndarray and b
+        # a sparce matrix, numpy.may_share_memory fail.
         if a is b:
             return True
         if a.__class__ is b.__class__:
@@ -185,13 +185,13 @@ class CudaNdarrayType(Type):
 
     @staticmethod
     def values_eq(a, b):
-        #TODO: make the comparaison without transfert.
+        # TODO: make the comparaison without transfert.
         return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
 
     @staticmethod
     def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
                          rtol=None, atol=None):
-        #TODO: make the comparaison without transfert.
+        # TODO: make the comparaison without transfert.
         return tensor.TensorType.values_eq_approx(
             numpy.asarray(a),
             numpy.asarray(b),
@@ -206,8 +206,8 @@ class CudaNdarrayType(Type):
 
         This function is used internally as part of C code generation.
         """
-        #TODO: add more type correspondances for e.g. int32, int64, float32,
-        #complex64, etc.
+        # TODO: add more type correspondances for e.g. int32, int64, float32,
+        # complex64, etc.
         try:
             return {'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                     'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
@@ -369,7 +369,7 @@ class CudaNdarrayType(Type):
                 Py_INCREF(py_%(name)s);
             }
             """ % locals()
-        #print sio.getvalue()
+        # print sio.getvalue()
         return sio.getvalue()
 
     def c_extract_out(self, name, sub, check_input=True, check_broadcast=True):
@@ -449,9 +449,9 @@ class CudaNdarrayType(Type):
         return ""
 
     def c_code_cache_version(self):
-        #return ()
-        #no need to put nvcc.fastmath in the tuple as the
-        #c_compile_args is put in the key.
+        # return ()
+        # no need to put nvcc.fastmath in the tuple as the
+        # c_compile_args is put in the key.
         return (3,)  # cublas v2 changes
 
     def c_compiler(self):

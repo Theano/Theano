@@ -7,10 +7,13 @@ from theano.gof.fg import FunctionGraph as Env
 from theano.gof.toolbox import *
 import theano.tensor.basic as T
 
+
 def as_variable(x):
     if not isinstance(x, Variable):
         raise TypeError("not a Variable", x)
     return x
+
+
 class MyType(Type):
 
     def filter(self, data):
@@ -18,6 +21,7 @@ class MyType(Type):
 
     def __eq__(self, other):
         return isinstance(other, MyType)
+
 
 class MyOp(Op):
 
@@ -56,7 +60,7 @@ op1 = MyOp('Op1')
 def test_merge_with_weird_eq():
     """numpy arrays don't compare equal like other python objects"""
 
-    #SCALAR CASE
+    # SCALAR CASE
     x = T.constant(numpy.asarray(1), name='x')
     y = T.constant(numpy.asarray(1), name='y')
     g = Env([x, y], [x+y])
@@ -67,7 +71,7 @@ def test_merge_with_weird_eq():
     assert len(node.inputs) == 2
     assert node.inputs[0] is node.inputs[1]
 
-    #NONSCALAR CASE
+    # NONSCALAR CASE
     # This was created to test TensorConstantSignature
     x = T.constant(numpy.ones(5), name='x')
     y = T.constant(numpy.ones(5), name='y')

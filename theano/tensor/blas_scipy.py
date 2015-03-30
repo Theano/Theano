@@ -4,7 +4,7 @@ Implementations of BLAS Ops based on scipy's BLAS bindings.
 import numpy
 
 from theano.tensor.blas import Ger, ger, ger_destructive, have_fblas
-from theano.tensor.blas import blas_optdb, optdb,local_optimizer
+from theano.tensor.blas import blas_optdb, optdb, local_optimizer
 
 from theano.tensor.opt import in2out
 
@@ -55,7 +55,7 @@ class ScipyGer(Ger):
             for o in node_output_compute:
                 o[0] = True
 
-        #TODO: If this is currently an unofficial part of the thunk API,
+        # TODO: If this is currently an unofficial part of the thunk API,
         #      then maybe it should be documented and made official?
         rval.inputs = node_input_storage
         rval.outputs = node_output_storage
@@ -65,10 +65,12 @@ class ScipyGer(Ger):
 scipy_ger_no_inplace = ScipyGer(False)
 scipy_ger_inplace = ScipyGer(True)
 
+
 @local_optimizer([ger, ger_destructive])
 def use_scipy_ger(node):
     if node.op == ger:
         return [scipy_ger_no_inplace(*node.inputs)]
+
 
 @local_optimizer([scipy_ger_no_inplace])
 def make_ger_destructive(node):

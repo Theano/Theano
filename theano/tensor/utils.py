@@ -54,6 +54,7 @@ def hash_from_dict(d):
     tuple_items = tuple(first_part + second_part)
     return hash(tuple_items)
 
+
 def shape_of_variables(fgraph, input_shapes):
     """
     Compute the numeric shape of all intermediate variables given input shapes

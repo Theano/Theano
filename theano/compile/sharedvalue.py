@@ -21,7 +21,7 @@ class SharedVariable(Variable):
 
     """
 
-    #Container object
+    # Container object
     container = None
     """
     A container to use for this SharedVariable when it is an implicit

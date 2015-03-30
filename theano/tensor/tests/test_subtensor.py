@@ -102,7 +102,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         return tval
 
     def test0_err_invalid(self):
-        #it is impossible to retrieve a view of a 0-d tensor
+        # it is impossible to retrieve a view of a 0-d tensor
         n = self.shared(numpy.ones((), dtype=self.dtype))
         try:
             t = n[0]
@@ -138,9 +138,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         try:
             t = n[slice(0, slice(1, 2, None), None)]
         except Exception, e:
-            ### Relax constraint on the type of Exception,
-            ### since this might be handled by AvancedSubtensor
-            #if e[0] != Subtensor.e_indextype:
+            # Relax constraint on the type of Exception,
+            # since this might be handled by AvancedSubtensor
+            # if e[0] != Subtensor.e_indextype:
             #    raise
             return
         self.fail()
@@ -841,7 +841,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.grad_list_(idxs, data)
 
     def test_shape_list(self):
-        #TODO for all type of subtensor shape
+        # TODO for all type of subtensor shape
         for data, idx in [(rand(4), [1, 0]),
                           (rand(4, 2), [2, 3]),
                           (rand(4, 2, 3), [0, 3]),
@@ -875,7 +875,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
              numpy.asarray([[9, 9.]]),))
 
-        #single element
+        # single element
         utt.verify_grad(
             inc_slice(2, 1),
             (numpy.asarray([[0, 1], [2, 3], [4, 5.]]), numpy.asarray(9.),))
@@ -1172,7 +1172,7 @@ class TestIncSubtensor1(unittest.TestCase):
 
         assert a.type == self.v.type
 
-        #TODO: compile a function and verify that the subtensor is removed
+        # TODO: compile a function and verify that the subtensor is removed
         #      completely, because the whole expression is redundant.
 
         f = theano.function([self.v, self.adv1q], a, allow_input_downcast=True)

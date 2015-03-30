@@ -34,7 +34,6 @@ def register_opt(*tags, **kwargs):
     return f
 
 
-
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
 
@@ -53,8 +52,8 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
-#is_nvcc_available called here to initialize global vars in
-#nvcc_compiler module
+# is_nvcc_available called here to initialize global vars in
+# nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
 
 # Compile cuda_ndarray.cu
@@ -70,7 +69,7 @@ cuda_available = True
 # Global variable to avoid displaying the same warning multiple times.
 cuda_warning_is_displayed = False
 
-#This variable is set to True when we enable cuda.(i.e. when use() is called)
+# This variable is set to True when we enable cuda.(i.e. when use() is called)
 cuda_enabled = False
 
 
@@ -87,7 +86,7 @@ def set_cuda_disabled():
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
 
-#cuda_ndarray compile and import
+# cuda_ndarray compile and import
 cuda_path = os.path.abspath(os.path.split(__file__)[0])
 
 cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
@@ -446,7 +445,7 @@ def use(device,
 
     if force:
         try:
-            #in case the device if just gpu,
+            # in case the device if just gpu,
             # we check that the driver init it correctly.
             cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5, 5))
         except (Exception, NameError), e:

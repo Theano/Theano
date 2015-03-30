@@ -80,5 +80,5 @@ def test_deepcopied_type_filter():
     # As of commit 731e2d2fa68487733320d341d08b454a50c90d12
     # it was failing.
     a.type.filter(
-            numpy.ones((2,2), dtype=a.dtype),
+            numpy.ones((2, 2), dtype=a.dtype),
             strict=True)

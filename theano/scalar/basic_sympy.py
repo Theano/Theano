@@ -14,15 +14,20 @@ except ImportError:
 import itertools as it
 names = ("sympy_func_%d"%i for i in it.count(0))
 
+
 def include_line(line):
     return '#include' in line
 
+
 def sympy_dtype(expr):
     return get_default_datatype(expr).cname
+
+
 def theano_dtype(expr):
     return {'double': float64,
             'float': float32,
             'int': int64}[sympy_dtype(expr)]
+
 
 class SymPyCCode(ScalarOp):
     """ An Operator that wraps SymPy's C code generation
@@ -40,7 +45,6 @@ class SymPyCCode(ScalarOp):
     >>> f(1.0, 2.0)
     3.0
     """
-
 
     def __init__(self, inputs, expr, name=None):
         self.name = name or next(names)

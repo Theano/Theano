@@ -34,7 +34,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
-#The CPU tests already compare C/Py, so we only check C/GPU
+# The CPU tests already compare C/Py, so we only check C/GPU
 mode_with_gpu = copy.copy(mode_with_gpu)
 mode_without_gpu = copy.copy(mode_without_gpu)
 mode_with_gpu.check_py_code = False
@@ -208,21 +208,21 @@ if 0:
     # CudaNdarrayType variables... so rethink this test?
     def test_maxpool():
         """TODO: test the gpu version!!! """
-        for d0, d1, r_true, r_false in [(4,4,[[[[5,7],[13,15]]]],[[[[5,7],[13,15]]]]),
-                                        (5,5,[[[[6, 8],[ 16, 18], [ 21, 23]]]],
-                                         [[[[6, 8, 9],[ 16, 18, 19], [ 21, 23, 24]]]])]:
-            for border,ret in [(True,r_true),(False, r_false)]:
-                ret=numpy.array(ret)
-                a = tcn.blas.DownsampleFactorMax((2,2),border)
+        for d0, d1, r_true, r_false in [(4, 4, [[[[5, 7], [13, 15]]]], [[[[5, 7], [13, 15]]]]),
+                                        (5, 5, [[[[6, 8], [ 16, 18], [ 21, 23]]]],
+                                         [[[[6, 8, 9], [ 16, 18, 19], [ 21, 23, 24]]]])]:
+            for border, ret in [(True, r_true), (False, r_false)]:
+                ret = numpy.array(ret)
+                a = tcn.blas.DownsampleFactorMax((2, 2), border)
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
                 f = pfunc([b], [a(b)], mode=mode_with_gpu)
 
-                bval = numpy.arange(0,d0*d1).reshape(1,1,d0,d1)
+                bval = numpy.arange(0, d0*d1).reshape(1, 1, d0, d1)
                 r = f(bval)[0]
     #            print bval, bval.shape, border
-                #print r, r.shape
-                assert (ret==r).all()
+                # print r, r.shape
+                assert (ret == r).all()
 
 
 def test_downsample():
@@ -269,7 +269,7 @@ def test_downsample():
             if float(shp[3]) / ds[1] > 512:
                 continue
             for ignore_border in (True, False):
-                #print 'test_downsample', shp, ds, ignore_border
+                # print 'test_downsample', shp, ds, ignore_border
                 ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
@@ -369,7 +369,7 @@ class TestGpuGemvNoTransfer(TestCase, BaseGemv,
 
 
 class TestVectorMatrixDot(TestCase):
-    ### Tolerance factor used in this tests
+    # Tolerance factor used in this tests
     atol = 1e-6
     ##########################
 
@@ -380,8 +380,8 @@ class TestVectorMatrixDot(TestCase):
                                        dtype='float32'))
         no_gpu_f = theano.function([], theano.dot(v, m), mode=mode_without_gpu)
         gpu_f = theano.function([], theano.dot(v, m), mode=mode_with_gpu)
-        #gpu_f2 is needed to test the case when the input is not on the gpu
-        #but the output is moved to the gpu.
+        # gpu_f2 is needed to test the case when the input is not on the gpu
+        # but the output is moved to the gpu.
         gpu_f2 = theano.function([], tcn.gpu_from_host(theano.dot(v, m)),
                 mode=mode_with_gpu)
 
@@ -409,8 +409,8 @@ class TestVectorMatrixDot(TestCase):
                                        dtype='float32'))
         no_gpu_f = theano.function([], theano.dot(m, v), mode=mode_without_gpu)
         gpu_f = theano.function([], theano.dot(m, v), mode=mode_with_gpu)
-        #gpu_f2 is needed to test the case when the input is not on the gpu
-        #but the output is moved to the gpu.
+        # gpu_f2 is needed to test the case when the input is not on the gpu
+        # but the output is moved to the gpu.
         gpu_f2 = theano.function([], tcn.gpu_from_host(theano.dot(m, v)),
                 mode=mode_with_gpu)
 
@@ -435,8 +435,8 @@ class TestVectorMatrixDot(TestCase):
         no_gpu_f = theano.function([], v2 + theano.dot(m, v1),
                 mode=mode_without_gpu)
         gpu_f = theano.function([], v2 + theano.dot(m, v1), mode=mode_with_gpu)
-        #gpu_f2 is needed to test the case when the input is not on the gpu
-        #but the output is moved to the gpu.
+        # gpu_f2 is needed to test the case when the input is not on the gpu
+        # but the output is moved to the gpu.
         gpu_f2 = theano.function([], tcn.gpu_from_host(v2 + theano.dot(m, v1)),
                 mode=mode_with_gpu)
 

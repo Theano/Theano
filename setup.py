@@ -138,7 +138,7 @@ short_version = '%(version)s'
 version = '%(version)s'
 git_revision = '%(git_revision)s'
 full_version = '%(version)s.dev-%%(git_revision)s' %% {
-        'git_revision': git_revision}
+    'git_revision': git_revision}
 release = %(isrelease)s
 
 if not release:

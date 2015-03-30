@@ -12,6 +12,7 @@ from theano.sandbox.gpuarray.elemwise import GpuElemwise
 
 from theano.sandbox.gpuarray.tests.test_basic_ops import mode_with_gpu
 
+
 class T_Scan(TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -88,7 +89,6 @@ class T_Scan(TestCase):
                         for node in scan_node_topo])
         assert not any([isinstance(node.op, GpuFromHost)
                         for node in scan_node_topo])
-
 
     # This second version test the second case in the optimizer to the gpu.
     def test_one_sequence_one_output_weights_gpu2(self):
@@ -210,7 +210,6 @@ class T_Scan(TestCase):
                         for node in scan_node_topo])
         assert not any([isinstance(node.op, GpuFromHost)
                         for node in scan_node_topo])
-
 
     def test_gpu4_gibbs_chain(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

@@ -11,15 +11,16 @@ import theano
 import theano.tensor as T
 from theano.compat.python2x import any, OrderedDict
 
+
 def gen_data():
 
     # generate the dataset
-    train_set=(numpy.asarray(numpy.random.rand(10000,784),dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10,dtype='int64'))
-    valid_set=(numpy.asarray(numpy.random.rand(10000,784),dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10,dtype='int64'))
-    test_set=(numpy.asarray(numpy.random.rand(10000,784),dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10,dtype='int64'))
+    train_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
+    valid_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
+    test_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
+               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
     def shared_dataset(data_xy):
         """ Function that loads the dataset into shared variables
 
@@ -45,8 +46,9 @@ def gen_data():
     valid_set_x, valid_set_y = shared_dataset(valid_set)
     train_set_x, train_set_y = shared_dataset(train_set)
 
-    rval = [(train_set_x, train_set_y), (valid_set_x,valid_set_y), (test_set_x, test_set_y)]
+    rval = [(train_set_x, train_set_y), (valid_set_x, valid_set_y), (test_set_x, test_set_y)]
     return rval
+
 
 class LogisticRegression(object):
     """Multi-class Logistic Regression Class
@@ -56,9 +58,6 @@ class LogisticRegression(object):
     points onto a set of hyperplanes, the distance to which is used to
     determine a class membership probability.
     """
-
-
-
 
     def __init__(self, input, n_in, n_out, name_prefix=''):
         """ Initialize the parameters of the logistic regression
@@ -78,7 +77,7 @@ class LogisticRegression(object):
         """
 
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
-        self.W = theano.shared(value=numpy.zeros((n_in,n_out), dtype = theano.config.floatX),
+        self.W = theano.shared(value=numpy.zeros((n_in, n_out), dtype=theano.config.floatX),
                                 name=name_prefix+'W')
 
         # compute vector of class-membership probabilities in symbolic form
@@ -86,14 +85,10 @@ class LogisticRegression(object):
 
         # compute prediction as class whose probability is maximal in
         # symbolic form
-        self.y_pred=T.argmax(self.p_y_given_x, axis=1)
+        self.y_pred = T.argmax(self.p_y_given_x, axis=1)
 
         # parameters of the model
         self.params = [self.W]
-
-
-
-
 
     def negative_log_likelihood(self, y):
         """Return the mean of the negative log-likelihood of the prediction
@@ -118,11 +113,11 @@ class LogisticRegression(object):
         # LP[T.arange(y.shape[0]),y] is a vector v containing [LP[0,y[0]], LP[1,y[1]], LP[2,y[2]], ..., LP[n-1,y[n-1]]]
         # and T.mean(LP[T.arange(y.shape[0]),y]) is the mean (across minibatch examples) of the elements in v,
         # i.e., the mean log-likelihood across the minibatch.
-        return T.log(self.p_y_given_x)[T.arange(y.shape[0]),y]
+        return T.log(self.p_y_given_x)[T.arange(y.shape[0]), y]
 
 
 class HiddenLayer(object):
-    def __init__(self, rng, input, n_in, n_out, activation = T.tanh, name_prefix=''):
+    def __init__(self, rng, input, n_in, n_out, activation=T.tanh, name_prefix=''):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
         sigmoidal activation function. Weight matrix W is of shape (n_in,n_out)
@@ -155,10 +150,10 @@ class HiddenLayer(object):
         # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU
         W_values = numpy.asarray( rng.uniform( \
-              low = -numpy.sqrt(6./(n_in+n_out)), \
-              high = numpy.sqrt(6./(n_in+n_out)), \
-              size = (n_in, n_out)), dtype = theano.config.floatX)
-        self.W = theano.shared(value = W_values, name=name_prefix+'W')
+              low=-numpy.sqrt(6./(n_in+n_out)), \
+              high=numpy.sqrt(6./(n_in+n_out)), \
+              size=(n_in, n_out)), dtype=theano.config.floatX)
+        self.W = theano.shared(value=W_values, name=name_prefix+'W')
 
         self.output = T.dot(input, self.W)
         # parameters of the model
@@ -175,8 +170,6 @@ class MLP(object):
     top layer is a softamx layer (defined here by a ``LogisticRegression``
     class).
     """
-
-
 
     def __init__(self, rng, input, n_in, n_hidden, n_out):
         """Initialize the parameters for the multilayer perceptron
@@ -205,16 +198,16 @@ class MLP(object):
         # translate into a TanhLayer connected to the LogisticRegression
         # layer; this can be replaced by a SigmoidalLayer, or a layer
         # implementing any other nonlinearity
-        self.hiddenLayer = HiddenLayer(rng = rng, input = input,
-                                 n_in = n_in, n_out = n_hidden,
-                                 activation = T.tanh, name_prefix='hid_')
+        self.hiddenLayer = HiddenLayer(rng=rng, input=input,
+                                 n_in=n_in, n_out=n_hidden,
+                                 activation=T.tanh, name_prefix='hid_')
 
         # The logistic regression layer gets as input the hidden units
         # of the hidden layer
         self.logRegressionLayer = LogisticRegression(
-                                    input = self.hiddenLayer.output,
-                                    n_in  = n_hidden,
-                                    n_out = n_out, name_prefix='log_')
+                                    input=self.hiddenLayer.output,
+                                    n_in=n_hidden,
+                                    n_out=n_out, name_prefix='log_')
 
         # negative log likelihood of the MLP is given by the negative
         # log likelihood of the output of the model, computed in the
@@ -252,8 +245,6 @@ def test_mlp():
     valid_set_x, valid_set_y = datasets[1]
     test_set_x , test_set_y  = datasets[2]
 
-
-
     batch_size = 100    # size of the minibatch
 
     # compute number of minibatches for training, validation and testing
@@ -264,18 +255,18 @@ def test_mlp():
     ######################
     # BUILD ACTUAL MODEL #
     ######################
-    #print '... building the model'
+    # print '... building the model'
 
     # allocate symbolic variables for the data
     index = T.lscalar()    # index to a [mini]batch
     x     = T.matrix('x')  # the data is presented as rasterized images
-    y     = T.ivector('y') # the labels are presented as 1D vector of
+    y     = T.ivector('y')  # the labels are presented as 1D vector of
                            # [int] labels
 
     rng = numpy.random.RandomState(1234)
 
     # construct the MLP class
-    classifier = MLP( rng = rng, input=x, n_in=28*28, n_hidden = 500, n_out=10)
+    classifier = MLP( rng=rng, input=x, n_in=28*28, n_hidden=500, n_out=10)
 
     # the cost we minimize during training is the negative log likelihood of
     # the model.
@@ -295,28 +286,28 @@ def test_mlp():
 
     updates2 = OrderedDict()
 
-    updates2[classifier.hiddenLayer.params[0]]=T.grad(cost,classifier.hiddenLayer.params[0])
-    train_model =theano.function( inputs = [index],
-            updates = updates2,
+    updates2[classifier.hiddenLayer.params[0]] = T.grad(cost, classifier.hiddenLayer.params[0])
+    train_model = theano.function( inputs=[index],
+            updates=updates2,
             givens={
-                x:train_set_x[index*batch_size:(index+1)*batch_size],
-                y:train_set_y[index*batch_size:(index+1)*batch_size]},
+                x: train_set_x[index*batch_size:(index+1)*batch_size],
+                y: train_set_y[index*batch_size:(index+1)*batch_size]},
             mode=mode)
-    #print 'MODEL 1'
+    # print 'MODEL 1'
     #theano.printing.debugprint(train_model, print_type=True)
-    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
+    assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
 
     # Even without FeatureShape
-    train_model =theano.function( inputs = [index],
-            updates = updates2,
+    train_model = theano.function( inputs=[index],
+            updates=updates2,
             mode=mode.excluding('ShapeOpt'),
             givens={
-                x:train_set_x[index*batch_size:(index+1)*batch_size],
-                y:train_set_y[index*batch_size:(index+1)*batch_size]})
-    #print
-    #print 'MODEL 2'
+                x: train_set_x[index*batch_size:(index+1)*batch_size],
+                y: train_set_y[index*batch_size:(index+1)*batch_size]})
+    # print
+    # print 'MODEL 2'
     #theano.printing.debugprint(train_model, print_type=True)
-    assert any([isinstance(i.op,T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
+    assert any([isinstance(i.op, T.nnet.CrossentropySoftmax1HotWithBiasDx) for i in train_model.maker.fgraph.toposort()])
 
 if __name__ == '__main__':
     test_mlp()

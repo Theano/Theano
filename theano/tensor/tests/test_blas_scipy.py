@@ -7,6 +7,7 @@ from theano.tensor.blas_scipy import ScipyGer
 from test_blas import TestCase, gemm_no_inplace, TestBlasStrides
 from theano.tests.unittest_tools import TestOptimizationMixin
 
+
 class TestScipyGer(TestCase, TestOptimizationMixin):
 
     def setUp(self):
@@ -18,12 +19,11 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
-        self.Aval = numpy.ones((2,3), dtype=dtype)
-        self.xval = numpy.asarray([1,2], dtype=dtype)
-        self.yval = numpy.asarray([1.5,2.7,3.9], dtype=dtype)
+        self.Aval = numpy.ones((2, 3), dtype=dtype)
+        self.xval = numpy.asarray([1, 2], dtype=dtype)
+        self.yval = numpy.asarray([1.5, 2.7, 3.9], dtype=dtype)
         if not theano.tensor.blas_scipy.have_fblas:
             self.SkipTest()
-
 
     def function(self, inputs, outputs):
         return theano.function(inputs, outputs, self.mode)
@@ -43,19 +43,20 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         f = self.function([self.A, self.x, self.y],
                 self.A + tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, ScipyGer(destructive=False))
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, ScipyGer(destructive=False))
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
 
     def test_scaled_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 0.2 * self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, gemm_no_inplace)
-        self.run_f(f) #DebugMode tests correctness
+        self.run_f(f)  # DebugMode tests correctness
+
 
 class TestBlasStridesScipy(TestBlasStrides):
     mode = theano.compile.get_default_mode()

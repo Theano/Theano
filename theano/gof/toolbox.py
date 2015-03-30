@@ -218,8 +218,6 @@ class ReplaceValidate(History, Validator):
                       "replace_all_validate_remove"] + \
                       History.pickle_rm_attr + Validator.pickle_rm_attr
         
-    
-
     def on_attach(self, fgraph):
         for attr in ('replace_validate', 'replace_all_validate',
                      'replace_all_validate_remove'):

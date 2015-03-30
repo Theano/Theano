@@ -185,8 +185,8 @@ class DotModulo(Op):
         """ % dict(locals(), **sub)
 
 
-#MRG31k3p
-#generator constants :
+# MRG31k3p
+# generator constants :
 M1 = numpy.asarray(numpy.int32(2147483647))    #2^31 - 1
 M2 = numpy.asarray(numpy.int32(2147462579))    #2^31 - 21069
 MASK12 = numpy.int32(511)                      #2^9 - 1
@@ -195,9 +195,9 @@ MASK2 = numpy.int32(65535)                     #2^16 - 1
 MULT2 = numpy.int32(21069)
 NORM = 4.656612873077392578125e-10;            #1./2^31
 
-#A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
+# A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
-#A2p0 = numpy.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]],
+# A2p0 = numpy.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
 
 A1p72 = numpy.asarray([[1516919229, 758510237, 499121365],
@@ -235,7 +235,7 @@ def mrg_next_value(rstate, new_rstate):
     assert type(x11) == numpy.int32
 
     i0, i7, i9, i15, i16, i22, i24 = np_int32_vals
-    #first component
+    # first component
     y1 = (((x12 & MASK12) << i22) + (x12 >> i9) +
           ((x13 & MASK13) << i7) + (x13 >> i24))
 
@@ -250,7 +250,7 @@ def mrg_next_value(rstate, new_rstate):
     x12 = x11
     x11 = y1
 
-    #second component
+    # second component
     y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16))
     assert type(y1) == numpy.int32
     if (y1 < 0 or y1 >= M2):
@@ -323,7 +323,7 @@ class mrg_uniform_base(Op):
 
 
 class mrg_uniform(mrg_uniform_base):
-    #CPU VERSION
+    # CPU VERSION
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -534,7 +534,7 @@ class mrg_uniform(mrg_uniform_base):
 
 
 class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
-    #GPU VERSION
+    # GPU VERSION
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -772,7 +772,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
-    #GpuArray version
+    # GpuArray version
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -1331,7 +1331,7 @@ class MRG_RandomStreams(object):
                 n_samples += 1
                 evened = True
         else:
-            #if even, don't change, if odd, +1
+            # if even, don't change, if odd, +1
             n_samples = prod(size) + (prod(size) % 2)
         flattened = self.uniform(size=(n_samples,), dtype=dtype,
                                  nstreams=nstreams)
@@ -1376,6 +1376,7 @@ class MRG_RandomStreams(object):
 from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
                                          host_from_gpu as host_from_gpua)
 
+
 @register_gpua()
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
@@ -1389,6 +1390,8 @@ def local_gpua_mrg(node):
 
 
 MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)
+
+
 @local_optimizer(MRG_RNGs)
 def mrg_random_make_inplace(node):
     op = node.op

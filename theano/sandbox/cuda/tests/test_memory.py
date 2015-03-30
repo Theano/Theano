@@ -109,7 +109,7 @@ def test_memory():
             assert mem2_2 == freemem(), (mem2_2, freemem())
 
         del obj
-        #print "After deleting function 1", freemem()
+        # print "After deleting function 1", freemem()
         #assert mem2 == freemem(), (mem2, freemem())
 
         del grad

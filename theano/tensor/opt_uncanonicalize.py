@@ -44,8 +44,8 @@ def local_max_and_argmax(node):
     """
     if node.op == T._max_and_argmax:
         if len(node.outputs[1].clients) == 0:
-            #MaxAndArgmax support variable axis,
-            #but CAReduce support only constant axis.
+            # MaxAndArgmax support variable axis,
+            # but CAReduce support only constant axis.
             if node.inputs[1].data is None:
                 axis = None
             else:
@@ -56,6 +56,7 @@ def local_max_and_argmax(node):
 
             new = CAReduce(scal.maximum, axis)(node.inputs[0])
             return [new, None]
+
 
 @register_uncanonicalize
 @gof.local_optimizer([T.neg])

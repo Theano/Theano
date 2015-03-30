@@ -39,6 +39,7 @@ def subprocess_Popen(command, **params):
             del stdin
     return proc
 
+
 def call_subprocess_Popen(command, **params):
     """
     Calls subprocess_Popen and discards the output, returning only the
@@ -55,6 +56,7 @@ def call_subprocess_Popen(command, **params):
         p = subprocess_Popen(command, **params)
         returncode = p.wait()
     return returncode
+
 
 def output_subprocess_Popen(command, **params):
     """

@@ -830,7 +830,7 @@ def debug_error_message(msg):
 
     action = config.compute_test_value
 
-    #this message should never be called when the debugger is off
+    # this message should never be called when the debugger is off
     assert action != 'off'
 
     if action in ['raise', 'ignore']:
@@ -1276,7 +1276,6 @@ class COp(Op):
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
-
 
     def c_code(self, node, name, inp, out, sub):
         if self.func_name is not None:

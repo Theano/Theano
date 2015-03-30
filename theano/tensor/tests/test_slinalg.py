@@ -35,6 +35,7 @@ except ImportError:
     # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
     imported_scipy = False
 
+
 def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
     assert ch[0, pd.shape[1] - 1] == 0
@@ -114,7 +115,6 @@ def test_cholesky_and_cholesky_grad_shape():
             m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
             yield numpy.testing.assert_equal, f_chol(m), (shp, shp)
             yield numpy.testing.assert_equal, f_cholgrad(m), (shp, shp)
-
 
 
 def test_eigvalsh():
@@ -198,17 +198,17 @@ class test_Solve(utt.InferShapeTester):
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
         y = self.op(A, b)
-        gen_solve_func = theano.function([A,b],y)
+        gen_solve_func = theano.function([A, b], y)
 
         cholesky_lower = Cholesky(lower=True)
         L = cholesky_lower(A)
         y_lower = self.op(L, b)
-        lower_solve_func = theano.function([L,b],y_lower)
+        lower_solve_func = theano.function([L, b], y_lower)
 
         cholesky_upper = Cholesky(lower=False)
         U = cholesky_upper(A)
         y_upper = self.op(U, b)
-        upper_solve_func = theano.function([U,b],y_upper)
+        upper_solve_func = theano.function([U, b], y_upper)
 
         b_val = numpy.asarray(rng.rand(5, 1), dtype=config.floatX)
         
