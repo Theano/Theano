@@ -910,7 +910,7 @@ class VM_Linker(link.LocalLinker):
         reallocated_info = {}
         dependencies = getattr(fgraph.profile, 'dependencies', {})
         pre_allocated = set([])
-
+        allocated = set([])
         for idx in range(len(order)):
             node = order[idx]
             dmap = getattr(node.op, 'destroy_map', None)
@@ -943,7 +943,8 @@ class VM_Linker(link.LocalLinker):
                 assert not (ins in view_of and viewed_by[ins])
                 if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
                         and ins not in fgraph.outputs and ins.owner
-                        and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])):
+                        and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
+                        and ins not in allocated):
                     # Constant Memory cannot be changed, Constant storage_map
                     # has a value here
                     reuse_out = None
@@ -957,6 +958,7 @@ class VM_Linker(link.LocalLinker):
                                         and ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
+                                    allocated.add(ins)
                     elif ins in view_of:
                         origin = view_of[ins]
                         if ins in viewed_by[origin]:
@@ -973,6 +975,7 @@ class VM_Linker(link.LocalLinker):
                                             and ins.type == out.type):
                                         reuse_out = out
                                         pre_allocated.add(out)
+                                        allocated.add(ins)
 
                     if reuse_out:
                         reallocated_info[ins] = [ins, reuse_out]
@@ -1003,7 +1006,7 @@ class VM_Linker(link.LocalLinker):
             lazy = not all([(not th.lazy) for th in thunks])
         if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
             for pair in reallocated_info.values():
-                storage_map[pair[1]] = storage_map[pair[0]]
+                storage_map[pair[1]][0] = storage_map[pair[0]][0]
 
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:
