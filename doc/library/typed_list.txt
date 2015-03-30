@@ -6,7 +6,7 @@
 
 .. note::
 
-    This is not in the released version 0.6.0, but will be in the next release (0.7 or 0.6.1).
+    This has been added in release 0.7.
 
 .. note::
 

@@ -17,7 +17,7 @@ from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
                                            gpu_contiguous, HostFromGpu,
-                                           gpu_alloc)
+                                           gpu_alloc_empty)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
@@ -58,7 +58,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             # default gpu, not the one selected by the user. If mixed
             # GPU are installed or if the GPUs are configured in
             # exclusive mode, this cause bad detection.
-            comp, out, err = gof.cmodule.GCC_compiler.try_flags(
+            comp, out, err = NVCC_compiler.try_flags(
                 ["-l", "cudnn", "-I" + os.path.dirname(__file__),
                  "-I" + os.path.join(theano.config.cuda.root, 'include'),
                  "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
@@ -443,8 +443,8 @@ class GpuDnnConv(DnnBase, COp):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
-        d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
+        d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+        d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -519,8 +519,8 @@ class GpuDnnConvGradW(DnnBase, COp):
 
         kerns = gpu_contiguous(kerns)
 
-        d_img = GpuDnnConvGradI()(kerns, top, img.zeros_like(), desc)
-        d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
+        d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+        d_top = GpuDnnConv()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -586,8 +586,8 @@ class GpuDnnConvGradI(DnnBase, COp):
 
         img = gpu_contiguous(img)
 
-        d_kerns = GpuDnnConvGradW()(img, top, kerns.zeros_like(), desc)
-        d_top = GpuDnnConv()(img, kerns, top.zeros_like(), desc)
+        d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_top = GpuDnnConv()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -675,7 +675,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = gpu_alloc(_zero.clone(), shape_i(kerns, 1, fgraph),
+        out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
                         shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross')(img.shape, out.shape)
@@ -692,7 +692,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = gpu_alloc(_zero.clone(), shape_i(img, 0, fgraph),
+        out = gpu_alloc_empty(shape_i(img, 0, fgraph),
                         shape_i(kerns, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(out.shape, kerns.shape)
@@ -709,9 +709,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
-    out = gpu_alloc(_zero.clone(),
-                    out_shp[0], out_shp[1],
-                    out_shp[2], out_shp[3])
+    out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv(workmem=workmem)(img, kerns, out, desc)
 
 

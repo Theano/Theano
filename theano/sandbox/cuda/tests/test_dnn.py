@@ -466,6 +466,19 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
 
+# this has been a problem in the past
+def test_dnn_conv_border_mode():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img = T.ftensor4()
+    kern = T.ftensor4()
+
+    dnn.dnn_conv(img, kern, border_mode=1)
+    dnn.dnn_conv(img, kern, border_mode=(2, 3))
+    dnn.dnn_conv(img, kern, border_mode='full')
+    dnn.dnn_conv(img, kern, border_mode='valid')
+
+
 def test_dnn_conv_merge():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)

@@ -23,6 +23,9 @@ gpu_seqopt = SequenceDB()
 
 
 def register_opt(*tags, **kwargs):
+    if any([not isinstance(t, str) for t in tags]):
+        raise RuntimeError("Bad call to register_opt."
+                           " All tags must be strings.", tags)
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',

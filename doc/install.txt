@@ -507,81 +507,60 @@ Note that:
 Once your setup is complete, head to :ref:`using_gpu` to find how to verify
 everything is working properly.
 
-.. note::
-    There is a compatibility issue affecting some Ubuntu 9.10 users, and probably anyone using
-    CUDA 2.3 with gcc-4.4.  Symptom: errors about "__sync_fetch_and_add" being undefined.
-    **Solution 1:** make gcc-4.3 the default gcc
-    (http://pascalg.wordpress.com/2010/01/14/cuda-on-ubuntu-9-10linux-mint-helena/)
-    **Solution 2:** make another gcc (e.g. gcc-4.3) the default just for nvcc.
-    Do this by making a directory (e.g. ``$HOME/.theano/nvcc-bindir``) and
-    installing two symlinks in it: one called gcc pointing to gcc-4.3 (or lower) and one called
-    g++ pointing to g++-4.3 (or lower).  Then add
-    ``compiler_bindir = /path/to/nvcc-bindir`` to the ``[nvcc]`` section of your ``.theanorc``
-    (`libdoc_config`).
-
-
 .. _Graphviz: http://www.graphviz.org/Download_windows.php
 
-MacOS
------
+Mac OS
+------
 
-There are various ways to install Theano dependencies on a Mac.
-Here we describe the process in detail with EPD, Anaconda or with MacPorts, but if you did
-it differently and it worked, please let us know the details on the
-`theano-users`_ mailing-list, so that we can add alternate instructions
-here.
+There are various ways to install Theano dependencies on a Mac. Here
+we describe the process in detail with Canopy, Anaconda, Homebrew or
+MacPorts but if you did it differently and it worked, please let us
+know the details on the `theano-users`_ mailing-list, so that we can
+add alternate instructions here.
 
 
-In academia: Enthought Python Distribution (EPD)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In academia: Enthought Canopy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you are working in academia, the easiest way to install most of the
 dependencies is to install
-`Enthought Python Distribution (EPD) <http://enthought.com/products/epd.php>`_.
-If you are affiliated with a university (as student or employee), you can
-download the installer for free.
+`Canopy <http://enthought.com/products/canopy/>`_.
+If you are affiliated with a university (as student or employee), you
+can download the installer for free.
 
-EPD installation includes in particular Python (and the development headers),
-NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
-necessary for it to work) and the MKL implementation of blas. The Mac OS and
-Linux version do not include g++.
+The Canopy installation includes in particular Python (and the
+development headers), NumPy, SciPy, nose, sphinx, pip, pydot
+(but *not* `Graphviz`_, which is necessary for it to work) and the MKL
+implementation of blas.
 
-pip is not included in EPD. After the installation of EPD,
-you can simply install it with::
-
-    .. code-block:: bash
-
-        $ sudo easy_install pip
-
-Then in a terminal execute this command to install the latest Theano release:
-
-    .. code-block:: bash
-
-        $ sudo pip install Theano
-
-If you want the bleeding edge version, `download
-and install git <http://git-scm.com/downloads>`_. Then in a
-terminal excute this command:
+To install the latest Theano release execute this in a terminal:
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+    $ pip install Theano
+
+If you want the bleeding edge version execute this command instead:
+
+.. code-block:: bash
+
+    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 See the section `install_bleeding_edge`_ for more
 information on the bleeding edge version.
 
-Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+Then you must install the compiler. See :ref:`compiler_osx` below.
 
 .. note::
 
-   If you use the trunk or version 0.6 or later of Theano, we try to
-   automatically link with the EPD blas version.  Due to Mac OS
-   peculiarities, we need a user intervention to do it.  We detect
-   if the user did the modification and if not, we tell him how to do
-   it.
+   If you use version 0.6 or later of Theano, we try to automatically
+   link with the Canopy blas version.  Due to Mac OS peculiarities,
+   this requires user intervention.  We detect if the manipulation was
+   done or not and give an error message explaining what to do in case
+   it hasn't been done.
 
-Anaconda 1.5
-~~~~~~~~~~~~
+
+Anaconda
+~~~~~~~~
 
 An easy way to install most of the dependencies is to install
 `Anaconda <http://continuum.io/downloads.html>`_. There is a free
@@ -590,45 +569,92 @@ Optimizations`` product (free for academic, ~30$ otherwise) Theano
 will also be optimized as we will reuse the faster BLAS version
 automatically.
 
-Anaconda installation includes in particular Python (and the development headers),
-NumPy, SciPy, nose, sphinx, pip, and a acceptable BLAS version. The Mac OS and
-Linux version do not include g++.
+The Anaconda installation includes in particular Python (and the
+development headers), NumPy, SciPy, nose, sphinx, pip, and a
+acceptable BLAS version.
 
 After installing Anaconda, in a terminal execute this command to
 install the latest Theano release:
 
-    .. code-block:: bash
+.. code-block:: bash
 
-        $ pip install Theano
+    $ pip install Theano
 
 To install the missing Theano optional dependency (pydot):
 
-    .. code-block:: bash
+.. code-block:: bash
 
-        $ conda install pydot
+    $ conda install pydot
 
-If you want the bleeding edge version, `download
-and install git <http://git-scm.com/downloads>`_. Then in a
-terminal execute this command:
+If you want the bleeding edge version instead execute this command:
 
 .. code-block:: bash
 
-    $ sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
 See the section `install_bleeding_edge`_ for more
 information on the bleeding edge version.
 
-Then you must install g++. You can do this by installing XCode. See the first bullet in the :ref:`macports` section.
+Then you must install the compiler. See :ref:`compiler_osx` below.
 
 .. note::
 
-   If you use the trunk or a version after 0.6rc3 of Theano, we try to
-   automatically link with the python library.  Due to Mac OS
-   peculiarities, we need a user intervention to do it.  We detect
-   if the user did the modification and if not, we tell him how to do
-   it.
+   If you use version 0.6 or later of Theano, we try to automatically
+   link with the python library.  Due to Mac OS peculiarities, this
+   requires user intervention.  We detect if the user did the
+   modification and if not, we tell him how to do it.
 
-.. _macports:
+.. _compiler_osx:
+
+Installing the compiler
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Theano officially supports only clang on OS X.  This can be installed
+by getting XCode from the App Store and running it once to install the
+command-line tools.
+
+If you still want to use g++ you can do so by setting its full path in
+the theano config flag `gxx`.  Note that any bug reports on Mac using
+g++ will be ignored unless it can be reproduced with clang.
+
+
+Homebrew
+~~~~~~~~
+
+Install python with homebrew:
+
+.. code-block:: bash
+
+    $ brew install python # or python3 if you prefer
+
+This will install pip.  Then use pip to install numpy, scipy:
+
+.. code-block:: bash
+
+    $ pip install numpy scipy
+
+If you want to use openblas instead of Accelerate, you have to install
+numpy and scipy with hombrew:
+
+.. code-block:: bash
+
+    $ brew tap homebrew/python
+    $ brew install numpy --with-openblas
+    $ brew install scipy --with-openblas
+
+
+Then install theano as usual:
+
+.. code-block:: bash
+
+    $ pip install Theano --user
+
+Or for the bleeding-edge version:
+
+.. code-block:: bash
+
+    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
+
 
 MacPorts
 ~~~~~~~~
@@ -722,14 +748,6 @@ Theano dependencies is easy, but be aware that it will take a long time
     .. code-block:: bash
 
         $ python -c "import theano; theano.test()"
-
-Homebrew
-~~~~~~~~
-
-There are some `instructions
-<https://github.com/samueljohn/homebrew-python>`__ by Samuel John on how to install
-Theano dependencies with Homebrew instead of MacPort.
-
 
 .. _gpu_macos:
 

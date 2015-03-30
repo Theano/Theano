@@ -24,6 +24,7 @@ from theano.compat import exc_message
 from theano.compile import function, Param, Out
 from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
+from theano.gof.graph import io_toposort
 from theano.compat.python2x import any, OrderedDict
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
@@ -49,6 +50,7 @@ class Scan(PureOp):
                  inputs,
                  outputs,
                  info,
+                 typeConstructor=None,
                 ):
         """
         :param inputs: inputs of the inner function of scan
@@ -57,6 +59,21 @@ class Scan(PureOp):
             the scan op (like number of different types of
             arguments, name, mode, if it should run on GPU or
             not, etc.)
+        :param typeConstructor: function that constructs an equivalent
+            to Theano TensorType
+
+
+        Note: ``typeConstructor`` had been added to refactor how
+        Theano deals with the GPU. If it runs on the GPU, scan needs
+        to construct certain outputs (those who reside in the GPU
+        memory) as the GPU-specific type.  However we can not import
+        gpu code in this file (as it is in sandbox, and not available
+        on each machine) so the workaround is that the GPU
+        optimization passes to the constructor of this class a
+        function that is able to construct a GPU type. This way the
+        class Scan does not need to be aware of the details for the
+        GPU, it just constructs any tensor using this function (which
+        by default constructs normal tensors).
         """
         if 'gpua' not in info:
             info['gpua'] = False
@@ -72,13 +89,19 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
+        tensorConstructor = lambda broadcastable, dtype: TensorType(
+            broadcastable=broadcastable, dtype=dtype)
+        if typeConstructor is None:
+            typeConstructor = tensorConstructor
 
         while idx < self.n_mit_mot_outs:
             # Not that for mit_mot there are several output slices per
             # output sequence
             o = outputs[idx]
             self.output_types.append(
-                o.type.clone(broadcastable=(False,) + o.type.broadcastable))
+                typeConstructor(
+                    broadcastable=(False,) + o.type.broadcastable,
+                    dtype=o.type.dtype))
 
             idx += len(self.mit_mot_out_slices[jdx])
             jdx += 1
@@ -88,7 +111,9 @@ class Scan(PureOp):
 
         for o in outputs[idx:end]:
             self.output_types.append(
-                o.type.clone(broadcastable=(False,) + o.type.broadcastable))
+                typeConstructor(
+                    broadcastable=(False,) + o.type.broadcastable,
+                    dtype=o.type.dtype))
 
         # shared outputs + possibly the ending condition
         for o in outputs[end:]:
@@ -1305,37 +1330,85 @@ class Scan(PureOp):
                 ipos += len(otaps)
         return ipos + opos
 
+    def inner_connection_pattern(self):
+        """ Returns the connection pattern of scan's inner function
+        """
+
+        inner_nodes = io_toposort(self.inputs, self.outputs)
+
+        # Initialize 'connect_pattern_by_var' by establishing each input as
+        # connected only to itself
+        connect_pattern_by_var = {}
+        nb_inputs = len(self.inputs)
+        nb_outputs = len(self.outputs)
+
+        for i in range(nb_inputs):
+            input = self.inputs[i]
+            inp_connection_pattern = [i==j for j in range(nb_inputs)]
+            connect_pattern_by_var[input] = inp_connection_pattern
+
+        # Iterate through the nodes used to produce the outputs from the
+        # inputs and, for every node, infer their connection pattern to
+        # every input from the connection patterns of their parents.
+        for n in inner_nodes:
+
+            # Get the connection pattern of the inner node's op. If the op
+            # does not define a connection_pattern method, assume that
+            # every node output is connected to every node input
+            try:
+                op_connection_pattern = n.op.connection_pattern(n)
+            except AttributeError:
+                op_connection_pattern = ([[True] * len(n.outputs)] *
+                                         len(n.inputs))
+
+            # For every output of the inner node, figure out which inputs it
+            # is connected to by combining the connection pattern of the inner
+            # node and the connection patterns of the inner node's inputs.
+            for out_idx in range(len(n.outputs)):
+                out = n.outputs[out_idx]
+                out_connection_pattern = [False] * nb_inputs
+
+                for inp_idx in range(len(n.inputs)):
+                    inp = n.inputs[inp_idx]
+
+                    if inp in connect_pattern_by_var:
+                        inp_connection_pattern = connect_pattern_by_var[inp]
+
+                        # If the node output is connected to the node input, it
+                        # means it is connected to every inner input that the
+                        # node inputs is connected to
+                        if op_connection_pattern[inp_idx][out_idx]:
+                            out_connection_pattern = [out_connection_pattern[i] or
+                                                    inp_connection_pattern[i]
+                                                    for i in range(nb_inputs)]
+
+                # Store the connection pattern of the node output
+                connect_pattern_by_var[out] = out_connection_pattern
+
+        # Obtain the global connection pattern by combining the
+        # connnection patterns of the individual outputs
+        global_connection_pattern = [[] for o in range(len(self.inputs))]
+        for out in self.outputs:
+            out_connection_pattern = connect_pattern_by_var[out]
+            for i in range(len(self.inputs)):
+                global_connection_pattern[i].append(out_connection_pattern[i])
+
+        return global_connection_pattern
+
     def connection_pattern(self, node):
-        # We cache this, as grad call connection_pattern, and it call
-        # grad in its turn. I was a case where theano.grad() took 4h
-        # that had many scan one inside each others.
+
+        # We cache the result of this function because, with a previous
+        # implementation that repeatedly called grad, there were cases
+        # where calls to theano.grad() took as much as 4h for functions
+        # containing many nested scans.
         if hasattr(node.tag, 'connection_pattern'):
             return node.tag.connection_pattern
-        # The gradient wrt to n_steps is disconnected
-        connection_pattern = [[False for output in node.outputs]]
-        connection_pattern += [[False for output in node.outputs]
-                              for x in node.inputs[1:]]
 
-        def compute_gradient(y, g_y, diff_inputs):
-            rval = []
-            gmp = OrderedDict()
-            consider_inps = [x for x in theano.gof.graph.inputs([y])
-                             if x in diff_inputs]
-            for x in consider_inps:
-                try:
-                    gmp[x] = gradient.grad(cost=None,
-                                           known_grads={y: g_y}, wrt=x)
-                except gradient.NullTypeGradError:
-                    # It means the gradient is undefined (which implies
-                    # is connected).
-                    # Warning: x is not the right gradient here, but the only
-                    # thing we will check later is whether it is None.
-                    gmp[x] = x
-                except gradient.DisconnectedInputError:
-                    gmp[x] = None
-            return [gmp.get(p, None) for p in diff_inputs]
-
-        def _get_inner_outs(oidx):
+        # Define helper functions
+        def _get_inner_outs_idx(oidx):
+            """Given the index of an outer output, return the indices of the
+            corresponding inner output(s) in a sequence.
+            """
             s = 0
             if self.n_mit_mot > 0:
                 e = len(self.mitmot_out_taps()[0])
@@ -1347,62 +1420,51 @@ class Scan(PureOp):
                     e += len(self.mitmot_out_taps()[p])
                 else:
                     e += 1
-            return self.outputs[s:e]
 
-        def _get_inner_inps(iidx):
-            if node.inputs[iidx + 1] in self.outer_nitsot(node):
-                return None
-            if node.inputs[iidx + 1] in self.outer_non_seqs(node):
-                loc_idx = self.outer_non_seqs(node).index(
-                    node.inputs[iidx + 1])
-                return [self.inner_non_seqs(self.inputs)[loc_idx]]
+            return range(s, e)
 
-            s = 0
-            if self.n_seqs > 0:
-                e = 1
-            else:
-                e = len(self.tap_array[0])
-            for p in xrange(iidx):
-                s = e
-                if p < self.n_seqs:
-                    e += 1
-                elif p - self.n_seqs < len(self.tap_array):
-                    e += len(self.tap_array[p - self.n_seqs])
-                else:
-                    e += 1
+        def _get_inner_inps_idx(outer_iidx):
+            """Given the index of an outer input, return the indices of the
+            corresponding inner input(s) in a sequence.
+            """
+            outer_iidx_from_inner_iidx = self.get_outer_iidx_from_inner_iidx_seq()
 
-            return self.inputs[s:e]
-        for oidx, out in enumerate(node.outputs):
-            for iidx, inp in enumerate(node.inputs[1:]):
-                ols = _get_inner_outs(oidx)
-                ils = _get_inner_inps(iidx)
+            # For every inner input, if the corresponding outer input is the
+            # desired one, store the index
+            inner_iidxs = []
+            for i in xrange(len(outer_iidx_from_inner_iidx)):
+                if outer_iidx_from_inner_iidx[i] == outer_iidx:
+                    inner_iidxs.append(i)
 
-                if ils is None:
-                    # The gradient should be disconnected
-                    connection_pattern[iidx + 1][oidx] = False
-                else:
-                    for inner_out in ols:
-                        # We check for the dtype because inner_out could be
-                        # any Theano type like Generic or RandomState, for
-                        # which we can not impose a dtype
-                        if hasattr(inner_out, 'dtype'):
-                            # Note that we do not care about the output of
-                            # this compute gradient. We just care to see if
-                            # it is None or not. (i.e. disconnected or not)
-                            try:
-                                old = theano.config.compute_test_value
-                                theano.config.compute_test_value = 'off'
-                                tmp = compute_gradient(
-                                    inner_out,
-                                    safe_new(inner_out, dtype='float64'),
-                                    ils)
-                            finally:
-                                theano.config.compute_test_value = old
-                        else:
-                            # It should be undefined not disconnected
-                            tmp = ils
-                        if any([x is not None for x in tmp]):
-                            connection_pattern[iidx + 1][oidx] = True
+            return inner_iidxs
+
+        # Obtain the connection pattern of the inner function.
+        inner_connect_pattern = self.inner_connection_pattern()
+
+        # Initially assume no outer input is connected to any outer output
+        connection_pattern = [[False for output in node.outputs]
+                              for x in node.inputs]
+
+        # For every possible pair of outer input and outer output, iterate
+        # over every possible pairing of their corresponding inner inputs
+        # and inner outputs and, if one such pair of inner variables is
+        # connected than the pair of outer variables is connected.
+        for outer_oidx in range(len(node.outputs)):
+            inner_oidxs = _get_inner_outs_idx(outer_oidx)
+
+            for outer_iidx in range(len(node.inputs)):
+                inner_iidxs = _get_inner_inps_idx(outer_iidx)
+
+                for inner_oidx in inner_oidxs:
+                    for inner_iidx in inner_iidxs:
+
+                        if inner_connect_pattern[inner_iidx][inner_oidx]:
+                            connection_pattern[outer_iidx][outer_oidx] = True
+                            break
+
+                    if connection_pattern[outer_iidx][outer_oidx]:
+                        break
+
 
         # Applying Floyd-Warshall to find all paths connecting inputs to
         # outputs. Note that if `x` is an input to `y_t` and `y_tm1` is an
@@ -1439,7 +1501,7 @@ class Scan(PureOp):
         return connection_pattern
 
     def get_outer_iidx_from_inner_iidx_seq(self):
-        """ Return a sequence where the value of at the i-th position is the
+        """ Return a sequence where the value at the i-th position is the
         index of the outer input corresponding to the i-th inner input
         """
 

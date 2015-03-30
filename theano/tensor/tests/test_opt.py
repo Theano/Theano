@@ -1576,6 +1576,40 @@ def test_log_add():
     #TODO: (write and) test that the optimization works with Sum in addition to working with Add.
 
 
+def test_local_useless_slice():
+    # test a simple matrix
+    x = tensor.matrix('x')
+    mode_unopt = compile.get_default_mode().excluding("local_useless_slice")
+    mode_opt = compile.get_default_mode().including("local_useless_slice")
+
+    # test with and without the useless slice
+    o = 2 * x[0, :]
+    f_unopt = theano.function([x], o, mode=mode_unopt)
+    f_opt = theano.function([x], o, mode=mode_opt)
+    test_inp = numpy.random.randint(-10, 10, (4, 4)).astype('float32')
+    assert all(f_opt(test_inp)  == f_unopt(test_inp)),\
+           "The optimization caused a mismatch in the result" 
+    # test to see if the slice is truely gone
+    apply_node = f_opt.maker.fgraph.toposort()[0]
+    subtens = apply_node.op
+    assert not any(isinstance(idx, slice) for idx in subtens.idx_list), "Slice should be gone"
+    
+    # test a 4d tensor
+    z = tensor.tensor4('z')
+    o2 = z[1, :, :, 1]
+    o3 = z[0, :, :, :]
+    f_opt_check = theano.function([z], o2, mode=mode_opt)
+    f_opt_check_apply = theano.function([z], o3, mode=mode_opt)
+
+    # The optimization shouldn't apply here 
+    apply_node = f_opt_check.maker.fgraph.toposort()[0]
+    subtens = apply_node.op
+    assert [isinstance(idx, slice) for idx in subtens.idx_list].count(True) == 2
+    # But it should here
+    apply_node = f_opt_check_apply.maker.fgraph.toposort()[0]
+    subtens = apply_node.op
+    assert not any(isinstance(idx, slice) for idx in subtens.idx_list)
+
 def test_local_useless_inc_subtensor():
     x = tensor.matrix('x')
     y = tensor.matrix('y')

@@ -25,21 +25,27 @@ from theano.sandbox.cuda.basic_ops import (
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit)
+
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
         gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
         GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
         GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
+
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
+from theano.sandbox.cuda.cula import gpu_solve
+
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
         GpuDownsampleFactorMaxGrad, GpuDownsampleFactorMaxGradGrad)
+
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
         GpuCrossentropySoftmax1HotWithBiasDx,
         GpuSoftmax, GpuSoftmaxWithBias)
+
 from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
 from theano.sandbox.cuda.elemwise import erfinv_gpu
@@ -47,7 +53,10 @@ from theano.sandbox.cuda.var import CudaNdarrayConstant
 from theano.sandbox.cuda import gpu_optimizer, register_opt, gpu_seqopt, GpuOp
 from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
+
 from theano.tensor import nlinalg
+from theano.tensor import slinalg
+
 from theano.tensor.nnet.Conv3D import Conv3D
 
 try:
@@ -537,6 +546,31 @@ def local_gpu_dot22scalar(node):
                 gpu_dot22scalar(gpu_from_host(x),
                                 gpu_from_host(y),
                                 tensor.blas._as_scalar(scalar)))]
+    return False
+
+
+@register_opt()
+@local_optimizer([gpu_from_host, slinalg.Solve])
+def local_gpu_solve(node):
+    """
+    gpu_from_host(CpuSolve) -> GpuSolve(gpu_from_host)
+    CpuSolve(host_from_gpu) -> host_from_gpu(GpuSolve)
+    """
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op,
+                       slinalg.Solve)):
+            x, y = host_input.owner.inputs
+            return [gpu_solve(gpu_from_host(x), gpu_from_host(y))]
+
+    if isinstance(node.op, slinalg.Solve):
+        if any([i.owner and isinstance(i.owner.op, HostFromGpu)
+                for i in node.inputs]):
+            x, y = node.inputs
+            return [host_from_gpu(
+                    gpu_solve(gpu_from_host(x),
+                                gpu_from_host(y)))]
     return False
 
 
@@ -2055,6 +2089,12 @@ def local_gpu_extract_diagonal(node):
                 gpu_from_host(diag_node.inputs[0]))]
     return False
 
+def typeConstructor(broadcastable, dtype):
+    if dtype == 'float32':
+        return CudaNdarrayType(broadcastable=broadcastable)
+    else:
+        return tensor.TensorType(broadcastable=broadcastable, dtype=dtype)
+
 @register_opt('scan')
 @local_optimizer([gpu_from_host, scan_op.Scan])
 def gpuScanOptimization(node):
@@ -2114,7 +2154,9 @@ def gpuScanOptimization(node):
 
             nw_op = scan_op.Scan(scan_ins,
                                  scan_outs,
-                                 info).make_node(*nw_ins)
+                                 info,
+                                 typeConstructor=typeConstructor).make_node(
+                                     *nw_ins)
             _outputs = nw_op.outputs
             return _outputs
 
@@ -2160,7 +2202,8 @@ def gpuScanOptimization(node):
             _outputs = scan_op.Scan(
                 scan_ins,
                 scan_outs,
-                info).make_node(*nw_ins).outputs
+                info,
+                typeConstructor=typeConstructor).make_node(*nw_ins).outputs
             outputs = []
             for x, y in zip(_outputs, node.outputs):
                 if isinstance(y.type, CudaNdarrayType):
@@ -2172,7 +2215,8 @@ def gpuScanOptimization(node):
 
 
 optdb.register('gpu_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(gpu_flag=True),
+               scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
+                                             gpu_flag=True),
                75,
                'gpu',
                'fast_run',

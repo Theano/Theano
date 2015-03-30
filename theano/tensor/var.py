@@ -190,6 +190,9 @@ class _tensor_py_operators:
         except (NotImplementedError, AsTensorError):
             return NotImplemented
 
+    def __divmod__(self, other):
+        return theano.tensor.basic.divmod(self, other)
+
     def __truediv__(self, other):
         return theano.tensor.basic.true_div(self, other)
 
@@ -234,6 +237,10 @@ class _tensor_py_operators:
 
     def __rmod__(self, other):
         return theano.tensor.basic.mod(other, self)
+
+    def __rdivmod__(self, other):
+        return theano.tensor.basic.divmod(other, self)
+
 
     def __rpow__(self, other):
         return theano.tensor.basic.pow(other, self)

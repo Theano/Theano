@@ -536,12 +536,38 @@ def test_erfinvgpu():
     assert numpy.allclose(f(xv), f2(xv))
 
 
+def test_local_gpu_solve():
+    numpy.random.seed(1)
+
+    def cmp(a_shp, b_shp):
+        a0 = numpy.random.uniform(-0.4, 0.4,
+                                  a_shp).astype('float32')
+        a = cuda.shared_constructor(a0, 'a')
+
+        b0 = numpy.random.uniform(-0.4, 0.4,
+                                  b_shp).astype('float32')
+        b = cuda.shared_constructor(b0, 'b')
+
+        f = pfunc([], tensor.slinalg.solve(a, b), mode=mode_with_gpu)
+
+        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
+                          cuda.cula.GpuSolve)
+
+        assert cuda.opt.local_gpu_solve.transform(
+            tensor.slinalg.solve(a, b).owner)
+        out = f()
+        assert numpy.allclose(numpy.dot(a0, out), b0)
+
+    cmp((6, 6), (6, 1))
+    cmp((5, 5), (5, 1))
+
+
 def test_local_gpu_dot_to_dot22dot():
     def cmp(a_shp, b_shp):
         a0 = numpy.random.rand(*a_shp).astype('float32')
         a = cuda.shared_constructor(a0, 'a')
         b0 = numpy.random.rand(*b_shp).astype('float32')
-        b = cuda.shared_constructor(b0, 'a')
+        b = cuda.shared_constructor(b0, 'b')
 
         f = pfunc([], tensor.dot(a, b), mode=mode_with_gpu)
         assert cuda.opt.local_gpu_dot_to_dot22.transform(

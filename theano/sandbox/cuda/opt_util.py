@@ -52,7 +52,7 @@ def is_equal(var, val):
     try:
         v = get_scalar_constant_value(var)
         return v == val
-    except NotScalarConstantValue:
+    except NotScalarConstantError:
         return False
 
 
