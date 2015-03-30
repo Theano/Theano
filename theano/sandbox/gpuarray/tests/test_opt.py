@@ -3,19 +3,16 @@ import numpy
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
-import theano.sandbox.gpuarray
-from theano.sandbox.gpuarray.type import (
-    GpuArrayType, gpuarray_shared_constructor)
-from theano.sandbox.gpuarray.basic_ops import (
-    GpuAlloc, GpuReshape, gpu_alloc, gpu_from_host, host_from_gpu)
-from theano.sandbox.gpuarray.elemwise import (
-    GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise)
-from theano.sandbox.gpuarray.subtensor import GpuSubtensor
-from theano.sandbox.gpuarray.tests.test_basic_ops import (
-    rand_gpuarray, mode_with_gpu, mode_without_gpu
-    )
 from theano.tests.unittest_tools import SkipTest
-from theano.tensor.tests.test_basic import TestSpecifyShape
+from theano.tensor.tests import test_basic
+
+import theano.sandbox.gpuarray
+from ..type import GpuArrayType, gpuarray_shared_constructor
+from ..basic_ops import (GpuAlloc, GpuReshape, gpu_alloc,
+                         gpu_from_host, host_from_gpu)
+from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
+from ..subtensor import GpuSubtensor
+from .test_basic_ops import rand_gpuarray, mode_with_gpu, mode_without_gpu
 
 
 def test_local_assert():
@@ -135,10 +132,9 @@ def test_rebroadcast():
     assert isinstance(rebr.outputs[0].type, GpuArrayType)
 
 
-class TestSpecifyShape(TestSpecifyShape):
+class TestSpecifyShape(test_basic.TestSpecifyShape):
     mode = mode_with_gpu
     input_type = GpuArrayType
-    pass
 
 
 def test_print_op():
@@ -146,9 +142,6 @@ def test_print_op():
     b = tensor.fmatrix()
     f = theano.function([b], theano.printing.Print()(b) * 2,
                         mode=mode_with_gpu)
-    theano.printing.debugprint(f)
-    # print f.maker.fgraph.toposort()
-#[GpuFromHost(<TensorType(float32, matrix)>), <theano.printing.Print object at 0x3581210>(GpuFromHost.0), GpuElemwise{mul}(CudaNdarray{[[ 2.]]}, <theano.printing.Print object at 0x3581210>.0), HostFromGpu(GpuElemwise{mul}.0)]
     topo = f.maker.fgraph.toposort()
     assert topo[0].op == gpu_from_host
     assert isinstance(topo[1].op, theano.printing.Print)

@@ -5,12 +5,10 @@ import theano
 
 from theano.tests import unittest_tools as utt
 import theano.sandbox.rng_mrg
-from theano.sandbox.gpuarray.basic_ops import (
-    gpu_from_host, GpuFromHost, HostFromGpu
-)
-from theano.sandbox.gpuarray.elemwise import GpuElemwise
+from ..basic_ops import gpu_from_host, GpuFromHost, HostFromGpu
+from ..elemwise import GpuElemwise
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import mode_with_gpu
+from .test_basic_ops import mode_with_gpu
 
 
 class T_Scan(TestCase):
