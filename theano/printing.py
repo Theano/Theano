@@ -956,9 +956,9 @@ def pydotprint_variables(vars,
     try:
         import pydot as pd
     except ImportError:
-        str = ("Failed to import pydot. You must install pydot for " +
+        err = ("Failed to import pydot. You must install pydot for " +
                "`pydotprint_variables` to work.")
-        print str
+        print err
         return
     g = pd.Dot()
     my_list = {}
