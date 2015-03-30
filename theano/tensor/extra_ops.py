@@ -662,6 +662,8 @@ def repeat(x, repeats, axis=None):
         else:
             if axis >= x.ndim:
                 raise ValueError('Axis should not exceed x.ndim-1.')
+            if axis < 0:
+                axis = x.ndim+axis
 
         shape = [x.shape[i] for i in xrange(x.ndim)]
         shape_ = shape[:]
