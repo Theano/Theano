@@ -20,7 +20,7 @@ try:
 except ImportError:
     pass
 
-from type import GpuArrayType
+from .type import GpuArrayType
 
 
 def as_gpuarray_variable(x):

@@ -1,7 +1,7 @@
 from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
-from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
+from .basic_ops import HideC, as_gpuarray_variable
 
 try:
     import pygpu

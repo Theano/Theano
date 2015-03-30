@@ -2,8 +2,6 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.compat.six import StringIO
-from theano.sandbox.gpuarray.comp import NVCC_compiler
-
 
 try:
     import pygpu
@@ -11,11 +9,12 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.kernel_codegen import (nvcc_kernel,
-                                                   inline_softmax,
-                                                   inline_softmax_fixed_shared)
+from .basic_ops import as_gpuarray_variable
+from .comp import NVCC_compiler
+from .type import GpuArrayType
+from .kernel_codegen import (nvcc_kernel,
+                             inline_softmax,
+                             inline_softmax_fixed_shared)
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):

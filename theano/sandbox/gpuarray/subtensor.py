@@ -14,10 +14,10 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
-from theano.sandbox.gpuarray.elemwise import GpuElemwise
-from theano.sandbox.gpuarray.comp import NVCC_compiler
+from .type import GpuArrayType
+from .basic_ops import as_gpuarray_variable, HideC
+from .elemwise import GpuElemwise
+from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):

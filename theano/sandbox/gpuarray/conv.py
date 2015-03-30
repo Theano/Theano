@@ -3,9 +3,9 @@ import os
 
 import theano
 from theano import config, gof
-from theano.sandbox.gpuarray.comp import NVCC_compiler
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
+from .comp import NVCC_compiler
+from .type import GpuArrayType
+from .basic_ops import as_gpuarray_variable
 
 
 class GpuConv(gof.Op):
