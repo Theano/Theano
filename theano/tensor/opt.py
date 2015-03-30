@@ -2549,8 +2549,7 @@ compile.optdb.register('local_inplace_setsubtensor',
 def local_inplace_incsubtensor1(node):
     """ also work for GpuAdvancedIncSubtensor1 """
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
-        new_op = node.op.__class__(
-            inplace=True, set_instead_of_inc=node.op.set_instead_of_inc)
+        new_op = node.op.clone_inplace()
         new_node = new_op(*node.inputs)
         return [new_node]
     return False

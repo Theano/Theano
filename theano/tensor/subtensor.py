@@ -1808,6 +1808,11 @@ class AdvancedIncSubtensor1(Op):
                 and self.inplace == other.inplace
                 and self.set_instead_of_inc == other.set_instead_of_inc)
 
+    def clone_inplace(self):
+        return self.__class__(
+            inplace=True,
+            set_instead_of_inc=self.set_instead_of_inc)
+
     def __str__(self):
         if self.inplace:
             msg = "inplace"
