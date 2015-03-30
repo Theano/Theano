@@ -115,6 +115,36 @@ class TestBinCountOp(utt.InferShapeTester):
         self.op_class = BinCountOp
         self.op = BinCountOp()
 
+    def test_bincountFn(self):
+        w = T.vector('w')
+        for dtype in ('int8', 'int16', 'int32', 'int64',
+                      'uint8', 'uint16', 'uint32', 'uint64'):
+            x = T.vector('x', dtype=dtype)
+
+            # uint64 always fails
+            if dtype in ('uint64',):
+                self.assertRaises(TypeError, bincount, x)
+
+            else:
+                a = np.random.random_integers(50, size=(25)).astype(dtype)
+                weights = np.random.random((25,)).astype(config.floatX)
+
+                f1 = theano.function([x], bincount(x))
+                f2 = theano.function([x, w], bincount(x, weights=w))
+
+                assert (np.bincount(a) == f1(a)).all()
+                assert np.allclose(np.bincount(a, weights=weights),
+                                   f2(a, weights))
+                f3 = theano.function([x], bincount(x, minlength=23))
+                f4 = theano.function([x], bincount(x, minlength=5))
+                assert (np.bincount(a, minlength=23) == f3(a)).all()
+                assert (np.bincount(a, minlength=5) == f4(a)).all()
+                # skip the following test when using unsigned ints
+                if not dtype.startswith('u'):
+                    a[0] = -1
+                    f5 = theano.function([x], bincount(x, assert_nonneg=True))
+                    self.assertRaises(AssertionError, f5, a)
+
     def test_bincountOp(self):
         w = T.vector('w')
         for dtype in ('int8', 'int16', 'int32', 'int64',
@@ -130,22 +160,22 @@ class TestBinCountOp(utt.InferShapeTester):
             x = T.vector('x', dtype=dtype)
 
             if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+                self.assertRaises(TypeError, BinCountOp(), x)
 
             else:
                 a = np.random.random_integers(50, size=(25)).astype(dtype)
                 weights = np.random.random((25,)).astype(config.floatX)
 
-                f1 = theano.function([x], bincount(x))
-                f2 = theano.function([x, w], bincount(x, weights=w))
+                f1 = theano.function([x], BinCountOp()(x, weights=None))
+                f2 = theano.function([x, w], BinCountOp()(x, weights=w))
 
                 assert (np.bincount(a) == f1(a)).all()
                 assert np.allclose(np.bincount(a, weights=weights),
                                    f2(a, weights))
                 if not numpy_16:
                     continue
-                f3 = theano.function([x], bincount(x, minlength=23))
-                f4 = theano.function([x], bincount(x, minlength=5))
+                f3 = theano.function([x], BinCountOp(minlength=23)(x, weights=None))
+                f4 = theano.function([x], BinCountOp(minlength=5)(x, weights=None))
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
 
@@ -162,12 +192,12 @@ class TestBinCountOp(utt.InferShapeTester):
             x = T.vector('x', dtype=dtype)
 
             if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+                self.assertRaises(TypeError, BinCountOp(), x)
 
             else:
                 self._compile_and_check(
                         [x],
-                        [bincount(x)],
+                        [BinCountOp()(x,None)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -175,7 +205,7 @@ class TestBinCountOp(utt.InferShapeTester):
                 weights = np.random.random((25,)).astype(config.floatX)
                 self._compile_and_check(
                         [x],
-                        [bincount(x, weights=weights)],
+                        [BinCountOp()(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -184,14 +214,14 @@ class TestBinCountOp(utt.InferShapeTester):
                     continue
                 self._compile_and_check(
                         [x],
-                        [bincount(x, minlength=60)],
+                        [BinCountOp(minlength=60)(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
 
                 self._compile_and_check(
                         [x],
-                        [bincount(x, minlength=5)],
+                        [BinCountOp(minlength=5)(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)

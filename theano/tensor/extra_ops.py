@@ -1,6 +1,6 @@
 import numpy as np
 import numpy
-
+import warnings
 import theano
 
 from theano.tensor import basic
@@ -332,8 +332,11 @@ def diff(x, n=1, axis=-1):
 
 
 class BinCountOp(theano.Op):
-    # See function bincount for docstring
+    """
+    DEPRECATED: use bincount() instead.
 
+    See function bincount for docstring
+    """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
     """Tuple of all compatible dtype for the parameter of this op."""
@@ -355,6 +358,10 @@ class BinCountOp(theano.Op):
         return hash(type(self)) ^ hash(self.minlength)
 
     def make_node(self, x, weights):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
+
         x = basic.as_tensor_variable(x)
 
         if x.dtype not in BinCountOp.compatible_type:
@@ -429,8 +436,8 @@ class BinCountOp(theano.Op):
         return self.__class__.__name__
 
 
-def bincount(x, weights=None, minlength=None):
-    """Count number of occurrences of each value in array of non-negative ints.
+def bincount(x, weights=None, minlength=None, assert_nonneg=False):
+    """Count number of occurrences of each value in array of ints.
 
     The number of bins (of size 1) is one larger than the largest
     value in x. If minlength is specified, there will be at least
@@ -439,7 +446,6 @@ def bincount(x, weights=None, minlength=None):
     number of occurrences of its index value in x. If weights is
     specified the input array is weighted by it, i.e. if a value n
     is found at position i, out[n] += weight[i] instead of out[n] += 1.
-    Wraping of numpy.bincount
 
     :param x: 1 dimension, nonnegative ints
 
@@ -447,10 +453,43 @@ def bincount(x, weights=None, minlength=None):
         Optional.
     :param minlength: A minimum number of bins for the output array.
         Optional.
-
+    :param assert_nonneg: A flag that inserts an assert_op to check if
+        every input x is nonnegative.
+        Optional.
     .. versionadded:: 0.6
     """
-    return BinCountOp(minlength=minlength)(x, weights)
+    compatible_type = ('int8', 'int16', 'int32', 'int64',
+                       'uint8', 'uint16', 'uint32')
+    unsupported_dtypes = ('uint64',)
+
+    if x.dtype in unsupported_dtypes:
+            raise TypeError(
+                ("Input dtype %s is not supported, "
+                 % unsupported_dtypes), x.dtype)
+
+    if x.dtype not in compatible_type:
+        raise TypeError("Inputs dtype must be an integer.")
+
+    if x.ndim != 1:
+        raise TypeError("Inputs must be of dimension 1.")
+
+    if assert_nonneg:
+        from theano.tensor.opt import Assert
+        assert_op = Assert('Input to bincount has negative values!')
+        x = assert_op(x, theano.tensor.all(x >= 0))
+
+    max_value = theano.tensor.cast(x.max() + 1, 'int64')
+
+    if minlength is not None:
+        max_value = theano.tensor.maximum(max_value, minlength)
+
+    if weights is None:
+        out = theano.tensor.zeros([max_value], dtype=x.dtype)
+        out = theano.tensor.inc_subtensor(out[x], 1)
+    else:
+        out = theano.tensor.zeros([max_value], dtype=weights.dtype)
+        out = theano.tensor.inc_subtensor(out[x], weights)
+    return out
 
 
 def squeeze(x):
