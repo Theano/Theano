@@ -19,6 +19,8 @@ import theano.sandbox.cuda as cuda
 if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
+import theano.sandbox.cuda.cula as cula
+
 from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.scalar.basic_scipy import erfinv
@@ -537,6 +539,10 @@ def test_erfinvgpu():
 
 
 def test_local_gpu_solve():
+
+    if not cula.cula_available:
+        raise SkipTest('Optional dependency CULA not available')
+
     numpy.random.seed(1)
 
     def cmp(a_shp, b_shp):
