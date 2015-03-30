@@ -948,9 +948,8 @@ class ProfileStats(object):
                                 mem_freed += var_mem[ins]
                             elif ins in view_of:
                                 origin = view_of[ins]
-                                if ins in viewed_by[origin]:
-                                    viewed_by[origin].remove(ins)
-                                    viewedby_remove[origin].append(ins)
+                                viewed_by[origin].remove(ins)
+                                viewedby_remove[origin].append(ins)
                                 if (not viewed_by[origin] and
                                         origin not in fgraph.inputs and
                                         not isinstance(origin, theano.Constant)):
