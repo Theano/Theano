@@ -3370,7 +3370,7 @@ class GpuAlloc(GpuAllocEmpty):
         # the super class (GpuAllocEmpty) allocates memory, we fill it
         value = inputs[0]
         shps = inputs[1:]
-        str = super(GpuAllocEmpty, self).c_code(node, name, shps, out_, sub)
+        str = super(GpuAlloc, self).c_code(node, name, shps, out_, sub)
         out, = out_
         fail = sub['fail']
         memset_0 = int(self.memset_0)
@@ -3405,7 +3405,8 @@ class GpuAlloc(GpuAllocEmpty):
         return [node.inputs[1:]]
 
     def c_code_cache_version(self):
-        return (10,)
+        parent_version = super(GpuAlloc, self).c_code_cache_version()
+        return (parent_version, 10)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
