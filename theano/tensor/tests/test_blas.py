@@ -1472,14 +1472,14 @@ class BaseGemv(object):
         x_v = x_v.astype("float32")
         y_v = y_v.astype("float32")
 
-        alpha = T.dscalar('a')
-        a = T.fmatrix('w')
-        x = T.fvector('v')
-        y = T.fvector('t')
+        alpha = T.dscalar('alpha')
+        a = self.shared(a_v)
+        x = self.shared(x_v)
+        y = self.shared(y_v)
 
         rval = T.dot(a, x) * alpha + y
 
-        f = theano.function([a, x, y, alpha], rval, mode=self.mode)
+        f = theano.function([alpha], rval, mode=self.mode)
         # this function is currently optimized so that the gemv is
         # done inplace on a temporarily allocated-buffer, which is
         # then scaled by alpha and to t with a fused elemwise.
@@ -1491,7 +1491,7 @@ class BaseGemv(object):
                 assert node.outputs[0].dtype == 'float32'
         assert n_gemvs == 1, n_gemvs
         self.assertFunctionContains1(f, self.gemv_inplace)
-        f(a_v, x_v, y_v, alpha_v)
+        f(alpha_v)
 
 
 class TestSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
