@@ -489,8 +489,7 @@ class test_hierarchical_softmax(unittest.TestCase):
                                            n_classes, n_outputs_per_class,
                                            batch_size, target=target)
 
-        f = theano.function([W1, b1, W2, b2, x, target], y,
-                            on_unused_input='ignore')
+        f = theano.function([W1, b1, W2, b2, x, target], y)
 
         target_npy = numpy.random.randint(0, n_out, size=(batch_size,)).astype(
             dtype=numpy.int32)
@@ -511,7 +510,7 @@ class test_hierarchical_softmax(unittest.TestCase):
         y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out, n_classes,
                                            n_outputs_per_class, batch_size)
 
-        f = theano.function([W1, b1, W2, b2, x], y, on_unused_input='ignore')
+        f = theano.function([W1, b1, W2, b2, x], y)
 
         outputs = f(W1_np, b1_np, W2_np, b2_np, x_np)
 
