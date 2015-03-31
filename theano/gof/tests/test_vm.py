@@ -349,26 +349,28 @@ def test_reallocation():
     x = tensor.scalar('x')
     y = tensor.scalar('y')
     z = tensor.tanh(3 * x + y) + tensor.cosh(x + 5 * y)
+    for l in ['vm_nogc', 'vm', 'vm_nogc', 'vm']:
+        m = theano.compile.get_mode(theano.Mode(linker=l))
+        m = m.excluding('fusion', 'inplace')
 
-    m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
-    m = m.excluding('fusion', 'inplace')
+        f = theano.function([x, y], z, name="test_reduce_memory",
+                            mode=m)
+        output = f(1, 2)
+        assert output
+        storage_map = f.fn.storage_map
 
-    f = theano.function([x, y], z, name="test_reduce_memory",
-                        mode=m)
-    output = f(1, 2)
-    assert output
-    storage_map = f.fn.storage_map
+        def check_storage(storage_map):
+            from theano.tensor.var import TensorConstant
+            for i in storage_map.keys():
+                if not isinstance(i, TensorConstant):
+                    keys_copy = storage_map.keys()[:]
+                    keys_copy.remove(i)
+                    for o in keys_copy:
+                        if (storage_map[i][0] and
+                            storage_map[i][0] is storage_map[o][0]):
+                            return [True, storage_map[o][0]]
+            return [False, None]
 
-    def check_storage(storage_map):
-        from theano.tensor.var import TensorConstant
-        for i in storage_map.keys():
-            if not isinstance(i, TensorConstant):
-                keys_copy = storage_map.keys()[:]
-                keys_copy.remove(i)
-                for o in keys_copy:
-                    if (storage_map[i][0] and
-                            storage_map[i][0] == storage_map[o][0]):
-                        return [True, storage_map[o][0]]
-        return [False, None]
-
-    assert check_storage(storage_map)[0]
+        assert check_storage(storage_map)[0]
+        assert len(set([id(v) for v in
+                        storage_map.values()])) < len(storage_map)
