@@ -6,11 +6,10 @@ from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
-                                                          rand_gpuarray)
-from theano.sandbox.gpuarray.elemwise import (GpuElemwise, GpuDimShuffle,
-                                              GpuCAReduceCuda, GpuCAReduceCPY)
-from theano.sandbox.gpuarray.type import GpuArrayType
+from .test_basic_ops import mode_with_gpu, rand_gpuarray
+from ..elemwise import (GpuElemwise, GpuDimShuffle,
+                        GpuCAReduceCuda, GpuCAReduceCPY)
+from ..type import GpuArrayType
 
 from pygpu.array import gpuarray
 

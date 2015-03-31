@@ -22,10 +22,10 @@ from theano.compat.python2x import any
 from theano.tests.unittest_tools import seed_rng
 
 # We let that import do the init of the back-end if needed.
-from theano.sandbox.gpuarray.tests.test_basic_ops import (mode_with_gpu,
-                                                          mode_without_gpu)
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.conv import GpuConv
+from .test_basic_ops import (mode_with_gpu,
+                             mode_without_gpu)
+from ..type import GpuArrayType
+from ..conv import GpuConv
 import pygpu
 gftensor4 = GpuArrayType('float32', [False] * 4)
 

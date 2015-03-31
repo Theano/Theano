@@ -18,26 +18,23 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.compat.python2x import all, any
 from theano.tensor.nnet.conv import ConvOp
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import (
-    host_from_gpu, gpu_from_host, HostFromGpu, GpuFromHost,
-    GpuSplit,
-    gpu_alloc, GpuAlloc, GpuReshape, GpuEye, gpu_join, GpuJoin,
-)
-from theano.sandbox.gpuarray.blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
-from theano.sandbox.gpuarray.conv import GpuConv
-from theano.sandbox.gpuarray.nnet import (
-    GpuCrossentropySoftmaxArgmax1HotWithBias,
-    GpuCrossentropySoftmax1HotWithBiasDx,
-    GpuSoftmaxWithBias, GpuSoftmax
-)
-from theano.sandbox.gpuarray.elemwise import (GpuElemwise, _is_scalar,
-                                              GpuDimShuffle, GpuCAReduceCuda,
-                                              GpuCAReduceCPY)
-from theano.sandbox.gpuarray.subtensor import (GpuIncSubtensor, GpuSubtensor,
-                                               GpuAdvancedIncSubtensor1,
-                                               GpuAdvancedIncSubtensor1_dev20)
-from theano.sandbox.gpuarray.type import GpuArrayConstant
+from .type import GpuArrayType, GpuArrayConstant
+from .basic_ops import (host_from_gpu, gpu_from_host,
+                        HostFromGpu, GpuFromHost,
+                        GpuSplit,
+                        gpu_alloc, GpuAlloc, GpuReshape,
+                        GpuEye, gpu_join, GpuJoin)
+from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
+from .conv import GpuConv
+from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
+                   GpuCrossentropySoftmax1HotWithBiasDx,
+                   GpuSoftmaxWithBias, GpuSoftmax)
+from .elemwise import (GpuElemwise, _is_scalar,
+                       GpuDimShuffle, GpuCAReduceCuda,
+                       GpuCAReduceCPY)
+from .subtensor import (GpuIncSubtensor, GpuSubtensor,
+                        GpuAdvancedIncSubtensor1,
+                        GpuAdvancedIncSubtensor1_dev20)
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()

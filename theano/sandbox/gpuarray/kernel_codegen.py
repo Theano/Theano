@@ -1,7 +1,6 @@
 """ Helper routines for generating gpu kernels for nvcc.
 """
 
-
 def nvcc_kernel(name, params, body):
     """Return the c code of a kernel function.
 

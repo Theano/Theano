@@ -5,9 +5,9 @@ import numpy
 import theano
 from theano.compile import DeepCopyOp
 
-from theano.sandbox.gpuarray.tests.test_basic_ops import rand_gpuarray
+from .test_basic_ops import rand_gpuarray
 
-from theano.sandbox.gpuarray.type import GpuArrayType
+from ..type import GpuArrayType
 
 
 def test_deep_copy():
