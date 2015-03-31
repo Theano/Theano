@@ -189,12 +189,14 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     if isinstance(outputs, dict):
         output_items = outputs.items()
 
+        for item_pair in output_items: 
+            assert isinstance(item_pair[0], basestring)
+
         output_items_sorted = sorted(output_items)
 
         output_keys = []
         outputs = []
         for pair in output_items_sorted: 
-            assert isinstance(pair[0], basestring)
             output_keys.append(pair[0])
             outputs.append(pair[1])
 
