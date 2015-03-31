@@ -2519,6 +2519,29 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(tx4, v_u[-1] + 4.)
         utt.assert_allclose(tx5, v_u[-1] + 5.)
 
+    def test_infer_shape(self):
+        # Test for a crash in scan.infer_shape when using both
+        # an until condition and random sampling in the inner function.
+
+        x = tensor.scalar()
+        srng = theano.tensor.shared_randomstreams.RandomStreams(0)
+
+        def inner_fct(previous_val):
+            new_val = previous_val + srng.uniform()
+            condition = theano.scan_module.until(previous_val > 5)
+            return new_val, condition
+
+        out, updates = theano.scan(inner_fct,
+                                   outputs_info=x,
+                                   n_steps=10)
+
+        g_out = tensor.grad(out.sum(), x)
+        fct = theano.function([x], [out, g_out])
+
+        for i in xrange(-5, 5):
+            output, g_output = fct(i)
+            assert len(output) == g_output
+
     # The following test will fail in DebugMode if there are
     # some problems in Scan.infer_shape
     def test_remove_stuff(self):
