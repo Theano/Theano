@@ -668,16 +668,22 @@ def repeat(x, repeats, axis=None):
         
         # shape_ is the shape of the intermediate tensor which has
         # an additional dimension comparing to x. We use alloc to
-        # launch space for this intermediate tensor to replicate x
+        # allocate space for this intermediate tensor to replicate x
         # along that additional dimension.
         shape_ = shape[:]
         shape_.insert(axis+1, repeats)
+
+        # shape is now the shape of output, where shape[axis] becomes
+        # shape[axis]*repeats.
         shape[axis] = shape[axis]*repeats
 
         # dims_ is the dimension of that intermediate tensor. 
         dims_ = list(numpy.arange(x.ndim))
         dims_.insert(axis+1, 'x')
 
+        # After the original tensor is duplicated along the additional
+        # dimension, we reshape it to the expected output shape, and 
+        # return the output z.
         z = tensor.alloc(x.dimshuffle(*dims_), *shape_).reshape(shape) 
         return z
 
