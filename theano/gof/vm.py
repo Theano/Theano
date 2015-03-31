@@ -151,21 +151,6 @@ class VM(object):
         if hasattr(self, 'node_cleared_order'):
             profile.node_cleared_order = self.node_cleared_order[:]
 
-        if hasattr(self, 'dependencies'):
-            if self.dependencies:
-                profile.dependencies = self.dependencies.copy()
-            else:
-                dependencies = {}
-                for k in self.storage_map:
-                    dependencies[k] = []
-                    if k.owner and k.clients:
-                        ls = []
-                        for cl in k.clients:
-                            if cl[0] != 'output':
-                                ls += cl[0].outputs
-                        dependencies[k] += ls
-                profile.dependencies = dependencies
-
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
             self.call_times[i] = 0.0
@@ -917,15 +902,7 @@ class VM_Linker(link.LocalLinker):
         if getattr(fgraph.profile, 'dependencies', None):
             dependencies = getattr(fgraph.profile, 'dependencies')
         else:
-            dependencies = {}
-            for k in storage_map:
-                dependencies[k] = []
-                if k.owner and k.clients:
-                    ls = []
-                    for cl in k.clients:
-                        if cl[0] != 'output':
-                            ls += cl[0].outputs
-                    dependencies[k] += ls
+            dependencies = self.compute_gc_dependencies(storage_map)
 
         viewed_by = {}
         for var in fgraph.variables:
