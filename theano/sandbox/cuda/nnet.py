@@ -4,9 +4,9 @@ from theano import tensor as T
 from theano.compat.six import StringIO
 from theano.tensor.nnet import softmax
 
+from theano.sandbox import cuda
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-from theano.sandbox.cuda.blocksparse import sparse_block_dot_SS
 from theano.sandbox.cuda.kernel_codegen import (nvcc_kernel,
                                                 inline_softmax,
                                                 inline_softmax_fixed_shared)
@@ -812,7 +812,7 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
         class_ids = T.tile(T.arange(n_classes)[None, :], (batch_size, 1))
 
         # Second softmax that computes the output probabilities
-        activations = sparse_block_dot_SS(
+        activations = cuda.sparse_block_dot_SS(
             W2[None, :, :, :], x[:, None, :],
             T.zeros((batch_size, 1), dtype='int64'), b2, class_ids)
 
@@ -835,7 +835,7 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
         target_outputs_in_class = target % n_classes
 
         # Second softmax that computes the output probabilities
-        activations = sparse_block_dot_SS(
+        activations = cuda.sparse_block_dot_SS(
             W2[None, :, :, :], x[:, None, :],
             T.zeros((batch_size, 1), dtype='int64'), b2,
             target_classes[:, None])
