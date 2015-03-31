@@ -5110,7 +5110,7 @@ size_t
 CudaNdarray_SIZE(const CudaNdarray *self)
 {
     if (self->nd == -1) return 0;
-    int size = 1;
+    size_t size = 1;
     for (int i = 0; i < self->nd; ++i)
     {
         size *= CudaNdarray_HOST_DIMS(self)[i];
