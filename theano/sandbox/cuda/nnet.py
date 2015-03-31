@@ -726,8 +726,8 @@ class GpuSoftmaxWithBias(GpuOp):
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
 
 
-def hierarchical_softmax(W1, b1, W2, b2, x, n_inputs, n_outputs, n_classes,
-                         n_outputs_per_class, target=None):
+def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
+                         n_outputs_per_class, batch_size, target=None):
     """
     GPU-only function that returns the outputs of a two-level hierarchical
     softmax.
@@ -765,9 +765,6 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_inputs, n_outputs, n_classes,
         shape (batch_size, number of features)
 
     :type n_outputs: int
-    :param n_outputs: the number of outputs.
-
-    :type n_outputs: int
     :param n_outputs: the number of inputs.
 
     :type n_classes: int
@@ -776,12 +773,15 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_inputs, n_outputs, n_classes,
     :type n_outputs_per_class: int
     :param n_outputs_per_class: the number of outputs per class.
 
+    :type batch_size: int
+    :param batch_size: the number of examples in the minibatch input x.
+
     :type target: symbolic 2D tensor or None
     :param target: Contains the indices of the targets for the minibatch
         input x. For each input, the function computes the output for its
         corresponding target. If target is None, then all the outputs are
         computed for each input.
-        If target is a tensor, its shape should be(batch_size, 1)
+        If target is a tensor, its shape should be (batch_size, 1)
 
     :rtype: symbolic 2D tensor
     :returns: the minibatch output of the 2-layer hierarchical softmax.
@@ -803,29 +803,23 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_inputs, n_outputs, n_classes,
     b2 = as_cuda_ndarray_variable(b2)
     x = as_cuda_ndarray_variable(x)
 
-    batch_size = x.shape[0]
-
     # First softmax which computes the probabilities of belonging to each class
     class_probs = softmax(T.dot(x, W1) + b1)
 
     if target is None:
         # Computes the probabilites of all the outputs
 
-        class_ids = T.arange(n_classes)
+        class_ids = T.tile(T.arange(n_classes)[None, :], (batch_size, 1))
 
-        def _compute_output_probs(class_id):
-            # Second softmax that computes the probabilities of the outputs
-            # in a given class indexed by class_id
-            output_prob = softmax(
-                T.dot(x, W2[class_id, :, :]) + b2[class_id, :])
-            output_prob = output_prob * class_probs[:, class_id][:, None]
-            return output_prob.T
+        # Second softmax that computes the output probabilities
+        activations = sparse_block_dot_SS(
+            W2[None, :, :, :], x[:, None, :],
+            T.zeros((batch_size, 1), dtype='int64'), b2, class_ids)
 
-        output_probs = theano.scan(_compute_output_probs, class_ids, None,
-                                   name='compute_output_probs')
-        output_probs = output_probs[0].reshape(
-            [output_probs[0].shape[0] * output_probs[0].shape[1], output_probs[
-                0].shape[2]]).T
+        output_probs = softmax(activations.reshape((-1, n_outputs_per_class)))
+        output_probs = output_probs.reshape((batch_size, n_classes, -1))
+        output_probs = class_probs[:, :, None] * output_probs
+        output_probs = output_probs.reshape((batch_size, -1))
         output_probs = output_probs[:, :n_outputs]
 
     else:
@@ -841,12 +835,12 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_inputs, n_outputs, n_classes,
         target_outputs_in_class = target % n_classes
 
         # Second softmax that computes the output probabilities
-        # Adds a dimension so that sparse_block_dot_SS works properly
-        W2 = T.reshape(W2, (1, n_classes, n_inputs, n_outputs_per_class))
-        output_probs = softmax(sparse_block_dot_SS(
-            W2, x[:, None, :], T.zeros((batch_size, 1), dtype='int64'), b2,
-            target_classes[:, None])[:, 0, :])
+        activations = sparse_block_dot_SS(
+            W2[None, :, :, :], x[:, None, :],
+            T.zeros((batch_size, 1), dtype='int64'), b2,
+            target_classes[:, None])
 
+        output_probs = softmax(activations[:, 0, :])
         target_class_probs = class_probs[T.arange(batch_size), target_classes]
         output_probs = output_probs[T.arange(batch_size),
                                     target_outputs_in_class]
