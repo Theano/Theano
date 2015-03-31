@@ -967,8 +967,8 @@ class VM_Linker(link.LocalLinker):
                         and ins not in fgraph.outputs and ins.owner
                         and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
                         and ins not in allocated):
-                    # Constant Memory cannot be changed, Constant storage_map
-                    # has a value here
+                    # Constant Memory cannot be changed
+                    # Constant and shared variables' storage_map value is not empty
                     reuse_out = None
                     if ins not in view_of and not viewed_by.get(ins, []):
                         # where gc
