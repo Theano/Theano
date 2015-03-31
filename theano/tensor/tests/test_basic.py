@@ -3193,7 +3193,7 @@ class T_Join_and_Split(unittest.TestCase):
             'constant_folding'
         )
         self.join_op = Join()
-        self.split_op = Split
+        self.split_op_class = Split
         self.make_vector_op = opt.MakeVector()
         self.floatX = config.floatX
         self.hide_error = theano.config.mode not in ['DebugMode',
@@ -3784,9 +3784,9 @@ class T_Join_and_Split(unittest.TestCase):
     def test_split_0elem(self):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         m = self.shared(rng.rand(4, 6).astype(self.floatX))
-        o = self.split_op(2)(m, 0, [4, 0])
+        o = self.split_op_class(2)(m, 0, [4, 0])
         f = function([], o, mode=self.mode)
-        assert any([isinstance(node.op, self.split_op)
+        assert any([isinstance(node.op, self.split_op_class)
                     for node in f.maker.fgraph.toposort()])
         o1, o2 = f()
         assert numpy.allclose(o1, m.get_value(borrow=True))
@@ -3795,9 +3795,9 @@ class T_Join_and_Split(unittest.TestCase):
     def test_split_neg(self):
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         m = self.shared(rng.rand(4, 6).astype(self.floatX))
-        o = self.split_op(2)(m, 0, [5, -1])
+        o = self.split_op_class(2)(m, 0, [5, -1])
         f = function([], o, mode=self.mode)
-        assert any([isinstance(node.op, self.split_op)
+        assert any([isinstance(node.op, self.split_op_class)
                     for node in f.maker.fgraph.toposort()])
         self.assertRaises(ValueError, f)
 

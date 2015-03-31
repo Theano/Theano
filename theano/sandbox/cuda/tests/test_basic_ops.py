@@ -954,7 +954,7 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         self.mode = mode_with_gpu.excluding('constant_folding')
         self.join_op = cuda.GpuJoin()
         # No gpu split.
-        self.split_op = tensor.Split
+        self.split_op_class = tensor.Split
         # No Make vector on the gpu, Join used instead
         self.make_vector_op = cuda.GpuJoin()
         self.floatX = "float32"
