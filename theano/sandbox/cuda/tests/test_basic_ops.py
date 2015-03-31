@@ -956,7 +956,7 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         # No gpu split.
         self.split_op = tensor.Split
         # No Make vector on the gpu, Join used instead
-        self.make_vector_op = cuda.GpuJoin
+        self.make_vector_op = cuda.GpuJoin()
         self.floatX = "float32"
         # In FAST_COMPILE mode, we force the FAST_RUN mode for optimization.
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']

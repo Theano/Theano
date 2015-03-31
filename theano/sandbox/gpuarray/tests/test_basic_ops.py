@@ -305,7 +305,7 @@ class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(gpuarray_shared_constructor)
-    allocs = [GpuAlloc(), GpuAlloc(), T.Alloc]
+    allocs = [GpuAlloc(), GpuAlloc(), T.Alloc()]
 
 
 def test_shape():
@@ -366,7 +366,7 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         self.join_op = GpuJoin()
         self.split_op = GpuSplit
         # Use join instead of MakeVector since there is no MakeVector on GPU
-        self.make_vector_op = GpuJoin
+        self.make_vector_op = GpuJoin()
         # this is to avoid errors with limited devices
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']

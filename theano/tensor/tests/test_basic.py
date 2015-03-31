@@ -3194,7 +3194,7 @@ class T_Join_and_Split(unittest.TestCase):
         )
         self.join_op = Join()
         self.split_op = Split
-        self.make_vector_op = opt.MakeVector
+        self.make_vector_op = opt.MakeVector()
         self.floatX = config.floatX
         self.hide_error = theano.config.mode not in ['DebugMode',
                                                      'DEBUG_MODE',
@@ -3217,7 +3217,8 @@ class T_Join_and_Split(unittest.TestCase):
             make_vector_op = self.make_vector_op
         f = theano.function([], outputs, self.mode)
         topo = f.maker.fgraph.toposort()
-        assert [True for node in topo if isinstance(node.op, make_vector_op)]
+        assert [True for node in topo
+                if isinstance(node.op, type(make_vector_op))]
         variables = f()
         if isinstance(variables, (tuple, list)) and len(variables) == 1:
             return variables[0]
