@@ -1006,7 +1006,7 @@ class VM_Linker(link.LocalLinker):
             lazy = not all([(not th.lazy) for th in thunks])
         if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
             for pair in reallocated_info.values():
-                storage_map[pair[1]][0] = storage_map[pair[0]][0]
+                storage_map[pair[1]] = storage_map[pair[0]]
 
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:
