@@ -155,7 +155,16 @@ class VM(object):
             if self.dependencies:
                 profile.dependencies = self.dependencies.copy()
             else:
-                profile.dependencies = {}
+                dependencies = {}
+                for k in self.storage_map:
+                    dependencies[k] = []
+                    if k.owner and k.clients:
+                        ls = []
+                        for cl in k.clients:
+                            if cl[0] != 'output':
+                                ls += cl[0].outputs
+                        dependencies[k] += ls
+                profile.dependencies = dependencies
 
         # clear the timer info out of the buffers
         for i in xrange(len(self.call_times)):
@@ -903,12 +912,25 @@ class VM_Linker(link.LocalLinker):
         for var in fgraph.inputs:
             compute_map_re[var][0] = 1
 
+        reallocated_info = {}
+
+        if getattr(fgraph.profile, 'dependencies', None):
+            dependencies = getattr(fgraph.profile, 'dependencies')
+        else:
+            dependencies = {}
+            for k in storage_map:
+                dependencies[k] = []
+                if k.owner and k.clients:
+                    ls = []
+                    for cl in k.clients:
+                        if cl[0] != 'output':
+                            ls += cl[0].outputs
+                    dependencies[k] += ls
+
         viewed_by = {}
         for var in fgraph.variables:
             viewed_by[var] = []
         view_of = {}
-        reallocated_info = {}
-        dependencies = getattr(fgraph.profile, 'dependencies', {})
         pre_allocated = set([])
         allocated = set([])
         for idx in range(len(order)):
