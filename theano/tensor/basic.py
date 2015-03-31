@@ -3539,7 +3539,7 @@ class Join(Op):
                 split_gz = [split_gz]
             # Split.make_node isn't always able to infer the right
             # broadcast. As the grad need to keep the information,
-            # readd it if needed.
+            # read it if needed.
             split_gz = [patternbroadcast(g, t.broadcastable)
                         for t, g in zip(tensors, split_gz)]
             rval = rval + split_gz

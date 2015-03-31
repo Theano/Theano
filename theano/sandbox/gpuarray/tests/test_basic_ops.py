@@ -7,9 +7,10 @@ import theano
 import theano.tensor as T
 from theano.tensor import TensorType
 from theano.tensor.basic import alloc
-from theano.tensor.tests.test_basic import (
-    rand, safe_make_node, T_reshape, T_Join_and_Split
-    )
+
+# Don't import test classes otherwise they get tested as part of the file
+from theano.tensor.tests import test_basic
+from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests.unittest_tools import SkipTest
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -304,7 +305,7 @@ class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(gpuarray_shared_constructor)
-    allocs = [GpuAlloc, GpuAlloc, T.Alloc]
+    allocs = [GpuAlloc(), GpuAlloc(), T.Alloc()]
 
 
 def test_shape():
@@ -340,33 +341,32 @@ def test_gpu_contiguous():
     assert f(a_val, 2).flags.c_contiguous
 
 
-class G_reshape(T_reshape):
+class G_reshape(test_basic.T_reshape):
     def shortDescription(self):
         return None
 
     def __init__(self, name):
-        T_reshape.__init__(self, name,
-                           shared=gpuarray_shared_constructor,
-                           op=GpuReshape,
-                           mode=mode_with_gpu,
-                           # avoid errors with limited devices
-#                             dtype='float32',
-                           ignore_topo=(HostFromGpu, GpuFromHost,
-                                        theano.compile.DeepCopyOp,
-                                        theano.sandbox.gpuarray.elemwise.GpuElemwise,
-                                        theano.tensor.opt.Shape_i,
-                                        theano.tensor.opt.MakeVector))
+        test_basic.T_reshape.__init__(
+            self, name,
+            shared=gpuarray_shared_constructor,
+            op=GpuReshape,
+            mode=mode_with_gpu,
+            ignore_topo=(HostFromGpu, GpuFromHost,
+                         theano.compile.DeepCopyOp,
+                         theano.sandbox.gpuarray.elemwise.GpuElemwise,
+                         theano.tensor.opt.Shape_i,
+                         theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
 
 
-class G_Join_and_Split(T_Join_and_Split):
+class G_Join_and_Split(test_basic.T_Join_and_Split):
     def setUp(self):
         super(G_Join_and_Split, self).setUp()
         self.mode = mode_with_gpu.excluding('constant_folding')
-        self.join_op = GpuJoin
-        self.split_op = GpuSplit
+        self.join_op = GpuJoin()
+        self.split_op_class = GpuSplit
         # Use join instead of MakeVector since there is no MakeVector on GPU
-        self.make_vector_op = GpuJoin
+        self.make_vector_op = GpuJoin()
         # this is to avoid errors with limited devices
         self.floatX = 'float32'
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']

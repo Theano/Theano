@@ -12,6 +12,3 @@ class T_GpuImages2Neibs(test_neighbours.T_Images2Neibs):
     mode = mode_with_gpu
     op = GpuImages2Neibs
     dtypes = ['int64', 'float32', 'float64']
-
-if __name__ == '__main__':
-    unittest.main()

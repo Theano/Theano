@@ -945,18 +945,18 @@ class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(cuda.shared_constructor)
-    allocs = [B.GpuAlloc, B.GpuAlloc, tensor.Alloc]
+    allocs = [B.GpuAlloc(), B.GpuAlloc(), tensor.Alloc()]
 
 
 class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
     def setUp(self):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')
-        self.join_op = cuda.GpuJoin
+        self.join_op = cuda.GpuJoin()
         # No gpu split.
-        self.split_op = tensor.Split
+        self.split_op_class = tensor.Split
         # No Make vector on the gpu, Join used instead
-        self.make_vector_op = cuda.GpuJoin
+        self.make_vector_op = cuda.GpuJoin()
         self.floatX = "float32"
         # In FAST_COMPILE mode, we force the FAST_RUN mode for optimization.
         self.hide_error = theano.config.mode not in ['DebugMode', 'DEBUG_MODE']

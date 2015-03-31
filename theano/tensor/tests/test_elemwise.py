@@ -27,6 +27,7 @@ def FunctionGraph(i, o):
 
 class test_DimShuffle(unittest_tools.InferShapeTester):
     op = DimShuffle
+    type = TensorType
 
     def with_linker(self, linker):
         for xsh, shuffle, zsh in [((2, 3), (1, 'x', 0), (3, 1, 2)),
@@ -40,12 +41,12 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                                   ((1, 1, 1), (), ()),
                                   ((1,), ('x', 'x'), (1, 1))]:
             ib = [(entry == 1) for entry in xsh]
-            x = TensorType('float64', ib)('x')
+            x = self.type('float64', ib)('x')
             e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             assert f(numpy.ones(xsh)).shape == zsh
             # test that DimShuffle.infer_shape work correctly
-            x = TensorType('float64', ib)('x')
+            x = self.type('float64', ib)('x')
             e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x],
                                                   [e.shape])).make_function()
@@ -53,12 +54,12 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
 
         # Test when we drop a axis that is not broadcastable
         ib = [False, True, False]
-        x = TensorType('float64', ib)('x')
+        x = self.type('float64', ib)('x')
         self.assertRaises(ValueError, self.op, ib, shuffle)
 
         # Test when we drop a axis that don't have shape 1
         ib = [True, True, False]
-        x = TensorType('float64', ib)('x')
+        x = self.type('float64', ib)('x')
         e = self.op(ib, (1, 2))(x)
         f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
         self.assertRaises(TypeError, f, numpy.ones((2, 1, 4)))
@@ -66,7 +67,7 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         # Test that we can't take a dimensions multiple time
         xsh, shuffle, zsh = ((1, 1, 4), (0, 1, 2, 0), (1, 4))
         ib = [False, True, False]
-        x = TensorType('float64', ib)('x')
+        x = self.type('float64', ib)('x')
         self.assertRaises(ValueError, DimShuffle, ib, shuffle)
 
     def test_perform(self):
@@ -89,7 +90,7 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                              ((1, 1, 1), ()),
                              ((1,), ('x', 'x'))]:
             ib = [(entry == 1) for entry in xsh]
-            adtens = TensorType('float64', ib)('x')
+            adtens = self.type('float64', ib)('x')
             adtens_val = numpy.ones(xsh)
             self._compile_and_check([adtens],
                                     [self.op(ib, shuffle)(adtens)],
@@ -97,7 +98,7 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                                     warn=False)
 
     def test_too_big_rank(self):
-        x = tensor.dscalar()
+        x = self.type('float64', broadcastable=())()
         y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
         self.assertRaises(ValueError, y.eval, {x: 0})
 
@@ -328,6 +329,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
              ((), None),
              ((), ())
     ]
+    type = TensorType
 
     def with_linker(self, linker, scalar_op=scalar.add, dtype="floatX",
                     pre_scalar_op=None,
@@ -335,7 +337,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
         for xsh, tosum in self.cases:
             if dtype == "floatX":
                 dtype = theano.config.floatX
-            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            x = self.type(dtype, [(entry == 1) for entry in xsh])('x')
             d = {}
             if pre_scalar_op is not None:
                 d = {"pre_scalar_op": pre_scalar_op}
@@ -438,7 +440,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 if test_nan:
                     try:
                         self.assertTrue(
-                            theano.tensor.TensorType.values_eq(f(xv), zv),
+                            self.type.values_eq(f(xv), zv),
                             (f(xv), zv))
                     except NotImplementedError:
                         # GpuCAReduce don't implement all cases when size is 0
@@ -453,7 +455,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                         # GpuCAReduce don't implement all cases when size is 0
                         assert xv.size == 0
 
-            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            x = self.type(dtype, [(entry == 1) for entry in xsh])('x')
             if tensor_op is None:
                 e = self.op(scalar_op, axis=tosum)(x)
             else:
@@ -538,7 +540,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
         if dtype is None:
             dtype = theano.config.floatX
         for xsh, tosum in self.cases:
-            x = TensorType(dtype, [(entry == 1) for entry in xsh])('x')
+            x = self.type(dtype, [(entry == 1) for entry in xsh])('x')
             if pre_scalar_op is not None:
                 x = pre_scalar_op(x)
             if tosum is None:
