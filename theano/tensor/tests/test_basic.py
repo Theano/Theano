@@ -3240,7 +3240,7 @@ class T_Join_and_Split(unittest.TestCase):
         c = tensor._shared(numpy.asarray(3.0, dtype=self.floatX))
         s = stack(a, b, c)
         want = numpy.array([1, 2, 3])
-        out = self.eval_outputs_and_check_vector([s], opt.MakeVector)
+        out = self.eval_outputs_and_check_vector([s], opt.MakeVector())
         self.assertTrue((out == want).all())
 
     def test_stack_scalar(self):
