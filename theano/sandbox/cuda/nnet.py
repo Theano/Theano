@@ -726,7 +726,8 @@ class GpuSoftmaxWithBias(GpuOp):
 gpu_softmax_with_bias = GpuSoftmaxWithBias()
 
 
-def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
+def hierarchical_softmax(W1, b1, W2, b2, x, n_inputs, n_outputs, n_classes,
+                         n_outputs_per_class, target=None):
     """
     GPU-only function that returns the outputs of a two-level hierarchical
     softmax.
@@ -740,40 +741,53 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
     corresponding targets. Otherwise, if target is None, it will compute all
     the outputs.
 
-    :type W1: a Theano shared variable of shape (number of features of the
-        input x, number of classes)
-    :param W1: the weight matrix of the first softmax, which maps the
-        input x to the probabilities of the classes.
+    :type W1: symbolic 2D tensor
+    :param W1: the weight matrix of the first softmax, which maps the input x
+        to the probabilities of the classes.
+        shape (number of features of the input x, number of classes)
 
-    :type b1: a Theano shared variable of shape (number of classes,)
+    :type b1: symbolic 1D tensor
     :param b1: the bias vector of the first softmax layer.
+        shape (number of classes,)
 
-    :type W2: a Theano shared variable of shape (number of classes, number of
-        features of the input x, number of outputs per class)
+    :type W2: symbolic 3D tensor
     :param W2: the weight matrix of the second softmax, which maps the input
         x to the probabilities of the outputs.
+        shape (number of classes, number of features of the input x, number
+        of outputs per class)
 
-    :type b2: a Theano shared variable of shape (number of classes, number of
-        outputs per class)
+    :type b2: symbolic 2D tensor
     :param b2: the bias vector of the second softmax layer.
+        shape (number of classes, number of outputs per class)
 
-    :type x: Theano tensor variable of shape (batch_size, number of features)
+    :type x: symbolic 2D tensor
     :param x: the minibatch input of the multi-class softmax.
+        shape (batch_size, number of features)
 
     :type n_outputs: int
     :param n_outputs: the number of outputs.
 
-    :type target: a Theano variable of shape either (batch_size,) or
-        (batch_size, 1)
+    :type n_outputs: int
+    :param n_outputs: the number of inputs.
+
+    :type n_classes: int
+    :param n_classes: the number of classes.
+
+    :type n_outputs_per_class: int
+    :param n_outputs_per_class: the number of outputs per class.
+
+    :type target: symbolic 2D tensor or None
     :param target: Contains the indices of the targets for the minibatch
         input x. For each input, the function computes the output for its
         corresponding target. If target is None, then all the outputs are
         computed for each input.
+        If target is a tensor, its shape should be(batch_size, 1)
 
-    :rtype: Theano tensor variable of the following shape:
+    :rtype: symbolic 2D tensor
+    :returns: the minibatch output of the 2-layer hierarchical softmax.
+        two shapes are possible:
         - (batch_size, 1) if target is not None
         - (batch_size, n_out) if target is None
-    :returns: the minibatch output of the 2-layer hierarchical softmax.
 
     :note: If n_outputs is not a square number, it will still work but the
         user has to specify the following shapes of its weight/bias matrices:
@@ -790,8 +804,6 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
     x = as_cuda_ndarray_variable(x)
 
     batch_size = x.shape[0]
-
-    n_classes, n_outputs_per_class = b2.get_value(True, True).shape
 
     # First softmax which computes the probabilities of belonging to each class
     class_probs = softmax(T.dot(x, W1) + b1)
@@ -830,13 +842,10 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, target=None):
 
         # Second softmax that computes the output probabilities
         # Adds a dimension so that sparse_block_dot_SS works properly
-        orig_shape = W2.get_value(True, True).shape
-        W2 = T.reshape(W2, (1,) + orig_shape)
+        W2 = T.reshape(W2, (1, n_classes, n_inputs, n_outputs_per_class))
         output_probs = softmax(sparse_block_dot_SS(
             W2, x[:, None, :], T.zeros((batch_size, 1), dtype='int64'), b2,
             target_classes[:, None])[:, 0, :])
-        # Restores the original shape
-        W2 = T.reshape(W2, orig_shape)
 
         target_class_probs = class_probs[T.arange(batch_size), target_classes]
         output_probs = output_probs[T.arange(batch_size),

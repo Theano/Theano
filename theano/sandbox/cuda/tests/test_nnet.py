@@ -442,61 +442,78 @@ class test_hierarchical_softmax(unittest.TestCase):
         utt.seed_rng()
 
     def _generate_data(self, n_in, n_out, batch_size):
+
+        # Create tensor variables
+        x = T.matrix('x')
+        W1 = T.matrix('W1')
+        b1 = T.vector('b1')
+        W2 = T.tensor3('W2')
+        b2 = T.matrix('b2')
+
+        tensor_var = x, W1, b1, W2, b2
+
+        # Create numpy variables
         n_outputs_per_class = numpy.ceil(numpy.sqrt(n_out)).astype('int64')
         n_classes = numpy.ceil(n_out/float(n_outputs_per_class))\
             .astype('int64')
+
+        x_np = numpy.random.normal(size=(batch_size, n_in)).astype(
+            dtype=theano.config.floatX)
 
         W1_np = numpy.random.normal(size=(n_in, n_classes)).astype(
             dtype=theano.config.floatX)
         b1_np = numpy.random.normal(size=(n_classes,)).astype(
             dtype=theano.config.floatX)
         W2_np = numpy.random.normal(size=(n_classes, n_in,
-                                          n_outputs_per_class))\
+                                          n_outputs_per_class)) \
             .astype(dtype=theano.config.floatX)
-        b2_np = numpy.random.normal(size=(n_classes, n_outputs_per_class))\
+        b2_np = numpy.random.normal(size=(n_classes, n_outputs_per_class)) \
             .astype(dtype=theano.config.floatX)
 
-        W1 = theano.shared(W1_np, name='W1')
-        b1 = theano.shared(b1_np, name='b1')
-        W2 = theano.shared(W2_np, name='W2')
-        b2 = theano.shared(b2_np, name='b2')
+        npy_var = x_np, W1_np, b1_np, W2_np, b2_np, n_classes, \
+            n_outputs_per_class
 
-        return W1, b1, W2, b2
+        return tensor_var, npy_var
 
     def _test_h_softmax_with_targets(self, n_in, n_out, batch_size):
 
-        W1, b1, W2, b2 = self._generate_data(n_in, n_out, batch_size)
+        tensor_var, npy_var = \
+            self._generate_data(n_in, n_out, batch_size)
 
-        x = T.matrix()
+        x, W1, b1, W2, b2 = tensor_var
+        x_np, W1_np, b1_np, W2_np, b2_np, n_classes, n_outputs_per_class = \
+            npy_var
+
         target = T.ivector()
-        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
+        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_in, n_out,
+                                           n_classes, n_outputs_per_class,
                                            target=target)
 
-        f = theano.function([x, target], y)
+        f = theano.function([W1, b1, W2, b2, x, target], y)
 
-        x = numpy.random.normal(size=(batch_size, n_in)).astype(
-            dtype=theano.config.floatX)
-
-        target = numpy.random.randint(0, n_out, size=(batch_size,)).astype(
+        target_npy = numpy.random.randint(0, n_out, size=(batch_size,)).astype(
             dtype=numpy.int32)
 
-        outputs = f(x, target)
+        outputs = f(W1_np, b1_np, W2_np, b2_np, x_np, target_npy)
 
         self.assertTrue(outputs.shape == (batch_size,))
 
     def _test_h_softmax_without_targets(self, n_in, n_out, batch_size):
 
-        W1, b1, W2, b2 = self._generate_data(n_in, n_out, batch_size)
+        tensor_var, npy_var = \
+            self._generate_data(n_in, n_out, batch_size)
 
-        x = T.matrix()
-        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out)
+        x, W1, b1, W2, b2 = tensor_var
+        x_np, W1_np, b1_np, W2_np, b2_np, n_classes, n_outputs_per_class = \
+            npy_var
 
-        f = theano.function([x], y)
+        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_in, n_out,
+                                           n_classes,
+                                           n_outputs_per_class)
 
-        x = numpy.random.normal(size=(batch_size, n_in)).astype(
-            dtype=theano.config.floatX)
+        f = theano.function([W1, b1, W2, b2, x], y)
 
-        outputs = f(x)
+        outputs = f(W1_np, b1_np, W2_np, b2_np, x_np)
 
         self.assertTrue(outputs.shape == (batch_size, n_out))
 
@@ -519,4 +536,3 @@ class test_hierarchical_softmax(unittest.TestCase):
 
         self._test_h_softmax_with_targets(n_in, n_out, batch_size)
         self._test_h_softmax_without_targets(n_in, n_out, batch_size)
-        
