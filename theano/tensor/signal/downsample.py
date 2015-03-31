@@ -272,7 +272,7 @@ class DownsampleFactorMax(Op):
                         col_end = __builtin__.min(col_st + ds1, img_cols)
                         zz[n, k, r, c] = y[
                             n, k, row_st:row_end, col_st:col_end].max()
-        
+
     def infer_shape(self, node, in_shapes):
         shp = self.out_shape(in_shapes[0], self.ds,
                              self.ignore_border, self.st, self.padding)
@@ -286,11 +286,10 @@ class DownsampleFactorMax(Op):
                                         ignore_border=self.ignore_border,
                                         st=self.st, padding=self.padding)(
                                             x, maxout, gz)]
+
     def c_headers(self):
-        #import ipdb; ipdb.set_trace()
-        #libs = super(DownsampleFactorMax, self).c_headers()
         return ['<algorithm>']
-    
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
@@ -298,12 +297,11 @@ class DownsampleFactorMax(Op):
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds
         st0, st1 = self.st
-        pd0, pd1 = self.padding 
+        pd0, pd1 = self.padding
         return """
         int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_r, z_c; // shape of the output
         int r, c; // shape of the padded_input
-        
         if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
@@ -361,7 +359,7 @@ class DownsampleFactorMax(Op):
 
         // used for indexing a pool region inside the input
         int r_st, r_end, c_st, c_end;
-        dtype_%(x)s maximum; // temp var for maximum value in a region 
+        dtype_%(x)s maximum; // temp var for maximum value in a region
         if (z_r && z_c)
         {
             for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
@@ -385,7 +383,7 @@ class DownsampleFactorMax(Op):
                           (dtype_%(z)s*)(PyArray_GETPTR4(%(z)s, b, k, i, j)));
                     // change coordinates from padding_img space into img space
                     c_st -= %(pd1)s;
-                    c_end -= %(pd1)s; 
+                    c_end -= %(pd1)s;
                     // use the first element as the initial value of maximum
                     maximum = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,r_st,c_st)))[0];
                     // go through the pooled region in the unpadded input
@@ -406,7 +404,8 @@ class DownsampleFactorMax(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0,5)
+        return (0, 5)
+
 
 class DownsampleFactorMaxGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding')
