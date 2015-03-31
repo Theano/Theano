@@ -73,7 +73,8 @@ def rebuild_collect_shared(outputs,
     update_expr = []
     # list of shared inputs that are used as inputs of the graph
     shared_inputs = []
-
+    var_inputs = {}
+    
     def clone_v_get_shared_updates(v, copy_inputs_over):
         '''
         Clones a variable and its inputs recursively until all are in
@@ -133,6 +134,7 @@ def rebuild_collect_shared(outputs,
             clone_d[a] = a.clone_with_new_inputs([clone_d[i] for i in
                                                   a.inputs],
                                                  strict=rebuild_strict)
+            #var_inputs[a] = [clone_d[i] for i in a.inputs]
             for old_o, new_o in zip(a.outputs, clone_d[a].outputs):
                 clone_d.setdefault(old_o, new_o)
         return clone_d[a]
@@ -150,19 +152,25 @@ def rebuild_collect_shared(outputs,
             raise TypeError('given keys must be Variable', v_orig)
         if not isinstance(v_repl, Variable):
             v_repl = shared(v_repl)
-
-        if v_orig in clone_d:
-            raise AssertionError(
-                    "When using 'givens' or 'replace' with several "
-                    "(old_v, new_v) replacement pairs, you can not have a "
-                    "new_v variable depend on an old_v one. For instance, "
-                    "givens = {a:b, b:(a+1)} is not allowed. Here, the old_v "
-                    "%s is used to compute other new_v's, but it is scheduled "
-                    "to be replaced by %s." % (v_orig, v_repl))
-
+        
         clone_d[v_orig] = clone_v_get_shared_updates(v_repl,
                                                      copy_inputs_over)
 
+    import pdb; pdb.set_trace()
+
+    for a_orig, _ in replace_pairs:
+        for b_orig, _ in replace_pairs:
+            if a_orig != b_orig:
+                if b_orig == clone_d[a_orig]:
+                    raise AssertionError(
+                        "When using 'givens' or 'replace' with several "
+                        "(v, new_v) replacement pairs, you can not have "
+                        "co-dependency between updated variables. "
+                        "For instance, givens = {v:new_v, u:f(v)}, where "
+                        "f(v) is a function of v, is not allowed. Here, v: "
+                        "%s is used to compute other u: %s, but it is scheduled "
+                        "to be replaced by: %s." % (b_orig, a_orig, clone_d[b_orig]))
+        
     if inputs is None:
         inputs = []
 
