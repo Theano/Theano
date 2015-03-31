@@ -1265,8 +1265,13 @@ class Scan(PureOp):
         # if we are dealing with a repeat-until, then we do not know the
         # leading dimension so we replace it for every entry with Shape_i
         if self.as_while:
-            scan_outs = [(Shape_i(0)(o),) + x[1:]
-                         for o, x in izip(node.outputs, scan_outs)]
+            scan_outs_init = scan_outs
+            scan_outs = []
+            for o, x in izip(node.outputs, scan_outs_init):
+                if x is None:
+                    scan_outs.append(None)
+                else:
+                    scan_outs.append((Shape_i(0)(o),) + x[1:])
         return scan_outs
 
     def get_input_pos(self, output_index):
