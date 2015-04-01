@@ -39,9 +39,6 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         if self.axis >= x.ndim or self.axis < -x.ndim:
             raise ValueError('axis(={1}) out of bounds'.format(self.axis))
-        elif self.axis < 0:
-            # Convert negative axis to positive axis.
-            self.axis += x.ndim
 
         return theano.Apply(self, [x], [x.type()])
 
@@ -72,7 +69,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -358,7 +355,6 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         # We assume array has been already flattened if needed.
         axis = self.axis if self.axis is not None else 0
-
         fail = sub['fail']
 
         max_threads_dim0 = self.max_threads_dim0
@@ -373,6 +369,12 @@ class GpuCumsum(CumsumOp, GpuOp):
         code = """
             const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
             bool needAllocation = !%(z)s || CudaNdarray_NDIM(%(x)s) != CudaNdarray_NDIM(%(z)s);
+
+            int axis = %(axis)s;
+            if (axis < 0) {
+                // Convert negative axis to positive axis.
+                axis += CudaNdarray_NDIM(%(x)s);
+            }
 
             // If output is already allocated, check if its shape matches the input's one.
             if (!needAllocation) {
@@ -393,7 +395,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             }
 
             { // Namespace for kernel calls //
-                if (cumSum_%(nodename)s(%(x)s, %(z)s, %(axis)s, %(max_threads_dim0)s, %(max_grid_size1)s, %(max_grid_size2)s) == -1){
+                if (cumSum_%(nodename)s(%(x)s, %(z)s, axis, %(max_threads_dim0)s, %(max_grid_size1)s, %(max_grid_size2)s) == -1){
                     %(fail)s;
                 }
 
