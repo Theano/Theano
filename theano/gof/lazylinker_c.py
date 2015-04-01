@@ -51,8 +51,17 @@ try:
             assert e.errno == errno.EEXIST
             assert os.path.isdir(location)
 
-    if not os.path.exists(os.path.join(location, '__init__.py')):
-        open(os.path.join(location, '__init__.py'), 'w').close()
+    init_file = os.path.join(location, '__init__.py')
+    if not os.path.exists(init_file):
+        try:
+            open(init_file, 'w').close()
+        except IOError as e:
+            if os.path.exists(init_file):
+                pass  # has already been created
+            else:
+                if os.path.exists(location):
+                    e.args += ('%s does not exist..' % location,)
+                raise
 
     _need_reload = False
     if force_compile:
