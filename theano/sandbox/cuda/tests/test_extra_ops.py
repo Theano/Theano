@@ -47,7 +47,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     def test_Strides1D(self):
         x = T.fvector('x')
 
-        for axis in [0, None]:
+        for axis in [0, None, -1]:
             a = np.random.random((42,)).astype("float32")
             cumsum_function = theano.function([x], cumsum(x, axis=axis),
                                               mode=self.mode)
@@ -70,7 +70,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     def test_Strides2D(self):
         x = T.fmatrix('x')
 
-        for axis in [0, 1, None]:
+        for axis in [0, 1, None, -1, -2]:
             a = np.random.random((42, 30)).astype("float32")
             cumsum_function = theano.function([x], cumsum(x, axis=axis),
                                               mode=self.mode)
@@ -93,7 +93,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
     def test_Strides3D(self):
         x = T.ftensor3('x')
 
-        for axis in [0, 1, 2, None]:
+        for axis in [0, 1, 2, None, -1, -2, -3]:
             a = np.random.random((42, 30, 25)).astype("float32")
             cumsum_function = theano.function([x], cumsum(x, axis=axis),
                                               mode=self.mode)
@@ -139,7 +139,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         block_max_size = self.max_threads_dim0 * 2
 
         x = T.fmatrix('x')
-        for shape_axis, axis in zip([0, 1, 0], [0, 1, None]):
+        for shape_axis, axis in zip([0, 1, 0, 1, 0], [0, 1, None, -1, -2]):
             f = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
             assert [n for n in f.maker.fgraph.toposort()
                     if isinstance(n.op, GpuCumsum)]
@@ -178,7 +178,7 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         block_max_size = self.max_threads_dim0 * 2
 
         x = T.ftensor3('x')
-        for shape_axis, axis in zip([0, 1, 2, 0], [0, 1, 2, None]):
+        for shape_axis, axis in zip([0, 1, 2, 0, 2, 1, 0], [0, 1, 2, None, -1, -2, -3]):
             f = theano.function([x], cumsum(x, axis=axis), mode=self.mode)
             assert [n for n in f.maker.fgraph.toposort()
                     if isinstance(n.op, GpuCumsum)]
