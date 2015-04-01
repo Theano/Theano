@@ -1337,11 +1337,10 @@ class ScanSaveMem(gof.Optimizer):
                 for idx, val in enumerate(store_steps[op.n_mit_mot:]):
                     if val == 0:
                         if idx < op.n_mit_sot + op.n_sit_sot:
-                            _nw_input = nw_inputs[offset + idx].owner.inputs[1]
-                            nw_input = scan_utils.expand(_nw_input, nw_steps)
-                            nw_inputs[offset + idx] = nw_input
-                        elif idx < (op.n_mit_sot + op.n_sit_sot +
-                                    op.n_nit_sot):
+                            in_idx = offset + idx
+                            if nw_inputs[in_idx] == node.inputs[0]:
+                                nw_inputs[in_idx] = nw_steps
+                        elif idx < op.n_mit_sot + op.n_sit_sot + op.n_nit_sot:
                             in_idx = offset + idx + op.n_shared_outs
                             if nw_inputs[in_idx] == node.inputs[0]:
                                 nw_inputs[in_idx] = nw_steps
