@@ -307,7 +307,7 @@ invoking
 
 ::
 
-    python2.7 -m memory_profiler memory-profile-me.py
+    python -m memory_profiler memory-profile-me.py
 
 prints, on a 64-bit computer
 
