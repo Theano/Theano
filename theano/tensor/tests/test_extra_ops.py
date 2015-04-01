@@ -32,12 +32,13 @@ class TestCumsumOp(utt.InferShapeTester):
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
         # Test axis out of bounds
-        self.assertRaises(ValueError, cumsum, x, axis=4)
+        self.assertRaises(ValueError, cumsum, x, axis=3)
+        self.assertRaises(ValueError, cumsum, x, axis=-4)
 
         f = theano.function([x], cumsum(x))
         assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             f = theano.function([x], cumsum(x, axis=axis))
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
@@ -51,7 +52,7 @@ class TestCumsumOp(utt.InferShapeTester):
                                 [a],
                                 self.op_class)
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             self._compile_and_check([x],
                                     [cumsum(x, axis=axis)],
                                     [a],
@@ -62,7 +63,7 @@ class TestCumsumOp(utt.InferShapeTester):
 
         utt.verify_grad(self.op, [a])  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             utt.verify_grad(self.op_class(axis=axis), [a], eps=4e-4)
 
 
@@ -77,10 +78,14 @@ class TestCumprodOp(utt.InferShapeTester):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
+        # Test axis out of bounds
+        self.assertRaises(ValueError, cumprod, x, axis=3)
+        self.assertRaises(ValueError, cumprod, x, axis=-4)
+
         f = theano.function([x], cumprod(x))
         assert np.allclose(np.cumprod(a), f(a))  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             f = theano.function([x], cumprod(x, axis=axis))
             assert np.allclose(np.cumprod(a, axis=axis), f(a))
 
@@ -94,7 +99,7 @@ class TestCumprodOp(utt.InferShapeTester):
                                 [a],
                                 self.op_class)
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             self._compile_and_check([x],
                                     [cumprod(x, axis=axis)],
                                     [a],
@@ -105,7 +110,7 @@ class TestCumprodOp(utt.InferShapeTester):
 
         utt.verify_grad(self.op, [a])  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             utt.verify_grad(self.op_class(axis=axis), [a])
 
 
