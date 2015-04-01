@@ -2832,7 +2832,11 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self.tens = T.tensor3('tens', dtype=self.dtype)
 
         self.alloc_wo_dep = T.alloc(self.vec, 2, 2)
+        self.alloc_wo_dep_broad = T.alloc(self.vec, 1, 2)
         self.alloc_w_dep = T.alloc(self.vec, *self.mat.shape)
+        self.alloc_w_dep_broad = T.alloc(self.vec, 1, *self.mat.shape)
+        self.alloc_w_dep_broad2 = T.alloc(self.vec, self.mat.shape[0],
+                                          self.mat.shape[1], 1)
         self.alloc_w_dep_tens = T.alloc(
             self.vec,
             self.tens.shape[0],
@@ -2879,6 +2883,15 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
 
+        # Optimization on alloc with assert and broadcast
+        func = function(
+            [self.vec, self.mat],
+            self.alloc_wo_dep_broad + self.mat,
+            mode=self.fast_run_mode
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 1)
+
         # No optimization on alloc without assert
         func = function(
             [self.vec, self.mat],
@@ -2895,6 +2908,24 @@ class Test_local_elemwise_alloc(unittest.TestCase):
             mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on alloc without assert and with broadcast
+        func = function(
+            [self.vec, self.mat],
+            self.alloc_w_dep_broad + self. mat,
+            mode=self.fast_run_mode
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 0)
+
+        # Not optimized case on alloc and with broadcast
+        func = function(
+            [self.vec, self.mat],
+            self.alloc_w_dep_broad2 + self. mat,
+            mode=self.fast_run_mode
+        )
+        self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
 
     def test_remove_alloc_w_dimshuffle(self):

@@ -85,7 +85,6 @@ def in2out(*local_opts, **kwargs):
     else:
         local_opts, = local_opts
         if not name:
-            #import pdb;pdb.set_trace()
             name = local_opts.__name__
     ret = opt.TopoOptimizer(local_opts,
                             order='in_to_out',
@@ -1211,7 +1210,7 @@ class ShapeFeature(object):
             opy = dy.owner.op
             if not (opx.i == opy.i):
                 return False
-            # FB I'm not sure is this handle correctly constants.
+            # FB I'm not sure if this handle correctly constants.
             if dx.owner.inputs[0] == dy.owner.inputs[0]:
                 continue
             # To be sure to cover all case, call equal_computation.
@@ -1698,7 +1697,7 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
         assert_op = node.inputs[assert_op_idx]
         cmp_op = assert_op
         new_i = []
-
+        same_shape = node.fgraph.shape_feature.same_shape
         for i in node.inputs:
             # Remove alloc
             if (i.owner and isinstance(i.owner.op, AllocOP)
@@ -1708,7 +1707,7 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
 
                 assert i.type.ndim == cmp_op.ndim
                 if (theano.config.experimental.local_alloc_elemwise_assert
-                    and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
+                    and not same_shape(i, cmp_op)):
                     assert_op = assert_(assert_op,
                                         *[T.eq(i.shape[idx], cmp_op.shape[idx])
                                           for idx in xrange(i.type.ndim)
@@ -1719,7 +1718,9 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
             elif i.owner and dimshuffled_alloc(i):
                 assert i.type.ndim == cmp_op.type.ndim
                 if (theano.config.experimental.local_alloc_elemwise_assert
-                    and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
+                    and not all([same_shape(i, cmp_op, idx, idx)
+                                 for idx in xrange(i.type.ndim)
+                                 if not i.type.broadcastable[idx]])):
                     assert_op = assert_(assert_op,
                                         *[T.eq(i.shape[idx], cmp_op.shape[idx])
                                           for idx in xrange(i.type.ndim)
