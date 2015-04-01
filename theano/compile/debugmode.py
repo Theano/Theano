@@ -2181,7 +2181,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             accept_inplace=False,
             function_builder=Function,
             profile=None,
-            on_unused_input=None):
+            on_unused_input=None,
+            output_keys=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -2196,6 +2197,10 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
         :param on_unused_input: What to do if a variable in the 'inputs' list is
         not used in the graph. Possible values are 'raise', 'warn', and 'ignore'.
+
+        :param output_keys: If the outputs argument for theano.function was a
+        list, then output_keys is None.  If the outputs argument was a dict, 
+        then output_keys is a sorted list of the keys from that dict.  
 
         :note: this function sets TensorType.filter_checks_isfinite
         when `mode.check_isfinite` is True
@@ -2316,6 +2321,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.mode = mode
+        self.output_keys = output_keys
 
     def create(self, defaults=None, trustme=False):
         """
@@ -2424,7 +2430,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
-                                   self.return_none, self)
+                                   self.return_none, self.output_keys, self)
         return fn
 
 

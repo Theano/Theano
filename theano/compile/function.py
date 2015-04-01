@@ -49,7 +49,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     :param inputs: function parameters, these are not allowed to be shared
     variables
 
-    :type outputs: list of Variables or Out instances
+    :type outputs: list or dict of Variables or Out instances.  If it is a 
+    dict, the keys must be strings
     :param outputs: expressions to compute
 
     :type mode: string or `Mode` instance.
@@ -185,6 +186,24 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
 
     """
+    if isinstance(outputs, dict):
+        output_items = outputs.items()
+
+        for item_pair in output_items: 
+            assert isinstance(item_pair[0], basestring)
+
+        output_items_sorted = sorted(output_items)
+
+        output_keys = []
+        outputs = []
+        for pair in output_items_sorted: 
+            output_keys.append(pair[0])
+            outputs.append(pair[1])
+
+
+    else:
+        output_keys = None
+
     if name is None:
         # Determine possible file names
         source_file = re.sub('\.pyc?', '.py', __file__)
@@ -263,7 +282,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                 rebuild_strict=rebuild_strict,
                 allow_input_downcast=allow_input_downcast,
                 on_unused_input=on_unused_input,
-                profile=profile)
+                profile=profile,
+                output_keys=output_keys)
     # We need to add the flag check_aliased inputs if we have any mutable or
     # borrowed used defined inputs
     fn._check_for_aliased_inputs = check_for_aliased_inputs

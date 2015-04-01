@@ -9,7 +9,6 @@ import cPickle
 import itertools
 import time
 import warnings
-
 import numpy
 
 import theano
@@ -282,7 +281,7 @@ class Function(object):
     """
 
     def __init__(self, fn, input_storage, output_storage, indices, outputs,
-                 defaults, unpack_single, return_none, maker):
+                 defaults, unpack_single, return_none, output_keys, maker):
         """
         Initialize attributes. create finder, inv_finder.
         """
@@ -300,6 +299,7 @@ class Function(object):
         self.trust_input = False  # If True, we don't check the input parameter
         self.name = None
         self.nodes_with_inner_function = []
+        self.output_keys = output_keys
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -678,6 +678,13 @@ class Function(object):
         elif self.unpack_single and len(outputs) == 1:
             return outputs[0]
         else:
+
+            if self.output_keys is not None:
+
+                assert len(self.output_keys) == len(outputs)
+
+                return dict(itertools.izip(self.output_keys, outputs))
+
             return outputs
 
     value = property(
@@ -1049,7 +1056,8 @@ class FunctionMaker(object):
                 
     def __init__(self, inputs, outputs,
             mode=None, accept_inplace=False, function_builder=Function,
-            profile=None, on_unused_input=None, fgraph=None):
+            profile=None, on_unused_input=None, fgraph=None,
+            output_keys=None):
         """
         :type inputs: a list of SymbolicInput instances
 
@@ -1203,6 +1211,7 @@ class FunctionMaker(object):
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.on_unused_input = on_unused_input  # Used only for the pickling
+        self.output_keys = output_keys
 
         self.required = [(i.value is None) for i in self.inputs]
         self.refeed = [
@@ -1338,7 +1347,7 @@ class FunctionMaker(object):
             self.profile.import_time += import_time
 
         fn = self.function_builder(_fn, _i, _o, self.indices, self.outputs,
-                defaults, self.unpack_single, self.return_none, self)
+                defaults, self.unpack_single, self.return_none, self.output_keys, self)
         fn.profile = self.profile
         return fn
 
@@ -1398,7 +1407,8 @@ def register_checker(checker):
 
 
 def orig_function(inputs, outputs, mode=None, accept_inplace=False,
-                  name=None, profile=None, on_unused_input=None):
+                  name=None, profile=None, on_unused_input=None,
+                  output_keys=None):
     """
     Return a Function that will calculate the outputs from the inputs.
 
@@ -1434,6 +1444,11 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     :param on_unused_input: What to do if a variable in the 'inputs' list is
         not used in the graph. Possible values are 'raise', 'warn', 'ignore'
         and None
+
+    :param output_keys: If the outputs were provided to theano.function as a
+        list, then output_keys is None.  Otherwise, if outputs were provided
+        as a dict, output_keys is the sorted list of keys from the outputs
+
     """
 
     # Every element of the input list will be upgraded to an `In` instance if
@@ -1464,7 +1479,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
                    mode,
                    accept_inplace=accept_inplace,
                    profile=profile,
-                   on_unused_input=on_unused_input).create(
+                   on_unused_input=on_unused_input,
+                   output_keys = output_keys).create(
                        defaults)
 
     t2 = time.time()
