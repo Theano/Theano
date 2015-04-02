@@ -55,6 +55,87 @@ AddConfigVar('vm.lazy',
              in_c_key=False)
 
 
+def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, dependencies):
+    reallocated_info = {}
+    viewed_by = {}
+    for var in fgraph.variables:
+        viewed_by[var] = []
+    view_of = {}
+    pre_allocated = set([])
+    allocated = set([])
+
+    for idx in range(len(order)):
+        node = order[idx]
+        dmap = getattr(node.op, 'destroy_map', None)
+        vmap = getattr(node.op, 'view_map', None)
+
+        idx_o = 0
+        for out in node.outputs:
+            for var in node.outputs:
+                compute_map_re[var][0] = 1
+            ins = None
+            if dmap and idx_o in dmap:
+                idx_v = dmap[idx_o]
+                assert len(
+                    idx_v) == 1, "Here we only support the possibility to destroy one input"
+                ins = node.inputs[idx_v[0]]
+            if vmap and idx_o in vmap:
+                assert ins is None
+                idx_v = vmap[idx_o]
+                assert len(
+                    idx_v) == 1, "Here we only support the possibility to view one input"
+                ins = node.inputs[idx_v[0]]
+            if ins is not None:
+                assert isinstance(ins, theano.Variable)
+                origin = view_of.get(ins, ins)
+                view_of[out] = origin
+                viewed_by[origin].append(out)
+            idx_o += 1
+
+        for ins in node.inputs:
+            assert not (ins in view_of and viewed_by[ins])
+            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
+                    and ins not in fgraph.outputs and ins.owner
+                    and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
+                    and ins not in allocated):
+                # Constant Memory cannot be changed
+                # Constant and shared variables' storage_map value is not empty
+                reuse_out = None
+                if ins not in view_of and not viewed_by.get(ins, []):
+                    # where gc
+                    for i in range(idx + 1, len(order)):
+                        if reuse_out:
+                            break
+                        for out in order[i].outputs:
+                            if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
+                                    and ins.type == out.type):
+                                reuse_out = out
+                                pre_allocated.add(out)
+                                allocated.add(ins)
+                elif ins in view_of:
+                    origin = view_of[ins]
+                    if ins in viewed_by[origin]:
+                        viewed_by[origin].remove(ins)
+                    if (not viewed_by[origin] and
+                            origin not in fgraph.inputs and
+                            not isinstance(origin, theano.Constant)):
+                        # where gc
+                        for i in range(idx + 1, len(order)):
+                            if reuse_out:
+                                break
+                            for out in order[i].outputs:
+                                if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
+                                        and ins.type == out.type):
+                                    reuse_out = out
+                                    pre_allocated.add(out)
+                                    allocated.add(ins)
+
+                if reuse_out:
+                    reallocated_info[ins] = [ins, reuse_out]
+
+    return reallocated_info
+
+
 class VM(object):
 
     """
@@ -450,7 +531,7 @@ class Stack(VM):
                                     # DO NOT set compute_map to 0
 
                                     # If values become False and the
-                                    #current_apply is still in the
+                                    # current_apply is still in the
                                     # stack, this will cause it to be
                                     # recomputed! This can cause wrong value
                                     # with some combination of inplace op.
@@ -905,86 +986,7 @@ class VM_Linker(link.LocalLinker):
         else:
             dependencies = self.compute_gc_dependencies(storage_map)
 
-        def calculate_reallocate_info(order, fgraph, dependencies):
-            reallocated_info = {}
-            viewed_by = {}
-            for var in fgraph.variables:
-                viewed_by[var] = []
-            view_of = {}
-            pre_allocated = set([])
-            allocated = set([])
-            for idx in range(len(order)):
-                node = order[idx]
-                dmap = getattr(node.op, 'destroy_map', None)
-                vmap = getattr(node.op, 'view_map', None)
-
-                idx_o = 0
-                for out in node.outputs:
-                    for var in node.outputs:
-                        compute_map_re[var][0] = 1
-                    ins = None
-                    if dmap and idx_o in dmap:
-                        idx_v = dmap[idx_o]
-                        assert len(
-                            idx_v) == 1, "Here we only support the possibility to destroy one input"
-                        ins = node.inputs[idx_v[0]]
-                    if vmap and idx_o in vmap:
-                        assert ins is None
-                        idx_v = vmap[idx_o]
-                        assert len(
-                            idx_v) == 1, "Here we only support the possibility to view one input"
-                        ins = node.inputs[idx_v[0]]
-                    if ins is not None:
-                        assert isinstance(ins, theano.Variable)
-                        origin = view_of.get(ins, ins)
-                        view_of[out] = origin
-                        viewed_by[origin].append(out)
-                    idx_o += 1
-
-                for ins in node.inputs:
-                    assert not (ins in view_of and viewed_by[ins])
-                    if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
-                            and ins not in fgraph.outputs and ins.owner
-                            and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
-                            and ins not in allocated):
-                        # Constant Memory cannot be changed
-                        # Constant and shared variables' storage_map value is not empty
-                        reuse_out = None
-                        if ins not in view_of and not viewed_by.get(ins, []):
-                            # where gc
-                            for i in range(idx + 1, len(order)):
-                                if reuse_out:
-                                    break
-                                for out in order[i].outputs:
-                                    if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
-                                            and ins.type == out.type):
-                                        reuse_out = out
-                                        pre_allocated.add(out)
-                                        allocated.add(ins)
-                        elif ins in view_of:
-                            origin = view_of[ins]
-                            if ins in viewed_by[origin]:
-                                viewed_by[origin].remove(ins)
-                            if (not viewed_by[origin] and
-                                    origin not in fgraph.inputs and
-                                    not isinstance(origin, theano.Constant)):
-                                # where gc
-                                for i in range(idx + 1, len(order)):
-                                    if reuse_out:
-                                        break
-                                    for out in order[i].outputs:
-                                        if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
-                                                and ins.type == out.type):
-                                            reuse_out = out
-                                            pre_allocated.add(out)
-                                            allocated.add(ins)
-
-                        if reuse_out:
-                            reallocated_info[ins] = [ins, reuse_out]
-
-            return reallocated_info
-
-        reallocated_info = calculate_reallocate_info(order, fgraph, dependencies)
+        reallocated_info = calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,dependencies)
 
         for node in order:
             try:
