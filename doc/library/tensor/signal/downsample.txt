@@ -11,6 +11,7 @@
 
 
 .. autofunction:: theano.tensor.signal.downsample.max_pool_2d
+.. autofunction:: theano.tensor.signal.downsample.max_pool_2d_same_size
 
 .. function:: fft(*todo)
 

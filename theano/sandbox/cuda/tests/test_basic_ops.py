@@ -372,6 +372,26 @@ def test_reshape():
         pass
 
 
+def test_alloc_empty():
+    # Test that we allocated correctly
+    f = theano.function([], cuda.basic_ops.gpu_alloc_empty(2, 3))
+    assert len(f.maker.fgraph.apply_nodes) == 1
+    out = f()
+    assert out.shape == (2, 3)
+    assert out.dtype == 'float32'
+
+    # Test that we do not merge them.
+    f = theano.function([], [cuda.basic_ops.gpu_alloc_empty(2, 3),
+                             cuda.basic_ops.gpu_alloc_empty(2, 3)])
+    out = f()
+    assert out[0].shape == (2, 3)
+    assert out[0].dtype == 'float32'
+    assert out[1].shape == (2, 3)
+    assert out[1].dtype == 'float32'
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, cuda.basic_ops.GpuAllocEmpty)]) == 2
+
+
 def test_elemwise_empty():
     # test with 0 element
     a = tcn.shared_constructor(theano._asarray(numpy.random.rand(0, 0),
@@ -953,8 +973,7 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')
         self.join_op = cuda.GpuJoin()
-        # No gpu split.
-        self.split_op_class = tensor.Split
+        self.split_op_class = cuda.GpuSplit
         # No Make vector on the gpu, Join used instead
         self.make_vector_op = cuda.GpuJoin()
         self.floatX = "float32"
