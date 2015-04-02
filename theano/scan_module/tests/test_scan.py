@@ -838,6 +838,26 @@ class T_Scan(unittest.TestCase):
                         n_steps=2)
         tensor.grad(a[-1], a0)
 
+    def test_connection_pattern2():
+        # This tests for a crash in connection_pattern() when a scan node
+        # has more than one mitmot (multiple input taps as well as
+        # multiple output taps) output
+
+        x = tensor.matrix()
+        seq = tensor.vector()
+
+        def inner_fct(seq, state_old, state_current):
+            state_next = state_old * 2 + state_current + seq
+            return state_next
+
+        out, _ = theano.scan(inner_fct, sequences=seq,
+                            outputs_info={'initial':x, 'taps':[-2,-1]})
+
+        g_out = theano.grad(out.sum(), [seq, x])
+
+        scan_node = g_out[0].owner.inputs[1].owner.inputs[1].owner.inputs[0].owner
+        connection_pattern = scan_node.op.connection_pattern(scan_node)
+
     def test_grad_two_scans(self):
 
         # data input & output
