@@ -1717,14 +1717,13 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
             # Remove Alloc in DimShuffle
             elif i.owner and dimshuffled_alloc(i):
                 assert i.type.ndim == cmp_op.type.ndim
-                if (theano.config.experimental.local_alloc_elemwise_assert
-                    and not all([same_shape(i, cmp_op, idx, idx)
-                                 for idx in xrange(i.type.ndim)
-                                 if not i.type.broadcastable[idx]])):
-                    assert_op = assert_(assert_op,
-                                        *[T.eq(i.shape[idx], cmp_op.shape[idx])
-                                          for idx in xrange(i.type.ndim)
-                                          if not i.type.broadcastable[idx]])
+                if theano.config.experimental.local_alloc_elemwise_assert:
+                    assert_cond = [T.eq(i.shape[idx], cmp_op.shape[idx])
+                                   for idx in xrange(i.type.ndim)
+                                   if not i.type.broadcastable[idx] and
+                                   not same_shape(i, cmp_op, idx, idx)]
+                    if assert_cond:
+                        assert_op = assert_(assert_op, *assert_cond)
                 alloc_input = i.owner.inputs[0].owner.inputs[0]
                 if alloc_input.ndim != i.owner.inputs[0].ndim:
                     # The alloc can add dimension to the value
