@@ -85,7 +85,6 @@ def in2out(*local_opts, **kwargs):
     else:
         local_opts, = local_opts
         if not name:
-            #import pdb;pdb.set_trace()
             name = local_opts.__name__
     ret = opt.TopoOptimizer(local_opts,
                             order='in_to_out',
@@ -1180,7 +1179,7 @@ class ShapeFeature(object):
         same shape.
 
         dim_x and dim_y are optional. If used, they should be an index
-        to compare only 1 shape of x or y.
+        to compare only 1 dimension of x and y.
 
         """
         sx = self.shape_of[x]
@@ -1193,6 +1192,9 @@ class ShapeFeature(object):
             sy = [sy[dim_y]]
         assert len(sx) == len(sy)
 
+        # We look on each dimensions we want to compare.
+        # If any of them can't be asserted to be equal, return False.
+        # Otherwise, we return True at the end.
         for dx, dy in zip(sx, sy):
             if dx is dy:
                 continue
@@ -1208,14 +1210,16 @@ class ShapeFeature(object):
             opy = dy.owner.op
             if not (opx.i == opy.i):
                 return False
-            # FB I'm not sure is this handle correctly constants.
+            # FB I'm not sure if this handle correctly constants.
             if dx.owner.inputs[0] == dy.owner.inputs[0]:
-                return True
+                continue
             # To be sure to cover all case, call equal_computation.
             # Can't use theano.gof.graph.is_same_graph(dx, dy)
             # As it currently expect that dx and dy aren't in a FunctionGraph
             from theano.scan_module.scan_utils import equal_computations
-            return equal_computations([dx], [dy])
+            if not equal_computations([dx], [dy]):
+                return False
+        return True
 
 
 class ShapeOptimizer(Optimizer):
@@ -1431,18 +1435,18 @@ def local_useless_elemwise(node):
                 return [T.fill(node.inputs[0],
                                T.constant(1.0,
                                           dtype=node.outputs[0].type.dtype))]
-        if node.op.scalar_op == theano.scalar.neq and len(node.inputs) == 2:
+        elif node.op.scalar_op == theano.scalar.neq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
             # it is the same var in the graph. That will always be false
                 return [T.fill(node.inputs[0],
                                T.constant(0.0,
                                           dtype=node.outputs[0].type.dtype))]
-        if node.op.scalar_op == theano.scalar.mul and len(node.inputs) == 1:
+        elif node.op.scalar_op == theano.scalar.mul and len(node.inputs) == 1:
             return [node.inputs[0]]
-        if node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
+        elif node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
             return [node.inputs[0]]
 
-        if (node.op.scalar_op == theano.scalar.identity
+        elif (node.op.scalar_op == theano.scalar.identity
             and len(node.inputs) == 1):
             return [node.inputs[0]]
 
@@ -1693,7 +1697,7 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
         assert_op = node.inputs[assert_op_idx]
         cmp_op = assert_op
         new_i = []
-
+        same_shape = node.fgraph.shape_feature.same_shape
         for i in node.inputs:
             # Remove alloc
             if (i.owner and isinstance(i.owner.op, AllocOP)
@@ -1703,7 +1707,7 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
 
                 assert i.type.ndim == cmp_op.ndim
                 if (theano.config.experimental.local_alloc_elemwise_assert
-                    and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
+                    and not same_shape(i, cmp_op)):
                     assert_op = assert_(assert_op,
                                         *[T.eq(i.shape[idx], cmp_op.shape[idx])
                                           for idx in xrange(i.type.ndim)
@@ -1713,12 +1717,13 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
             # Remove Alloc in DimShuffle
             elif i.owner and dimshuffled_alloc(i):
                 assert i.type.ndim == cmp_op.type.ndim
-                if (theano.config.experimental.local_alloc_elemwise_assert
-                    and not node.fgraph.shape_feature.same_shape(i, cmp_op)):
-                    assert_op = assert_(assert_op,
-                                        *[T.eq(i.shape[idx], cmp_op.shape[idx])
-                                          for idx in xrange(i.type.ndim)
-                                          if not i.type.broadcastable[idx]])
+                if theano.config.experimental.local_alloc_elemwise_assert:
+                    assert_cond = [T.eq(i.shape[idx], cmp_op.shape[idx])
+                                   for idx in xrange(i.type.ndim)
+                                   if not i.type.broadcastable[idx] and
+                                   not same_shape(i, cmp_op, idx, idx)]
+                    if assert_cond:
+                        assert_op = assert_(assert_op, *assert_cond)
                 alloc_input = i.owner.inputs[0].owner.inputs[0]
                 if alloc_input.ndim != i.owner.inputs[0].ndim:
                     # The alloc can add dimension to the value

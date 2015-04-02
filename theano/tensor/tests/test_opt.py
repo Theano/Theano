@@ -2832,7 +2832,11 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self.tens = T.tensor3('tens', dtype=self.dtype)
 
         self.alloc_wo_dep = T.alloc(self.vec, 2, 2)
+        self.alloc_wo_dep_broad = T.alloc(self.vec, 1, 2)
         self.alloc_w_dep = T.alloc(self.vec, *self.mat.shape)
+        self.alloc_w_dep_broad = T.alloc(self.vec, 1, *self.mat.shape)
+        self.alloc_w_dep_broad2 = T.alloc(self.vec, self.mat.shape[0],
+                                          self.mat.shape[1], 1)
         self.alloc_w_dep_tens = T.alloc(
             self.vec,
             self.tens.shape[0],
@@ -2879,6 +2883,15 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         self._verify_alloc_count(func, 0)
         self._verify_assert_count(func, 1)
 
+        # Optimization on alloc with assert and broadcast
+        func = function(
+            [self.vec, self.mat],
+            self.alloc_wo_dep_broad + self.mat,
+            mode=self.fast_run_mode
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 1)
+
         # No optimization on alloc without assert
         func = function(
             [self.vec, self.mat],
@@ -2895,6 +2908,24 @@ class Test_local_elemwise_alloc(unittest.TestCase):
             mode=self.fast_run_mode
         )
         self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 0)
+
+        # Optimization on alloc without assert and with broadcast
+        func = function(
+            [self.vec, self.mat],
+            self.alloc_w_dep_broad + self. mat,
+            mode=self.fast_run_mode
+        )
+        self._verify_alloc_count(func, 0)
+        self._verify_assert_count(func, 0)
+
+        # Not optimized case on alloc and with broadcast
+        func = function(
+            [self.vec, self.mat],
+            self.alloc_w_dep_broad2 + self. mat,
+            mode=self.fast_run_mode
+        )
+        self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
 
     def test_remove_alloc_w_dimshuffle(self):
@@ -5015,6 +5046,57 @@ class TestShape_i(utt.InferShapeTester):
         self._compile_and_check([admat], [Shape_i(1)(admat)],
                         [admat_val], Shape_i)
 
+
+class TestShapeFeature(unittest.TestCase):
+    def test_scalar(self):
+        x = scalar()
+        cst = T.constant(1).clone()
+        o = x + cst
+        fgraph = FunctionGraph([x], [o], clone=False)
+        shape_feature = opt.ShapeFeature()
+        fgraph.attach_feature(shape_feature)
+        assert shape_feature.same_shape(x, o)
+
+    def test_vector(self):
+        x = vector()
+        cst = T.constant(1).clone()
+        o = x + cst
+        fgraph = FunctionGraph([x], [o], clone=False)
+        shape_feature = opt.ShapeFeature()
+        fgraph.attach_feature(shape_feature)
+        assert shape_feature.same_shape(x, o)
+
+    def test_vector2(self):
+        x = vector()
+        y = vector()
+        o = x + y
+        fgraph = FunctionGraph([x, y], [o], clone=False)
+        shape_feature = opt.ShapeFeature()
+        fgraph.attach_feature(shape_feature)
+        assert shape_feature.same_shape(x, o)
+        # The following case isn't implemented
+        assert not shape_feature.same_shape(y, o)
+
+    def test_vector_dim(self):
+        x = vector()
+        y = vector()
+        o = x + y
+        fgraph = FunctionGraph([x, y], [o], clone=False)
+        shape_feature = opt.ShapeFeature()
+        fgraph.attach_feature(shape_feature)
+        assert shape_feature.same_shape(x, o, 0, 0)
+        # The following case isn't implemented
+        assert not shape_feature.same_shape(y, o, 0, 0)
+
+    def test_vector_dim_err(self):
+        x = vector()
+        y = vector()
+        o = x + y
+        fgraph = FunctionGraph([x, y], [o], clone=False)
+        shape_feature = opt.ShapeFeature()
+        fgraph.attach_feature(shape_feature)
+        self.assertRaises(IndexError, shape_feature.same_shape, x, o, 1, 0)
+        self.assertRaises(IndexError, shape_feature.same_shape, x, o, 0, 1)
 
 if __name__ == '__main__':
     t = TestMakeVector('setUp')
