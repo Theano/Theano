@@ -1414,11 +1414,8 @@ class Scan(PureOp):
             corresponding inner output(s) in a sequence.
             """
             s = 0
-            if self.n_mit_mot > 0:
-                e = len(self.mitmot_out_taps()[0])
-            else:
-                e = 1
-            for p in xrange(oidx):
+            e = 0
+            for p in xrange(oidx + 1):
                 s = e
                 if p < self.n_mit_mot:
                     e += len(self.mitmot_out_taps()[p])
