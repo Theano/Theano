@@ -96,6 +96,7 @@ register_opt()(theano.tensor.opt.local_track_shape_i)
 register_opt(name='gpu_constant_folding')(
     tensor.opt.constant_folding)
 register_opt()(theano.tensor.opt.local_subtensor_make_vector)
+register_opt('unsafe')(theano.tensor.opt.local_remove_all_assert)
 
 
 # This is a partial list of CPU ops that can be in some circonstance
