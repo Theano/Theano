@@ -1471,34 +1471,53 @@ class Scan(PureOp):
         # input to `z_t` then `x` is an input to `z_t`.
 
         n_outs = len(node.outputs)
-        outer_iidx_from_inner_iidx = self.get_outer_iidx_from_inner_iidx_seq()
+        outer_iidx_from_outer_oidx = self.get_outer_iidx_from_outer_oidx_seq()
 
         for steps in xrange(n_outs):
             for iidx in xrange(n_outs):
                 for jidx in xrange(n_outs):
 
-                    # Get the idx of the first inner input corresponding to
-                    # that inner output
-                    j_inp_idx = self.get_input_pos(jidx)
+                    # Get the idx of the outer input corresponding to that
+                    # outer output
+                    j_inp_idx = outer_iidx_from_outer_oidx[jidx]
 
-                    if j_inp_idx == -1:
-                        # No corresponding inner input : default to what scan
-                        # was doing in the previous version in those cases
-                        # which *seems* to be a hack designed to avoid passing
-                        # the condition below but it's not certain.
-                        j_inp_idx = 0
-                    else:
-                        # Get the idx of the outer input corresponding to that
-                        # inner input
-                        j_inp_idx = outer_iidx_from_inner_iidx[j_inp_idx]
-
-                    if connection_pattern[j_inp_idx][iidx] == True:
-                        for k in xrange(len(connection_pattern)):
-                            if connection_pattern[k][jidx]:
-                                connection_pattern[k][iidx] = True
+                    if j_inp_idx != -1:
+                       if connection_pattern[j_inp_idx][iidx] == True:
+                            for k in xrange(len(connection_pattern)):
+                                if connection_pattern[k][jidx]:
+                                    connection_pattern[k][iidx] = True
 
         node.tag.connection_pattern = connection_pattern
         return connection_pattern
+
+    def get_outer_iidx_from_outer_oidx_seq(self):
+        """ Return a sequence where the value at the i-th position is the
+        index of the outer input corresponding to the i-th outer output
+
+        NOTE: mitmots, mitsots, sitsots and shared outputs have corresponding
+        outer inputs but not nitsots.
+        """
+
+        nb_outer_outputs = (self.n_mit_mot + self.n_mit_sot + self.n_sit_sot +
+                            self.n_nit_sot + self.n_shared_outs)
+        result = [-1] * nb_outer_outputs
+
+        # Process mitmots, mitsots and sitsots
+        input_offset = 1 + self.n_seqs
+        output_offset = 0
+        for i in range(len(self.tap_array)):
+            result[output_offset] = input_offset
+            input_offset += 1
+            output_offset += 1
+
+        # Process shared inputs/outputs
+        input_offset += self.n_nit_sot
+        for i in range(self.n_shared_outs):
+            result[output_offset + i] = input_offset
+            input_offset += 1
+            output_offset += 1
+
+        return result
 
     def get_outer_iidx_from_inner_iidx_seq(self):
         """ Return a sequence where the value at the i-th position is the
