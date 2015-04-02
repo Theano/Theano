@@ -61,6 +61,7 @@ def register_opt(*tags, **kwargs):
 register_opt('fast_compile')(theano.tensor.opt.local_track_shape_i)
 register_opt('unsafe')(theano.tensor.opt.local_remove_all_assert)
 
+
 def safe_to_gpu(x):
     if isinstance(x.type, tensor.TensorType):
         return gpu_from_host(x)
