@@ -3749,8 +3749,7 @@ class T_Join_and_Split(unittest.TestCase):
 
         # Test hide error
         if not self.hide_error:
-            self.assertRaises(ValueError, f, get_mat(3, 4), get_mat(3, 4),
-                              get_mat(2, 5))
+            self.assertRaises(ValueError, f)
         else:
             x1.set_value(get_mat(3, 4))
             x2.set_value(get_mat(3, 4))
