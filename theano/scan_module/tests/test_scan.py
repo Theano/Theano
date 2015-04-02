@@ -838,7 +838,7 @@ class T_Scan(unittest.TestCase):
                         n_steps=2)
         tensor.grad(a[-1], a0)
 
-    def test_connection_pattern2():
+    def test_connection_pattern2(self):
         # This tests for a crash in connection_pattern() when a scan node
         # has more than one mitmot (multiple input taps as well as
         # multiple output taps) output
