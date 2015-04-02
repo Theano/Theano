@@ -1000,6 +1000,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
     adv_incsub1 = cuda.GpuAdvancedIncSubtensor1
     mode = mode_with_gpu
     dtype = 'float32'
+    type = tcn.CudaNdarrayType
     ignore_topo = (B.HostFromGpu, B.GpuFromHost, theano.compile.DeepCopyOp)
     fast_compile = False
     ops = (cuda.GpuSubtensor, cuda.GpuIncSubtensor,

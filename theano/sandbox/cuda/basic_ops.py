@@ -3043,13 +3043,8 @@ class GpuJoin(tensor.Join, GpuOp):
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         if not tensors:
             raise ValueError('Cannot join an empty list of tensors')
-        are_instances = [isinstance(x.type, CudaNdarrayType) \
-                                                for x in tensors]
-        assert numpy.all(are_instances)
-
-        # no conversion needed, we just checked everything was
-        # a CNDA var
-        as_tensor_variable_args = tensors
+        as_tensor_variable_args = [as_cuda_ndarray_variable(x)
+                                   for x in tensors]
 
         output_maker = \
                 lambda bcast: CudaNdarrayType(broadcastable=bcast)()
