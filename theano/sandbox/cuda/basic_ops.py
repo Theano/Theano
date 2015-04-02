@@ -2584,6 +2584,15 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
+        if y_.type.ndim > x_.type.ndim:
+            if self.set_instead_of_inc:
+                opname = 'set'
+            else:
+                opname = 'increment'
+            raise TypeError(
+                'cannot %s x subtensor with ndim=%s'
+                ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                    opname, x_.type.ndim, y_.type.ndim))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
@@ -2750,6 +2759,15 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
             raise TypeError('index must be vector')
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
+        if y_.type.ndim > x_.type.ndim:
+            if self.set_instead_of_inc:
+                opname = 'set'
+            else:
+                opname = 'increment'
+            raise TypeError(
+                'cannot %s x subtensor with ndim=%s'
+                ' by y with ndim=%s to x subtensor with ndim=%s ' % (
+                    opname, x_.type.ndim, y_.type.ndim))
 
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
