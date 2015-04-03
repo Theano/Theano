@@ -2696,114 +2696,82 @@ def local_useless_incsubtensor_alloc(node):
             # `z` is the input of the Alloc op, i.e. T.alloc(z, <shape>)
             z = y.owner.inputs[0]
 
-            # The following check is to prevent removal of shape errors.
             try:
-                same_shape = node.fgraph.shape_feature.same_shape
-
-                # Get the subtensor of `x` indexed by `i` in order to compare
-                # shapes later.
-                if isinstance(node.op, IncSubtensor):
-                    xi = Subtensor(node.op.idx_list)(x, *i)
-                elif isinstance(node.op, AdvancedIncSubtensor):
-                    xi = advanced_subtensor(x, *i)
-                elif isinstance(node.op, AdvancedIncSubtensor1):
-                    xi = advanced_subtensor1(x, *i)
-                else:
-                    raise Exception('Should never happen!')
-
-                # Add `xi` to the `fgraph`. This is important for shape
-                # inference later because the variable must be part of the
-                # function graph in order to call `same_shape` on it.
-                reason = 'local_useless_incsubtensor_alloc'
-                node.fgraph.__import_r__([xi], '%s: add `xi`' % reason)
-
-                # `xi` may have more dimensions than `y` since the subtensor
-                # ops do automatic broadcasting of the increment internally.
-                # Thus, we need to make the leading implicitly broadcasted
-                # dimensions explicit for shape comparison later.
-                if xi.ndim > y.ndim:
-                    y = T.shape_padleft(y, xi.ndim - y.ndim)
-                    node.fgraph.__import_r__([y], '%s: add `y`' % reason)
-
-                # Build `z_shape` and `z_broad` explicitly to include extra
-                # implicit dimensions.
-                z_shape = ((1,) * (max(xi.ndim, y.ndim) - z.ndim) +
-                           tuple(z.shape))
-                z_broad = ((True,) * (max(xi.ndim, y.ndim) - z.ndim) +
-                           z.broadcastable)
-
-                cond = [# The shapes of `y` and `xi` must either agree or `y`
-                        # may also have shape equal to 1 which may be treated
-                        # as a broadcastable dimension by the subtensor op.
-                        T.or_(T.eq(y.shape[k], xi.shape[k]),
-                              T.eq(y.shape[k], 1))
-                        # If the increment is broadcastable in dimension `k`,
-                        # we need to check whether the shapes of `xi` and `y`
-                        # are the same.
-                        if z_broad[k]
-                        # Else, we need to check whether the shapes of `xi` and
-                        # `z` are the same in dimension `k`.
-                        else T.eq(xi.shape[k], z_shape[k])
-                        # Loop over all dimensions.
-                        for k in xrange(xi.ndim)
-                        # If we can infer statically that the shape of `xi` and
-                        # `y` are the same in dimension `k` we do not need to
-                        # check it at run time.
-                        if not same_shape(xi, y, dim_x=k, dim_y=k)]
+                shape_feature = node.fgraph.shape_feature
             except AttributeError:
                 # The shape feature may not be available in some mode, but we
                 # need it for this optimization, so don't continue.
                 return False
+
+            shape_of = shape_feature.shape_of
+            same_shape = shape_feature.same_shape
+
+            # Get the subtensor of `x` indexed by `i` in order to compare
+            # shapes later.
+            if isinstance(node.op, IncSubtensor):
+                xi = Subtensor(node.op.idx_list)(x, *i)
+            elif isinstance(node.op, AdvancedIncSubtensor):
+                xi = advanced_subtensor(x, *i)
+            elif isinstance(node.op, AdvancedIncSubtensor1):
+                xi = advanced_subtensor1(x, *i)
+            else:
+                raise Exception('Should never happen!')
+
+            reason = 'local_useless_incsubtensor_alloc'
+
+            # Add `xi` to the shape feature `fgraph`. This is important for
+            # shape inference later because the variable must be part of the
+            # function graph in order to call `same_shape` on it.
+            if xi not in shape_of:
+                shape_feature.on_import(node.fgraph, xi.owner,
+                                        '%s: add `xi`' % reason)
+
+            # `xi` may have more dimensions than `y` since the subtensor ops
+            # do automatic broadcasting of the increment internally. Thus, we
+            # need to make the leading implicitly broadcasted dimensions
+            # explicit for shape comparison later.
+            if xi.ndim > y.ndim:
+                y = T.shape_padleft(y, xi.ndim - y.ndim)
+                if y not in shape_of:
+                    shape_feature.on_import(node.fgraph, y.owner,
+                                            '%s: add `y`' % reason)
+
+            # Build `z_broad` explicitly to include extra implicit dimensions.
+            z_broad = ((True,) * (xi.ndim - z.ndim) + z.broadcastable)
+
+            cond = [# The shapes of `y` and `xi` must either agree or `y` may
+                    # also have shape equal to 1 which may be treated as a
+                    # broadcastable dimension by the subtensor op.
+                    T.or_(T.eq(y.shape[k], 1), T.eq(y.shape[k], xi.shape[k]))
+                    # Loop over all dimensions.
+                    for k in xrange(xi.ndim)
+                    # We need to check the above shapes, if
+                    # * the pre-alloc increment `z` is broadcastable in
+                    #   dimension `k` (if it isn't, then the shapes of `z` and
+                    #   `y` are the same by the definition of the `Alloc` op in
+                    #   this dimension and replacing `y` by `z` will not hide a
+                    #   shape error), and
+                    # * `xi` and `y` do not have the same shape in dimension
+                    #   `k` or we cannot infer the shape statically (if the
+                    #   shapes of `xi` and `y` are not the same, then replacing
+                    #   `y` by `z` will hide the shape error of `y`), and
+                    # * the shape of `y` is not equal to 1 or we cannot infer
+                    #   the shape statically (if the shape of `y` is equal to
+                    #   1, then `y` is broadcasted by the inc_subtensor op
+                    #   internally, so the shapes of `xi` and `y` do not need
+                    #   to match in dimension `k`; else we need to check at
+                    #   runtime that the shape of `y` is either 1 or the same
+                    #   as `xi` or otherwise replacing `y` by `z` will hide a
+                    #   shape error).
+                    if (z_broad[k] and
+                        not same_shape(xi, y, dim_x=k, dim_y=k) and
+                        shape_of[y][k] != 1)]
 
             if len(cond) > 0:
                 msg = '`x[i]` and `y` do not have the same shape.'
                 z = Assert(msg)(z, *cond)
 
             return [node.op(x, z, *i)]
-
-
-#################
-# Bit-wise opts #
-#################
-
-@register_canonicalize
-@register_specialize
-@register_stabilize
-@gof.local_optimizer([T.Elemwise])
-def local_useless_OR(node):
-    """
-    Remove useless OR op.
-    """
-    if (isinstance(node.op, T.Elemwise) and
-        isinstance(node.op.scalar_op, scalar.basic.OR)):
-        assert len(node.inputs) == 2
-        for i in node.inputs:
-            try:
-                if get_scalar_constant_value(i) != 0:
-                    return [T.as_tensor_variable(1)]
-            except NotScalarConstantError:
-                pass
-    return False
-
-
-@register_canonicalize
-@register_specialize
-@register_stabilize
-@gof.local_optimizer([T.Elemwise])
-def local_useless_AND(node):
-    """
-    Remove useless AND op.
-    """
-    if (isinstance(node.op, T.Elemwise) and
-        isinstance(node.op.scalar_op, scalar.basic.AND)):
-        assert len(node.inputs) == 2
-        for i in node.inputs:
-            try:
-                if get_scalar_constant_value(i) == 0:
-                    return [T.as_tensor_variable(0)]
-            except NotScalarConstantError:
-                pass
-    return False
 
 
 ####################
