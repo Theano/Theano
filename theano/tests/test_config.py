@@ -6,6 +6,7 @@ import unittest
 from theano import config
 from theano.configparser import AddConfigVar, ConfigParam, THEANO_FLAGS_DICT
 
+
 class T_config(unittest.TestCase):
 
     def test_invalid_default(self):

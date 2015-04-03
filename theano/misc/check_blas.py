@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-#print info to check we link with witch version of blas
-#test the speed of the blas gemm fct:
-#C=a*C+dot(A,B)*b
-#A,B,C matrix
-#a,b scalar
+# print info to check we link with witch version of blas
+# test the speed of the blas gemm fct:
+# C=a*C+dot(A,B)*b
+# A,B,C matrix
+# a,b scalar
 
 s = """
 result for shapes=(2000,2000) and iters=100
@@ -23,7 +23,7 @@ import numpy
 import theano
 import theano.tensor as T
 
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 
 
 def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
@@ -113,7 +113,7 @@ def jobman_job(state, channel):
 
 
 def test():
-    execute()
+    return execute()
 
 
 parser = OptionParser(
@@ -222,6 +222,7 @@ if __name__ == "__main__":
         GTX 980           0.06s        
         GTX 970           0.08s
         GTX 680                         0.11s  0.12s  0.154s               0.218s
+        GRID K520         0.14s
         GTX 580                         0.16s  0.16s  0.164s               0.203s
         GTX 480                         0.19s  0.19s  0.192s               0.237s 0.27s
         GTX 750 Ti        0.20s

@@ -16,7 +16,7 @@ from nose.plugins.attrib import attr
 
 floatX = theano.config.floatX
 
-#TODO: each individual test method should seed rng with utt.fetch_seed()
+# TODO: each individual test method should seed rng with utt.fetch_seed()
 #      as it is right now, setUp does the seeding, so if you run just
 #      a subset of the tests they will do different things than if you
 #      run all of them
@@ -402,14 +402,14 @@ class TestConv3D(utt.InferShapeTester):
         self.W.set_value(self.random_tensor(numFilters, filterHeight,
                 filterWidth, filterDur, inputChannels), borrow=True)
         self.b.set_value(self.random_tensor(numFilters), borrow=True)
-        #just needed so H_shape works
+        # just needed so H_shape works
         self.V.set_value(self.random_tensor(batchSize, videoHeight, videoWidth,
                             videoDur, inputChannels), borrow=True)
         self.rb.set_value(self.random_tensor(inputChannels), borrow=True)
 
         H_shape = self.H_shape_func()
 
-        #make index maps
+        # make index maps
         h = N.zeros(H_shape[1:])
         r = N.zeros(H_shape[1:])
         c = N.zeros(H_shape[1:])
@@ -506,7 +506,7 @@ class TestConv3D(utt.InferShapeTester):
         theano.tests.unittest_tools.verify_grad(DummyConvTransp3D(rng,
                         (W, rb, dCdH), d, V.get_value(borrow=True).shape[1:4]),
                                         [0.0], n_tests=testsPerDir)
-        theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V,dCdH),
+        theano.tests.unittest_tools.verify_grad(DummyConvGrad3D(rng, (V, dCdH),
                         d, W.get_value(borrow=True).shape),
                                         [0.0], n_tests=testsPerDir)
 

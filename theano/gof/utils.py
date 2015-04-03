@@ -67,9 +67,9 @@ def add_tag_trace(thing, user_line=1):
     tr = simple_extract_stack(limit=limit)[:-1]
     # Different python version use different sementic for
     # limit. python 2.7 include the call to extrack_stack. The -1 get
-    # rid of it.  We also want to get rid of the add_tag_trace call.
-    if tr and "add_tag_trace" in tr[-1][-1]:
-        tr = tr[:-1]
+    # rid of it.
+
+    # Get rid of Theano internal
     while tr:
         file_path = tr[-1][0]
         rm = False
@@ -87,8 +87,10 @@ def add_tag_trace(thing, user_line=1):
                 break
         if not rm:
             break
+    # Keep only the most recent stack level.
+    # The order is from the oldest to the newest
     if len(tr) > user_line:
-        tr = tr[:user_line]
+        tr = tr[-user_line:]
     thing.tag.trace = tr
     return thing
 
@@ -202,8 +204,8 @@ def uniq(seq):
     If we just exchange other values, but keep the same pattern of duplication,
     we must keep the same order.
     """
-    #TODO: consider building a set out of seq so that the if condition
-    #is constant time -JB
+    # TODO: consider building a set out of seq so that the if condition
+    # is constant time -JB
     return [x for i, x in enumerate(seq) if seq.index(x) == i]
 
 

@@ -31,9 +31,9 @@ def test_get_diagonal_subtensor_view(wrap=lambda a: a):
     xv02 = get_diagonal_subtensor_view(x, 0, 2)
     xv12 = get_diagonal_subtensor_view(x, 1, 2)
 
-    #print 'x', x
-    #print 'xv01', xv01
-    #print 'xv02', xv02
+    # print 'x', x
+    # print 'xv01', xv01
+    # print 'xv02', xv02
     assert numpy.all(numpy.asarray(xv01) == [
         [[12, 13], [8, 9], [4, 5]],
         [[18, 19], [14, 15], [10, 11]]])
@@ -62,11 +62,11 @@ def pyconv3d(signals, filters):
     for ns in xrange(Ns):
         for nf in xrange(Nf):
             for c in xrange(C):
-                s_i = signals[ns,:,c,:,:]
-                f_i = filters[nf,:,c,:,:]
+                s_i = signals[ns, :, c, :, :]
+                f_i = filters[nf, :, c, :, :]
                 r_i = rval[ns, :, nf, :, :]
                 o_i = ndimage.convolve(s_i, f_i, mode='constant', cval=1)
-                #print s_i.shape, f_i.shape, r_i.shape, o_i.shape
+                # print s_i.shape, f_i.shape, r_i.shape, o_i.shape
                 r_i += o_i[Tf2:-Tf2, Hf2:-Hf2, Wf2:-Wf2]
     return rval
 

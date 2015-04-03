@@ -4,7 +4,7 @@ try:
 except ImportError:
     # Python 2.4
     pass
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 import types
 
 
@@ -39,7 +39,7 @@ if MutableSet is not None:
     # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-    ## {{{ http://code.activestate.com/recipes/576696/ (r5)
+    # {{{ http://code.activestate.com/recipes/576696/ (r5)
     import collections
     import weakref
 
@@ -190,7 +190,7 @@ if MutableSet is not None:
             else:
                 return NotImplemented
 
-    ## end of http://code.activestate.com/recipes/576696/ }}}
+    # end of http://code.activestate.com/recipes/576696/ }}}
 
 else:
     # Python 2.4

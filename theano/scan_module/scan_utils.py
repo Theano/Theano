@@ -22,9 +22,9 @@ import numpy
 
 import theano
 from theano.compile.pfunc import rebuild_collect_shared
-from theano import gof
+from theano import gof, compat
 from theano import tensor, scalar
-from theano.gof.python25 import all, OrderedDict
+from theano.compat.python2x import all, OrderedDict
 from theano.tensor.basic import get_scalar_constant_value
 
 
@@ -55,9 +55,24 @@ def safe_new(x, tag='', dtype=None):
             return nwx
         else:
             return x.clone()
-
-    # at this point we should only have Variables
-    assert isinstance(x, theano.Variable)
+    # Note, as_tensor_variable will convert the Scalar into a
+    # TensorScalar that will require a ScalarFromTensor op,
+    # making the pushout optimization fail
+    elif isinstance(x, scalar.ScalarVariable):
+        if dtype:
+            nw_x = scalar.get_scalar_type(dtype=dtype)()
+        else:
+            nw_x = x.type()
+        nw_x.name = nw_name
+        return nw_x
+    else:
+        try:
+            x = tensor.as_tensor_variable(x)
+        except TypeError:
+            # This could happen for example for random states, and I really
+            # want to avoid the convoluted logic that checks for cuda
+            # ndarrays
+            pass
     nw_x = x.type()
     if dtype and nw_x.dtype != dtype:
         nw_x = nw_x.astype(dtype).type()
@@ -145,6 +160,8 @@ def hash_listsDictsTuples(x):
 
 
 DEPRECATED_ARG = object()
+
+
 def clone(output,
           replace=None,
           strict=True,
@@ -227,7 +244,7 @@ def get_updates_and_outputs(ls):
     def is_updates(elem):
         if isinstance(elem, dict):
             # Make sure the updates will be applied in a deterministic order
-            if (not isinstance(elem, gof.python25.OrderedDict) and
+            if (not isinstance(elem, compat.python2x.OrderedDict) and
                 len(elem) > 1):
                 warnings.warn("Expected OrderedDict or OrderedUpdates, got "\
                         + str(type(elem)) + ". This can make your script non-"
@@ -687,14 +704,14 @@ def compress_outs(op, not_required, inputs):
             curr_pos += 1
             info['n_mit_sot'] += 1
             info['tap_array'] += [op.tap_array[offset + idx]]
-            #input taps
+            # input taps
             for jdx in op.tap_array[offset + idx]:
                 op_inputs += [op.inputs[i_offset]]
                 i_offset += 1
-            #output taps
+            # output taps
             op_outputs += [op.outputs[o_offset]]
             o_offset += 1
-            #node inputs
+            # node inputs
             node_inputs += [inputs[ni_offset + idx]]
         else:
             o_offset += 1
@@ -708,13 +725,13 @@ def compress_outs(op, not_required, inputs):
             curr_pos += 1
             info['n_sit_sot'] += 1
             info['tap_array'] += [op.tap_array[offset + idx]]
-            #input taps
+            # input taps
             op_inputs += [op.inputs[i_offset]]
             i_offset += 1
-            #output taps
+            # output taps
             op_outputs += [op.outputs[o_offset]]
             o_offset += 1
-            #node inputs
+            # node inputs
             node_inputs += [inputs[ni_offset + idx]]
         else:
             o_offset += 1

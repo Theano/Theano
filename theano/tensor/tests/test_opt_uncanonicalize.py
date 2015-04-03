@@ -13,8 +13,8 @@ from theano.tests import unittest_tools as utt
 
 class T_max_and_argmax(unittest.TestCase):
     def test_optimization(self):
-        #If we use only the max output, we should replace this op with
-        #a faster one.
+        # If we use only the max output, we should replace this op with
+        # a faster one.
         mode = theano.compile.mode.get_default_mode().including(
             'canonicalize', 'fast_run')
 
@@ -83,7 +83,7 @@ class T_min_max(unittest.TestCase):
             assert isinstance(topo[0].op, CAReduce)
             f(data)
 
-            #test variant with neg to make sure we optimize correctly
+            # test variant with neg to make sure we optimize correctly
             f = function([n], tensor.min(-n, axis), mode=self.mode)
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 2

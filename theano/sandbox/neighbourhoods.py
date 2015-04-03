@@ -14,6 +14,7 @@ from theano import gof, Op, tensor, Variable, Apply
 import numpy
 import __builtin__
 
+
 class NeighbourhoodsFromImages(Op):
     def __init__(self, n_dims_before, dims_neighbourhoods,
                     strides=None, ignore_border=False, inverse=False):
@@ -177,19 +178,19 @@ class NeighbourhoodsFromImages(Op):
             # +1 in the inverse case
             if len(x.shape) != (self.n_dims_before + \
                             len(self.dims_neighbourhoods) + 1):
-                raise ValueError("Images passed as input don't match the "+\
+                raise ValueError("Images passed as input don't match the " +\
                  "dimensions passed when this (inversed) Apply node was created")
             prod = 1
             for dim in self.dims_neighbourhoods:
                 prod *= dim
             if x.shape[-1] != prod:
-                raise ValueError(("Last dimension of neighbourhoods (%s) is not "+\
+                raise ValueError(("Last dimension of neighbourhoods (%s) is not " +\
                         "the product of the neighbourhoods dimensions (%s)") % \
                          (str(x.shape[-1]), str(prod)))
         else:
             if len(x.shape) != (self.n_dims_before + \
                             len(self.dims_neighbourhoods)):
-                raise ValueError("Images passed as input don't match the "+\
+                raise ValueError("Images passed as input don't match the " +\
                         "dimensions passed when this Apply node was created")
 
         if self.inverse:
@@ -229,7 +230,7 @@ class NeighbourhoodsFromImages(Op):
         base_indent = ('\t' * (self.n_dims_before + inner_dim_no*2))
         code_before = base_indent + \
                 "for stride_idx_%d in xrange(num_strides[%d]):\n" % \
-                    (inner_dim_no,inner_dim_no)
+                    (inner_dim_no, inner_dim_no)
         base_indent += '\t'
         code_before += base_indent + \
                 "dim_%d_offset = stride_idx_%d * self.strides[%d]\n" %\
@@ -240,20 +241,20 @@ class NeighbourhoodsFromImages(Op):
                     self.n_dims_before+inner_dim_no, inner_dim_no)
         code_before += base_indent + \
                 ("for neigh_idx_%d in xrange(min(max_neigh_idx_%d,"\
-                +" self.dims_neighbourhoods[%d])):\n") % \
+                + " self.dims_neighbourhoods[%d])):\n") % \
                     (inner_dim_no, inner_dim_no, inner_dim_no)
 
         return code_before
 
     def _py_flattened_idx(self):
-        return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i,i) \
+        return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i, i) \
                     for i in xrange(len(self.strides))])
 
     def _py_assignment(self):
         input_idx = "".join(["outer_idx_%d," % (i,) \
                     for i in xrange(self.n_dims_before)])
         input_idx += "".join(["dim_%d_offset+neigh_idx_%d," % \
-                    (i,i) for i in xrange(len(self.strides))])
+                    (i, i) for i in xrange(len(self.strides))])
         out_idx = "".join(\
                 ["outer_idx_%d," % (i,) for i in \
                         range(self.n_dims_before)] + \
@@ -276,10 +277,11 @@ class NeighbourhoodsFromImages(Op):
 
         return return_val
 
+
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
     def __init__(self, n_dims_before, dims_neighbourhoods,
                         strides=None, ignore_border=False):
-        NeighbourhoodsFromImages.__init__(self,n_dims_before, dims_neighbourhoods,
+        NeighbourhoodsFromImages.__init__(self, n_dims_before, dims_neighbourhoods,
                                 strides=strides, ignore_border=ignore_border,
                                 inverse=True)
         # and that's all there is to it

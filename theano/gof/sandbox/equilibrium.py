@@ -4,14 +4,14 @@ if 0:
 
         def __init__(self,
                      local_optimizers,
-                     failure_callback = None,
-                     max_depth = None,
-                     max_use_ratio = None):
+                     failure_callback=None,
+                     max_depth=None,
+                     max_use_ratio=None):
 
             super(EquilibriumOptimizer, self).__init__(
                 None,
-                ignore_newtrees = False,
-                failure_callback = failure_callback)
+                ignore_newtrees=False,
+                failure_callback=failure_callback)
 
             self.local_optimizers = local_optimizers
             self.max_depth = max_depth
@@ -79,7 +79,7 @@ if 0:
                 runs = None
 
             def importer(node):
-                #print 'IMPORTING', node
+                # print 'IMPORTING', node
                 self.backtrack(node, tasks)
             def pruner(node):
                 try:
@@ -93,7 +93,6 @@ if 0:
     #         # == NOT IDEAL == #
     #         for node in fgraph.apply_nodes:
     #             importer(node)
-
 
             for node in fgraph.toposort():
                 tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))

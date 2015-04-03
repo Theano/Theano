@@ -117,7 +117,7 @@ class TestConv2D(utt.InferShapeTester):
                             icol = col * subsample[1]  # image col
                             ref_output[bb, nn, row, col] += (image2d[
                                 irow:irow + N_filter_shape[2],
-                                icol:icol + N_filter_shape[3]] * filter2d[::-1,::-1]
+                                icol:icol + N_filter_shape[3]] * filter2d[::-1, ::-1]
                             ).sum()
 
         self.assertTrue(_allclose(theano_output, ref_output))
@@ -448,6 +448,29 @@ class TestConv2D(utt.InferShapeTester):
                         t2 = time.time()
                         print t2 - t1,
                     print
+
+    def test_fail(self):
+        k = theano.shared(numpy.ones((1, 1, 3, 3), dtype='float32'))
+
+        im = T.ftensor4()
+        out = theano.function([im],
+                              T.nnet.conv2d(im, k, image_shape=(1, 1, 10, 10)))
+        self.assertRaises(ValueError, out, numpy.ones((1, 1, 20, 10),
+                                                      dtype='float32'))
+        out = theano.function([im],
+                              T.nnet.conv2d(im, k, filter_shape=(1, 1, 3, 2)))
+        self.assertRaises(ValueError, out, numpy.ones((1, 1, 10, 10),
+                                                      dtype='float32'))
+        out = theano.function([im],
+                              T.nnet.conv2d(im, k, filter_shape=(2, None,
+                                                                 None, None)))
+        self.assertRaises(ValueError, out, numpy.ones((1, 1, 10, 10),
+                                                      dtype='float32'))
+        out = theano.function([im],
+                              T.nnet.conv2d(im, k, image_shape=(1, None,
+                                                                None, None)))
+        self.assertRaises(ValueError, out, numpy.ones((2, 1, 10, 10),
+                                                      dtype='float32'))
 
     def test_infer_shape(self):
     # Note: infer_shape is incomplete and thus input and filter shapes

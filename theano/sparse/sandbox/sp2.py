@@ -26,7 +26,7 @@ from theano.sparse.basic import (
 # Theano's Op contract, as their behaviour is not reproducible: calling
 # the perform() method twice with the same argument will yield different
 # results.
-#from theano.sparse.basic import (
+# from theano.sparse.basic import (
 #    Multinomial, multinomial, Poisson, poisson,
 #    Binomial, csr_fbinomial, csc_fbinomial, csr_dbinomial, csc_dbinomial)
 

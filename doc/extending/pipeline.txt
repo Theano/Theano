@@ -25,12 +25,11 @@ Compilation of the computation graph
 ------------------------------------
 
 Once the user has built a computation graph, she can use
-``theano.function`` or a ``theano.Method`` in a ``theano.module`` in
-order to make one or more functions that operate on real data. Both
-function and Method take a list of input :ref:`Variables <variable>`
-as well as a list of output Variables that define a precise subgraph
-corresponding to the function(s) we want to define, compile that
-subgraph and produce a callable.
+``theano.function`` in order to make one or more functions that
+operate on real data. function takes a list of input :ref:`Variables
+<variable>` as well as a list of output Variables that define a
+precise subgraph corresponding to the function(s) we want to define,
+compile that subgraph and produce a callable.
 
 Here is an overview of the various steps that are done with the
 computation graph in the compilation phase:
@@ -58,11 +57,10 @@ inputs declared as immutable.
 Step 2 - Execute main Optimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once the FunctionGraph is made, an :term:`optimizer` is produced
-by the :term:`mode` passed to ``function`` or to the Method/Module's
-``make`` (the Mode basically has two important fields, ``linker`` and
-``optimizer``). That optimizer is applied on the FunctionGraph using its
-optimize() method.
+Once the FunctionGraph is made, an :term:`optimizer` is produced by
+the :term:`mode` passed to ``function`` (the Mode basically has two
+important fields, ``linker`` and ``optimizer``). That optimizer is
+applied on the FunctionGraph using its optimize() method.
 
 The optimizer is typically obtained through :attr:`optdb`.
 
@@ -124,7 +122,7 @@ Step 4 - Wrap the thunk in a pretty package
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The thunk returned by the linker along with input and output
-containers is unwieldy. ``function`` and ``Method`` hide that
-complexity away so that it can be used like a normal function with
-arguments and return values.
+containers is unwieldy. ``function`` hides that complexity away so
+that it can be used like a normal function with arguments and return
+values.
 

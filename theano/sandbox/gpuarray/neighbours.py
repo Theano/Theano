@@ -11,12 +11,11 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import (as_gpuarray_variable,
-                                               host_from_gpu, gpu_from_host)
-from theano.sandbox.gpuarray.opt import register_opt as register_gpu_opt
-from theano.sandbox.gpuarray.opt import op_lifter as op_lifter
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.comp import NVCC_compiler
+from .basic_ops import (as_gpuarray_variable,
+                        host_from_gpu, gpu_from_host)
+from .opt import register_opt as register_gpu_opt, op_lifter
+from .type import GpuArrayType
+from .comp import NVCC_compiler
 
 
 class GpuImages2Neibs(Images2Neibs, Op):
@@ -44,7 +43,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (9,1)
+        return (9, 1)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -439,6 +438,7 @@ class GpuImages2Neibs(Images2Neibs, Op):
 
         } // END NESTED SCOPE
         """ % locals()
+
 
 @op_lifter([Images2Neibs])
 def use_gpu_images2neibs(node):

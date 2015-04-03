@@ -10,7 +10,7 @@ import sys
 import time
 import warnings
 
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 
 from theano.configparser import (config, AddConfigVar,
                                  BoolParam, ConfigParam, _config_var_list)
@@ -51,6 +51,7 @@ AddConfigVar('vm.lazy',
              " Loop/LoopGC and Stack.",
              ConfigParam('None', filter_vm_lazy),
              in_c_key=False)
+
 
 class VM(object):
 

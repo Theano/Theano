@@ -22,13 +22,6 @@ class TheanoConfigWarning(Warning):
         warnings.warn(message, cls, stacklevel=stacklevel + 3)
     warn = classmethod(warn)
 
-# Check for deprecated environment variables
-for key in os.environ:
-    if key.startswith("THEANO"):
-        if key not in ("THEANO_FLAGS", "THEANORC"):
-            TheanoConfigWarning.warn(
-                    "Ignoring deprecated environment variable %s" % key)
-
 THEANO_FLAGS = os.getenv("THEANO_FLAGS", "")
 # The THEANO_FLAGS environment variable should be a list of comma-separated
 # [section.]option=value entries. If the section part is omitted, there should
@@ -156,7 +149,7 @@ def get_config_md5():
 
 
 class TheanoConfigParser(object):
-    #properties are installed by AddConfigVar
+    # properties are installed by AddConfigVar
     _i_am_a_config_class = True
 
     def __str__(self):
@@ -212,7 +205,7 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
     # instances
 
     if root is config:
-        #only set the name in the first call, not the recursive ones
+        # only set the name in the first call, not the recursive ones
         configparam.fullname = name
     sections = name.split('.')
     if len(sections) > 1:
@@ -283,7 +276,7 @@ class ConfigParam(object):
                 else:
                     val_str = self.default
             self.__set__(None, val_str)
-        #print "RVAL", self.val
+        # print "RVAL", self.val
         return self.val
 
     def __set__(self, cls, val):
@@ -291,7 +284,7 @@ class ConfigParam(object):
             raise Exception(
                     "Can't change the value of this config parameter "
                     "after initialization!")
-        #print "SETTING PARAM", self.fullname,(cls), val
+        # print "SETTING PARAM", self.fullname,(cls), val
         if self.filter:
             self.val = self.filter(val)
         else:
@@ -364,7 +357,7 @@ def FloatParam(default, is_valid=None, allow_override=True):
 
 
 def BoolParam(default, is_valid=None, allow_override=True):
-    #see comment at the beginning of this file.
+    # see comment at the beginning of this file.
 
     def booltype(s):
         if s in ['False', 'false', '0', False]:

@@ -19,7 +19,7 @@ import numpy
 
 import theano
 from theano import compile
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType
@@ -223,7 +223,7 @@ class ScanOp(PureOp):
             state_buffers.append((givens[var], self.lengths[pos], mem_buf))
             updates[givens[var]] = expr
 
-        #2.3 Non-numeric states
+        # 2.3 Non-numeric states
         n_non_numeric = len(self.outputs) - n_numeric_values
         fn_outs = self.outputs[n_numeric_values:]
         for var in base_inputs[n_numeric_values:]:

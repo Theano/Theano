@@ -12,6 +12,5 @@ Advanced Topics (under construction)
     compilation
     ccodegen
     function
-    module
     debugging_with_stepmode
 

@@ -25,8 +25,8 @@ class GpuCumsum(CumsumOp, GpuOp):
         self.max_grid_size1 = None
         self.max_grid_size2 = None
 
-# We must reuse the same method, not reimplement and call it.
-# Otherwise DebugMode will print many warnings.
+    # We must reuse the same method, not reimplement and call it.
+    # Otherwise DebugMode will print many warnings.
     perform = Op.perform
 
     def make_node(self, x):
@@ -37,7 +37,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
             raise NotImplementedError('Only cumsum on 1D, 2D and 3D array are supported right now!')
 
-        if self.axis >= x.ndim:
+        if self.axis >= x.ndim or self.axis < -x.ndim:
             raise ValueError('axis(={1}) out of bounds'.format(self.axis))
 
         return theano.Apply(self, [x], [x.type()])
@@ -69,7 +69,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -352,6 +352,8 @@ class GpuCumsum(CumsumOp, GpuOp):
     def c_code(self, node, nodename, inames, onames, sub):
         x, = inames
         z, = onames
+
+        # We assume array has been already flattened if needed.
         axis = self.axis if self.axis is not None else 0
         fail = sub['fail']
 
@@ -367,6 +369,12 @@ class GpuCumsum(CumsumOp, GpuOp):
         code = """
             const int* shape = CudaNdarray_HOST_DIMS(%(x)s);
             bool needAllocation = !%(z)s || CudaNdarray_NDIM(%(x)s) != CudaNdarray_NDIM(%(z)s);
+
+            int axis = %(axis)s;
+            if (axis < 0) {
+                // Convert negative axis to positive axis.
+                axis += CudaNdarray_NDIM(%(x)s);
+            }
 
             // If output is already allocated, check if its shape matches the input's one.
             if (!needAllocation) {
@@ -387,7 +395,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             }
 
             { // Namespace for kernel calls //
-                if (cumSum_%(nodename)s(%(x)s, %(z)s, %(axis)s, %(max_threads_dim0)s, %(max_grid_size1)s, %(max_grid_size2)s) == -1){
+                if (cumSum_%(nodename)s(%(x)s, %(z)s, axis, %(max_threads_dim0)s, %(max_grid_size1)s, %(max_grid_size2)s) == -1){
                     %(fail)s;
                 }
 
@@ -406,6 +414,21 @@ class GpuCumsum(CumsumOp, GpuOp):
         return code
 
 
+def values_eq_approx_high_tol(a, b):
+    """This fct is needed to don't have DebugMode raise useless
+    error due to rounding error.
+
+    This happen with big input size due to change in the order of
+    operation.
+    """
+    rtol = None
+    if a.size > 100000:
+        # For float32 the default rtol is 1e-5
+        rtol = 5e-5
+    return CudaNdarrayType.values_eq_approx(a, b, rtol=rtol)
+
+
+@register_gpu_opt()
 @local_optimizer([CumsumOp])
 def use_gpu_cumsum(node):
     if type(node.op) is CumsumOp \
@@ -428,7 +451,6 @@ def use_gpu_cumsum(node):
         if axis is None:
             axis = 0
 
-        return [host_from_gpu(GpuCumsum(axis)(x))]
-
-if cuda_available:
-    register_gpu_opt()(use_gpu_cumsum)
+        ret = host_from_gpu(GpuCumsum(axis)(x))
+        ret.values_eq_approx = values_eq_approx_high_tol
+        return [ret]

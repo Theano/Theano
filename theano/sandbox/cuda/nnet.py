@@ -26,7 +26,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
         return self.__class__.__name__
 
     def make_node(self, x, b, y_idx):
-        #N.B. won't work when we don't cast y_idx to float anymore
+        # N.B. won't work when we don't cast y_idx to float anymore
         x = as_cuda_ndarray_variable(x)
         b = as_cuda_ndarray_variable(b)
         y_idx = as_cuda_ndarray_variable(y_idx)
@@ -214,7 +214,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        #return ()
+        # return ()
         return (4,)
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
@@ -246,7 +246,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
         return Apply(self, [dy, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
-        #return ()
+        # return ()
         return (6,)
 
     def c_code(self, node, nodename, inp, out, sub):
@@ -557,7 +557,7 @@ class GpuSoftmaxWithBias(GpuOp):
         return [shape[0]]
 
     def c_code_cache_version(self):
-        #return ()
+        # return ()
         return (9,) + inline_softmax.code_version
 
     def c_code(self, node, nodename, inp, out, sub):

@@ -11,7 +11,7 @@ from numpy import array
 
 import theano
 import theano.tensor as T
-from theano import function
+from theano import function, compat
 
 from theano import config
 from theano.tests import unittest_tools as utt
@@ -44,13 +44,11 @@ class T_extending(unittest.TestCase):
         def values_eq_approx(x, y, tolerance=1e-4):
             return abs(x - y) / (abs(x) + abs(y)) < tolerance
 
-
         from theano import gof
 
         double = gof.Type()
         double.filter = filter
         double.values_eq_approx = values_eq_approx
-
 
         from theano import gof
 
@@ -71,11 +69,8 @@ class T_extending(unittest.TestCase):
 
         double = Double()
 
-
         def __eq__(self, other):
             return type(self) is Double and type(other) is Double
-
-
 
         from theano import gof
 
@@ -98,7 +93,6 @@ class T_extending(unittest.TestCase):
                 return a is b
 
         double = Double()
-
 
         from theano import gof
         mul = gof.Op()
@@ -124,7 +118,6 @@ class T_extending(unittest.TestCase):
         x = double('x')
         self.assertRaises(AttributeError, mul, x, 2)
 
-
         def make_node(x, y):
             if isinstance(x, (int, float)):
                 x = gof.Constant(double, x)
@@ -134,7 +127,6 @@ class T_extending(unittest.TestCase):
                 raise TypeError('mul only works on doubles')
             return gof.Apply(mul, [x, y], [double()])
         mul.make_node = make_node
-
 
         x = double('x')
         z = mul(x, 2)
@@ -257,11 +249,10 @@ class T_extending(unittest.TestCase):
             """ % dict(name=name)
         double.c_declare = c_declare
 
-
         def c_init(name, sub):
             return """
             %(name)s = 0.0;
-            """ % dict(name = name)
+            """ % dict(name=name)
         double.c_init = c_init
 
         def c_extract(name, sub, check_input=True):
@@ -270,12 +261,12 @@ class T_extending(unittest.TestCase):
                 if (!PyFloat_Check(py_%(name)s)) {
                     PyErr_SetString(PyExc_TypeError, "expected a float");
                     %(fail)s
-                }""" % dict(name = name, fail = sub['fail'])
+                }""" % dict(name=name, fail=sub['fail'])
             else:
                 pre = ""
             return pre + """
             %(name)s = PyFloat_AsDouble(py_%(name)s);
-            """ % dict(name = name, fail = sub['fail'])
+            """ % dict(name=name, fail=sub['fail'])
         double.c_extract = c_extract
 
         def c_sync( name, sub):
@@ -287,13 +278,12 @@ class T_extending(unittest.TestCase):
                 Py_XINCREF(Py_None);
                 py_%(name)s = Py_None;
             }
-            """ % dict(name = name)
+            """ % dict(name=name)
         double.c_sync = c_sync
 
         def c_cleanup(name, sub):
             return ""
         double.c_cleanup = c_cleanup
-
 
         from theano import function
 
@@ -302,7 +292,6 @@ class T_extending(unittest.TestCase):
         b = mul(a, z)
         f = function([x, y, z], b)
         assert f(1.0, 2.0, 3.0) == 9.0
-
 
         from theano import gof
         class Double(gof.Type):
@@ -321,12 +310,12 @@ class T_extending(unittest.TestCase):
             def c_declare(self, name, sub, check_input=True):
                 return """
                 double %(name)s;
-                """ % dict(name = name)
+                """ % dict(name=name)
 
             def c_init(self, name, sub):
                 return """
                 %(name)s = 0.0;
-                """ % dict(name = name)
+                """ % dict(name=name)
 
             def c_extract(self, name, sub, check_input=True):
                 if(check_input):
@@ -351,7 +340,7 @@ class T_extending(unittest.TestCase):
                     Py_XINCREF(Py_None);
                     py_%(name)s = Py_None;
                 }
-                """ % dict(name = name)
+                """ % dict(name=name)
 
             def c_cleanup(self, name, sub):
                 return ""
@@ -363,7 +352,6 @@ class T_extending(unittest.TestCase):
 
         double = Double()
 
-
         def c_code(node, name, input_names, output_names, sub):
             x_name, y_name = input_names[0], input_names[1]
             output_name = output_names[0]
@@ -371,7 +359,6 @@ class T_extending(unittest.TestCase):
             %(output_name)s = %(x_name)s * %(y_name)s;
             """ % locals()
         mul.c_code = c_code
-
 
         from theano import gof
         class BinaryDoubleOp(gof.Op):
@@ -403,7 +390,6 @@ class T_extending(unittest.TestCase):
                 z, = out
                 return self.ccode % locals()
 
-
         add = BinaryDoubleOp(name='add',
                             fn=lambda x, y: x + y,
                             ccode="%(z)s = %(x)s + %(y)s;")
@@ -419,7 +405,6 @@ class T_extending(unittest.TestCase):
         div = BinaryDoubleOp(name='div',
                             fn=lambda x, y: x / y,
                             ccode="%(z)s = %(x)s / %(y)s;")
-
 
         from theano.gof import toolbox
 
@@ -461,7 +446,7 @@ class T_extending(unittest.TestCase):
                 # This should be needed for the EquilibriumOptimizer
                 # but it isn't now
                 # TODO: do this and explain it
-                return [] # that's not what you should do
+                return []  # that's not what you should do
 
         local_simplify = LocalSimplify()
 
@@ -526,7 +511,7 @@ class T_introduction(unittest.TestCase):
 
         # convert the expression into a callable object that takes (a,b)
         # values as input and computes a value for c
-        f = theano.function([a,b], c)
+        f = theano.function([a, b], c)
 
         # bind 1.5 to 'a', 2.5 to 'b', and evaluate 'c'
         assert 4.0 == f(1.5, 2.5)
@@ -537,7 +522,6 @@ class T_adding(unittest.TestCase):
     # http://deeplearning.net/software/theano/tutorial/adding.html
     # Theano/doc/tutorial/adding.txt
     # Any change you do here also add it to the tutorial !
-
 
     def test_adding_1(self):
         import theano.tensor as T
@@ -555,12 +539,11 @@ class T_adding(unittest.TestCase):
         z = x + y
         f = function([x, y], z)
         assert numpy.all(f([[1, 2], [3, 4]], [[10, 20], [30, 40]]) ==
-                         numpy.array([[ 11.,  22.],[ 33.,  44.]]))
+                         numpy.array([[ 11.,  22.], [ 33.,  44.]]))
 
         assert numpy.all(f(numpy.array([[1, 2], [3, 4]])
                            , numpy.array([[10, 20], [30, 40]])) ==
                          numpy.array([[ 11.,  22.], [ 33.,  44.]]))
-
 
 
 class T_examples(unittest.TestCase):
@@ -576,9 +559,6 @@ class T_examples(unittest.TestCase):
         assert numpy.allclose( logistic([[0, 1], [-1, -2]]),
                          array([[ 0.5       ,  0.73105858],
                                 [ 0.26894142,  0.11920292]]))
-
-
-
 
     def test_examples_2(self):
 
@@ -596,9 +576,9 @@ class T_examples(unittest.TestCase):
         diff_squared = diff**2
         f = function([a, b], [diff, abs_diff, diff_squared])
         elems = f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
-        assert numpy.all( elems[0] == array([[ 1.,  0.],[-1., -2.]]))
-        assert numpy.all( elems[1] == array([[ 1.,  0.],[ 1.,  2.]]))
-        assert numpy.all( elems[2] == array([[ 1.,  0.],[ 1.,  4.]]))
+        assert numpy.all( elems[0] == array([[ 1.,  0.], [-1., -2.]]))
+        assert numpy.all( elems[1] == array([[ 1.,  0.], [ 1.,  2.]]))
+        assert numpy.all( elems[2] == array([[ 1.,  0.], [ 1.,  4.]]))
 
     def test_examples_4(self):
         from theano import pp
@@ -611,7 +591,6 @@ class T_examples(unittest.TestCase):
         assert f(4)    ==  array(8.0)
         assert f(94.2) == array(188.40000000000001)
 
-
     def test_examples_5(self):
 
         x = T.dmatrix('x')
@@ -622,7 +601,6 @@ class T_examples(unittest.TestCase):
                          array([[ 0.25      ,  0.19661193],
                                [ 0.19661193,  0.10499359]]))
 
-
     def test_examples_6(self):
 
         from theano import Param
@@ -631,7 +609,6 @@ class T_examples(unittest.TestCase):
         f = function([x, Param(y, default=1)], z)
         assert f(33)    == array(34.0)
         assert f(33, 2) == array(35.0)
-
 
     def test_examples_7(self):
         from theano import Param
@@ -643,7 +620,6 @@ class T_examples(unittest.TestCase):
         assert f(33, 0, 1)             == array(33.0)
         assert f(33, w_by_name=1)      == array(34.0)
         assert f(33, w_by_name=1, y=0) == array(33.0)
-
 
     def test_examples_8(self):
         from theano import shared
@@ -676,17 +652,15 @@ class T_examples(unittest.TestCase):
         assert skip_shared(1, 3)       == array(7)
         assert state.get_value()       == array(0)
 
-
     def test_examples_9(self):
 
         from theano.tensor.shared_randomstreams import RandomStreams
         srng = RandomStreams(seed=234)
-        rv_u = srng.uniform((2,2))
-        rv_n = srng.normal((2,2))
+        rv_u = srng.uniform((2, 2))
+        rv_n = srng.normal((2, 2))
         f = function([], rv_u)
         g = function([], rv_n, no_default_updates=True)    #Not updating rv_n.rng
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
-
 
         f_val0 = f()
         f_val1 = f()  #different numbers from f_val0
@@ -700,7 +674,7 @@ class T_examples(unittest.TestCase):
         assert numpy.all(g_val0 != f_val1)
 
         nearly_zeros = function([], rv_u + rv_u - 2 * rv_u)
-        assert numpy.allclose(nearly_zeros(), [[0.,0.],[0.,0.]])
+        assert numpy.allclose(nearly_zeros(), [[0., 0.], [0., 0.]])
 
         rng_val = rv_u.rng.get_value(borrow=True)   # Get the rng for rv_u
         rng_val.seed(89234)                         # seeds the generator
@@ -731,7 +705,7 @@ class T_examples(unittest.TestCase):
         g2 = Graph(seed=987)
         f2 = theano.function([], g2.y)
 
-        #print 'By default, the two functions are out of sync.'
+        # print 'By default, the two functions are out of sync.'
         v1 =  f1()
         v2 =  f2()
 
@@ -741,7 +715,7 @@ class T_examples(unittest.TestCase):
             for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
                 su2[0].set_value(su1[0].get_value())
 
-        #print 'We now copy the state of the theano random number generators.'
+        # print 'We now copy the state of the theano random number generators.'
         copy_random_state(g1, g2)
         v3 = f1()
         v4 = f2()
@@ -775,15 +749,15 @@ class T_examples(unittest.TestCase):
         # Construct Theano expression graph
         p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
         prediction = p_1 > 0.5                    # The prediction thresholded
-        xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
-        cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
+        xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1)  # Cross-entropy loss function
+        cost = xent.mean() + 0.01 * (w ** 2).sum()  # The cost to minimize
         gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
                                                   # (we shall return to this in a
                                                   # following section of this tutorial)
 
         # Compile
         train = theano.function(
-            inputs=[x,y],
+            inputs=[x, y],
             outputs=[prediction, xent],
             updates=((w, w - 0.1 * gw), (b, b - 0.1 * gb)))
         predict = theano.function(inputs=[x], outputs=prediction)
@@ -817,12 +791,11 @@ class T_aliasing(unittest.TestCase):
         s_false   = theano.shared(np_array, borrow=False)
         s_true    = theano.shared(np_array, borrow=True)
 
-        np_array += 1 # now it is an array of 2.0 s
+        np_array += 1  # now it is an array of 2.0 s
 
         assert numpy.all(s_default.get_value() == array([1.0, 1.0]))
         assert numpy.all(s_false.get_value()   == array([1.0, 1.0]))
         assert numpy.all(s_true.get_value()    == array([2.0, 2.0]))
-
 
     def test_aliasing_2(self):
 
@@ -831,18 +804,15 @@ class T_aliasing(unittest.TestCase):
 
         s = theano.shared(np_array)
 
-        v_false = s.get_value(borrow=False) # N.B. borrow default is False
+        v_false = s.get_value(borrow=False)  # N.B. borrow default is False
         v_true = s.get_value(borrow=True)
 
         v_internal = s.get_value(borrow=True, return_internal_type=True)
-
 
         s.set_value(
             # some_inplace_fn
             s.get_value(borrow=True).__imul__(2),
             borrow=True)
-
-
 
     def test_aliasing_3(self):
 
@@ -884,7 +854,6 @@ class T_loading_and_saving(unittest.TestCase):
                 f = open('obj.save', 'wb')
                 cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
                 f.close()
-
 
                 f = open('obj.save', 'rb')
                 loaded_obj = cPickle.load(f)
@@ -959,7 +928,7 @@ class T_using_gpu(unittest.TestCase):
         else:
             print 'Used the gpu'
         if theano.config.device.find('gpu') > -1:
-            assert not numpy.any( [isinstance(x.op,T.Elemwise) for x in f.maker.fgraph.toposort()])
+            assert not numpy.any( [isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
             assert numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
@@ -1162,7 +1131,7 @@ class T_fibby(unittest.TestCase):
         # Test it does not apply when not needed
         x = T.dvector()
         f = function([x], fibby(x))
-        #theano.printing.debugprint(f)
+        # theano.printing.debugprint(f)
 
         # We call the function to make sure it runs.
         # If you run in DebugMode, it will compare the C and Python outputs.
@@ -1173,7 +1142,7 @@ class T_fibby(unittest.TestCase):
 
         # Test that the optimization gets applied.
         f_zero = function([], fibby(T.zeros([5])))
-        #theano.printing.debugprint(f_zero)
+        # theano.printing.debugprint(f_zero)
 
         # If you run in DebugMode, it will compare the output before
         # and after the optimization.
@@ -1344,7 +1313,7 @@ class T_scan(unittest.TestCase):
     def test_trace(self):
         # define tensor variable
         X = T.matrix("X")
-        results, updates = theano.scan(lambda i, j, t_f: T.cast(X[i,j] +
+        results, updates = theano.scan(lambda i, j, t_f: T.cast(X[i, j] +
                                                                 t_f, theano.config.floatX),
                                        sequences=[T.arange(X.shape[0]),
                                                   T.arange(X.shape[1])],
@@ -1372,7 +1341,7 @@ class T_scan(unittest.TestCase):
         n_sym = T.iscalar("n_sym")
 
         results, updates = theano.scan(
-            lambda x_tm2,x_tm1: T.dot(x_tm2,U) + T.dot(x_tm1,V) + T.tanh(T.dot(x_tm1,W) + b_sym),
+            lambda x_tm2, x_tm1: T.dot(x_tm2, U) + T.dot(x_tm1, V) + T.tanh(T.dot(x_tm1, W) + b_sym),
             n_steps=n_sym,
             outputs_info=[dict(initial=X, taps=[-2, -1])])
 
@@ -1452,9 +1421,9 @@ class T_scan(unittest.TestCase):
         compute_with_bnoise = theano.function(inputs=[X, W, b_sym],
                                               outputs=[results],
                                               updates=updates,
-                                              allow_input_downcast = True)
-        x = numpy.eye(10,2)
-        w = numpy.ones((2,2))
+                                              allow_input_downcast=True)
+        x = numpy.eye(10, 2)
+        w = numpy.ones((2, 2))
         b = numpy.ones((2))
 
         print compute_with_bnoise(x, w, b)
@@ -1476,8 +1445,8 @@ class T_typedlist(unittest.TestCase):
         output = f([[1, 2, 3], [4, 5]], [2])
 
         # Validate ouput is as expected
-        expected_output = [numpy.array([1,2,3], dtype="float32"),
-                           numpy.array([4,5], dtype="float32"),
+        expected_output = [numpy.array([1, 2, 3], dtype="float32"),
+                           numpy.array([4, 5], dtype="float32"),
                            numpy.array([2], dtype="float32")]
 
         assert len(output) == len(expected_output)

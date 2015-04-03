@@ -5,7 +5,7 @@ import sys
 from theano.compat import PY3
 from theano.gof.compilelock import get_lock, release_lock
 from theano import config
-import cmodule 
+import cmodule
 
 # TODO These two lines may be removed in the future, when we are 100% sure
 # noone has an old cutils_ext.so lying around anymore.
@@ -181,6 +181,7 @@ fail:
 """)
 
     return code
+
 
 def compile_cutils():
     """Do just the compilation of cutils_ext"""

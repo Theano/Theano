@@ -24,6 +24,7 @@ from theano.gof import Apply
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
+from theano.tensor.type import values_eq_approx_remove_nan
 
 
 ############
@@ -106,12 +107,12 @@ class SoftmaxWithBias(gof.Op):
         # this implementation was lifted from
         # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
 
-        #TODO: put this into a templated function, in the support code
-        #TODO: declare the max of each row as an Op output
+        # TODO: put this into a templated function, in the support code
+        # TODO: declare the max of each row as an Op output
 
-        #TODO: set error messages for failures in this code
+        # TODO: set error messages for failures in this code
 
-        #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
+        # TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
         npy_intp* Nx = PyArray_DIMS(%(x)s);
         npy_intp Sx = 0;
@@ -298,7 +299,7 @@ class SoftmaxGrad(gof.Op):
     def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
         dx = numpy.zeros_like(sm)
-        #dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
+        # dx[i,j] = - (\sum_k dy[i,k] sm[i,k]) sm[i,j] + dy[i,j] sm[i,j]
         for i in xrange(sm.shape[0]):
             dy_times_sm_i = dy[i] * sm[i]
             dx[i] = dy_times_sm_i - sum(dy_times_sm_i) * sm[i]
@@ -441,12 +442,12 @@ class Softmax(gof.Op):
         # this implementation was lifted from
         # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
 
-        #TODO: put this into a templated function, in the support code
-        #TODO: declare the max of each row as an Op output
+        # TODO: put this into a templated function, in the support code
+        # TODO: declare the max of each row as an Op output
 
-        #TODO: set error messages for failures in this code
+        # TODO: set error messages for failures in this code
 
-        #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
+        # TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         init_decl = """
         npy_intp* Nx = PyArray_DIMS(%(x)s);
         npy_intp Sx1 = 0;
@@ -590,9 +591,9 @@ def local_softmax_with_bias(node):
             for x_in in x.owner.inputs:
                 if list(x_in.type.broadcastable) == [True, False]:
                     # print isinstance(x_in.owner.op,
-                    #tensor.DimShuffle) since specialization comes
-                    #relatively late in optimization, we don't want to
-                    #put in extra DimShuffles un-necessarily.
+                    # tensor.DimShuffle) since specialization comes
+                    # relatively late in optimization, we don't want to
+                    # put in extra DimShuffles un-necessarily.
                     if (x_in.owner and isinstance(x_in.owner.op,
                                                  tensor.DimShuffle)
                  and list(x_in.owner.inputs[0].type.broadcastable) == [False]):
@@ -614,7 +615,7 @@ def local_softmax_with_bias(node):
             assert non_vectors  # not empty
 
             if vectors:
-                #we're in business...
+                # we're in business...
                 if len(vectors) > 1:
                     vector_sum = tensor.add(*vectors)
                 else:
@@ -628,19 +629,19 @@ def local_softmax_with_bias(node):
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
                 except Exception:
-                    #if our arguments have the wrong types, then
-                    #forget about it
+                    # if our arguments have the wrong types, then
+                    # forget about it
                     return
 
                 if sm_bias.type == node.outputs[0].type:
-                    #This condition is not always true. See the test
-                    #nnet/tests/test_nnet.py:T_SoftmaxWithBias.test_broadcast
+                    # This condition is not always true. See the test
+                    # nnet/tests/test_nnet.py:T_SoftmaxWithBias.test_broadcast
                     return [sm_bias]
 
 
 def softmax_simplifier(numerators, denominators):
     for numerator in list(numerators):
-        #TODO: a single softmax'd vector??
+        # TODO: a single softmax'd vector??
         if not numerator.type.dtype.startswith('float'):
             continue
 
@@ -660,10 +661,10 @@ def softmax_simplifier(numerators, denominators):
                     z = denominator.owner.inputs[0]
                           # thing getting dimshuffled
                     if z.owner and isinstance(z.owner.op, tensor.Sum):
-                        #print 'ASDF', denominator.owner.op.new_order
-                        #print z.owner.op.axis
+                        # print 'ASDF', denominator.owner.op.new_order
+                        # print z.owner.op.axis
                         if z.owner.op.axis == (1,):
-                            #print "almost there.. softmax", x, z.owner.inputs[0]
+                            # print "almost there.. softmax", x, z.owner.inputs[0]
                             if z.owner.inputs[0] is numerator:
                                 matching_denom = denominator
                                 break
@@ -680,9 +681,9 @@ if 0:
     @gof.local_optimizer([tensor.add])
     def local_softmax_grad(node):
         '''dy*sm - DimShuffle{0,'x'}(sum{1}(dy*sm))*sm -> softmax_grad(dy,sm)'''
-        #TODO what if the signs are changed?
-        #TODO and if a scalar is distributed before each of the terms?
-        #TODO 'dy' could also be a product
+        # TODO what if the signs are changed?
+        # TODO and if a scalar is distributed before each of the terms?
+        # TODO 'dy' could also be a product
         if node.op == tensor.add and node.out.ndim == 2:
             add_inputs = node.inputs
             # Trying to locate two nodes in the sum:
@@ -704,7 +705,7 @@ if 0:
                 else:
                     other_terms.append(add_in)
             if prod_term is None:
-                #print 'no prod_term'
+                # print 'no prod_term'
                 return
             assert len(other_terms) == len(add_inputs) - 1
 
@@ -717,7 +718,7 @@ if 0:
                         mul2_inputs = neg_input.owner.inputs
                         if len(mul2_inputs) != 2:
                             rest.append(add_in)
-                            #print 'len(mul2_inputs) =', len(mul2_inputs)
+                            # print 'len(mul2_inputs) =', len(mul2_inputs)
                             continue
                         # Try and find DimShuffle(Sum)
                         maybe_ds = None
@@ -730,8 +731,8 @@ if 0:
                             maybe_ds.ndim != 2 or
                             maybe_sm.ndim != 2):
                             rest.append(add_in)
-                            #print 'maybe_ds =', maybe_ds
-                            #if maybe_ds:
+                            # print 'maybe_ds =', maybe_ds
+                            # if maybe_ds:
                             #    print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
                             continue
 
@@ -741,8 +742,8 @@ if 0:
                             maybe_dy = mul_inputs[0]
                         else:
                             rest.append(add_in)
-                            #print 'maybe_sm, maybe_dy =', maybe_sm, maybe_dy
-                            #print 'mul_inputs =', mul_inputs
+                            # print 'maybe_sm, maybe_dy =', maybe_sm, maybe_dy
+                            # print 'mul_inputs =', mul_inputs
                             continue
 
                         ds_order = maybe_ds.owner.op.new_order
@@ -757,26 +758,26 @@ if 0:
                             (axis != (1,)) or
                             (sum_input is not prod_term)):
                             rest.append(add_in)
-                            #print 'ds_order =', ds_order
-                            #print 'axis =', axis
-                            #if axis is not None:
+                            # print 'ds_order =', ds_order
+                            # print 'axis =', axis
+                            # if axis is not None:
                             #    print 'sum_input =', sum_input, ', prod_term =', prod_term
-                            #else:
+                            # else:
                             #    print 'ds_input.owner =', ds_input.owner
-                            #print 'add_in =', add_in
+                            # print 'add_in =', add_in
                             continue
 
                         ds_term = add_in
 
                     else:
-                        #print 'neg_input.owner =', neg_input.owner
+                        # print 'neg_input.owner =', neg_input.owner
                         rest.append(add_in)
                 else:
-                    #print 'add_in.owner =', add_in.owner
+                    # print 'add_in.owner =', add_in.owner
                     rest.append(add_in)
 
             if ds_term is None:
-                #print 'no ds_term'
+                # print 'no ds_term'
                 return
             if len(rest) == 0:
                 return [softmax_grad(maybe_dy, maybe_sm)]
@@ -876,19 +877,19 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             dtype)  # nll(y | softmax(x))
         am = numpy.zeros_like(y_idx)
         for i in xrange(sm.shape[0]):
-            #add the bias vector to the i'th row of x
+            # add the bias vector to the i'th row of x
             row = x[i] + b
 
-            #get the maximum value of i'th row for numerically safe
+            # get the maximum value of i'th row for numerically safe
             #softmax / nll
             am[i] = numpy.argmax(row)
             m = row[am[i]]
 
-            #compute the unnormalized softmax, and normalization constant
+            # compute the unnormalized softmax, and normalization constant
             sm[i] = numpy.exp(row - m)
             sum_j = numpy.sum(sm[i])  # sum_j(exp(x[j] - m))
 
-            #normalized our softmax
+            # normalized our softmax
             sm[i] *= 1.0 / sum_j
 
             # store the nll
@@ -955,12 +956,12 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         # this implementation was lifted from
         # /u/bergstrj/cvs/bergstrj/src/feb07/nn.cxx
 
-        #TODO: put this into a templated function, in the support code
-        #TODO: declare the max of each row as an Op output
+        # TODO: put this into a templated function, in the support code
+        # TODO: declare the max of each row as an Op output
 
-        #TODO: set error messages for failures in this code
+        # TODO: set error messages for failures in this code
 
-        #TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
+        # TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
         (init_decl, begin_row_loop, inside_row_loop, end_row_loop) = \
                 SoftmaxWithBias.c_code_template(dtype)
         return (init_decl,
@@ -1329,8 +1330,8 @@ class CrossentropyCategorical1Hot(gof.Op):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
-#Enabling this infer_shape method make 2 tests fail:
-#theano/tensor/nnet/tests/test_nnet.py:T_CrossentropyCategorical1Hot.
+# Enabling this infer_shape method make 2 tests fail:
+# theano/tensor/nnet/tests/test_nnet.py:T_CrossentropyCategorical1Hot.
 #     {test_softmax_grad_optimizations,test_softmax_grad_optimizations_vector}
 # This is caused by the local_fill_to_alloc that call broadcast_like
 # that look into the shape feature and return a Rebroadcast instead of an alloc.
@@ -1459,7 +1460,7 @@ def local_argmax_pushdown(node):
         node.inputs[0].owner and len(node.outputs[0].clients) == 0):
         x_max, x_argmax = node.outputs
         x, axis = node.inputs
-        #TODO: Make a list/set of monotonic ops...
+        # TODO: Make a list/set of monotonic ops...
         if x.owner and x.owner.op in (softmax, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
@@ -1712,7 +1713,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
                          maybe_rows is rows and
                          maybe_labels is labels)):
                     return
-                #else: OK
+                # else: OK
             else:
                 return
         else:
@@ -1932,7 +1933,7 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
         return '%s{%s}' % (self.__class__.__name__, self.val)
 
     def make_node(self, mat):
-        #check type of input
+        # check type of input
         x = tensor.as_tensor_variable(mat)
         if not mat.type.broadcastable == (False, False):
             raise TypeError("Expected a matrix as input")
@@ -1984,7 +1985,7 @@ class Prepend_scalar_to_each_row(gof.Op):
         return self.__class__.__name__
 
     def make_node(self, val, mat):
-        #check type of input
+        # check type of input
         x = tensor.as_tensor_variable(mat)
         if isinstance(val, float):
             val = scalar.constant(val)
@@ -2030,14 +2031,14 @@ prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
 
 
-#numerically stabilize log softmax (X)
+# numerically stabilize log softmax (X)
 # as  X-X.max(axis=1).dimshuffle(0,'x') - log(exp(X-X.max(axis=1).dimshuffle(0,'x')).sum(axis=1)).dimshuffle(0,'x)
 def make_out_pattern(X):
     stabilized_X = X - X.max(axis=1).dimshuffle(0, 'x')
     out_var = stabilized_X - tensor.log(tensor.exp(stabilized_X).sum(
         axis=1)).dimshuffle(0, 'x')
-    #tell DEBUG_MODE that it's OK if the original graph produced NaN and the optimized graph does not
-    out_var.values_eq_approx = out_var.type.values_eq_approx_remove_nan
+    # tell DEBUG_MODE that it's OK if the original graph produced NaN and the optimized graph does not
+    out_var.values_eq_approx = values_eq_approx_remove_nan
     return out_var
 
 
@@ -2045,7 +2046,7 @@ local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
                                    out_pattern=(make_out_pattern, 'x'),
                                    allow_multiple_clients=True)
 
-#don't do register_stabilize, this is to make local_log_softmax run
-#only after another more specific optimization that stabilizes cross entropy
+# don't do register_stabilize, this is to make local_log_softmax run
+# only after another more specific optimization that stabilizes cross entropy
 #opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
 opt.register_specialize(local_log_softmax, 'fast_compile_gpu', name='local_log_softmax')

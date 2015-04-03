@@ -15,6 +15,8 @@ import json
 fake_username = 'ipython_tools'
 
 token = None
+
+
 def get_auth_token():
     global token
     
@@ -47,13 +49,16 @@ def get_auth_token():
     keyring.set_password('github', fake_username, token)
     return token
 
+
 def make_auth_header():
     return {'Authorization': 'token ' + get_auth_token()}
+
 
 def post_issue_comment(project, num, body):
     url = 'https://api.github.com/repos/{project}/issues/{num}/comments'.format(project=project, num=num)
     payload = json.dumps({'body': body})
     r = requests.post(url, data=payload, headers=make_auth_header())
+
 
 def post_gist(content, description='', filename='file', auth=False):
     """Post some text to a Gist, and return the URL."""
@@ -73,12 +78,13 @@ def post_gist(content, description='', filename='file', auth=False):
     response_data = json.loads(response.text)
     return response_data['html_url']
     
+
 def get_pull_request(project, num, github_api=3):
     """get pull request info  by number
 
     github_api : version of github api to use
     """
-    if github_api==2 :
+    if github_api == 2 :
         url = "http://github.com/api/v2/json/pulls/{project}/{num}".format(project=project, num=num)
     elif github_api == 3:
         url = "https://api.github.com/repos/{project}/pulls/{num}".format(project=project, num=num)
@@ -87,6 +93,7 @@ def get_pull_request(project, num, github_api=3):
     if github_api == 2 :
         return json.loads(response.text)['pull']
     return json.loads(response.text)
+
 
 def get_pulls_list(project, github_api=3):
     """get pull request list

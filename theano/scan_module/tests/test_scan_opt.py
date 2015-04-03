@@ -272,6 +272,7 @@ class TestPushOutScanOutputDot(object):
         utt.assert_allclose(output_opt[0], output_no_opt[0])
         utt.assert_allclose(output_opt[1], output_no_opt[1])
 
+
 class TestPushOutSumOfDot():
     """
     Test case for the PushOutScanOutput optimizer in the case where the scan
@@ -332,7 +333,6 @@ class TestPushOutSumOfDot():
             res_h = z * new_h + (1 - z) * h
             return res_h
 
-
         # Compile the function twice, once with the optimization and once
         # without
         opt_mode = mode.including("scan")
@@ -384,7 +384,7 @@ class TestPushOutSumOfDot():
             dot_output = T.dot(temp1, temp2)
             return previous_output + dot_output
 
-        init = T.as_tensor_variable(numpy.random.normal(size=(3,7)))
+        init = T.as_tensor_variable(numpy.random.normal(size=(3, 7)))
 
         # Compile the function twice, once with the optimization and once
         # without

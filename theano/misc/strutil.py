@@ -1,5 +1,6 @@
 import warnings
 
+
 def render_string(string, sub):
     """
     string: a string, containing formatting instructions
@@ -25,14 +26,10 @@ def render_string(string, sub):
             except Exception, F:
                 if str(F) == str(E):
                     raise Exception(string[0:i]+"<<<< caused exception "+str(F))
-            i+=1
+            i += 1
         assert False
     return finalCode
 
-def renderString(string, dict):
-    warnings.warn("renderString is deprecated. It is now called render_string",
-            stacklevel = 2)
-    return render_string(string, dict)
 
 def pretty_format(string):
     lines = string.split('\n')
@@ -49,12 +46,12 @@ def pretty_format(string):
         indent += lines[i].count('{')
     #
 
-
     rval = '\n'.join(lines)
 
     return rval
 
+
 def strip_leading_white_space(line):
-    while len(line) >0 and (line[0]==' ' or line[0]=='\t'):
+    while len(line) > 0 and (line[0] == ' ' or line[0] == '\t'):
         line = line[1:]
     return line

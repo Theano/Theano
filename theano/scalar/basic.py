@@ -25,7 +25,7 @@ from theano.compat import PY3
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
-from theano.gof.python25 import partial, all, any
+from theano.compat.python2x import partial, all, any
 from theano.configparser import config
 
 from theano.gradient import DisconnectedType
@@ -127,10 +127,10 @@ def constant(x):
         assert x_ is not None
         return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
     if isinstance(x, builtin_complex):
-        #TODO: We have added the complex type, so this should be tested
+        # TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
     raise TypeError(x)
-    #return ScalarConstant(float64, float(x))
+    # return ScalarConstant(float64, float(x))
 
 
 class Scalar(Type):
@@ -523,19 +523,19 @@ class _scalar_py_operators:
     dtype = property(lambda self: self.type.dtype)
     """ The dtype of this scalar.  """
 
-    #UNARY
+    # UNARY
     def __abs__(self):
         return abs_(self)
 
     def __neg__(self):
         return neg(self)
 
-    #CASTS
+    # CASTS
     #def __int__(self): return AsInt(self).out
     #def __float__(self): return AsDouble(self).out
     #def __complex__(self): return AsComplex(self).out
 
-    #BITWISE
+    # BITWISE
     def __invert__(self):
         return invert(self)
 
@@ -557,7 +557,7 @@ class _scalar_py_operators:
     def __rxor__(self, other):
         return xor(other, self)
 
-    #COMPARISONS
+    # COMPARISONS
     def __lt__(self, other):
         return lt(self, other)
 
@@ -718,7 +718,7 @@ class transfer_type(gof.utils.object2):
             else:
                 retval += [types[i]]
         return retval
-        #return [upcast if i is None else types[i] for i in self.transfer]
+        # return [upcast if i is None else types[i] for i in self.transfer]
 
     def __eq__(self, other):
         return type(self) == type(other) and self.transfer == other.transfer
@@ -1142,7 +1142,7 @@ class InRange(LogicalComparison):
         else:
             cmp1 = '>='
 
-        #backport
+        # backport
         #cmp1 = '>' if self.openlow else '>='
 
         if self.openhi:
@@ -1150,7 +1150,7 @@ class InRange(LogicalComparison):
         else:
             cmp2 = '<='
 
-        #backport
+        # backport
         #cmp2 = '<' if self.openhi else '<='
         return ("%(z)s = %(x)s %(cmp1)s %(low)s &&"
                 " %(x)s %(cmp2)s %(hi)s;" % locals())
@@ -1170,8 +1170,8 @@ class Switch(ScalarOp):
         else:
             return iff
 
-            #backport
-            #return ift if cond else iff
+            # backport
+            # return ift if cond else iff
     def c_code(self, node, name, (cond, ift, iff), (z, ), sub):
         return "%(z)s = %(cond)s ? %(ift)s : %(iff)s;" % locals()
 
@@ -1836,10 +1836,10 @@ class Second(BinaryScalarOp):
             # x is disconnected because the elements of x are not used
             return DisconnectedType()(), gz
         else:
-            #when y is discrete, we assume the function can be extended
-            #to deal with real-valued inputs by rounding them to the
-            #nearest integer. f(x+eps) thus equals f(x) so the gradient
-            #is zero, not disconnected or undefined
+            # when y is discrete, we assume the function can be extended
+            # to deal with real-valued inputs by rounding them to the
+            # nearest integer. f(x+eps) thus equals f(x) so the gradient
+            # is zero, not disconnected or undefined
             return DisconnectedType()(), y.zeros_like()
 
 second = Second(transfer_type(1), name='second')
@@ -1856,11 +1856,11 @@ class Identity(UnaryScalarOp):
         if x.type in continuous_types:
             return gz,
         else:
-            return None,
+            return x.zeros_like(dtype=theano.config.floatX),
 identity = Identity(same_out, name='identity')
 
 
-#### CASTING OPERATIONS
+# CASTING OPERATIONS
 class Cast(UnaryScalarOp):
     def __init__(self, o_type, name=None):
         if not isinstance(o_type, Scalar):
@@ -1971,7 +1971,7 @@ abs_ = Abs(same_out)
 
 class Sgn(UnaryScalarOp):
     def impl(self, x):
-        #casting to output type is handled by filter
+        # casting to output type is handled by filter
         return numpy.sign(x)
 
     def grad(self, (x, ), (gz, )):
@@ -1984,8 +1984,8 @@ class Sgn(UnaryScalarOp):
         return [rval]
 
     def c_code(self, node, name, (x, ), (z, ), sub):
-        #casting is done by compiler
-        #TODO: use copysign
+        # casting is done by compiler
+        # TODO: use copysign
         type = node.inputs[0].type
         if type in float_types:
             return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
@@ -2192,6 +2192,7 @@ pprint.assign(int_div, printing.OperatorPrinter('//', -1, 'left'))
 pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 pprint.assign(mod, printing.OperatorPrinter('%', -1, 'left'))
 
+
 class Inv(UnaryScalarOp):
     """ multiplicative inverse. Also called reciprocal"""
     def impl(self, x):
@@ -2240,9 +2241,9 @@ class Log(UnaryScalarOp):
         return gz / x,
 
     def c_code(self, node, name, (x,), (z,), sub):
-        #todo: the version using log2 seems to be very slightly faster
+        # todo: the version using log2 seems to be very slightly faster
         # on some machines for some reason, check if it's worth switching
-        #return "%(z)s = log2(%(x)s) * 0.69314718055994529;" % locals()
+        # return "%(z)s = log2(%(x)s) * 0.69314718055994529;" % locals()
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = log(%(x)s);" % locals()
@@ -3129,9 +3130,9 @@ class Composite(ScalarOp):
         self.name = rval
 
     def init_fgraph(self):
-        #The clone done by FunctionGraph is needed as we don't want
-        #the fgraph to be set to the variable as we need to pickle
-        #them for the cache of c module to work.
+        # The clone done by FunctionGraph is needed as we don't want
+        # the fgraph to be set to the variable as we need to pickle
+        # them for the cache of c module to work.
         fgraph = FunctionGraph(self.inputs, self.outputs)
         gof.MergeOptimizer().optimize(fgraph)
         for node in fgraph.apply_nodes:
@@ -3162,7 +3163,7 @@ class Composite(ScalarOp):
             res = theano.compile.rebuild_collect_shared(
                 inputs=inputs,
                 outputs=outputs[0].owner.inputs,
-                copy_inputs_over=False) #  Clone also the inputs
+                copy_inputs_over=False)  # Clone also the inputs
             # 2. We continue this partial clone with the graph in
             # the inner Composite
             res2 = theano.compile.rebuild_collect_shared(
@@ -3175,7 +3176,7 @@ class Composite(ScalarOp):
             assert res[0] != inputs
             inputs, outputs = res[0], res2[1]
             # Next assert comment just for speed
-            #assert not any([isinstance(node.op, Composite) for node in
+            # assert not any([isinstance(node.op, Composite) for node in
             #                theano.gof.graph.ops(inputs, outputs)])
 
         self.inputs = copy(inputs)
@@ -3235,8 +3236,8 @@ class Composite(ScalarOp):
                  **sub)
         d['nodename'] = nodename
         if not 'id' in sub:
-            #The use of a dummy id is safe as the code is in a separate block.
-            #It won't generate conflicting variable name.
+            # The use of a dummy id is safe as the code is in a separate block.
+            # It won't generate conflicting variable name.
             d['id'] = '_DUMMY_ID_'
 
         return self._c_code % d

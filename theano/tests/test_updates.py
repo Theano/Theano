@@ -11,7 +11,7 @@ class test_ifelse(unittest.TestCase):
         self.assertRaises(TypeError, OrderedUpdates, dict(d=3))
 
         sv = theano.shared('asdf')
-        OrderedUpdates({sv:3})
+        OrderedUpdates({sv: 3})
 
     def test_updates_setitem(self):
         ok = True

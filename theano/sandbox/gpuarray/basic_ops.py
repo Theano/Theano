@@ -9,7 +9,8 @@ from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 from theano.tensor.basic import Alloc, Join, Split
 
-from theano.gof.python25 import any
+from theano.gof import HideC
+from theano.compat.python2x import any
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 
@@ -19,7 +20,7 @@ try:
 except ImportError:
     pass
 
-from type import GpuArrayType
+from .type import GpuArrayType
 
 
 def as_gpuarray_variable(x):
@@ -41,37 +42,6 @@ def as_gpuarray_variable(x):
 
 def as_gpuarray(x):
     return gpuarray.array(x, copy=False)
-
-
-class HideC(object):
-    def __hide(*args):
-        raise MethodNotDefined()
-
-    c_code = __hide
-    c_code_cleanup = __hide
-
-    c_headers = __hide
-    c_header_dirs = __hide
-    c_libraries = __hide
-    c_lib_dirs = __hide
-
-    c_support_code = __hide
-    c_support_code_apply = __hide
-
-    c_compile_args = __hide
-    c_no_compile_args = __hide
-    c_init_code = __hide
-    c_init_code_apply = __hide
-
-    c_init_code_struct = __hide
-    c_support_code_struct = __hide
-    c_cleanup_code_struct = __hide
-
-    def c_code_cache_version(self):
-        return ()
-
-    def c_code_cache_version_apply(self, node):
-        return self.c_code_cache_version()
 
 
 class Kernel(object):
@@ -206,7 +176,7 @@ class GpuKernelBase(object):
     def c_init_code_apply(self, node, name):
         err = 'err_' + name
         kernels = self.gpu_kernels(node, name)
-        inits ='\n'.join(self._generate_kernel_init(k, err) for k in kernels)
+        inits = '\n'.join(self._generate_kernel_init(k, err) for k in kernels)
         return ("int %(err)s;\n" % dict(err=err)) + inits
 
     def _GpuKernelBase_version(self):
@@ -617,7 +587,7 @@ class GpuAlloc(HideC, Alloc):
         return hash(type(self)) ^ hash(self.memset_0)
 
     def __str__(self):
-        #Hide the memset parameter when not used to prevent confusion.
+        # Hide the memset parameter when not used to prevent confusion.
         if self.memset_0:
             s = "%s{memset_0=%s}" % (self.__class__.__name__, self.memset_0)
         else:
@@ -726,17 +696,17 @@ class GpuAlloc(HideC, Alloc):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (#The following ops work inplace of their input id 0.
+            elif (  # The following ops work inplace of their input id 0.
                   client[1] == 0 and
                   isinstance(client[0].op, (
-                    #Ops that will work inplace on the Alloc. So if they
-                    #get constant_folded, they would copy the
-                    #constant and this is less efficients.
+                    # Ops that will work inplace on the Alloc. So if they
+                    # get constant_folded, they would copy the
+                    # constant and this is less efficients.
 
-                    #Not doing the constant folding could also lower
-                    #the peak memory usage, as we the "constant" won't
-                    #always exists.
-                      #theano.tensor.subtensor.AdvancedIncSubtensor,
+                    # Not doing the constant folding could also lower
+                    # the peak memory usage, as we the "constant" won't
+                    # always exists.
+                      # theano.tensor.subtensor.AdvancedIncSubtensor,
                       theano.sandbox.gpuarray.subtensor.GpuIncSubtensor,
                       theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
                       theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1_dev20,
@@ -745,8 +715,8 @@ class GpuAlloc(HideC, Alloc):
                       theano.sandbox.gpuarray.blas.GpuGer,
                   ))):
                 return False
-            #If the clients is a transfer, we don't want to fold. We
-            #let the moving opt finish before deciding what to do.
+            # If the clients is a transfer, we don't want to fold. We
+            # let the moving opt finish before deciding what to do.
             elif isinstance(client[0].op, HostFromGpu):
                 return False
         return True
@@ -882,7 +852,7 @@ class GpuJoin(HideC, Join):
 
     def c_code(self, node, name, inputs, out_, sub):
         copy_to_list = []
-        restype=pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
+        restype = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         for i, inp in enumerate(inputs[1:]):
             copy_to_list.append("als[%s] = &%s->ga;" % (i, inp))
         return """

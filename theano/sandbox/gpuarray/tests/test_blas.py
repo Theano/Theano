@@ -8,14 +8,14 @@ from theano.tensor.blas import (gemv_inplace, gemm_inplace, ger_destructive,
                                 _dot22)
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
-from theano.sandbox.gpuarray import gpuarray_shared_constructor
-from theano.sandbox.gpuarray.tests.test_basic_ops import (makeTester, rand,
-                                                          mode_with_gpu)
+from .. import gpuarray_shared_constructor
+from .test_basic_ops import (makeTester, rand,
+                             mode_with_gpu)
 
-from theano.sandbox.gpuarray.blas import (gpugemv_inplace, gpugemv_no_inplace,
-                                          gpugemm_inplace, gpugemm_no_inplace,
-                                          gpuger_inplace, gpuger_no_inplace,
-                                          GpuGer, gpu_dot22)
+from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
+                    gpugemm_inplace, gpugemm_no_inplace,
+                    gpuger_inplace, gpuger_no_inplace,
+                    GpuGer, gpu_dot22)
 
 
 GpuGemvTester = makeTester('GpuGemvTester',
@@ -29,6 +29,7 @@ GpuGemvTester = makeTester('GpuGemvTester',
         test_stride=[rand(3)[::-1], 1, rand(3, 2)[::-1], rand(2)[::-1], 0],
         )
 )
+
 
 class TestGpuSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
     mode = mode_with_gpu
@@ -64,6 +65,7 @@ GpuGemmTester = makeTester('GpuGemmTester',
         )
 )
 
+
 class TestGpuSger(TestGer):
     def setUp(self):
         self.mode = mode_with_gpu
@@ -85,8 +87,10 @@ class TestGpuSger(TestGer):
     def test_f32_0_1(self):
         raise SkipTest('0-sized objects not supported')
 
+
 class TestGpuSgerNoTransfer(TestGpuSger):
     shared = staticmethod(gpuarray_shared_constructor)
+
 
 class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
     def setUp(self):

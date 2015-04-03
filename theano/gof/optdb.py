@@ -2,7 +2,7 @@ import sys
 
 import numpy
 
-from theano.gof.python25 import DefaultOrderedDict
+from theano.compat.python2x import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
 from theano.compat.six import StringIO
 from theano.gof import opt
@@ -176,7 +176,7 @@ class Query(object):
         return "Query{inc=%s,ex=%s,require=%s,subquery=%s,position_cutoff=%d}" % (
             self.include, self.exclude, self.require, self.subquery, self.position_cutoff)
 
-    #add all opt with this tag
+    # add all opt with this tag
     def including(self, *tags):
         return Query(self.include.union(tags),
                      self.require,
@@ -184,7 +184,7 @@ class Query(object):
                      self.subquery,
                      self.position_cutoff)
 
-    #remove all opt with this tag
+    # remove all opt with this tag
     def excluding(self, *tags):
         return Query(self.include,
                      self.require,
@@ -192,7 +192,7 @@ class Query(object):
                      self.subquery,
                      self.position_cutoff)
 
-    #keep only opt with this tag.
+    # keep only opt with this tag.
     def requiring(self, *tags):
         return Query(self.include,
                      self.require.union(tags),
@@ -266,7 +266,7 @@ class SequenceDB(DB):
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
         if len(tags) >= 1 and isinstance(tags[0], Query):
-#the call to super should have raise an error with a good message
+# the call to super should have raise an error with a good message
             assert len(tags) == 1
             if getattr(tags[0], 'position_cutoff', None):
                 position_cutoff = tags[0].position_cutoff

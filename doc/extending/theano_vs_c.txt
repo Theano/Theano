@@ -16,7 +16,6 @@ Variable        local function data / variable
 Shared Variable global function data / variable
 Op              operations carried out in computation / function definition
 Type            data types
-Module          class
 =============== ===========================================================
 
 For example:

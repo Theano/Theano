@@ -153,10 +153,10 @@ class DeepCopyOp(gof.Op):
 
     def perform(self, node, args, outs):
         if hasattr(args[0], 'copy'):
-            #when args[0] is a an ndarray of 0 dimensions,
-            #this return a numpy.dtype and not an ndarray
-            #So when the args have a copy attribute we use it
-            #as this don't have this problem
+            # when args[0] is a an ndarray of 0 dimensions,
+            # this return a numpy.dtype and not an ndarray
+            # So when the args have a copy attribute we use it
+            # as this don't have this problem
             outs[0][0] = args[0].copy()
         else:
             outs[0][0] = copy.deepcopy(args[0])
@@ -445,12 +445,14 @@ def register_shape_i_c_code(typ, code, check_input, version=()):
 # Scan can deal with.
 expandable_types = ()
 
+
 def load_back(mod, name):
     __import__(mod)
     import sys
     module = sys.modules[mod]
     obj = getattr(module, name)
     return obj
+
 
 class FromFunctionOp(gof.Op):
     """

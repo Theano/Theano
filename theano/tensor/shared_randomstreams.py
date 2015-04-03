@@ -132,6 +132,8 @@ class RandomStreams(raw_random.RandomStreamsBase):
         """
         seed = int(self.gen_seedgen.randint(2 ** 30))
         random_state_variable = shared(numpy.random.RandomState(seed))
+        # Add a reference to distinguish from other shared variables
+        random_state_variable.tag.is_rng = True
         new_r, out = op(random_state_variable, *args, **kwargs)
         out.rng = random_state_variable
         out.update = (random_state_variable, new_r)

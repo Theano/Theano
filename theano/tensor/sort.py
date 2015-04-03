@@ -78,7 +78,7 @@ class SortOp(theano.Op):
             elif (axis == 0 or
                   (isinstance(axis, theano.Constant) and axis.data == 0)):
                 idx = argsort(*inputs, kind=self.kind, order=self.order)
-                #not working: numpy.where(idx[None, :]==numpy.arange(2)[:, None, None])
+                # not working: numpy.where(idx[None, :]==numpy.arange(2)[:, None, None])
                 pass
         axis_grad = theano.gradient.grad_undefined(
             self, 1, axis,
@@ -172,7 +172,7 @@ class ArgSortOp(theano.Op):
         return [inputs_shapes[0]]
 
     def grad(self, inputs, output_grads):
-        #No grad defined for intergers.
+        # No grad defined for intergers.
         inp, axis = inputs
         inp_grad = theano.gradient.grad_not_implemented(
             self, 0, axis,

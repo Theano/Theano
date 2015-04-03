@@ -12,12 +12,9 @@ try:
 
     cudamat_available = True
 
-
     import theano.sandbox.cuda as cuda
     if cuda.cuda_available == False:
         raise ImportError('Optional theano package cuda disabled')
-
-
 
     def cudandarray_to_cudamat(x, copyif=False):
         """ take a CudaNdarray and return a cudamat.CUDAMatrix object.
@@ -38,7 +35,7 @@ try:
         """
         if not isinstance(x, cuda.CudaNdarray):
             raise ValueError("We can transfer only CudaNdarray to cudamat.CUDAMatrix")
-        elif x.ndim!=2:
+        elif x.ndim != 2:
             raise TypeError("cudandarray_to_cudamat: input must be 2-d (has %s dims). That's "
                             "because cudamat arrays are always 2-dimensional")
 
@@ -61,8 +58,6 @@ try:
 
             # Now x is always c contiguous.
 
-
-
             # the next step is to create a CUDAMatrix object. We do so by first creating
             # a cudamat object with no data_host.
             cm_mat = cudamat.cudamat()
@@ -71,8 +66,7 @@ try:
             cm_mat.on_host = 0
             cm_mat.on_device = 1
             cm_mat.is_trans = 0
-            cm_mat.owns_data = 0 # <-- note: cm_mat dosen't owe the data; x does. So x will delete it.
-
+            cm_mat.owns_data = 0  # <-- note: cm_mat dosen't owe the data; x does. So x will delete it.
 
             # x.gpudata is a long. We need a pointer to a float. cast.
             import ctypes
@@ -80,12 +74,9 @@ try:
 
             px = cudamat.CUDAMatrix(cm_mat)
 
-            px._base = x # x won't be __del__'ed as long as px is around.
+            px._base = x  # x won't be __del__'ed as long as px is around.
 
-
-
-
-            px.mat_on_host = False # let cudamat know that we don't have a numpy
+            px.mat_on_host = False  # let cudamat know that we don't have a numpy
                                    # array attached.
             return px
 
@@ -105,7 +96,6 @@ try:
 
             import ctypes
             ptr_long = long(ctypes.cast(x.mat.data_device, ctypes.c_void_p).value)
-
 
             # seems legit.
             z = cuda.from_gpu_pointer(ptr_long, x.shape, strides, x)

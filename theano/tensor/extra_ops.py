@@ -1,6 +1,6 @@
 import numpy as np
 import numpy
-
+import warnings
 import theano
 
 from theano.tensor import basic
@@ -29,7 +29,7 @@ class CumsumOp(theano.Op):
 
         if self.axis is None:
             out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
-        elif self.axis >= x.ndim:
+        elif self.axis >= x.ndim or self.axis < -x.ndim:
             raise ValueError('axis(={0}) out of bounds'.format(self.axis))
 
         return theano.Apply(self, [x], [out_type])
@@ -128,7 +128,7 @@ def cumsum(x, axis=None):
     :param axis: The axis along which the cumulative sum is computed.
         The default (None) is to compute the cumsum over the flattened array.
 
-    .. versionadded:: 0.6.1
+    .. versionadded:: 0.7
     """
     return CumsumOp(axis=axis)(x)
 
@@ -151,7 +151,7 @@ class CumprodOp(theano.Op):
 
         if self.axis is None:
             out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
-        elif self.axis >= x.ndim:
+        elif self.axis >= x.ndim or self.axis < -x.ndim:
             raise ValueError('axis(={0}) out of bounds'.format(self.axis))
 
         return theano.Apply(self, [x], [out_type])
@@ -252,7 +252,7 @@ def cumprod(x, axis=None):
     :param axis: The axis along which the cumulative product is computed.
         The default (None) is to compute the cumprod over the flattened array.
 
-    .. versionadded:: 0.6.1
+    .. versionadded:: 0.7
     """
     return CumprodOp(axis=axis)(x)
 
@@ -332,8 +332,11 @@ def diff(x, n=1, axis=-1):
 
 
 class BinCountOp(theano.Op):
-    # See function bincount for docstring
+    """
+    DEPRECATED: use bincount() instead.
 
+    See function bincount for docstring
+    """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
     """Tuple of all compatible dtype for the parameter of this op."""
@@ -355,6 +358,10 @@ class BinCountOp(theano.Op):
         return hash(type(self)) ^ hash(self.minlength)
 
     def make_node(self, x, weights):
+        warnings.warn((
+            "Tile op is deprecated, use tile function instead."),
+                      stacklevel=3)
+
         x = basic.as_tensor_variable(x)
 
         if x.dtype not in BinCountOp.compatible_type:
@@ -429,8 +436,8 @@ class BinCountOp(theano.Op):
         return self.__class__.__name__
 
 
-def bincount(x, weights=None, minlength=None):
-    """Count number of occurrences of each value in array of non-negative ints.
+def bincount(x, weights=None, minlength=None, assert_nonneg=False):
+    """Count number of occurrences of each value in array of ints.
 
     The number of bins (of size 1) is one larger than the largest
     value in x. If minlength is specified, there will be at least
@@ -439,7 +446,6 @@ def bincount(x, weights=None, minlength=None):
     number of occurrences of its index value in x. If weights is
     specified the input array is weighted by it, i.e. if a value n
     is found at position i, out[n] += weight[i] instead of out[n] += 1.
-    Wraping of numpy.bincount
 
     :param x: 1 dimension, nonnegative ints
 
@@ -447,10 +453,43 @@ def bincount(x, weights=None, minlength=None):
         Optional.
     :param minlength: A minimum number of bins for the output array.
         Optional.
-
+    :param assert_nonneg: A flag that inserts an assert_op to check if
+        every input x is nonnegative.
+        Optional.
     .. versionadded:: 0.6
     """
-    return BinCountOp(minlength=minlength)(x, weights)
+    compatible_type = ('int8', 'int16', 'int32', 'int64',
+                       'uint8', 'uint16', 'uint32')
+    unsupported_dtypes = ('uint64',)
+
+    if x.dtype in unsupported_dtypes:
+            raise TypeError(
+                ("Input dtype %s is not supported, "
+                 % unsupported_dtypes), x.dtype)
+
+    if x.dtype not in compatible_type:
+        raise TypeError("Inputs dtype must be an integer.")
+
+    if x.ndim != 1:
+        raise TypeError("Inputs must be of dimension 1.")
+
+    if assert_nonneg:
+        from theano.tensor.opt import Assert
+        assert_op = Assert('Input to bincount has negative values!')
+        x = assert_op(x, theano.tensor.all(x >= 0))
+
+    max_value = theano.tensor.cast(x.max() + 1, 'int64')
+
+    if minlength is not None:
+        max_value = theano.tensor.maximum(max_value, minlength)
+
+    if weights is None:
+        out = theano.tensor.zeros([max_value], dtype=x.dtype)
+        out = theano.tensor.inc_subtensor(out[x], 1)
+    else:
+        out = theano.tensor.zeros([max_value], dtype=weights.dtype)
+        out = theano.tensor.inc_subtensor(out[x], weights)
+    return out
 
 
 def squeeze(x):
@@ -608,9 +647,47 @@ def repeat(x, repeats, axis=None):
 
     .. versionadded:: 0.6
     """
-    return RepeatOp(axis=axis)(x, repeats)
+    repeats = tensor.as_tensor_variable(repeats)
 
+    if repeats.ndim > 1:
+        raise ValueError('The dimension of repeats should not exceed 1.')
 
+    if repeats.ndim == 1:
+        return RepeatOp(axis=axis)(x, repeats)
+    else:
+        if axis == None:
+           axis = 0 
+           x = x.flatten()
+        else:
+            if axis >= x.ndim:
+                raise ValueError('Axis should not exceed x.ndim-1.')
+            if axis < 0:
+                axis = x.ndim+axis
+
+        shape = [x.shape[i] for i in xrange(x.ndim)]
+        
+        # shape_ is the shape of the intermediate tensor which has
+        # an additional dimension comparing to x. We use alloc to
+        # allocate space for this intermediate tensor to replicate x
+        # along that additional dimension.
+        shape_ = shape[:]
+        shape_.insert(axis+1, repeats)
+
+        # shape is now the shape of output, where shape[axis] becomes
+        # shape[axis]*repeats.
+        shape[axis] = shape[axis]*repeats
+
+        # dims_ is the dimension of that intermediate tensor. 
+        dims_ = list(numpy.arange(x.ndim))
+        dims_.insert(axis+1, 'x')
+
+        # After the original tensor is duplicated along the additional
+        # dimension, we reshape it to the expected output shape, and 
+        # return the output z.
+        z = tensor.alloc(x.dimshuffle(*dims_), *shape_).reshape(shape) 
+        return z
+
+ 
 class Bartlett(gof.Op):
     # See function bartlett for docstring
     def __eq__(self, other):

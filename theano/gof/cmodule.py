@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
-
+import platform
 import distutils.sysconfig
 
 importlib = None
@@ -245,7 +245,7 @@ static struct PyModuleDef moduledef = {{
             print >> ofile, ('%4i' % (i + 1)), line
         ofile.flush()
 
-    #TODO: add_type
+    # TODO: add_type
 
 
 def dlimport(fullpath, suffix=None):
@@ -359,7 +359,6 @@ def is_same_entry(entry_1, entry_2):
 
 
 def get_module_hash(src_code, key):
-
     """
     Return an MD5 hash that uniquely identifies a module.
 
@@ -663,9 +662,15 @@ class ModuleCache(object):
         too_old_to_use = []
 
         to_delete = []
+        to_delete_empty = []
+
         def rmtree(*args, **kwargs):
             if cleanup:
                 to_delete.append((args, kwargs))
+
+        def rmtree_empty(*args, **kwargs):
+            if cleanup:
+                to_delete_empty.append((args, kwargs))
 
         # add entries that are not in the entry_from_key dictionary
         time_now = time.time()
@@ -684,7 +689,11 @@ class ModuleCache(object):
             if not os.path.isdir(root):
                 continue
             files = os.listdir(root)
-            if not files or 'delete.me' in files:
+            if not files:
+                rmtree_empty(root, ignore_nocleanup=True,
+                       msg="empty dir")
+                continue
+            if 'delete.me' in files:
                 rmtree(root, ignore_nocleanup=True,
                        msg="delete.me found in dir")
                 continue
@@ -900,10 +909,14 @@ class ModuleCache(object):
                                         pkl_file_to_remove)
                     self.loaded_key_pkl.remove(pkl_file_to_remove)
 
-        if to_delete:
+        if to_delete or to_delete_empty:
             with compilelock.lock_ctx():
                 for a, kw in to_delete:
                     _rmtree(*a, **kw)
+                for a, kw in to_delete_empty:
+                    files = os.listdir(a[0])
+                    if not files:
+                        _rmtree(*a, **kw)
 
         _logger.debug('Time needed to refresh cache: %s',
                       (time.time() - start_time))
@@ -1411,6 +1424,10 @@ def std_include_dirs():
 
 
 def std_lib_dirs_and_libs():
+    # We cache the results as on Windows, this trigger file access and
+    # this method is called many times.
+    if std_lib_dirs_and_libs.data is not None:
+        return std_lib_dirs_and_libs.data
     python_inc = distutils.sysconfig.get_python_inc()
     if sys.platform == 'win32':
         # Obtain the library name from the Python version instead of the
@@ -1428,35 +1445,49 @@ def std_lib_dirs_and_libs():
             # available, and the *.a files have to be found earlier than
             # the other ones.
 
-            #When Canopy is installed for the user:
-            #sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
-            #sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
-            #When Canopy is installed for all users:
-            #sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
-            #sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
-            #So we need to use sys.prefix as it support both cases.
-            #sys.base_prefix support only one case
+            # When Canopy is installed for the user:
+            # sys.prefix:C:\Users\username\AppData\Local\Enthought\Canopy\User
+            # sys.base_prefix:C:\Users\username\AppData\Local\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            # When Canopy is installed for all users:
+            # sys.base_prefix: C:\Program Files\Enthought\Canopy\App\appdata\canopy-1.1.0.1371.win-x86_64
+            # sys.prefix: C:\Users\username\AppData\Local\Enthought\Canopy\User
+            # So we need to use sys.prefix as it support both cases.
+            # sys.base_prefix support only one case
             libdir = os.path.join(sys.prefix, 'libs')
 
-            for f, lib in [('libpython27.a', 'libpython 1.2'),
-                           ('libmsvcr90.a', 'mingw 4.5.2')]:
+            for f, lib in [('libpython27.a', 'libpython 1.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
                     print ("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
                            )
+            libdirs = [
+                # Used in older Canopy
+                os.path.join(sys.prefix, 'libs'),
+                # Used in newer Canopy
+                os.path.join(sys.prefix,
+                             r'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
+            for f, lib in [('libmsvcr90.a',
+                            'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
+                if not any([os.path.exists(os.path.join(libdir, f))
+                            for libdir in libdirs]):
+                    print ("Your Python version is from Canopy. " +
+                           "You need to install the package '" + lib +
+                           "' from Canopy package manager."
+                           )
             python_lib_dirs.insert(0, libdir)
-
-        return [libname], python_lib_dirs
+        std_lib_dirs_and_libs.data = [libname], python_lib_dirs
 
     # Suppress -lpython2.x on OS X since the `-undefined dynamic_lookup`
     # makes it unnecessary.
     elif sys.platform == 'darwin':
-        return [], []
+        std_lib_dirs_and_libs.data = [], []
     else:
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
-        return [libname], []
+        std_lib_dirs_and_libs.data = [libname], []
+    return std_lib_dirs_and_libs.data
+std_lib_dirs_and_libs.data = None
 
 
 def std_libs():
@@ -1494,7 +1525,96 @@ def gcc_llvm():
 gcc_llvm.is_llvm = None
 
 
-class GCC_compiler(object):
+class Compiler(object):
+    """
+    Meta compiler that offer some generic function
+    """
+    @staticmethod
+    def _try_compile_tmp(src_code, tmp_prefix='', flags=(),
+                         try_run=False, output=False, compiler=None):
+        """Try to compile (and run) a test program.
+
+        This is useful in various occasions, to check if libraries
+        or compilers are behaving as expected.
+
+        If try_run is True, the src_code is assumed to be executable,
+        and will be run.
+
+        If try_run is False, returns the compilation status.
+        If try_run is True, returns a (compile_status, run_status) pair.
+        If output is there, we append the stdout and stderr to the output.
+        """
+        if not compiler:
+            return False
+
+        flags = list(flags)
+        compilation_ok = True
+        run_ok = False
+        out, err = None, None
+        try:
+            fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
+            exe_path = path[:-2]
+            try:
+                # Python3 compatibility: try to cast Py3 strings as Py2 strings
+                try:
+                    src_code = b(src_code)
+                except Exception:
+                    pass
+                os.write(fd, src_code)
+                os.close(fd)
+                fd = None
+                out, err, p_ret = output_subprocess_Popen(
+                    [compiler, path, '-o', exe_path] + flags)
+                if p_ret != 0:
+                    compilation_ok = False
+                elif try_run:
+                    out, err, p_ret = output_subprocess_Popen([exe_path])
+                    run_ok = (p_ret == 0)
+            finally:
+                try:
+                    if fd is not None:
+                        os.close(fd)
+                finally:
+                    os.remove(path)
+                    os.remove(exe_path)
+        except OSError, e:
+            compilation_ok = False
+
+        if not try_run and not output:
+            return compilation_ok
+        elif not try_run and output:
+            return (compilation_ok, out, err)
+        elif not output:
+            return (compilation_ok, run_ok)
+        else:
+            return (compilation_ok, run_ok, out, err)
+
+    @staticmethod
+    def _try_flags(flag_list, preambule="", body="",
+                   try_run=False, output=False, compiler=None):
+        '''
+        Try to compile a dummy file with these flags.
+
+        Returns True if compilation was successful, False if there
+        were errors.
+        '''
+        if not compiler:
+            return False
+
+        code = b("""
+        %(preambule)s
+        int main(int argc, char** argv)
+        {
+            %(body)s
+            return 0;
+        }
+        """ % locals())
+        return Compiler._try_compile_tmp(code, tmp_prefix='try_flags_',
+                                         flags=flag_list, try_run=try_run,
+                                         output=output, compiler=compiler)
+
+
+class GCC_compiler(Compiler):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
 
@@ -1517,7 +1637,7 @@ class GCC_compiler(object):
         detect_march = GCC_compiler.march_flags is None
         if detect_march:
             for f in cxxflags:
-                #If the user give an -march=X parameter, don't add one ourself
+                # If the user give an -march=X parameter, don't add one ourself
                 if ((f.startswith("--march=") or f.startswith("-march="))):
                     _logger.warn(
                         "WARNING: your Theano flags `gcc.cxxflags` specify"
@@ -1704,14 +1824,14 @@ class GCC_compiler(object):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
-        #Add the detected -march=native equivalent flags
+        # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
-        #NumPy 1.7 Deprecate the old API. I updated most of the places
-        #to use the new API, but not everywhere. When finished, enable
-        #the following macro to assert that we don't bring new code
-        #that use the old API.
+        # NumPy 1.7 Deprecate the old API. I updated most of the places
+        # to use the new API, but not everywhere. When finished, enable
+        # the following macro to assert that we don't bring new code
+        # that use the old API.
         cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
@@ -1733,8 +1853,8 @@ class GCC_compiler(object):
         # Figure out whether the current Python executable is 32
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
-        # Pi.
-        if not any(['arm' in flag for flag in cxxflags]):
+        # Pi, and Raspberry Pi 2.
+        if not any(['arm' in flag for flag in cxxflags]) and platform.machine() != 'armv7l':
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
@@ -1759,86 +1879,15 @@ class GCC_compiler(object):
     @staticmethod
     def try_compile_tmp(src_code, tmp_prefix='', flags=(),
                         try_run=False, output=False):
-        """Try to compile (and run) a test program.
-
-        This is useful in various occasions, to check if libraries
-        or compilers are behaving as expected.
-
-        If try_run is True, the src_code is assumed to be executable,
-        and will be run.
-
-        If try_run is False, returns the compilation status.
-        If try_run is True, returns a (compile_status, run_status) pair.
-        If output is there, we append the stdout and stderr to the output.
-        """
-        if not theano.config.cxx:
-            return False
-
-        flags = list(flags)
-        compilation_ok = True
-        run_ok = False
-        out, err = None, None
-        try:
-            fd, path = tempfile.mkstemp(suffix='.c', prefix=tmp_prefix)
-            exe_path = path[:-2]
-            try:
-                # Python3 compatibility: try to cast Py3 strings as Py2 strings
-                try:
-                    src_code = b(src_code)
-                except Exception:
-                    pass
-                os.write(fd, src_code)
-                os.close(fd)
-                fd = None
-                out, err, p_ret = output_subprocess_Popen(
-                    [theano.config.cxx, path, '-o', exe_path] + flags)
-                if p_ret != 0:
-                    compilation_ok = False
-                elif try_run:
-                    out, err, p_ret = output_subprocess_Popen([exe_path])
-                    run_ok = (p_ret == 0)
-            finally:
-                try:
-                    if fd is not None:
-                        os.close(fd)
-                finally:
-                    os.remove(path)
-                    os.remove(exe_path)
-        except OSError, e:
-            compilation_ok = False
-
-        if not try_run and not output:
-            return compilation_ok
-        elif not try_run and output:
-            return (compilation_ok, out, err)
-        elif not output:
-            return (compilation_ok, run_ok)
-        else:
-            return (compilation_ok, run_ok, out, err)
+        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
+                                         try_run, output,
+                                         theano.config.cxx)
 
     @staticmethod
     def try_flags(flag_list, preambule="", body="",
                   try_run=False, output=False):
-        '''
-        Try to compile a dummy file with these flags.
-
-        Returns True if compilation was successful, False if there
-        were errors.
-        '''
-        if not theano.config.cxx:
-            return False
-
-        code = b("""
-        %(preambule)s
-        int main(int argc, char** argv)
-        {
-            %(body)s
-            return 0;
-        }
-        """ % locals())
-        return GCC_compiler.try_compile_tmp(code, tmp_prefix='try_flags_',
-                                            flags=flag_list, try_run=try_run,
-                                            output=output)
+        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
+                                   theano.config.cxx)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
@@ -1869,7 +1918,7 @@ class GCC_compiler(object):
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
         """
-        #TODO: Do not do the dlimport in this function
+        # TODO: Do not do the dlimport in this function
 
         if not theano.config.cxx:
             raise MissingGXX("g++ not available! We can't compile c code.")
@@ -1947,7 +1996,7 @@ class GCC_compiler(object):
         if status:
             print '==============================='
             for i, l in enumerate(src_code.split('\n')):
-                #gcc put its messages to stderr, so we add ours now
+                # gcc put its messages to stderr, so we add ours now
                 print >> sys.stderr, '%05i\t%s' % (i + 1, l)
             print '==============================='
             print_command_line_error()
@@ -1963,7 +2012,7 @@ class GCC_compiler(object):
             print compile_stderr
 
         if py_module:
-            #touch the __init__ file
+            # touch the __init__ file
             open(os.path.join(location, "__init__.py"), 'w').close()
             assert os.path.isfile(lib_filename)
             return dlimport(lib_filename)

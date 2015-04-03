@@ -65,7 +65,7 @@ import theano
 from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
-from theano.gof.python25 import maxsize, any, OrderedDict
+from theano.compat.python2x import maxsize, any, OrderedDict
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
@@ -674,7 +674,6 @@ class PushOutScanOutput(gof.Optimizer):
                     idx_matrix_input = 1
                     idx_vector_input = 0
 
-
                 if valid_inputs:
                     # The optimization can be applied on the current Dot
 
@@ -692,7 +691,7 @@ class PushOutScanOutput(gof.Optimizer):
                         outer_dot_inputs = [outer_vector_input,
                                             outer_matrix_input.transpose()]
                         outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
-                    else: # idx_matrix_input == 1
+                    else:  # idx_matrix_input == 1
                         outer_dot_inputs = [outer_vector_input,
                                             outer_matrix_input]
                         outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
@@ -725,7 +724,7 @@ class PushOutScanOutput(gof.Optimizer):
 
                     sitsot_in_idx = nd.inputs.index(args.inner_in_sit_sot[sitsot_idx])
 
-                    dot_in_idx = 1 - sitsot_in_idx # 0 if sitsot_in_idx==1,
+                    dot_in_idx = 1 - sitsot_in_idx  # 0 if sitsot_in_idx==1,
                                                    # 1 if sitsot_in_idx==0
                     dot_input = nd.inputs[dot_in_idx]
 
@@ -748,13 +747,12 @@ class PushOutScanOutput(gof.Optimizer):
                                                                    inner_dot_inputs,
                                                                    node, args)
 
-
                         # Collapse some of the dimensions of the tensors
                         # so that they become matrices. This is because a
                         # dot is usually faster on two large matrices than
                         # a bunch of small ones
                         outer_dot_inputs[0] = theano.tensor.flatten(
-                                       outer_dot_inputs[0].dimshuffle(1,0,2),
+                                       outer_dot_inputs[0].dimshuffle(1, 0, 2),
                                        outdim=2)
 
                         shape_input1 = theano.tensor.shape(outer_dot_inputs[1])
@@ -856,7 +854,7 @@ class PushOutScanOutput(gof.Optimizer):
 
         if len(add_as_nitsots) > 0:
 
-            new_scan_node = self.add_nitsot_outputs(fgraph,old_scan_node,
+            new_scan_node = self.add_nitsot_outputs(fgraph, old_scan_node,
                                                     old_scan_args,
                                                     add_as_nitsots)
 
@@ -914,10 +912,12 @@ class PushOutScanOutput(gof.Optimizer):
 
         return new_scan_node
 
+
 class ScanInplaceOptimizer(Optimizer):
     """Graph optimizer for Scan(makes it run inplace)"""
-    def __init__(self, gpu_flag=False, gpua_flag=False):
+    def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):
         Optimizer.__init__(self)
+        self.typeConstructor = typeConstructor
         self.gpu_flag = gpu_flag
         self.gpua_flag = gpua_flag
 
@@ -959,7 +959,8 @@ class ScanInplaceOptimizer(Optimizer):
                 inputs = ls_begin + ls + ls_end
                 new_op = scan_op.Scan(op.inputs,
                                       op.outputs,
-                                      info)
+                                      info,
+                                      typeConstructor=self.typeConstructor)
 
                 # Do not call make_node for test_value
                 new_outs = new_op(*inputs, **dict(return_list=True))
@@ -1236,10 +1237,10 @@ class ScanSaveMem(gof.Optimizer):
                         # FB: This need good testing, left to later.
                         #     call get_scalar_constant_value()? it can
                         # return python/numpy scalar or numpy.ndarray currently.
-                        #pval = pre_greedy_local_optimizer(list_opt_slice,
+                        # pval = pre_greedy_local_optimizer(list_opt_slice,
                         #                                  pval)
                         #pval = pre_constant_merge([pval])[0]
-                        #if (isinstance(pval, theano.tensor.TensorConstant) and
+                        # if (isinstance(pval, theano.tensor.TensorConstant) and
                         #    pval.dtype.startswith('int')):
                         #    try:
                         #        pval = int(pval.data)
@@ -1284,7 +1285,7 @@ class ScanSaveMem(gof.Optimizer):
                         #      can replace the initial tensor by a slice,
                         #   b) it is not, and we simply take a slice of it.
 
-                        #TODO: commit change below with Razvan
+                        # TODO: commit change below with Razvan
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
                                        tensor.IncSubtensor) and
@@ -2085,7 +2086,8 @@ scan_eqopt2 = theano.gof.EquilibriumDB()
 optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
-               ScanInplaceOptimizer(),
+               ScanInplaceOptimizer(typeConstructor=None,
+                                    gpu_flag=False),
                75,
                'fast_run',
                'inplace',

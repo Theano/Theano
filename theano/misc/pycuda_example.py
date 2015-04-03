@@ -40,6 +40,7 @@ from pycuda.compiler import SourceModule
 from pycuda.tools import VectorArg
 import pycuda.gpuarray
 
+
 def _replace_npy_types(c_arg):
     c_arg = c_arg.replace('npy_float32', 'float')
     c_arg = c_arg.replace('npy_float64', 'double')
@@ -50,6 +51,7 @@ def _replace_npy_types(c_arg):
     c_arg = c_arg.replace('npy_uint16', 'unsigned short')
     c_arg = c_arg.replace('npy_uint8', 'unsigned char')
     return c_arg
+
 
 def theano_parse_c_arg(c_arg):
     c_arg = _replace_npy_types(c_arg)
@@ -249,8 +251,8 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         return out_node
 
     def perform(self, node, inputs, out):
-        #TODO support broadcast!
-        #TODO assert all input have the same shape
+        # TODO support broadcast!
+        # TODO assert all input have the same shape
         z, = out
         if (z[0] is None or
             z[0].shape != inputs[0].shape or
@@ -311,8 +313,8 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         return out_node
 
     def make_thunk(self, node, storage_map, _, _2):
-        #TODO support broadcast!
-        #TODO assert all input have the same shape
+        # TODO support broadcast!
+        # TODO assert all input have the same shape
         fct_name = "pycuda_elemwise_%s" % str(self.scalar_op)
         in_name = ["i" + str(id) for id in range(len(node.inputs))]
         out_name = ["o" + str(id) for id in range(self.nout)]

@@ -19,6 +19,8 @@ import theano.sandbox.cuda as cuda
 if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
+import theano.sandbox.cuda.cula as cula
+
 from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.scalar.basic_scipy import erfinv
@@ -289,7 +291,7 @@ def test_local_gpu_subtensor():
     assert any([isinstance(node.op, cuda.GpuElemwise) for node in topo])
 
 
-def test_local_split():
+def test_local_gpu_split():
     """ Test that the GpuSplit op is being applied and works """
     # Construct symbolic split
     x = tensor.fvector()
@@ -305,6 +307,32 @@ def test_local_split():
     # GPU version
     f = theano.function([x, splits], [ra, rb, rc], mode=mode_with_gpu)
     gpu_res = f([0, 1, 2, 3, 4, 5], [3, 2, 1])
+    l = f.maker.fgraph.toposort()
+    assert any([isinstance(o.op, theano.sandbox.cuda.GpuSplit) for o in l])
+    # Check equality
+    assert all([(cpu == gpu).all() for cpu, gpu in zip(cpu_res, gpu_res)])
+
+    # Test the other path of the optimizer, when it is the output that
+    # is moved to the GPU.
+    ra = cuda.gpu_from_host(ra)
+    f = theano.function([x, splits], [ra, rb, rc],
+                        mode=mode_with_gpu.excluding("InputToGpuOptimizer"))
+    gpu_res = f([0, 1, 2, 3, 4, 5], [3, 2, 1])
+    l = f.maker.fgraph.toposort()
+    assert any([isinstance(o.op, theano.sandbox.cuda.GpuSplit) for o in l])
+    # Check equality
+    assert all([(cpu == gpu).all() for cpu, gpu in zip(cpu_res, gpu_res)])
+
+    # Test that split with only 1 output work
+    ra = tensor.split(x, splits, n_splits=1, axis=0)
+    f = theano.function([x, splits], [ra], mode=mode_without_gpu)
+    cpu_res = f([0, 1, 2, 3, 4, 5], [6])
+    l = f.maker.fgraph.toposort()
+    # Ensure that one op is theano.tensor.Split
+    assert any([isinstance(o.op, theano.tensor.Split) for o in l])
+    # GPU version
+    f = theano.function([x, splits], [ra], mode=mode_with_gpu)
+    gpu_res = f([0, 1, 2, 3, 4, 5], [6])
     l = f.maker.fgraph.toposort()
     assert any([isinstance(o.op, theano.sandbox.cuda.GpuSplit) for o in l])
     # Check equality
@@ -510,12 +538,42 @@ def test_erfinvgpu():
     assert numpy.allclose(f(xv), f2(xv))
 
 
+def test_local_gpu_solve():
+
+    if not cula.cula_available:
+        raise SkipTest('Optional dependency CULA not available')
+
+    numpy.random.seed(1)
+
+    def cmp(a_shp, b_shp):
+        a0 = numpy.random.uniform(-0.4, 0.4,
+                                  a_shp).astype('float32')
+        a = cuda.shared_constructor(a0, 'a')
+
+        b0 = numpy.random.uniform(-0.4, 0.4,
+                                  b_shp).astype('float32')
+        b = cuda.shared_constructor(b0, 'b')
+
+        f = pfunc([], tensor.slinalg.solve(a, b), mode=mode_with_gpu)
+
+        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
+                          cuda.cula.GpuSolve)
+
+        assert cuda.opt.local_gpu_solve.transform(
+            tensor.slinalg.solve(a, b).owner)
+        out = f()
+        assert numpy.allclose(numpy.dot(a0, out), b0)
+
+    cmp((6, 6), (6, 1))
+    cmp((5, 5), (5, 1))
+
+
 def test_local_gpu_dot_to_dot22dot():
     def cmp(a_shp, b_shp):
         a0 = numpy.random.rand(*a_shp).astype('float32')
         a = cuda.shared_constructor(a0, 'a')
         b0 = numpy.random.rand(*b_shp).astype('float32')
-        b = cuda.shared_constructor(b0, 'a')
+        b = cuda.shared_constructor(b0, 'b')
 
         f = pfunc([], tensor.dot(a, b), mode=mode_with_gpu)
         assert cuda.opt.local_gpu_dot_to_dot22.transform(

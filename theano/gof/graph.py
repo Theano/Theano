@@ -16,7 +16,7 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.gof.python25 import any, deque
+from theano.compat.python2x import any, deque
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
@@ -24,6 +24,7 @@ is_same_graph_with_merge = None
 equal_computations = None
 
 NoContext = object()
+
 
 class Node(utils.object2):
     """A Node in a theano graph.
@@ -98,14 +99,14 @@ class Apply(Node):
         if not isinstance(outputs, (list, tuple)):
             raise TypeError("The output of an Apply must be a list or tuple")
 
-        ## filter inputs to make sure each element is a Variable
+        # filter inputs to make sure each element is a Variable
         for input in inputs:
             if isinstance(input, Variable):
                 self.inputs.append(input)
             else:
                 raise TypeError("The 'inputs' argument to Apply must contain Variable instances, not %s" % input)
         self.outputs = []
-        ## filter outputs to make sure each element is a Variable
+        # filter outputs to make sure each element is a Variable
         for i, output in enumerate(outputs):
             if isinstance(output, Variable):
                 if output.owner is None:
@@ -153,23 +154,6 @@ class Apply(Node):
             raise AttributeError("%s.default_output is out of range." %
                                  self.op)
         return self.outputs[do]
-
-    def env_getter(self):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        return self.fgraph
-
-    def env_setter(self, value):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        self.fgraph = value
-
-    def env_deleter(self):
-        warnings.warn("Apply.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        del self.fgraph
-
-    env = property(env_getter, env_setter, env_deleter)
 
     out = property(default_output,
                    doc="alias for self.default_output()")
@@ -239,7 +223,7 @@ class Apply(Node):
     def get_parents(self):
         return list(self.inputs)
 
-    #convenience properties
+    # convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
     """property: Number of inputs"""
 
@@ -386,7 +370,7 @@ class Variable(Node):
         :note: tags are copied to the returned instance.
         :note: name is copied to the returned instance.
         """
-        #return copy(self)
+        # return copy(self)
         cp = self.__class__(self.type, None, None, self.name)
         cp.tag = copy(self.tag)
         return cp
@@ -411,21 +395,6 @@ class Variable(Node):
         if self.owner is not None:
             return [self.owner]
         return []
-
-    def env_getter(self):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        return self.fgraph
-
-    def env_setter(self, value):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        self.fgraph = value
-
-    def env_deleter(self):
-        warnings.warn("Variable.env is deprecated, it has been renamed 'fgraph'",
-                stacklevel=2)
-        del self.fgraph
 
     def eval(self, inputs_to_values=None):
         """ Evaluates this variable.
@@ -452,7 +421,6 @@ class Variable(Node):
         d = self.__dict__.copy()
         d.pop("_fn_cache", None)
         return d
-    env = property(env_getter, env_setter, env_deleter)
 
 
 class Constant(Variable):
@@ -818,7 +786,7 @@ def io_toposort(inputs, outputs, orderings=None):
     if orderings is None:
         orderings = {}
 
-    #the inputs are used only here in the function that decides what 'predecessors' to explore
+    # the inputs are used only here in the function that decides what 'predecessors' to explore
     iset = set(inputs)
 
     def deps(obj):

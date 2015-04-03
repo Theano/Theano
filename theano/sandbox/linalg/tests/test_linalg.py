@@ -31,7 +31,7 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        det,
                                        svd,
                                        qr,
-                                       #PSD_hint,
+                                       # PSD_hint,
                                        trace,
                                        matrix_dot,
                                        spectral_radius_bound,
@@ -164,12 +164,12 @@ def test_tag_solve_triangular():
     U = cholesky_upper(A)
     b1 = solve(L, x)
     b2 = solve(U, x)
-    f = theano.function([A,x], b1)
+    f = theano.function([A, x], b1)
     if config.mode != 'FAST_COMPILE':
         for node in f.maker.fgraph.toposort():
             if isinstance(node.op, Solve):
                 assert node.op.A_structure == 'lower_triangular'
-    f = theano.function([A,x], b2)
+    f = theano.function([A, x], b2)
     if config.mode != 'FAST_COMPILE':
         for node in f.maker.fgraph.toposort():
             if isinstance(node.op, Solve):

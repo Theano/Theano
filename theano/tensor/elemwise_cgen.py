@@ -8,7 +8,7 @@ def make_declare(loop_orders, dtypes, sub):
 
     decl = ""
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
-        var = sub['lv%i' % i] # input name corresponding to ith loop variable
+        var = sub['lv%i' % i]  # input name corresponding to ith loop variable
         # we declare an iteration variable
         # and an integer for the number of dimensions
         decl += """
@@ -90,7 +90,7 @@ def make_checks(loop_orders, dtypes, sub):
     for matches in zip(*loop_orders):
         to_compare = [(j, x) for j, x in enumerate(matches) if x != "x"]
 
-        #elements of to_compare are pairs ( input_variable_idx, input_variable_dim_idx )
+        # elements of to_compare are pairs ( input_variable_idx, input_variable_dim_idx )
         if len(to_compare) < 2:
             continue
         j0, x0 = to_compare[0]
@@ -172,6 +172,7 @@ def make_alloc(loop_orders, dtype, sub, fortran='0'):
     }
     """ % dict(locals(), **sub)
 
+
 def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
     """
     Make a nested loop over several arrays and associate specific code
@@ -229,7 +230,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
                 preloops.setdefault(j, "")
                 preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
                 break
-        else: # all broadcastable
+        else:  # all broadcastable
             preloops.setdefault(0, "")
             preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 
@@ -294,7 +295,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     std::sort(%(ovar)s_loops.rbegin(), %(ovar)s_loops.rend());
     """ % locals()
 
-    ## Get the (sorted) total number of iterations of each loop
+    # Get the (sorted) total number of iterations of each loop
     # Get totals in the initial order
     # For each dimension, the tensors are either all broadcasted, in
     # which case there is only one iteration of the loop, or one or
@@ -315,8 +316,8 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     declare_totals = """
     int init_totals[%(nnested)s] = {%(totals)s};
     """ % dict(
-            nnested = nnested,
-            totals = ', '.join(totals)
+            nnested=nnested,
+            totals=', '.join(totals)
             )
 
     # Sort totals to match the new order that was computed by sorting
@@ -331,7 +332,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         ++%(ovar)s_loops_it;
         """ % locals()
 
-    ## Get sorted strides
+    # Get sorted strides
     # Get strides in the initial order
     def get_loop_strides(loop_order, i):
         """
@@ -354,12 +355,12 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     int init_strides[%(nvars)i][%(nnested)i] = {
         %(strides)s
     };""" % dict(
-            nvars = nvars,
-            nnested = nnested,
-            strides = ', \n'.join(
+            nvars=nvars,
+            nnested=nnested,
+            strides=', \n'.join(
                 ', '.join(get_loop_strides(lo, i))
                 for i, lo in enumerate(init_loop_orders)
-                if len(lo)>0))
+                if len(lo) > 0))
 
     # Declare (sorted) stride and for each variable
     # we iterate from innermost loop to outermost loop
@@ -403,7 +404,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
             update = pointer_update
         if i == 0:
             if openmp:
-                openmp_elemwise_minsize= theano.config.openmp_elemwise_minsize
+                openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
                 forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         forloop += "for(int %(iterv)s = 0; %(iterv)s<%(total)s; %(iterv)s++)" % locals()
 
@@ -512,7 +513,7 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
                 preloops.setdefault(j, "")
                 preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
                 break
-        else: # all broadcastable
+        else:  # all broadcastable
             preloops.setdefault(0, "")
             preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
 

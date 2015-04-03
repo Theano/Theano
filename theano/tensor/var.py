@@ -38,8 +38,8 @@ class _tensor_py_operators:
         return theano.tensor.basic.neg(self)
 
     # CASTS
-    #### REMOVED THESE BECAUSE PYTHON appears to require __int__ to return
-    #### an int. -JB 20081112
+    # REMOVED THESE BECAUSE PYTHON appears to require __int__ to return
+    # an int. -JB 20081112
     #def __int__(self): return convert_to_int32(self)
     #def __float__(self): return convert_to_float64(self)
     #def __complex__(self): return convert_to_complex128(self)
@@ -119,7 +119,7 @@ class _tensor_py_operators:
     # def __ior__(self, other):
     #    return _or_inplace(self, other)
     #
-    #def __ixor__(self, other):
+    # def __ixor__(self, other):
     #    return _xor_inplace(self, other)
 
     # ARITHMETIC - NORMAL
@@ -190,6 +190,9 @@ class _tensor_py_operators:
         except (NotImplementedError, AsTensorError):
             return NotImplemented
 
+    def __divmod__(self, other):
+        return theano.tensor.basic.divmod(self, other)
+
     def __truediv__(self, other):
         return theano.tensor.basic.true_div(self, other)
 
@@ -202,21 +205,21 @@ class _tensor_py_operators:
     def __rfloordiv__(self, other):
         return theano.tensor.basic.floor_div(other, self)
 
-    ##### DO NOT USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED
-    ##### BY OPTIMIZATIONS ONLY
+    # DO NOT USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED
+    # BY OPTIMIZATIONS ONLY
     ## ARITHMETIC - INPLACE
-    #def __iadd__(self, other):
+    # def __iadd__(self, other):
     #    return _add_inplace(self, other)
-    #def __isub__(self, other):
+    # def __isub__(self, other):
     #    return _sub_inplace(self, other)
     #
-    #def __imul__(self, other):
+    # def __imul__(self, other):
     #    return _mul_inplace(self, other)
     #
-    #def __idiv__(self, other):
+    # def __idiv__(self, other):
     #    return _div_inplace(self, other)
     #
-    #def __ipow__(self, other):
+    # def __ipow__(self, other):
     #    return _pow_inplace(self, other)
 
     # ARITHMETIC - RIGHT-OPERAND
@@ -234,6 +237,9 @@ class _tensor_py_operators:
 
     def __rmod__(self, other):
         return theano.tensor.basic.mod(other, self)
+
+    def __rdivmod__(self, other):
+        return theano.tensor.basic.divmod(other, self)
 
     def __rpow__(self, other):
         return theano.tensor.basic.pow(other, self)
@@ -347,15 +353,7 @@ class _tensor_py_operators:
     def astype(self, dtype):
         return theano.tensor.cast(self, dtype)
 
-    # SLICING
-    # Do not define __getslice__ here:
-    # When calling t[1:], for instance, the arguments passed to __getslice__
-    # are (1, sys.maxsize), which is a pain to deal with, and can even not be
-    # an int (but a long).
-    # If __getslice__ does not exist, __getitem__ is called instead, with
-    # argument slice(1, None, None), which is much more desirable.
-    # __getslice__ is deprecated in python 2.6 anyway.
-
+    # SLICING/INDEXING
     def __getitem__(self, args):
         if not isinstance(args, tuple):
             args = args,
@@ -630,7 +628,7 @@ class TensorVariable(_tensor_py_operators, Variable):
             elif config.warn_float64 == "raise":
                 raise Exception(msg)
             elif config.warn_float64 == 'pdb':
-                import pdb;pdb.set_trace()
+                import pdb; pdb.set_trace()
 TensorType.Variable = TensorVariable
 
 

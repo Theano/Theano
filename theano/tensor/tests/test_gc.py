@@ -11,7 +11,7 @@ def test_no_reuse():
     y = T.lvector()
     f = theano.function([x, y], x + y)
 
-    #provide both inputs in the first call
+    # provide both inputs in the first call
     f(numpy.ones(10, dtype='int64'), numpy.ones(10, dtype='int64'))
 
     try:
@@ -40,9 +40,9 @@ def test_gc_never_pickles_temporaries():
             (theano.OpWiseCLinker(allow_gc=True),
              theano.OpWiseCLinker(allow_gc=False))]:
 
-        #f_linker has garbage collection
+        # f_linker has garbage collection
 
-        #g_linker has no garbage collection
+        # g_linker has no garbage collection
 
         #print >> sys.stderr, 'COMPILING'
         f = theano.function([x], r, mode=theano.Mode(optimizer=optimizer,

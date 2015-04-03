@@ -10,7 +10,7 @@ def test_make_slice_merge():
     s1 = make_slice(0, i)
     s2 = make_slice(0, i)
     f = theano.function([i], [s1, s2])
-    nodes = f.maker.fgraph.nodes
+    nodes = f.maker.fgraph.apply_nodes
     assert len([n for n in nodes if isinstance(n.op, MakeSlice)]) == 1
     theano.printing.debugprint(f)
 

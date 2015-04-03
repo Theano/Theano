@@ -4,7 +4,7 @@ import numpy
 
 import theano
 from theano import tensor, gof, Op
-from theano.gof.python25 import all, any
+from theano.compat.python2x import all, any
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
 
@@ -14,10 +14,10 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable, HideC
-from theano.sandbox.gpuarray.elemwise import GpuElemwise
-from theano.sandbox.gpuarray.comp import NVCC_compiler
+from .type import GpuArrayType
+from .basic_ops import as_gpuarray_variable, HideC
+from .elemwise import GpuElemwise
+from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
@@ -308,7 +308,7 @@ class GpuIncSubtensor(IncSubtensor):
             returns a C code expression to copy source into view, and
             return 0 on success
         """
-        return """GpuArray_move(&%(view)s->ga, &%(source)s->ga)""" % locals()
+        return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
     def c_support_code_apply(self, node, nodename):
         gop = self.iadd_node.op
@@ -319,7 +319,7 @@ class GpuIncSubtensor(IncSubtensor):
                                                     PyGpuArrayObject* src){
            PyGpuArrayObject* ret = NULL;
         """ % locals()
-        #def c_code(self, node, name, inputs, outputs, sub):
+        # def c_code(self, node, name, inputs, outputs, sub):
         inputs = ["dst", "src"]
         outputs = ["ret"]
         sub = {"fail": "return NULL;"}
@@ -331,7 +331,7 @@ class GpuIncSubtensor(IncSubtensor):
         return ret
 
     def add_to_zview(self, nodename, x, fail):
-        #TODO
+        # TODO
         return """
         PyGpuArrayObject * add_result = inc_sub_iadd_%(nodename)s(zview, %(x)s);
 
@@ -351,7 +351,7 @@ class GpuIncSubtensor(IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (0,)
+        return parent_version + elemwise_version + (1,)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):

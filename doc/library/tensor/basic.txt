@@ -1,4 +1,4 @@
-.. currentmodule:: tensor
+.. currentmodule:: theano.tensor
 
 .. _libdoc_basic_tensor:
 
@@ -583,26 +583,11 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     :type n_ones: int
     :type n_ones: number of dimension to be added to `x`
 
-.. function:: unbroadcast(x, *axes)
+.. autofunction:: unbroadcast(x, *axes)
 
-    Make `x` impossible to broadcast in the specified axes `axes`. For
-    example, `unbroadcast(x, 0)` will make the first dimension of `x`
-    unbroadcastable.
+.. autofunction:: addbroadcast(x, *axes)
 
-.. function:: addbroadcast(x, *axes)
-
-    Make `x` broadcastable in the specified axes `axes`. For
-    example, `addbroadcast(x, 0)` will make the first dimension of `x`
-    broadcastable. When performing the function, if the length of `x`
-    along that dimension is not 1, a ``ValueError`` will be raised.
-
-.. function:: patternbroadcast(x, broadcastable)
-
-    Change `x` broadcastable pattern to
-    `broadcastable`. `broadcastable` must be iterable. For example,
-    `patternbroadcast(x, (True, False))` will make the first dimension
-    of `x` broadcastable and the second dimension not broadcastable,
-    so x will now be a `row`.
+.. autofunction:: patternbroadcast(x, broadcastable)
 
 .. function:: flatten(x, outdim=1)
 

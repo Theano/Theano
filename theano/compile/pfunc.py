@@ -9,7 +9,7 @@ from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
 from theano.compile.profiling import ProfileStats
 from theano.gof import Variable, Constant
-from theano.gof.python25 import any
+from theano.compat.python2x import any
 
 import logging
 _logger = logging.getLogger("theano.compile.pfunc")
@@ -66,8 +66,8 @@ def rebuild_collect_shared(outputs,
     if isinstance(outputs, tuple):
         outputs = list(outputs)
 
-    ## This function implements similar functionality as graph.clone
-    ## and it should be merged with that
+    # This function implements similar functionality as graph.clone
+    # and it should be merged with that
     clone_d = {}
     update_d = {}
     update_expr = []
@@ -113,8 +113,8 @@ def rebuild_collect_shared(outputs,
                         update_expr.append((v, v_update))
         if not copy_inputs_over or (isinstance(v, Constant) and
                                     hasattr(v, 'fgraph')):
-            ### Cloning shared variables implies copying their underlying
-            ### memory buffer ?? No.
+            # Cloning shared variables implies copying their underlying
+            # memory buffer ?? No.
             return clone_d.setdefault(v, v.clone())
         else:
             return clone_d.setdefault(v, v)
@@ -235,17 +235,17 @@ def rebuild_collect_shared(outputs,
                 raise TypeError('Outputs must be theano Variable or '
                                 'Out instances. Received ' + str(v)
                                 + ' of type ' + str(type(v)))
-            #computed_list.append(cloned_v)
+            # computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):
             cloned_v = clone_v_get_shared_updates(outputs, copy_inputs_over)
             cloned_outputs = cloned_v
-            #computed_list.append(cloned_v)
+            # computed_list.append(cloned_v)
         elif isinstance(outputs, Out):
             cloned_v = clone_v_get_shared_updates(outputs.variable,
                                                   copy_inputs_over)
             cloned_outputs = Out(cloned_v, borrow=outputs.borrow)
-            #computed_list.append(cloned_v)
+            # computed_list.append(cloned_v)
         elif outputs is None:
             cloned_outputs = []  # TODO: get Function.__call__ to return None
         else:
@@ -336,7 +336,7 @@ class Param(object):
 def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         no_default_updates=False, accept_inplace=False, name=None,
         rebuild_strict=True, allow_input_downcast=None,
-        profile=None, on_unused_input=None):
+        profile=None, on_unused_input=None,output_keys=None):
     """Function-constructor for graphs with shared variables.
 
     :type params: list of either Variable or Param instances.
@@ -495,9 +495,9 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         i.variable = iv
 
     for sv in shared_inputs:
-        #pass value of None here
-        #value will be stored in the resulting functions' defaults list
-        #but since the value of shared variables never needs to be refed, it is not needed
+        # pass value of None here
+        # value will be stored in the resulting functions' defaults list
+        # but since the value of shared variables never needs to be refed, it is not needed
         if sv in update_d:
             si = In(variable=sv, value=sv.container, mutable=True,
                     borrow=True, update=update_d[sv], shared=True)
@@ -508,7 +508,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
 
     return orig_function(inputs, cloned_outputs, mode,
             accept_inplace=accept_inplace, name=name, profile=profile,
-            on_unused_input=on_unused_input)
+            on_unused_input=on_unused_input, output_keys=output_keys)
 
 
 def _pfunc_param_to_in(param, strict=False, allow_downcast=None):

@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.284
+    return 0.285
 
 @cython.boundscheck(False)
 def perform(
@@ -191,6 +191,10 @@ def perform(
     cdef unsigned int begin
     cdef unsigned int end
     cdef int cond
+    cdef unsigned int len_output_storage = (n_mit_mot_outs + n_mit_sot +
+                                            n_sit_sot + n_nit_sot +
+                                            n_shared_outs)
+    cdef int output_reused[500] # max 500 outputs
 
 
     if n_steps < 0:
@@ -304,11 +308,14 @@ def perform(
                 offset += 1
 
         # 4. collecting slices where the output should be stored
+
+        # 4.1. Collect slices for mitmots
         for idx in range(n_mit_mot_outs):
             output_storage[idx].storage[0] = None
 
+        # 4.2. Collect slices for mitsots, sitsots and nitsots
         offset = n_mit_mot_outs
-        if i !=0 and n_nit_sot >0:
+        if i != 0:
             for idx in range(n_outs + n_nit_sot - n_mit_mot):
                 if ( store_steps[<unsigned int>(idx+n_mit_mot)] == 1 or
                     vector_outs[<unsigned int>(idx+n_mit_mot)] == 1):
@@ -321,12 +328,21 @@ def perform(
             for idx in range(n_outs + n_nit_sot - n_mit_mot):
                 output_storage[<unsigned int>(idx+offset)].storage[0] = None
 
+        # 4.3. Collect slices for shared outputs
         offset += n_outs+n_nit_sot - n_mit_mot
         for idx in range(n_shared_outs):
             output_storage[<unsigned int>(idx+offset)].storage[0] = None
+
+        # 4.4. If there is a condition add it to the mix
         if as_while:
             pdx = offset + n_shared_outs
             output_storage[<unsigned int>pdx].storage[0] = None
+
+        # 4.5. Keep a reference to the variables currently in the
+        # output_storage to be able to compare them with the actual
+        # outputs of the inner function after its execution
+        old_output_storage = [o.storage[0] for o in output_storage]
+
         # 5. compute outputs
         t0_fn = time.time()
 
@@ -348,6 +364,11 @@ def perform(
             pdx = offset + n_shared_outs
             cond = output_storage[pdx].storage[0] == 0
 
+        # Check which of the pre-allocated outputs (if applicable) have
+        # been reused by the inner function
+        for j in range(len_output_storage):
+            output_reused[j] = (old_output_storage[j] is
+                                output_storage[j].storage[0])
 
         offset_out = 0
         # 5.1 Copy over the values for mit_mot outputs
@@ -363,8 +384,8 @@ def perform(
         offset_out -= n_mit_mot
 
         for j in range(begin, end):
-            if ( store_steps[j] == 1 or vector_outs[j] ==1 or
-                outs[j][0][pos[j]] is not output_storage[<unsigned int>(offset_out+j)].storage[0]):
+            if (store_steps[j] == 1 or vector_outs[j] == 1 or
+                not output_reused[<unsigned int>(offset_out+j)]):
 
                 outs[j][0][pos[j]] = output_storage[<unsigned int>(offset_out+j)].storage[0]
 
@@ -387,7 +408,7 @@ def perform(
                     outs[j][0] = outs[j][0][:store_steps[j]]
                 outs[j][0][pos[j]] = output_storage[jout].storage[0]
             elif (store_steps[j] == 1 or vector_outs[j] == 1 or
-                  outs[j][0][pos[j]] is not output_storage[j+offset_out].storage[0]):
+                  not output_reused[<unsigned int>(offset_out+j)]):
                 outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
 
 

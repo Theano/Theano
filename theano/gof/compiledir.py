@@ -198,8 +198,17 @@ def filter_compiledir(path):
     # os.system('touch') returned -1 for an unknown reason; the
     # alternate approach here worked in all cases... it was weird.
     # No error should happen as we checked the permissions.
-    open(os.path.join(path, '__init__.py'), 'w').close()
-
+    init_file = os.path.join(path, '__init__.py')
+    if not os.path.exists(init_file):
+        try:
+            open(init_file, 'w').close()
+        except IOError as e:
+            if os.path.exists(init_file):
+                pass  # has already been created
+            else:
+                if os.path.exists(path):
+                    e.args += ('%s does not exist..' % path,)
+                raise
     return path
 
 
@@ -269,7 +278,7 @@ def cleanup():
             try:
                 filename = os.path.join(compiledir, directory, "key.pkl")
                 file = open(filename, 'rb')
-                #print file
+                # print file
                 try:
                     keydata = cPickle.load(file)
                     for key in list(keydata.keys):
@@ -277,8 +286,8 @@ def cleanup():
                         have_c_compiler = False
                         for obj in flatten(key):
                             if isinstance(obj, numpy.ndarray):
-                                #Reuse have_npy_abi_version to
-                                #force the removing of key
+                                # Reuse have_npy_abi_version to
+                                # force the removing of key
                                 have_npy_abi_version = False
                                 break
                             elif isinstance(obj, basestring):
@@ -290,14 +299,14 @@ def cleanup():
                                   hasattr(obj, 'c_code_cache_version')):
                                 v = obj.c_code_cache_version()
                                 if v not in [(), None] and v not in key[0]:
-                                    #Reuse have_npy_abi_version to
-                                    #force the removing of key
+                                    # Reuse have_npy_abi_version to
+                                    # force the removing of key
                                     have_npy_abi_version = False
                                     break
 
                         if not have_npy_abi_version or not have_c_compiler:
                             try:
-                                #This can happen when we move the compiledir.
+                                # This can happen when we move the compiledir.
                                 if keydata.key_pkl != filename:
                                     keydata.key_pkl = filename
                                 keydata.remove_key(key)

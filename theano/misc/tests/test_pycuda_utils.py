@@ -14,15 +14,16 @@ if cuda.cuda_available == False:
 from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 import pycuda.gpuarray
 
+
 def test_to_gpuarray():
-    cx = cuda.CudaNdarray.zeros((5,4))
+    cx = cuda.CudaNdarray.zeros((5, 4))
 
     px = to_gpuarray(cx)
     assert isinstance(px, pycuda.gpuarray.GPUArray)
-    cx[0,0] = numpy.asarray(1, dtype="float32")
+    cx[0, 0] = numpy.asarray(1, dtype="float32")
     # Check that they share the same memory space
     assert px.gpudata == cx.gpudata
-    assert numpy.asarray(cx[0,0]) == 1
+    assert numpy.asarray(cx[0, 0]) == 1
 
     assert numpy.allclose(numpy.asarray(cx), px.get())
     assert px.dtype == cx.dtype
@@ -30,14 +31,14 @@ def test_to_gpuarray():
     assert all(numpy.asarray(cx._strides) * 4 == px.strides)
 
     # Test when the CudaNdarray is strided
-    cx = cx[::2,::]
+    cx = cx[::2, ::]
     px = to_gpuarray(cx, copyif=True)
     assert isinstance(px, pycuda.gpuarray.GPUArray)
-    cx[0,0] = numpy.asarray(2, dtype="float32")
+    cx[0, 0] = numpy.asarray(2, dtype="float32")
 
     # Check that they do not share the same memory space
     assert px.gpudata != cx.gpudata
-    assert numpy.asarray(cx[0,0]) == 2
+    assert numpy.asarray(cx[0, 0]) == 2
     assert not numpy.allclose(numpy.asarray(cx), px.get())
 
     assert px.dtype == cx.dtype
@@ -52,9 +53,8 @@ def test_to_gpuarray():
         pass
 
 
-
 def test_to_cudandarray():
-    px = pycuda.gpuarray.zeros((3,4,5), 'float32')
+    px = pycuda.gpuarray.zeros((3, 4, 5), 'float32')
     cx = to_cudandarray(px)
     assert isinstance(cx, cuda.CudaNdarray)
     assert numpy.allclose(px.get(),
@@ -64,7 +64,7 @@ def test_to_cudandarray():
     assert all(numpy.asarray(cx._strides) * 4 == px.strides)
 
     try:
-        px = pycuda.gpuarray.zeros((3,4,5), 'float64')
+        px = pycuda.gpuarray.zeros((3, 4, 5), 'float64')
         to_cudandarray(px)
         assert False
     except ValueError:

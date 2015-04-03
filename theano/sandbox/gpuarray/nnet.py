@@ -2,8 +2,6 @@ import numpy
 
 from theano import Op, Apply, config
 from theano.compat.six import StringIO
-from theano.sandbox.gpuarray.comp import NVCC_compiler
-
 
 try:
     import pygpu
@@ -11,12 +9,12 @@ try:
 except ImportError:
     pass
 
-from theano.sandbox.gpuarray.basic_ops import as_gpuarray_variable
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.kernel_codegen import (nvcc_kernel,
-                                                   inline_softmax,
-                                                   inline_softmax_fixed_shared)
-
+from .basic_ops import as_gpuarray_variable
+from .comp import NVCC_compiler
+from .type import GpuArrayType
+from .kernel_codegen import (nvcc_kernel,
+                             inline_softmax,
+                             inline_softmax_fixed_shared)
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
@@ -36,7 +34,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return self.__class__.__name__
 
     def make_node(self, x, b, y_idx):
-        #N.B. won't work when we don't cast y_idx to float anymore
+        # N.B. won't work when we don't cast y_idx to float anymore
         x = as_gpuarray_variable(x)
         b = as_gpuarray_variable(b)
         y_idx = as_gpuarray_variable(y_idx)
@@ -260,7 +258,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        #return ()
+        # return ()
         return (5,)
 
     def c_compiler(self):
@@ -296,7 +294,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
-        #return ()
+        # return ()
         return (6,)
 
     def c_headers(self):
@@ -490,7 +488,7 @@ class GpuSoftmax (Op):
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
-            cnda_thread_sync = ""  
+            cnda_thread_sync = ""
         return """
         if (PyGpuArray_NDIM(%(x)s) != 2)
         {
@@ -686,7 +684,7 @@ class GpuSoftmaxWithBias (Op):
         if config.gpuarray.sync:
             cnda_thread_sync = "GpuArray_sync(&%(zz)s->ga);" % dict(zz=zz)
         else:
-            cnda_thread_sync = "" 
+            cnda_thread_sync = ""
         return """
         if (PyGpuArray_NDIM(%(x)s) != 2)
         {

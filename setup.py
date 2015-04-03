@@ -43,12 +43,11 @@ Operating System :: POSIX
 Operating System :: Unix
 Operating System :: MacOS
 Programming Language :: Python :: 2
-Programming Language :: Python :: 2.4
-Programming Language :: Python :: 2.5
 Programming Language :: Python :: 2.6
 Programming Language :: Python :: 2.7
 Programming Language :: Python :: 3
 Programming Language :: Python :: 3.3
+Programming Language :: Python :: 3.4
 """
 NAME                = 'Theano'
 MAINTAINER          = "LISA laboratory, University of Montreal"
@@ -65,7 +64,7 @@ AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
-MINOR               = 6
+MINOR               = 7
 MICRO               = 0
 SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
@@ -139,7 +138,7 @@ short_version = '%(version)s'
 version = '%(version)s'
 git_revision = '%(git_revision)s'
 full_version = '%(version)s.dev-%%(git_revision)s' %% {
-        'git_revision': git_revision}
+    'git_revision': git_revision}
 release = %(isrelease)s
 
 if not release:
@@ -175,7 +174,7 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.5.0', 'scipy>=0.7.2'],
+          install_requires=['numpy>=1.6.2', 'scipy>=0.11'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', 'ChangeLog'],

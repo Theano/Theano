@@ -52,19 +52,16 @@ try:
 
             # Now x is always c contiguous.
 
-
-
             # the next step is to create a CUDAMatrix object. We do so by first creating
             # a cudamat object with no data_host.
             cm_mat = cudamat.cudamat()
 
-            cm_mat.size[0] = reduce(lambda x,y:x*y, x.shape, 1)
+            cm_mat.size[0] = reduce(lambda x, y: x*y, x.shape, 1)
             cm_mat.size[1] = 1
             cm_mat.on_host = 0
             cm_mat.on_device = 1
             cm_mat.is_trans = 0
-            cm_mat.owns_data = 0 # <-- note: cm_mat dosen't owe the data; x does. So x will delete it.
-
+            cm_mat.owns_data = 0  # <-- note: cm_mat dosen't owe the data; x does. So x will delete it.
 
             # x.gpudata is a long. We need a pointer to a float. cast.
             import ctypes
@@ -72,12 +69,9 @@ try:
 
             px = cudamat.CUDAMatrix(cm_mat)
 
-            px._base = x # x won't be freed if the cudamat object isn't freed.
+            px._base = x  # x won't be freed if the cudamat object isn't freed.
 
-
-
-
-            px.mat_on_host = False # let cudamat know that we don't have a numpy
+            px.mat_on_host = False  # let cudamat know that we don't have a numpy
                                    # array attached.
 
             # Note how gnumpy tracks its cudamat objects: it moves things to the

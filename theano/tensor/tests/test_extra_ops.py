@@ -19,6 +19,7 @@ from theano import config, tensor, function
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
 
+
 class TestCumsumOp(utt.InferShapeTester):
 
     def setUp(self):
@@ -31,12 +32,13 @@ class TestCumsumOp(utt.InferShapeTester):
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
         # Test axis out of bounds
-        self.assertRaises(ValueError, cumsum, x, axis=4)
+        self.assertRaises(ValueError, cumsum, x, axis=3)
+        self.assertRaises(ValueError, cumsum, x, axis=-4)
 
         f = theano.function([x], cumsum(x))
         assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             f = theano.function([x], cumsum(x, axis=axis))
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
@@ -50,7 +52,7 @@ class TestCumsumOp(utt.InferShapeTester):
                                 [a],
                                 self.op_class)
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             self._compile_and_check([x],
                                     [cumsum(x, axis=axis)],
                                     [a],
@@ -61,7 +63,7 @@ class TestCumsumOp(utt.InferShapeTester):
 
         utt.verify_grad(self.op, [a])  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             utt.verify_grad(self.op_class(axis=axis), [a], eps=4e-4)
 
 
@@ -76,10 +78,14 @@ class TestCumprodOp(utt.InferShapeTester):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
+        # Test axis out of bounds
+        self.assertRaises(ValueError, cumprod, x, axis=3)
+        self.assertRaises(ValueError, cumprod, x, axis=-4)
+
         f = theano.function([x], cumprod(x))
         assert np.allclose(np.cumprod(a), f(a))  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             f = theano.function([x], cumprod(x, axis=axis))
             assert np.allclose(np.cumprod(a, axis=axis), f(a))
 
@@ -93,7 +99,7 @@ class TestCumprodOp(utt.InferShapeTester):
                                 [a],
                                 self.op_class)
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             self._compile_and_check([x],
                                     [cumprod(x, axis=axis)],
                                     [a],
@@ -104,7 +110,7 @@ class TestCumprodOp(utt.InferShapeTester):
 
         utt.verify_grad(self.op, [a])  # Test axis=None
 
-        for axis in range(len(a.shape)):
+        for axis in range(-len(a.shape), len(a.shape)):
             utt.verify_grad(self.op_class(axis=axis), [a])
 
 
@@ -113,6 +119,36 @@ class TestBinCountOp(utt.InferShapeTester):
         super(TestBinCountOp, self).setUp()
         self.op_class = BinCountOp
         self.op = BinCountOp()
+
+    def test_bincountFn(self):
+        w = T.vector('w')
+        for dtype in ('int8', 'int16', 'int32', 'int64',
+                      'uint8', 'uint16', 'uint32', 'uint64'):
+            x = T.vector('x', dtype=dtype)
+
+            # uint64 always fails
+            if dtype in ('uint64',):
+                self.assertRaises(TypeError, bincount, x)
+
+            else:
+                a = np.random.random_integers(50, size=(25)).astype(dtype)
+                weights = np.random.random((25,)).astype(config.floatX)
+
+                f1 = theano.function([x], bincount(x))
+                f2 = theano.function([x, w], bincount(x, weights=w))
+
+                assert (np.bincount(a) == f1(a)).all()
+                assert np.allclose(np.bincount(a, weights=weights),
+                                   f2(a, weights))
+                f3 = theano.function([x], bincount(x, minlength=23))
+                f4 = theano.function([x], bincount(x, minlength=5))
+                assert (np.bincount(a, minlength=23) == f3(a)).all()
+                assert (np.bincount(a, minlength=5) == f4(a)).all()
+                # skip the following test when using unsigned ints
+                if not dtype.startswith('u'):
+                    a[0] = -1
+                    f5 = theano.function([x], bincount(x, assert_nonneg=True))
+                    self.assertRaises(AssertionError, f5, a)
 
     def test_bincountOp(self):
         w = T.vector('w')
@@ -129,22 +165,22 @@ class TestBinCountOp(utt.InferShapeTester):
             x = T.vector('x', dtype=dtype)
 
             if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+                self.assertRaises(TypeError, BinCountOp(), x)
 
             else:
                 a = np.random.random_integers(50, size=(25)).astype(dtype)
                 weights = np.random.random((25,)).astype(config.floatX)
 
-                f1 = theano.function([x], bincount(x))
-                f2 = theano.function([x, w], bincount(x, weights=w))
+                f1 = theano.function([x], BinCountOp()(x, weights=None))
+                f2 = theano.function([x, w], BinCountOp()(x, weights=w))
 
                 assert (np.bincount(a) == f1(a)).all()
                 assert np.allclose(np.bincount(a, weights=weights),
                                    f2(a, weights))
                 if not numpy_16:
                     continue
-                f3 = theano.function([x], bincount(x, minlength=23))
-                f4 = theano.function([x], bincount(x, minlength=5))
+                f3 = theano.function([x], BinCountOp(minlength=23)(x, weights=None))
+                f4 = theano.function([x], BinCountOp(minlength=5)(x, weights=None))
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
 
@@ -161,12 +197,12 @@ class TestBinCountOp(utt.InferShapeTester):
             x = T.vector('x', dtype=dtype)
 
             if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+                self.assertRaises(TypeError, BinCountOp(), x)
 
             else:
                 self._compile_and_check(
                         [x],
-                        [bincount(x)],
+                        [BinCountOp()(x,None)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -174,7 +210,7 @@ class TestBinCountOp(utt.InferShapeTester):
                 weights = np.random.random((25,)).astype(config.floatX)
                 self._compile_and_check(
                         [x],
-                        [bincount(x, weights=weights)],
+                        [BinCountOp()(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -183,14 +219,14 @@ class TestBinCountOp(utt.InferShapeTester):
                     continue
                 self._compile_and_check(
                         [x],
-                        [bincount(x, minlength=60)],
+                        [BinCountOp(minlength=60)(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
 
                 self._compile_and_check(
                         [x],
-                        [bincount(x, minlength=5)],
+                        [BinCountOp(minlength=5)(x, weights=weights)],
                         [np.random.random_integers(
                             50, size=(25,)).astype(dtype)],
                         self.op_class)
@@ -478,11 +514,12 @@ class TestFillDiagonal(utt.InferShapeTester):
                                  numpy.random.rand()],
                                 self.op_class)
         self._compile_and_check([z, y], [self.op(z, y)],
-                                #must be square when nd>2
+                                # must be square when nd>2
                                 [numpy.random.rand(8, 8, 8),
                                  numpy.random.rand()],
                                 self.op_class,
                                 warn=False)
+
 
 class TestFillDiagonalOffset(utt.InferShapeTester):
 

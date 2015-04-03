@@ -21,8 +21,8 @@ from theano.tensor.slinalg import ( Cholesky,
                                     Eigvalsh,
                                     EigvalshGrad,
                                     eigvalsh,
-                                    expm
-                                    )
+                                    expm,
+                                    kron)
 
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -34,6 +34,7 @@ try:
 except ImportError:
     # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
     imported_scipy = False
+
 
 def check_lower_triangular(pd, ch_f):
     ch = ch_f(pd)
@@ -114,7 +115,6 @@ def test_cholesky_and_cholesky_grad_shape():
             m = numpy.cov(rng.randn(shp, shp + 10)).astype(config.floatX)
             yield numpy.testing.assert_equal, f_chol(m), (shp, shp)
             yield numpy.testing.assert_equal, f_cholgrad(m), (shp, shp)
-
 
 
 def test_eigvalsh():
@@ -198,17 +198,17 @@ class test_Solve(utt.InferShapeTester):
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
         y = self.op(A, b)
-        gen_solve_func = theano.function([A,b],y)
+        gen_solve_func = theano.function([A, b], y)
 
         cholesky_lower = Cholesky(lower=True)
         L = cholesky_lower(A)
         y_lower = self.op(L, b)
-        lower_solve_func = theano.function([L,b],y_lower)
+        lower_solve_func = theano.function([L, b], y_lower)
 
         cholesky_upper = Cholesky(lower=False)
         U = cholesky_upper(A)
         y_upper = self.op(U, b)
-        upper_solve_func = theano.function([U,b],y_upper)
+        upper_solve_func = theano.function([U, b], y_upper)
 
         b_val = numpy.asarray(rng.rand(5, 1), dtype=config.floatX)
         
@@ -281,3 +281,45 @@ def test_expm_grad_3():
     A = rng.randn(5, 5)
 
     tensor.verify_grad(expm, [A], rng=rng)
+
+
+class TestKron(utt.InferShapeTester):
+
+    rng = numpy.random.RandomState(43)
+
+    def setUp(self):
+        super(TestKron, self).setUp()
+        self.op = kron
+
+    def test_perform(self):
+        if not imported_scipy:
+            raise SkipTest('kron tests need the scipy package to be installed')
+
+        for shp0 in [(2,), (2, 3), (2, 3, 4), (2, 3, 4, 5)]:
+            for shp1 in [(6,), (6, 7), (6, 7, 8), (6, 7, 8, 9)]:
+                if len(shp0) + len(shp1) == 2:
+                    continue
+                x = tensor.tensor(dtype='floatX',
+                                  broadcastable=(False,) * len(shp0))
+                y = tensor.tensor(dtype='floatX',
+                                  broadcastable=(False,) * len(shp1))
+                f = function([x, y], kron(x, y))
+                a = numpy.asarray(self.rng.rand(*shp0)).astype(config.floatX)
+                b = self.rng.rand(*shp1).astype(config.floatX)
+                out = f(a, b)
+                assert numpy.allclose(out, scipy.linalg.kron(a, b))
+
+    def test_numpy_2d(self):
+        for shp0 in [(2, 3)]:
+            for shp1 in [(6, 7)]:
+                if len(shp0) + len(shp1) == 2:
+                    continue
+                x = tensor.tensor(dtype='floatX',
+                                  broadcastable=(False,) * len(shp0))
+                y = tensor.tensor(dtype='floatX',
+                                  broadcastable=(False,) * len(shp1))
+                f = function([x, y], kron(x, y))
+                a = numpy.asarray(self.rng.rand(*shp0)).astype(config.floatX)
+                b = self.rng.rand(*shp1).astype(config.floatX)
+                out = f(a, b)
+                assert numpy.allclose(out, numpy.kron(a, b))

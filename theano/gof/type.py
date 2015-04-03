@@ -13,6 +13,7 @@ from theano.gof import graph
 ########
 from theano.gof.op import CLinkerObject
 
+
 class CLinkerType(CLinkerObject):
     """Interface specification for Types that can be arguments to a `CLinkerOp`.
 
@@ -213,7 +214,6 @@ class CLinkerType(CLinkerObject):
         return ()
 
 
-
 class PureType(object):
     """Interface specification for variable type instances.
 
@@ -226,8 +226,8 @@ class PureType(object):
 
     """
 
-    Variable = graph.Variable #the type that will be created by call to make_variable.
-    Constant = graph.Constant #the type that will be created by call to make_constant
+    Variable = graph.Variable  # the type that will be created by call to make_variable.
+    Constant = graph.Constant  # the type that will be created by call to make_constant
 
     def filter(self, data, strict=False, allow_downcast=None):
         """Required: Return data or an appropriately wrapped/converted data.
@@ -254,7 +254,7 @@ class PureType(object):
     # of this writing this is used only when we transfer new data to a
     # shared variable on the gpu.
 
-    #def filter_inplace(value, storage, strict=False, allow_downcast=None)
+    # def filter_inplace(value, storage, strict=False, allow_downcast=None)
 
     def filter_variable(self, other):
         """Convert a symbolic variable into this Type, if compatible.
@@ -294,7 +294,7 @@ class PureType(object):
         """Optional: return a message explaining the output of is_valid_value"""
         return "none"
 
-    def make_variable(self, name = None):
+    def make_variable(self, name=None):
         """Return a new `Variable` instance of Type `self`.
 
         :Parameters:
@@ -302,7 +302,7 @@ class PureType(object):
             A pretty string for printing and debugging.
 
         """
-        return self.Variable(self, name = name)
+        return self.Variable(self, name=name)
 
     def make_constant(self, value, name=None):
         return self.Constant(type=self, data=value, name=name)
@@ -394,6 +394,23 @@ class Type(object2, PureType, CLinkerType):
     types.  Type references are also useful to do type-checking in pattern-based optimizations.
 
     """
+    def convert_variable(self, var):
+        """Patch variable so that its type will match self, if possible.
+
+        If the variable can't be converted, this should return None.
+
+        The conversion can only happen if the following implication is
+        true for all possible `val`.
+
+          self.is_valid_value(val) => var.type.is_valid_value(val)
+
+        For the majority of types this means that you can only have
+        non-broadcastable dimensions become broadcastable and not the
+        inverse.
+
+        The default is to not convert anything which is always safe.
+        """
+        return None
 
 
 class SingletonType(Type):

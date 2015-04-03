@@ -13,10 +13,7 @@ Guide
 =====
 
 Since Theano uses a functional design, producing pseudo-random numbers in a
-graph is not quite as straightforward as it is in numpy. If you are using Theano's
-shared variables, then a `RandomStreams` object is probably what you want.  (If you are
-using Module then this tutorial will be useful but not exactly what you want.  
-Have a look at the :class:`RandomFunction` Op.)
+graph is not quite as straightforward as it is in numpy.
 
 The way to think about putting randomness into Theano's computations is to
 put random variables in your graph.  Theano will allocate a numpy RandomState

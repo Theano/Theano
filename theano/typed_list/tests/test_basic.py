@@ -561,7 +561,7 @@ class T_MakeList(unittest.TestCase):
         a = T.vector()
         b = T.matrix()
 
-        self.assertRaises(TypeError, make_list, (a,b))
+        self.assertRaises(TypeError, make_list, (a, b))
 
     def correct_answer(self):
         a = T.matrix()
@@ -572,8 +572,8 @@ class T_MakeList(unittest.TestCase):
 
         A = numpy.random.rand(5)
         B = numpy.random.rand(7)
-        X = numpy.random.rand(5,6)
-        Y = numpy.random.rand(1,9)
+        X = numpy.random.rand(5, 6)
+        Y = numpy.random.rand(1, 9)
 
         c = make_list((a, b))
         z = make_list((x, y))

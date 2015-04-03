@@ -33,7 +33,7 @@ class NullType(Type):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def __hash__(self, other):
+    def __hash__(self):
         return hash(type(self))
 
     def __str__(self):

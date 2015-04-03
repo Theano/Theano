@@ -64,9 +64,6 @@ would normally, by specifying the mode parameter.
 
 >>> # with functions
 >>> f = theano.function([input1,input2],[output1], mode=profmode)
->>> # with modules
->>> m = theano.Module()
->>> minst = m.make(mode=profmode)
 
 Retrieving Timing Information
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

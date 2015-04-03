@@ -1,4 +1,4 @@
-#This is the example in the Theano/doc/tutorial/extending_theano.txt
+# This is the example in the Theano/doc/tutorial/extending_theano.txt
 
 import theano
 

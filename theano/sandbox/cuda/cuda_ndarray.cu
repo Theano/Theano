@@ -298,6 +298,25 @@ outstanding_mallocs(PyObject* self, PyObject * args)
     return PyInt_FromLong(_outstanding_mallocs[0]);
 }
 
+
+static void *work_mem = NULL;
+static size_t work_size = 0;
+
+/*
+ * Returns a chunk of memory for temporary work inside of an op. You can only
+ * request a single chunk of memory at a time since it is reused.
+ */
+void *get_work_mem(size_t sz) {
+    if (sz < work_size)
+        return work_mem;
+    device_free(work_mem);
+    work_mem = device_malloc(sz);
+    work_size = sz;
+    if (work_mem == NULL)
+        work_size = 0;
+    return work_mem;
+}
+
 /////////////////////////
 // Static helper methods
 /////////////////////////
@@ -829,7 +848,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     // check shape tuple
     unsigned int rval_nd;
     unsigned int * rval_dims;
-    unsigned int rval_size = 1;
+    size_t rval_size = 1;
 
     if (PyTuple_Check(shape)){
         // copy shape to integer array
@@ -865,7 +884,7 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
     // calculate new size, assert same as old size
     if (rval_size != CudaNdarray_SIZE(self))
     {
-        PyErr_Format(PyExc_ValueError, "size must remain unchanged, changed from %i to %i", CudaNdarray_SIZE(self), rval_size);
+        PyErr_Format(PyExc_ValueError, "size must remain unchanged, changed from %lld to %lld", CudaNdarray_SIZE(self), rval_size);
         free(rval_dims);
         return NULL;
     }
@@ -1290,7 +1309,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if (cpu_err_var != 0) {
         PyErr_Format(
             PyExc_IndexError,
-            "CudaNdarray_TakeFrom: One of the index value is out of bound.\n",
+            "CudaNdarray_TakeFrom: One of the index value is out of bound. Error code: %i.\n",
             cpu_err_var);
         // Must reset it to 0 to don't reset it before each use.
         err = cudaMemset((void*)err_var, 0, sizeof(int));
@@ -3065,7 +3084,8 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
         PyErr_SetString(PyExc_RuntimeError, "error copying data to from memory");
         return NULL;
     }
-    return Py_BuildValue("iiii", gpu_sizes[0], sizeof(float*), sizeof(int), gpu_sizes[1]);
+    return Py_BuildValue("iiii", (int) gpu_sizes[0], (int)sizeof(float*),
+                         (int)sizeof(int), (int) gpu_sizes[1]);
 }
 
 static int cublas_init();
@@ -5086,11 +5106,11 @@ CudaNdarray_DEV_DATA(const CudaNdarray * self)
 /**
  * Return the number of elements in the ndarray (product of the dimensions)
  */
-int
+size_t
 CudaNdarray_SIZE(const CudaNdarray *self)
 {
     if (self->nd == -1) return 0;
-    int size = 1;
+    size_t size = 1;
     for (int i = 0; i < self->nd; ++i)
     {
         size *= CudaNdarray_HOST_DIMS(self)[i];

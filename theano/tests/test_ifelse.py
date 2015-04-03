@@ -16,7 +16,7 @@ from theano import tensor
 import theano.ifelse
 from theano.ifelse import IfElse, ifelse
 from theano.tests  import unittest_tools as utt
-from theano.gof.python25 import all
+from theano.compat.python2x import all
 
 
 class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
@@ -226,9 +226,9 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         rng = numpy.random.RandomState(utt.fetch_seed())
         data = rng.rand(5).astype(self.dtype)
         x = self.shared(data)
-        #print x.broadcastable
+        # print x.broadcastable
         y = tensor.row('y', self.dtype)
-        #print y.broadcastable
+        # print y.broadcastable
         cond = theano.tensor.iscalar('cond')
 
         self.assertRaises(TypeError, ifelse, cond, x, y)

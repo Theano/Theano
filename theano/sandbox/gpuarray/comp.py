@@ -8,6 +8,8 @@ from theano import config
 # This is a big hack to avoid creating a second context on the card.
 from theano.sandbox.cuda.nvcc_compiler import (NVCC_compiler as NVCC_base,
                                                hash_from_file)
+
+
 class NVCC_compiler(NVCC_base):
     @staticmethod
     def compile_args():

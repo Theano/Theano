@@ -3,6 +3,7 @@ import elemwise
 from theano import printing
 from theano.printing import pprint
 
+
 def _scal_inplace(symbol):
     """Replace a symbol definition with an elementwise version of the corresponding scalar Op"""
     symbolname = symbol.__name__
@@ -19,7 +20,7 @@ def _scal_inplace(symbol):
     if getattr(symbol, '__doc__', False):
         rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
 
-    #for the meaning of this see the ./epydoc script
+    # for the meaning of this see the ./epydoc script
     # it makes epydoc display rval as if it were a function, not an object
     rval.__epydoc_asRoutine = symbol
     rval.__module__ = 'theano.tensor.inplace'
@@ -38,200 +39,249 @@ def _scal_inplace(symbol):
 
 
 @_scal_inplace
-def lt_inplace(a,b):
+def lt_inplace(a, b):
     """a < b (inplace on a)"""
 
+
 @_scal_inplace
-def gt_inplace(a,b):
+def gt_inplace(a, b):
     """a > b (inplace on a)"""
 
+
 @_scal_inplace
-def le_inplace(a,b):
+def le_inplace(a, b):
     """a <= b (inplace on a)"""
 
+
 @_scal_inplace
-def ge_inplace(a,b):
+def ge_inplace(a, b):
     """a >= b (inplace on a)"""
 
+
 @_scal_inplace
-def eq_inplace(a,b):
+def eq_inplace(a, b):
     """a == b (inplace on a)"""
 
+
 @_scal_inplace
-def neq_inplace(a,b):
+def neq_inplace(a, b):
     """a != b (inplace on a)"""
 
+
 @_scal_inplace
-def and__inplace(a,b):
+def and__inplace(a, b):
     """bitwise a & b (inplace on a)"""
 
-@_scal_inplace
-def or__inplace(a,b):
-    """bitwise a | b (inplace on a)"""
 
 @_scal_inplace
-def xor_inplace(a,b):
+def or__inplace(a, b):
+    """bitwise a | b (inplace on a)"""
+
+
+@_scal_inplace
+def xor_inplace(a, b):
     """bitwise a ^ b (inplace on a)"""
+
 
 @_scal_inplace
 def invert_inplace(a):
     """bitwise ~a (inplace on a)"""
 
+
 @_scal_inplace
 def abs__inplace(a):
     """|`a`| (inplace on `a`)"""
+
 
 @_scal_inplace
 def exp_inplace(a):
     """e^`a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def exp2_inplace(a):
     """2^`a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def expm1_inplace(a):
     """e^`a` - 1 (inplace on `a`)"""
 
+
 @_scal_inplace
 def neg_inplace(a):
     """-a (inplace on a)"""
+
 
 @_scal_inplace
 def inv_inplace(a):
     """1.0/a (inplace on a)"""
 
+
 @_scal_inplace
 def log_inplace(a):
     """base e logarithm of a (inplace on a)"""
+
 
 @_scal_inplace
 def log1p_inplace(a):
     """log(1+a)"""
 
+
 @_scal_inplace
 def log2_inplace(a):
     """base 2 logarithm of a (inplace on a)"""
+
 
 @_scal_inplace
 def log10_inplace(a):
     """base 10 logarithm of a (inplace on a)"""
 
+
 @_scal_inplace
 def sgn_inplace(a):
     """sign of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def ceil_inplace(a):
     """ceil of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def floor_inplace(a):
     """floor of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def trunc_inplace(a):
     """trunc of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def round_half_to_even_inplace(a):
     """round_half_to_even_inplace(a) (inplace on `a`)"""
+
 
 @_scal_inplace
 def round_half_away_from_zero_inplace(a):
     """round_half_away_from_zero_inplace(a) (inplace on `a`)"""
 
+
 @_scal_inplace
 def sqr_inplace(a):
     """square of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def sqrt_inplace(a):
     """square root of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def deg2rad_inplace(a):
     """convert degree `a` to radian(inplace on `a`)"""
+
 
 @_scal_inplace
 def rad2deg_inplace(a):
     """convert radian `a` to degree(inplace on `a`)"""
 
+
 @_scal_inplace
 def cos_inplace(a):
     """cosine of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def arccos_inplace(a):
     """arccosine of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def sin_inplace(a):
     """sine of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def arcsin_inplace(a):
     """arcsine of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def tan_inplace(a):
     """tangent of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def arctan_inplace(a):
     """arctangent of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def arctan2_inplace(a, b):
     """arctangent of `a` / `b` (inplace on `a`)"""
+
 
 @_scal_inplace
 def cosh_inplace(a):
     """hyperbolic cosine of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def arccosh_inplace(a):
     """hyperbolic arc cosine of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def sinh_inplace(a):
     """hyperbolic sine of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def arcsinh_inplace(a):
     """hyperbolic arc sine of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def tanh_inplace(a):
     """hyperbolic tangent of `a` (inplace on `a`)"""
 
+
 @_scal_inplace
 def arctanh_inplace(a):
     """hyperbolic arc tangent of `a` (inplace on `a`)"""
+
 
 @_scal_inplace
 def erf_inplace(a):
     """error function"""
 
+
 @_scal_inplace
 def erfc_inplace(a):
     """complementary error function"""
+
 
 @_scal_inplace
 def gamma_inplace(a):
     """gamma function"""
 
+
 @_scal_inplace
 def gammaln_inplace(a):
     """log gamma function"""
+
 
 @_scal_inplace
 def psi_inplace(a):
     """derivative of log gamma function"""
 
+
 @_scal_inplace
 def chi2sf_inplace(x, k):
     """chi squared survival function"""
+
 
 @_scal_inplace
 def second_inplace(a):
@@ -245,37 +295,46 @@ pprint.assign(fill_inplace, printing.FunctionPrinter('fill='))
 def maximum_inplace(a, b):
     """elementwise addition (inplace on `a`)"""
 
+
 @_scal_inplace
 def minimum_inplace(a, b):
     """elementwise addition (inplace on `a`)"""
+
 
 @_scal_inplace
 def add_inplace(a, b):
     """elementwise addition (inplace on `a`)"""
 
+
 @_scal_inplace
 def sub_inplace(a, b):
     """elementwise subtraction (inplace on `a`)"""
+
 
 @_scal_inplace
 def mul_inplace(a, b):
     """elementwise multiplication (inplace on `a`)"""
 
+
 @_scal_inplace
 def true_div_inplace(a, b):
     """elementwise division (inplace on `a`)"""
+
 
 @_scal_inplace
 def int_div_inplace(a, b):
     """elementwise division (inplace on `a`)"""
 
+
 @_scal_inplace
 def mod_inplace(a, b):
     """elementwise modulo (inplace on `a`)"""
 
+
 @_scal_inplace
 def pow_inplace(a, b):
     """elementwise power (inplace on `a`)"""
+
 
 @_scal_inplace
 def conj_inplace(a):

@@ -12,6 +12,7 @@ _logger = logging.getLogger('theano.configdefaults')
 
 config = TheanoConfigParser()
 
+
 def floatX_convert(s):
     if s == "32":
         return "float32"
@@ -42,7 +43,7 @@ AddConfigVar('cast_policy',
                 # the current implementation of some cast mechanisms makes it
                 # a bit more complex to add than what was expected, so it is
                 # currently not available.
-                #numpy,
+                # numpy,
                ),
         )
 
@@ -60,6 +61,8 @@ AddConfigVar('int_division',
 # gpu means let the driver select the gpu. Needed in case of gpu in
 # exclusive mode.
 # gpuX mean use the gpu number X.
+
+
 class DeviceParam(ConfigParam):
     def __init__(self, default, *options, **kwargs):
         self.default = default
@@ -172,8 +175,8 @@ if rc == 0 and config.cxx != "":
     AddConfigVar('linker',
                  ("Default linker used if the theano flags mode is Mode "
                   "or ProfileMode(deprecated)"),
-                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc', 'c&py',
-                     'vm', 'vm_nogc', 'cvm_nogc'),
+                 EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc',
+                         'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
 else:
     # g++ is not present or the user disabled it,
@@ -195,7 +198,7 @@ else:
             'empty string.')
 
 
-#Keep the default value the same as the one for the mode FAST_RUN
+# Keep the default value the same as the one for the mode FAST_RUN
 AddConfigVar('allow_gc',
              "Do we default to delete intermediate results during Theano"
              " function calls? Doing so lowers the memory requirement, but"
@@ -205,7 +208,7 @@ AddConfigVar('allow_gc',
              BoolParam(True),
              in_c_key=False)
 
-#Keep the default optimizer the same as the one for the mode FAST_RUN
+# Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar('optimizer',
         ("Default optimizer. If not None, will use this linker with the Mode "
          "object (not ProfileMode(deprecated) or DebugMode)"),
@@ -281,7 +284,7 @@ AddConfigVar('gpu.local_elemwise_fusion',
         BoolParam(True),
         in_c_key=False)
 
-#http://developer.amd.com/CPU/LIBRARIES/LIBM/Pages/default.aspx
+# http://developer.amd.com/CPU/LIBRARIES/LIBM/Pages/default.aspx
 AddConfigVar('lib.amdlibm',
         "Use amd's amdlibm numerical library",
         BoolParam(False))
@@ -361,7 +364,7 @@ AddConfigVar('numpy.seterr_invalid',
              in_c_key=False)
 
 ###
-### To disable some warning about old bug that are fixed now.
+# To disable some warning about old bug that are fixed now.
 ###
 AddConfigVar('warn.ignore_bug_before',
              ("If 'None', we warn about all Theano bugs found by default. "
@@ -370,7 +373,7 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.5', 'None', 'all', '0.3', '0.4', '0.4.1', '0.6',
+             EnumStr('0.6', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.7',
                      allow_override=False),
              in_c_key=False)
 
@@ -518,7 +521,7 @@ AddConfigVar('exception_verbosity',
         EnumStr('low', 'high'),
         in_c_key=False)
 
-#Test if the env variable is set
+# Test if the env variable is set
 var = os.getenv('OMP_NUM_THREADS', None)
 if var:
     try:
@@ -529,7 +532,7 @@ if var:
     else:
         default_openmp = not int(var) == 1
 else:
-    #Check the number of cores availables.
+    # Check the number of cores availables.
     count = cpuCount()
     if count == -1:
         _logger.warning("We are not able to detect the number of CPU cores."

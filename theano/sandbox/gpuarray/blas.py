@@ -1,7 +1,7 @@
 from theano import Op, Apply, config
 
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
-from theano.sandbox.gpuarray.basic_ops import (HideC, as_gpuarray_variable)
+from .basic_ops import HideC, as_gpuarray_variable
 
 try:
     import pygpu
@@ -285,6 +285,7 @@ def local_inplace_gpuagemv(node):
 def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
         return [gpugemm_inplace(*node.inputs)]
+
 
 @local_optimizer([gpuger_no_inplace], inplace=True)
 def local_inplace_gpuager(node):

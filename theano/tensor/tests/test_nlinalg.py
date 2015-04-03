@@ -419,6 +419,14 @@ class test_Eigh(test_Eig):
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
 
+    @utt.AttemptManyTimes(n_attempts=3, n_req_successes=2)
+    def test_uplo(self):
+        super(test_Eigh_float32, self).test_uplo()
+
+    @utt.AttemptManyTimes(n_attempts=3, n_req_successes=2)
+    def test_grad(self):
+        super(test_Eigh_float32, self).test_grad()
+
 
 class T_lstsq(unittest.TestCase):
 
@@ -452,7 +460,7 @@ class T_lstsq(unittest.TestCase):
         self.assertRaises(numpy.linalg.LinAlgError, f, [2, 1], [2, 1], [2, 1])
 
 
-class Matrix_power():
+class Matrix_power(unittest.TestCase):
 
     def test_numpy_compare(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

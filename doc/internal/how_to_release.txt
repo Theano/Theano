@@ -82,18 +82,6 @@ UnicodeDecodeError if there are non-ASCII characters in NEWS.txt. You
 would need to change NEWS.txt so it contains only ASCII characters (the
 problem usually comes from diacritics in people's names).
 
-On freecode (formaly freshmeat)
--------------------------------
-
-Theano project page at freecode is `here <http://freecode.com/projects/theano>`__.
-The package itself is not uploaded to freecode, the only thing to update is
-the description and tags.
-
-ou can request the rights to add a release from an admin (for instance Fred),
-pointing them to `the "roles" page
-<http://freecode.net/projects/theano/roles>`__. Then, create a new release from
-`the "releases" page <http://freecode.net/projects/theano/releases>`__.
-
 On mloss.org
 ------------
 

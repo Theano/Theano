@@ -655,6 +655,16 @@ class PureOp(object):
         """
         return True
 
+    def do_merge(self, node):
+        """This allow to disable the merge of ops in the graph.
+
+        This is very rarely a good idea to disable it. Do not use if
+        you do not understand this small comment. You probably do not
+        need it.
+
+        """
+        return True
+
 
 class Op(utils.object2, PureOp, CLinkerOp):
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""
@@ -830,7 +840,7 @@ def debug_error_message(msg):
 
     action = config.compute_test_value
 
-    #this message should never be called when the debugger is off
+    # this message should never be called when the debugger is off
     assert action != 'off'
 
     if action in ['raise', 'ignore']:
@@ -1146,10 +1156,27 @@ class COp(Op):
                 raise ValueError("No valid section marker was found in file "
                                  "%s" % self.func_files[i])
 
+    def get_op_params(self):
+        """
+        Returns a list of (name, value) pairs that will be turned into
+        macros for use within the op code. This is intended to allow
+        an op's properties to influence the generated C code.
+
+        The names must be strings that are not a C keyword and the
+        values must be strings of literal C representations.
+        """
+        return []
+
     def c_code_cache_version(self):
         return hash(tuple(self.func_codes))
 
-    c_init_code = simple_meth('init_code')
+    def c_init_code(self):
+        if 'init_code' in self.code_sections:
+            return [self.code_sections['init_code']]
+        else:
+            raise utils.MethodNotDefined(
+                'c_init_code', type(self), type(self).__name__)
+
     c_init_code_apply = apply_meth('init_code_apply')
     c_support_code = simple_meth('support_code')
     c_support_code_apply = apply_meth('support_code_apply')
@@ -1208,6 +1235,10 @@ class COp(Op):
                                                 "str##_%s" % name))
         undef_macros.append(undef_template % "APPLY_SPECIFIC")
 
+        for n, v in self.get_op_params():
+            define_macros.append(define_template % (n, v))
+            undef_macros.append(undef_template % (n,))
+
         return os.linesep.join(define_macros), os.linesep.join(undef_macros)
 
     def _lquote_macro(self, txt):
@@ -1255,7 +1286,6 @@ class COp(Op):
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
-
 
     def c_code(self, node, name, inp, out, sub):
         if self.func_name is not None:

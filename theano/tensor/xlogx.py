@@ -3,6 +3,7 @@ import numpy
 from theano.tensor.elemwise import Elemwise
 from theano import scalar
 
+
 class XlogX(scalar.UnaryScalarOp):
     """
     Compute X * log(X), with special case 0 log(0) = 0.

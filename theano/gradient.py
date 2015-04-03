@@ -21,7 +21,7 @@ import theano
 
 from theano import gof
 from theano.gof import Variable
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp
@@ -283,7 +283,7 @@ def Rop(f, wrt, eval_points):
                 same_type_eval_points.append(y)
 
         seen_nodes[node] = op.R_op(node.inputs, same_type_eval_points)
-    #end _traverse
+    # end _traverse
 
     # Populate the dictionary
     for out in f:
@@ -659,7 +659,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
     :return: Returns lists of gradients with respect to `wrt` and `end`,
             respectively.
 
-    .. versionadded:: 0.6.1
+    .. versionadded:: 0.7
     '''
     assert ((cost is not None) or (start is not None))
     assert isinstance(end, list)
@@ -839,8 +839,8 @@ def _populate_var_to_app_to_idx(outputs, wrt, consider_constant):
 
             for i, ipt in enumerate(app.inputs):
 
-                #don't process ipt if it is not a true
-                #parent of var
+                # don't process ipt if it is not a true
+                # parent of var
                 if not connection_pattern[i][var_idx]:
                     continue
 
@@ -964,12 +964,12 @@ def _populate_grad_dict(var_to_app_to_idx,
                 input_to_outputs in connection_pattern
             ]
 
-            #List of bools indicating if each output is an integer dtype
+            # List of bools indicating if each output is an integer dtype
             output_is_int = [hasattr(output.type, 'dtype') and
                              output.type.dtype in theano.tensor.discrete_dtypes
                              for output in node.outputs]
 
-            #List of bools indicating if each output is NullType
+            # List of bools indicating if each output is NullType
             ograd_is_nan = [isinstance(output.type, NullType)
                             for output in output_grads]
 
@@ -1194,8 +1194,8 @@ def _populate_grad_dict(var_to_app_to_idx,
 
                             raise ValueError(msg)
 
-            #Check that op.connection_pattern matches the connectivity
-            #logic driving the op.grad method
+            # Check that op.connection_pattern matches the connectivity
+            # logic driving the op.grad method
             for i, packed in enumerate(zip(inputs, input_grads,
                                            inputs_connected)):
                 ipt, ig, connected = packed
@@ -1223,7 +1223,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                         msg += 'connection_pattern method for it.'
                         warnings.warn(msg)
 
-            #cache the result
+            # cache the result
             term_dict[node] = input_grads
 
         return term_dict[node]
@@ -1251,7 +1251,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                                                     "encountered a NaN. " +
                                                     term.type.why_null)
 
-                        #Don't try to sum up DisconnectedType placeholders
+                        # Don't try to sum up DisconnectedType placeholders
                         if isinstance(term.type, DisconnectedType):
                             continue
 
@@ -1881,12 +1881,17 @@ def _is_zero(x):
 class ConsiderConstant(ViewOp):
     def grad(self, args, g_outs):
         return [g_out.zeros_like(g_out) for g_out in g_outs]
+
+
 consider_constant_ = ConsiderConstant()
 
 
-#I create a function only to have the doc show well.
+# I create a function only to have the doc show well.
 def consider_constant(x):
-    """ Consider an expression constant when computing gradients.
+    """
+    DEPRECATED: use zero_grad() or disconnected_grad() instead.
+
+    Consider an expression constant when computing gradients.
 
     The expression itself is unaffected, but when its gradient is
     computed, or the gradient of another expression that this
@@ -1899,9 +1904,71 @@ def consider_constant(x):
     :return: The expression is returned unmodified, but its gradient
         is now truncated to 0.
 
-    .. versionadded:: 0.6.1
+    .. versionadded:: 0.7
     """
+    warnings.warn((
+        "consider_constant() is deprecated, use zero_grad() or "
+        "disconnected_grad() instead."), stacklevel=3)
+
     return consider_constant_(x)
+
+
+class ZeroGrad(ViewOp):
+    def grad(self, args, g_outs):
+        return [g_out.zeros_like(g_out) for g_out in g_outs]
+
+
+zero_grad_ = ZeroGrad()
+
+
+def zero_grad(x):
+    """
+    Consider an expression constant when computing gradients.
+
+    The expression itself is unaffected, but when its gradient is
+    computed, or the gradient of another expression that this
+    expression is a subexpression of, it will be backpropagated
+    through with a value of zero. In other words, the gradient of
+    the expression is truncated to 0.
+
+    :param x: A Theano expression whose gradient should be truncated.
+
+    :return: The expression is returned unmodified, but its gradient
+        is now truncated to 0.
+    """
+    return zero_grad_(x)
+
+
+class DisconnectedGrad(ViewOp):
+    def grad(self, args, g_outs):
+        return [disconnected_type() for g_out in g_outs]
+
+    def connection_pattern(self, node):
+        return [[False]]
+
+disconnected_grad_ = DisconnectedGrad()
+
+
+def disconnected_grad(x):
+    """
+    Consider an expression constant when computing gradients,
+    while effectively not backpropagating through it.
+
+    The expression itself is unaffected, but when its gradient is
+    computed, or the gradient of another expression that this
+    expression is a subexpression of, it will not be backpropagated
+    through. This is effectively equivalent to truncating the gradient
+    expression to 0, but is executed faster than zero_grad(), which stilll
+    has to go through the underlying computational graph related to the
+    expression.
+
+    :param x: A Theano expression whose gradient should not be
+              backpropagated through.
+
+    :return: The expression is returned unmodified, but its gradient
+        is now effectively truncated to 0.
+    """
+    return disconnected_grad_(x)
 
 
 class GradClip(ViewOp):
@@ -1918,6 +1985,7 @@ class GradClip(ViewOp):
         return [theano.tensor.clip(g_out, self.clip_lower_bound,
                                    self.clip_upper_bound)
                 for g_out in g_outs]
+
 
 def grad_clip(x, lower_bound, upper_bound):
     """

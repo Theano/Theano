@@ -26,9 +26,9 @@ AddConfigVar('gpuarray.sync',
              in_c_key=True)
 
 # This is for documentation not to depend on the availability of pygpu
-from type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
+from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                   GpuArraySharedVariable, gpuarray_shared_constructor)
-import opt
+from . import opt
 
 
 def init_dev(dev):

@@ -8,7 +8,7 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import OrderedDict
 
 from theano.compile.sharedvalue import SharedVariable
 import logging
@@ -46,7 +46,7 @@ class OrderedUpdates(OrderedDict):
     def __setitem__(self, key, value):
         if isinstance(key, SharedVariable):
 
-            #TODO: consider doing error-checking on value.
+            # TODO: consider doing error-checking on value.
             # insist that it is a Theano variable? Have the right type?
             # This could have weird consequences - for example a
             # GPU SharedVariable is customarily associated with a TensorType
@@ -87,8 +87,3 @@ class OrderedUpdates(OrderedDict):
         rval.update(other)
         rval.update(self)
         return rval
-
-
-def Updates(*key, **kwargs):
-    warnings.warn("Updates is deprecated. Switch to OrderedUpdates.")
-    return OrderedUpdates(*key, **kwargs)

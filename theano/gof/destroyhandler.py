@@ -5,8 +5,8 @@ and inplace operations.
 import theano
 import toolbox
 import graph
-from theano.gof.python25 import deque
-from theano.gof.python25 import OrderedDict
+from theano.compat.python2x import deque
+from theano.compat.python2x import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from fg import InconsistencyError
@@ -72,7 +72,6 @@ def _contains_cycle(fgraph, orderings):
     # dictionary also runs slower when storing ids than when
     # storing objects.
 
-
     # dict mapping an Apply or Variable instance to the number
     # of its parents (including parents imposed by orderings)
     # that haven't been visited yet
@@ -102,7 +101,6 @@ def _contains_cycle(fgraph, orderings):
     #     I think since we need to scan through all variables and nodes
     #     to make parent_counts anyway, it's cheap enough to always
     #     detect orphans at cycle detection / toposort time
-
 
     # Pass through all the nodes to build visitable, parent_count, and
     # node_to_children
@@ -152,8 +150,6 @@ def _contains_cycle(fgraph, orderings):
 
     # at this point,
     # parent_counts.keys() == fgraph.apply_nodes + fgraph.variables
-
-
 
     # Now we actually check for cycles
     # As long as there are nodes that can be visited while respecting
@@ -325,11 +321,11 @@ if 0:
             fgraph.destroy_handler = self
 
             self.fgraph = fgraph
-            self.destroyers = OrderedSet() #set of Apply instances with non-null destroy_map
+            self.destroyers = OrderedSet()  # set of Apply instances with non-null destroy_map
             self.view_i = {}  # variable -> variable used in calculation
             self.view_o = {}  # variable -> set of variables that use this one as a direct input
-            #clients: how many times does an apply use a given variable
-            self.clients = {} # variable -> apply -> ninputs
+            # clients: how many times does an apply use a given variable
+            self.clients = {}  # variable -> apply -> ninputs
             self.stale_droot = True
 
             # IG: It's unclear if this is meant to be included in deployed code. It looks like
@@ -394,8 +390,8 @@ if 0:
             """Add Apply instance to set which must be computed"""
 
             #if app in self.debug_all_apps: raise ProtocolError("double import")
-            #self.debug_all_apps.add(app)
-            #print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
+            # self.debug_all_apps.add(app)
+            # print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
 
             # If it's a destructive op, add it to our watch list
             if getattr(app.op, 'destroy_map', {}):
@@ -425,9 +421,9 @@ if 0:
         def on_prune(self, fgraph, app, reason):
             """Remove Apply instance from set which must be computed"""
             #if app not in self.debug_all_apps: raise ProtocolError("prune without import")
-            #self.debug_all_apps.remove(app)
+            # self.debug_all_apps.remove(app)
 
-            #UPDATE self.clients
+            # UPDATE self.clients
             for i, input in enumerate(OrderedSet(app.inputs)):
                 del self.clients[input][app]
 
@@ -438,10 +434,10 @@ if 0:
             # Why? It's a pain to remove them. I think they aren't doing any harm, they will be
             # deleted on_detach().
 
-            #UPDATE self.view_i, self.view_o
+            # UPDATE self.view_i, self.view_o
             for o_idx, i_idx_list in getattr(app.op, 'view_map', {}).items():
                 if len(i_idx_list) > 1:
-                    #destroying this output invalidates multiple inputs
+                    # destroying this output invalidates multiple inputs
                     raise NotImplementedError()
                 o = app.outputs[o_idx]
                 i = app.inputs[i_idx_list[0]]
@@ -463,19 +459,19 @@ if 0:
             else:
                 #if app not in self.debug_all_apps: raise ProtocolError("change without import")
 
-                #UPDATE self.clients
+                # UPDATE self.clients
                 self.clients[old_r][app] -= 1
                 if self.clients[old_r][app] == 0:
                     del self.clients[old_r][app]
 
-                self.clients.setdefault(new_r,{}).setdefault(app,0)
+                self.clients.setdefault(new_r, {}).setdefault(app, 0)
                 self.clients[new_r][app] += 1
 
-                #UPDATE self.view_i, self.view_o
+                # UPDATE self.view_i, self.view_o
                 for o_idx, i_idx_list in getattr(app.op, 'view_map',
                                                  {}).items():
                     if len(i_idx_list) > 1:
-                        #destroying this output invalidates multiple inputs
+                        # destroying this output invalidates multiple inputs
                         raise NotImplementedError()
                     i_idx = i_idx_list[0]
                     output = app.outputs[o_idx]
@@ -509,8 +505,8 @@ if 0:
                     raise InconsistencyError(
                         "Dependency graph contains cycles")
             else:
-                #James's Conjecture:
-                #If there are no destructive ops, then there can be no cycles.
+                # James's Conjecture:
+                # If there are no destructive ops, then there can be no cycles.
                 pass
             return True
 
@@ -533,10 +529,10 @@ if 0:
 
                 # check for destruction of constants
                 illegal_destroy = [r for r in droot if
-                        getattr(r.tag,'indestructible', False) or
+                        getattr(r.tag, 'indestructible', False) or
                         isinstance(r, graph.Constant)]
                 if illegal_destroy:
-                    #print 'destroying illegally'
+                    # print 'destroying illegally'
                     raise InconsistencyError(
                         "Attempting to destroy indestructible variables: %s" %
                         illegal_destroy)
@@ -582,7 +578,7 @@ if 0:
                         #   they are pointed at different rows of a matrix).
                         #
 
-                        #CHECK FOR INPUT ALIASING
+                        # CHECK FOR INPUT ALIASING
                         # OPT: pre-compute this on import
                         tolerate_same = getattr(app.op,
                                                 'destroyhandler_tolerate_same',
@@ -598,8 +594,8 @@ if 0:
                         ignored = OrderedSet(idx1 for idx0, idx1
                                              in tolerate_aliased
                                              if idx0 == destroyed_idx)
-                        #print 'tolerated', tolerated
-                        #print 'ignored', ignored
+                        # print 'tolerated', tolerated
+                        # print 'ignored', ignored
                         for i, input in enumerate(app.inputs):
                             if i in ignored:
                                 continue
@@ -612,8 +608,8 @@ if 0:
                         # depend on destroyed_input
                         root_clients = OrderedSet()
                         for r in root_impact:
-                            assert not [a for a,c in self.clients[r].items() if not c]
-                            root_clients.update([a for a,c in self.clients[r].items() if c])
+                            assert not [a for a, c in self.clients[r].items() if not c]
+                            root_clients.update([a for a, c in self.clients[r].items() if c])
                         root_clients.remove(app)
                         if root_clients:
                             rval[app] = root_clients
@@ -725,11 +721,11 @@ class DestroyHandler(toolbox.Bookkeeper):
         fgraph.destroy_handler = self
 
         self.fgraph = fgraph
-        self.destroyers = OrderedSet() #set of Apply instances with non-null destroy_map
+        self.destroyers = OrderedSet()  # set of Apply instances with non-null destroy_map
         self.view_i = OrderedDict()  # variable -> variable used in calculation
         self.view_o = OrderedDict()  # variable -> set of variables that use this one as a direct input
-        #clients: how many times does an apply use a given variable
-        self.clients = OrderedDict() # variable -> apply -> ninputs
+        # clients: how many times does an apply use a given variable
+        self.clients = OrderedDict()  # variable -> apply -> ninputs
         self.stale_droot = True
 
         self.debug_all_apps = OrderedSet()
@@ -754,7 +750,7 @@ class DestroyHandler(toolbox.Bookkeeper):
         if self.stale_droot:
             droot = OrderedDict()   # destroyed view + nonview variables -> foundation
             impact = OrderedDict()  # destroyed nonview variable -> it + all views of it
-            root_destroyer = OrderedDict() # root -> destroyer apply
+            root_destroyer = OrderedDict()  # root -> destroyer apply
 
             for app in self.destroyers:
                 for output_idx, input_idx_list in app.op.destroy_map.items():
@@ -798,7 +794,7 @@ class DestroyHandler(toolbox.Bookkeeper):
         if app in self.debug_all_apps:
             raise ProtocolError("double import")
         self.debug_all_apps.add(app)
-        #print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
+        # print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
 
         # If it's a destructive op, add it to our watch list
         if getattr(app.op, 'destroy_map', OrderedDict()):
@@ -832,7 +828,7 @@ class DestroyHandler(toolbox.Bookkeeper):
             raise ProtocolError("prune without import")
         self.debug_all_apps.remove(app)
 
-        #UPDATE self.clients
+        # UPDATE self.clients
         for i, input in enumerate(OrderedSet(app.inputs)):
             del self.clients[input][app]
 
@@ -843,11 +839,11 @@ class DestroyHandler(toolbox.Bookkeeper):
         # Why? It's a pain to remove them. I think they aren't doing any harm, they will be
         # deleted on_detach().
 
-        #UPDATE self.view_i, self.view_o
+        # UPDATE self.view_i, self.view_o
         for o_idx, i_idx_list in getattr(app.op, 'view_map',
                                          OrderedDict()).items():
             if len(i_idx_list) > 1:
-                #destroying this output invalidates multiple inputs
+                # destroying this output invalidates multiple inputs
                 raise NotImplementedError()
             o = app.outputs[o_idx]
             i = app.inputs[i_idx_list[0]]
@@ -870,19 +866,19 @@ class DestroyHandler(toolbox.Bookkeeper):
             if app not in self.debug_all_apps:
                 raise ProtocolError("change without import")
 
-            #UPDATE self.clients
+            # UPDATE self.clients
             self.clients[old_r][app] -= 1
             if self.clients[old_r][app] == 0:
                 del self.clients[old_r][app]
 
-            self.clients.setdefault(new_r, OrderedDict()).setdefault(app,0)
+            self.clients.setdefault(new_r, OrderedDict()).setdefault(app, 0)
             self.clients[new_r][app] += 1
 
-            #UPDATE self.view_i, self.view_o
+            # UPDATE self.view_i, self.view_o
             for o_idx, i_idx_list in getattr(app.op, 'view_map',
                                              OrderedDict()).items():
                 if len(i_idx_list) > 1:
-                    #destroying this output invalidates multiple inputs
+                    # destroying this output invalidates multiple inputs
                     raise NotImplementedError()
                 i_idx = i_idx_list[0]
                 output = app.outputs[o_idx]
@@ -915,16 +911,16 @@ class DestroyHandler(toolbox.Bookkeeper):
             if _contains_cycle(fgraph, ords):
                 raise InconsistencyError("Dependency graph contains cycles")
         else:
-            #James's Conjecture:
-            #If there are no destructive ops, then there can be no cycles.
+            # James's Conjecture:
+            # If there are no destructive ops, then there can be no cycles.
 
-            #FB: This isn't always True. It can happend that
-            #optimization introduce node that depend on itself. This
-            #is very rare and should not happen in general. It will be
-            #caught later. The error will be far from the source. But
-            #doing this conjecture should speed up compilation most of
-            #the time. The user should create such dependency except
-            #if he mess too much with the internal.
+            # FB: This isn't always True. It can happend that
+            # optimization introduce node that depend on itself. This
+            # is very rare and should not happen in general. It will be
+            # caught later. The error will be far from the source. But
+            # doing this conjecture should speed up compilation most of
+            # the time. The user should create such dependency except
+            # if he mess too much with the internal.
             pass
         return True
 
@@ -947,7 +943,7 @@ class DestroyHandler(toolbox.Bookkeeper):
 
             # check for destruction of constants
             illegal_destroy = [r for r in droot if \
-                    getattr(r.tag,'indestructible', False) or \
+                    getattr(r.tag, 'indestructible', False) or \
                     isinstance(r, graph.Constant)]
             if illegal_destroy:
                 raise InconsistencyError("Attempting to destroy indestructible variables: %s" %
@@ -994,7 +990,7 @@ class DestroyHandler(toolbox.Bookkeeper):
                     #   they are pointed at different rows of a matrix).
                     #
 
-                    #CHECK FOR INPUT ALIASING
+                    # CHECK FOR INPUT ALIASING
                     # OPT: pre-compute this on import
                     tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
                     assert isinstance(tolerate_same, list)
@@ -1005,8 +1001,8 @@ class DestroyHandler(toolbox.Bookkeeper):
                     assert isinstance(tolerate_aliased, list)
                     ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
                             if idx0 == destroyed_idx)
-                    #print 'tolerated', tolerated
-                    #print 'ignored', ignored
+                    # print 'tolerated', tolerated
+                    # print 'ignored', ignored
                     for i, input in enumerate(app.inputs):
                         if i in ignored:
                             continue

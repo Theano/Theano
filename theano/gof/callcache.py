@@ -1,13 +1,14 @@
 import cPickle, logging
 
-_logger=logging.getLogger("theano.gof.callcache")
+_logger = logging.getLogger("theano.gof.callcache")
+
 
 class CallCache(object):
     def __init__(self, filename=None):
         self.filename = filename
         try:
             if filename is None:
-                raise IOError('bad filename') #just goes to except
+                raise IOError('bad filename')  # just goes to except
             f = open(filename, 'r')
             self.cache = cPickle.load(f)
             f.close()
@@ -18,7 +19,7 @@ class CallCache(object):
         if filename is None:
             filename = self.filename
 
-        #backport
+        # backport
         #filename = self.filename if filename is None else filename
         f = open(filename, 'w')
         cPickle.dump(self.cache, f)
@@ -28,7 +29,7 @@ class CallCache(object):
         if key is None:
             key = (fn, tuple(args))
 
-        #backport
+        # backport
         #key = (fn, tuple(args)) if key is None else key
         if key not in self.cache:
             _logger.debug('cache miss %i', len(self.cache))

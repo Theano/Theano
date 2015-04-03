@@ -12,6 +12,7 @@ except ImportError:
 
 xt, yt = floats('xy')
 
+
 def test_SymPyCCode():
     op = SymPyCCode([xs, ys], xs + ys)
     e = op(xt, yt)
@@ -19,11 +20,13 @@ def test_SymPyCCode():
     fn = theano.gof.CLinker().accept(g).make_function()
     assert fn(1.0, 2.0) == 3.0
 
+
 def test_grad():
     op = SymPyCCode([xs], xs**2)
     zt = op(xt)
     ztprime = theano.grad(zt, xt)
     assert ztprime.owner.op.expr == 2*xs
+
 
 def test_multivar_grad():
     op = SymPyCCode([xs, ys], xs**2 + ys**3)

@@ -4,16 +4,18 @@ import theano.tensor as T
 
 #import klass
 
+
 def symbolic(f):
     f.__is_symbolic = True
     return f
 
+
 class InitGraph(type):
     def __init__(cls, name, bases, dct):
-        #print 'INITIALIZING', name
+        # print 'INITIALIZING', name
         super(InitGraph, cls).__init__(name, bases, dct)
         def just_symbolic(dct):
-            def filter(k,v):
+            def filter(k, v):
                 return True
                 if getattr(v, '__is_symbolic', False):
                     return True
@@ -30,7 +32,7 @@ class InitGraph(type):
             raise TypeError('%s.build_graph did not return dictionary' % cls)
         dct = just_symbolic(build_graph_rval)
         for key, val in dct.items():
-            #print '  adding class attribute', key
+            # print '  adding class attribute', key
             if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
             if callable(val):
@@ -38,17 +40,18 @@ class InitGraph(type):
             else:
                 setattr(cls, key, val)
 
+
 class SymbolicModule(object):
-    #installs class attributes from build_graph after declaration
+    # installs class attributes from build_graph after declaration
     __metaclass__ = InitGraph
 
-    #if we call this function, it will return a new SymbolicModule
+    # if we call this function, it will return a new SymbolicModule
     def __new__(self, **kwargs):
         class SymMod(SymbolicModule):
             @staticmethod
             def build_graph(*bg_args, **bg_kwargs):
-                #this one is like self.build_graph,
-                #except that the kwargs are automatically inserted
+                # this one is like self.build_graph,
+                # except that the kwargs are automatically inserted
                 kwcopy = copy.copy(kwargs)
                 kwcopy.update(bg_kwargs)
                 return self.build_graph(*bg_args, **kwcopy)
@@ -58,43 +61,50 @@ class SymbolicModule(object):
     def build_graph():
         return {}
 
+
 def issymbolicmodule(thing):
     try:
         return issubclass(thing, SymbolicModule)
     except Exception:
         return False
 
+
 def issymbolicmethod(thing):
     return getattr(thing, '__symbolic_method', False)
+
 
 def symbolic_module(f):
     class SymMod(SymbolicModule):
         build_graph = staticmethod(f)
     return SymMod
 
+
 def symbolicmethod(f):
     f.__symbolic_method = True
     return f
 
+
 class CompiledModule(object):
     pass
+
 
 def compile_fn(f, path_locals, common_inputs):
     (args, vararg, kwarg, default) = inspect.getargspec(f)
     if default:
-        #this can be handled correctly, in that default arguments trump path_locals
+        # this can be handled correctly, in that default arguments trump path_locals
         raise NotImplementedError()
-    #make new inputs for the vars named in args
+    # make new inputs for the vars named in args
     # this has the effect of creating new storage for these arguments
     # The common storage doesn't get messed with.
-    inputs = [In(path_locals.get(name,name)) for name in args]
-    inputs.extend([v for k,v in common_inputs.items() if k not in args])
+    inputs = [In(path_locals.get(name, name)) for name in args]
+    inputs.extend([v for k, v in common_inputs.items() if k not in args])
     outputs = f()
-    #print 'inputs', inputs
-    #print 'outputs', outputs
+    # print 'inputs', inputs
+    # print 'outputs', outputs
     compiled_f = theano.function(inputs, outputs)
     updated = []
     return compiled_f, updated
+
 
 def compile(smod, initial_values=None):
     """
@@ -119,7 +129,7 @@ def compile(smod, initial_values=None):
                     for s in modwalker(path_locals, val.values()):
                         yield s
                 elif issymbolicmodule(val):
-                    for s in modwalker(val.__dict__, [v for k,v in sym_items(val)]):
+                    for s in modwalker(val.__dict__, [v for k, v in sym_items(val)]):
                         yield s
                 elif isinstance(val, (basestring, int, float)):
                     pass
@@ -130,11 +140,11 @@ def compile(smod, initial_values=None):
                 else :
                     # check for weird objects that we would like to disallow
                     # not all objects can be transfered by the clone mechanism below
-                    raise TypeError( (val, type(val), getattr(val,'__name__')))
-        for blah in modwalker(root.__dict__, [v for k,v in sym_items(root)]):
+                    raise TypeError( (val, type(val), getattr(val, '__name__')))
+        for blah in modwalker(root.__dict__, [v for k, v in sym_items(root)]):
             yield blah
 
-    #Locate all the starting nodes, and create containers entries for their values
+    # Locate all the starting nodes, and create containers entries for their values
     inputs = {}
     for path_locals, val in walker(smod):
         if isinstance(val, theano.Variable) and (val.owner is None) and (val not in inputs):
@@ -142,31 +152,31 @@ def compile(smod, initial_values=None):
 
     assert len(inputs) == len([v for v in inputs.items()])
 
-    #Locate all the functions to compile, and compile them
+    # Locate all the functions to compile, and compile them
     compiled_functions = {}
     for path_locals, val in walker(smod):
         if issymbolicmethod(val):
             f, update_expressions = compile_fn(val, path_locals, inputs)
             compiled_functions[val] = f
 
-    #Now replicate the nested structure of the SymbolicModule smod
-    #with CompiledModules instead
+    # Now replicate the nested structure of the SymbolicModule smod
+    # with CompiledModules instead
 
     reflected = {}
     def reflect(thing):
-        #UNHASHABLE TYPES
+        # UNHASHABLE TYPES
         if isinstance(thing, list):
             return [reflect(e) for e in thing]
         if isinstance(thing, dict):
             raise NotImplementedError()
 
-        #HASHABLE TYPES
+        # HASHABLE TYPES
         if thing not in reflected:
             if issymbolicmodule(thing):
                 class CMod(CompiledModule):
                     pass
                 setattr(CMod, '__name__', thing.__name__ + '_compiled')
-                #TODO: consider an instance of the class, or the class itself?
+                # TODO: consider an instance of the class, or the class itself?
                 # which is easier for copying?
                 cmod = CMod()
                 reflected[thing] = cmod
@@ -184,7 +194,7 @@ def compile(smod, initial_values=None):
                     print p
                     reflected[thing] = p
                 else:
-                    reflected[thing] = None #TODO: how to reflect derived resuls?
+                    reflected[thing] = None  # TODO: how to reflect derived resuls?
             elif issymbolicmethod(thing):
                 reflected[thing] = compiled_functions[thing]
             else :
@@ -197,6 +207,7 @@ def compile(smod, initial_values=None):
     rval.__inputs = inputs
     rval.__compiled_functions = compiled_functions
     return rval
+
 
 @symbolic_module
 def LR(x=None, y=None, v=None, c=None, l2_coef=None):
@@ -228,6 +239,7 @@ def LR(x=None, y=None, v=None, c=None, l2_coef=None):
 
     return locals()
 
+
 @symbolic_module
 def Layer(x=None, w=None, b=None):
     # our points, one point per row
@@ -241,8 +253,9 @@ def Layer(x=None, w=None, b=None):
         b = T.dvector()
     y = T.tanh(T.dot(x, w) + b)
     @symbolicmethod
-    def params(): return [w,b]
+    def params(): return [w, b]
     return locals()
+
 
 @symbolic_module
 def NNet(x=None, y=None, n_hid_layers=2):
@@ -272,7 +285,7 @@ def NNet(x=None, y=None, n_hid_layers=2):
         def update(x, y):
             pp = params()
             gp = T.grad(classif.loss, pp)
-            return dict((p,p - 0.01*g) for p, g in zip(pp, gp))
+            return dict((p, p - 0.01*g) for p, g in zip(pp, gp))
 
     return locals()
 nnet = compile(NNet)
@@ -288,7 +301,7 @@ if 0:
     def deco(f):
         class SymMod(SymbolicModule):
             def __call__(self, *args, **kwargs):
-                #return another SymbolicModule built like self
+                # return another SymbolicModule built like self
                 def dummy(*dargs, **dkwargs):
                     print 'args', args, dargs
                     print 'kwargs', kwargs, dkwargs
@@ -314,7 +327,7 @@ if 0:
             y=T.dmatrix(),    #our targets
             v=T.dmatrix(),    #first layer weights
             c=T.dvector(),    #first layer bias
-            l2_coef = T.dscalar()
+            l2_coef=T.dscalar()
             ):
         pred = T.dot(x, v) + c
         sse = T.sum((pred - y) * (pred - y))
@@ -332,12 +345,12 @@ if 0:
             x=T.dmatrix(),    #our points, one point per row
             w=T.dmatrix(),    #first layer weights
             b=T.dvector(),    #first layer bias
-            **kwargs #other things from logistic_regression
+            **kwargs  # other things from logistic_regression
             ):
         hid = T.tanh(T.dot(x, w) + b)
         if top_part:
             print 'top_part', top_part, 'kwargs', kwargs
-            top = top_part(x=hid, **kwargs) # SymbolicModule
+            top = top_part(x=hid, **kwargs)  # SymbolicModule
             def params(): return top.params() + [w, b]
         else:
             def params(): return [w, b]
@@ -353,7 +366,7 @@ if 0:
 
 if 0:
     class SymbolicModule(object):
-        name = "__no_name__" #name of this module
+        name = "__no_name__"  # name of this module
 
         variable_table = {}  #map strings (names) to Variables
         method_table = {}  #map strings to compilable functions
@@ -385,8 +398,8 @@ if 0:
             b=T.dvector(),    #first layer bias
             v=T.dmatrix(),    #second layer weights
             c=T.dvector(),    #second layer bias
-            step=T.dscalar(), #step size for gradient descent
-            l2_coef=T.dscalar() #l2 regularization amount
+            step=T.dscalar(),  # step size for gradient descent
+            l2_coef=T.dscalar()  # l2 regularization amount
             ):
         """Idea A:
         """
@@ -403,40 +416,39 @@ if 0:
         def update(cls, x, y, **kwargs):
             params = cls.symbolic_params()
             gp = T.grad(cls.loss, params)
-            return [], [In(p, update=p - cls.step * g) for p,g in zip(params, gp)]
+            return [], [In(p, update=p - cls.step * g) for p, g in zip(params, gp)]
 
         def predict(cls, x, **kwargs):
             return cls.pred, []
 
         return locals()
 
-    #at this point there is a neural_net module all built and compiled,
+    # at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
     @SymbolicModule_fromFn
     def PCA(
-            x = T.dmatrix(),
-            var_thresh = T.dscalar()
+            x=T.dmatrix(),
+            var_thresh=T.dscalar()
             ):
-        #naive version, yes
-        s,v,d = T.svd(x)
+        # naive version, yes
+        s, v, d = T.svd(x)
         acc = T.accumulate(v)
         npc = T.lsearch(acc, var_thresh * T.sum(v))
-        y = s[:,:npc]
-        #transform will map future points x into the principle components space
-        transform = d[:npc,:].T / v[:npc]
+        y = s[:, :npc]
+        # transform will map future points x into the principle components space
+        transform = d[:npc, :].T / v[:npc]
         return locals()
 
-    #at this point there is a neural_net module all built and compiled,
+    # at this point there is a neural_net module all built and compiled,
     # there is also a neural_net.symbolic_module which can be imported.
 
-
-    #running this means:
+    # running this means:
     nnet_on_pca = neural_net(x=PCA.y, submodules=[PCA])
     #nnet_on_pca = SymbolicModule()
-    #nnet_on_pca.include(PCA) #an already-instantiated Module
-    #nnet_on_pca.x = nnet_on_pca.PCA.y #configure this Module
-    #nnet_on_pca.build(neural_net) # instantiate this module
+    # nnet_on_pca.include(PCA) #an already-instantiated Module
+    # nnet_on_pca.x = nnet_on_pca.PCA.y #configure this Module
+    # nnet_on_pca.build(neural_net) # instantiate this module
 
     nnet_on_pca = neural_net(
             substitute=dict(x=PCA.x),
@@ -445,10 +457,9 @@ if 0:
             )
 
     nnet = logistic_regression(
-            redefine={'x':(LogisticLayer.x, LogisticLayer.y)},
-            submodule={'hid':LogisticLayer},
-            add_symbols={'x':LogisticLayer.x})
-
+            redefine={'x': (LogisticLayer.x, LogisticLayer.y)},
+            submodule={'hid': LogisticLayer},
+            add_symbols={'x': LogisticLayer.x})
 
     def stats_collector(r, stat_name):
         """stats_collector(nnet_on_pca.x, 'mean')

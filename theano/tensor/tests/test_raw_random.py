@@ -69,15 +69,15 @@ class T_random_function(utt.InferShapeTester):
         f2, f4, f2_4, f2_4_4 = f()
         f2b, f4b, f2_4b, f2_4_4b = f()
 
-        #print f2
-        #print f4
-        #print f2_4
-        #print f2_4_4
+        # print f2
+        # print f4
+        # print f2_4
+        # print f2_4_4
 
-        #print f2b
-        #print f4b
-        #print f2_4b
-        #print f2_4_4b
+        # print f2b
+        # print f4b
+        # print f2_4b
+        # print f2_4_4b
 
         # setting bounds is same as multiplying by 2
         assert numpy.allclose(f2 * 2, f4), (f2, f4)
@@ -512,7 +512,7 @@ class T_random_function(utt.InferShapeTester):
         rng_R = random_state_type()
         # Use non-default parameters, and larger dimensions because of
         # the integer nature of the result
-        post_r, out = poisson(rng_R, lam=5, size=(11,8))
+        post_r, out = poisson(rng_R, lam=5, size=(11, 8))
 
         f = compile.function(
                 [compile.In(rng_R,
@@ -523,8 +523,8 @@ class T_random_function(utt.InferShapeTester):
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
-        numpy_val0 = numpy_rng.poisson(5,size=(11,8))
-        numpy_val1 = numpy_rng.poisson(5,size=(11,8))
+        numpy_val0 = numpy_rng.poisson(5, size=(11, 8))
+        numpy_val1 = numpy_rng.poisson(5, size=(11, 8))
         print val0
         print numpy_val0
         print val1
@@ -709,7 +709,7 @@ class T_random_function(utt.InferShapeTester):
         assert numpy.all(val0b == numpy_val0b)
         assert numpy.all(val1b == numpy_val1b)
         self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1, 0, 1])
-        #TODO: do we want that?
+        # TODO: do we want that?
         #self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1])
 
         size = tensor.lvector()
@@ -726,7 +726,7 @@ class T_random_function(utt.InferShapeTester):
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [1, 2])
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [2, 1])
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1], [1])
-        #TODO: do we want that?
+        # TODO: do we want that?
         #self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1], [2])
 
     def test_broadcast_arguments(self):

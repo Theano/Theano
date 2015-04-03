@@ -12,8 +12,8 @@ import theano
 import theano.tensor as T
 from theano import tensor, Param, shared, config
 from theano.compat import exc_message
-from theano.gof.python25 import product as itertools_product
-from theano.gof.python25 import any
+from theano.compat.python2x import product as itertools_product
+from theano.compat.python2x import any
 from theano.printing import pp
 from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 _is_real_matrix, _gemm_canonicalize,
@@ -83,7 +83,7 @@ class t_gemm(TestCase):
                 new_z = f(z, a, x, y, b)
                 z_after = self._gemm(z_orig, a, x, y, b)
 
-                #print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
+                # print z_orig, z_after, z, type(z_orig), type(z_after), type(z)
                 unittest_tools.assert_allclose(z_after, z)
                 if a == 0.0 and b == 1.0:
                     return
@@ -176,7 +176,7 @@ class t_gemm(TestCase):
         lr2 = T.constant(2).astype(config.floatX)
         l2_reg = T.constant(0.0001).astype(config.floatX)
 
-        #test constant merge with gemm
+        # test constant merge with gemm
         f = theano.function([a, b], updates=[(s, lr1 * T.dot(a, b) +
                                                 l2_reg * lr2 * s)],
                             mode=mode_not_fast_compile).maker.fgraph.toposort()
@@ -186,7 +186,7 @@ class t_gemm(TestCase):
         assert len(f) == 1
         assert f[0].op == gemm_inplace
 
-        #test factored scalar with merge
+        # test factored scalar with merge
         f = theano.function([a, b], updates=[(s, lr1 * (T.dot(a, b) -
                                                         l2_reg * s))],
                             mode=mode_not_fast_compile).maker.fgraph.toposort()
@@ -196,7 +196,7 @@ class t_gemm(TestCase):
         assert len(f) == 1
         assert f[0].op == gemm_inplace
 
-        #test factored scalar with merge and neg
+        # test factored scalar with merge and neg
         f = theano.function([a, b],
                             updates=[(s, s - lr1 * (s * .0002 + T.dot(a, b)))],
                             mode=mode_not_fast_compile).maker.fgraph.toposort()
@@ -273,7 +273,7 @@ class t_gemm(TestCase):
 
             tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
 
-            #f = inplace_func([tz,ta,tx,ty,tb], gemm_inplace(tz,ta,tx,ty,tb),
+            # f = inplace_func([tz,ta,tx,ty,tb], gemm_inplace(tz,ta,tx,ty,tb),
             #                 mode = compile.Mode(optimizer = None, linker=l))
             #f(z, a, x, y, b)
             f = inplace_func([], gemm_inplace(tz, ta, tx, ty, tb),
@@ -285,7 +285,7 @@ class t_gemm(TestCase):
             f()
             unittest_tools.assert_allclose(z_after, tz.get_value(borrow=True))
 
-            #tz.value *= 0 # clear z's value
+            # tz.value *= 0 # clear z's value
             y_T = ty.get_value(borrow=True).T
             ty.set_value(tx.get_value(borrow=True).T, borrow=True)
             tx.set_value(y_T, borrow=True)
@@ -379,7 +379,7 @@ def test_res_is_a():
     assert not res_is_a(a + a, T.sqrt)
     assert res_is_a(T.sqrt(a + a), T.sqrt)
 
-    #leave the maxclients  stuff untested because it requires being in an fgraph.
+    # leave the maxclients  stuff untested because it requires being in an fgraph.
 
 
 class t_as_scalar(TestCase):
@@ -510,13 +510,13 @@ def test_gemm_opt0():
     just_gemm([X, Y, Z, a, b], [a * T.dot(X, Y) - b * Z])
     just_gemm([X, Y, Z, a, b], [b * Z - a * T.dot(X, Y)])
 
-    #with transposes (transposes should be pushed through dot in canonicalize)
+    # with transposes (transposes should be pushed through dot in canonicalize)
     just_gemm([X, Y, Z, a, b], [b * Z.T - a * T.dot(Y.T, X.T)])
     just_gemm([X, Y, Z, a, b], [b * Z.T + a * b * T.dot(X, Y).T])
     just_gemm([X, Y, Z, a, b], [b * Z + a * T.dot(X, Y).T],
             ishapes=[(5, 3), (3, 4), (4, 5), (), ()])
 
-    #with N multiplications instead of just one
+    # with N multiplications instead of just one
     just_gemm([X, Y, Z, a, b], [(b * b) * Z * a + (a * a) * T.dot(X, Y) * b])
     just_gemm([X, Y, Z, a, b], [Z + T.dot(X, Y)])
     just_gemm([X, Y, Z, a, b], [Z * b + T.dot(X, Y)])
@@ -551,7 +551,7 @@ def test_gemm_opt_double_gemm():
                 raise Failure('_dot22 in graph')
         g = inplace_func(i, o, mode=compile.Mode(linker='py', optimizer=None),
                 on_unused_input='ignore')
-        #for node in g.maker.fgraph.apply_nodes:
+        # for node in g.maker.fgraph.apply_nodes:
         #    if node.op == gemm_inplace: raise Failure('gemm_inplace in graph')
 
         rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
@@ -617,7 +617,7 @@ def test_gemm_canonicalize():
 
     can = []
     _gemm_canonicalize((-d) * X - (a * X + Y - b * Z * c), 1.0, can, 0)
-    #print can
+    # print can
     assert can[0][0].owner.op == T.neg
     assert can[0][0].owner.inputs[0] == d
     assert can[0][1] == X
@@ -682,13 +682,13 @@ def test_gemm_nested():
             ishapes=[(2, 3), (3, 4), (2, 4), (2, 3), (3, 4), (
                 2, 4), (), (), (), ()],
             max_graphlen=1)
-    #print "---------------------"
+    # print "---------------------"
     just_gemm([X, Y, Z, R, S, U, a, b, c, d],
             [a * Z - b * (c * T.dot(X, Y) + d * Z + c * Z)],
             ishapes=[(2, 3), (3, 4), (2, 4), (2, 3), (3, 4), (
                 2, 4), (), (), (), ()],
             max_graphlen=1)
-    #print "---------------------"
+    # print "---------------------"
     just_gemm([X, Y, Z, R, S, U, a, b, c, d],
             [a * Z - b * (c * T.dot(X, Y) + d * Z + c * U)],
             ishapes=[(2, 3), (3, 4), (2, 4), (2, 3), (3, 4), (
@@ -699,7 +699,7 @@ def test_gemm_nested():
 def test_gemm_opt_wishlist():
     X, Y, Z, a, b = T.matrix(), T.matrix(), T.matrix(), T.scalar(), T.scalar()
 
-    #with >2 additions of the same T.dot(X,Y term
+    # with >2 additions of the same T.dot(X,Y term
     just_gemm([X, Y, Z, a, b],
               [(b * b) * Z * a + (a * a) * T.dot(X, Y) + b * T.dot(X, Y)])
 
@@ -727,7 +727,7 @@ def test_gemm_with_vector():
     my_just_gemm([v + a * T.dot(X, Y) - b * Z])
     my_just_gemm([v + b * Z - a * T.dot(X, Y)])
 
-    #with N multiplications instead of just one
+    # with N multiplications instead of just one
     my_just_gemm([v + (b * b) * Z * a + (a * a) * T.dot(X, Y) * b])
     my_just_gemm([v + Z + T.dot(X, Y)])
     my_just_gemm([v + Z * b + T.dot(X, Y)])
@@ -798,8 +798,8 @@ def test_gemm_unrolled():
 
 
 def test_inplace0():
-    #should fail to insert gemm_inplace because gemm_inplace would
-    #create cycles
+    # should fail to insert gemm_inplace because gemm_inplace would
+    # create cycles
     X, Y, Z, a, b = T.matrix('X'), T.matrix('Y'), T.matrix('Z'), T.scalar(
         'a'), T.scalar('b')
     R, S, c = T.matrix('R'), T.matrix('S'), T.scalar('c')
@@ -825,7 +825,7 @@ def test_inplace1():
     # with > 2 terms in the overall addition
     f = inplace_func([X, Y, Z],
             [Z + Z + T.dot(X, Y)], mode='FAST_RUN')
-    #theano.printing.debugprint(f)
+    # theano.printing.debugprint(f)
     # it doesn't work inplace because we didn't mark Z as mutable input
     assert [n.op for n in f.maker.fgraph.apply_nodes] == [gemm_no_inplace]
 
@@ -859,10 +859,10 @@ def test_dot22():
 
 @attr('slow')
 def test_dot22scalar():
-    ## including does not seem to work for 'local_dot_to_dot22' and
-    ## 'local_dot22_to_dot22scalar'
-    ## TODO: exclude other optimizations in BlasOpt?
-    #m = theano.compile.get_default_mode().including('local_dot_to_dot22',
+    # including does not seem to work for 'local_dot_to_dot22' and
+    # 'local_dot22_to_dot22scalar'
+    # TODO: exclude other optimizations in BlasOpt?
+    # m = theano.compile.get_default_mode().including('local_dot_to_dot22',
     #                           'local_dot22_to_dot22scalar','specialize')
     #m = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
@@ -937,8 +937,8 @@ def test_dot22scalar():
                         check_dot22scalar(f, 2)
                         f(av, bv, cv)
 
-                        ## Here, canonicalize also seems needed
-                        ## TODO: add only the optimizations needed?
+                        # Here, canonicalize also seems needed
+                        # TODO: add only the optimizations needed?
                         m2 = mode_blas_opt.including('canonicalize')
                         f = theano.function([a, b, c],
                                             cst2 * c * cst * T.dot(a, b),
@@ -959,7 +959,7 @@ def test_dot22scalar():
                                                 cst * c * a * T.dot(a, b),
                                                 mode=mode_blas_opt)
                             topo = f.maker.fgraph.toposort()
-                            #currently the canonizer don't always
+                            # currently the canonizer don't always
                             # merge all Mul together...  dot22scalar
                             # optimizer does not do a recursive search
                             # therefore, it doesn't find potential
@@ -1023,7 +1023,7 @@ def test_local_dot22_to_dot22scalar():
     m = T.dmatrix()
     r = T.drow()
     for idx, node in enumerate([
-        #Old working cases
+        # Old working cases
         T.mul(_dot22(A, A), x),
         T.mul(_dot22(A, A), x, y),
         T.mul(_dot22(A, A), x, r),
@@ -1049,7 +1049,7 @@ def test_local_dot22_to_dot22scalar():
         T.mul(_dot22(A, A), T.mul(m, y, z), m),
         T.mul(_dot22(A, A), m, T.mul(m, y, z)),
 
-        #Case that opt later in gh-1515
+        # Case that opt later in gh-1515
         T.mul(_dot22(A, A), (r * m), (m * x)),
     ]):
         node2 = theano.tensor.blas.local_dot22_to_dot22scalar.transform(
@@ -1078,7 +1078,7 @@ def test_dot_w_self():
 
 
 ###############################################################################
-## Tests for Gemv
+# Tests for Gemv
 ###############################################################################
 
 class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
@@ -1157,7 +1157,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert isinstance(topo[0].op, Gemv)
         assert topo[0].op.inplace == False
 
-        #test the inplace version
+        # test the inplace version
         g = theano.function([], [], updates=[(v2, v2 + theano.dot(m, v1))],
                             mode=mode_blas_opt)
 
@@ -1208,7 +1208,7 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
         assert topo[-1].op.inplace == False
 
-        #test the inplace version
+        # test the inplace version
         g = theano.function([], [], updates=[(v2, v2 + theano.dot(v1, m))],
                             mode=mode_blas_opt)
 
@@ -1472,14 +1472,14 @@ class BaseGemv(object):
         x_v = x_v.astype("float32")
         y_v = y_v.astype("float32")
 
-        alpha = T.dscalar('a')
-        a = T.fmatrix('w')
-        x = T.fvector('v')
-        y = T.fvector('t')
+        alpha = T.dscalar('alpha')
+        a = self.shared(a_v)
+        x = self.shared(x_v)
+        y = self.shared(y_v)
 
         rval = T.dot(a, x) * alpha + y
 
-        f = theano.function([a, x, y, alpha], rval, mode=self.mode)
+        f = theano.function([alpha], rval, mode=self.mode)
         # this function is currently optimized so that the gemv is
         # done inplace on a temporarily allocated-buffer, which is
         # then scaled by alpha and to t with a fused elemwise.
@@ -1491,7 +1491,7 @@ class BaseGemv(object):
                 assert node.outputs[0].dtype == 'float32'
         assert n_gemvs == 1, n_gemvs
         self.assertFunctionContains1(f, self.gemv_inplace)
-        f(a_v, x_v, y_v, alpha_v)
+        f(alpha_v)
 
 
 class TestSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
@@ -1505,16 +1505,16 @@ class TestDgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
     gemv = theano.tensor.blas.gemv_no_inplace
     gemv_inplace = theano.tensor.blas.gemv_inplace
 
-#The optimization to put Gemv don't work for complex type for now.
+# The optimization to put Gemv don't work for complex type for now.
 # See ticket 653.
-#class TestCgemv(TestCase, BaseGemv):
+# class TestCgemv(TestCase, BaseGemv):
 #    dtype = complex64
 
-#class TestZgemv(TestCase, BaseGemv):
+# class TestZgemv(TestCase, BaseGemv):
 #    dtype = complex128
 
 ###############################################################################
-## Tests for Ger
+# Tests for Ger
 ###############################################################################
 
 
@@ -1780,8 +1780,8 @@ class TestBlasStrides(TestCase):
 
         f_nn = theano.function([], [], updates=[(a, tensor.dot(b, c))],
                 mode=self.mode)
-        #print 'class name:', self.__class__.__name__
-        #theano.printing.debugprint(f_nn)
+        # print 'class name:', self.__class__.__name__
+        # theano.printing.debugprint(f_nn)
         f_nt = theano.function([], [], updates=[(a, tensor.dot(b, c_t.T))],
                 mode=self.mode)
         f_tn = theano.function([], [], updates=[(a, tensor.dot(b_t.T, c))],
