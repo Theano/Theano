@@ -2679,7 +2679,7 @@ def local_adv_sub1_adv_inc_sub1(node):
 @gof.local_optimizer([IncSubtensor,
                       AdvancedIncSubtensor,
                       AdvancedIncSubtensor1])
-def local_useless_incsubtensor_alloc(node):
+def local_useless_inc_subtensor_alloc(node):
     """
     Replaces an [Advanced]IncSubtensor[1], whose increment is an `alloc` of
     a fully or partially broadcastable variable, by one that skips the
