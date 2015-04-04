@@ -3748,12 +3748,12 @@ class T_Join_and_Split(unittest.TestCase):
                 assert not isinstance(node.op, type(self.join_op))
 
         # Test hide error
+        x1.set_value(get_mat(3, 4))
+        x2.set_value(get_mat(3, 4))
+        x3.set_value(get_mat(2, 5))
         if not self.hide_error:
             self.assertRaises(ValueError, f)
         else:
-            x1.set_value(get_mat(3, 4))
-            x2.set_value(get_mat(3, 4))
-            x3.set_value(get_mat(2, 5))
             f()
 
     def test_rebroadcast(self):
