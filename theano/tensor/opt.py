@@ -1488,7 +1488,8 @@ def local_cast_cast(node):
 class Assert(T.Op):
     """
     Implements assertion in a computational graph.
-    Returns the first parameter if the condition is true, otherwise, trigger
+
+    Returns the first parameter if the condition is true, otherwise, triggers
     AssertionError.
 
     Example:
@@ -1498,10 +1499,12 @@ class Assert(T.Op):
       func = theano.function([x], assert_op(x, x.size<2))
 
     Notes:
-    This Op is an debugging feature. It can be removed from the graph
-    because of optimizations, and can hide some possible optimizations to the
-    optimizer. Also, the output of the Op must be returned by the function
-    computing the graph, otherwise it will not be used.
+    This Op is a debugging feature. It can be removed from the graph
+    because of optimizations, and can hide some possible optimizations to
+    the optimizer. Specifically, removing happens if it can be determined
+    that condition will always be true. Also, the output of the Op must be
+    used in the function computing the graph, but it doesn't have to be
+    returned.
     """
     view_map = {0: [0]}
 
