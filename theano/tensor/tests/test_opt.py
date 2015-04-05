@@ -1591,7 +1591,7 @@ def test_local_useless_slice():
     apply_node = f_opt.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list), "Slice should be gone"
-    
+
     # test a 4d tensor
     z = tensor.tensor4('z')
     o2 = z[1, :, :, 1]
@@ -3172,8 +3172,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         assert tensor.Alloc in op_classes
 
 
-class Test_local_useless_incsubtensor_alloc(unittest.TestCase):
-    opt_name = 'local_useless_incsubtensor_alloc'
+class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
+    opt_name = 'local_useless_inc_subtensor_alloc'
 
     def setUp(self):
         # The optimization requires the shape feature so we need to compile in
