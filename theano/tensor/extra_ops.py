@@ -511,53 +511,6 @@ def squeeze(x):
     return view
 
 
-class CompressOp(theano.Op):
-    # See the compress function for docstring
-
-    def __init__(self, axis=None):
-        self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
-
-    def make_node(self, condition, x):
-        x = basic.as_tensor_variable(x)
-
-        condition = basic.as_tensor_variable(condition)
-        if condition.ndim != 1:
-            raise TypeError("Conditions cannot have a number of "
-                            "dimension different of 1.")
-
-        return theano.Apply(self, [condition, x], [x.type()])
-
-    def perform(self, node, inputs, output_storage):
-        condition = inputs[0]
-        x = inputs[1]
-        z = output_storage[0]
-        z[0] = np.compress(condition.astype(bool), x, axis=self.axis)
-        print z[0]
-
-    def infer_shape(self, node, ins_shapes):
-        condition = node.inputs[0]
-        n = condition.ndim # TODO: Find way to get condition vector shape
-
-        if self.axis is None:
-            out_shape = (n,)
-        else:
-            out_shape = list(ins_shapes[1])
-            out_shape[self.axis] -= n
-            out_shape = tuple(out_shape)
-        print out_shape
-        return [out_shape]
-
-    def __str__(self):
-        return self.__class__.__name__
-
-
 def compress(condition, x, axis=None, out=None):
     """Return selected slices of an array along given axis.
 
@@ -577,7 +530,8 @@ def compress(condition, x, axis=None, out=None):
     """
     # This is done to keep the same function signature then NumPy.
     assert out is None
-    return CompressOp(axis=axis)(condition, x)
+    indices = theano.tensor.basic.flatnonzero(condition)
+    return x.take(indices, axis=axis)
 
 
 class RepeatOp(theano.Op):

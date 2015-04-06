@@ -7,8 +7,8 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
-                                     squeeze, CompressOp, compress,
-                                     RepeatOp, repeat, Bartlett, bartlett,
+                                     squeeze, compress, RepeatOp, repeat,
+                                     Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
                                      to_one_hot)
@@ -344,43 +344,46 @@ class SqueezeTester(utt.InferShapeTester):
             assert numpy.allclose(tested, expected)
 
 
-class TestCompressOp(utt.InferShapeTester):
+class CompressTester(utt.InferShapeTester):
+    axis_list = [None,
+                 0,
+                 1]
+    cond_list = [[1, 0, 1, 0, 0, 1],
+                 [0, 1, 1, 0],
+                 [1, 1, 0, 1, 0]]
+    shape_list = [(2, 3),
+                  (4, 3),
+                  (3, 5)]
+
     def setUp(self):
-        super(TestCompressOp, self).setUp()
-        self.op_class = CompressOp
-        self.op = CompressOp()
+        super(CompressTester, self).setUp()
+        self.op = compress
 
-    def test_compressOp(self):
-        x = T.dmatrix()
-        cond = T.dvector()
+    def test_op(self):
+        for axis, cond, shape in zip(self.axis_list, self.cond_list, self.shape_list):
+            cond_var = theano.tensor.ivector()
+            data     = numpy.random.random(size=shape).astype(theano.config.floatX)
+            data_var = tensor.TensorType(theano.config.floatX, [False]*2)()
 
-        cond_val = np.array([1, 0, 1, 0], dtype=bool)
-        a = np.random.random((3, 4)).astype(config.floatX)
+            f = theano.function([cond_var, data_var], self.op(cond_var, data_var, axis=axis))
 
-        f = theano.function([cond, x], compress(cond, x))
-        assert np.allclose(np.compress(cond_val, a), f(cond_val, a))
+            expected = numpy.compress(cond, data, axis=axis)
+            tested = f(cond, data)
 
-        for axis in range(len(a.shape)):
-            g = theano.function([cond, x], compress(cond, x, axis=axis))
-            assert np.allclose(np.compress(cond_val, a, axis=axis), g(cond_val, a))
+            assert tested.shape == expected.shape
+            assert numpy.allclose(tested, expected)
 
     def test_infer_shape(self):
-        x = T.dmatrix()
-        cond = T.dvector()
+        for axis, cond, shape in zip(self.axis_list, self.cond_list, self.shape_list):
+            cond_var = theano.tensor.ivector()
+            data     = numpy.random.random(size=shape).astype(theano.config.floatX)
+            data_var = tensor.TensorType(theano.config.floatX, [False]*2)()
 
-        cond_val = np.array([1, 0, 1, 0], dtype=bool)
-        a = np.random.random((3, 4)).astype(config.floatX)
-
-        self._compile_and_check([cond, x],
-                                [compress(cond, x)],
-                                [cond_val, a],
-                                self.op_class)
-
-        for axis in range(len(a.shape)):
-            self._compile_and_check([cond, x],
-                                    [compress(cond, x, axis=axis)],
-                                    [cond_val, a],
-                                    self.op_class)
+            self._compile_and_check([cond_var, data_var],
+                                    [self.op(cond_var, data_var, axis=axis)],
+                                    [cond, data],
+                                    tensor.AdvancedSubtensor1,
+                                    warn=False)
 
 
 class TestRepeatOp(utt.InferShapeTester):
