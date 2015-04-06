@@ -4255,17 +4255,12 @@ def tile(x, reps, ndim=None):
     Tile input array `x` according to `reps`. See the docstring of `numpy.tile`
     for details.
 
-    Currently, `reps` must be a constant, x.ndim and len(reps) must be equal
-    and, if specified, 'ndim' must be equal to both.
+    Currently, x.ndim and len(reps) must be equal, and, if specified, 'ndim'
+    must be equal to both.
 
     TODO: expand this.
     """
 
-    try:
-        assert python_all([int(i) == i for i in iter(reps)])
-    except (TypeError, AssertionError):
-        raise ValueError("reps argument to tile must be a constant (e.g. "
-                         "tuple, list of integers)")
     if len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:
