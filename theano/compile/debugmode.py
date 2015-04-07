@@ -1679,27 +1679,6 @@ class _Linker(gof.link.LocalLinker):
                                            no_recycling)
                 thunk.inputs = [storage_map[v] for v in node.inputs]
                 thunk.outputs = [storage_map[v] for v in node.outputs]
-
-                # Right now there is no op that when called check if
-                # its ouputs are computed and don't recompute itself.
-                # I think it is not a good idea to do so as we only
-                # call thunk when we want them computed. So those
-                # check would be useless. In case some ops do it at
-                # some point, we reset the compute_map of outputs to
-                # False.
-                #
-                # Note RP: this warp_thunk doesn't work. What happens is
-                # that for all ops that have a make_thunk, the same instance
-                # of `wrap_thunk` gets used ( that has the same `thunk`
-                # function, probably the one of the first of all those ops (
-                # or the last .. I'm not sure). I don't know suffcient about
-                # how python works to understand why. A bunch of tests fail
-                # because of this, one of them being
-                # theano/scan_module/tests/scan_tests.py:T_Scan.test_backwards
-                # def wrap_thunk():
-                #    for k in node.outputs:
-                #        compute_map[k] = [False]
-                #    thunk()
                 thunk_other = thunk
 
             try:
