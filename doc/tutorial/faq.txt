@@ -7,16 +7,16 @@ How to update a subset of weights?
 ==================================
 If you want to update only a subset of a weight matrix (such as
 some rows or some columns) that are used in the forward propogation
-of this iteration, then the cost function should be defined in a way
-that it only depends on the subset of weights that are used in this
+of each iteration, then the cost function should be defined in a way
+that it only depends on the subset of weights that are used in that
 iteration.
 
 For example if you want to learn a lookup table, e.g. used for
 word embeddings, where each row is a vector of weights representing
-the embedding that the model has learned for a word, in each
-iteration only the rows of the matrix should get updated that their
-corresponding words were used in the forward propogation. Here is
-how the theano function should be written:
+the embedding that the model has learned for a word, in each iteration,
+the only rows that should get updated are those containing embeddings
+used during the forward propagation. Here is how the theano function
+should be written:
 
 >>> # defining a shared variable for the lookup table
 >>> lookup_table = theano.shared(matrix_ndarray).
@@ -24,10 +24,10 @@ how the theano function should be written:
 >>> # getting a subset of the table (some rows
 >>> # or some columns) by passing an integer vector of
 >>> # indices corresponding to those rows or columns.
->>> slice = lookup_table[vector_of_indeces]
+>>> slice = lookup_table[vector_of_indices]
 >>>
 >>> # From now on, use only 'slice'.
->>> # Do not call lookup_table[vector_of_indeces] again.
+>>> # Do not call lookup_table[vector_of_indices] again.
 >>> # This causes problems with grad as this will create new variables.
 >>>
 >>> # defining cost which depends only on slice
@@ -47,8 +47,8 @@ how the theano function should be written:
 >>> # Note that currently we just cover the case here,
 >>> # not if you use inc_subtensor or set_subtensor with other types of indexing.
 >>>
->>> #defining the theano function
->>> f=theano.function(..., update=updates)
+>>> # defining the theano function
+>>> f=theano.function(..., updates=updates)
 
 Note that you can compute the gradient of the cost function w.r.t.
 the entire lookup_table, and the gradient will have nonzero rows only
