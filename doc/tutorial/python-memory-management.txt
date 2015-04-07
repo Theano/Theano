@@ -285,8 +285,8 @@ Let us prove my point using `memory\_profiler
 <https://github.com/fabianp>`_ (the module's `github page
 <https://github.com/fabianp/memory_profiler>`_). This add-on provides the
 decorator ``@profile`` that allows one to monitor one specific function
-memory usage. It is extremely simple to use. Let us consider this small
-program (it makes my point entirely):
+memory usage. It is extremely simple to use. Let us consider the following
+program:
 
 ::
 
@@ -295,12 +295,12 @@ program (it makes my point entirely):
 
     @profile
     def function():
-        x = range(1000000)  # allocate a big list
+        x = list(range(1000000))  # allocate a big list
         y = copy.deepcopy(x)
         del x
         return y
 
-    if __name__=="__main__":
+    if __name__ == "__main__":
         function()
 
 invoking
@@ -317,30 +317,28 @@ prints, on a 64-bit computer
 
     Line #    Mem usage    Increment   Line Contents
     ================================================
-         3                             @profile
-         4      9.11 MB      0.00 MB   def function():
-         5     40.05 MB     30.94 MB       x=range(1000000) # allocate a big list
-         6     89.73 MB     49.68 MB       y=copy.deepcopy(x)
-         7     82.10 MB     -7.63 MB       del x
-         8     82.10 MB      0.00 MB       return y
+         4                             @profile
+         5      9.11 MB      0.00 MB   def function():
+         6     40.05 MB     30.94 MB       x = list(range(1000000)) # allocate a big list
+         7     89.73 MB     49.68 MB       y = copy.deepcopy(x)
+         8     82.10 MB     -7.63 MB       del x
+         9     82.10 MB      0.00 MB       return y
 
-This small program creates a list with 1,000,000 ints (at 24 bytes each,
-for ~24 million bytes) plus a list of references (at 8 bytes each, for ~8
-million bytes), for about 30MB. It then deep-copies the object (which
-allocates ~50MB, not sure why; a simple copy would allocate only 8MB of
-references, plus about 24MB for the objects themselves---so there's a large
-overhead here, maybe Python grew its heap preemptively). Freeing ``x`` with
-``del`` frees the reference list, kills the associated objects, but lo!,
-the amount of memory only goes down by the number of references, because
-the list itself is not in a small objects' list, but on the heap, and the
-dead small objects remain in the free list, and not returned to the
-interpreter's global heap.
+This program creates a list of n=1,000,000 ints (n x 24 bytes = ~23 MB) and an
+additional list of references (n x 8 bytes = ~7.6 MB), which amounts to a total
+memory usage of ~31 MB. ``copy.deepcopy`` copies both lists, which allocates
+again ~50 MB (I am not sure where the additional overhead of 50 MB - 31 MB = 19
+MB comes from). The interesting part is ``del x``: it deletes ``x``, but the
+memory usage only decreases by 7.63 MB! This is because ``del`` only deletes the
+reference list, not the actual integer values, which remain on the heap and
+cause a memory overhead of ~23 MB.
 
-In this example, we end up with *twice* the memory allocated, with 82MB,
-while only one list necessitating about 30MB is returned. You can see why
-it is easy to have memory just increase more or less surprisingly if we're
-not careful.
+This example allocates in total ~73 MB, which is more than *twice* the amount
+of memory needed to store a single list of ~31 MB. You can see that memory can
+increase surprisingly if you are not careful!
 
+Note that you might get different results on a different platform or with a
+different python version.
 
 Pickle
 ------
