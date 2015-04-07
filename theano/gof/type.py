@@ -628,10 +628,7 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
 
 class CDataTypeConstant(graph.Constant):
     def signature(self):
-        # The Op.c_code* methoss can't access the data, so it can't
-        # change the code depending of it. So there is no need to put
-        # it in the signature. Also, under Python 2, PyCObject aren't
-        # pickable. So using the PyCObject in the signature would
-        # disable the c code cache for op that have it as an input.
-        return (self.type,)
+        # We can't check if certain constants are equal or not so just
+        # assume they are all unequal.
+        return id(self.data)
 CDataType.Constant = CDataTypeConstant
