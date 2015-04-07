@@ -3713,20 +3713,20 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertRaises(ValueError, f, a_val, b_val, c_val, d_val, bad_e_val)
 
     def test_infer_shape_join(self):
-        x1 = matrix()
-        x2 = matrix()
-        x3 = matrix()
-
         def get_mat(s1, s2):
             return numpy.asarray(numpy.random.uniform(size=(s1, s2)),
                                  dtype=self.floatX)
 
+        x1 = self.shared(get_mat(3, 4))
+        x2 = self.shared(get_mat(2, 4))
+        x3 = self.shared(get_mat(1, 4))
+
         # Test dim 0
         z = self.join_op(0, x1, x2, x3)
-        f = theano.function([x1, x2, x3], z.shape, mode=self.mode)
+        f = theano.function([], z.shape, mode=self.mode)
         topo = f.maker.fgraph.toposort()
 
-        out = f(get_mat(3, 4), get_mat(2, 4), get_mat(1, 4))
+        out = f()
         assert (out == [6, 4]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
@@ -3735,10 +3735,12 @@ class T_Join_and_Split(unittest.TestCase):
 
         # Test dim 1
         z = self.join_op(1, x1, x2, x3)
-        f = theano.function([x1, x2, x3], z.shape, mode=self.mode)
+        f = theano.function([], z.shape, mode=self.mode)
         topo = f.maker.fgraph.toposort()
-
-        out = f(get_mat(3, 4), get_mat(3, 4), get_mat(3, 5))
+        x1.set_value(get_mat(3, 4))
+        x2.set_value(get_mat(3, 4))
+        x3.set_value(get_mat(3, 5))
+        out = f()
         assert (out == [3, 13]).all()
 
         if theano.config.mode != 'FAST_COMPILE':
@@ -3746,11 +3748,13 @@ class T_Join_and_Split(unittest.TestCase):
                 assert not isinstance(node.op, type(self.join_op))
 
         # Test hide error
+        x1.set_value(get_mat(3, 4))
+        x2.set_value(get_mat(3, 4))
+        x3.set_value(get_mat(2, 5))
         if not self.hide_error:
-            self.assertRaises(ValueError, f, get_mat(3, 4), get_mat(3, 4),
-                              get_mat(2, 5))
+            self.assertRaises(ValueError, f)
         else:
-            f(get_mat(3, 4), get_mat(3, 4), get_mat(2, 5))
+            f()
 
     def test_rebroadcast(self):
         # Regression test for a crash that used to happen when rebroadcasting.

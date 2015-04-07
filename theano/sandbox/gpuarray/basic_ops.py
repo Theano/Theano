@@ -856,7 +856,8 @@ class GpuJoin(HideC, Join):
         for i, inp in enumerate(inputs[1:]):
             copy_to_list.append("als[%s] = &%s->ga;" % (i, inp))
         return """
-GpuArray **als = (GpuArray **)PyMem_Malloc(sizeof(GpuArray *) * %(n)s);
+const GpuArray **als = (const GpuArray **)PyMem_Malloc(sizeof(GpuArray *) *
+                                                       %(n)s);
 if (als == NULL) {
   PyErr_NoMemory();
   %(fail)s

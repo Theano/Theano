@@ -3679,7 +3679,11 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     CNDA_END_ALLOW_THREADS
     if (CUBLAS_STATUS_SUCCESS != cerr)
     {
-        PyErr_SetString(PyExc_RuntimeError, "error copying data to device memory");
+        PyErr_Format(PyExc_RuntimeError,
+                     "CUBLAS error '%s' while copying %lli data element"
+                     " to device memory",
+                     cublasGetErrorString(cerr),
+                     (long long)py_src_size);
         Py_DECREF(py_src);
         return -1;
     }

@@ -377,7 +377,7 @@ class G_Join_and_Split(test_basic.T_Join_and_Split):
         m = self.shared(rng.rand(4, 6).astype(self.floatX))
         o = T.Split(2)(m, 0, [2, 2])
         f = theano.function([], o, mode=self.mode)
-        assert any([isinstance(node.op, self.split_op)
+        assert any([isinstance(node.op, self.split_op_class)
                     for node in f.maker.fgraph.toposort()])
         o1, o2 = f()
         assert numpy.allclose(o1, m.get_value(borrow=True)[:2])

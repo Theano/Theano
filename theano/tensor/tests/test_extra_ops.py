@@ -127,7 +127,14 @@ class TestBinCountOp(utt.InferShapeTester):
             x = T.vector('x', dtype=dtype)
 
             # uint64 always fails
-            if dtype in ('uint64',):
+            # int64 and uint32 also fail if python int are 32-bit
+            int_bitwidth = theano.gof.python_int_bitwidth()
+            if int_bitwidth == 64:
+                numpy_unsupported_dtypes = ('uint64',)
+            if int_bitwidth == 32:
+                numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+            # uint64 always fails
+            if dtype in numpy_unsupported_dtypes:
                 self.assertRaises(TypeError, bincount, x)
 
             else:
