@@ -121,7 +121,7 @@ def debugprint(obj, depth=-1, print_type=False,
                     scan_ops.append(r)
 
         if p is not None:
-            print >> file, """
+            print >> _file, """
 Timing Info
 -----------
 --> <time> <% time> - <total time> <% total time>'
@@ -144,13 +144,13 @@ N.B.:
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
                              profile=p)
     if len(scan_ops) > 0:
-        print >> file, ""
+        print >> _file, ""
         new_prefix = ' >'
         new_prefix_child = ' >'
-        print >> file, "Inner graphs of the scan ops:"
+        print >> _file, "Inner graphs of the scan ops:"
 
         for s in scan_ops:
-            print >> file, ""
+            print >> _file, ""
             debugmode.debugprint(s, depth=depth, done=done,
                                  print_type=print_type,
                                  file=_file, ids=ids,
@@ -167,7 +167,7 @@ N.B.:
 
                 debugmode.debugprint(r=i, prefix=new_prefix,
                                      depth=depth, done=done,
-                                     print_type=print_type, file=file,
+                                     print_type=print_type, file=_file,
                                      ids=ids, stop_on_name=stop_on_name,
                                      prefix_child=new_prefix_child,
                                      scan_ops=scan_ops)
