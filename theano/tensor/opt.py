@@ -1541,7 +1541,7 @@ class Assert(T.Op):
         return hash(type(self)) ^ hash(self.msg)
 
     def grad(self, input, output_gradients):
-        return output_gradients + [DisconnectedType()()] * (len(inputs) - 1)
+        return output_gradients + [DisconnectedType()()] * (len(input) - 1)
 
     def c_code(self, node, name, inames, onames, sub):
         value = inames[0]
