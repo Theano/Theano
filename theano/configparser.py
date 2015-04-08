@@ -44,9 +44,9 @@ def parse_config_string(config_string, issue_warnings=True):
         if len(kv_tuple) == 1:
             if issue_warnings:
                 TheanoConfigWarning.warn(
-                        ("Config key '%s' has no value, ignoring it"
-                            % kv_tuple[0]),
-                        stacklevel=1)
+                    ("Config key '%s' has no value, ignoring it"
+                        % kv_tuple[0]),
+                    stacklevel=1)
         else:
             k, v = kv_tuple
             # subsequent values for k will override earlier ones
@@ -77,7 +77,7 @@ theano_cfg = ConfigParser.SafeConfigParser(
      'TEMP': os.getenv("TEMP", ""),
      'TMP': os.getenv("TMP", ""),
      'PID': str(os.getpid()),
- }
+     }
 )
 theano_cfg.read(config_files)
 # Having a raw version of the config around as well enables us to pass
@@ -145,7 +145,7 @@ def get_config_md5():
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
     return theano.gof.cc.hash_from_code('\n'.join(
-                    ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
+        ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
 
 
 class TheanoConfigParser(object):
@@ -220,8 +220,8 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         if (not getattr(newroot, '_i_am_a_config_class', False)
                 or isinstance(newroot, type)):
             raise TypeError(
-                    'Internal config nodes must be config class instances',
-                    newroot)
+                'Internal config nodes must be config class instances',
+                newroot)
         return AddConfigVar('.'.join(sections[1:]), doc, configparam,
                             root=newroot, in_c_key=in_c_key)
     else:
@@ -235,7 +235,8 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         if not callable(configparam.default):
             configparam.__get__()
         else:
-            # We do not want to evaluate now the default value when it is a callable.
+            # We do not want to evaluate now the default value
+            # when it is a callable.
             try:
                 fetch_val_for_key(configparam.fullname)
                 # The user provided a value, filter it now.
@@ -282,8 +283,8 @@ class ConfigParam(object):
     def __set__(self, cls, val):
         if not self.allow_override and hasattr(self, 'val'):
             raise Exception(
-                    "Can't change the value of this config parameter "
-                    "after initialization!")
+                "Can't change the value of this config parameter "
+                "after initialization!")
         # print "SETTING PARAM", self.fullname,(cls), val
         if self.filter:
             self.val = self.filter(val)
@@ -300,7 +301,7 @@ class EnumStr(ConfigParam):
         for val in self.all:
             if not isinstance(val, basestring):
                 raise ValueError('Valid values for an EnumStr parameter '
-                        'should be strings', val, type(val))
+                                 'should be strings', val, type(val))
 
         convert = kwargs.get("convert", None)
 
@@ -332,13 +333,13 @@ class TypedParam(ConfigParam):
                     return cast_val
                 else:
                     raise ValueError(
-                            'Invalid value (%s) for configuration variable '
-                            '"%s".'
-                            % (val, self.fullname), val)
+                        'Invalid value (%s) for configuration variable '
+                        '"%s".'
+                        % (val, self.fullname), val)
             return cast_val
 
         super(TypedParam, self).__init__(default, filter,
-                allow_override=allow_override)
+                                         allow_override=allow_override)
 
     def __str__(self):
         return '%s (%s) ' % (self.fullname, self.mytype)
@@ -375,4 +376,4 @@ def BoolParam(default, is_valid=None, allow_override=True):
         is_valid = is_valid_bool
 
     return TypedParam(default, booltype, is_valid,
-            allow_override=allow_override)
+                      allow_override=allow_override)
