@@ -836,7 +836,21 @@ class T_Scan(unittest.TestCase):
                         outputs_info=[{'initial': a0, 'taps': [-2, -1]},
                                       {'initial': b0, 'taps': [-2, -1]}],
                         n_steps=2)
+
         tensor.grad(a[-1], a0)
+
+        # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
+        # and get_outer_iidx_from_inner_iidx_seq produce the correct results
+        scan_node = a.owner.inputs[0].owner
+
+        result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
+        expected_result = [1, 2]
+        assert(result == expected_result)
+
+        result = scan_node.op.get_outer_iidx_from_inner_iidx_seq()
+        expected_result = [1, 1, 2, 2]
+        assert(result == expected_result)
+
 
     def test_connection_pattern2(self):
         # This tests for a crash in connection_pattern() when a scan node
@@ -857,6 +871,18 @@ class T_Scan(unittest.TestCase):
 
         scan_node = g_out[0].owner.inputs[1].owner.inputs[1].owner.inputs[0].owner
         connection_pattern = scan_node.op.connection_pattern(scan_node)
+
+        # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
+        # and get_outer_iidx_from_inner_iidx_seq produce the correct results
+        scan_node = out.owner.inputs[0].owner
+
+        result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
+        expected_result = [2]
+        assert(result == expected_result)
+
+        result = scan_node.op.get_outer_iidx_from_inner_iidx_seq()
+        expected_result = [1, 2, 2]
+        assert(result == expected_result)
 
     def test_grad_two_scans(self):
 
@@ -1869,6 +1895,18 @@ class T_Scan(unittest.TestCase):
                             (max_err, 1e-2, max_err_pos,
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
+
+        # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
+        # and get_outer_iidx_from_inner_iidx_seq produce the correct results
+        scan_node = updates.values()[0].owner
+
+        result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
+        expected_result = [3, -1, 4]
+        assert(result == expected_result)
+
+        result = scan_node.op.get_outer_iidx_from_inner_iidx_seq()
+        expected_result = [1, 2, 3, 4, 6]
+        assert(result == expected_result)
 
     def test_grad_multiple_outs_some_truncate(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

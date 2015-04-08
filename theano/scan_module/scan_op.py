@@ -1511,7 +1511,6 @@ class Scan(PureOp):
             output_offset += 1
 
         # Process shared inputs/outputs
-        input_offset += self.n_nit_sot
         output_offset += self.n_nit_sot
         for i in range(self.n_shared_outs):
             result[output_offset] = input_offset
