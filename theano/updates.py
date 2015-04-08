@@ -26,9 +26,9 @@ class OrderedUpdates(OrderedDict):
     """
     def __init__(self, *key, **kwargs):
         if (len(key) >= 1 and
-            isinstance(key[0], dict) and
-            len(key[0]) > 1 and
-            not isinstance(key[0], OrderedDict)):
+                isinstance(key[0], dict) and
+                len(key[0]) > 1 and
+                not isinstance(key[0], OrderedDict)):
             # Warn when using as input a non-ordered dictionary.
             warnings.warn('Initializing an `OrderedUpdates` from a '
                           'non-ordered dictionary with 2+ elements could '
@@ -62,8 +62,8 @@ class OrderedUpdates(OrderedDict):
         if other is None:
             return
         if (isinstance(other, dict) and
-            len(other) > 1 and
-            not isinstance(other, OrderedDict)):
+                len(other) > 1 and
+                not isinstance(other, OrderedDict)):
             # Warn about non-determinism.
             warnings.warn('Updating an `OrderedUpdates` with a '
                           'non-ordered dictionary with 2+ elements could '
