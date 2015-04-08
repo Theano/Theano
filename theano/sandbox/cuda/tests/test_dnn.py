@@ -28,6 +28,26 @@ else:
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 
+def test_dnn_conv_desc_merge():
+    img_shp = T.as_tensor_variable(
+        numpy.asarray([2, 1, 8, 8]).astype('int64'))
+    kern_shp = T.as_tensor_variable(
+        numpy.asarray([3, 1, 2, 2]).astype('int64'))
+    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
+                               conv_mode='conv')(img_shp, kern_shp)
+    desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
+                               conv_mode='cross')(img_shp, kern_shp)
+    # CDataType is not DeepCopyable so this will crash if we don't use
+    # borrow=True
+    f = theano.function([], [theano.Out(desc1, borrow=True),
+                             theano.Out(desc2, borrow=True)])
+
+    d1, d2 = f()
+
+    # This will be the case if they are merged, which would be bad.
+    assert d1 != d2
+
+
 def pool_2d_i2n(input, ds=(2, 2), strides=None,
                 pad=(0, 0),
                 pool_function=T.max, mode='ignore_borders'):
