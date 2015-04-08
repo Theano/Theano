@@ -622,3 +622,4 @@ test_shared_options = makeSharedTester(
 def test_scalar_shared_options():
     # Simple test to make sure we do not loose that fonctionality.
     theano.shared(value=0., name='lk', borrow=True)
+    theano.shared(value=numpy.float32(0.), name='lk', borrow=True)
