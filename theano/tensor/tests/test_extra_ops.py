@@ -347,11 +347,17 @@ class SqueezeTester(utt.InferShapeTester):
 class CompressTester(utt.InferShapeTester):
     axis_list = [None,
                  0,
+                 0,
+                 0,
                  1]
     cond_list = [[1, 0, 1, 0, 0, 1],
                  [0, 1, 1, 0],
+                 [],
+                 [0, 0, 0, 0],
                  [1, 1, 0, 1, 0]]
     shape_list = [(2, 3),
+                  (4, 3),
+                  (4, 3),
                   (4, 3),
                   (3, 5)]
 
