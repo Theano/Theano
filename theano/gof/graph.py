@@ -450,6 +450,9 @@ class Constant(Variable):
     def signature(self):
         return (self.type, self.data)
 
+    def merge_signature(self):
+        return self.signature()
+
     def __str__(self):
         if self.name is not None:
             return self.name

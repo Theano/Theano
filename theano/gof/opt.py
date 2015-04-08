@@ -499,7 +499,7 @@ class MergeFeature(object):
         """Check if a constant can be merged, and queue that replacement"""
         if id(c) in self.seen_constants:
             return
-        sig = c.signature()
+        sig = c.merge_signature()
         other_c = self.const_sig_inv.get(sig, None)
         if other_c is not None:
             # multiple names will clobber each other..

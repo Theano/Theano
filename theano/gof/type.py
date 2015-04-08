@@ -627,8 +627,13 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
 
 
 class CDataTypeConstant(graph.Constant):
-    def signature(self):
-        # We can't check if certain constants are equal or not so just
-        # assume they are all unequal.
+    def merge_signature(self):
+        # We don't want to merge constants that don't point to the
+        # same object.
         return id(self.data)
+
+    def signature(self):
+        # There is no way to put the data in the signature, so we
+        # don't even try
+        return (self.type,)
 CDataType.Constant = CDataTypeConstant
