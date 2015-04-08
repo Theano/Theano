@@ -617,3 +617,8 @@ test_shared_options = makeSharedTester(
     cast_value_=numpy.asarray,
     op_by_matrix_=False,
     name='test_shared_options')
+
+
+def test_scalar_shared_options():
+    # Simple test to make sure we do not loose that fonctionality.
+    theano.shared(value=0., name='lk', borrow=True)
