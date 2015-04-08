@@ -17,13 +17,8 @@ except ImportError:
     flake8_available = False
 
 whitelist_flake8 = [
-    "updates.py",
     "__init__.py",
-    "configparser.py",
-    "ifelse.py",
     "version.py",
-    "configdefaults.py",
-    "gradient.py",
     "compat/python2x.py",
     "compat/six.py",
     "compat/__init__.py",
