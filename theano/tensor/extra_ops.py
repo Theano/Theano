@@ -514,15 +514,14 @@ def squeeze(x):
 def compress(condition, x, axis=None, out=None):
     """Return selected slices of an array along given axis.
 
-    It returns the input array, but with the
-    broadcastable dimensions removed. This is
-    always `x` itself or a view into `x`.
-    Wrapping of numpy.compress
+    It returns the input tensor, but with selected slices along a given axis
+    retained. If no axis is provided, the tensor is flattened
+    Corresponds to numpy.compress
 
-    :param x: 1 dimension, bools
+    :param x: Input data, tensor variable
 
-    :param condition: array of the same shape as x with corresponding weights.
-        Optional.
+    :param condition: 1 dimensional array of non-zero and zero values
+    corresponding to indices of slices along a selected axis
 
     :return: `x` with selected slices
 
@@ -530,6 +529,7 @@ def compress(condition, x, axis=None, out=None):
     """
     # This is done to keep the same function signature then NumPy.
     assert out is None
+
     indices = theano.tensor.basic.flatnonzero(condition)
     return x.take(indices, axis=axis)
 
