@@ -284,7 +284,7 @@ if cuda_available:
 
     shared_constructor = float32_shared_constructor
 
-    from . import basic_ops
+    from . import basic_ops, opt, dnn, blocksparse
     from .basic_ops import (
             GpuFromHost, HostFromGpu, GpuElemwise,
             GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
@@ -297,10 +297,8 @@ if cuda_available:
             tensor3, tensor4)
     from .basic_ops import (host_from_gpu, gpu_from_host,
             as_cuda_array, as_cuda_ndarray_variable)
-    from . import blocksparse
     from .blocksparse import sparse_block_dot_SS
     import cuda_ndarray
-    from . import opt, dnn
     from .rng_curand import CURAND_RandomStreams
 
 
