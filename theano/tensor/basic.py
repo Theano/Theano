@@ -4261,7 +4261,15 @@ def tile(x, reps, ndim=None):
     TODO: expand this.
     """
 
-    if len(reps) != x.ndim:
+    try:
+        iter(reps)
+    except TypeError:
+        raise ValueError("reps must be iterable")
+    if not numpy.all([isinstance(r, (int, long)) or
+        (isinstance(r, TensorVariable) and
+            r.dtype in ["int8", "int16", "int32", "int64"]) for r in reps]):
+        raise ValueError("elements of reps must be scalars of integer dtype")
+    elif len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
     elif (ndim is not None) and ndim != x.ndim:
         raise ValueError("if specified, ndim must be equal to both x.ndim and "
