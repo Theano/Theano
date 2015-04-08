@@ -727,10 +727,10 @@ gpu_softmax_with_bias = GpuSoftmaxWithBias()
 
 
 def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
-                         n_outputs_per_class, batch_size, target=None):
+                         n_outputs_per_class, batch_size, target=None,
+                         gpu_version=cuda.cuda_available):
     """
-    GPU-only function that returns the outputs of a two-level hierarchical
-    softmax.
+    Returns the outputs of a two-level hierarchical softmax.
     In the two-level hierarchical softmax architecture, outputs are grouped
     in sqrt(n_outputs) classes.
     There are two softmax layers. The first predicts the class of the input x
@@ -776,6 +776,10 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
     :type batch_size: int
     :param batch_size: the number of examples in the minibatch input x.
 
+    :type gpu_version: bool
+    :param gpu_version: if True, the gpu version of the function will run ; the
+        cpu version otherwise.
+
     :type target: symbolic 2D tensor or None
     :param target: Contains the indices of the targets for the minibatch
         input x. For each input, the function computes the output for its
@@ -797,6 +801,20 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
 
     """
 
+    if gpu_version:
+        return h_softmax_gpu(W1, b1, W2, b2, x, n_outputs, n_classes,
+                             n_outputs_per_class, batch_size, target)
+    else:
+        return h_softmax_cpu(W1, b1, W2, b2, x, n_outputs, n_classes,
+                             n_outputs_per_class, batch_size, target)
+
+
+def h_softmax_gpu(W1, b1, W2, b2, x, n_outputs, n_classes,
+                  n_outputs_per_class, batch_size, target=None):
+    """
+    GPU-only version of a two-layer hierarchical softmax.
+    See hierarchical_softmax's docstring for the description of the arguments.
+    """
     W1 = as_cuda_ndarray_variable(W1)
     b1 = as_cuda_ndarray_variable(b1)
     W2 = as_cuda_ndarray_variable(W2)
@@ -812,7 +830,7 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
         class_ids = T.tile(T.arange(n_classes)[None, :], (batch_size, 1))
 
         # Second softmax that computes the output probabilities
-        activations = cuda.sparse_block_dot_SS(
+        activations = sparse_block_dot_SS(
             W2[None, :, :, :], x[:, None, :],
             T.zeros((batch_size, 1), dtype='int64'), b2, class_ids)
 
@@ -835,7 +853,7 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
         target_outputs_in_class = target % n_classes
 
         # Second softmax that computes the output probabilities
-        activations = cuda.sparse_block_dot_SS(
+        activations = sparse_block_dot_SS(
             W2[None, :, :, :], x[:, None, :],
             T.zeros((batch_size, 1), dtype='int64'), b2,
             target_classes[:, None])
@@ -845,5 +863,62 @@ def hierarchical_softmax(W1, b1, W2, b2, x, n_outputs, n_classes,
         output_probs = output_probs[T.arange(batch_size),
                                     target_outputs_in_class]
         output_probs = target_class_probs * output_probs
+
+    return output_probs
+
+
+def h_softmax_cpu(W1, b1, W2, b2, x, n_outputs, n_classes,
+                  n_outputs_per_class, batch_size, target=None):
+    """
+    CPU version of a two-layer hierarchical softmax. This function also works
+    on GPU but h_softmax_gpu is more optimized.
+    See hierarchical_softmax's docstring for the description of the arguments.
+    """
+
+    # First softmax which computes the probabilities of belonging to each class
+    class_probs = softmax(T.dot(x, W1) + b1)
+
+    if target is None:
+        # Computes the probabilites of all the outputs
+
+        def _compute_output_probs_per_class(class_id):
+            # Computes the probabilities of the outputs of to a specific class
+            output_prob = softmax(T.dot(x, W2[class_id, :, :]) +
+                                  b2[class_id, :])
+            output_prob = output_prob * class_probs[:, class_id][:, None]
+            return output_prob
+
+        output_probs = theano.scan(_compute_output_probs_per_class,
+                                   T.arange(n_classes),
+                                   name='compute_output_probs_per_class')[0]
+        output_probs = output_probs.dimshuffle((1, 0, 2))
+        output_probs = output_probs.reshape((batch_size,
+                                             n_classes * n_outputs_per_class))
+        output_probs = output_probs[:, :n_outputs]
+
+    else:
+        # Computes the probabilities of the outputs specified by the targets
+
+        # Flattens the targets
+        target = target.flatten()
+
+        # Classes to which belong each target
+        target_classes = target // n_outputs_per_class
+
+        # Outputs to which belong each target inside a class
+        target_outputs_in_class = target % n_classes
+
+        def _compute_output_prob_per_point(idx_point):
+            # Computes the output probability of a specific datapoint
+            class_point = target_classes[idx_point]
+            output_prob = softmax(T.dot(x[idx_point], W2[class_point, :, :]) +
+                                  b2[class_point, :])
+            output_prob = output_prob[0, target_outputs_in_class[idx_point]] \
+                * class_probs[idx_point, class_point]
+            return output_prob
+
+        output_probs = theano.scan(_compute_output_prob_per_point,
+                                   T.arange(batch_size),
+                                   name='compute_output_prob_per_point')[0]
 
     return output_probs

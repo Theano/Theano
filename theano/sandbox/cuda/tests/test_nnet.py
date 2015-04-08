@@ -449,17 +449,14 @@ class test_hierarchical_softmax(unittest.TestCase):
         b1 = T.vector('b1')
         W2 = T.tensor3('W2')
         b2 = T.matrix('b2')
-
         tensor_var = x, W1, b1, W2, b2
 
         # Create numpy variables
         n_outputs_per_class = numpy.ceil(numpy.sqrt(n_out)).astype('int64')
         n_classes = numpy.ceil(n_out/float(n_outputs_per_class))\
             .astype('int64')
-
         x_np = numpy.random.normal(size=(batch_size, n_in)).astype(
             dtype=theano.config.floatX)
-
         W1_np = numpy.random.normal(size=(n_in, n_classes)).astype(
             dtype=theano.config.floatX)
         b1_np = numpy.random.normal(size=(n_classes,)).astype(
@@ -469,7 +466,6 @@ class test_hierarchical_softmax(unittest.TestCase):
             .astype(dtype=theano.config.floatX)
         b2_np = numpy.random.normal(size=(n_classes, n_outputs_per_class)) \
             .astype(dtype=theano.config.floatX)
-
         npy_var = x_np, W1_np, b1_np, W2_np, b2_np, n_classes, \
             n_outputs_per_class
 
@@ -485,18 +481,25 @@ class test_hierarchical_softmax(unittest.TestCase):
             npy_var
 
         target = T.ivector()
-        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
-                                           n_classes, n_outputs_per_class,
-                                           batch_size, target=target)
+        y_cpu = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
+                                               n_classes, n_outputs_per_class,
+                                               batch_size, target=target,
+                                               gpu_version=False)
+        y_gpu = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
+                                               n_classes, n_outputs_per_class,
+                                               batch_size, target=target,
+                                               gpu_version=True)
 
-        f = theano.function([W1, b1, W2, b2, x, target], y)
+        f_cpu = theano.function([W1, b1, W2, b2, x, target], y_cpu)
+        f_gpu = theano.function([W1, b1, W2, b2, x, target], y_gpu)
 
         target_npy = numpy.random.randint(0, n_out, size=(batch_size,)).astype(
             dtype=numpy.int32)
 
-        outputs = f(W1_np, b1_np, W2_np, b2_np, x_np, target_npy)
+        outputs_cpu = f_cpu(W1_np, b1_np, W2_np, b2_np, x_np, target_npy)
+        outputs_gpu = f_gpu(W1_np, b1_np, W2_np, b2_np, x_np, target_npy)
 
-        self.assertTrue(outputs.shape == (batch_size,))
+        utt.assert_allclose(outputs_cpu, outputs_gpu)
 
     def _test_h_softmax_without_targets(self, n_in, n_out, batch_size):
 
@@ -507,17 +510,24 @@ class test_hierarchical_softmax(unittest.TestCase):
         x_np, W1_np, b1_np, W2_np, b2_np, n_classes, n_outputs_per_class = \
             npy_var
 
-        y = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out, n_classes,
-                                           n_outputs_per_class, batch_size)
+        y_cpu = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
+                                               n_classes, n_outputs_per_class,
+                                               batch_size, gpu_version=False)
+        y_gpu = cuda.nnet.hierarchical_softmax(W1, b1, W2, b2, x, n_out,
+                                               n_classes, n_outputs_per_class,
+                                               batch_size, gpu_version=True)
 
-        f = theano.function([W1, b1, W2, b2, x], y)
+        f_cpu = theano.function([W1, b1, W2, b2, x], y_cpu)
+        f_gpu = theano.function([W1, b1, W2, b2, x], y_gpu)
 
-        outputs = f(W1_np, b1_np, W2_np, b2_np, x_np)
+        outputs_cpu = f_cpu(W1_np, b1_np, W2_np, b2_np, x_np)
+        outputs_gpu = f_gpu(W1_np, b1_np, W2_np, b2_np, x_np)
 
-        self.assertTrue(outputs.shape == (batch_size, n_out))
+        utt.assert_allclose(outputs_cpu, outputs_gpu)
 
     def test_square_n_outputs(self):
-        # Tests a square number of outputs
+        # Compare cpu and gpu versions of the hierarchical softmax with a
+        # square number of outputs
 
         n_in = 5
         n_out = 9
@@ -527,7 +537,8 @@ class test_hierarchical_softmax(unittest.TestCase):
         self._test_h_softmax_without_targets(n_in, n_out, batch_size)
 
     def test_non_square_n_outputs(self):
-        # Tests a non-square number of outputs
+        # Compare cpu and gpu versions of the hierarchical softmax with a
+        # non-square number of outputs
 
         n_in = 5
         n_out = 8
