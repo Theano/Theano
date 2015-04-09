@@ -627,11 +627,13 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
 
 
 class CDataTypeConstant(graph.Constant):
+    def merge_signature(self):
+        # We don't want to merge constants that don't point to the
+        # same object.
+        return id(self.data)
+
     def signature(self):
-        # The Op.c_code* methoss can't access the data, so it can't
-        # change the code depending of it. So there is no need to put
-        # it in the signature. Also, under Python 2, PyCObject aren't
-        # pickable. So using the PyCObject in the signature would
-        # disable the c code cache for op that have it as an input.
+        # There is no way to put the data in the signature, so we
+        # don't even try
         return (self.type,)
 CDataType.Constant = CDataTypeConstant

@@ -721,6 +721,13 @@ class DataDestroyed():
 data_destroyed = DataDestroyed()
 
 
+def check_eq(var, val1, val2):
+    if hasattr(var.tag, 'values_eq_approx'):
+        return var.tag.values_eq_approx(val1, val2)
+    else:
+        return var.type.values_eq_approx(val1, val2)
+
+
 def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                   clobber_dr_vals=True,
                   perform=None, warn_input_not_reused=True):
@@ -945,7 +952,10 @@ def _find_bad_optimizations0(order, reasons, r_vals):
                 r_val = r_vals[r]
                 assert r.type == new_r.type
 
-                if hasattr(new_r, 'values_eq_approx'):
+                if hasattr(new_r.tag, 'values_eq_approx'):
+                    check = new_r.tag.values_eq_approx(r_val, new_r_val)
+                elif hasattr(new_r, 'values_eq_approx'):
+                    # This way will be deprecated later, but not right now
                     check = new_r.values_eq_approx(r_val, new_r_val)
                 else:
                     check = r.type.values_eq_approx(r_val, new_r_val)
@@ -1372,7 +1382,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
             _check_viewmap(node, storage_map)
 
             for r in node.outputs:
-                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
+                if not check_eq(r, r_vals[r], storage_map[r][0]):
                     # TODO: indicate it is not a C/Py problem
                     inputs_val = [storage_map[inp][0] for inp in r.owner.inputs]
                     raise BadThunkOutput(r,
@@ -2002,22 +2012,20 @@ class _Linker(gof.link.LocalLinker):
                         # Check with Python result
                         for r in node.outputs:
                             if r in r_vals:
-                                #print >> sys.stderr, i, "DEBUGMODE clearing output", r
-                                # compares the version from thunk_py (in r_vals)
-                                # to the version produced by thunk_c (in storage_map)
-                                if not r.type.values_eq_approx(r_vals[r], storage_map[r][0]):
-                                    #import pdb; pdb.set_trace()
-                                    #r.type.values_eq_approx(r_vals[r], storage_map[r][0])
+                                # compares the version from thunk_py
+                                # (in r_vals) to the version produced
+                                # by thunk_c (in storage_map)
+                                if not check_eq(r, r_vals[r], storage_map[r][0]):
                                     inputs_val = [storage_map[inp][0] for inp in r.owner.inputs]
-                                    raise BadThunkOutput(r,
-                                            thunk1='perform', val1=r_vals[r],
-                                            thunk2='c_code', val2=storage_map[r][0],
-                                            inputs_val=inputs_val)
+                                    raise BadThunkOutput(
+                                        r, thunk1='perform', val1=r_vals[r],
+                                        thunk2='c_code', val2=storage_map[r][0],
+                                        inputs_val=inputs_val)
                             else:
-                                #print >> sys.stderr, i, "DEBUGMODE storing reference output %x" % id(storage_map[r][0])
                                 # retrieve each output from the storage_map
                                 r_vals[r] = storage_map[r][0]
-                            storage_map[r][0] = None  # clear the storage_map for the thunk_c
+                            # clear the storage_map for the thunk_c
+                            storage_map[r][0] = None
 
                         if self.maker.mode.check_preallocated_output:
                             prealloc_modes = \

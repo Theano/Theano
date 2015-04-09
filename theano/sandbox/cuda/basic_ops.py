@@ -3291,7 +3291,7 @@ class GpuAllocEmpty(GpuOp):
 
     def make_node(self, *shape):
         shape, output = self.validate_shape(shape)
-        output.values_eq_approx = tensor.type.values_eq_approx_always_true
+        output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):
