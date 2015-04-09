@@ -1338,8 +1338,22 @@ class ScanSaveMem(gof.Optimizer):
                     if val == 0:
                         if idx < op.n_mit_sot + op.n_sit_sot:
                             in_idx = offset + idx
-                            if nw_inputs[in_idx] == node.inputs[0]:
-                                nw_inputs[in_idx] = nw_steps
+
+                            # If the initial buffer has the form
+                            # inc_subtensor(zeros(...)[...], _nw_input)
+                            # we want to make the zeros tensor as small as
+                            # possible (nw_steps), and call inc_subtensor
+                            # on that instead.
+                            # Otherwise, simply take elements 0:nw_steps.
+                            if ((nw_inputs[in_idx].owner and
+                                 isinstance(nw_inputs[in_idx].owner.op,
+                                            tensor.IncSubtensor))):
+                                _nw_input = nw_inputs[in_idx].owner.inputs[1]
+                                nw_input = scan_utils.expand(_nw_input, nw_steps)
+                                nw_inputs[in_idx] = nw_input
+                            else:
+                                nw_input = nw_inputs[in_idx][:nw_steps]
+
                         elif idx < op.n_mit_sot + op.n_sit_sot + op.n_nit_sot:
                             in_idx = offset + idx + op.n_shared_outs
                             if nw_inputs[in_idx] == node.inputs[0]:
