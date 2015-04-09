@@ -878,7 +878,7 @@ def test_gpujoin_assert_cndas():
         c = cuda.basic_ops.gpu_join(1, a)
         # can't "assert False" here, as we want the assertion
         # error from gpu_join
-    except AssertionError:
+    except TypeError:
         assert True
         return
 
