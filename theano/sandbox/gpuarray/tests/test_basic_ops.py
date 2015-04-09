@@ -42,6 +42,7 @@ from ..basic_ops import (
     gpu_alloc, GpuAlloc,
     gpu_from_cuda,
     cuda_from_gpu, HostFromGpu,
+    GpuContiguous,
     GpuFromHost, GpuReshape,
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
 from ..subtensor import GpuSubtensor
@@ -332,10 +333,13 @@ def test_gpu_contiguous():
     a = T.fmatrix('a')
     i = T.iscalar('i')
     a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
-    f = theano.function([a, i], gpu_contiguous(a[::i]),
+    # The reshape is needed otherwise we make the subtensor on the CPU
+    # to transfer less data.
+    f = theano.function([a, i], gpu_contiguous(a.reshape((5, 4))[::i]),
                         mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
+    assert any([isinstance(node.op, GpuContiguous) for node in topo])
     assert f(a_val, 1).flags.c_contiguous
     assert f(a_val, 2).flags.c_contiguous
     assert f(a_val, 2).flags.c_contiguous
