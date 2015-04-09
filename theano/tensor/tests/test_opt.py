@@ -3554,11 +3554,6 @@ class test_assert(utt.InferShapeTester):
         assert topo[0].op == deep_copy_op, topo
 
         mode = compile.mode.get_default_mode()
-        a = theano.tensor.opt.assert_op(x, T.eq(x, 0).any())
-        f = theano.function([x], a, mode=mode.including('unsafe'))
-        topo = f.maker.fgraph.toposort()
-        a_op = [n for n in topo if isinstance(n.op, T.opt.Assert)]
-        assert len(a_op) == 0
         f = theano.function([x], a, mode=mode.excluding('unsafe'))
         topo = f.maker.fgraph.toposort()
         a_op = [n for n in topo if isinstance(n.op, T.opt.Assert)]
