@@ -258,20 +258,20 @@ if run_memory_usage_tests:
         def build_graph(x, depth=5):
             z = x
             for d in range(depth):
-                z = ifelse(z > 0, -z, z)
+                z = ifelse(z.mean()>0.5, -z, z)
             return z
 
         def time_linker(name, linker):
             steps_a = 10
-            x = tensor.vector()
+            x = tensor.dvector()
             a = build_graph(x, steps_a)
 
             f_a = function([x], a,
                            mode=Mode(optimizer=None,
                                      linker=linker()))
-
-            for i in xrange(100000):
-                f_a([2.0])
+            inp = numpy.random.rand(1000000)
+            for i in xrange(100):
+                f_a(inp)
             if 0:  # this doesn't seem to work, prints 0 for everything
                 import resource
                 pre = resource.getrusage(resource.RUSAGE_SELF)
@@ -279,9 +279,12 @@ if run_memory_usage_tests:
                 print pre.ru_ixrss, post.ru_ixrss
                 print pre.ru_idrss, post.ru_idrss
                 print pre.ru_maxrss, post.ru_maxrss
-
+        print 1
         time_linker('vmLinker_C',
                     lambda: vm.VM_Linker(allow_gc=False, use_cloop=True))
+        print 2
+        time_linker('vmLinker',
+                    lambda: vm.VM_Linker(allow_gc=False, use_cloop=False))
 
     def test_no_leak_many_call_nonlazy():
         # Verify no memory leaks when calling a function a lot of times
@@ -297,18 +300,21 @@ if run_memory_usage_tests:
 
         def time_linker(name, linker):
             steps_a = 10
-            x = tensor.vector()
+            x = tensor.dvector()
             a = build_graph(x, steps_a)
 
             f_a = function([x], a,
                            mode=Mode(optimizer=None,
                                      linker=linker()))
-
-            for i in xrange(500000):
-                f_a([2.0])
-
+            inp = numpy.random.rand(1000000)
+            for i in xrange(500):
+                f_a(inp)
+        print 1
         time_linker('vmLinker_C',
                     lambda: vm.VM_Linker(allow_gc=False, use_cloop=True))
+        print 2
+        time_linker('vmLinker',
+                    lambda: vm.VM_Linker(allow_gc=False, use_cloop=False))
 
 
 class RunOnce(theano.Op):
