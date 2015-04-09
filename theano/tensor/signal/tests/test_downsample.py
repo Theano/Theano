@@ -1,6 +1,7 @@
 import unittest
 import __builtin__
 import numpy
+import theano
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
@@ -467,12 +468,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         test_input_array = numpy.array([[[
             [1., 2., 3., 4.],
             [5., 6., 7., 8.]
-        ]]])
+        ]]]).astype(theano.config.floatX)
         test_answer_array = numpy.array([[[
             [0., 0., 0., 0.],
             [0., 6., 0., 8.]
-        ]]])
-        input = tensor.dtensor4(name='input')
+        ]]]).astype(theano.config.floatX)
+        input = tensor.tensor4(name='input')
         patch_size = (2, 2)
         op = max_pool_2d_same_size(input, patch_size)
         op_output = function([input], op)(test_input_array)
