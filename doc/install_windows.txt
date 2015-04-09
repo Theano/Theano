@@ -78,7 +78,7 @@ The package will be installed to ``C:\Program Files
 (x86)\Common Files\Microsoft\Visual C++ for Python\9.0``.
 
 Finally download the ``stdint.h`` header from
-`here <ttp://msinttypes.googlecode.com/svn/trunk/stdint.h>`_ and save it as
+`here <http://msinttypes.googlecode.com/svn/trunk/stdint.h>`_ and save it as
 ``C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for
 Python\9.0\VC\include\stdint.h``.
 
@@ -110,7 +110,7 @@ free.
 
 WinPython also allows for a portable installation and doesn't clutter
 your main system PATH. We have installed it to
-``c:\SciSoft\WinPython-64bit-2.7.6.4``.
+``c:\SciSoft\WinPython-64bit-2.7.9.4``.
 
 Alternative in academia: EPD
 ++++++++++++++++++++++++++++
@@ -305,7 +305,7 @@ configure the system path:
    set PATH=%SCISOFT%\TDM-GCC-64\bin;%SCISOFT%\TDM-GCC-64\x86_64-w64-mingw32\bin;%PATH%
 
    REM add winpython stuff
-   CALL %SCISOFT%\WinPython-64bit-2.7.6.4\scripts\env.bat
+   CALL %SCISOFT%\WinPython-64bit-2.7.9.4\scripts\env.bat
 
    REM configure path for msvc compilers
    REM for a 32 bit installation change this line to
@@ -333,9 +333,9 @@ shell and ``cd`` to ``c:\SciSoft``. Then execute:
 
 .. code-block:: cmd
 
-   gendef WinPython-64bit-2.7.6.4\python-2.7.6.amd64\python27.dll
+   gendef WinPython-64bit-2.7.9.4\python-2.7.9.amd64\python27.dll
 
-   dlltool --dllname python27.dll --def python27.def --output-lib WinPython-64bit-2.7.6.4\python-2.7.6.amd64\libs\libpython27.a
+   dlltool --dllname python27.dll --def python27.def --output-lib WinPython-64bit-2.7.9.4\python-2.7.9.amd64\libs\libpython27.a
 
 Installing Theano
 ~~~~~~~~~~~~~~~~~
@@ -433,7 +433,7 @@ Theano can be configured with a ``.theanorc`` text file (or
 Windows). It should be placed in the directory pointed to by the
 ``%USERPROFILE%`` variable. Please note, that WinPython changes it to
 ``WinPythonDir\settings`` (so in our system this corresponds to
-``c:\scisoft\WinPython-64bit-2.7.6.4\settings``.
+``c:\scisoft\WinPython-64bit-2.7.9.4\settings``.
 
 To use the GPU please write the following configuration file:
 
