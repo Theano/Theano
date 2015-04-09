@@ -311,16 +311,38 @@ class DownsampleFactorMax(Op):
         c = PyArray_DIMS(%(x)s)[3];
         r += %(pd0)s * 2;
         c += %(pd1)s * 2;
-        
+
+        if (%(pd0)s != 0 && %(pd1)s != 0 && !%(ignore_border)s)
+            {
+              PyErr_SetString(PyExc_ValueError,
+                "padding must be (0,0) when ignore border is False");
+              %(fail)s;
+            }
         if (%(ignore_border)s)
         {
-            z_r = (r - %(ds0)s) / %(st0)s + 1;
-            z_c = (c - %(ds1)s) / %(st1)s + 1;
+            
+            // '/' in C is different from '/' in python
+            if (r - %(ds0)s < 0)
+            {
+              z_r = 0;
+            }
+            else
+            {
+              z_r = (r - %(ds0)s) / %(st0)s + 1;
+            }
+            if (c - %(ds1)s < 0)
+            {
+              z_c = 0;
+            }
+            else
+            {
+              z_c = (c - %(ds1)s) / %(st1)s + 1;
+            }
         }
         else
         {
             // decide how many rows the output has
-            if (%(st0)s > %(ds0)s)
+            if (%(st0)s >= %(ds0)s)
             {
                 z_r = (r - 1) / %(st0)s + 1;
             }
@@ -329,7 +351,7 @@ class DownsampleFactorMax(Op):
                 z_r = std::max(0, (r - 1 - %(ds0)s) / %(st0)s + 1) + 1;
             }
             // decide how many columns the output has
-            if (%(st1)s > %(ds1)s)
+            if (%(st1)s >= %(ds1)s)
             {
                 z_c = (c - 1) / %(st1)s + 1;
             }
@@ -373,6 +395,12 @@ class DownsampleFactorMax(Op):
                   // from padded_img space to img space
                   r_st -= %(pd0)s;
                   r_end -= %(pd0)s;
+
+                  // handle the case where no padding, ignore border is True
+                  if (%(ignore_border)s)
+                  {
+                    r_end = r_end > r ? r : r_end;
+                  }
                   for(int j=0; j<z_c; j++){
                     c_st = j * %(st1)s;
                     c_end = c_st + %(ds1)s;
@@ -384,6 +412,11 @@ class DownsampleFactorMax(Op):
                     // change coordinates from padding_img space into img space
                     c_st -= %(pd1)s;
                     c_end -= %(pd1)s;
+                    // handle the case where no padding, ignore border is True
+                    if (%(ignore_border)s)
+                    {
+                      c_end = c_end > c ? c : c_end;
+                    }
                     // use the first element as the initial value of maximum
                     maximum = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,r_st,c_st)))[0];
                     // go through the pooled region in the unpadded input
@@ -404,7 +437,7 @@ class DownsampleFactorMax(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 5)
+        return (0, 6)
 
 
 class DownsampleFactorMaxGrad(Op):
@@ -448,7 +481,6 @@ class DownsampleFactorMaxGrad(Op):
         pad_w = self.padding[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
-
         # pad the image
         if self.padding != (0, 0):
             fill = x.min()-1

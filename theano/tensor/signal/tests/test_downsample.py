@@ -472,7 +472,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             [0., 0., 0., 0.],
             [0., 6., 0., 8.]
         ]]])
-        input = tensor.tensor4(name='input')
+        input = tensor.dtensor4(name='input')
         patch_size = (2, 2)
         op = max_pool_2d_same_size(input, patch_size)
         op_output = function([input], op)(test_input_array)
