@@ -1,4 +1,5 @@
 import numpy
+import theano
 import scipy.sparse
 
 from theano import gof, tensor
@@ -79,7 +80,10 @@ class Poisson(gof.op.Op):
         out[0].eliminate_zeros()
 
     def grad(self, inputs, outputs_gradients):
-        return [None]
+        comment = "No gradient exists for class Poisson in\
+                   theano/sparse/sandbox/sp2.py"
+        return [theano.gradient.grad_undefined(op=self, x_pos=0, x=inputs[0],
+                                               comment=comment)]
 
     def infer_shape(self, node, ins_shapes):
         return ins_shapes
@@ -132,7 +136,15 @@ class Binomial(gof.op.Op):
         out[0] = csx_matrix(binomial, dtype=self.dtype)
 
     def grad(self, (n, p, shape, ), (gz,)):
-        return None, None, None
+        comment_n = "No gradient exists for the number of samples in class\
+                     Binomial of theano/sparse/sandbox/sp2.py"
+        comment_p = "No gradient exists for the prob of success in class\
+                     Binomial of theano/sparse/sandbox/sp2.py"
+        return [theano.gradient.grad_undefined(op=self, x_pos=0, x=n,
+                                               comment=comment_n),
+                theano.gradient.grad_undefined(op=self, x_pos=1, x=p,
+                                               comment=comment_p),
+                theano.gradient.disconnected_type()]
 
     def infer_shape(self, node, ins_shapes):
         return [(node.inputs[2][0], node.inputs[2][1])]
@@ -202,7 +214,14 @@ class Multinomial(gof.op.Op):
                 out[0].data[k:l] = numpy.random.multinomial(n[i], p.data[k:l])
 
     def grad(self, inputs, outputs_gradients):
-        return [None, None]
+        comment_n = "No gradient exists for the number of samples in class\
+                     Multinomial of theano/sparse/sandbox/sp2.py"
+        comment_p = "No gradient exists for the prob of success in class\
+                     Multinomial of theano/sparse/sandbox/sp2.py"
+        return [theano.gradient.grad_undefined(op=self, x_pos=0, x=inputs[0],
+                                               comment=comment_n),
+                theano.gradient.grad_undefined(op=self, x_pos=1, x=inputs[1],
+                                               comment=comment_p)]
 
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[1]]

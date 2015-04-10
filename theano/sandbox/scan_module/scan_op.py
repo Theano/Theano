@@ -342,10 +342,10 @@ class ScanOp(PureOp):
         return rval
 
     def grad(self, args, g_outs):
-        pass
+        raise NotImplementedError()
 
     def R_op(self, inputs, eval_points):
-        pass
+        raise NotImplementedError()
 
 
 @theano.compile.profilemode.register_profiler_printer
