@@ -589,7 +589,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
                 if isinstance(v.owner.inputs[0], Constant):
-                    return numpy.asarray(v.owner.inputs[0].data.shape[v.owner.op.i])
+                    return numpy.asarray(
+                        v.owner.inputs[0].data.shape[v.owner.op.i])
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
@@ -5468,3 +5469,89 @@ class Choose(Op):
         choice = inputs[1]
         # TODO reuse out?
         z[0] = numpy.choose(a, choice, mode=self.mode)
+
+
+class AllocEmpty(gof.Op):
+    """Implement Alloc on the gpu, but without initializing memory."""
+    __props__ = ()
+
+    # specify the type of the data
+    def __init__(self, dtype):
+        assert isinstance(dtype, string)
+        self.dtype = 'NPY_' + dtype.upper()
+
+    @staticmethod
+    def validate_shape(shape):
+        sh = [tensor.as_tensor_variable(s) for s in shape]
+        bcast = []
+        for s in sh:
+            if s.type.dtype[:3] not in ('int', 'uin'):
+                raise TypeError('Shape arguments must be integers', s)
+            # if s is constant 1, then we're broadcastable in that dim
+            try:
+                const_shp = tensor.get_scalar_constant_value(s)
+            except tensor.NotScalarConstantError:
+                const_shp = None
+            bcast.append(numpy.all(1 == const_shp))
+        otype = tensor.TensorType(dtype='float32', broadcastable=bcast)
+        output = otype()
+        return sh, output
+
+    def make_node(self, *shape):
+        shape, output = self.validate_shape(shape)
+        output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        return Apply(self, shape, [output])
+
+    def perform(self, node, inputs, out_):
+        out, = out_
+        sh = tuple([int(i) for i in inputs])
+        if out[0] is None or out[0].shape != sh:
+            # XXX: We could implement and call CudaNdarray.empty(sh) instead.
+            out[0] = numpy.zeros(sh)
+
+    def do_merge(self, node):
+        return False
+
+    def c_code(self, node, name, inputs, out_, sub):
+        dtype = self.dtype
+        out, = out_
+        fail = sub['fail']
+        shps = inputs
+        nd = len(shps)
+        str = "int dims[%(nd)s];\n" % locals()
+        for idx, sh in enumerate(shps):
+            str += "dims[%(idx)s] =" + 
+                   "PyInt_AsLong((PyObject*)%(sh)s);\n" % locals()
+        # Validate that the output storage exists
+        str += "if(%(out)s==NULL\n" % locals()
+        for idx, sh in enumerate(shps):
+            str += "||PyArray_DIMS(%(out)s)[%(idx)s]!=dims[%(idx)s]" % locals()
+
+        str += """){
+            /* Reference received to invalid output variable.
+            Decrease received reference's ref count and allocate new
+            output variable */
+            Py_XDECREF(%(out)s);
+            %(out)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s,
+                                                    PyArray_DIMS(dims),
+                                                    %(dtype)s,
+                                                    0);
+            if (!%(out)s)
+            {
+                // exception already set
+                %(fail)s;
+            }
+        }
+        """ % locals()
+        return str
+
+    def infer_shape(self, node, input_shapes):
+        return [node.inputs]
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def do_constant_folding(self, node):
+        return False
+
+alloc_empty = AllocEmpty()
