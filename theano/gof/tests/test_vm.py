@@ -206,8 +206,9 @@ if run_memory_usage_tests:
         for i in xrange(1000000):
             n = numpy.asarray([2.3, 4.5], dtype='f')
             c = sys.getrefcount(n)
-            cuda.CudaNdarray(n)
+            a = cuda.CudaNdarray(n)
             assert c == sys.getrefcount(n)
+            del a
             if not i % 1000:
                 print '.',
                 print gc.collect(),
