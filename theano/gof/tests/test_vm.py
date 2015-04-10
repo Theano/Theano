@@ -85,7 +85,7 @@ def test_speed():
 
         print "%s takes %f s/Kop" % (
             'numpy',
-            (1000*(t_b-t_a) / (steps_b - steps_a)))
+            (1000 * (t_b - t_a) / (steps_b - steps_a)))
 
     def time_linker(name, linker):
         steps_a = 5
