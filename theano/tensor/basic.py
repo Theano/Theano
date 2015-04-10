@@ -5522,7 +5522,7 @@ class AllocEmpty(gof.Op):
         for idx, sh in enumerate(shps):
             str +="dims[%(idx)s] =" \
                   "((npy_intp) PyInt_AsLong((PyObject*)%(sh)s));\n" % locals()
-        
+
         # Validate that the output storage exists
         str += "if(%(out)s==NULL\n" % locals()
         for idx, sh in enumerate(shps):
