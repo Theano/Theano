@@ -341,12 +341,6 @@ class ScanOp(PureOp):
         rval.lazy = False
         return rval
 
-    def grad(self, args, g_outs):
-        raise NotImplementedError()
-
-    def R_op(self, inputs, eval_points):
-        raise NotImplementedError()
-
 
 @theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,

@@ -135,6 +135,9 @@ class Binomial(gof.op.Op):
         csx_matrix = getattr(scipy.sparse, self.format + '_matrix')
         out[0] = csx_matrix(binomial, dtype=self.dtype)
 
+    def connection_pattern(self, node):
+        return [[True], [True], [False]]
+
     def grad(self, (n, p, shape, ), (gz,)):
         comment_n = "No gradient exists for the number of samples in class\
                      Binomial of theano/sparse/sandbox/sp2.py"
