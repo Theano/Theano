@@ -18,13 +18,16 @@ def floatX_convert(s):
         return "float32"
     elif s == "64":
         return "float64"
+    elif s == "16":
+        return "float16"
     else:
         return s
 
 AddConfigVar('floatX',
              "Default floating-point precision for python casts",
-             EnumStr('float64', 'float32', convert=floatX_convert,),
-             )
+             EnumStr('float64', 'float32', 'float16',
+                     convert=floatX_convert,),
+)
 
 AddConfigVar('warn_float64',
              "Do an action when a tensor variable with float64 dtype is"
