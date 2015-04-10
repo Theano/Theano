@@ -320,7 +320,6 @@ whitelist_flake8 = [
     "gof/tests/test_destroyhandler.py",
     "gof/tests/test_opt.py",
     "gof/tests/test_lazy.py",
-    "gof/tests/test_vm.py",
     "gof/tests/test_toolbox.py",
     "gof/tests/test_link.py",
     "gof/tests/test_fg.py",
