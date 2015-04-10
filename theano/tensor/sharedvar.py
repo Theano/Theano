@@ -59,10 +59,15 @@ class ScalarSharedVariable(_tensor_py_operators, SharedVariable):
 
 
 @shared_constructor
-def scalar_constructor(value, name=None, strict=False, allow_downcast=None):
+def scalar_constructor(value, name=None, strict=False, allow_downcast=None,
+                       borrow=False):
     """SharedVariable constructor for scalar values. Default: int64 or float64.
 
     :note: We implement this using 0-d tensors for now.
+
+    :note: We ignore the borrow parameter as we convert ``value`` to an
+      ndarray (this is a new object). This respects the semantic of
+      borrow, as it is a hint to Theano that we can reuse it.
 
     """
     if not isinstance(value, (numpy.number, float, int, complex)):

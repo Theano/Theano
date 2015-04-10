@@ -68,11 +68,11 @@ class RopLop_checker(unittest.TestCase):
         self.x = tensor.vector('x')
         self.v = tensor.vector('v')
         self.rng = numpy.random.RandomState(utt.fetch_seed())
-        self.in_shape = (5 + self.rng.randint(30),)
+        self.in_shape = (5 + self.rng.randint(3),)
         self.mx = tensor.matrix('mx')
         self.mv = tensor.matrix('mv')
-        self.mat_in_shape = (5 + self.rng.randint(30),
-                             5 + self.rng.randint(30))
+        self.mat_in_shape = (5 + self.rng.randint(3),
+                             5 + self.rng.randint(3))
 
     def check_nondiff_rop(self, y):
         """ If your op is not differentiable(so you can't define Rop)
