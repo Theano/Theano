@@ -1146,7 +1146,7 @@ class COp(Op):
                 while n < len(split):
                     if split[n] not in self.SECTIONS:
                         raise ValueError("Unknown section type (in file %s): %s" %
-                                         (self.fun_files[i], split[n]))
+                                         (self.func_files[i], split[n]))
                     if split[n] not in self.code_sections:
                         self.code_sections[split[n]] = ""
                     self.code_sections[split[n]] += split[n+1]
