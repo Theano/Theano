@@ -1,19 +1,20 @@
 """Defines Updates object for storing a (SharedVariable, new_value) mapping.
 
 """
-__authors__ = "theano-dev"
-__copyright__ = "(c) 2010, Universite de Montreal"
-__license__ = "3-clause BSD License"
-__contact__ = "theano-dev <theano-dev@googlegroups.com>"
-
-__docformat__ = "restructuredtext en"
-
 from theano.compat.python2x import OrderedDict
 
 from theano.compile.sharedvalue import SharedVariable
 import logging
 logger = logging.getLogger('theano.updates')
 import warnings
+
+
+__authors__ = "theano-dev"
+__copyright__ = "(c) 2010, Universite de Montreal"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
+
+__docformat__ = "restructuredtext en"
 
 
 # Must be an OrderedDict or updates will be applied in a non-deterministic
