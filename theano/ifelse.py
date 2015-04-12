@@ -10,15 +10,6 @@ which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
-
-__docformat__ = 'restructedtext en'
-__authors__ = ("Razvan Pascanu "
-               "James Bergstra "
-               "Dumitru Erhan "
-               "David Warde-Farley")
-__copyright__ = "(c) 2010, Universite de Montreal"
-__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
-
 from copy import deepcopy
 from itertools import izip
 import logging
@@ -33,6 +24,15 @@ from theano.compile import optdb
 from theano.tensor import opt
 from theano.scan_module.scan_utils import find_up
 from theano.scan_module.scan_utils import clone
+
+
+__docformat__ = 'restructedtext en'
+__authors__ = ("Razvan Pascanu "
+               "James Bergstra "
+               "Dumitru Erhan "
+               "David Warde-Farley")
+__copyright__ = "(c) 2010, Universite de Montreal"
+__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 _logger = logging.getLogger('theano.ifelse')
 
@@ -338,13 +338,13 @@ def ifelse(condition, then_branch, else_branch, name=None):
             # converted into one, then we try to do that.
             # This case happens when one of the elements has a GPU type,
             # for instance a shared variable that was silently moved to GPU.
-            if (isinstance(then_branch_elem.type, TensorType)
-                    and not isinstance(else_branch_elem.type, TensorType)):
+            if (isinstance(then_branch_elem.type, TensorType) and not
+                    isinstance(else_branch_elem.type, TensorType)):
                 else_branch_elem = then_branch_elem.type.filter_variable(
                     else_branch_elem)
 
-            elif (isinstance(else_branch_elem.type, TensorType)
-                    and not isinstance(then_branch_elem.type, TensorType)):
+            elif (isinstance(else_branch_elem.type, TensorType) and not
+                    isinstance(then_branch_elem.type, TensorType)):
                 then_branch_elem = else_branch_elem.type.filter_variable(
                     then_branch_elem)
 
