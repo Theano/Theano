@@ -6,7 +6,6 @@ import time
 import warnings
 
 import numpy  # for numeric_grad
-np = numpy
 
 import theano
 
@@ -17,6 +16,7 @@ from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp
 
+np = numpy
 __authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
 __copyright__ = "(c) 2011, Universite de Montreal"
 __license__ = "3-clause BSD License"

@@ -5,7 +5,6 @@ from theano.compat.python2x import OrderedDict
 
 from theano.compile.sharedvalue import SharedVariable
 import logging
-logger = logging.getLogger('theano.updates')
 import warnings
 
 
@@ -15,6 +14,8 @@ __license__ = "3-clause BSD License"
 __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
+
+logger = logging.getLogger('theano.updates')
 
 
 # Must be an OrderedDict or updates will be applied in a non-deterministic
