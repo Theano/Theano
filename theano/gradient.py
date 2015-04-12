@@ -1,18 +1,9 @@
 """Driver for gradient calculations."""
-
-__authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
-__copyright__ = "(c) 2011, Universite de Montreal"
-__license__ = "3-clause BSD License"
-__contact__ = "theano-dev <theano-dev@googlegroups.com>"
-
-__docformat__ = "restructuredtext en"
-
 import __builtin__
 from itertools import izip
 import logging
 import time
 import warnings
-_logger = logging.getLogger('theano.gradient')
 
 import numpy  # for numeric_grad
 np = numpy
@@ -25,6 +16,14 @@ from theano.compat.python2x import OrderedDict
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp
+
+__authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
+__copyright__ = "(c) 2011, Universite de Montreal"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
+
+__docformat__ = "restructuredtext en"
+_logger = logging.getLogger('theano.gradient')
 
 # we can't do "import theano.tensor"
 # tensor depends on theano.compile
@@ -735,9 +734,9 @@ def _node_to_pattern(node):
             if not isinstance(output_pattern, list):
                 raise TypeError(
                     '%s.connection_pattern should return' %
-                    node.op + ' a list of lists, but element %d' % ii
-                    + 'is %s of type %s.' % (output_pattern,
-                                             type(output_pattern)))
+                    node.op + ' a list of lists, but element %d' % ii +
+                    'is %s of type %s.' % (output_pattern,
+                                           type(output_pattern)))
     else:
         connection_pattern = [[True for output in node.outputs]
                               for ipt in node.inputs]
