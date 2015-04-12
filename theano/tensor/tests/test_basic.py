@@ -4838,31 +4838,41 @@ def test_flatten_outdim_invalid():
 
 
 def test_tile():
-    # Test the one-dimensional case.
+    def run_tile(x, x_, reps, use_symbolic_reps):
+        if use_symbolic_reps:
+            rep_symbols = [iscalar() for _ in range(len(reps))]
+            f = function([x] + rep_symbols, tile(x, rep_symbols))
+            return f(*([x_] + list(reps)))
+        else:
+            f = function([x], tile(x, reps))
+            return f(x_)
+
     rng = numpy.random.RandomState(utt.fetch_seed())
-    x = vector()
-    f = function([x], tile(x, (2,)))
-    x_ = rng.randn(5).astype(config.floatX)
-    assert numpy.all(f(x_) == numpy.tile(x_, (2,)))
 
-    # Test the two-dimensional case.
-    x = matrix()
-    f = function([x], tile(x, (2, 3)))
-    x_ = rng.randn(2, 4).astype(config.floatX)
-    assert numpy.all(f(x_) == numpy.tile(x_, (2, 3)))
+    for use_symbolic_reps in [False, True]:
+        # Test the one-dimensional case.
+        x = vector()
+        x_ = rng.randn(5).astype(config.floatX)
+        assert numpy.all(run_tile(x, x_, (2,), use_symbolic_reps) ==
+            numpy.tile(x_, (2,)))
 
-    # Test the three-dimensional case.
-    x = tensor3()
-    f = function([x], tile(x, (2, 3, 4)))
-    x_ = rng.randn(2, 4, 3).astype(config.floatX)
-    assert numpy.all(f(x_) == numpy.tile(x_, (2, 3, 4)))
+        # Test the two-dimensional case.
+        x = matrix()
+        x_ = rng.randn(2, 4).astype(config.floatX)
+        assert numpy.all(run_tile(x, x_, (2, 3), use_symbolic_reps) ==
+            numpy.tile(x_, (2, 3)))
 
-    # Test the four-dimensional case.
-    x = tensor4()
-    f = function([x], tile(x, (2, 3, 4, 6)))
-    x_ = rng.randn(2, 4, 3, 5).astype(config.floatX)
-    assert numpy.all(f(x_) == numpy.tile(x_, (2, 3, 4, 6)))
+        # Test the three-dimensional case.
+        x = tensor3()
+        x_ = rng.randn(2, 4, 3).astype(config.floatX)
+        assert numpy.all(run_tile(x, x_, (2, 3, 4), use_symbolic_reps) ==
+            numpy.tile(x_, (2, 3, 4)))
 
+        # Test the four-dimensional case.
+        x = tensor4()
+        x_ = rng.randn(2, 4, 3, 5).astype(config.floatX)
+        assert numpy.all(run_tile(x, x_, (2, 3, 4, 6), use_symbolic_reps) ==
+            numpy.tile(x_, (2, 3, 4, 6)))
 
 def test_tile_grad():
 
