@@ -531,10 +531,10 @@ AddConfigVar(
 AddConfigVar(
     'exception_verbosity',
     "If 'low', the text of exceptions will generally refer "
-    + "to apply nodes with short names such as "
-    + "Elemwise{add_no_inplace}. If 'high', some exceptions "
-    + "will also refer to apply nodes with long descriptions "
-    + """ like:
+    "to apply nodes with short names such as "
+    "Elemwise{add_no_inplace}. If 'high', some exceptions "
+    "will also refer to apply nodes with long descriptions "
+    """ like:
     A. Elemwise{add_no_inplace}
             B. log_likelihood_v_given_h
             C. log_likelihood_h""",

@@ -217,8 +217,8 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
                 _i_am_a_config_class = True
             setattr(root.__class__, sections[0], SubObj())
         newroot = getattr(root, sections[0])
-        if (not getattr(newroot, '_i_am_a_config_class', False)
-                or isinstance(newroot, type)):
+        if (not getattr(newroot, '_i_am_a_config_class', False) or
+                isinstance(newroot, type)):
             raise TypeError(
                 'Internal config nodes must be config class instances',
                 newroot)
