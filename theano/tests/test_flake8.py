@@ -323,7 +323,6 @@ whitelist_flake8 = [
     "gof/sandbox/equilibrium.py",
     "sandbox/cuda/opt_util.py",
     "gof/tests/test_utils.py",
-    "printing.py",
     "raise_op.py",
     "tests/test_flake8.py",
     "misc/pkl_utils.py",
