@@ -147,6 +147,8 @@ def rebuild_collect_shared(outputs,
 
     # In this loop we're just adding all variables used as inputs to replacements
     # to the clone_d dictionary.. This will be used in the following loop
+    # which checks if any of the variables used in the replacement is going to be
+    # replaced, and throws an error.
     for v_orig, v_repl in replace_pairs:
         if not isinstance(v_orig, Variable):
             raise TypeError('given keys must be Variable', v_orig)
