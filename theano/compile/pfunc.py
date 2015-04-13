@@ -161,7 +161,9 @@ def rebuild_collect_shared(outputs,
         clone_v_get_shared_updates(v_repl,
                                    copy_inputs_over)
 
-    # This is the original loop
+    # This loop will check if any of replaced variables has been used as
+    # in any replacement. This includes replacing the variable itself,
+    # i.e. (a: a+1)
     for v_orig, v_repl in new_replace_pairs:
         if v_orig in clone_d:
             raise AssertionError(
@@ -172,10 +174,8 @@ def rebuild_collect_shared(outputs,
                 "f(v) is a function of v, is not allowed. Here, v: "
                 "%s is used to compute another u but it is scheduled "
                 "to be replaced by: %s." % (v_orig, v_repl))
-
+        # this will disallow replacing the same variable twice
         clone_d[v_orig] = v_repl
-        #clone_d[v_orig] = clone_v_get_shared_updates(v_repl,
-        #                                             copy_inputs_over)
 
     if inputs is None:
         inputs = []
