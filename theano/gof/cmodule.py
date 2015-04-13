@@ -24,7 +24,7 @@ except ImportError:
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
-from theano.compat import any, PY3, next, decode, decode_iter
+from theano.compat import PY3, next, decode, decode_iter
 from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
