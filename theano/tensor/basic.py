@@ -5538,7 +5538,7 @@ class AllocEmpty(gof.Op):
                                                     0);
             if (!%(out)s)
             {
-                // exception already set
+                PyErr_SetString(PyExc_MemoryError, "alloc failed");
                 %(fail)s;
             }
         }
