@@ -463,8 +463,7 @@ class PPrinter:
         inv_updates = dict((b, a) for (a, b) in updates.iteritems())
         i = 1
         for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
-                                          list(outputs) +
-                                          updates.values()):
+                                          list(outputs) + updates.values()):
             for output in node.outputs:
                 if output in inv_updates:
                     name = str(inv_updates[output])
