@@ -324,8 +324,6 @@ whitelist_flake8 = [
     "gof/sandbox/equilibrium.py",
     "sandbox/cuda/opt_util.py",
     "gof/tests/test_utils.py",
-    "misc/pkl_utils.py",
-    "sandbox/cuda/tests/test_cula.py",
     "tensor/tests/_test_mpi_roundtrip.py",
 ]
 

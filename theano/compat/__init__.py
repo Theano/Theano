@@ -64,6 +64,7 @@ __all__ += ['cmp', 'operator_div', 'partial', 'defaultdict', 'deque',
             'combinations', 'product', 'maxsize', 'DictMixin',
             'OrderedDict', 'decode', 'decode_iter']
 
+
 class DefaultOrderedDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):
         if (default_factory is not None and
