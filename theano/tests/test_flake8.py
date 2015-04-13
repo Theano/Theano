@@ -1,9 +1,6 @@
 """
 Test flake8 errors.
 """
-__authors__ = ("Saizheng Zhang")
-__copyright__ = "(c) 2015, Universite de Montreal"
-__contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 from nose.plugins.skip import SkipTest
 import os
@@ -15,6 +12,10 @@ try:
     flake8_available = True
 except ImportError:
     flake8_available = False
+
+__authors__ = ("Saizheng Zhang")
+__copyright__ = "(c) 2015, Universite de Montreal"
+__contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 whitelist_flake8 = [
     "__init__.py",
@@ -323,7 +324,6 @@ whitelist_flake8 = [
     "gof/sandbox/equilibrium.py",
     "sandbox/cuda/opt_util.py",
     "gof/tests/test_utils.py",
-    "tests/test_flake8.py",
     "misc/pkl_utils.py",
     "sandbox/cuda/tests/test_cula.py",
     "tensor/tests/_test_mpi_roundtrip.py",
