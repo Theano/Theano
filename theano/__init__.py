@@ -195,5 +195,3 @@ def sparse_grad(var):
 
 
 __import__('theano.tensor.shared_randomstreams')
-
-# flake8: noqa
