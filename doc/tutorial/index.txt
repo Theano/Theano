@@ -46,3 +46,4 @@ you out.
     extending_theano_c
     python-memory-management
     multi_cores
+    faq_tutorial
