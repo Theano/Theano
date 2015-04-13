@@ -352,7 +352,7 @@ class Test_pfunc(unittest.TestCase):
                 updates=[(z, (z + x + y)), (z, (z - x))])
 
     def test_givens(self):
-        x = shared(0)
+        x = shared(0, name='x')
         assign = pfunc([], x, givens={x: 3})
         assert assign() == 3
         assert x.get_value(borrow=True) == 0
@@ -604,50 +604,42 @@ class Test_pfunc(unittest.TestCase):
         assert len(f.maker.fgraph.inputs) == 1
         assert len(f.maker.fgraph.outputs) == 1
 
-    # def test_givens_replaces_shared_variable2(self):
-    #     a = shared(1., 'a')
-    #     a.default_update = a + 3
-    #     c = a + 10
+    def test_givens_replaces_shared_variable2(self):
+        a = shared(1., 'a')
+        a.default_update = a + 3
+        c = a + 10
 
-    #     # This is not allowed in Theano anymore
-    #     self.assertRaises(AssertionError, theano.function,
-    #                       [], c, givens={a: (a + 10)})
-    # 
-    # def test_givens_replaces_shared_variables3(self):
-    #     a = shared(1, name='a')
-    #     b = shared(2, name='b')
-    #     c = shared(3, name='c')
+        # This is not allowed in Theano anymore
+        self.assertRaises(AssertionError, theano.function,
+                          [], c, givens={a: (a + 10)})
 
-    #     y = a + b + c
-        
-    #     f_allowed = pfunc([], y, givens= [
-    #         (a, c),
-    #         (b, c),
-    #     ])
-    #     assert f_allowed() == 9
-        
-        # f_not_allowed1 = pfunc([], y, givens= [
-        #     (a, a+1),
-        # ])
-        # self.assertRaises(AssertionError, f_not_allowed1)
+    def test_givens_replaces_shared_variables3(self):
+        a = shared(1, name='a')
+        b = shared(2, name='b')
+        c = shared(3, name='c')
 
-        # f_not_allowed2 = pfunc([], y, givens= [
-        #     (a, c),
-        #     (a, b),
-        # ])
-        # self.assertRaises(AssertionError, f_not_allowed2)
+        y = a + b + c
 
-        # f_not_allowed3 = pfunc([], y, givens= [
-        #     (b, a),
-        #     (a, b),
-        # ])
-        # self.assertRaises(AssertionError, f_not_allowed3)
+        f_allowed = pfunc([], y, givens= [
+            (a, c),
+            (b, c),
+        ])
+        assert f_allowed() == 9
 
-        # f_not_allowed4 = pfunc([], y, givens= [
-        #     (b, a),
-        #     (a, c),
-        # ])
-        # self.assertRaises(AssertionError, f_not_allowed4)
+        self.assertRaises(AssertionError, theano.function,
+                          [], y, givens= [(a, a+1)])
+
+        self.assertRaises(AssertionError, theano.function,
+                          [], y, givens= [(a, c),
+                                          (a, b),])
+
+        self.assertRaises(AssertionError, theano.function,
+                          [], y, givens= [(b, a),
+                                          (a, b),])
+
+        self.assertRaises(AssertionError, theano.function,
+                          [], y, givens= [(b, a),
+                                          (a, c),])
 
     def test_duplicate_inputs(self):
         x = theano.tensor.lscalar('x')
