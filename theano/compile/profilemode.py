@@ -9,7 +9,6 @@ from theano.gof.link import WrapLinker
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
-from theano.compat.python2x import any
 from theano import gof
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker

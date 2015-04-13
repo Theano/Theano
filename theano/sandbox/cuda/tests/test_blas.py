@@ -18,7 +18,6 @@ import theano.sandbox.cuda as tcn
 
 from theano.tensor.signal.downsample import (DownsampleFactorMax,
         DownsampleFactorMaxGrad, DownsampleFactorMaxGradGrad)
-from theano.compat.python2x import any
 
 import theano.compile.mode
 from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer

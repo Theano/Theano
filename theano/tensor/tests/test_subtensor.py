@@ -10,7 +10,6 @@ import numpy
 import theano
 from theano.compat import exc_message
 from theano.compat.six import StringIO
-from theano.compat.python2x import any
 from theano.compile import DeepCopyOp
 from theano import config
 from theano import gof

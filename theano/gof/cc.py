@@ -14,6 +14,9 @@ from theano.compat import PY3
 from theano.compat.six import StringIO
 from theano.gof.utils import MethodNotDefined
 
+import theano
+from theano import config
+
 if PY3:
     import hashlib
 
@@ -26,7 +29,7 @@ if PY3:
         # a digit.
         return 'm' + hashlib.md5(msg).hexdigest()
 
-elif sys.version_info[:2] >= (2, 5):
+else:
     import hashlib
 
     def hash_from_code(msg):
@@ -35,21 +38,12 @@ elif sys.version_info[:2] >= (2, 5):
         except TypeError:
             assert isinstance(msg, numpy.ndarray)
             return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
-else:
-    import md5
-
-    def hash_from_code(msg):
-        return md5.new(msg).hexdigest()
 
 
 def hash_from_file(file_path):
     """Return the MD5 hash of a file."""
     return hash_from_code(open(file_path, 'rb').read())
 
-
-import theano
-from theano.compat.python2x import all
-from theano import config
 
 # Note that we need to do this before importing cutils, since when there is
 # no theano cache dir initialized yet, importing cutils may require compilation

@@ -2,12 +2,13 @@ import sys
 
 import numpy
 
-from theano.compat.python2x import DefaultOrderedDict
+from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
 from theano.compat.six import StringIO
 from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config
+
 AddConfigVar('optdb.position_cutoff',
         'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',

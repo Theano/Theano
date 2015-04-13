@@ -147,7 +147,6 @@ from theano.gof import (utils, Op, view_roots,
 from theano.gof.cmodule import GCC_compiler
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
-from theano.compat.python2x import all, any
 import theano.scalar
 from theano.tensor import basic as T
 from theano.tensor.blas_headers import blas_header_text

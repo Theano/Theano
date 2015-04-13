@@ -16,7 +16,6 @@ from theano.gof import (local_optimizer, EquilibriumDB,
 
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
-from theano.compat.python2x import all, any
 from theano.tensor.nnet.conv import ConvOp
 from .type import GpuArrayType, GpuArrayConstant
 from .basic_ops import (host_from_gpu, gpu_from_host,

@@ -9,7 +9,7 @@ if there exists an assignment to all unification variables such that
 """
 from copy import copy
 
-from theano.compat.python2x import partial
+from theano.compat import partial
 from theano.gof.utils import *
 
 

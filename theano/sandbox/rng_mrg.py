@@ -17,7 +17,6 @@ from theano.tensor import (raw_random, TensorType, as_tensor_variable,
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
-from theano.compat.python2x import all, any
 
 import multinomial
 

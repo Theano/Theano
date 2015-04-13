@@ -23,8 +23,6 @@ import numpy
 import theano
 import theano.tensor as T
 
-from theano.compat.python2x import any
-
 
 def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
             iters=10, order='C'):

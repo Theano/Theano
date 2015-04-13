@@ -11,7 +11,6 @@ except ImportError:
     # To have the GPU back-end work without nose, we need this file to
     # be importable without nose.
     pass
-from theano.compat.python2x import any
 import theano.sandbox.cuda as cuda
 import theano.sandbox.cuda.basic_ops as B
 

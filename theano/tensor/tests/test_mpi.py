@@ -4,7 +4,6 @@ import theano
 import subprocess
 import os
 from theano.gof.sched import sort_schedule_fn
-from theano.compat.python2x import all
 
 mpi_scheduler = sort_schedule_fn(*mpi_cmps)
 mpi_linker = theano.OpWiseCLinker(schedule=mpi_scheduler)

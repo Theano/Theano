@@ -1,7 +1,7 @@
 """Defines Updates object for storing a (SharedVariable, new_value) mapping.
 
 """
-from theano.compat.python2x import OrderedDict
+from theano.compat import OrderedDict
 
 from theano.compile.sharedvalue import SharedVariable
 import logging
@@ -35,9 +35,8 @@ class OrderedUpdates(OrderedDict):
             warnings.warn('Initializing an `OrderedUpdates` from a '
                           'non-ordered dictionary with 2+ elements could '
                           'make your code non-deterministic. You can use '
-                          'an OrderedDict that is implemented at '
-                          'theano.compat.python2x.OrderedDict '
-                          'for python 2.4+.')
+                          'an OrderedDict that is available at '
+                          'theano.compat.OrderedDict for python 2.6+.')
         super(OrderedUpdates, self).__init__(*key, **kwargs)
         for key in self:
             if not isinstance(key, SharedVariable):

@@ -6,7 +6,6 @@ import numpy
 import theano
 from theano import config
 from theano.gof import Constant, hashtype, Type, Variable
-from theano.compat.python2x import any
 from theano.gof.utils import MethodNotDefined
 from theano import scalar as scal
 

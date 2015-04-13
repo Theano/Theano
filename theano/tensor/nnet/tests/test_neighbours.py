@@ -4,7 +4,6 @@ import unittest
 
 import theano
 from theano import shared, function
-from theano.compat.python2x import any
 import theano.tensor as T
 from theano.tensor.nnet.neighbours import images2neibs, neibs2images, Images2Neibs
 

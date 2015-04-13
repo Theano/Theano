@@ -9,28 +9,20 @@ import pdb
 import sys
 import time
 import warnings
+import traceback
 
 import numpy
 
-from theano.gof import graph
-from theano.gof.fg import InconsistencyError
-from theano.gof import op
-from theano.gof import utils
-from theano.gof import unify
-from theano.gof import toolbox
 import theano
 from theano import config
-from theano.compat.python2x import any, all, deque
+from theano.gof import graph, op, utils, unify, toolbox
+from theano.gof.fg import InconsistencyError
+from theano.compat import deque
 
+from . import destroyhandler as dh
 
 _logger = logging.getLogger('theano.gof.opt')
-
-
-import destroyhandler as dh
-import traceback
-
 _optimizer_idx = [0]
-
 
 def _list_of_nodes(fgraph):
     return list(graph.io_toposort(fgraph.inputs, fgraph.outputs))

@@ -1,10 +1,5 @@
-MutableSet = None
-try:
-    from collections import MutableSet
-except ImportError:
-    # Python 2.4
-    pass
-from theano.compat.python2x import OrderedDict
+from collections import MutableSet
+from theano.compat import OrderedDict
 import types
 
 

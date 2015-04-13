@@ -13,7 +13,6 @@ import theano
 import theano.sandbox.rng_mrg
 from theano import tensor
 from theano.compile.pfunc import rebuild_collect_shared
-from theano.compat.python2x import any
 from theano.tests  import unittest_tools as utt
 from numpy.testing.noseclasses import KnownFailureTest
 

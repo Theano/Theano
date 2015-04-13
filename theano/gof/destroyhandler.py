@@ -5,8 +5,7 @@ and inplace operations.
 import theano
 import toolbox
 import graph
-from theano.compat.python2x import deque
-from theano.compat.python2x import OrderedDict
+from theano.compat import deque, OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from fg import InconsistencyError

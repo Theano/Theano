@@ -1,11 +1,11 @@
 import unittest, os
 import numpy
 import cPickle
-from theano.compat.python2x import DictMixin, OrderedDict
-floatX = 'float32'
+from theano.compat import DictMixin, OrderedDict
 import theano
 import theano.tensor as T
 
+floatX = 'float32'
 
 def test_graph_opt_caching():
     opt_db_file = theano.config.compiledir+'/optimized_graphs.pkl'
