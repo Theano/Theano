@@ -149,33 +149,33 @@ def rebuild_collect_shared(outputs,
     # to the clone_d dictionary.. This will be used in the following loop
     # which checks if any of the variables used in the replacement is going to be
     # replaced, and throws an error.
+    new_replace_pairs = []
     for v_orig, v_repl in replace_pairs:
         if not isinstance(v_orig, Variable):
             raise TypeError('given keys must be Variable', v_orig)
         if not isinstance(v_repl, Variable):
             v_repl = shared(v_repl)
-
+        # create a new replace_pairs list with theano variables only
+        new_replace_pairs.append((v_orig, v_repl))
+        # add all input variables in the replacement graph into clone_d
         clone_v_get_shared_updates(v_repl,
                                    copy_inputs_over)
 
     # This is the original loop
-    for v_orig, v_repl in replace_pairs:
-        if not isinstance(v_orig, Variable):
-            raise TypeError('given keys must be Variable', v_orig)
-        if not isinstance(v_repl, Variable):
-            v_repl = shared(v_repl)
-
+    for v_orig, v_repl in new_replace_pairs:
         if v_orig in clone_d:
             raise AssertionError(
-                    "When using 'givens' or 'replace' with several "
-                    "(old_v, new_v) replacement pairs, you can not have a "
-                    "new_v variable depend on an old_v one. For instance, "
-                    "givens = {a:b, b:(a+1)} is not allowed. Here, the old_v "
-                    "%s is used to compute other new_v's, but it is scheduled "
-                    "to be replaced by %s." % (v_orig, v_repl))
-            
-        clone_d[v_orig] = clone_v_get_shared_updates(v_repl,
-                                                     copy_inputs_over)
+                "When using 'givens' or 'replace' with several "
+                "(v, new_v) replacement pairs, you can not have "
+                "co-dependency between updated variables. "
+                "For instance, givens = {v:new_v, u:f(v)}, where "
+                "f(v) is a function of v, is not allowed. Here, v: "
+                "%s is used to compute another u but it is scheduled "
+                "to be replaced by: %s." % (v_orig, v_repl))
+
+        clone_d[v_orig] = v_repl
+        #clone_d[v_orig] = clone_v_get_shared_updates(v_repl,
+        #                                             copy_inputs_over)
 
     if inputs is None:
         inputs = []
