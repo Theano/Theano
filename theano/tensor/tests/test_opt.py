@@ -1591,7 +1591,7 @@ def test_local_useless_slice():
     apply_node = f_opt.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list), "Slice should be gone"
-    
+
     # test a 4d tensor
     z = tensor.tensor4('z')
     o2 = z[1, :, :, 1]
@@ -3810,6 +3810,56 @@ class T_cast_cast(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, T.Elemwise)
+
+
+class T_func_inverse(unittest.TestCase):
+
+    def setUp(self):
+        mode = theano.compile.get_default_mode()
+        self.mode = mode.including('local_func_inv')
+
+    def test(self):
+        """
+        test that consecutive ops that are functional inverses are removed
+        """
+
+        x = T.fmatrix()
+        o = T.deg2rad(T.rad2deg(x))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype("float32")
+        delta = f(dx) - dx
+        topo = f.maker.fgraph.toposort()
+
+        self.assertEqual(len(topo), 1)
+        self.assertTrue(numpy.all(delta == 0))
+        self.assertTrue(isinstance(topo[0].op, DeepCopyOp),
+                        "Inverse functions not removed!")
+
+        # Test that the other ordering of functions works
+        x = T.fmatrix()
+        o = T.rad2deg(T.deg2rad(x))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype("float32")*180
+        delta = f(dx) - dx
+        topo = f.maker.fgraph.toposort()
+
+        self.assertEqual(len(topo), 1)
+        self.assertTrue(numpy.all(delta == 0))
+        self.assertTrue(isinstance(topo[0].op, DeepCopyOp),
+                        "Inverse functions not removed!")
+
+        # Test that non-inverse functions are ran normally
+        x = T.fmatrix()
+        o = T.rad2deg(T.rad2deg(x))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype("float32")+0.01
+        delta = f(dx) - dx
+        topo = f.maker.fgraph.toposort()
+
+        self.assertEqual(len(topo), 1)
+        self.assertTrue(numpy.all(delta != 0))
+        self.assertFalse(isinstance(topo[0].op, DeepCopyOp),
+                         "Non-inverse functions removed!")
 
 
 def test_constant_folding():

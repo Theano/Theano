@@ -34,6 +34,7 @@ from theano.tensor.subtensor import (get_idx_list, get_canonical_form_slice,
                                      AdvancedSubtensor1,
                                      advanced_inc_subtensor1)
 from theano import scalar
+from theano.scalar import basic
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
 from theano.compile.ops import Shape_i
@@ -1487,6 +1488,55 @@ def local_cast_cast(node):
         return
     if node.op.scalar_op.o_type == x.owner.op.scalar_op.o_type:
         return [x]
+
+
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Elemwise])
+def local_func_inv(node):
+    """
+    Check for two consecutive operations that are functional inverses
+    and remove them from the function graph
+    """
+
+    inv_pairs = (
+        (basic.Deg2Rad, basic.Rad2Deg),
+        (basic.Cosh, basic.ArcCosh),
+        (basic.Tanh, basic.ArcTanh),
+        (basic.Sinh, basic.ArcSinh),
+        (basic.Conj, basic.Conj),
+        (basic.Neg, basic.Neg),
+        (basic.Inv, basic.Inv),
+    )
+    x = node.inputs[0]
+
+    if not isinstance(node.op, T.Elemwise):
+        return
+    if (not x.owner or not isinstance(x.owner.op, T.Elemwise)):
+        return
+
+    prev_op = x.owner.op.scalar_op
+    node_op = node.op.scalar_op
+
+    for inv_pair in inv_pairs:
+        if is_inverse_pair(node_op, prev_op, inv_pair):
+            return x.owner.inputs
+
+    return
+
+
+def is_inverse_pair(node_op, prev_op, inv_pair):
+    """
+    Given two consecutive operations, check if they are the
+    provided pair of inverse functions
+    """
+
+    node_is_op0 = isinstance(node_op, inv_pair[0])
+    node_is_op1 = isinstance(node_op, inv_pair[1])
+    prev_is_op0 = isinstance(prev_op, inv_pair[0])
+    prev_is_op1 = isinstance(prev_op, inv_pair[1])
+
+    return (node_is_op0 and prev_is_op1) or (node_is_op1 and prev_is_op0)
 
 
 class Assert(T.Op):
