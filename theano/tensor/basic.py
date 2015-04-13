@@ -5477,7 +5477,7 @@ class AllocEmpty(gof.Op):
 
     # specify the type of the data
     def __init__(self, dtype):
-        assert isinstance(dtype, string)
+        assert isinstance(dtype, str)
         self.dtype = 'NPY_' + dtype.upper()
 
     @staticmethod

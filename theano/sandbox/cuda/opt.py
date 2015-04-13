@@ -26,7 +26,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
-    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit)
+    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
@@ -2273,6 +2273,24 @@ def gpuScanOptimization(node):
             return outputs
     return False
 
+# en attente de tests et de correction
+@register_opt()
+@local_optimizer([tensor.AllocEmpty, gpu_from_host])
+def local_gpu_allocempty(node):
+    if (isinstance(node.op, tensor.AllocEmpty) and
+        node.op.dtype=="NPY_FLOAT_32":
+        if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
+            for i in node.inputs]):
+            return [host_from_gpu(GpuAllocEmpty("float32")(gpu_from_host(*node.inputs)))]
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op, tensor.AllocEmpty) and
+            host_input.owner.op.dtype=="NPY_FLOAT_32"):
+            owner = host_input.owner
+            return [GpuAllocEmpty()(
+                    gpu_from_host(*owner.inputs))]
+        
 
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
