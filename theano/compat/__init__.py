@@ -43,10 +43,13 @@ else:
         return e[0]
 
     cmp = cmp
+    from functools import partial
+    from collections import defaultdict, deque
+
+    from itertools import combinations, product
+    from sys import maxsize
 
     # Older Python 2.x compatibility
-    from theano.compat.python2x import partial, defaultdict, deque
-    from theano.compat.python2x import combinations, product, maxsize
     from theano.compat.python2x import DictMixin, OrderedDict
 
     def decode(x):
