@@ -1,11 +1,13 @@
 """Code supporting compatibility across versions of Python.
-
 """
 
 # Python 3.x compatibility
 from theano.compat.six import PY3, b, BytesIO, next, get_unbound_function
 from theano.compat.six.moves import configparser
 from theano.compat.six.moves import reload_module as reload
+
+__all__ = ['PY3', 'b', 'BytesIO', 'next', 'get_unbound_function',
+           'configparser', 'reload']
 
 if PY3:
     from operator import truediv as operator_div
@@ -19,9 +21,9 @@ if PY3:
             return exc_message(msg)
         return msg
 
-    def cmp(a, b):
+    def cmp(x, y):
         """Return -1 if x < y, 0 if x == y, 1 if x > y."""
-        return (a > b) - (a < b)
+        return (x > y) - (x < y)
 
     from functools import partial
     from collections import defaultdict, deque

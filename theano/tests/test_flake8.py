@@ -19,9 +19,6 @@ except ImportError:
 whitelist_flake8 = [
     "__init__.py",
     "version.py",
-    "compat/python2x.py",
-    "compat/six.py",
-    "compat/__init__.py",
     "tests/test_gradient.py",
     "tests/test_config.py",
     "tests/diverse_tests.py",
