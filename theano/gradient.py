@@ -1387,8 +1387,8 @@ class numeric_grad(object):
 
         total_size = __builtin__.sum(prod(sh) for sh in shapes)
 
-        working_dtype = __builtin__.min((self.type_eps[dt], dt)
-                                        for dt in dtypes)[1]
+        working_dtype = __builtin__.min(
+            (self.type_eps[dt], dt) for dt in dtypes)[1]
 
         # create un-initialized memory
         x = numpy.ndarray((total_size,), dtype=working_dtype)
