@@ -1575,9 +1575,17 @@ class Compiler(object):
                     if fd is not None:
                         os.close(fd)
                 finally:
-                    os.remove(path)
-                    os.remove(exe_path)
+                    if os.path.exists(path):
+                        os.remove(path)
+                    if os.path.exists(exe_path):
+                        os.remove(exe_path)
+                    if os.path.exists(exe_path + ".exe"):
+                        os.remove(exe_path + ".exe")
         except OSError, e:
+            if err is None:
+                err = str(e)
+            else:
+                err += "\n" + str(e)
             compilation_ok = False
 
         if not try_run and not output:
