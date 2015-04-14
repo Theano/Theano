@@ -1591,7 +1591,7 @@ def test_local_useless_slice():
     apply_node = f_opt.maker.fgraph.toposort()[0]
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list), "Slice should be gone"
-    
+
     # test a 4d tensor
     z = tensor.tensor4('z')
     o2 = z[1, :, :, 1]
@@ -3810,6 +3810,71 @@ class T_cast_cast(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, T.Elemwise)
+
+
+class T_func_inverse(unittest.TestCase):
+
+    def setUp(self):
+        mode = theano.compile.get_default_mode()
+        self.mode = mode.including('local_func_inv')
+
+
+    def assert_func_pair_optimized(self, func1, func2, data,
+                                   should_copy=True, is_complex=False):
+        """
+        Check that a pair of funcs is optimized properly
+        """
+
+        x = T.cmatrix() if is_complex else T.fmatrix()
+        o = func2(func1(x))
+        f = theano.function([x], o, mode=self.mode)
+        delta = f(data) - data
+        topo = f.maker.fgraph.toposort()
+
+        if should_copy:
+            acceptable_topo_lens = [1]
+        else:
+            # The 2 funcs can be split apart if they are not inverses
+            acceptable_topo_lens = [1, 2]
+
+        if should_copy:
+            delta_condition = numpy.all(delta == 0)
+        else:
+            delta_condition = numpy.all(delta != 0)
+
+        self.assertTrue(len(topo) in acceptable_topo_lens)
+        self.assertTrue(delta_condition)
+        self.assertEqual(isinstance(topo[0].op, DeepCopyOp), should_copy,
+                         "Inverse functions not removed!")
+
+    def test(self):
+        """
+        test optimization for consecutive functional inverses
+        """
+
+        dx = numpy.random.rand(5, 4).astype("float32")
+        self.assert_func_pair_optimized(T.deg2rad, T.rad2deg, dx)
+        dx = numpy.random.rand(5, 4).astype("float32")*180
+        self.assert_func_pair_optimized(T.rad2deg, T.deg2rad, dx)
+
+        # Test the other functional inverses
+        dx = numpy.random.rand(5, 4).astype("float32")
+        self.assert_func_pair_optimized(T.cosh, T.arccosh, dx)
+        self.assert_func_pair_optimized(T.arcsinh, T.sinh, dx)
+        self.assert_func_pair_optimized(T.arctanh, T.tanh, dx)
+        self.assert_func_pair_optimized(T.inv, T.inv, dx)
+        self.assert_func_pair_optimized(T.neg, T.neg, dx)
+        cx = dx + complex(0, 1)*(dx + 0.01)
+        self.assert_func_pair_optimized(T.conj, T.conj, cx, is_complex=True)
+
+        # Test that non-inverse functions are ran normally
+        self.assert_func_pair_optimized(T.conj, T.neg, cx,
+                                        should_copy=False, is_complex=True)
+        dx = numpy.random.rand(5, 4).astype("float32")+0.01
+        self.assert_func_pair_optimized(T.rad2deg, T.rad2deg, dx,
+                                        should_copy=False)
+        self.assert_func_pair_optimized(T.rad2deg, T.cosh, dx,
+                                        should_copy=False)
 
 
 def test_constant_folding():
