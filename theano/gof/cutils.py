@@ -188,6 +188,7 @@ def compile_cutils():
     code = ("""
         #include <Python.h>
         #include "numpy/arrayobject.h"
+        #include "theano_mod_helper.h"
 
         extern "C"{
         static PyObject *
@@ -236,7 +237,7 @@ def compile_cutils():
             CutilsExtMethods,
         };
 
-        PyMODINIT_FUNC
+        THEANO_INIT_FUNC
         PyInit_cutils_ext(void) {
             import_array();
             return PyModule_Create(&moduledef);
@@ -245,7 +246,7 @@ def compile_cutils():
         """
     else:
         code += """
-        PyMODINIT_FUNC
+        THEANO_INIT_FUNC
         initcutils_ext(void)
         {
           import_array();

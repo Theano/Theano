@@ -10,6 +10,8 @@
 
 #include "numpy/npy_3kcompat.h"
 
+#include "theano_mod_helper.h"
+
 // Py3k strings are unicode, these mimic old functionality.
 //
 // NOTE: npy_3kcompat.h replaces PyString_X with PyBytes_X, which breaks
@@ -53,7 +55,7 @@
 #endif
 #define ALWAYS_INLINE
 #else //else _WIN32
-#define DllExport
+#define DllExport  MOD_PUBLIC
 #define ALWAYS_INLINE __attribute__((always_inline))
 #endif
 

@@ -2,6 +2,7 @@
 
 #include <Python.h>
 #include <structmember.h>
+#include "theano_mod_helper.h"
 
 #include <numpy/arrayobject.h>
 #include <iostream>
@@ -3475,10 +3476,6 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
 
-#ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-
 #define CNDA_MOD_NAME "cuda_ndarray"
 #define CNDA_DOCSTRING "CUDA implementation of a numpy ndarray-like object."
 
@@ -3493,10 +3490,10 @@ static struct PyModuleDef cuda_ndarray_moduledef =
     module_methods
 };
 
-PyMODINIT_FUNC
+THEANO_INIT_FUNC
 PyInit_cuda_ndarray(void)
 #else
-PyMODINIT_FUNC
+THEANO_INIT_FUNC
 initcuda_ndarray(void)
 #endif
 {

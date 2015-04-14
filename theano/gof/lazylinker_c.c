@@ -1,17 +1,7 @@
 #include <Python.h>
+#include "theano_mod_helper.h"
 #include "structmember.h"
 #include <sys/time.h>
-
-// Old Python compatibility from here:
-// http://www.python.org/dev/peps/pep-0353/
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-// This one was taken from:
-// http://svn.python.org/projects/python/trunk/Modules/_ctypes/ctypes.h
-#define PyNumber_AsSsize_t(ob, exc) PyInt_AsLong(ob)
-#endif
 
 #if PY_VERSION_HEX >= 0x03000000
 #include "numpy/npy_3kcompat.h"
@@ -1033,10 +1023,6 @@ static PyMethodDef lazylinker_ext_methods[] = {
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-#ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-
 #if defined(NPY_PY3K)
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
@@ -1052,11 +1038,11 @@ static struct PyModuleDef moduledef = {
 #endif
 #if defined(NPY_PY3K)
 #define RETVAL m
-PyMODINIT_FUNC
+THEANO_INIT_FUNC
 PyInit_lazylinker_ext(void) {
 #else
 #define RETVAL
-PyMODINIT_FUNC
+THEANO_INIT_FUNC
 initlazylinker_ext(void) 
 {
 #endif
@@ -1076,4 +1062,3 @@ initlazylinker_ext(void)
 
     return RETVAL;
 }
-

@@ -208,7 +208,7 @@ class NVCC_compiler(Compiler):
     def compile_str(
             module_name, src_code,
             location=None, include_dirs=[], lib_dirs=[], libs=[], preargs=[],
-            rpaths=rpath_defaults, py_module=True):
+            rpaths=rpath_defaults, py_module=True, hide_symbols=True):
         """:param module_name: string (this has been embedded in the src_code
         :param src_code: a complete c or c++ source listing for the module
         :param location: a pre-existing filesystem directory where the
@@ -224,6 +224,9 @@ class NVCC_compiler(Compiler):
                        Defaults to `rpath_defaults`.
         :param py_module: if False, compile to a shared library, but
             do not import as a Python module.
+
+        :param hide_symbols: if True (the default), hide all symbols
+        from the library symbol table unless explicitely exported.
 
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
@@ -320,6 +323,9 @@ class NVCC_compiler(Compiler):
             # in both math_functions.h and pymath.h,
             # by not including the one in pymath.h
             cmd.extend(['-D HAVE_ROUND'])
+        else:
+            if hide_symbols:
+                preargs2.append('-fvisibility=hidden')
 
         if local_bitwidth() == 64:
             cmd.append('-m64')

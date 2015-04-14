@@ -150,7 +150,7 @@ class DynamicModule(object):
 
         self.support_code = []
         self.functions = []
-        self.includes = ["<Python.h>", "<iostream>"]
+        self.includes = ["<Python.h>", "<iostream>", '"theano_mod_helper.h"']
         self.init_blocks = []
 
     def print_methoddef(self, stream):
@@ -171,14 +171,14 @@ static struct PyModuleDef moduledef = {{
       MyMethods,
 }};
 """.format(name=self.hash_placeholder), file=stream)
-            print(("PyMODINIT_FUNC PyInit_%s(void) {" %
+            print(("THEANO_INIT_FUNC PyInit_%s(void) {" %
                               self.hash_placeholder), file=stream)
             for block in self.init_blocks:
                 print('  ', block, file=stream)
             print("    PyObject *m = PyModule_Create(&moduledef);", file=stream)
             print("    return m;", file=stream)
         else:
-            print(("PyMODINIT_FUNC init%s(void){" %
+            print(("THEANO_INIT_FUNC init%s(void){" %
                               self.hash_placeholder), file=stream)
             for block in self.init_blocks:
                 print('  ', block, file=stream)
@@ -1449,7 +1449,8 @@ def std_include_dirs():
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
                        else [py_inc, py_plat_spec_inc])
-    return numpy_inc_dirs + python_inc_dirs
+    gof_inc_dir = os.path.dirname(__file__)
+    return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir]
 
 
 def std_lib_dirs_and_libs():
@@ -1929,7 +1930,7 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None, py_module=True):
+                    preargs=None, py_module=True, hide_symbols=True):
         """
         :param module_name: string (this has been embedded in the src_code
 
@@ -1951,6 +1952,10 @@ class GCC_compiler(Compiler):
 
         :param py_module: if False, compile to a shared library, but do not
             import it as a Python module.
+
+        :param hide_symbols: if True (the default) all symbols will be
+        hidden from the library symbol table (which means that other
+        objects can't use them.
 
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
@@ -2006,6 +2011,14 @@ class GCC_compiler(Compiler):
         else:
             cmd.extend(preargs)
         cmd.extend('-I%s' % idir for idir in include_dirs)
+        if hide_symbols and sys.platform != 'win32':
+            # This has been available since gcc 4.0 so we suppose it
+            # is always available. We pass it here since it
+            # significantly reduces the size of the symbol table for
+            # the objects we want to share. This in turns leads to
+            # improved loading times on most platforms (win32 is
+            # different, as usual).
+            cmd.append('-fvisibility=hidden')
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)
         cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
