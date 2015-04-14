@@ -162,18 +162,18 @@ class NVCC_compiler(Compiler):
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
         # that use the old API.
-        flags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        flags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
 
         # numpy 1.7 deprecated the following macro but the didn't
         # existed in the past
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
         if bool(numpy_ver < [1, 7]):
-            flags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            flags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            flags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            flags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            flags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            flags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+            flags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            flags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            flags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            flags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            flags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            flags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
