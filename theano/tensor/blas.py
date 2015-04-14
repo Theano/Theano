@@ -256,51 +256,7 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                     # same as what is in blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
-		# Anaconda
-        if "Anaconda" in sys.version and sys.platform == "win32":
-            lib_path = os.path.join(sys.prefix, 'pkgs')
-#			mkl-rt*\DLLs\
-            for dir in os.listdir(lib_path):
-                if dir.startswith("mkl-rt-"):
-                    lib_path = os.path.join(lib_path, dir, "DLLs")
-                    break
-            if os.path.exists(lib_path):
-                #-LC:\\Users\\nouiz\\Anaconda\\libs
-                flags = GCC_compiler.compile_args()
-                flags += ['-L' + os.path.join(sys.prefix, 'libs')]
-                flags += ['-L%s' % lib_path, '-lpython27']
-                flags += ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                #flags += ['-IC:\\Users\\nouiz\\Anaconda\\lib\\site-packages\\numpy\\core\\include', '-IC:\\Users\\nouiz\\Anaconda\\include', '-o', 'C:\\Users\\nouiz\\AppData\\Local\\Theano\\compiledir_Windows-7-6.1.7601-SP1-Intel64_Family_6_Model_42_Stepping_7_GenuineIntel-2.7.9-64\\tmpqcaxhr\\f9fb77b148377df76317a569578d7923.pyd', 'C:\\Users\\nouiz\\AppData\\Local\\Theano\\compiledir_Windows-7-6.1.7601-SP1-Intel64_Family_6_Model_42_Stepping_7_GenuineIntel-2.7.9-64\\tmpqcaxhr\\mod.cpp', '-LC:\\Users\\nouiz\\Anaconda\\libs', '-LC:\\Users\\nouiz\\Anaconda\\pkgs\\mkl-rt-11.1-p0\\DLLs', '-LC:\\Users\\nouiz\\Anaconda', '-lpython27', '-lmkl_core', '-lmkl_intel_thread', '-lmkl_rt']
-                flags += ['-IC:\\Users\\nouiz\\Anaconda\\lib\\site-packages\\numpy\\core\\include',
-                          '-IC:\\Users\\nouiz\\Anaconda\\include']
 
-
-                res = GCC_compiler.try_flags(
-                    flags, try_run=True,
-                    body="""
-                float x_, y_, z_;
-                float* x = &x_;
-                float* y = &y_;
-                float* z = &y_;
-                char N = 'N';
-                int Nz0 = 1, Nz1 = 1, Nx1 = 1, sx_0 = 1, sy_0 = 1, sz_0 = 1;
-                float a = 1, b = 1;
-sgemm_(&N, &N, &Nz1, &Nz0, &Nx1, &a, y, &sy_0, x, &sx_0, &b, z, &sz_0);
-                                          """,
-                    preambule="""
-        void sgemm_(char*, char*, const int*, const int*, const int*,
-            const float *, const float *, const int*, const float *,
-            const int*, const float *, float *, const int*);
-                                          """)
-                print res
-                import pdb;pdb.set_trace()
-                if True: #res[0] and res[1]:
-                    flags = ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                    return ' '.join(flags)
         # if numpy was linked with library that are not installed, we
         # can't reuse them.
         if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
