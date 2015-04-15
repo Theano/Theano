@@ -382,18 +382,6 @@ class CompressTester(utt.InferShapeTester):
             assert tested.shape == expected.shape
             assert numpy.allclose(tested, expected)
 
-    def test_infer_shape(self):
-        for axis, cond, shape in zip(self.axis_list, self.cond_list, self.shape_list):
-            cond_var = theano.tensor.ivector()
-            data     = numpy.random.random(size=shape).astype(theano.config.floatX)
-            data_var = theano.tensor.matrix()
-
-            self._compile_and_check([cond_var, data_var],
-                                    [self.op(cond_var, data_var, axis=axis)],
-                                    [cond, data],
-                                    tensor.AdvancedSubtensor1,
-                                    warn=False)
-
 
 class TestRepeatOp(utt.InferShapeTester):
     def _possible_axis(self, ndim):
