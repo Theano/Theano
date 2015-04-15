@@ -1,6 +1,13 @@
 """Defines Updates object for storing a (SharedVariable, new_value) mapping.
 
 """
+from theano.compat.python2x import OrderedDict
+
+from theano.compile.sharedvalue import SharedVariable
+import logging
+import warnings
+
+
 __authors__ = "theano-dev"
 __copyright__ = "(c) 2010, Universite de Montreal"
 __license__ = "3-clause BSD License"
@@ -8,12 +15,7 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
-from theano.compat.python2x import OrderedDict
-
-from theano.compile.sharedvalue import SharedVariable
-import logging
 logger = logging.getLogger('theano.updates')
-import warnings
 
 
 # Must be an OrderedDict or updates will be applied in a non-deterministic
@@ -26,9 +28,9 @@ class OrderedUpdates(OrderedDict):
     """
     def __init__(self, *key, **kwargs):
         if (len(key) >= 1 and
-            isinstance(key[0], dict) and
-            len(key[0]) > 1 and
-            not isinstance(key[0], OrderedDict)):
+                isinstance(key[0], dict) and
+                len(key[0]) > 1 and
+                not isinstance(key[0], OrderedDict)):
             # Warn when using as input a non-ordered dictionary.
             warnings.warn('Initializing an `OrderedUpdates` from a '
                           'non-ordered dictionary with 2+ elements could '
@@ -62,8 +64,8 @@ class OrderedUpdates(OrderedDict):
         if other is None:
             return
         if (isinstance(other, dict) and
-            len(other) > 1 and
-            not isinstance(other, OrderedDict)):
+                len(other) > 1 and
+                not isinstance(other, OrderedDict)):
             # Warn about non-determinism.
             warnings.warn('Updating an `OrderedUpdates` with a '
                           'non-ordered dictionary with 2+ elements could '
