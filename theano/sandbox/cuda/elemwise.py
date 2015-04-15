@@ -599,12 +599,12 @@ class NaiveAlgo(object):
             for d in xrange(nd):
                 print >> sio, 'std::cerr << " " << local_dims[%(d)s]; ' % locals()
             print >> sio, 'std::cerr << "\\n";'
-
-            for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str inputs %(ipos)s: " <<'%locals() + \
+            if nd > 0:
+                for ipos in xrange(len(node.inputs)):
+                    print >> sio, 'std::cerr << " local_str inputs %(ipos)s: " <<'%locals() + \
                         ' << " " << '.join(["local_str[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
-            for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr inputs %(ipos)s: " <<'%locals() + \
+                    for ipos in xrange(len(node.outputs)):
+                        print >> sio, 'std::cerr << " local_ostr inputs %(ipos)s: " <<'%locals() + \
                         ' << " " << '.join(["local_ostr[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
 
         print >> sio, """
@@ -642,11 +642,11 @@ class NaiveAlgo(object):
             for d in xrange(nd):
                 print >> sio, 'std::cerr << " " << local_dims[%(d)s]; '%locals()
             print >> sio, 'std::cerr << "\\n";'
-
-            for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
-            for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
+            if nd > 0:
+                for ipos in xrange(len(node.inputs)):
+                    print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
+                    for ipos in xrange(len(node.outputs)):
+                        print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]" % (ipos, x) for x in xrange(nd)])+'<<"\\n";'
     # collapse contiguous dimensions (ignoring scalars, generic version(collapse any dimensions, right, left, middle))
     # this is a good idea because we make less index calculation in the gpu.
 
@@ -729,11 +729,11 @@ nd_collapse_[i]=0;
             for d in xrange(nd):
                 print >> sio, 'std::cerr << " " << local_dims[%(d)s]; '%locals()
             print >> sio, 'std::cerr << "\\n";'
-
-            for ipos in xrange(len(node.inputs)):
-                print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]"%(ipos, x) for x in xrange(nd)])+'<<"\\n";'
-            for ipos in xrange(len(node.outputs)):
-                print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]"%(ipos, x) for x in xrange(nd)])+'<<"\\n";'
+            if nd > 0:
+                for ipos in xrange(len(node.inputs)):
+                    print >> sio, 'std::cerr << " local_str %(ipos)s: " <<'%locals()+' << " " << '.join(["local_str[%s][%s]"%(ipos, x) for x in xrange(nd)])+'<<"\\n";'
+                    for ipos in xrange(len(node.outputs)):
+                        print >> sio, 'std::cerr << " local_ostr %(ipos)s: " <<'%locals()+' << " " << '.join(["local_ostr[%s][%s]"%(ipos, x) for x in xrange(nd)])+'<<"\\n";'
 
         def launch_Ccontiguous(nodename, scalar_op, sync=True):
             kernel_call_args = ["numEls"]
