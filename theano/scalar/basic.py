@@ -1155,8 +1155,22 @@ class InRange(LogicalComparison):
         return ("%(z)s = %(x)s %(cmp1)s %(low)s &&"
                 " %(x)s %(cmp2)s %(hi)s;" % locals())
 
+    def get_grad(self, elem):
+        if elem.type in complex_types:
+            msg = "No gradient implemented for complex numbers in\
+                                 class scalar.basic.InRange"
+            raise NotImplementedError(msg)
+        elif elem.type in discrete_types:
+            return elem.zeros_like().astype(theano.config.floatX)
+        else:
+            return elem.zeros_like()
+
     def grad(self, (x, low, hi), (gz, )):
-        return None, None, None
+        grads = []
+        for elem in [x, low, hi]:
+            grads.append(get_grad(elem))
+        return grads
+
 inopenrange = InRange(True, True)
 inclosedrange = InRange(False, False)
 
@@ -2928,7 +2942,8 @@ class Imag(UnaryScalarOp):
         elif x.type in float_types:
             return [second(x, 0)]
         else:
-            return [None]
+            return [x.zeros_like(dtype=theano.config.floatX)]
+
 imag = Imag(real_out, name='imag')
 
 
@@ -2959,7 +2974,7 @@ class Angle(UnaryScalarOp):
         elif c in float_types:
             return [cast(second(x, 0), x.type.dtype)]
         else:
-            return [None]
+            return [c.zeros_like(dtype=theano.config.floatX)]
 
 angle = Angle(specific_out(float64), name='angle')
 

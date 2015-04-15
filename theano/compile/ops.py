@@ -385,8 +385,8 @@ class Shape_i(gof.Op):
         return [()]
 
     def grad(self, inp, grads):
-        return [None]
-
+        return [theano.gradient.grad_not_implemented(op=self, x_pos=0, x=inp[0],
+                comment="No gradient for the shape of a matrix is implemented.")]
 
 def shape_i(var, i, fgraph=None):
     """Equivalent of var.shape[i], but apply if possible the shape

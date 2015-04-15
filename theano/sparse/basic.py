@@ -832,12 +832,24 @@ class Cast(gof.op.Op):
         out[0] = x.astype(self.out_type)
 
     def grad(self, inputs, outputs_gradients):
-        if inputs[0].dtype in tensor.continuous_dtypes:
-            gz = outputs_gradients[0]
-            return [Cast(inputs[0].dtype)(gz)]
-        else:
-            return [None]
+        gz = outputs_gradients[0]
 
+        if gz.dtype in complex_dtypes:
+            raise NotImplementedError("grad not implemented for complex types")
+        if inputs[0].dtype in complex_dtypes:
+            raise NotImplementedError("grad not implemented for complex types")
+
+        if gz.dtype in discrete_dtypes:
+            if inputs[0].dtype in discrete_dtypes:
+                return [inputs[0].zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [inputs[0].zeros_like()]
+        else:
+            if inputs[0].dtype in discrete_dtypes:
+                return [gz]
+            else:
+                return [Cast(inputs[0].dtype)(gz)]
+ 
     def infer_shape(self, node, ins_shapes):
         return ins_shapes
 
@@ -1647,8 +1659,7 @@ class SpSum(gof.op.Op):
 
     def grad(self, (x,), (gz,)):
         if x.dtype not in continuous_dtypes:
-            return [None]
-
+            return [x.zeros_like(dtype=theano.config.floatX)]
         if self.structured:
             if self.axis is None:
                 r = gz * theano.sparse.sp_ones_like(x)
