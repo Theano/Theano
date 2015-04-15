@@ -548,6 +548,7 @@ class TestFillDiagonal(utt.InferShapeTester):
         assert out[2, 2, 2] == val
         assert (out == val).sum() == min(a.shape)
 
+    @attr('slow')
     def test_gradient(self):
         utt.verify_grad(fill_diagonal, [numpy.random.rand(5, 8),
                                         numpy.random.rand()],

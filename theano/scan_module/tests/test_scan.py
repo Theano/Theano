@@ -1964,6 +1964,7 @@ class T_Scan(unittest.TestCase):
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
         utt.assert_allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
 
+    @attr('slow')
     def test_grad_multiple_outs_some_disconnected(self):
         # Created on Tue Oct 07 13:28:51 2014
         # @author: vaneetke

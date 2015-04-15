@@ -5,6 +5,7 @@ import os
 import shutil
 import unittest
 
+from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import numpy
 from numpy import array
@@ -724,6 +725,7 @@ class T_examples(unittest.TestCase):
         assert numpy.allclose(v3, 0.59044123)
         assert numpy.allclose(v4, 0.59044123)
 
+    @attr('slow')
     def test_examples_real_example(self):
         rng = numpy.random
 
