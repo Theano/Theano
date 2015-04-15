@@ -511,7 +511,7 @@ def squeeze(x):
     return view
 
 
-def compress(condition, x, axis=None, out=None):
+def compress(condition, x, axis=None):
     """Return selected slices of an array along given axis.
 
     It returns the input tensor, but with selected slices along a given axis
@@ -527,9 +527,6 @@ def compress(condition, x, axis=None, out=None):
 
     .. versionadded:: 0.7
     """
-    # This is done to keep the same function signature then NumPy.
-    assert out is None
-
     indices = theano.tensor.basic.flatnonzero(condition)
     return x.take(indices, axis=axis)
 
