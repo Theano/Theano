@@ -521,6 +521,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)
 
+    @attr('slow')
     def test_c_nan(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")

@@ -1,3 +1,4 @@
+from nose.plugins.attrib import attr
 import numpy as np
 import numpy
 import unittest
@@ -191,6 +192,7 @@ class TestBinCountOp(utt.InferShapeTester):
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
                 assert (np.bincount(a, minlength=5) == f4(a)).all()
 
+    @attr('slow')
     def test_infer_shape(self):
         for dtype in tensor.discrete_dtypes:
             # uint64 always fails
@@ -432,6 +434,7 @@ class TestRepeatOp(utt.InferShapeTester):
                         assert np.allclose(np.repeat(a, r, axis=axis),
                                            f(a, r))
 
+    @attr('slow')
     def test_infer_shape(self):
         for ndim in range(4):
             x = T.TensorType(config.floatX, [False] * ndim)()
