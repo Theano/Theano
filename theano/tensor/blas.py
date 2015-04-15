@@ -164,12 +164,12 @@ def default_blas_ldflags():
     default blas, then we test it. If it fail, we return an empty
     blas.
 
-    This is needed for anaconda on Windows. I wasn't able to find how
-    to detect if the mkl from anaconda can be reused or not. I was not
+    This is needed for Anaconda on Windows. I wasn't able to find how
+    to detect if the mkl from Anaconda can be reused or not. I was not
     able to find a way to test it with try_flags correctly. Also, this
-    will test the real code, so we don<t need to update the test in
-    case the software change. This also enable the test for all
-    case.
+    will test the real code, so we do not need to update the test in
+    case the software change. This also enables the test for all
+    cases.
 
     """
     flags = static_default_blas_flags()
