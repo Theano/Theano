@@ -545,6 +545,8 @@ def rand_nonzero(shape, eps=3e-4):
 def randint(*shape):
     return numpy.random.random_integers(-5, 5, shape)
 
+def randuint(*shape):
+    return numpy.array(numpy.random.randint(5, size=shape), dtype=numpy.uint32)
 
 # XXX: this so-called complex random array as all-zero imaginary parts
 def randcomplex(*shape):
@@ -697,6 +699,9 @@ AddTester = makeBroadcastTester(
         three_inputs_same_shapes=(rand(2, 3),
                                   rand(2, 3),
                                   rand(2, 3)),
+        three_inputs_same_shapes_uint=(randuint(2,3),
+                                       randuint(2,3),
+                                       randuint(2,3)),
         four_inputs_broadcast=(rand(2, 3),
                                rand(1, 3),
                                rand(2, 1),
