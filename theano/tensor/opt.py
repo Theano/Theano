@@ -5433,7 +5433,11 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024,
                         else:
                             tmp = scalar.get_scalar_type(ii.dtype).make_variable()
                             try:
-                                tmp.tag.test_value = gof.op.get_test_value(ii).flatten()[0]
+                                tv = gof.op.get_test_value(ii)
+                                if tv.size > 0:
+                                    tmp.tag.test_value = tv.flatten()[0]
+                                else:
+                                    tmp.tag.test_value = tv
                             except AttributeError:
                                 pass
                             tmp_s_input.append(tmp)

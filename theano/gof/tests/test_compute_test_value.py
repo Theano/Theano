@@ -167,6 +167,23 @@ class TestComputeTestValue(unittest.TestCase):
         finally:
             theano.config.compute_test_value = orig_compute_test_value
 
+    def test_empty_elemwise(self):
+        orig_compute_test_value = theano.config.compute_test_value
+        try:
+            theano.config.compute_test_value = 'raise'
+
+            x = theano.shared(numpy.random.rand(0, 6).astype(config.floatX),
+                              'x')
+
+            # should work
+            z = (x + 2) * 3
+            assert hasattr(z.tag, 'test_value')
+            f = theano.function([], z)
+            assert _allclose(f(), z.tag.test_value)
+
+        finally:
+            theano.config.compute_test_value = orig_compute_test_value
+
     def test_constant(self):
         orig_compute_test_value = theano.config.compute_test_value
         try:
