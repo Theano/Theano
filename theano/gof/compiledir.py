@@ -206,8 +206,7 @@ def filter_compiledir(path):
             if os.path.exists(init_file):
                 pass  # has already been created
             else:
-                if os.path.exists(path):
-                    e.args += ('%s does not exist..' % path,)
+                e.args += ('%s exist? %s' % (path, os.path.exists(path)),)
                 raise
     return path
 
