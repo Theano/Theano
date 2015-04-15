@@ -1,12 +1,27 @@
 #ifndef THEANO_MOD_HELPER
 #define THEANO_MOD_HELPER
 
+#include <Python.h>
+
 #ifndef _WIN32
 #define MOD_PUBLIC __attribute__((visibility ("default")))
 #else
 #define MOD_PUBLIC
 #endif
 
-#define THEANO_INIT_FUNC PyMODINIT_FUNC MOD_PUBLIC
+#ifdef __cplusplus
+#define THEANO_EXTERN extern "C"
+#else
+#define THEANO_EXTERN
+#endif
+
+#if PY_MAJOR_VERSION < 3
+#define THEANO_RTYPE void
+#else
+#define THEANO_RTYPE PyObject *
+#endif
+
+/* Can't use PyMODINIT_FUNC since we need to place MOD_PUBLIC in the middle */
+#define THEANO_INIT_FUNC THEANO_EXTERN MOD_PUBLIC THEANO_RTYPE
 
 #endif
