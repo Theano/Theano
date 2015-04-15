@@ -362,7 +362,7 @@ def test_reallocation():
                     keys_copy.remove(i)
                     for o in keys_copy:
                         if (storage_map[i][0] and
-                            storage_map[i][0] is storage_map[o][0]):
+                                storage_map[i][0] is storage_map[o][0]):
                             return [True, storage_map[o][0]]
             return [False, None]
 
