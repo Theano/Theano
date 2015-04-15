@@ -185,6 +185,8 @@ def clone(output,
         as the original graph. If False, clone them. Note that cloned
         shared variables still use the same underlying storage, so they
         will always have the same value.
+
+    :param copy_inputs: deprecated, use share_inputs.
     """
     if copy_inputs is not DEPRECATED_ARG:
         warnings.warn('In `clone()` function, the argument `copy_inputs` has been deprecated and renamed into `share_inputs`')
