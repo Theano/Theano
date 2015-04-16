@@ -1038,11 +1038,11 @@ static struct PyModuleDef moduledef = {
 #endif
 #if defined(NPY_PY3K)
 #define RETVAL m
-THEANO_INIT_FUNC
+PyMODINIT_FUNC
 PyInit_lazylinker_ext(void) {
 #else
 #define RETVAL
-THEANO_INIT_FUNC
+PyMODINIT_FUNC
 initlazylinker_ext(void) 
 {
 #endif

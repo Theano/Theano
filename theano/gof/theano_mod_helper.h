@@ -21,7 +21,8 @@
 #define THEANO_RTYPE PyObject *
 #endif
 
-/* Can't use PyMODINIT_FUNC since we need to place MOD_PUBLIC in the middle */
-#define THEANO_INIT_FUNC THEANO_EXTERN MOD_PUBLIC THEANO_RTYPE
+/* We need to redefine PyMODINIT_FUNC to add MOD_PUBLIC in the middle */
+#undef PyMODINIT_FUNC
+#define PyMODINIT_FUNC THEANO_EXTERN MOD_PUBLIC THEANO_RTYPE
 
 #endif

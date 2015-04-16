@@ -171,14 +171,14 @@ static struct PyModuleDef moduledef = {{
       MyMethods,
 }};
 """.format(name=self.hash_placeholder), file=stream)
-            print(("THEANO_INIT_FUNC PyInit_%s(void) {" %
+            print(("PyMODINIT_FUNC PyInit_%s(void) {" %
                               self.hash_placeholder), file=stream)
             for block in self.init_blocks:
                 print('  ', block, file=stream)
             print("    PyObject *m = PyModule_Create(&moduledef);", file=stream)
             print("    return m;", file=stream)
         else:
-            print(("THEANO_INIT_FUNC init%s(void){" %
+            print(("PyMODINIT_FUNC init%s(void){" %
                               self.hash_placeholder), file=stream)
             for block in self.init_blocks:
                 print('  ', block, file=stream)

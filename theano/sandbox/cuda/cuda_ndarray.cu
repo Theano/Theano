@@ -3490,10 +3490,10 @@ static struct PyModuleDef cuda_ndarray_moduledef =
     module_methods
 };
 
-THEANO_INIT_FUNC
+PyMODINIT_FUNC
 PyInit_cuda_ndarray(void)
 #else
-THEANO_INIT_FUNC
+PyMODINIT_FUNC
 initcuda_ndarray(void)
 #endif
 {

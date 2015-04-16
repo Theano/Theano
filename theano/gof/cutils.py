@@ -237,7 +237,7 @@ def compile_cutils():
             CutilsExtMethods,
         };
 
-        THEANO_INIT_FUNC
+        PyMODINIT_FUNC
         PyInit_cutils_ext(void) {
             import_array();
             return PyModule_Create(&moduledef);
@@ -246,7 +246,7 @@ def compile_cutils():
         """
     else:
         code += """
-        THEANO_INIT_FUNC
+        PyMODINIT_FUNC
         initcutils_ext(void)
         {
           import_array();
