@@ -59,7 +59,8 @@ try:
             if os.path.exists(init_file):
                 pass  # has already been created
             else:
-                e.args += ('%s exist?' % os.path.exists(location),)
+                e.args += ('%s exist? %s' % (location,
+                                             os.path.exists(location)),)
                 raise
 
     _need_reload = False

@@ -1111,8 +1111,18 @@ class ModuleCache(object):
         # Verify that when we reload the KeyData from the pickled file, the
         # same key can be found in it, and is not equal to more than one
         # other key.
-        with open(key_pkl, 'rb') as f:
-            key_data = cPickle.load(f)
+        for i in range(3):
+            try:
+                with open(key_pkl, 'rb') as f:
+                    key_data = cPickle.load(f)
+                break
+            except EOFError:
+                # This file is probably getting written/updated at the
+                # same time.  This can happen as we read the cache
+                # without taking the lock.
+                if i == 2:
+                    raise
+                time.sleep(2)
 
         found = sum(key == other_key for other_key in key_data.keys)
         msg = ''

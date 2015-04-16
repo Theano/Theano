@@ -29,6 +29,8 @@ else:
 
 
 def test_dnn_conv_desc_merge():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     img_shp = T.as_tensor_variable(
         numpy.asarray([2, 1, 8, 8]).astype('int64'))
     kern_shp = T.as_tensor_variable(

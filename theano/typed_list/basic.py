@@ -134,7 +134,7 @@ class Append(Op):
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
-        assert x.ttype == toAppend.type
+        assert x.ttype == toAppend.type, (x.ttype, toAppend.type)
         return Apply(self, [x, toAppend], [x.type()])
 
     def perform(self, node, (x, toAppend), (out, )):

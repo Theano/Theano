@@ -74,6 +74,8 @@ def debugprint(obj, depth=-1, print_type=False,
     to the Apply's identifier, to indicate which output a line corresponds to.
 
     """
+    if not isinstance(depth, int):
+        raise Exception("depth parameter must be an int")
     if file == 'str':
         _file = StringIO()
     elif file is None:
