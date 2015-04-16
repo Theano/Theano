@@ -3077,6 +3077,25 @@ def local_useless_tile(node):
             return
 
 
+##############
+# Split Opts #
+##############
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Split])
+def local_useless_split(node):
+    """ Split{n_splits=1}(x, y) -> x
+
+    Remove Split with only 1 split.
+    """
+    if isinstance(node.op, T.Split):
+        if node.op.len_splits == 1:
+            x, axis, splits = node.inputs
+            out = assert_op(x, T.eq(splits.shape[0], 1))
+            out = assert_op(out, T.eq(x.shape[axis], splits[0]))
+            return [out]
+
+
 ################
 # Flatten Opts #
 ################
