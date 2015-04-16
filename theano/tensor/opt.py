@@ -2978,8 +2978,8 @@ def local_mul_switch_sink(node):
         if i.owner and i.owner.op == T.switch:
             switch = i.owner
             try:
-                if (isinstance(switch.inputs[0], Constant) and
-                    get_scalar_constant_value(switch.inputs[1]) == 0.):
+                if (get_scalar_constant_value(
+                        switch.inputs[1], only_process_constants=True) == 0.):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0], 0,
                                     T.mul(*(listmul + [switch.inputs[2]])))]
@@ -2988,8 +2988,8 @@ def local_mul_switch_sink(node):
             except NotScalarConstantError:
                 pass
             try:
-                if (isinstance(switch.inputs[2], Constant) and
-                    get_scalar_constant_value(switch.inputs[2]) == 0.):
+                if (get_scalar_constant_value(
+                        switch.inputs[2], only_process_constants=True) == 0.):
                     listmul = node.inputs[:idx] + node.inputs[idx + 1:]
                     fct = [T.switch(switch.inputs[0],
                                     T.mul(*(listmul + [switch.inputs[1]])), 0)]
@@ -3676,6 +3676,9 @@ class Canonizer(gof.LocalOptimizer):
             new = _fill_chain(new, node.inputs)[0]
 
         if new.type == out.type:
+            # This happen with test
+            # theano/tensor/tests/test_opt.py:T_local_switch_sink
+            new.tag.values_eq_approx = values_eq_approx_remove_inf_nan
             return [new]
         else:
             _logger.warning(' '.join(('CANONIZE FAILED: new, out = ',
