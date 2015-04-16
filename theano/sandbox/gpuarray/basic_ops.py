@@ -160,10 +160,10 @@ class GpuKernelBase(object):
   size_t sz = sizeof(%(bvar)s);
   PyGpuContextObject *c = pygpu_default_context();
   if (GpuKernel_init(&%(ovar)s, c->ops, c->ctx, 1, &bcode, &sz, "%(kname)s",
-                     %(numargs)u, types, GA_USE_BINARY) != GA_NO_ERROR) {
+                     %(numargs)u, types, GA_USE_BINARY, NULL) != GA_NO_ERROR) {
     if ((%(err)s = GpuKernel_init(&%(ovar)s, c->ops, c->ctx, 1, &%(cname)s,
                                   NULL, "%(kname)s", %(numargs)u, types,
-                                  %(flags)s)) != GA_NO_ERROR) {
+                                  %(flags)s, NULL)) != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
                    %(err)s, Gpu_error(c->ops, c->ctx, %(err)s));
       return %(error_out)s;
