@@ -3983,6 +3983,12 @@ class T_local_switch_sink(unittest.TestCase):
                         resm[idx])).sum() == self.resm[idx].size
                 idx += 1
 
+    # This case caused a missed optimization in the past.
+    x = T.dscalar('x')
+    y = T.switch(x < 7, x, T.sqrt(x - 7))
+    f = theano.function([x], T.grad(y, x))
+    assert f(5) == 1
+
     @attr('slow')
     def test_local_div_switch_sink(self):
         c = T.dscalar()
