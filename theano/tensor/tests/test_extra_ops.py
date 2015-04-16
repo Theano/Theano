@@ -7,7 +7,7 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
-                                     squeeze, RepeatOp, repeat,
+                                     squeeze, compress, RepeatOp, repeat,
                                      Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
@@ -339,6 +339,45 @@ class SqueezeTester(utt.InferShapeTester):
 
             expected = numpy.squeeze(data)
             tested = f(data)
+
+            assert tested.shape == expected.shape
+            assert numpy.allclose(tested, expected)
+
+
+class CompressTester(utt.InferShapeTester):
+    axis_list = [None,
+                 -1,
+                 0,
+                 0,
+                 0,
+                 1]
+    cond_list = [[1, 0, 1, 0, 0, 1],
+                 [0, 1, 1, 0],
+                 [0, 1, 1, 0],
+                 [],
+                 [0, 0, 0, 0],
+                 [1, 1, 0, 1, 0]]
+    shape_list = [(2, 3),
+                  (4, 3),
+                  (4, 3),
+                  (4, 3),
+                  (4, 3),
+                  (3, 5)]
+
+    def setUp(self):
+        super(CompressTester, self).setUp()
+        self.op = compress
+
+    def test_op(self):
+        for axis, cond, shape in zip(self.axis_list, self.cond_list, self.shape_list):
+            cond_var = theano.tensor.ivector()
+            data     = numpy.random.random(size=shape).astype(theano.config.floatX)
+            data_var = theano.tensor.matrix()
+
+            f = theano.function([cond_var, data_var], self.op(cond_var, data_var, axis=axis))
+
+            expected = numpy.compress(cond, data, axis=axis)
+            tested = f(cond, data)
 
             assert tested.shape == expected.shape
             assert numpy.allclose(tested, expected)

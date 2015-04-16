@@ -596,6 +596,11 @@ class _tensor_py_operators:
         """
         return theano.tensor.extra_ops.squeeze(self)
 
+    def compress(self, a, axis=None):
+        """Return selected slices only
+        """
+        return theano.tensor.extra_ops.compress(self, a, axis=axis)
+
 
 class TensorVariable(_tensor_py_operators, Variable):
     """Subclass to add the tensor operators to the basic `Variable` class."""

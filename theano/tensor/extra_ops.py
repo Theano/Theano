@@ -511,6 +511,26 @@ def squeeze(x):
     return view
 
 
+def compress(condition, x, axis=None):
+    """Return selected slices of an array along given axis.
+
+    It returns the input tensor, but with selected slices along a given axis
+    retained. If no axis is provided, the tensor is flattened
+    Corresponds to numpy.compress
+
+    :param x: Input data, tensor variable
+
+    :param condition: 1 dimensional array of non-zero and zero values
+    corresponding to indices of slices along a selected axis
+
+    :return: `x` with selected slices
+
+    .. versionadded:: 0.7
+    """
+    indices = theano.tensor.basic.flatnonzero(condition)
+    return x.take(indices, axis=axis)
+
+
 class RepeatOp(theano.Op):
     # See the repeat function for docstring
 
