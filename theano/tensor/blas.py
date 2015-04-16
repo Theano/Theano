@@ -417,7 +417,8 @@ class Gemv(Op):
 
     def perform(self, node, inputs, out_storage):
         y, alpha, A, x, beta = inputs
-        if have_fblas and y.shape[0] != 0 and x.shape[0] != 0:
+        if (have_fblas and y.shape[0] != 0 and x.shape[0] != 0 and
+                y.dtype in _blas_gemv_fns):
             gemv = _blas_gemv_fns[y.dtype]
 
             if (A.shape[0] != y.shape[0] or A.shape[1] != x.shape[0]):
