@@ -3962,17 +3962,21 @@ class T_local_switch_sink(unittest.TestCase):
     def test_local_mul_switch_sink(self):
         c = T.dscalar()
         idx = 0
-        for condition in [(T.dmatrix('cond'), self.condm), (T.dvector('cond'), self.condv), (T.dscalar('cond'), self.conds)]:
-            for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
-                y = T.mul(T.switch(condition[0] > 0, 1. * x[0],
-                    0. * x[0]), T.switch(condition[0] > 0, 1.*x[0], T.log(c)*x[0]))
-                f = theano.function([condition[0], x[0], c]
-                    , [y], mode=self.mode)
+        for condition in [(T.dmatrix('cond'), self.condm),
+                          (T.dvector('cond'), self.condv),
+                          (T.dscalar('cond'), self.conds)]:
+            for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv),
+                      (T.dscalar('x'), self.xs)]:
+                y = T.mul(T.switch(condition[0] > 0, 1. * x[0], 0. * x[0]),
+                          T.switch(condition[0] > 0,
+                                   1. * x[0], T.log(c) * x[0]))
+                f = theano.function([condition[0], x[0], c],
+                                    [y], mode=self.mode)
                 if type(condition[1]) is list:
                     for i in range(len(condition[1])):
                         res = f(condition[1][i], x[1], -1)
-                        assert (res == numpy.
-                            asarray(self.resm[idx][i])).sum() == self.resm[idx][i].size
+                        assert (res == numpy.asarray(
+                            self.resm[idx][i])).sum() == self.resm[idx][i].size
                 else:
                     res = f(condition[1], x[1], -1)
                     assert (res == numpy.asarray(self.
