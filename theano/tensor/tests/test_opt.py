@@ -3987,7 +3987,7 @@ class T_local_switch_sink(unittest.TestCase):
     x = T.dscalar('x')
     y = T.switch(x < 7, x, T.sqrt(x - 7))
     f = theano.function([x], T.grad(y, x))
-    assert f(5) == 1
+    assert f(5) == 1, f(5)
 
     @attr('slow')
     def test_local_div_switch_sink(self):
