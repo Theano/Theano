@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import warnings
+import numpy, scipy
 
 from theano.configparser import (config, AddConfigVar,
                                  BoolParam, ConfigParam, _config_var_list)
@@ -90,46 +91,56 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, depend
                 viewed_by[origin].append(out)
             idx_o += 1
 
-        for ins in node.inputs:
-            assert not (ins in view_of and viewed_by[ins])
-            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
-                    and ins not in fgraph.outputs and ins.owner
-                    and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
-                    and ins not in allocated):
-                # Constant Memory cannot be changed
-                # Constant and shared variables' storage_map value is not empty
-                reuse_out = None
-                if ins not in view_of and not viewed_by.get(ins, []):
-                    # where gc
-                    for i in range(idx + 1, len(order)):
-                        if reuse_out:
-                            break
-                        for out in order[i].outputs:
-                            if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
-                                    and ins.type == out.type):
-                                reuse_out = out
-                                pre_allocated.add(out)
-                                allocated.add(ins)
-                elif ins in view_of:
-                    origin = view_of[ins]
-                    if ins in viewed_by[origin]:
-                        viewed_by[origin].remove(ins)
-                    if (not viewed_by[origin] and
-                            origin not in fgraph.inputs and
-                            not isinstance(origin, theano.Constant)):
+        if hasattr(node.fgraph, 'shape_feature'):
+            shape_feature = node.fgraph.shape_feature
+            for ins in node.inputs:
+                assert not (ins in view_of and viewed_by[ins])
+                # Check the type for storage_map value
+                # if it is array, use all() for boolean check
+                if isinstance(storage_map[ins][0], numpy.ndarray):
+                    storage_map_copy = storage_map[ins][0].all()
+                elif (isinstance(storage_map[ins][0], scipy.sparse.csr.csr_matrix) or
+                        isinstance(storage_map[ins][0], scipy.sparse.csc.csc_matrix)):
+                    storage_map_copy = storage_map[ins][0].toarray().all()
+                else:
+                    storage_map_copy = storage_map[ins][0]
+                if (not storage_map_copy and ins not in fgraph.outputs and ins.owner
+                        and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
+                        and ins not in allocated):
+                    # Constant Memory cannot be changed
+                    # Constant and shared variables' storage_map value is not empty
+                    reuse_out = None
+                    if ins not in view_of and not viewed_by.get(ins, []):
                         # where gc
                         for i in range(idx + 1, len(order)):
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
+                                if (shape_feature.same_shape(ins, out) and out not in pre_allocated
                                         and ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
                                     allocated.add(ins)
+                    elif ins in view_of:
+                        origin = view_of[ins]
+                        if ins in viewed_by[origin]:
+                            viewed_by[origin].remove(ins)
+                        if (not viewed_by[origin] and
+                                origin not in fgraph.inputs and
+                                not isinstance(origin, theano.Constant)):
+                            # where gc
+                            for i in range(idx + 1, len(order)):
+                                if reuse_out:
+                                    break
+                                for out in order[i].outputs:
+                                    if (shape_feature.same_shape(ins, out) and out not in pre_allocated
+                                            and ins.type == out.type):
+                                        reuse_out = out
+                                        pre_allocated.add(out)
+                                        allocated.add(ins)
 
-                if reuse_out:
-                    reallocated_info[ins] = [ins, reuse_out]
+                    if reuse_out:
+                        reallocated_info[ins] = [ins, reuse_out]
 
     return reallocated_info
 
@@ -988,7 +999,7 @@ class VM_Linker(link.LocalLinker):
         else:
             dependencies = self.compute_gc_dependencies(storage_map)
 
-        reallocated_info = calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,dependencies)
+        reallocated_info = calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, dependencies)
 
         for node in order:
             try:
