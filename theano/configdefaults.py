@@ -145,14 +145,17 @@ param = "g++"
 try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
-    param = ""
     rc = 1
+
+if rc != 0:
+    param = ""
 
 # On Mac we test for 'clang++' and use it by default
 if sys.platform == 'darwin':
     try:
         rc = call_subprocess_Popen(['clang++', '-v'])
-        param = "clang++"
+        if rc == 0:
+            param = "clang++"
     except OSError:
         pass
 

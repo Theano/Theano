@@ -160,6 +160,31 @@ _logger = logging.getLogger('theano.tensor.blas')
 # We need to define blas.ldflag before we try to import scipy.
 # Otherwise, we give an optimization warning for no reason in some cases.
 def default_blas_ldflags():
+    """This is a generator. It work in 2 step. The first we guess a
+    default blas, then we test it. If it fail, we return an empty
+    blas.
+
+    This is needed for Anaconda on Windows. I wasn't able to find how
+    to detect if the mkl from Anaconda can be reused or not. I was not
+    able to find a way to test it with try_flags correctly. Also, this
+    will test the real code, so we do not need to update the test in
+    case the software change. This also enables the test for all
+    cases.
+
+    """
+    flags = static_default_blas_flags()
+    yield flags
+
+    # Now test it!
+    x = theano.tensor.fmatrix()
+    try:
+        theano.function([x], theano.tensor.blas._dot22(x,x))
+    except Exception as e:
+        print e
+        yield ""
+
+
+def static_default_blas_flags():
     try:
         if (hasattr(numpy.distutils, '__config__') and
             numpy.distutils.__config__):
@@ -256,6 +281,20 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                     # same as what is in blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
+        # Anaconda
+        if "Anaconda" in sys.version and sys.platform == "win32":
+            lib_path = os.path.join(sys.prefix, 'pkgs')
+            for dir in os.listdir(lib_path):
+                if dir.startswith("mkl-rt-"):
+                    lib_path = os.path.join(lib_path, dir, "DLLs")
+                    break
+            if os.path.exists(lib_path):
+                #-LC:\\Users\\*\\Anaconda\\libs
+                flags = ['-L%s' % lib_path]
+                flags += ['-l%s' % l for l in ["mkl_core",
+                                               "mkl_intel_thread",
+                                               "mkl_rt"]]
+                return ' '.join(flags)
 
         # if numpy was linked with library that are not installed, we
         # can't reuse them.

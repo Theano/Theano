@@ -170,7 +170,7 @@ can download the installation for free.
 
 
 
-Alternative: AnacondaCE
+Alternative: Anaconda
 +++++++++++++++++++++++
 
 ContinuumIO_ is providing a free Python distribution for Windows (32-bit
@@ -178,10 +178,14 @@ and 64-bit), including all dependencies of Theano. If you are not
 eligible for a download of EPD or Canopy (via a commercial, or free academic
 licence), this is the easiest way to install
 Theano's dependencies. Simply download and execute the installer from
-`AnacondaCE download page <http://continuum.io/anacondace.html>`__,
-then download and execute the :ref:`windows_anaconda`.
+`Anaconda download page <https://store.continuum.io/cshop/anaconda/>`__,
+and execute the following in Windows command line:
 
 .. _ContinuumIO: http://continuum.io
+
+.. code-block:: bash
+
+    $ conda install mingw libpython
 
 Alternative: Python(x,y)
 ++++++++++++++++++++++++
