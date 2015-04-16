@@ -922,13 +922,24 @@ class GpuEye(GpuKernelBase, Op):
         return hash(self.dtype) ^ hash(type(self))
 
     def gpu_kernels(self, node, name):
-        code = """
+        if self.dtype == 'float16':
+            code = """
+KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
+    ga_size nb = n < m ? n : m;
+    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+        a[i*m + i] = __float2half_rn(1);
+    }
+}"""
+        else:
+            code = """
 KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
     ga_size nb = n < m ? n : m;
     for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = 1;
     }
-}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype), name=name)
+}"""
+        code = code % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype),
+                           name=name)
         return [Kernel(
                 code=code, name="k",
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],

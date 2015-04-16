@@ -436,7 +436,7 @@ def test_gpueye():
         assert any([isinstance(node.op, GpuEye)
                     for node in f.maker.fgraph.toposort()])
 
-    for dtype in ['float32', 'int32']:
+    for dtype in ['float32', 'int32', 'float16']:
         yield check, dtype, 3
         # M != N, k = 0
         yield check, dtype, 3, 5
