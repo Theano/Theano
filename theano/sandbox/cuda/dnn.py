@@ -1606,7 +1606,7 @@ if True:
 
     @register_opt('cudnn')
     @local_optimizer([DownsampleFactorMax])
-    def local_pool_dnn_stride(node):
+    def local_pool_dnn_alternative(node):
         if not dnn_available():
             return
         if isinstance(node.op, DownsampleFactorMax):
@@ -1616,9 +1616,10 @@ if True:
             ds = node.op.ds
             stride = node.op.st
             pad = node.op.padding
+            mode = node.op.mode
             if (img.owner and isinstance(img.owner.op, HostFromGpu)):
                 ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                               ds, stride=stride, pad=pad)
+                               ds, stride=stride, pad=pad, mode=mode)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -1648,12 +1649,13 @@ if True:
             ds = node.op.ds
             st = node.op.st
             pad = node.op.padding
+            mode = node.op.mode
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode="max", pad=pad)()
+                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
                 if not node.op.ignore_border:
                     return
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),

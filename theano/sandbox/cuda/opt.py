@@ -1643,8 +1643,9 @@ import theano.tensor.signal.downsample as downsample
 def local_gpu_downsample_factor_max(node):
     if (isinstance(node.op, downsample.DownsampleFactorMax)
         and node.op.ds == node.op.st):
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding')
-        if node.op.padding != (0, 0):
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
+                                     'mode')
+        if node.op.padding != (0, 0) or node.op.mode != 'max':
             return
         x, = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
@@ -1657,8 +1658,9 @@ def local_gpu_downsample_factor_max(node):
 def local_gpu_downsample_factor_max_grad(node):
     if (isinstance(node.op, downsample.DownsampleFactorMaxGrad) and
         node.op.ds == node.op.st):
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding')
-        if node.op.padding != (0, 0):
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
+                                     'mode')
+        if node.op.padding != (0, 0) or node.op.mode != 'max':
             return
         x, z, gz = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
@@ -1673,6 +1675,8 @@ def local_gpu_downsample_factor_max_grad(node):
 @local_optimizer([downsample.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, downsample.DownsampleFactorMaxGradGrad):
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st')
+
         x, z, gx = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
             op = GpuDownsampleFactorMaxGradGrad(node.op.ds,
