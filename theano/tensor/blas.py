@@ -1728,7 +1728,7 @@ def local_dot_to_dot22(node):
                      x, y, x.type, y.type)
         return
 
-    if y.type.dtype.startswith('float') or y.type.dtype.startswith('complex'):
+    if y.type.dtype in ['float32', 'float64', 'complex64', 'complex128']:
         if x.ndim == 2 and y.ndim == 2:
             # print "local_dot_to_dot22: MM"
             return [_dot22(*node.inputs)]
