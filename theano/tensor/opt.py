@@ -3676,6 +3676,9 @@ class Canonizer(gof.LocalOptimizer):
             new = _fill_chain(new, node.inputs)[0]
 
         if new.type == out.type:
+            # This happen with test
+            # theano/tensor/tests/test_opt.py:T_local_switch_sink
+            new.tag.values_eq_approx = values_eq_approx_remove_inf_nan
             return [new]
         else:
             _logger.warning(' '.join(('CANONIZE FAILED: new, out = ',
