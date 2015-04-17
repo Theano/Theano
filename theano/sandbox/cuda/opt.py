@@ -2278,7 +2278,7 @@ def gpuScanOptimization(node):
 @local_optimizer([tensor.AllocEmpty, gpu_from_host])
 def local_gpu_allocempty(node):
     if (isinstance(node.op, tensor.AllocEmpty) and
-        node.op.dtype=="NPY_FLOAT_32":
+        node.op.dtype=="NPY_FLOAT_32"):
         if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
             for i in node.inputs]):
             return [host_from_gpu(GpuAllocEmpty("float32")(gpu_from_host(*node.inputs)))]
