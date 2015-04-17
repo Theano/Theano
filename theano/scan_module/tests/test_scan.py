@@ -3273,9 +3273,10 @@ class T_Scan(unittest.TestCase):
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
-        raise KnownFailureTest((
-            "This tests depends on an optimization for scan "
-            "that has not been implemented yet."))
+        raise SkipTest("Not yet implemented")
+        # raise KnownFailureTest((
+        #    "This tests depends on an optimization for scan "
+        #    "that has not been implemented yet."))
         W1 = tensor.matrix()
         W2 = tensor.matrix()
         h0 = tensor.vector()
@@ -3502,8 +3503,9 @@ class T_Scan(unittest.TestCase):
         assert out == 24
 
     def test_infershape_seq_shorter_nsteps(self):
-        raise KnownFailureTest('This is a generic problem with infershape'
-                               ' that has to be discussed and figured out')
+        raise SkipTest("Not yet implemented")
+        # raise KnownFailureTest('This is a generic problem with infershape'
+        #                       ' that has to be discussed and figured out')
         x = tensor.vector('x')
         [o1, o2], _ = theano.scan(lambda x, y: (x + 1, y + x),
                          sequences=x,

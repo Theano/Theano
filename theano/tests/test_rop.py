@@ -190,9 +190,10 @@ class RopLop_checker(unittest.TestCase):
         assert numpy.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
         if known_fail:
-            raise KnownFailureTest("Rop doesn't handle non-differentiable "
-                    "inputs correctly. Bug exposed by fixing Add.grad"
-                    " method.")
+            raise SkipTest("Not yet implemented")
+            # raise KnownFailureTest("Rop doesn't handle non-differentiable "
+            #        "inputs correctly. Bug exposed by fixing Add.grad"
+            #        " method.")
 
 
 class test_RopLop(RopLop_checker):

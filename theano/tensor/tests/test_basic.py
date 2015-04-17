@@ -6117,16 +6117,14 @@ class test_arithmetic_cast(unittest.TestCase):
                                     bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtype == 'complex64'):
-                                    # In numpy 1.6.x adding a
-                                    # complex128 with a float32 or
-                                    # float16 may result in a
-                                    # complex64. This may be a bug
-                                    # (investigation is currently in
-                                    # progress), so in the meantime we
-                                    # just mark this test as a known
-                                    # failure.
-                                    raise KnownFailureTest('Known issue with '
-                                            'numpy >= 1.6.x see #761')
+                                    # In numpy 1.6.x adding a complex128 with
+                                    # a float32 may result in a complex64. This
+                                    # may be a bug (investigation is currently
+                                    # in progress), so in the meantime we just
+                                    # mark this test as a known failure.
+                                    raise SkipTest("Not yet implemented")
+                                    # raise KnownFailureTest('Known issue with '
+                                    #        'numpy >= 1.6.x see #761')
 
                                 # In any other situation: something wrong is
                                 # going on!
