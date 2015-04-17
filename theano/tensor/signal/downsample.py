@@ -63,7 +63,9 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
     :type padding: tuple of two ints
-    :param mode: 'max' or 'average', the operation executed on each window.
+    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad',
+        the operation executed on each window. The max always exclude the
+        padding in the computation of the max. For average, you have the choise.
     :type mode: string
     """
     if input.ndim < 2:
@@ -185,8 +187,7 @@ class DownsampleFactorMax(Op):
 
     def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
                  mode='max'):
-        """
-        :param ds: downsample factor over rows and column.
+        """:param ds: downsample factor over rows and column.
                    ds indicates the pool region size.
         :type ds: list or tuple of two ints
 
@@ -206,7 +207,9 @@ class DownsampleFactorMax(Op):
             and pad_w is the size of the left and right margins.
         :type padding: tuple of two ints
 
-        :param mode: 'max' or 'average'
+        :param mode: 'max', 'average_inc_pad', 'average_exc_pad'.
+            ('average_inc_pad' exclude the padding from the count,
+            'average_exc_pad' include it)
 
         """
         self.ds = tuple(ds)
@@ -226,10 +229,10 @@ class DownsampleFactorMax(Op):
         if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
             raise NotImplementedError(
                 'padding_h and padding_w must be smaller than strides')
-        if mode not in ['max', 'average']:
+        if mode not in ['max', 'average_inc_pad', 'average_exc_pad']:
             raise ValueError(
-                "DownsampleFactorMax mode parameter only support 'max' and"
-                " 'average'. Got %s" % mode)
+                "DownsampleFactorMax mode parameter only support 'max',"
+                " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
     def __str__(self):
@@ -245,8 +248,6 @@ class DownsampleFactorMax(Op):
         return gof.Apply(self, [x], [x.type()])
 
     def perform(self, node, inp, out):
-        if self.mode != 'max' and self.padding != (0, 0):
-            raise NotImplementedError()
         x, = inp
         z, = out
         if len(x.shape) != 4:
@@ -267,18 +268,18 @@ class DownsampleFactorMax(Op):
         pad_w = self.padding[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
+        inc_pad = self.mode == 'average_inc_pad'
 
         # pad the image
         if self.padding != (0, 0):
-            fill = x.min()-1.
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
-                dtype=x.dtype) + fill
+                dtype=x.dtype)
             y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
         else:
             y = x
         func = numpy.max
-        if self.mode == 'average':
+        if self.mode != 'max':
             func = numpy.average
         # max pooling
         for n in xrange(x.shape[0]):
@@ -286,9 +287,16 @@ class DownsampleFactorMax(Op):
                 for r in xrange(pr):
                     row_st = r * st0
                     row_end = __builtin__.min(row_st + ds0, img_rows)
+                    if not inc_pad:
+                        row_st = __builtin__.max(row_st, self.padding[0])
+                        row_end = __builtin__.min(row_end, x.shape[-2] + pad_h)
                     for c in xrange(pc):
                         col_st = c * st1
                         col_end = __builtin__.min(col_st + ds1, img_cols)
+                        if not inc_pad:
+                            col_st = __builtin__.max(col_st, self.padding[1])
+                            col_end = __builtin__.min(col_end,
+                                                      x.shape[-1] + pad_w)
                         zz[n, k, r, c] = func(y[
                             n, k, row_st:row_end, col_st:col_end])
 
@@ -472,10 +480,10 @@ class DownsampleFactorMaxGrad(Op):
             st = ds
         self.st = tuple(st)
         self.padding = tuple(padding)
-        if mode not in ['max', 'average']:
+        if mode not in ['max', 'average_inc_pad', 'average_exc_pad']:
             raise ValueError(
-                "DownsampleFactorMax mode parameter only support 'max' and"
-                " 'average'. Got %s" % mode)
+                "DownsampleFactorMax mode parameter only support 'max',"
+                " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
     def __str__(self):
@@ -510,12 +518,13 @@ class DownsampleFactorMaxGrad(Op):
         pad_w = self.padding[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
+        inc_pad = self.mode == 'average_inc_pad'
+
         # pad the image
         if self.padding != (0, 0):
-            fill = x.min()-1
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
-                dtype=x.dtype) + fill
+                dtype=x.dtype)
             y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
         else:
             y = x
@@ -524,29 +533,34 @@ class DownsampleFactorMaxGrad(Op):
             for n in xrange(x.shape[0]):
                 for k in xrange(x.shape[1]):
                     for r in xrange(pr):
-                        row_st = r * st0
+                        row_st = __builtin__.max(r * st0, self.padding[0])
                         row_end = __builtin__.min(row_st + ds0, img_rows)
                         for c in xrange(pc):
-                            col_st = c * st1
+                            col_st = __builtin__.max(c * st1, self.padding[1])
                             col_end = __builtin__.min(col_st + ds1, img_cols)
                             for row_ind in xrange(row_st, row_end):
                                 for col_ind in xrange(col_st, col_end):
                                     if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
                                         gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
-        elif self.mode == 'average':
+        else:
             for n in xrange(x.shape[0]):
                 for k in xrange(x.shape[1]):
                     for r in xrange(pr):
-                        row_st = r * st0
+                        if inc_pad:
+                            row_st = r * st0
+                        else:
+                            row_st = __builtin__.max(r * st0, self.padding[0])
                         row_end = __builtin__.min(row_st + ds0, img_rows)
                         for c in xrange(pc):
-                            col_st = c * st1
+                            if inc_pad:
+                                col_st = c * st1
+                            else:
+                                col_st = __builtin__.max(c * st1,
+                                                         self.padding[1])
                             col_end = __builtin__.min(col_st + ds1, img_cols)
                             val = gz[n, k, r, c] / ((row_end - row_st) *
                                                     (col_end - col_st))
                             gx[n, k, row_st:row_end, col_st:col_end] += val
-        else:
-            raise ValueError('mode %s not know' % self.mode)
         # unpad the image
         gx = gx[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)]
         gx_stg[0] = gx

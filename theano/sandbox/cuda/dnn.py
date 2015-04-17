@@ -720,7 +720,8 @@ class GpuDnnPoolDesc(GpuOp):
 
     :param ws: windows size
     :param stride: (dx, dy)
-    :param mode: 'max' or 'average'
+    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad'
+        The old deprecated name 'average' correspond to 'average_inc_pad'
     :param pad: (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
@@ -743,7 +744,9 @@ class GpuDnnPoolDesc(GpuOp):
         return False
 
     def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
-        assert mode in ('max', 'average')
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
         assert len(ws) == 2
         self.ws = ws
@@ -771,8 +774,12 @@ class GpuDnnPoolDesc(GpuOp):
 
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
-        elif self.mode == "average":
+        elif self.mode == "average_inc_pad":
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            if version() == -1:
+                raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
 
@@ -1193,7 +1200,8 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     :param img: images to do the pooling over
     :param ws: subsampling window size
     :param stride: subsampling stride (default: (1, 1))
-    :param mode: one of 'max', 'average' (default: 'max')
+    :param mode: one of 'max', 'average_inc_pad' or 'average_exc_pad
+        (default: 'max')
     :param pad: (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.

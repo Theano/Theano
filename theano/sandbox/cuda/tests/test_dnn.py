@@ -88,12 +88,12 @@ def test_pooling():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()
-    for func, pad in product((T.max, T.mean),
+    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
-        if func is T.max:
-            mode = 'max'
+        if mode == 'max':
+            func = T.max
         else:
-            mode = 'average'
+            func = T.mean
         if pad != (0, 0) and cuda.dnn.version() == -1:
             continue
 
@@ -164,7 +164,7 @@ def test_pooling():
                     x, ws=(ws, ws),
                     stride=(stride, stride),
                     pad=pad,
-                    mode='max' if func is T.max else "average")
+                    mode=mode)
                 return dnn_op
             theano.tests.unittest_tools.verify_grad(
                 fn, [data],
@@ -427,7 +427,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average']
+            ['max', 'average_inc_pad', 'average_exc_pad']
         ):
             desc = dnn.GpuDnnPoolDesc(
                 ws=params[0],
@@ -463,7 +463,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average']
+            ['max', 'average_inc_pad']
         ):
             desc = dnn.GpuDnnPoolDesc(
                 ws=params[0],

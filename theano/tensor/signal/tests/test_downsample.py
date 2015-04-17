@@ -33,7 +33,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(input.shape[-1] / ds[1] + yi)
         output_val = numpy.zeros(out_shp)
         func = numpy.max
-        if mode == 'average':
+        if mode != 'max':
             func = numpy.average
 
         for k in numpy.ndindex(*input.shape[:-2]):
@@ -47,7 +47,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
     @staticmethod
     def numpy_max_pool_2d_stride_padding(
-            x, ds, ignore_border=True, st=None, padding=(0, 0)):
+            x, ds, ignore_border=True, st=None, padding=(0, 0), mode='max'):
         pad_h = padding[0]
         pad_w = padding[1]
         h = x.shape[-2]
@@ -56,14 +56,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         assert ds[1] > pad_w
 
         def pad_img(x):
-            fill = x.min()-1
-            t = numpy.ones((x.shape[0], x.shape[1], 1, 1))
-            ud_bar = (numpy.zeros((pad_h, w)) + fill)[
-                numpy.newaxis, numpy.newaxis, :, :] * t
-            lr_bar = (numpy.zeros((pad_h * 2 + h, pad_w)) + fill)[
-                numpy.newaxis, numpy.newaxis, :, :] * t
-            y = numpy.concatenate([ud_bar, x, ud_bar], axis=2)
-            y = numpy.concatenate([lr_bar, y, lr_bar], axis=3)
+            y = numpy.zeros(
+                (x.shape[0], x.shape[1],
+                 x.shape[2]+pad_h*2, x.shape[3]+pad_w*2),
+                dtype=x.dtype)
+            y[:, :, pad_h:(x.shape[2]+pad_h), pad_w:(x.shape[3]+pad_w)] = x
+
             return y
         img_rows = h + 2 * pad_h
         img_cols = w + 2 * pad_w
@@ -77,15 +75,26 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         output_val = numpy.zeros(out_shp)
         tt = []
         y = pad_img(x)
+        func = numpy.max
+        if mode != 'max':
+            func = numpy.average
+        inc_pad = mode == 'average_inc_pad'
+
         for k in numpy.ndindex(*x.shape[:-2]):
             for i in range(output_val.shape[-2]):
                 ii_st = i * st[0]
                 ii_end = __builtin__.min(ii_st + ds[0], img_rows)
+                if not inc_pad:
+                    ii_st = __builtin__.max(ii_st, pad_h)
+                    ii_end = __builtin__.min(ii_end, h + pad_h)
                 for j in range(output_val.shape[-1]):
                     jj_st = j * st[1]
                     jj_end = __builtin__.min(jj_st + ds[1], img_cols)
+                    if not inc_pad:
+                        jj_st = __builtin__.max(jj_st, pad_w)
+                        jj_end = __builtin__.min(jj_end, w + pad_w)
                     patch = y[k][ii_st:ii_end, jj_st:jj_end]
-                    output_val[k][i, j] = numpy.max(patch)
+                    output_val[k][i, j] = func(patch)
         return output_val
 
     @staticmethod
@@ -136,7 +145,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(out_c)
 
         func = numpy.max
-        if mode == 'average':
+        if mode != 'max':
             func = numpy.average
 
         output_val = numpy.zeros(out_shp)
@@ -159,7 +168,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         images = tensor.dtensor4()
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max', 'average']):
+                                                       ['max',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
                 # print 'ignore_border =', ignore_border
 
@@ -193,15 +204,13 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                       (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2),
                       (4, 10, 12, 14), (4, 10, 5, 6), (4, 10, 4, 3))
-        outputshps += ((4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
-                      (4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
-                      (4, 10, 14, 14), (4, 10, 5, 5), (4, 10, 3, 2),
-                      (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3),
-                      (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2),
-                      (4, 10, 12, 14), (4, 10, 5, 6), (4, 10, 4, 3))
+        # The same for each mode
+        outputshps = outputshps + outputshps + outputshps
         images = tensor.dtensor4()
         indx = 0
-        for mode, maxpoolshp, ignore_border in product(['max', 'average'],
+        for mode, maxpoolshp, ignore_border in product(['max',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad'],
                                                        maxpoolshps,
                                                        [True, False]):
                 for stride in stridesizes:
@@ -242,7 +251,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             stride = stridesizes[indx]
             maxpoolshp = maxpoolshps[indx]
             for ignore_border, mode in product([True, False],
-                                               ['max', 'average']):
+                                               ['max', 'average_inc_pad',
+                                                'average_exc_pad']):
                 indx_out = indx * 2
                 if not ignore_border:
                     indx_out += 1
@@ -270,20 +280,24 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         paddingsizes = [(2, 2), (1, 2), (2, 1), (0, 0), (1, 1)]
         imgsizes = [(5, 5), (5, 5), (5, 6), (6, 5), (5, 5)]
         m = 4  # minibatch
-        c = 10  # channel size
+        c = 2  # channel size
         images = tensor.dtensor4()
-        for indx in numpy.arange(len(maxpoolsizes)):
+        for indx, mode in product(numpy.arange(len(maxpoolsizes)),
+                                  ['max', 'average_inc_pad',
+                                   'average_exc_pad']):
             imgsize = imgsizes[indx]
-            imval = rng.rand(m, c, imgsize[0], imgsize[1])
+            imval = rng.rand(m, c, imgsize[0], imgsize[1]) - 0.5
+
             stridesize = stridesizes[indx]
             maxpoolsize = maxpoolsizes[indx]
             paddingsize = paddingsizes[indx]
             numpy_output_val = self.numpy_max_pool_2d_stride_padding(
-                    imval, maxpoolsize, ignore_border, stridesize, paddingsize)
+                imval, maxpoolsize, ignore_border,
+                stridesize, paddingsize, mode)
             maxpool_op = DownsampleFactorMax(
                 maxpoolsize,
                 ignore_border=ignore_border,
-                st=stridesize, padding=paddingsize)(images)
+                st=stridesize, padding=paddingsize, mode=mode)(images)
             f = function([images], maxpool_op)
             output_val = f(imval)
             utt.assert_allclose(output_val, numpy_output_val)
@@ -300,7 +314,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             maxpoolsize = maxpoolsizes[i]
             stridesize = stridesizes[i]
             paddingsize = paddingsizes[i]
-            
+
             def mp(input):
                 return DownsampleFactorMax(
                     maxpoolsize, ignore_border=True,
@@ -472,7 +486,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max', 'average']):
+                                                       ['max',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
                 # print 'ignore_border =', ignore_border
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp,
@@ -521,7 +537,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max', 'average']):
+                                                       ['max',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
                 # print 'ignore_border =', ignore_border
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp,
@@ -556,7 +574,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max', 'average']):
+                                                       ['max',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
                 # print 'ignore_border =', ignore_border
                 numpy_output_val = self.numpy_max_pool_2d(imval, maxpoolshp,
