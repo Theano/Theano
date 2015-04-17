@@ -3,9 +3,12 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-from theano.sandbox.cuda import cuda_ndarray
 
-dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
+try:
+    from theano.sandbox.cuda import cuda_ndarray
+    dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
+except ImportError:
+    pass
 
 cula_available = False
 
