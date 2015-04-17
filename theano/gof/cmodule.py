@@ -1121,7 +1121,9 @@ class ModuleCache(object):
                 # same time.  This can happen as we read the cache
                 # without taking the lock.
                 if i == 2:
-                    raise
+                    with compilelock.lock_ctx():
+                        with open(key_pkl, 'rb') as f:
+                            key_data = cPickle.load(f)
                 time.sleep(2)
 
         found = sum(key == other_key for other_key in key_data.keys)
