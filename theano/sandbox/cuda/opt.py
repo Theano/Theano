@@ -446,6 +446,24 @@ def local_gpu_dot_to_dot22(node):
     return False
 
 
+@local_optimizer([gpu_from_host, host_from_gpu])
+def local_assert_no_cpu_op(node):
+    if not isinstance(node.op, GpuOp) and all([var.owner and isinstance(var.owner.op,
+        HostFromGpu) for var in node.inputs]) and all([var.owner and
+            isinstance(var.owner.op, GpuFromHost) for var in node.outputs]):
+            if config.assert_no_cpu_op == "warn":
+                _logger.warning(("CPU op %s is detected in the computational"
+                                 " graph") % node)
+            elif config.assert_no_cpu_op == "raise":
+                raise RuntimeError("The op %s is on CPU." % node)
+            elif config.assert_no_cpu_op == "pdb":
+                import ipdb; ipdb.set_trace()
+    return None
+
+if config.assert_no_cpu_op != "ignore" and config.assert_no_cpu_op:
+    register_opt()(local_assert_no_cpu_op)
+
+
 @register_opt()
 @local_optimizer([theano.ifelse.IfElse, gpu_from_host])
 def local_gpu_lazy_ifelse(node):
@@ -1910,6 +1928,7 @@ gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
 # It still will be run in fast_run with device=gpu with the current tag.
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
                'fast_run', 'inplace', 'gpu_inplace')
+
 
 register_opt()(tensor.opt.local_remove_useless_assert)
 

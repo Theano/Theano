@@ -126,6 +126,15 @@ AddConfigVar(
     in_c_key=False)
 
 
+# This flag determines whether or not to raise error/warning message if there is a
+# CPU in the computational graph.
+AddConfigVar(
+    'assert_no_cpu_op',
+    "Raise an error/warning if there is a CPU op in the computational graph.",
+    EnumStr('ignore', 'warn', 'raise', 'pdb', allow_override=False),
+    in_c_key=False)
+
+
 # Do not add FAST_RUN_NOGC to this list (nor any other ALL CAPS shortcut).
 # The way to get FAST_RUN_NOGC is with the flag 'linker=c|py_nogc'.
 # The old all capital letter way of working is deprecated as it is not

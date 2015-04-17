@@ -91,6 +91,16 @@ def test_local_gpu_contiguous_gpu_contiguous():
                      if isinstance(node.op, basic_ops.GpuContiguous)])
 
 
+def test_local_assert_no_cpu_op():
+    x = theano.tensor.fscalar()
+    y = theano.tensor.fscalar()
+    z = x * y
+    f = theano.function([x, y], z, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if not isinstance(n.op, cuda.GpuElemwise)]
+    assert len(a_op) == 3
+
+
 def test_int_pow():
     a = CudaNdarrayType([False])()
 
