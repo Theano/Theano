@@ -7541,6 +7541,7 @@ def test_allocempty():
     f = theano.function([], AllocEmpty("float32")(2, 3)) # change
     assert len(f.maker.fgraph.apply_nodes) == 1
     out = f()
+    
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
 
@@ -7554,7 +7555,7 @@ def test_allocempty():
     assert out[1].dtype == 'float32'
     assert len([node for node in f.maker.fgraph.apply_nodes
                 if isinstance(node.op, AllocEmpty)]) == 2
-
+    
 """
 
 if __name__ == '__main__':

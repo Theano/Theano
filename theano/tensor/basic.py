@@ -5517,11 +5517,11 @@ class AllocEmpty(gof.Op):
         fail = sub['fail']
         shps = inputs
         nd = len(shps)
-        str = "int dims[%(nd)s];\n" % locals()
+        str = "npy_intp dims[%(nd)s];\n" % locals()
         
         for idx, sh in enumerate(shps):
-            str += "dims[%(idx)s] =" \
-                    "PyInt_AsLong((PyObject*)%(sh)s);\n" % locals()
+            str +="dims[%(idx)s] =" \
+                  "((npy_intp) PyInt_AsLong((PyObject*)%(sh)s));\n" % locals()
         
         # Validate that the output storage exists
         str += "if(%(out)s==NULL\n" % locals()
@@ -5544,13 +5544,15 @@ class AllocEmpty(gof.Op):
             }
         }
         """ % locals()
+        print str
         return str
 
     def infer_shape(self, node, input_shapes):
         return [node.inputs]
 
     def c_code_cache_version(self):
-        return (1,)
+        return None
+        #return (1,)
 
     def do_constant_folding(self, node):
         return False
