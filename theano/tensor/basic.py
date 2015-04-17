@@ -2990,11 +2990,18 @@ def pow(a, b):
     # see decorator for function body
 
 
-# The numpy.clip don't work correctly when
-# the min is bigger then the max
-@_scal_elemwise  # _with_nfunc('clip', 3, 1)
+# The numpy.clip don't work correctly when the min is bigger then the max,
+# So we do not use @scal_elemwise_with_nfunc('clip', 3, 1)
+@_scal_elemwise
 def clip(x, min, max):
-    """clip x to be between min and max"""
+    """clip x to be between min and max.
+
+    :note: When `x` is equal to the boundaries, the output is considered
+        to be `x`, so at these points, the gradient of the cost wrt the output
+        will be propagated to `x`, not to `min` nor `max`. In other words,
+        on these points, the gradient wrt `x` will be equal to the gradient wrt
+        the output, and the gradient wrt `min` and `max` will be zero.
+    """
     # see decorator for function body
     # for grep: clamp, bound
 

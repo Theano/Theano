@@ -2484,6 +2484,59 @@ class T_Clip(unittest.TestCase):
             c = tensor.scalar()
             self.assertRaises(TypeError, clip, a, b, c)
 
+    def test_clip_repeat_grad(self):
+        # This is testing for the issue #633
+        x, y = tensor.vectors('xy')
+        a = clip(x, y, x)
+        g = theano.gradient.grad(a.sum(), x)
+        fn = theano.function([x, y], [g])
+
+        # Test the other way around as well
+        a2 = clip(x, x, y)
+        g2 = theano.gradient.grad(a2.sum(), x)
+        fn2 = theano.function([x, y], [g2])
+
+        # Test for the equal case too
+        a3 = theano.tensor.clip(x, x, x)
+        g3 = theano.gradient.grad(a3.sum(), x)
+        fn3 = theano.function([x], [g3])
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        nvals = 50
+        xval = rng.rand(nvals)
+        # To ensure that the min < x
+        yval_mn = rng.rand(nvals) - 1.0
+
+        # To ensure that the max > x
+        yval_mx = rng.rand(nvals) + 1.0
+
+        aval, = fn(xval, yval_mn)
+        aval2, = fn2(xval, yval_mx)
+        aval3, = fn3(xval)
+        self.assertTrue(numpy.all(aval == 1.))
+        self.assertTrue(numpy.all(aval2 == 1.))
+        self.assertTrue(numpy.all(aval3 == 1.))
+
+    def test_clip_repeat_verify_grad(self):
+        # Additional tests for issue gh-633
+        utt.verify_grad(
+            op=lambda x: clip(x, 0, x),
+            pt=[rand_nonzero((3, 7))])
+
+        utt.verify_grad(
+            op=lambda x: clip(x, x, 0),
+            pt=[rand_nonzero((3, 7))])
+
+        utt.verify_grad(
+            op=lambda x: clip(0, x, x),
+            pt=[rand_nonzero((3, 7))])
+
+        utt.verify_grad(
+            op=lambda x: clip(x, x, x),
+            pt=[rand_nonzero((3, 7))])
+
+
 # TODO: consider moving this function / functionality to gradient.py
 #      rationale: it's tricky, and necessary everytime you want to verify
 #      gradient numerically
