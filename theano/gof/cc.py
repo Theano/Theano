@@ -1492,30 +1492,30 @@ class CLinker(link.Linker):
                     libs=libs,
                     preargs=preargs)
 
-                if self.c_callable:
-                    # The main of the executable need the hash of the
-                    # shared lib.
-                    main = re.sub(mod.hash_placeholder, mod.code_hash,
-                                  self.c_main())
+            if self.c_callable:
+                # The main of the executable need the hash of the
+                # shared lib.
+                main = re.sub(mod.hash_placeholder, mod.code_hash,
+                              self.c_main())
 
-                    mod_exec = cmodule.DynamicModule()
-                    for header in self.headers():
-                        mod_exec.add_include(header)
+                mod_exec = cmodule.DynamicModule()
+                for header in self.headers():
+                    mod_exec.add_include(header)
                     mod_exec.add_include(filename_h)
                     mod_exec.add_support_code(main)
-
+                    
                     # Put the command line in the header code so that
                     # other people know how to recompile the shared lib
                     mod_exec.add_header_code(
                         "//command line used to compile the shared lib: \n" +
                         "//" + ' '.join(
-                        c_compiler.compile_command(
-                            module_name=mod.code_hash,
-                            location=location,
-                            include_dirs=self.header_dirs(),
-                            lib_dirs=self.lib_dirs(),
-                            libs=libs,
-                            preargs=preargs)[2]))
+                            c_compiler.compile_command(
+                                module_name=mod.code_hash,
+                                location=location,
+                                include_dirs=self.header_dirs(),
+                                lib_dirs=self.lib_dirs(),
+                                libs=libs,
+                                preargs=preargs)[2]))
 
                     # Make the executable link to the shared lib.
                     preargs.append(os.path.join(location, mod.code_hash + "." +
@@ -1526,16 +1526,16 @@ class CLinker(link.Linker):
                     mod_exec.add_header_code(
                         "//command line used to compile the executable: \n" +
                         "//" + ' '.join(
-                        c_compiler.compile_command(
-                            module_name=mod_exec.code_hash,
-                            location=location,
-                            include_dirs=self.header_dirs(),
-                            lib_dirs=self.lib_dirs(),
-                            libs=libs,
-                            preargs=preargs,
-                            shared=False, py_module=False,
-                            code_filename='exec.cpp',
-                            out_filename='exec')[2]))
+                            c_compiler.compile_command(
+                                module_name=mod_exec.code_hash,
+                                location=location,
+                                include_dirs=self.header_dirs(),
+                                lib_dirs=self.lib_dirs(),
+                                libs=libs,
+                                preargs=preargs,
+                                shared=False, py_module=False,
+                                code_filename='exec.cpp',
+                                out_filename='exec')[2]))
 
                     # compile the dynamic python module.
                     src_code = mod_exec.code()
@@ -1644,18 +1644,20 @@ class CLinker(link.Linker):
                                 #endif
                                 """)
             mod.add_header_code(self.struct_code)
-        mod.add_support_code(self.run_code)
-        mod.add_support_code(static)
-        mod.add_function(instantiate)
-        for header in self.headers():
-            mod.add_include(header)
-
-        if self.c_callable:
-            mod.add_support_code(self.cinit_code(len(self.args)))
-            mod.add_header_code("""
-                                DllExport %(struct_name)s* cinit();
-                                """ % dict(struct_name=self.struct_name))
-        return mod
+            mod.add_support_code(self.run_code)
+            mod.add_support_code(static)
+            mod.add_function(instantiate)
+            for header in self.headers():
+                mod.add_include(header)
+            for init_code_block in self.init_code() + self.c_init_code_apply:
+                if self.c_callable:
+                    mod.add_support_code(self.cinit_code(len(self.args)))
+                    mod.add_header_code("""
+                                     DllExport %(struct_name)s* cinit();
+                                     """ % dict(struct_name=self.struct_name))
+                    mod.add_init_code(init_code_block)
+            self._mod = mod
+        return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
                        storage_map=None, keep_lock=False):

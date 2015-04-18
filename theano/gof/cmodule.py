@@ -2180,6 +2180,30 @@ class GCC_compiler(Compiler):
         if not theano.config.cxx:
             raise MissingGXX("g++ not available! We can't compile c code.")
 
+        if include_dirs is None:
+            include_dirs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
+        if preargs is None:
+            preargs = []
+        else:
+            preargs = list(preargs)
+
+        include_dirs = include_dirs + std_include_dirs()
+        libs = std_libs() + libs
+        lib_dirs = std_lib_dirs() + lib_dirs
+
+        # sometimes, the linker cannot find -lpython so we need to tell it
+        # explicitly where it is located
+        # this returns somepath/lib/python2.x
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                        standard_lib=1)
+        python_lib = os.path.dirname(python_lib)
+        if python_lib not in lib_dirs:
+            lib_dirs.append(python_lib)
+
         cpp_filename, out_filename, cmd = GCC_compiler.compile_command(
             module_name,
             location,
@@ -2189,7 +2213,7 @@ class GCC_compiler(Compiler):
             shared,
             code_filename,
             out_filename)
-
+        cppfilename = os.path.join(location, 'mod.cpp')
         cppfile = open(cpp_filename, 'w')
 
         _logger.debug('Writing module C++ code to %s', cpp_filename)
@@ -2228,6 +2252,7 @@ class GCC_compiler(Compiler):
         cmd.extend(['-l%s' % l for l in libs])
         # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))
+
 
         def print_command_line_error():
             # Print command line when a problem occurred.
