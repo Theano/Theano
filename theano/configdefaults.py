@@ -126,8 +126,8 @@ AddConfigVar(
     in_c_key=False)
 
 
-# This flag determines whether or not to raise error/warning message if there is a
-# CPU in the computational graph.
+# This flag determines whether or not to raise error/warning message if
+# there is a CPU Op in the computational graph.
 AddConfigVar(
     'assert_no_cpu_op',
     "Raise an error/warning if there is a CPU op in the computational graph.",
