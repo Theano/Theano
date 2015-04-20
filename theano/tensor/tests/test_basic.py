@@ -235,7 +235,8 @@ def upcast_int8_nfunc(fn):
 
 def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                bad_runtime=None, grad=None, mode=None, grad_rtol=None,
-               eps=1e-10, skip=False, test_memmap=True, check_name=True):
+               eps=1e-10, skip=False, test_memmap=True, check_name=True,
+               grad_eps=None):
     """
     :param check_name:
         Use only for tester that aren't in Theano.
@@ -258,6 +259,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
     _mode, _grad_rtol, _eps, skip_ = mode, grad_rtol, eps, skip
     _test_memmap = test_memmap
     _check_name = check_name
+    _grad_eps = grad_eps
 
     class Checker(unittest.TestCase):
 
@@ -463,8 +465,9 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     inputs = [copy(input) for input in inputs]
                     try:
                         utt.verify_grad(self.op, inputs,
-                                mode=self.mode,
-                                rel_tol=_grad_rtol)
+                                        mode=self.mode,
+                                        rel_tol=_grad_rtol,
+                                        eps=_grad_eps)
                     except Exception, exc:
                         err_msg = ("Test %s::%s: Error occurred while"
                             " computing the gradient on the following"
@@ -976,6 +979,7 @@ ModTester = makeBroadcastTester(
     good=copymod(_good_broadcast_div_mod_normal_float,
                  ['complex1', 'complex2']),
     grad=_grad_broadcast_div_mod_normal,
+    grad_eps=1e-5,
     )
 
 
@@ -986,6 +990,7 @@ ModInplaceTester = makeBroadcastTester(
     good=copymod(_good_broadcast_div_mod_normal_float_inplace,
                  ["complex1", "complex2"]),
     grad=_grad_broadcast_div_mod_normal,
+    grad_eps=1e-5,
     inplace=True)
 
 _good_broadcast_pow_normal_float = dict(same_shapes=(rand_ranged(1, 5, (2, 3)), rand_ranged(-3, 3, (2, 3))),
