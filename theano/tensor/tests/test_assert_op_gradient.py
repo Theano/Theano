@@ -12,5 +12,5 @@ def test_assert_op_gradient():
     grad = T.grad(cost, x)
     func = theano.function([x], grad)
 
-    x_val = numpy.ones(shape=(1,))
+    x_val = numpy.ones(shape=(1,), dtype=theano.config.floatX)
     assert func(x_val) == 1
