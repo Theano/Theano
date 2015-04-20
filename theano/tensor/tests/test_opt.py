@@ -5173,6 +5173,18 @@ class TestShapeFeature(unittest.TestCase):
         self.assertRaises(IndexError, shape_feature.same_shape, x, o, 1, 0)
         self.assertRaises(IndexError, shape_feature.same_shape, x, o, 0, 1)
 
+
+def test_assert_op_gradient():
+    x = T.vector('x')
+    assert_op = Assert()
+    cost = T.sum(assert_op(x, x.size < 2))
+    grad = T.grad(cost, x)
+    func = theano.function([x], grad)
+
+    x_val = numpy.ones(shape=(1,), dtype=theano.config.floatX)
+    assert func(x_val) == 1
+
+
 if __name__ == '__main__':
     t = TestMakeVector('setUp')
     t.setUp()
