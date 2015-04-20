@@ -2509,12 +2509,12 @@ class T_Clip(unittest.TestCase):
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         nvals = 50
-        xval = rng.rand(nvals)
+        xval = rng.rand(nvals).astype(config.floatX)
         # To ensure that the min < x
-        yval_mn = rng.rand(nvals) - 1.0
+        yval_mn = rng.rand(nvals).astype(config.floatX) - 1.0
 
         # To ensure that the max > x
-        yval_mx = rng.rand(nvals) + 1.0
+        yval_mx = rng.rand(nvals).astype(config.floatX) + 1.0
 
         aval, = fn(xval, yval_mn)
         aval2, = fn2(xval, yval_mx)
