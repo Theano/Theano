@@ -344,7 +344,9 @@ def test_reallocation():
     x = tensor.scalar('x')
     y = tensor.scalar('y')
     z = tensor.tanh(3 * x + y) + tensor.cosh(x + 5 * y)
-    for l in ['vm_nogc', 'vm', 'vm_nogc', 'vm']:
+    # The functinality is currently implement for non lazy and non c VM only.
+    for l in [vm.VM_Linker(allow_gc=False, lazy=False, use_cloop=False),
+              vm.VM_Linker(allow_gc=True, lazy=False, use_cloop=False)]:
         m = theano.compile.get_mode(theano.Mode(linker=l))
         m = m.excluding('fusion', 'inplace')
 
