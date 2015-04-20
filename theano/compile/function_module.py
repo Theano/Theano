@@ -13,7 +13,7 @@ import numpy
 
 import theano
 from theano import gof
-from theano.compat.python2x import partial
+from theano.compat import partial
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)

@@ -1,4 +1,3 @@
-
 #
 # UNIT TEST
 #
@@ -8,6 +7,7 @@ import numpy as np
 
 import theano
 from theano import gof
+from theano.compat import OrderedDict
 from theano.tests import unittest_tools as utt
 
 from theano import gradient
@@ -591,7 +591,6 @@ def test_subgraph_grad():
     true_grads = theano.grad(cost, wrt)
     true_grads = theano.function(inputs, true_grads)
     true_grads = true_grads(*values)
-    from theano.compat.python2x import OrderedDict
     next_grad = None
     param_grads = []
     for i in xrange(2):

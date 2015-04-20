@@ -3,7 +3,6 @@ import numpy
 import unittest
 
 import theano
-from theano.compat.python2x import any
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 

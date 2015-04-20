@@ -15,8 +15,7 @@ from theano import tensor
 from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
-from theano.compat.python2x import all, any, product
-from theano.compat.python2x import product as itertools_product
+from theano.compat import product
 from theano.tensor.basic import _allclose
 
 if not enable_sparse:
@@ -521,7 +520,7 @@ class T_AddMul(unittest.TestCase):
 
     def _testSS(self, op, array1=numpy.array([[1., 0], [3, 0], [0, 6]]),
                 array2=numpy.asarray([[0, 2.], [0, 4], [5, 0]])):
-        for mtype1, mtype2 in itertools_product(_mtypes, _mtypes):
+        for mtype1, mtype2 in product(_mtypes, _mtypes):
             for dtype1, dtype2 in [('float64', 'int8'),
                                    ('int8', 'float64'),
                                    ('float64', 'float64'),

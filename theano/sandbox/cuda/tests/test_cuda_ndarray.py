@@ -5,7 +5,6 @@ from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
-from theano.compat.python2x import all
 import theano.sandbox.cuda as cuda_ndarray
 from theano.tensor.basic import _allclose
 from theano.tests import unittest_tools as utt

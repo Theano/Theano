@@ -15,11 +15,11 @@ This note is written by Li Yao.
 import unittest
 import numpy
 import cPickle
-from theano.compat.python2x import DictMixin, OrderedDict
-floatX = 'float32'
+from theano.compat import DictMixin, OrderedDict
 import theano
 import theano.tensor as T
 
+floatX = 'float32'
 
 def test_pickle_unpickle_with_reoptimization():
     mode = theano.config.mode

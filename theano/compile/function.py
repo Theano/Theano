@@ -225,7 +225,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         updates = []
 
     if (isinstance(updates, dict) and
-            not isinstance(updates, compat.python2x.OrderedDict) and
+            not isinstance(updates, compat.OrderedDict) and
             len(updates) > 1):
         warnings.warn(
             "The parameter 'updates' of theano.function()"
@@ -233,7 +233,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
             " got " + str(type(updates)) + ". Using "
             "a standard dictionary here results in "
             "non-deterministic behavior. You should use an OrderedDict"
-            " if you are using Python 2.7 (theano.compat.python2x.OrderedDict"
+            " if you are using Python 2.7 (theano.compat.OrderedDict"
             " for older python), or use a list of (shared, update)"
             " pairs. Do not just convert your dictionary to this type before"
             " the call as the conversion will still be non-deterministic.",

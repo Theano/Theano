@@ -1,166 +1,7 @@
 """
-Helper functions to make theano backwards compatible with python 2.4 - 2.7
-
-(tested on python 2.4 and 2.5)
+Helper functions to make theano backwards compatible with python 2.6 - 2.7
 """
-
-import collections
 import sys
-
-
-if sys.version_info[:2] < (2, 5):
-
-    def all(iterable):
-        for element in iterable:
-            if not element:
-                return False
-        return True
-
-    def any(iterable):
-        for element in iterable:
-            if element:
-                return True
-        return False
-
-    def partial(func, *args, **keywords):
-        def newfunc(*fargs, **fkeywords):
-            newkeywords = keywords.copy()
-            newkeywords.update(fkeywords)
-            return func(*(args + fargs), **newkeywords)
-        newfunc.func = func
-        newfunc.args = args
-        newfunc.keywords = keywords
-        return newfunc
-
-    class deque(collections.deque):
-        """
-        Custom deque class to implement the `remove` method.
-        """
-        def remove(self, item):
-            found = None
-            for i, x in enumerate(self):
-                if x == item:
-                    found = i
-                    break
-            if found is None:
-                raise ValueError('item not found in deque')
-            # To remove an item, we rotate the queue until it is the first item
-            # in the queue, we pop it, and finally we rotate back the queue.
-            self.rotate(-found)
-            self.popleft()
-            self.rotate(found)
-
-    class defaultdict(dict):
-        def __init__(self, default_factory=None, *a, **kw):
-            if (default_factory is not None and
-                not hasattr(default_factory, '__call__')):
-                raise TypeError('first argument must be callable')
-            dict.__init__(self, *a, **kw)
-            self.default_factory = default_factory
-
-        def __getitem__(self, key):
-            try:
-                return dict.__getitem__(self, key)
-            except KeyError:
-                return self.__missing__(key)
-
-        def __missing__(self, key):
-            if self.default_factory is None:
-                raise KeyError(key)
-            self[key] = value = self.default_factory()
-            return value
-
-        def __reduce__(self):
-            if self.default_factory is None:
-                args = tuple()
-            else:
-                args = self.default_factory,
-            # consider replacing items() with iteritems()
-            return type(self), args, None, None, self.items()
-
-        def copy(self):
-            return self.__copy__()
-
-        def __copy__(self):
-            return type(self)(self.default_factory, self)
-
-        def __deepcopy__(self, memo):
-            import copy
-            return type(self)(self.default_factory,
-                              copy.deepcopy(self.items()))
-
-        def __repr__(self):
-            return 'defaultdict(%s, %s)' % (self.default_factory,
-                                            dict.__repr__(self))
-
-else:
-    # Only bother with this else clause and the __all__ line if you are putting
-    # this in a separate file.
-    import __builtin__
-    all = __builtin__.all
-    any = __builtin__.any
-    import collections
-    import functools
-    partial = functools.partial
-    defaultdict = collections.defaultdict
-    deque = collections.deque
-
-__all__ = ['all', 'any', 'partial', 'defaultdict', 'deque']
-
-if sys.version_info[:2] < (2, 6):
-    # Borrowed from Python docs
-    def combinations(iterable, r):
-        # combinations('ABCD', 2) --> AB AC AD BC BD CD
-        # combinations(range(4), 3) --> 012 013 023 123
-        pool = tuple(iterable)
-        n = len(pool)
-        if r > n:
-            return
-        indices = range(r)
-        yield tuple(pool[i] for i in indices)
-        while True:
-            for i in reversed(range(r)):
-                if indices[i] != i + n - r:
-                    break
-            else:
-                return
-            indices[i] += 1
-            for j in range(i + 1, r):
-                indices[j] = indices[j - 1] + 1
-            yield tuple(pool[i] for i in indices)
-
-    def product(*args, **kwds):
-        # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
-        # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
-        pools = map(tuple, args) * kwds.get('repeat', 1)
-        result = [[]]
-        for pool in pools:
-            result = [x + [y] for x in result for y in pool]
-        for prod in result:
-            yield tuple(prod)
-
-    # For maxsize
-    class __Dummy(object):
-        """
-        Dummy class used to know what is the max index of a slice.
-
-        This way, we do not have to rely on guesses for untested
-        architectures.
-        """
-        def __getslice__(self, *args):
-            return args
-
-    # This "slice" should be a (1, maxsize) tuple
-    __dummy_slice = __Dummy()[1:]
-    maxsize = __dummy_slice[1]
-    del __dummy_slice, __Dummy
-
-else:
-    from itertools import combinations, product
-    from sys import maxsize
-
-__all__ += ['combinations', 'product', 'maxsize']
-
 
 if sys.version_info[:2] < (2, 7):
     # The following implementation of OrderedDict compatible with python 2.4
@@ -286,7 +127,7 @@ if sys.version_info[:2] < (2, 7):
             if isinstance(other, OrderedDict):
                 if len(self) != len(other):
                     return False
-                for p, q in  zip(self.items(), other.items()):
+                for p, q in zip(self.items(), other.items()):
                     if p != q:
                         return False
                 return True
@@ -325,25 +166,34 @@ if sys.version_info[:2] < (2, 7):
     from itertools import repeat, ifilter
 
     class Counter(dict):
-        '''Dict subclass for counting hashable objects.  Sometimes called a bag
-        or multiset.  Elements are stored as dictionary keys and their counts
-        are stored as dictionary values.
+        '''Dict subclass for counting hashable objects.
+
+        Sometimes called a bag or multiset.  Elements are stored as
+        dictionary keys and their counts are stored as dictionary
+        values.
 
         >>> Counter('zyzygy')
         Counter({'y': 3, 'z': 2, 'g': 1})
-
         '''
 
         def __init__(self, iterable=None, **kwds):
-            '''Create a new, empty Counter object.  And if given, count elements
-            from an input iterable.  Or, initialize the count from another mapping
-            of elements to their counts.
+            '''Create a new, empty Counter object.
 
-            >>> c = Counter()                           # a new, empty counter
-            >>> c = Counter('gallahad')                 # a new counter from an iterable
-            >>> c = Counter({'a': 4, 'b': 2})           # a new counter from a mapping
-            >>> c = Counter(a=4, b=2)                   # a new counter from keyword args
+            And if given, count elements from an input iterable.  Or,
+            initialize the count from another mapping of elements to
+            their counts.
 
+            A new, empty counter:
+            >>> c = Counter()
+
+            A new counter from an iterable
+            >>> c = Counter('gallahad')
+
+            A new counter from a mapping
+            >>> c = Counter({'a': 4, 'b': 2})
+
+            A new counter from keyword args
+            >>> c = Counter(a=4, b=2)
             '''
             self.update(iterable, **kwds)
 
@@ -351,27 +201,30 @@ if sys.version_info[:2] < (2, 7):
             return 0
 
         def most_common(self, n=None):
-            '''List the n most common elements and their counts from the most
-            common to the least.  If n is None, then list all element counts.
+            '''List the n most common elements and their counts.
+
+            The list goes from the most common to the least.  If n is
+            None, then list all element counts.
 
             >>> Counter('abracadabra').most_common(3)
             [('a', 5), ('r', 2), ('b', 2)]
-
             '''
             if n is None:
-                return sorted(self.iteritems(), key=itemgetter(1), reverse=True)
+                return sorted(self.iteritems(), key=itemgetter(1),
+                              reverse=True)
             return nlargest(n, self.iteritems(), key=itemgetter(1))
 
         def elements(self):
-            '''Iterator over elements repeating each as many times as its count.
+            '''Iterator over elements.
+
+            It repeats each element as many times as its count.
 
             >>> c = Counter('ABCABC')
             >>> sorted(c.elements())
             ['A', 'A', 'B', 'B', 'C', 'C']
 
-            If an element's count has been set to zero or is a negative number,
-            elements() will ignore it.
-
+            If an element's count has been set to zero or is a negative
+            number, elements() will ignore it.
             '''
             for elem, count in self.iteritems():
                 for _ in repeat(None, count):
@@ -382,20 +235,21 @@ if sys.version_info[:2] < (2, 7):
         @classmethod
         def fromkeys(cls, iterable, v=None):
             raise NotImplementedError(
-                'Counter.fromkeys() is undefined.  Use Counter(iterable) instead.')
+                'Counter.fromkeys() is undefined.  '
+                'Use Counter(iterable) instead.')
 
         def update(self, iterable=None, **kwds):
             '''Like dict.update() but add counts instead of replacing them.
 
-            Source can be an iterable, a dictionary, or another Counter instance.
+            Source can be an iterable, a dictionary, or another Counter
+            instance.
 
             >>> c = Counter('which')
-            >>> c.update('witch')           # add elements from another iterable
+            >>> c.update('witch')      # add elements from another iterable
             >>> d = Counter('watch')
-            >>> c.update(d)                 # add elements from another counter
-            >>> c['h']                      # four 'h' in which, witch, and watch
+            >>> c.update(d)            # add elements from another counter
+            >>> c['h']                 # four 'h' in which, witch, and watch
             4
-
             '''
             if iterable is not None:
                 if hasattr(iterable, 'iteritems'):
@@ -404,7 +258,8 @@ if sys.version_info[:2] < (2, 7):
                         for elem, count in iterable.iteritems():
                             self[elem] = self_get(elem, 0) + count
                     else:
-                        dict.update(self, iterable)  # fast path when counter is empty
+                        # fast path when counter is empty
+                        dict.update(self, iterable)
                 else:
                     self_get = self.get
                     for elem in iterable:
@@ -413,11 +268,13 @@ if sys.version_info[:2] < (2, 7):
                 self.update(kwds)
 
         def copy(self):
-            'Like dict.copy() but returns a Counter instance instead of a dict.'
+            '''Like dict.copy() but returns a Counter instance instead
+            of a dict.'''
             return Counter(self)
 
         def __delitem__(self, elem):
-            'Like dict.__delitem__() but does not raise KeyError for missing values.'
+            '''Like dict.__delitem__() but does not raise KeyError for
+            missing values.'''
             if elem in self:
                 dict.__delitem__(self, elem)
 
@@ -510,44 +367,7 @@ else:
         from UserDict import DictMixin
     except ImportError:
         from collections import MutableMapping as DictMixin
-    OrderedDict = collections.OrderedDict
-    from collections import Callable
-    from collections import Counter
+    from collections import OrderedDict, Callable, Counter
+    Callable = Callable
 
-__all__ += ['DictMixin', 'OrderedDict', 'Counter']
-
-
-class DefaultOrderedDict(OrderedDict):
-    def __init__(self, default_factory=None, *a, **kw):
-        if (default_factory is not None and
-            not callable(default_factory)):
-            raise TypeError('first argument must be callable')
-        OrderedDict.__init__(self, *a, **kw)
-        self.default_factory = default_factory
-
-    def __getitem__(self, key):
-        try:
-            return OrderedDict.__getitem__(self, key)
-        except KeyError:
-            return self.__missing__(key)
-
-    def __missing__(self, key):
-        if self.default_factory is None:
-            raise KeyError(key)
-        self[key] = value = self.default_factory()
-        return value
-
-    def __reduce__(self):
-        if self.default_factory is None:
-            args = tuple()
-        else:
-            args = self.default_factory,
-        return type(self), args, None, None, self.items()
-
-    def copy(self):
-        return self.__copy__()
-
-    def __copy__(self):
-        return type(self)(self.default_factory, self)
-
-__all__ += ['DefaultOrderedDict']
+__all__ = ['DictMixin', 'OrderedDict', 'Counter']

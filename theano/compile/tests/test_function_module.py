@@ -9,7 +9,7 @@ from theano.compile.io import In, Out
 from theano.compile import function
 from theano.compile import UnusedInputError
 from theano.gof import MissingInputError
-from theano.compat import all, exc_message
+from theano.compat import exc_message
 
 from theano import tensor
 from theano import tensor as T

@@ -13,14 +13,13 @@ import theano
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof import toolbox
-from theano.compat.python2x import all
 from theano import config
 import warnings
-NullType = None
 
-from theano.compat.python2x import OrderedDict
+from theano.compat import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
+NullType = None
 
 class CachedConstantError(Exception):
     """An exception thrown when we put in a FunctionGraph a Constant

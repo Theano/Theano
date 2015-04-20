@@ -12,13 +12,12 @@ import numpy
 
 import theano
 from theano import gof
-from theano.compat import get_unbound_function
+from theano.compat import get_unbound_function, product as itertools_product
 from theano.compat.six import StringIO
 from theano.gof import (FunctionGraph, graph, utils, link,
                         ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.gof.cc import CLinker
-from theano.compat.python2x import all, any, product as itertools_product
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
                                  StrParam)
 from theano.compile.function_module import (

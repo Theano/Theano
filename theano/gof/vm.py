@@ -10,14 +10,12 @@ import sys
 import time
 import warnings
 
-from theano.compat.python2x import all
-
 from theano.configparser import (config, AddConfigVar,
                                  BoolParam, ConfigParam, _config_var_list)
 
 import theano.gof.cmodule
 
-from theano.compat.python2x import defaultdict
+from theano.compat import defaultdict
 
 logger = logging.getLogger(__name__)
 

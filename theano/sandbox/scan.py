@@ -18,7 +18,7 @@ import warnings
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
-from theano.compat.python2x import OrderedDict
+from theano.compat import OrderedDict
 from theano.tensor import opt
 from theano import tensor
 from theano import config

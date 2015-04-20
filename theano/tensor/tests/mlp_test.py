@@ -9,7 +9,7 @@ import numpy
 
 import theano
 import theano.tensor as T
-from theano.compat.python2x import any, OrderedDict
+from theano.compat import OrderedDict
 
 
 def gen_data():

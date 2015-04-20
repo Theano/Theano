@@ -1,5 +1,4 @@
 import theano
-from theano.compat import any
 from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply, TopoOptimizer
 from theano import tensor

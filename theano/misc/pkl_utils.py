@@ -4,18 +4,16 @@ Utility classes and methods to pickle parts of symbolic graph.
 These pickled graphs can be used, for instance, as cases for
 unit tests or regression tests.
 """
-__docformat__ = "restructuredtext en"
-__authors__ = "Pascal Lamblin"
-__copyright__ = "Copyright 2013, Universite de Montreal"
-__license__ = "3-clause BSD"
-
-
 import pickle
 import sys
 import theano
 from theano.compat import PY3
 from theano.compat.six import string_types
 
+__docformat__ = "restructuredtext en"
+__authors__ = "Pascal Lamblin"
+__copyright__ = "Copyright 2013, Universite de Montreal"
+__license__ = "3-clause BSD"
 
 sys.setrecursionlimit(3000)
 Pickler = pickle.Pickler

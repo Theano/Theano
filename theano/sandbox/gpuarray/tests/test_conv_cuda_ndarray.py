@@ -18,7 +18,6 @@ except ImportError:
 
 import theano
 from theano import tensor
-from theano.compat.python2x import any
 from theano.tests.unittest_tools import seed_rng
 
 # We let that import do the init of the back-end if needed.

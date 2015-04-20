@@ -4,7 +4,6 @@ from theano.gof.sched import (make_dependence_cmp, sort_apply_nodes,
 import theano
 from theano import tensor
 from theano.gof.graph import io_toposort
-from theano.compat.python2x import any
 from theano.compat import cmp
 
 

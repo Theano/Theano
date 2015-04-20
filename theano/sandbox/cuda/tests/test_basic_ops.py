@@ -15,7 +15,6 @@ import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available == False:
     raise SkipTest('Optional package cuda disabled')
 
-from theano.compat.python2x import any
 import theano.sandbox.cuda as tcn
 import theano.sandbox.cuda as cuda
 import theano.sandbox.cuda.basic_ops as B

@@ -22,7 +22,7 @@ import theano
 from theano import gof
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.compat.python2x import maxsize
+from theano.compat import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -42,7 +42,6 @@ from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan,
                                 values_eq_approx_remove_inf_nan)
 
-from theano.compat.python2x import any, all
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof.opt import merge_optimizer

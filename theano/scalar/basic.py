@@ -25,7 +25,7 @@ from theano.compat import PY3
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
-from theano.compat.python2x import partial, all, any
+from theano.compat import partial
 from theano.configparser import config
 
 from theano.gradient import DisconnectedType

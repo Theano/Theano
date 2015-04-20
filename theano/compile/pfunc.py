@@ -9,7 +9,6 @@ from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
 from theano.compile.profiling import ProfileStats
 from theano.gof import Variable, Constant
-from theano.compat.python2x import any
 
 import logging
 _logger = logging.getLogger("theano.compile.pfunc")

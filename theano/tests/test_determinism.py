@@ -1,14 +1,12 @@
-from theano.tests.record import RecordMode
-from theano.tests.record import Record
-from theano.compat.python2x import OrderedDict
+from theano.tests.record import RecordMode, Record
+from theano.compat import OrderedDict
 from theano.tests import disturb_mem
 import numpy as np
 import theano
 from theano.printing import var_descriptor
 from nose.plugins.skip import SkipTest
 
-from theano import config
-from theano import shared
+from theano import config, shared
 from theano.compat.six import StringIO
 
 
