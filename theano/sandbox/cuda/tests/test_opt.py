@@ -154,7 +154,7 @@ def test_gpualloc():
     assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
 
 def test_gpuallocempty():
-    
+
 
     f_gpu = theano.function([], tensor.AllocEmpty('float32')(2,3),
                         mode=mode_with_gpu)
