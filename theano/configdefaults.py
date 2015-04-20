@@ -24,7 +24,9 @@ def floatX_convert(s):
         return s
 
 AddConfigVar('floatX',
-             "Default floating-point precision for python casts",
+             "Default floating-point precision for python casts.\n"
+             "\n"
+             "Note: float16 support is experimental, use at your own risk.",
              EnumStr('float64', 'float32', 'float16',
                      convert=floatX_convert,),
 )
