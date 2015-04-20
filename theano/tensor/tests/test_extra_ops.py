@@ -369,12 +369,14 @@ class CompressTester(utt.InferShapeTester):
         self.op = compress
 
     def test_op(self):
-        for axis, cond, shape in zip(self.axis_list, self.cond_list, self.shape_list):
+        for axis, cond, shape in zip(self.axis_list, self.cond_list,
+                                     self.shape_list):
             cond_var = theano.tensor.ivector()
-            data     = numpy.random.random(size=shape).astype(theano.config.floatX)
+            data = numpy.random.random(size=shape).astype(theano.config.floatX)
             data_var = theano.tensor.matrix()
 
-            f = theano.function([cond_var, data_var], self.op(cond_var, data_var, axis=axis))
+            f = theano.function([cond_var, data_var],
+                                self.op(cond_var, data_var, axis=axis))
 
             expected = numpy.compress(cond, data, axis=axis)
             tested = f(cond, data)
