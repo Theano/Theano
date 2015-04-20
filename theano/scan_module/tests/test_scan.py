@@ -1334,6 +1334,20 @@ class T_Scan(unittest.TestCase):
         theano_v = my_f()
         utt.assert_allclose(theano_v, numpy_v[5:, :])
 
+    def test_inconsistent_inner_fct(self):
+        # Test that scan can detect inconsistencies in the inner graph and
+        # raises an appropriate exception.
+
+        # The pickled scan op used in this test requires the use of a gpu
+        from theano.sandbox import cuda
+        if not cuda.cuda_available:
+            raise SkipTest('Optional package cuda disabled')
+
+        # When unpickled, the scan op should perform validation on its inner
+        # graph, detect the inconsistencies and raise a TypeError
+        assert_raises(TypeError, cPickle.load,
+                      open("./inconsistent_scan.pkl", "r"))
+
     def test_cuda_gibbs_chain(self):
         from theano.sandbox import cuda
         if not cuda.cuda_available:
