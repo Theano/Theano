@@ -5053,7 +5053,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         a, b = matrices('ab')
         g = self.simple_optimize(FunctionGraph([a, b], [tensor.dot(a, b).T]))
         sg = '[dot(DimShuffle{1,0}(b), DimShuffle{1,0}(a))]'
-        assert str(g) == sg
+        assert str(g) == sg, (str(g), sg)
 
     def test_row_matrix(self):
         a = vector('a')
@@ -5063,7 +5063,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
             [tensor.dot(a.dimshuffle('x', 0), b).T]),
             level='stabilize')
         sg = '[dot(DimShuffle{1,0}(b), DimShuffle{0,x}(a))]'
-        assert str(g) == sg
+        assert str(g) == sg, (str(g), sg)
 
     def test_matrix_col(self):
         a = vector('a')
@@ -5073,7 +5073,7 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
             [tensor.dot(b, a.dimshuffle(0, 'x')).T]),
             level='stabilize')
         sg = '[dot(DimShuffle{x,0}(a), DimShuffle{1,0}(b))]'
-        assert str(g) == sg
+        assert str(g) == sg, (str(g), sg)
 
 
 def test_local_upcast_elemwise_constant_inputs():
