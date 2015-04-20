@@ -406,7 +406,8 @@ def test_shape_reallocation():
                                 storage_map[i][0] == storage_map[o][0],
                                     numpy.ndarray):
                                 compare = (
-                                    storage_map[i][0] == storage_map[o][0]).all()
+                                    storage_map[i][0] == storage_map[o][0]
+                                ).all()
                             else:
                                 compare = (
                                     storage_map[i][0] == storage_map[o][0])
@@ -416,5 +417,5 @@ def test_shape_reallocation():
 
             assert check_storage(storage_map)[0] == m_dict[m]
             if check_storage(storage_map)[0] is True:
-                assert len(set([id(v) for v in
-                                storage_map.values()])) < len(storage_map)
+                id_list = [id(v) for v in storage_map.values()]
+                assert len(set(id_list)) < len(storage_map)
