@@ -386,7 +386,7 @@ def test_shape_reallocation_no_shape_infer():
                             mode=m)
 
         output = f([1, 2], [3, 5], [9, 8], [4, 3])
-        assert output
+        assert output.any()
         storage_map = f.fn.storage_map
 
         def check_storage(storage_map):
@@ -428,7 +428,7 @@ def test_shape_reallocation_shape_infer():
                             mode=m)
 
         output = f([1, 2], [3, 5], [9, 8], [4, 3])
-        assert output
+        assert output.any()
         storage_map = f.fn.storage_map
 
         def check_storage(storage_map):
