@@ -402,8 +402,11 @@ def test_shape_reallocation_no_shape_infer():
                             storage_map_copy = storage_map[i][0]
                         if isinstance(storage_map_copy, numpy.ndarray):
                             storage_map_copy = storage_map_copy.all()
-                        if isinstance(storage_map[i][0] == storage_map[o][0], numpy.ndarray):
-                            compare = (storage_map[i][0] == storage_map[o][0]).all()
+                        if isinstance(
+                            storage_map[i][0] == storage_map[o][0],
+                                numpy.ndarray):
+                            compare = (
+                                storage_map[i][0] == storage_map[o][0]).all()
                         else:
                             compare = (storage_map[i][0] == storage_map[o][0])
                         if storage_map_copy and compare:
@@ -444,8 +447,11 @@ def test_shape_reallocation_shape_infer():
                             storage_map_copy = storage_map[i][0]
                         if isinstance(storage_map_copy, numpy.ndarray):
                             storage_map_copy = storage_map_copy.all()
-                        if isinstance(storage_map[i][0] == storage_map[o][0], numpy.ndarray):
-                            compare = (storage_map[i][0] == storage_map[o][0]).all()
+                        if isinstance(
+                            storage_map[i][0] == storage_map[o][0],
+                                numpy.ndarray):
+                            compare = (
+                                storage_map[i][0] == storage_map[o][0]).all()
                         else:
                             compare = (storage_map[i][0] == storage_map[o][0])
                         if storage_map_copy and compare:
@@ -455,4 +461,3 @@ def test_shape_reallocation_shape_infer():
         assert check_storage(storage_map)[0]
         assert len(set([id(v) for v in
                         storage_map.values()])) < len(storage_map)
-
