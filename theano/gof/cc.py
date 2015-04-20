@@ -1190,7 +1190,7 @@ class CLinker(link.Linker):
 
         res = _CThunk(cthunk, init_tasks, tasks, error_stor, filename)
         res.nodes = self.node_order
-        return res, in_stor, out_stor
+        return res, in_storage, out_storage
 
     def cmodule_key(self):
         """
@@ -1575,7 +1575,6 @@ class CLinker(link.Linker):
             release_lock()
         return module
 
-
     def get_dynamic_module(self):
         """
         Return a cmodule.DynamicModule instance full of the code for our fgraph.
@@ -1594,9 +1593,6 @@ class CLinker(link.Linker):
             code = self.instantiate_code(1 + len(self.args))
             instantiate = cmodule.ExtFunction('instantiate', code,
                                               method=cmodule.METH_VARARGS)
-            # ['error_storage'] + argnames,
-            # local_dict = d,
-            # global_dict = {})
 
             # Static methods that can run and destroy the struct built by
             # instantiate.
@@ -1626,24 +1622,24 @@ class CLinker(link.Linker):
         for support_code in self.support_code() + self.c_support_code_apply:
             mod.add_support_code(support_code)
 
-        if not self.c_callable:
-            mod.add_support_code("""
-                                #ifdef _WIN32
-                                #define DllExport __declspec(dllexport)
-                                #else
-                                #define DllExport
-                                #endif
-                                """)
-            mod.add_support_code(self.struct_code)
-        else:
-            mod.add_header_code("""
-                                #ifdef _WIN32
-                                #define DllExport __declspec(dllexport)
-                                #else
-                                #define DllExport
-                                #endif
-                                """)
-            mod.add_header_code(self.struct_code)
+                if not self.c_callable:
+                    mod.add_support_code("""
+                                         #ifdef _WIN32
+                                         #define DllExport __declspec(dllexport)
+                                         #else
+                                         #define DllExport
+                                         #endif
+                                         """)
+                    mod.add_support_code(self.struct_code)
+                else:
+                    mod.add_header_code("""
+                                        #ifdef _WIN32
+                                        #define DllExport __declspec(dllexport)
+                                        #else
+                                        #define DllExport
+                                        #endif
+                                        """)
+                    mod.add_header_code(self.struct_code)
             mod.add_support_code(self.run_code)
             mod.add_support_code(static)
             mod.add_function(instantiate)
@@ -1653,9 +1649,9 @@ class CLinker(link.Linker):
                 if self.c_callable:
                     mod.add_support_code(self.cinit_code(len(self.args)))
                     mod.add_header_code("""
-                                     DllExport %(struct_name)s* cinit();
-                                     """ % dict(struct_name=self.struct_name))
-                    mod.add_init_code(init_code_block)
+                                        DllExport %(struct_name)s* cinit();
+                                        """ % dict(struct_name=self.struct_name))
+                mod.add_init_code(init_code_block)
             self._mod = mod
         return self._mod
 
