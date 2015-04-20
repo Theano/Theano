@@ -42,7 +42,7 @@ AddConfigVar('cast_policy',
              EnumStr('custom', 'numpy+floatX',
                      # The 'numpy' policy was originally planned to provide a
                      # smooth transition from numpy. It was meant to behave the
-                     # same asnumpy+floatX, but keeping float64 when numpy
+                     # same as numpy+floatX, but keeping float64 when numpy
                      # would. However the current implementation of some cast
                      # mechanisms makes it a bit more complex to add than what
                      # was expected, so it is currently not available.

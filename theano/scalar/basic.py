@@ -232,6 +232,7 @@ class Scalar(Type):
                 print(dtype, np.zeros(1, dtype=dtype).dtype.num)
             """
             return {  # dtype: (py_type, c_type, cls_name)
+                    'float16': (numpy.float16, 'npy_float16', 'Float16'),
                     'float32': (numpy.float32, 'npy_float32', 'Float32'),
                     'float64': (numpy.float64, 'npy_float64', 'Float64'),
                     'complex128': (numpy.complex128, 'theano_complex128',
@@ -501,6 +502,7 @@ uint8 = get_scalar_type('uint8')
 uint16 = get_scalar_type('uint16')
 uint32 = get_scalar_type('uint32')
 uint64 = get_scalar_type('uint64')
+float16 = get_scalar_type('float16')
 float32 = get_scalar_type('float32')
 float64 = get_scalar_type('float64')
 complex64 = get_scalar_type('complex64')
@@ -508,7 +510,7 @@ complex128 = get_scalar_type('complex128')
 
 int_types = int8, int16, int32, int64
 uint_types = uint8, uint16, uint32, uint64
-float_types = float32, float64
+float_types = float16, float32, float64
 complex_types = complex64, complex128
 
 discrete_types = int_types + uint_types
