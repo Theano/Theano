@@ -153,6 +153,19 @@ def test_gpualloc():
     l = f.maker.fgraph.toposort()
     assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
 
+def test_gpuallocempty():
+    
+
+    f_gpu = theano.function([], tensor.AllocEmpty('float32'),
+                        mode=mode_with_gpu)
+    l_gpu = f_gpu.maker.fgraph.toposort()
+    assert numpy.any([isinstance(x.op, cuda.GpuAllocEmpty) for x in l])
+
+    f_cpu = theano.function([], tensor.AllocEmpty('int32'),
+                        mode=mode_with_gpu)
+    l_cpu = f_gpu.maker.fgraph.toposort()
+    assert not numpy.any([isinstance(x.op, cuda.GpuAllocEmpty) for x in l])    
+
 
 class Test_local_elemwise_alloc(test_opt.Test_local_elemwise_alloc):
     dtype = 'float32'
