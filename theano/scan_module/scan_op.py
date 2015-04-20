@@ -211,6 +211,7 @@ class Scan(PureOp):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
+        self.validate_inner_graph()
         if "allow_gc" not in self.__dict__:
             self.allow_gc = True
             self.info['allow_gc'] = True
@@ -584,6 +585,11 @@ class Scan(PureOp):
             the thunk can potentially cache return values (like CLinker does),
             then it must not do so for variables in the no_recycling list.
         """
+
+        # Before building the thunk, validate that the inner graph is
+        # coherent
+        self.validate_inner_graph()
+
         # Setting up all my variables in what I believe is a more Cython
         # friendly form
 
