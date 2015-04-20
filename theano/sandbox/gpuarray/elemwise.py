@@ -142,7 +142,7 @@ class GpuElemwise(HideC, Elemwise):
                 code.append('ga_float %s;' % (f[0],))
             # XXX: The replace is an ugly hack to make sure temp
             # variables inthe middle are float32
-            code.append(kop.replace('npy_uint16', 'ga_float'))
+            code.append(kop.replace('npy_float16', 'ga_float'))
             for f in scal_f16:
                 code.append('%s[i] = __float2half_rn(%s);' % (f[1].name, f[0]))
             code.append('}')
@@ -195,6 +195,7 @@ class GpuElemwise(HideC, Elemwise):
                         ("npy_int16", "ga_short"),
                         ("npy_int32", "ga_int"),
                         ("npy_int64", "ga_long"),
+                        ("npy_float16", "ga_half"),
                         ("npy_float32", "ga_float"),
                         ("npy_float64", "ga_double"),
             ]:

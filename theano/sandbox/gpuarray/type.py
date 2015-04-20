@@ -172,6 +172,7 @@ class GpuArrayType(Type):
         # complex64, etc.
         try:
             return {
+                'float16': (float, 'npy_float16', 'NPY_FLOAT16'),
                 'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                 'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
                 'uint8': (int, 'npy_uint8', 'NPY_UINT8'),

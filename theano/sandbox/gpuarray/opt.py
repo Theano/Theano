@@ -31,6 +31,7 @@ from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
 from .elemwise import (GpuElemwise, _is_scalar,
                        GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY)
+from . import fp16_help
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
@@ -253,10 +254,25 @@ def local_gpuflatten(node):
 @op_lifter([tensor.Elemwise])
 def local_gpu_elemwise(node):
     op = node.op
+    scal_op = op.scalar_op
     name = op.name
     if name:
         name = 'Gpu'+name
-    res = GpuElemwise(op.scalar_op, name=name,
+    if (type(scal_op) == scalar.Cast and
+            (node.inputs[0].dtype == 'float16' or
+             node.outputs[0].dtype == 'float16')):
+        scal_op = fp16_help.Cast16(scal_op.o_type, name=scal_op.name)
+    if (type(scal_op) == scalar.Composite and
+            True):
+        inputs, outputs = gof.graph.clone(scal_op.inputs, scal_op.outputs)
+        for v in variables(inputs, outputs):
+            if (type(v.op) == scalar.Cast and
+                    (v.inputs[0].dtype == 'float16' or
+                     v.outputs[0].dtype == 'float16')):
+                # We cloned the graph before so this is ok
+                v.op = fp16_help.Cast16(v.op.o_type, name=v.op.name)
+        scal_op = scalar.Composite(inputs, outputs)
+    res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
     return res
