@@ -15,7 +15,7 @@ from theano.configparser import (config, AddConfigVar,
 
 import theano.gof.cmodule
 
-from theano.compat.python2x import defaultdict
+from theano.compat import defaultdict
 
 logger = logging.getLogger(__name__)
 
