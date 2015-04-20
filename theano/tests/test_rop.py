@@ -21,6 +21,7 @@ import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from numpy.testing.noseclasses import KnownFailureTest
+from theano.tests.unittest_tools import SkipTest
 from theano.tensor.signal.downsample import DownsampleFactorMax
 from theano.tensor.nnet import conv
 
@@ -191,9 +192,9 @@ class RopLop_checker(unittest.TestCase):
 
         if known_fail:
             raise SkipTest("Not yet implemented")
-            # raise KnownFailureTest("Rop doesn't handle non-differentiable "
-            #        "inputs correctly. Bug exposed by fixing Add.grad"
-            #        " method.")
+            # Rop doesn't handle non-differentiable
+            # inputs correctly. Bug exposed by fixing Add.grad
+            # method.
 
 
 class test_RopLop(RopLop_checker):

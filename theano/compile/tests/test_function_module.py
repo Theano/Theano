@@ -10,6 +10,7 @@ from theano.compile import function
 from theano.compile import UnusedInputError
 from theano.gof import MissingInputError
 from theano.compat import exc_message
+from theano.tests.unittest_tools import SkipTest
 
 from theano import tensor
 from theano import tensor as T
@@ -41,7 +42,7 @@ class T_function(unittest.TestCase):
         rval = fn()
         if rval == []:
             raise SkipTest("Not yet implemented")
-            #raise KnownFailureTest('See #254: Using None as function output leads to [] return value')
+            # See #254: Using None as function output leads to [] return value
         else:
             assert rval is None
 

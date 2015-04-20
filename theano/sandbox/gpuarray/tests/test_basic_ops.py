@@ -71,7 +71,6 @@ def may_fail(msg, EClass):
             except Exception as e:
                 if isinstance(e, EClass):
                     raise SkipTest("Not yet implemented")
-                    # raise KnownFailureTest(msg, e)
                 raise
         wrapper.__name__ = f.__name__
         return wrapper

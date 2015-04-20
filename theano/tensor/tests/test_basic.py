@@ -6123,9 +6123,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                     # in progress), so in the meantime we just
                                     # mark this test as a known failure.
                                     raise SkipTest("Not yet implemented")
-                                    # raise KnownFailureTest('Known issue with '
-                                    #        'numpy >= 1.6.x see #761')
-
+                                    # Known issue with numpy >= 1.6.x see #761'
                                 # In any other situation: something wrong is
                                 # going on!
                                 assert False
