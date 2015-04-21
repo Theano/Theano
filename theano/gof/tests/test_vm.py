@@ -373,7 +373,59 @@ def test_reallocation():
                         storage_map.values()])) < len(storage_map)
 
 
-def test_shape_reallocation_no_shape_infer():
+def test_shape_reallocation():
+        a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
+        # No Shape Infer
+        z = 3*a + b
+        x = c + 4*d
+        y = z + x
+        # With Shape Infer
+        o = (3*a + b)
+        p = (c + 4*d)
+        w = o + p
+
+        m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
+        m = m.excluding('fusion', 'inplace')
+
+        f_1 = theano.function([a, b, c, d], y, name="test_reduce_memory",
+                              mode=m)
+        f_2 = theano.function([a, b, c, d], w, name="test_reduce_memory_i",
+                              mode=m)
+
+        output_1 = f_1([1, 2], [3, 5], [9, 8], [4, 3])
+        output_2 = f_2([1, 2], [3, 5], [9, 8], [4, 3])
+        assert output_1.any()
+        assert output_2.any()
+        storage_map_1 = f_1.fn.storage_map
+        storage_map_2 = f_2.fn.storage_map
+
+        def check_storage(storage_map):
+            from theano.tensor.var import TensorConstant
+            for i in storage_map.keys():
+                if not isinstance(i, TensorConstant):
+                    keys_copy = storage_map.keys()[:]
+                    keys_copy.remove(i)
+                    for o in keys_copy:
+                        if isinstance(
+                            storage_map[i][0] == storage_map[o][0],
+                                numpy.ndarray):
+                            compare = (
+                                storage_map[i][0] == storage_map[o][0]).all()
+                        else:
+                            compare = (storage_map[i][0] == storage_map[o][0])
+                        if storage_map[i][0] is not None and compare:
+                            return [True, storage_map[o][0]]
+            return [False, None]
+
+        assert check_storage(storage_map_1)[0]
+        assert len(set([id(v) for v in
+                        storage_map_1.values()])) < len(storage_map_1)
+        assert check_storage(storage_map_2)[0]
+        assert len(set([id(v) for v in
+                        storage_map_2.values()])) < len(storage_map_2)
+
+
+def test_shape_reallocation_no_shapefeature():
         a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
         z = (3*a + b)
         x = (c + 4*d)
@@ -381,6 +433,7 @@ def test_shape_reallocation_no_shape_infer():
 
         m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
         m = m.excluding('fusion', 'inplace')
+        m=m.excluding('ShapeOpt')
 
         f = theano.function([a, b, c, d], y, name="test_reduce_memory",
                             mode=m)
@@ -396,12 +449,6 @@ def test_shape_reallocation_no_shape_infer():
                     keys_copy = storage_map.keys()[:]
                     keys_copy.remove(i)
                     for o in keys_copy:
-                        if isinstance(storage_map[i][0], numpy.ndarray):
-                            storage_map_copy = storage_map[i][0].all()
-                        else:
-                            storage_map_copy = storage_map[i][0]
-                        if isinstance(storage_map_copy, numpy.ndarray):
-                            storage_map_copy = storage_map_copy.all()
                         if isinstance(
                             storage_map[i][0] == storage_map[o][0],
                                 numpy.ndarray):
@@ -409,140 +456,8 @@ def test_shape_reallocation_no_shape_infer():
                                 storage_map[i][0] == storage_map[o][0]).all()
                         else:
                             compare = (storage_map[i][0] == storage_map[o][0])
-                        if storage_map_copy and compare:
+                        if storage_map[i][0] is not None and compare:
                             return [True, storage_map[o][0]]
             return [False, None]
 
-        assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
-
-
-def test_shape_reallocation_shape_infer():
-        a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
-        z = (3*a + b)
-        x = (c + 4*d)
-        y = z + x
-
-        m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
-        m = m.excluding('fusion', 'inplace')
-
-        f = theano.function([a, b, c, d], y, name="test_reduce_memory",
-                            mode=m)
-
-        output = f([1, 2], [3, 5], [9, 8], [4, 3])
-        assert output.any()
-        storage_map = f.fn.storage_map
-
-        def check_storage(storage_map):
-            from theano.tensor.var import TensorConstant
-            for i in storage_map.keys():
-                if not isinstance(i, TensorConstant):
-                    keys_copy = storage_map.keys()[:]
-                    keys_copy.remove(i)
-                    for o in keys_copy:
-                        if isinstance(storage_map[i][0], numpy.ndarray):
-                            storage_map_copy = storage_map[i][0].all()
-                        else:
-                            storage_map_copy = storage_map[i][0]
-                        if isinstance(storage_map_copy, numpy.ndarray):
-                            storage_map_copy = storage_map_copy.all()
-                        if isinstance(
-                            storage_map[i][0] == storage_map[o][0],
-                                numpy.ndarray):
-                            compare = (
-                                storage_map[i][0] == storage_map[o][0]).all()
-                        else:
-                            compare = (storage_map[i][0] == storage_map[o][0])
-                        if storage_map_copy and compare:
-                            return [True, storage_map[o][0]]
-            return [False, None]
-
-        assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
-
-
-def test_shape_reallocation_no_shape_infer():
-        a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
-        z = (3*a + b)
-        x = (c + 4*d)
-        y = z + x
-
-        m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
-        m = m.excluding('fusion', 'inplace')
-
-        f = theano.function([a, b, c, d], y, name="test_reduce_memory",
-                            mode=m)
-
-        output = f([1, 2], [3, 5], [9, 8], [4, 3])
-        assert output
-        storage_map = f.fn.storage_map
-
-        def check_storage(storage_map):
-            from theano.tensor.var import TensorConstant
-            for i in storage_map.keys():
-                if not isinstance(i, TensorConstant):
-                    keys_copy = storage_map.keys()[:]
-                    keys_copy.remove(i)
-                    for o in keys_copy:
-                        if isinstance(storage_map[i][0], numpy.ndarray):
-                            storage_map_copy = storage_map[i][0].all()
-                        else:
-                            storage_map_copy = storage_map[i][0]
-                        if isinstance(storage_map_copy, numpy.ndarray):
-                            storage_map_copy = storage_map_copy.all()
-                        if isinstance(storage_map[i][0] == storage_map[o][0], numpy.ndarray):
-                            compare = (storage_map[i][0] == storage_map[o][0]).all()
-                        else:
-                            compare = (storage_map[i][0] == storage_map[o][0])
-                        if storage_map_copy and compare:
-                            return [True, storage_map[o][0]]
-            return [False, None]
-
-        assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
-
-
-def test_shape_reallocation_shape_infer():
-        a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
-        z = (3*a + b)
-        x = (c + 4*d)
-        y = z + x
-
-        m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
-        m = m.excluding('fusion', 'inplace')
-
-        f = theano.function([a, b, c, d], y, name="test_reduce_memory",
-                            mode=m)
-
-        output = f([1, 2], [3, 5], [9, 8], [4, 3])
-        assert output
-        storage_map = f.fn.storage_map
-
-        def check_storage(storage_map):
-            from theano.tensor.var import TensorConstant
-            for i in storage_map.keys():
-                if not isinstance(i, TensorConstant):
-                    keys_copy = storage_map.keys()[:]
-                    keys_copy.remove(i)
-                    for o in keys_copy:
-                        if isinstance(storage_map[i][0], numpy.ndarray):
-                            storage_map_copy = storage_map[i][0].all()
-                        else:
-                            storage_map_copy = storage_map[i][0]
-                        if isinstance(storage_map_copy, numpy.ndarray):
-                            storage_map_copy = storage_map_copy.all()
-                        if isinstance(storage_map[i][0] == storage_map[o][0], numpy.ndarray):
-                            compare = (storage_map[i][0] == storage_map[o][0]).all()
-                        else:
-                            compare = (storage_map[i][0] == storage_map[o][0])
-                        if storage_map_copy and compare:
-                            return [True, storage_map[o][0]]
-            return [False, None]
-
-        assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
-
+        assert check_storage(storage_map)[0] is False

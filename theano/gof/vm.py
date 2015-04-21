@@ -94,7 +94,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, depend
             same_shape = node.fgraph.shape_feature.same_shape
         else:
             def same_shape(x, y):
-                if x.dim == 0 and y.dim == 0:
+                if x.ndim == 0 and y.ndim == 0:
                     return True
                 else:
                     return False
