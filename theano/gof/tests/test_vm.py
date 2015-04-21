@@ -433,7 +433,7 @@ def test_shape_reallocation_no_shapefeature():
 
         m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
         m = m.excluding('fusion', 'inplace')
-        m=m.excluding('ShapeOpt')
+        m = m.excluding('ShapeOpt')
 
         f = theano.function([a, b, c, d], y, name="test_reduce_memory",
                             mode=m)
