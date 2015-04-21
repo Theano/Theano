@@ -252,9 +252,9 @@ class NumpyAutocaster(object):
             return numpy.asarray(x)
         elif config.cast_policy == 'numpy+floatX':
             rval = numpy.asarray(x)
-            if ((rval.dtype.startswith('float') and
-                 rval.dtype != config.floatX and
-                 not hasattr(x, 'dtype'))):
+            if ((not hasattr(x, 'dtype') and
+                 rval.dtype in ('float64', 'float32') and
+                 rval.dtype != config.floatX)):
                 rval = theano._asarray(rval, dtype=config.floatX)
             return rval
 
@@ -277,7 +277,8 @@ class NumpyAutocaster(object):
         # unsafe downcast of float64 variables when config.floatX == 'float32'
         # recall: float is numpy.float
         if ((isinstance(x, float) and
-             config.floatX in self.dtypes)):
+             config.floatX in self.dtypes and
+             config.floatX != 'float64')):
             return theano._asarray(x, dtype=config.floatX)
 
         for dtype in self.dtypes:
