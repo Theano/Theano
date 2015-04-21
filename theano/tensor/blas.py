@@ -1818,7 +1818,8 @@ def local_dot22_to_ger_or_gemv(node):
         xb = x.broadcastable
         yb = y.broadcastable
         one = T.as_tensor_variable(numpy.asarray(1, dtype=x.dtype))
-        zero = T.as_tensor_variable(numpy.asarray(0, dtype=x.dtype))
+        # zero = T.as_tensor_variable(numpy.asarray(0, dtype=x.dtype))
+        zero = T.AllocEmpty(x.dtype)(1)
         if xb[1] and yb[0]:
             # x and y are both vectors so this might qualifies for a GER
             xv = x.dimshuffle(0)
