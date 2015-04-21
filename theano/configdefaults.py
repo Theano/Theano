@@ -29,7 +29,7 @@ AddConfigVar('floatX',
              "Note: float16 support is experimental, use at your own risk.",
              EnumStr('float64', 'float32', 'float16',
                      convert=floatX_convert,),
-)
+             )
 
 AddConfigVar('warn_float64',
              "Do an action when a tensor variable with float64 dtype is"
