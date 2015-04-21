@@ -385,7 +385,11 @@ softmax_grad = SoftmaxGrad()
 
 class Softmax(gof.Op):
     """
-    WRITEME
+    Softmax activation function
+    :math:`\\varphi(\\mathbf{x})_j =
+    \\frac{e^{\mathbf{x}_j}}{\sum_{k=1}^K e^{\mathbf{x}_k}}`
+    where :math:`K` is the total number of neurons in the layer. This
+    activation function gets applied row-wise.
     """
 
     nin = 1
