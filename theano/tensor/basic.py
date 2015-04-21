@@ -5544,7 +5544,6 @@ class AllocEmpty(gof.Op):
             }
         }
         """ % locals()
-        print str
         return str
 
     def infer_shape(self, node, input_shapes):

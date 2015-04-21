@@ -2277,19 +2277,11 @@ def gpuScanOptimization(node):
 @register_opt()
 @local_optimizer([tensor.AllocEmpty, gpu_from_host])
 def local_gpu_allocempty(node):
+    #print 'kikou'
     if (isinstance(node.op, tensor.AllocEmpty) and
-        node.op.dtype=="NPY_FLOAT_32"):
-        if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
-            for i in node.inputs]):
-            return [host_from_gpu(GpuAllocEmpty("float32")(gpu_from_host(*node.inputs)))]
-    if isinstance(node.op, GpuFromHost):
-        host_input = node.inputs[0]
-        if (host_input.owner and
-            isinstance(host_input.owner.op, tensor.AllocEmpty) and
-            host_input.owner.op.dtype=="NPY_FLOAT_32"):
-            owner = host_input.owner
-            return [GpuAllocEmpty()(
-                    gpu_from_host(*owner.inputs))]
+        node.op.dtype=="float32"):
+        return [host_from_gpu(GpuAllocEmpty()(*node.inputs))]
+    return False
         
 
 optdb.register('gpu_scanOp_make_inplace',
