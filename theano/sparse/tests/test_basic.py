@@ -2370,6 +2370,9 @@ class CastTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.float_dtypes:
                 for o_dtype in tensor.float_dtypes:
+                    if o_dtype == 'float16':
+                        # Don't test float16 output.
+                        continue
                     _, data = sparse_random_inputs(
                         format,
                         shape=(4, 7),
