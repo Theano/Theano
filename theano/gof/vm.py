@@ -245,6 +245,8 @@ class Loop(VM):
     Unconditional start-to-finish program execution in Python.
     No garbage collection is allowed on intermediate results.
     """
+    # Some other part of Theano query that information
+    allow_gc = False
 
     def __call__(self):
         if self.time_thunks:
@@ -280,6 +282,8 @@ class LoopGC(VM):
     def __init__(self, nodes, thunks, pre_call_clear, post_thunk_clear):
         super(LoopGC, self).__init__(nodes, thunks, pre_call_clear)
         self.post_thunk_clear = post_thunk_clear
+        # Some other part of Theano query that information
+        self.allow_gc = True
         if not (len(nodes) == len(thunks) == len(post_thunk_clear)):
             raise ValueError()
 
@@ -809,7 +813,7 @@ class VM_Linker(link.LocalLinker):
             if self.use_cloop and config.profile_memory:
                 warnings.warn(
                     'CVM does not support memory profile, using Stack VM.')
-            # Needed when allow_gc=True and profiling
+            # Needed for allow_gc=True, profiling and storage_map reuse
             deps = self.compute_gc_dependencies(storage_map)
             vm = Stack(
                 nodes, thunks, pre_call_clear,
@@ -845,7 +849,7 @@ class VM_Linker(link.LocalLinker):
                 assert type(storage_map_list[0]) is list
                 assert type(compute_map_list[0]) is list
 
-            # Needed when allow_gc=True and profiling
+            # Needed for allow_gc=True, profiling and storage_map reuse
             dependency_map = self.compute_gc_dependencies(storage_map)
             dependency_map_list = [
                 [vars_idx[d] for d in dependency_map[vars_idx_inv[i]]]
