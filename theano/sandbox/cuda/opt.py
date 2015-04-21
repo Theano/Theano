@@ -2279,6 +2279,7 @@ def gpuScanOptimization(node):
 @register_opt()
 @local_optimizer([tensor.AllocEmpty, gpu_from_host])
 def local_gpu_allocempty(node):
+    #print 'kikou'
     if (isinstance(node.op, tensor.AllocEmpty) and
         node.op.dtype=="float32"):
         return [host_from_gpu(GpuAllocEmpty()(*node.inputs))]
