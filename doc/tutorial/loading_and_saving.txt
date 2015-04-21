@@ -114,6 +114,19 @@ For instance, you can define functions along the lines of:
         self.training_set = cPickle.load(file(self.training_set_file, 'rb'))
 
 
+Robust Serialization
+====================
+
+This type of serialization internally uses pickling but extracts values of all
+shared variables and saves it as numpy arrays. So it may be very hard to
+deserialize objects on a different version of Theano. It is useful when you
+would like to resume an experiment on a different kind of hardware.
+
+.. autofunction:: theano.misc.pkl_utils.dump
+
+.. autofunction:: theano.misc.pkl_utils.load
+
+
 Long-Term Serialization
 =======================
 
@@ -154,4 +167,3 @@ functions to reflect the change in name:
 
 For more information on advanced use of ``pickle`` and its internals, see Python's
 pickle_ documentation.
-

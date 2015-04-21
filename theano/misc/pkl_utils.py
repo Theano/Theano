@@ -119,17 +119,15 @@ else:
 class PersistentNdarrayID(object):
     """Persist ndarrays in an object by saving them to a zip file.
 
-    Parameters
-    ----------
-    zip_file : :class:`zipfile.ZipFile`
-        A zip file handle that the NumPy arrays will be saved to.
+    :param zip_file: A zip file handle that the NumPy arrays will be saved to.
+    :type zip_file: :class:`zipfile.ZipFile`
 
-    Notes
-    -----
-    The convention for persistent ids given by this class and its derived
-    classes is that the name should take the form `type.name` where `type`
-    can be used by the persistent loader to determine how to load the
-    object, while `name` is human-readable and as descriptive as possible.
+
+    .. note:
+        The convention for persistent ids given by this class and its derived
+        classes is that the name should take the form `type.name` where `type`
+        can be used by the persistent loader to determine how to load the
+        object, while `name` is human-readable and as descriptive as possible.
 
     """
     def __init__(self, zip_file):
@@ -166,19 +164,16 @@ class PersistentSharedVariableID(PersistentNdarrayID):
     shared variable are persisted as usual (i.e. `array_0`, `array_1`,
     etc.)
 
-    Parameters
-    ----------
-    allow_unnamed : bool, optional
-        Allow shared variables without a name to be persisted. Defaults to
-        ``True``.
-    allow_duplicates : bool, optional
-        Allow multiple shared variables to have the same name, in which
-        case they will be numbered e.g. `x`, `x_2`, `x_3`, etc. Defaults to
-        ``True``.
+    :param allow_unnamed: Allow shared variables without a name to be
+        persisted. Defaults to ``True``.
+    :type allow_unnamed: bool, optional
 
-    Raises
-    ------
-    ValueError
+    :param allow_duplicates: Allow multiple shared variables to have the same
+        name, in which case they will be numbered e.g. `x`, `x_2`, `x_3`, etc.
+        Defaults to ``True``.
+    :type allow_duplicates: bool, optional
+
+    :raises ValueError
         If an unnamed shared variable is encountered and `allow_unnamed` is
         ``False``, or if two shared variables have the same name, and
         `allow_duplicates` is ``False``.
@@ -218,10 +213,8 @@ class PersistentSharedVariableID(PersistentNdarrayID):
 class PersistentNdarrayLoad(object):
     """Load NumPy arrays that were persisted to a zip file when pickling.
 
-    Parameters
-    ----------
-    zip_file : :class:`zipfile.ZipFile`
-        The zip file handle in which the NumPy arrays are saved.
+    :param zip_file: The zip file handle in which the NumPy arrays are saved.
+    :type zip_file: :class:`zipfile.ZipFile`
 
     """
     def __init__(self, zip_file):
@@ -251,28 +244,29 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
          persistent_id=PersistentSharedVariableID):
     """Pickles an object to a zip file using external persistence.
 
-    Parameters
-    ----------
-    obj : object
-        The object to pickle.
-    f : file
-        The file handle to save the object to.
-    protocol : int, optional
-        The pickling protocol to use. Unlike Python's built-in pickle, the
-        default is set to `2` insstead of 0 for Python 2. The Python 3
-        default (level 3) is maintained.
-    persistent_id : callable
-        The callable that persists certain objects in the object hierarchy
-        to separate files inside of the zip file. For example,
+    :param obj: The object to pickle.
+    :type obj: object
+
+    :param f: The file handle to save the object to.
+    :type f: file
+
+    :param protocol: The pickling protocol to use. Unlike Python's built-in
+        pickle, the default is set to `2` insstead of 0 for Python 2. The
+        Python 3 default (level 3) is maintained.
+    :type protocol: int, optional
+
+    :param persistent_id: The callable that persists certain objects in the
+        object hierarchy to separate files inside of the zip file. For example,
         :class:`PersistentNdarrayID` saves any :class:`numpy.ndarray` to a
         separate NPY file inside of the zip file.
+    :type persistent_id: callable
 
-    Notes
-    -----
-    The final file is simply a zipped file containing at least one file,
-    `pkl`, which contains the pickled object. It can contain any other
-    number of external objects. Note that the zip files are compatible with
-    NumPy's :func:`numpy.load` function.
+
+    .. note::
+        The final file is simply a zipped file containing at least one file,
+        `pkl`, which contains the pickled object. It can contain any other
+        number of external objects. Note that the zip files are compatible with
+        NumPy's :func:`numpy.load` function.
 
     >>> import theano
     >>> foo_1 = theano.shared(0, name='foo')
@@ -301,13 +295,13 @@ def dump(obj, f, protocol=DEFAULT_PROTOCOL,
 def load(f, persistent_load=PersistentNdarrayLoad):
     """Load a file that was dumped to a zip file.
 
-    Parameters
-    ----------
-    f : file
-        The file handle to the zip file to load the object from.
-    persistent_load : callable, optional
-        The persistent loading function to use for unpickling. This must be
-        compatible with the `persisten_id` function used when pickling.
+    :param f: The file handle to the zip file to load the object from.
+    :type f: file
+
+    :param persistent_load: The persistent loading function to use for
+        unpickling. This must be compatible with the `persisten_id` function
+        used when pickling.
+    :type persistent_load: callable, optional
 
     """
     with closing(zipfile.ZipFile(f, 'r')) as zip_file:
@@ -319,15 +313,15 @@ def load(f, persistent_load=PersistentNdarrayLoad):
 def zipadd(func, zip_file, name):
     """Calls a function with a file object, saving it to a zip file.
 
-    Parameters
-    ----------
-    func : callable
-        The function to call.
-    zip_file : :class:`zipfile.ZipFile`
-        The zip file that `func` should write its data to.
-    name : str
-        The name of the file inside of the zipped archive that `func`
+    :param func: The function to call.
+    :type func: callable
+
+    :param zip_file: The zip file that `func` should write its data to.
+    :type zip_file: :class:`zipfile.ZipFile`
+
+    :param name: The name of the file inside of the zipped archive that `func`
         should save its data to.
+    :type name: str
 
     """
     with tempfile.NamedTemporaryFile('wb', delete=False) as temp_file:
