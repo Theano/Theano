@@ -608,7 +608,7 @@ class GpuAlloc(HideC, Alloc):
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
-            if v.size == 1 and numpy.asarray(v)[0].item() == 0:
+            if v.size == 1 and numpy.asarray(v).flatten().item() == 0:
                 out[0] = gpuarray.zeros(sh, dtype=v.dtype)
             else:
                 out[0] = gpuarray.empty(sh, dtype=v.dtype)
