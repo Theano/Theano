@@ -1345,8 +1345,10 @@ class T_Scan(unittest.TestCase):
 
         # When unpickled, the scan op should perform validation on its inner
         # graph, detect the inconsistencies and raise a TypeError
-        assert_raises(TypeError, cPickle.load,
-                      open("./inconsistent_scan.pkl", "r"))
+        folder = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(folder, "inconsistent_scan.pkl")
+
+        assert_raises(TypeError, cPickle.load, open(path, "r"))
 
     def test_cuda_gibbs_chain(self):
         from theano.sandbox import cuda
