@@ -5937,17 +5937,8 @@ class test_arithmetic_cast(unittest.TestCase):
                                             config.int_division == 'raise')
                                     # This is the expected behavior.
                                     continue
-                                # For numpy we have a problem:
-                                #   http://projects.scipy.org/numpy/ticket/1827
-                                # As a result we only consider the highest data
-                                # type that numpy may return.
-                                numpy_dtypes = [
-                                        op(numpy_args[0](a_type),
-                                           numpy_args[1](b_type)).dtype,
-                                        op(numpy_args[1](b_type),
-                                           numpy_args[0](a_type)).dtype]
-                                numpy_dtype = theano.scalar.upcast(
-                                        *map(str, numpy_dtypes))
+                                numpy_dtype = op(numpy_args[0](a_type),
+                                                 numpy_args[1](b_type)).dtype
                                 if numpy_dtype == theano_dtype:
                                     # Same data type found, all is good!
                                     continue
@@ -5979,9 +5970,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                         # Theano upcasted the result array.
                                         theano_dtype == up_type and
                                         # But Numpy kept its original type.
-                                        # (not an equality because of numpy bug
-                                        # mentioned above).
-                                        array_type in numpy_dtypes):
+                                        array_type == numpy_dtype):
                                         # Then we accept this difference in
                                         # behavior.
                                         continue
