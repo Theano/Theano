@@ -1564,6 +1564,7 @@ class Assert(T.Op):
     used in the function computing the graph, but it doesn't have to be
     returned.
     """
+    __props__ = ('msg',)
     view_map = {0: [0]}
 
     check_input = False
@@ -1583,23 +1584,17 @@ class Assert(T.Op):
         assert numpy.all([c.type.ndim == 0 for c in cond])
         return gof.Apply(self, [value] + cond, [value.type()])
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def perform(self, node, inputs, out_):
         out, = out_
         v = inputs[0]
         out[0] = v
         assert numpy.all(inputs[1:]), self.msg
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.msg == other.msg
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.msg)
-
     def grad(self, input, output_gradients):
         return output_gradients + [DisconnectedType()()] * (len(input) - 1)
+
+    def connection_pattern(self, node):
+        return [[1]] + [[0]] * (len(node.inputs) - 1)
 
     def c_code(self, node, name, inames, onames, sub):
         value = inames[0]
