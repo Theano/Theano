@@ -252,10 +252,10 @@ class NumpyAutocaster(object):
             return numpy.asarray(x)
         elif config.cast_policy == 'numpy+floatX':
             rval = numpy.asarray(x)
-            if ((rval.dtype == 'float64' and         # numpy wants float64
-                 config.floatX == 'float32' and      # but we prefer float32
-                 not hasattr(x, 'dtype'))):           # and `x` was not typed
-                rval = theano._asarray(rval, dtype='float32')
+            if ((rval.dtype.startswith('float') and
+                 rval.dtype != config.floatX and
+                 not hasattr(x, 'dtype'))):
+                rval = theano._asarray(rval, dtype=config.floatX)
             return rval
 
         # The following is the original code, corresponding to the 'custom'

@@ -56,18 +56,29 @@ def upcast(dtype, *dtypes):
     # modified within `make_array`.
     keep_float32 = [(config.cast_policy == 'numpy+floatX' and
                      config.floatX == 'float32')]
+    keep_float16 = [(config.cast_policy == 'numpy+floatX' and
+                     config.floatX == 'float16')]
 
     def make_array(dt):
         if dt == 'float64':
             # There is an explicit float64 dtype: we cannot keep float32.
             keep_float32[0] = False
+            keep_float16[0] = False
+        if dt == 'float32':
+            keep_float16[0] = False
         return numpy.zeros((), dtype=dt)
     z = make_array(dtype)
     for dt in dtypes:
         z = z + make_array(dt=dt)
     rval = str(z.dtype)
-    if rval == 'float64' and keep_float32[0]:
-        return 'float32'
+    if rval == 'float64':
+        if keep_float16[0]:
+            return 'float16'
+        if keep_float32[0]:
+            return 'float32'
+    elif rval == 'float32':
+        if keep_float16[0]:
+            return 'float16'
     else:
         return rval
 
