@@ -361,6 +361,46 @@ If we do not pass the ``updates`` dictionary to the function, then
 ``a.value`` will always remain 1, ``b`` will always be 2 and ``c``
 will always be ``12``.
 
+
+Using shared variables - the strict flag
+----------------------------------------
+
+You also have the possibility to use the ``strict`` flag. When set to true,
+Scan assumes that all the necessary shared variables in ``fn`` are passed as a
+part of ``non_sequences``. This has to be ensured by the user. Otherwise, it
+will result in an error. This avoids Scan Op calling any earlier (external) Op
+over and over, and speeds up the process.
+
+Here is a simple RRN example:
+
+.. math::
+  x(n) = \tanh(u(n) + W x(n-1))
+
+
+And the code using ``strict=True``:
+
+.. code-block:: python
+
+    u = T.matrix() # The input sequence
+    x0 = T.vector() # The initial state
+    W = theano.shared(W_values) # we assume that ``W_values`` contains the
+                                # initial values of your weight matrix.
+
+    def oneStep(u_t, x_tm1, W):
+        return T.tanh(u_t + T.dot(W, x_tm1))
+
+    # Using strict=True, and passing W as a non_sequence
+    x_vals, updates = theano.scan(fn=oneStep,
+                                  sequences=dict(input=u, taps=[0]),
+                                  outputs_info=[dict(initial=x0,
+                                                     taps=[-1])],
+                                  non_sequences=[W], # Don't forget to pass W!
+                                  strict=True)
+
+
+If you omit to pass ``W`` as a ``non_sequence``, it will result in an error.
+
+
 Conditional ending of Scan
 --------------------------
 
