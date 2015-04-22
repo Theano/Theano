@@ -1670,12 +1670,15 @@ def local_remove_all_assert(node):
 # Disabled by default
 compile.optdb['canonicalize'].register('local_remove_all_assert',
                                        local_remove_all_assert,
+                                       'unsafe',
                                        use_db_name_as_tag=False)
 compile.optdb['stabilize'].register('local_remove_all_assert',
                                     local_remove_all_assert,
+                                    'unsafe',
                                     use_db_name_as_tag=False)
 compile.optdb['specialize'].register('local_remove_all_assert',
                                      local_remove_all_assert,
+                                     'unsafe',
                                      use_db_name_as_tag=False)
 
 

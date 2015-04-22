@@ -56,6 +56,29 @@ def test_local_assert():
     assert isinstance(a_op[0].inputs[0].type, CudaNdarrayType)
 
 
+def test_local_remove_all_assert():
+    x = theano.tensor.fmatrix()
+    a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
+
+    # By default `unsafe` should not be there
+    f = theano.function([x], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+
+    # Put `unsafe`
+    f = theano.function([x], a, mode=mode_with_gpu.including('unsafe'))
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 0
+
+    # Remove `unsafe`
+    f = theano.function([x], a, mode=mode_with_gpu.excluding('unsafe'))
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+
+
 def test_int_pow():
     a = CudaNdarrayType([False])()
 
@@ -609,3 +632,4 @@ if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()
     test_opt_gpujoin_joinvectors_elemwise_then_minusone()
+

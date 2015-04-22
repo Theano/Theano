@@ -25,6 +25,29 @@ def test_local_assert():
     assert isinstance(a_op[0].inputs[0].type, GpuArrayType)
 
 
+def test_local_remove_all_assert():
+    x = theano.tensor.fmatrix()
+    a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
+
+    # By default `unsafe` should not be there
+    f = theano.function([x], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+
+    # Put `unsafe`
+    f = theano.function([x], a, mode=mode_with_gpu.including('unsafe'))
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 0
+
+    # Remove `unsafe`
+    f = theano.function([x], a, mode=mode_with_gpu.excluding('unsafe'))
+    topo = f.maker.fgraph.toposort()
+    a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
+    assert len(a_op) == 1
+
+
 def test_flatten():
     m = theano.tensor.fmatrix()
     f = theano.function([m], m.flatten(), mode=mode_with_gpu)

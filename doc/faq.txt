@@ -79,7 +79,7 @@ garbage collection will keep all intermediate results' memory space to allow to
 reuse them during the next call to the same Theano function, if they are of the
 correct shape. The shape could change if the shapes of the inputs change.
 
-.. unsafe_optimization:
+.. _unsafe_optimization:
 
 Unsafe optimization
 ===================
