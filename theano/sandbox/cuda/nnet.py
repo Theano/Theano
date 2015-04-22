@@ -247,31 +247,42 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
 
     def c_code_cache_version(self):
         # return ()
-        return (6,)
+        return (7,)
 
     def c_code(self, node, nodename, inp, out, sub):
         dnll, sm, y_idx = inp
         dx, = out
         fail = sub['fail']
         return """
-        if ((CudaNdarray_NDIM(%(dnll)s) != 1)
+        // Get `dnll.shape[0]` or set it to zero if `dnll` is a scalar.
+        const npy_intp %(dnll)s_dims0 = (CudaNdarray_NDIM(%(dnll)s) > 0 ?
+                                         CudaNdarray_HOST_DIMS(%(dnll)s)[0] :
+                                         (npy_intp) 0);
+
+        // Get `dnll.strides[0]` and set it to zero if `dnll` is a scalar
+        // or a vector with just one element.
+        const npy_intp %(dnll)s_strides0 = (%(dnll)s_dims0 > 1 ?
+                                            CudaNdarray_HOST_STRIDES(%(dnll)s)[0] :
+                                            (npy_intp) 0);
+
+        if ((CudaNdarray_NDIM(%(dnll)s) > 1)
             || (CudaNdarray_NDIM(%(sm)s) != 2)
             || (CudaNdarray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] !=
-            CudaNdarray_HOST_DIMS(%(sm)s)[0])
+        if (%(dnll)s_dims0 !=
+            CudaNdarray_HOST_DIMS(%(sm)s)[0] && %(dnll)s_dims0 > 1)
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] == %%i, but sm.shape[0] == %%i",
-                         CudaNdarray_HOST_DIMS(%(dnll)s)[0],
+                         %(dnll)s_dims0,
                          CudaNdarray_HOST_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (CudaNdarray_HOST_DIMS(%(dnll)s)[0] !=
-            CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
+        if (%(dnll)s_dims0 !=
+            CudaNdarray_HOST_DIMS(%(y_idx)s)[0] && %(dnll)s_dims0 > 1)
         {
             PyErr_SetString(PyExc_ValueError,
                             "dnll.shape[0] != y_idx.shape[0]");
@@ -305,7 +316,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
                         CudaNdarray_HOST_DIMS(%(dx)s)[1],
 
                         CudaNdarray_DEV_DATA(%(dnll)s),
-                        CudaNdarray_HOST_STRIDES(%(dnll)s)[0],
+                        %(dnll)s_strides0,
 
                         CudaNdarray_DEV_DATA(%(sm)s),
                         CudaNdarray_HOST_STRIDES(%(sm)s)[0],

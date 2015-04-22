@@ -295,7 +295,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
 
     def c_code_cache_version(self):
         # return ()
-        return (6,)
+        return (7,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -317,24 +317,35 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         dx, = out
         fail = sub['fail']
         return """
-        if ((PyGpuArray_NDIM(%(dnll)s) != 1)
+        // Get `dnll.shape[0]` or set it to zero if `dnll` is a scalar.
+        const npy_intp %(dnll)s_dims0 = (PyGpuArray_NDIM(%(dnll)s) > 0 ?
+                                         PyGpuArray_DIMS(%(dnll)s)[0] :
+                                         (npy_intp) 0);
+
+        // Get `dnll.strides[0]` and set it to zero if `dnll` is a scalar
+        // or a vector with just one element.
+        const npy_intp %(dnll)s_strides0 = (%(dnll)s_dims0 > 1 ?
+                                            PyGpuArray_STRIDES(%(dnll)s)[0] :
+                                            (npy_intp) 0);
+
+        if ((PyGpuArray_NDIM(%(dnll)s) > 1)
             || (PyGpuArray_NDIM(%(sm)s) != 2)
             || (PyGpuArray_NDIM(%(y_idx)s) != 1))
         {
             PyErr_SetString(PyExc_ValueError, "rank error");
             %(fail)s;
         }
-        if (PyGpuArray_DIMS(%(dnll)s)[0] !=
-            PyGpuArray_DIMS(%(sm)s)[0])
+        if (%(dnll)s_dims0 !=
+            PyGpuArray_DIMS(%(sm)s)[0] && %(dnll)s_dims0 > 1)
         {
             PyErr_Format(PyExc_ValueError,
                          "dnll.shape[0] == %%i, but sm.shape[0] == %%i",
-                         PyGpuArray_DIMS(%(dnll)s)[0],
+                         %(dnll)s_dims0,
                          PyGpuArray_DIMS(%(sm)s)[0]);
             %(fail)s;
         }
-        if (PyGpuArray_DIMS(%(dnll)s)[0] !=
-            PyGpuArray_DIMS(%(y_idx)s)[0])
+        if (%(dnll)s_dims0 !=
+            PyGpuArray_DIMS(%(y_idx)s)[0] && %(dnll)s_dims0 > 1)
         {
             PyErr_SetString(PyExc_ValueError,
                             "dnll.shape[0] != y_idx.shape[0]");
@@ -366,7 +377,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
 
                         (npy_%(dtype_dnll)s*)(((char *)cuda_get_ptr(%(dnll)s->ga.data)) +
                                            %(dnll)s->ga.offset),
-                        PyGpuArray_STRIDES(%(dnll)s)[0] / %(itemsize_dnll)s,
+                        %(dnll)s_strides0 / %(itemsize_dnll)s,
 
                         (npy_%(dtype_sm)s*)(((char *)cuda_get_ptr(%(sm)s->ga.data)) +
                                            %(sm)s->ga.offset),
