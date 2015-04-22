@@ -281,7 +281,11 @@ class NumpyAutocaster(object):
              config.floatX != 'float64')):
             return theano._asarray(x, dtype=config.floatX)
 
-        for dtype in self.dtypes:
+        # Don't autocast to float16 unless config.floatX is float16
+        try_dtypes = [d for d in self.dtypes
+                      if config.floatX == 'float16' or d != 'float16']
+
+        for dtype in try_dtypes:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
