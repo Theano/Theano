@@ -54,6 +54,7 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 :term:`elemwise fusion`                                   x
 :term:`GPU transfer`                                      x
 :term:`local_log_softmax`                                 x                      x
+:term:`local_remove_all_assert`                                                   
 ========================================================= ========= ============ =============
 
 
@@ -258,3 +259,13 @@ Optimization                                              FAST_RUN  FAST_COMPILE
         It can happen due to rounding errors that the softmax probability of one value gets to 0.
         Taking the log of 0 would generate -inf that will probably generate NaN later.
         We return a closer answer.
+
+    local_remove_all_assert
+        This is an unsafe optimization.
+        For the fastest possible Theano, this optimization can be enabled by
+	setting ``optimizer_including=local_remove_all_assert`` which will
+	remove all assertions in the graph for checking user inputs are valid.
+        Use this optimization if you are sure everthing is valid in your graph.
+	
+	See :ref:`unsafe_optimization`
+
