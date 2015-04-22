@@ -20,8 +20,3 @@ def write_w(dtype):
         return '__float2half_rn'
     else:
         return ''
-
-
-class Cast16(scalar.Cast):
-    def c_code(self, node, name, inputs, outputs, sub):
-        return "%s = %s;\n" % (outputs[0], inputs[0])
