@@ -3299,7 +3299,7 @@ class GpuAllocEmpty(GpuOp):
             # XXX: We could implement and call CudaNdarray.empty(sh) instead.
             out[0] = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(sh)
 
-    def do_merge(self, node):
+    def do_merge(self, node1, node2):
         return False
 
     def c_code(self, node, name, inputs, out_, sub):
@@ -3354,7 +3354,7 @@ class GpuAlloc(GpuAllocEmpty):
     """
     __props__ = ('memset_0',)
 
-    def do_merge(self, node):
+    def do_merge(self, node1, node2):
         return True
 
     def __init__(self, memset_0=False):

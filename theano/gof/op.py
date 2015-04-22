@@ -655,15 +655,22 @@ class PureOp(object):
         """
         return True
 
-    def do_merge(self, node):
-        """This allow to disable the merge of ops in the graph.
+    def do_merge(self, node1, node2):
+        """This allow to disable the merge of nodes in the graph.
 
         This is very rarely a good idea to disable it. Do not use if
         you do not understand this small comment. You probably do not
         need it.
 
+        The way we find candidate merge is by checking common the
+        clients of inputs[0] for both node. If it isn't shared by
+        node1 and node2, they will not be merged.
+
         """
-        return True
+        inputs_match = all(node_in is cand_in
+                           for node_in, cand_in in zip(node1.inputs,
+                                                       node2.inputs))
+        return inputs_match
 
 
 class Op(utils.object2, PureOp, CLinkerOp):
