@@ -3301,14 +3301,15 @@ class Composite(ScalarOp):
                     ["%%(o%i)s" % i for i in xrange(len(self.fgraph.outputs))]))
 
         for var in self.fgraph.variables:
-            if var.owner is None and var not in self.fgraph.inputs:
-                # This is an orphan
-                if isinstance(var, Constant):
-                    subd[var] = var.type.c_literal(var.data)
-                else:
-                    raise ValueError(
-                        "All orphans in the fgraph to Composite must"
-                        " be Constant instances.")
+            if var.owner is None:
+                if var not in self.fgraph.inputs:
+                    # This is an orphan
+                    if isinstance(var, Constant):
+                        subd[var] = var.type.c_literal(var.data)
+                    else:
+                        raise ValueError(
+                            "All orphans in the fgraph to Composite must"
+                            " be Constant instances.")
             elif any(i.dtype == 'float16' for i in var.owner.inputs or
                      o.dtype == 'float16' for o in var.owner.outputs):
                 # flag for elemwise ops to check.
