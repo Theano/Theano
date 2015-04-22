@@ -247,7 +247,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
 
     def c_code_cache_version(self):
         # return ()
-        return (7,)
+        return (8,)
 
     def c_code(self, node, nodename, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -286,6 +286,13 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
         {
             PyErr_SetString(PyExc_ValueError,
                             "dnll.shape[0] != y_idx.shape[0]");
+            %(fail)s;
+        }
+        if (CudaNdarray_HOST_DIMS(%(sm)s)[0] !=
+            CudaNdarray_HOST_DIMS(%(y_idx)s)[0])
+        {
+            PyErr_SetString(PyExc_ValueError,
+                            "sm.shape[0] != y_idx.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)
