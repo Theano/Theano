@@ -20,7 +20,7 @@ from theano.tensor.nnet.conv import ConvOp
 from .type import GpuArrayType, GpuArrayConstant
 from .basic_ops import (host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
-                        GpuSplit,
+                        GpuSplit, GpuContiguous,
                         gpu_alloc, GpuAlloc, GpuReshape,
                         GpuEye, gpu_join, GpuJoin)
 from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
@@ -203,6 +203,19 @@ def local_gpualloc_memset_0(node):
             (numpy.asarray(inp.data) == 0).all()):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             return [new_out]
+
+
+@register_opt()
+@local_optimizer([GpuContiguous])
+def local_gpu_contiguous_gpu_contiguous(node):
+    """
+    gpu_contiguous(gpu_contiguous(x)) -> gpu_contiguous(x)
+
+    """
+    if isinstance(node.op, GpuContiguous):
+        inp = node.inputs[0]
+        if inp.owner and isinstance(inp.owner.op, GpuContiguous):
+            return [inp]
 
 
 @register_opt('fast_compile')

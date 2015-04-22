@@ -79,6 +79,18 @@ def test_local_remove_all_assert():
     assert len(a_op) == 1
 
 
+def test_local_gpu_contiguous_gpu_contiguous():
+    a = tensor.fmatrix()
+    o1 = basic_ops.gpu_contiguous(a)
+    o2 = basic_ops.gpu_contiguous(o1)
+    f1 = theano.function([a], o1, mode=mode_with_gpu)
+    f2 = theano.function([a], o2, mode=mode_with_gpu)
+    assert 1 == len([node for node in f1.maker.fgraph.toposort()
+                     if isinstance(node.op, basic_ops.GpuContiguous)])
+    assert 1 == len([node for node in f2.maker.fgraph.toposort()
+                     if isinstance(node.op, basic_ops.GpuContiguous)])
+
+
 def test_int_pow():
     a = CudaNdarrayType([False])()
 
