@@ -353,7 +353,8 @@ class test_SoftMax(unittest.TestCase):
             numpy.product(dims),
             dtype='float32'
         ).reshape(dims)
-        T.verify_grad(f_gpu, [gdata], rng=numpy.random)
+        T.verify_grad(f_gpu, [gdata], rng=numpy.random,
+                      mode=mode_with_gpu)
 
         def check_types(graph, graph_gpu):
             self._check_types(
