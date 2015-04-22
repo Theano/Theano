@@ -1,8 +1,14 @@
 from numpy.testing import assert_allclose
+from nose.plugins.skip import SkipTest
+
+import theano.sandbox.cuda as cuda_ndarray
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.var import CudaNdarraySharedVariable
 from theano.misc.pkl_utils import dump, load
+
+if not cuda_ndarray.cuda_available:
+    raise SkipTest('Optional package cuda disabled')
 
 
 def test_dump_load():
