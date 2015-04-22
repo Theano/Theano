@@ -51,14 +51,18 @@ class GpuSubtensor(HideC, Subtensor):
             else {
                 if (*start < 0) *start += len;
                 if (*start < 0) *start = (*step < 0) ? -1 : 0;
-                if (*start >= len) *start = (*step < 0) ? len-1 : len;
+                if (*start > -1 && *start >= len) {
+                    *start = (*step < 0) ? len-1 : len;
+                }
             }
 
             if (stop_n) *stop = (*step < 0) ? -1 : len;
             else {
                 if (*stop < 0) *stop += len;
                 if (*stop < 0) *stop = (*step < 0) ? -1 : 0;
-                if (*stop >= len) *stop = (*step < 0) ? len-1 : len;
+                if (*stop > -1 && *stop >= len) {
+                    *stop = (*step < 0) ? len-1 : len;
+                }
             }
             if (*stop < *start && *step > 0)
                 *stop = *start;
@@ -149,7 +153,7 @@ class GpuSubtensor(HideC, Subtensor):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
 
 class GpuIncSubtensor(IncSubtensor):
