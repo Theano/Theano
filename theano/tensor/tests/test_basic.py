@@ -5982,17 +5982,20 @@ class test_arithmetic_cast(unittest.TestCase):
                                                  numpy.__version__.split('.')[:2]]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
-                                    b_type == 'float32' and
+                                    (b_type == 'float32' or
+                                     b_type == 'float16') and
                                     combo == ('scalar', 'array') and
                                     bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
-                                    numpy_dtypes == ['complex64',
-                                                     'complex64']):
-                                    # In numpy 1.6.x adding a complex128 with
-                                    # a float32 may result in a complex64. This
-                                    # may be a bug (investigation is currently
-                                    # in progress), so in the meantime we just
-                                    # mark this test as a known failure.
+                                    numpy_dtype == 'complex64'):
+                                    # In numpy 1.6.x adding a
+                                    # complex128 with a float32 or
+                                    # float16 may result in a
+                                    # complex64. This may be a bug
+                                    # (investigation is currently in
+                                    # progress), so in the meantime we
+                                    # just mark this test as a known
+                                    # failure.
                                     raise KnownFailureTest('Known issue with '
                                             'numpy >= 1.6.x see #761')
 
