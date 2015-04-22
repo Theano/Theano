@@ -203,7 +203,8 @@ def version():
 
     if version.v is None:
         f = theano.function([], DnnVersion()(),
-                            theano.Mode(optimizer=None))
+                            theano.Mode(optimizer=None),
+                            profile=False)
         version.v = f()
     return version.v
 version.v = None

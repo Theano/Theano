@@ -421,7 +421,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     if profile is None:
         profile = config.profile
         # profile -> True or False
-    if profile == True:
+    if profile is True:
         profile = ProfileStats(message=name)
         # profile -> object
     if type(profile) == str:

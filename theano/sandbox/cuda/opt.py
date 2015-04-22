@@ -20,6 +20,7 @@ from theano.gof.opt import LocalMetaOptimizer
 from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
+    GpuContiguous,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
@@ -1995,6 +1996,19 @@ def local_gpualloc_memset_0(node):
                 # force old broadcasting pattern; we must not change it here
                 new_out = tensor.patternbroadcast(new_out, old_bcast)
             return [new_out]
+
+
+@register_opt()
+@local_optimizer([GpuContiguous])
+def local_gpu_contiguous_gpu_contiguous(node):
+    """
+    gpu_contiguous(gpu_contiguous(x)) -> gpu_contiguous(x)
+
+    """
+    if isinstance(node.op, GpuContiguous):
+        inp = node.inputs[0]
+        if inp.owner and isinstance(inp.owner.op, GpuContiguous):
+            return [inp]
 
 
 @register_opt()

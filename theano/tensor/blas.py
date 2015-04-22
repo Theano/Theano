@@ -177,7 +177,8 @@ def default_blas_ldflags():
     # Now test it!
     x = theano.tensor.fmatrix()
     try:
-        theano.function([x], theano.tensor.blas._dot22(x,x))
+        theano.function([x], theano.tensor.blas._dot22(x,x),
+                        profile=False)
     except Exception as e:
         print e
         yield ""

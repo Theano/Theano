@@ -1108,7 +1108,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_code(self, node, name, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -1165,6 +1165,13 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
                          "dnll.shape[0] (%%ld) != y_idx.shape[0] (%%ld)",
                          (long int)%(dnll)s_dims0,
                          (long int)PyArray_DIMS(%(y_idx)s)[0]);
+            %(fail)s;
+        }
+        if (PyArray_DIMS(%(sm)s)[0] !=
+            PyArray_DIMS(%(y_idx)s)[0])
+        {
+            PyErr_SetString(PyExc_ValueError,
+                            "sm.shape[0] != y_idx.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)

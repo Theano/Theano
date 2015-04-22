@@ -295,7 +295,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
 
     def c_code_cache_version(self):
         # return ()
-        return (7,)
+        return (8,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -349,6 +349,13 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         {
             PyErr_SetString(PyExc_ValueError,
                             "dnll.shape[0] != y_idx.shape[0]");
+            %(fail)s;
+        }
+        if (PyGpuArray_DIMS(%(sm)s)[0] !=
+            PyGpuArray_DIMS(%(y_idx)s)[0])
+        {
+            PyErr_SetString(PyExc_ValueError,
+                            "sm.shape[0] != y_idx.shape[0]");
             %(fail)s;
         }
         if ((NULL == %(dx)s)

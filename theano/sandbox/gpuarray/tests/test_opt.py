@@ -7,6 +7,7 @@ from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests import test_basic
 
 import theano.sandbox.gpuarray
+from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor
 from ..basic_ops import (GpuAlloc, GpuReshape, gpu_alloc,
                          gpu_from_host, host_from_gpu)
@@ -46,6 +47,18 @@ def test_local_remove_all_assert():
     topo = f.maker.fgraph.toposort()
     a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
     assert len(a_op) == 1
+
+
+def test_local_gpu_contiguous_gpu_contiguous():
+    a = tensor.fmatrix()
+    o1 = basic_ops.gpu_contiguous(a)
+    o2 = basic_ops.gpu_contiguous(o1)
+    f1 = theano.function([a], o1, mode=mode_with_gpu)
+    f2 = theano.function([a], o2, mode=mode_with_gpu)
+    assert 1 == len([node for node in f1.maker.fgraph.toposort()
+                     if isinstance(node.op, basic_ops.GpuContiguous)])
+    assert 1 == len([node for node in f2.maker.fgraph.toposort()
+                     if isinstance(node.op, basic_ops.GpuContiguous)])
 
 
 def test_flatten():

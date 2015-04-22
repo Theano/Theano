@@ -635,7 +635,8 @@ class ModuleCache(object):
             self.stats[0] += 1
         return self.module_from_name[name]
 
-    def refresh(self, age_thresh_use=None, delete_if_problem=False, cleanup=True):
+    def refresh(self, age_thresh_use=None, delete_if_problem=False,
+                cleanup=True):
         """Update cache data by walking the cache directory structure.
 
         Load key.pkl files that have not been loaded yet.
@@ -691,7 +692,7 @@ class ModuleCache(object):
             files = os.listdir(root)
             if not files:
                 rmtree_empty(root, ignore_nocleanup=True,
-                       msg="empty dir")
+                             msg="empty dir")
                 continue
             if 'delete.me' in files:
                 rmtree(root, ignore_nocleanup=True,
