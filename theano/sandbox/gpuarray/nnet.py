@@ -352,7 +352,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
             %(fail)s;
         }
         if (PyGpuArray_DIMS(%(sm)s)[0] !=
-            PyGpuArray__DIMS(%(y_idx)s)[0])
+            PyGpuArray_DIMS(%(y_idx)s)[0])
         {
             PyErr_SetString(PyExc_ValueError,
                             "sm.shape[0] != y_idx.shape[0]");

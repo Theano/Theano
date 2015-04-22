@@ -7,7 +7,7 @@ from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests import test_basic
 
 import theano.sandbox.gpuarray
-from theano.sandbox.gpuarray import basic_ops
+from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor
 from ..basic_ops import (GpuAlloc, GpuReshape, gpu_alloc,
                          gpu_from_host, host_from_gpu)
