@@ -531,8 +531,7 @@ def local_gpua_softmaxwithbias(node):
 @op_lifter([theano.tensor.opt.Assert])
 def local_assert(node):
     if (node.inputs[0].owner and
-        isinstance(node.inputs[0].owner.op, HostFromGpu):
-
+            isinstance(node.inputs[0].owner.op, HostFromGpu)):
         return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0],
                                       *node.inputs[1:]))]
 
