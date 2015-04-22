@@ -1,6 +1,3 @@
-from theano import scalar
-
-
 def work_dtype(dtype):
     if dtype == 'float16':
         return 'float32'
