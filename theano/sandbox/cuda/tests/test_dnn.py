@@ -380,7 +380,6 @@ class TestDnnInferShapes(utt.InferShapeTester):
             numpy.random.rand(2, 1, 5, 6),
             dtype='float32'
         )
-        out_vals = numpy.zeros((3, 3, 1, 1), dtype='float32')
 
         for params in product(
             ['valid', 'full'],
