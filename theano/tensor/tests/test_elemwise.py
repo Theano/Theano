@@ -521,6 +521,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)
 
+    @attr('slow')
     def test_c_nan(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
@@ -568,6 +569,7 @@ class test_Prod(unittest.TestCase):
 
         self.mode = mode
 
+    @attr('slow')
     def test_verify_grad(self):
 
         # including zeros, as the case with zeros is important
@@ -624,6 +626,7 @@ class test_Prod(unittest.TestCase):
 
         #unittest_tools.verify_grad(fn5, [x_val])
 
+    @attr('slow')
     def test_prod_no_zeros_in_input(self):
         x = theano.tensor.dmatrix()
         x_val = numpy.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')

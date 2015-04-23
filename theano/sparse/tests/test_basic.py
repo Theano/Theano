@@ -1,6 +1,7 @@
 import time
 import unittest
 
+from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import numpy
 try:
@@ -2347,6 +2348,7 @@ class CastTester(utt.InferShapeTester):
                     utt.assert_allclose(expected, t_cls)
                     utt.assert_allclose(expected, t_prop)
 
+    @attr('slow')
     def test_infer_shape(self):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.all_dtypes:

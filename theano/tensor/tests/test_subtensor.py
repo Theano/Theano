@@ -1432,6 +1432,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
 
 
 class TestInferShape(utt.InferShapeTester):
+    @attr('slow')
     def test_infer_shape(self):
         # IncSubtensor
         admat = dmatrix()
