@@ -744,10 +744,9 @@ def general_toposort(r_out, deps, debug_print=False,
 
     """
     if compute_deps_cache is None:
-        assert deps_cache is None
         deps_cache = {}
 
-        def _deps(io):
+        def compute_deps_cache(io):
             if io not in deps_cache:
                 d = deps(io)
                 if d:
