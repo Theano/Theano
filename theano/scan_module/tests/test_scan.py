@@ -208,6 +208,11 @@ class T_Scan(unittest.TestCase):
         utt.seed_rng()
         super(T_Scan, self).setUp()
 
+    def scan_nodes_from_fct(self, fct):
+        nodes = fct.maker.fgraph.toposort()
+        scan_nodes = [n for n in nodes if isinstance(n.op, Scan)]
+        return scan_nodes
+
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
     @dec.knownfailureif(
@@ -4047,7 +4052,10 @@ class T_Scan(unittest.TestCase):
             # This used to raise an exception
             f = theano.function([W, v], out, mode=mode_with_opt)
             f(numpy.zeros((3, 3), dtype=theano.config.floatX), [1, 2])
-            scan_node = f.maker.fgraph.toposort()[-1]
+
+            scan_nodes = self.scan_nodes_from_fct(f)
+            assert len(scan_nodes) == 1
+            scan_node = scan_nodes[0]
 
             # The first input is the number of iteration.
             assert (len(scan_node.inputs[1:]) ==
@@ -4088,7 +4096,10 @@ class T_Scan(unittest.TestCase):
             f(numpy.zeros((3, 3), theano.config.floatX),
               [1, 2],
               numpy.zeros((3, 3), theano.config.floatX))
-            scan_node = f.maker.fgraph.toposort()[-1]
+
+            scan_nodes = self.scan_nodes_from_fct(f)
+            assert len(scan_nodes) == 1
+            scan_node = scan_nodes[0]
 
             # The first input is the number of iteration.
             assert (len(scan_node.inputs[1:]) ==
