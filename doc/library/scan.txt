@@ -368,8 +368,9 @@ Using shared variables - the strict flag
 You also have the possibility to use the ``strict`` flag. When set to true,
 Scan assumes that all the necessary shared variables in ``fn`` are passed as a
 part of ``non_sequences``. This has to be ensured by the user. Otherwise, it
-will result in an error. This avoids Scan Op calling any earlier (external) Op
-over and over, and speeds up the process.
+will result in an error. It avoids Scan Op calling any earlier (external) Op
+over and over. This results in a simpler computational graph, which speeds up
+the optimization and the execution.
 
 Here is a simple RRN example:
 
