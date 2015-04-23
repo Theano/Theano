@@ -1338,6 +1338,16 @@ class T_Scan(unittest.TestCase):
         # Test that scan can detect inconsistencies in the inner graph and
         # raises an appropriate exception.
 
+        # This test has not been extensively tested for Python 3 so it should
+        # be skipped if python version is >=3
+        version = sys.version_info
+        if version >= (3,):
+            raise SkipTest("This test relies on a pickled file produced with "
+                           "Python 2. The current python version "
+                           "(%i.%i.%i.%i) is >= 3 so the test will be "
+                           "skipped." % (version.major, version.minor,
+                           version.micro, version.serial))
+
         # The pickled scan op used in this test requires the use of a gpu
         from theano.sandbox import cuda
         if not cuda.cuda_available:
