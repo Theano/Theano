@@ -579,6 +579,9 @@ class PureOp(object):
             else:
                 return node.outputs
 
+    def __ne__(self, other):
+        return not (self == other)
+
     # Convenience so that subclass implementers don't have to import utils
     # just to self.add_tag_trace
     add_tag_trace = staticmethod(utils.add_tag_trace)
