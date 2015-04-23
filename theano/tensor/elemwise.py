@@ -870,6 +870,13 @@ class Elemwise(OpenMPOp):
             elif (not isinstance(variable, numpy.ndarray) or
                   variable.dtype != nout.dtype):
                 variable = numpy.asarray(variable, nout.dtype)
+                # The next line is needed for numpy 1.9. Otherwise
+                # there are tests that fail in DebugMode.
+                # Normally we would call theano.misc._asarray, but it
+                # is faster to inline the code. We know that the dtype
+                # are the same string, just different typenum.
+                if numpy.dtype(nout.dtype).num != variable.dtype.num:
+                    variable = variable.view(dtype=nout.dtype)
                 storage[0] = variable
             # numpy.real return a view!
             elif not variable.flags.owndata:
