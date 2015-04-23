@@ -60,9 +60,9 @@ print predict(D[0])
 theano.printing.pydotprint(predict,
                            outfile="pics/logreg_pydotprint_predic.png",
                            var_with_name_simple=True)
-theano.printing.pydotprint_variables(prediction,
-                           outfile="pics/logreg_pydotprint_prediction.png",
-                           var_with_name_simple=True)
+theano.printing.pydotprint(prediction,
+                          outfile="pics/logreg_pydotprint_prediction.png",
+                          var_with_name_simple=True)
 theano.printing.pydotprint(train,
                            outfile="pics/logreg_pydotprint_train.png",
                            var_with_name_simple=True)
