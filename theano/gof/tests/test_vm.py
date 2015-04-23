@@ -184,8 +184,10 @@ def test_allow_gc_cvm():
 
     f([1])
     n = list(f.maker.fgraph.apply_nodes)[0].outputs[0]
-    assert f.fn.storage_map[n][0] is None
-    assert f.fn.allow_gc is True
+    if f.fn.allow_gc is True:
+        assert f.fn.storage_map[n][0] is None
+    elif f.fn.allow_gc is False:
+        assert f.fn.storage_map[n][0] is not None
 
     f.fn.allow_gc = False
     assert f.fn.allow_gc is False
