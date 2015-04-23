@@ -368,12 +368,24 @@ def ensure_float(val, default, name):
     return val
 
 
-def do_merge_gpu_alloc_empty(node1, node2):
+def do_merge_gpu_alloc_empty(node1, node2, gpu_alloc_empty_index=2):
+    """This is used by some Op.do_merge().
+
+    It return True if node1 and node2 should be merged. This check
+    that both node have the same inputs except for one input at index
+    `gpu_alloc_empty_index`. At that index, we also accept that both
+    node have the output of an GpuAllocEmpty.
+
+    This is useful, as we do not merge GpuAllocEmpty, so we would not
+    merge nodes in that case.
+
+    """
     for n1_in, n2_in in zip(node1.inputs,
                             node2.inputs):
         if n1_in is n2_in:
             continue
-        if (n1_in is node1.inputs[2] and n2_in is node2.inputs[2]):
+        if (n1_in is node1.inputs[gpu_alloc_empty_index] and
+            n2_in is node2.inputs[gpu_alloc_empty_index]):
             if (not n1_in.owner or
                 not n2_in.owner or
                 not isinstance(n1_in.owner.op, GpuAllocEmpty) or

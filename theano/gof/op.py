@@ -659,17 +659,28 @@ class PureOp(object):
         return True
 
     def do_merge(self, node1, node2):
-        """This allow to disable the merge of nodes in the graph.
+        """This allow to test if we should merge node1 and node2 in the graph.
 
-        This is very rarely a good idea to disable it. Do not use if
-        you do not understand this small comment. You probably do not
-        need it.
+        You probably do not need it, so don't mess with this.
 
-        The way we find candidate merge is by checking common the
-        clients of inputs[0] for both node. If it isn't shared by
-        node1 and node2, they will not be merged.
+        This is very rarely a good idea to mess with this. Do not use
+        it. There is side effects if you disable the merge of some
+        nodes. This can cause a cascading effect (see dnn conv op for
+        an example related to GpuAllocEmpty).
+
+        The way we find candidate merge is by checking common clients
+        of inputs[0] for both node. If it isn't shared by node1 and
+        node2, they will not be merged.
+
+        :note: no need to compare node1.op and node2.op. This is done
+            by MergeOptimizer only when needed. Doing it here would
+            execute it more frequently then userful. This can be
+            relatively slow in some case like with Scan and the op are
+            equal.
 
         """
+        if len(node1.inputs) != len(node2.inputs):
+            return False
         inputs_match = all(node_in is cand_in
                            for node_in, cand_in in zip(node1.inputs,
                                                        node2.inputs))
