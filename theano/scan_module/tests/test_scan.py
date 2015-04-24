@@ -1337,6 +1337,32 @@ class T_Scan(unittest.TestCase):
         theano_v = my_f()
         utt.assert_allclose(theano_v, numpy_v[5:, :])
 
+    def test_inconsistent_inner_fct(self):
+        # Test that scan can detect inconsistencies in the inner graph and
+        # raises an appropriate exception.
+
+        # This test has not been extensively tested for Python 3 so it should
+        # be skipped if python version is >=3
+        version = sys.version_info
+        if version >= (3,):
+            raise SkipTest("This test relies on a pickled file produced with "
+                           "Python 2. The current python version "
+                           "(%i.%i.%i.%i) is >= 3 so the test will be "
+                           "skipped." % (version.major, version.minor,
+                           version.micro, version.serial))
+
+        # The pickled scan op used in this test requires the use of a gpu
+        from theano.sandbox import cuda
+        if not cuda.cuda_available:
+            raise SkipTest('Optional package cuda disabled')
+
+        # When unpickled, the scan op should perform validation on its inner
+        # graph, detect the inconsistencies and raise a TypeError
+        folder = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(folder, "inconsistent_scan.pkl")
+
+        assert_raises(TypeError, cPickle.load, open(path, "r"))
+
     def test_cuda_gibbs_chain(self):
         from theano.sandbox import cuda
         if not cuda.cuda_available:
