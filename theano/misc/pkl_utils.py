@@ -156,7 +156,6 @@ class PersistentCudaNdarrayID(PersistentNdarrayID):
         super(PersistentCudaNdarrayID, self).__init__(zip_file)
 
     def __call__(self, obj):
-        print 'try cuda'
         if (cuda_ndarray is not None and
                 type(obj) is cuda_ndarray.cuda_ndarray.CudaNdarray):
             print 'cuda'

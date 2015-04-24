@@ -5,6 +5,7 @@ import theano.sandbox.cuda as cuda_ndarray
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.var import CudaNdarraySharedVariable
+from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.misc.pkl_utils import dump, load
 
 if not cuda_ndarray.cuda_enabled:
@@ -23,3 +24,16 @@ def test_dump_load():
 
     assert x.name == 'x'
     assert_allclose(x.get_value(), [[1]])
+
+
+def test_dump_load_mrg():
+    rng = MRG_RandomStreams(use_cuda=True)
+
+    with open('test', 'w') as f:
+        dump(rng, f)
+
+    with open('test', 'r') as f:
+        rng = load(f)
+
+    assert type(rng) == MRG_RandomStreams
+
