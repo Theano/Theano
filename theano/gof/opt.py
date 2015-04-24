@@ -509,8 +509,6 @@ class MergeFeature(object):
         """Check if a node can be merged, and queue that replacement."""
         if node in self.nodes_seen:
             return
-        if not node.op.do_merge(node):
-            return
 
         # These asserts ensure that the fgraph has set the clients field
         # properly.
@@ -530,10 +528,10 @@ class MergeFeature(object):
             if len(node.inputs) != len(candidate.inputs):
                 continue
 
-            inputs_match = all(node_in is cand_in
-                               for node_in, cand_in in zip(node.inputs,
-                                                           candidate.inputs))
-            if inputs_match and node.op == candidate.op:
+            if node.op != candidate.op:
+                continue
+
+            if node.op.do_merge(node, candidate):
                 if (node, candidate) in self.blacklist:
                     # They were already tried, and there was an error
                     continue
@@ -602,14 +600,12 @@ class MergeOptimizer(Optimizer):
                 # destroyers.
                 node = pairs[0][0]
                 candidate = pairs[0][1]
+
                 if node.owner and candidate.owner:
                     node = node.owner
                     candidate = candidate.owner
-                    inputs_match = all(node_in is cand_in
-                                       for node_in, cand_in in zip(
-                                           node.inputs, candidate.inputs))
                     # No need to compare the op again, as it don't change.
-                    if not inputs_match:
+                    if not node.op.do_merge(node, candidate):
                         continue
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')

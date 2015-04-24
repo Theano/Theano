@@ -49,6 +49,48 @@ def test_dnn_conv_desc_merge():
     assert d1 != d2
 
 
+def test_dnn_conv_merge():
+    """This test that we merge correctly multiple dnn_conv.
+
+    This can is more difficult due to GpuEmptyAlloc that aren't
+    merged.
+
+    """
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img_shp = [2, 5, 6, 8]
+    kern_shp = [3, 5, 5, 6]
+    out_shp = [2, 3, 2, 3]
+    img = T.ftensor4('img')
+    kern = T.ftensor4('kern')
+    out = T.ftensor4('out')
+    desc = dnn.GpuDnnConvDesc(
+        border_mode='valid')(img.shape, kern.shape)
+
+    # Test forward op
+    o1 = dnn.dnn_conv(img, kern)
+    o2 = dnn.dnn_conv(img, kern)
+    f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
+    d1, d2 = f(numpy.random.rand(*img_shp).astype('float32'),
+               numpy.random.rand(*kern_shp).astype('float32'))
+    topo = f.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]) == 1
+
+    # Test grad w op
+    o1 = dnn.GpuDnnConvGradW()(img, kern, out, desc)
+    o2 = dnn.GpuDnnConvGradW()(img, kern, out, desc)
+    f = theano.function([img, kern, out], [o1, o2], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConvGradW)]) == 1
+
+    # Test grad i op
+    o1 = dnn.GpuDnnConvGradI()(img, kern, out, desc)
+    o2 = dnn.GpuDnnConvGradI()(img, kern, out, desc)
+    f = theano.function([img, kern, out], [o1, o2], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConvGradI)]) == 1
+
+
 def pool_2d_i2n(input, ds=(2, 2), strides=None,
                 pad=(0, 0),
                 pool_function=T.max, mode='ignore_borders'):
@@ -338,7 +380,6 @@ class TestDnnInferShapes(utt.InferShapeTester):
             numpy.random.rand(2, 1, 5, 6),
             dtype='float32'
         )
-        out_vals = numpy.zeros((3, 3, 1, 1), dtype='float32')
 
         for params in product(
             ['valid', 'full'],
@@ -500,7 +541,7 @@ def test_dnn_conv_border_mode():
     dnn.dnn_conv(img, kern, border_mode='valid')
 
 
-def test_dnn_conv_merge():
+def test_dnn_conv_alpha_output_merge():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img = T.ftensor4()

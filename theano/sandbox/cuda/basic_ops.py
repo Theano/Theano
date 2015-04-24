@@ -3267,7 +3267,15 @@ class GpuSplit(tensor.Split, GpuOp):
 
 
 class GpuAllocEmpty(GpuOp):
-    """Implement Alloc on the gpu, but without initializing memory."""
+    """Implement Alloc on the gpu, but without initializing memory.
+
+
+    If you use this op, be warning that this can cause duplicate
+    computation as it cause problems with Theano MergeOptimizer. All
+    op that have this as inputs should implement do_merge() to prevent
+    that problem.
+
+    """
     __props__ = ()
 
     @staticmethod
@@ -3299,7 +3307,7 @@ class GpuAllocEmpty(GpuOp):
             # XXX: We could implement and call CudaNdarray.empty(sh) instead.
             out[0] = cuda_ndarray.cuda_ndarray.CudaNdarray.zeros(sh)
 
-    def do_merge(self, node):
+    def do_merge(self, node1, node2):
         return False
 
     def c_code(self, node, name, inputs, out_, sub):
@@ -3354,8 +3362,8 @@ class GpuAlloc(GpuAllocEmpty):
     """
     __props__ = ('memset_0',)
 
-    def do_merge(self, node):
-        return True
+    def do_merge(self, node1, node2):
+        return Op.do_merge(self, node1, node2)
 
     def __init__(self, memset_0=False):
         self.memset_0 = memset_0
