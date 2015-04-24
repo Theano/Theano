@@ -167,7 +167,7 @@ class CURAND_Base(GpuOp):
         }
         for (int i = 0; i < %(ndim)s; ++i)
         {
-            odims[i] = ((npy_int32*)(PyArray_DATA(%(size)s) +
+            odims[i] = ((npy_int32*)(PyArray_BYTES(%(size)s) +
                         PyArray_STRIDES(%(size)s)[0] * i))[0];
             n_elements *= odims[i];
             must_alloc_sample = (must_alloc_sample
