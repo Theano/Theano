@@ -1171,10 +1171,10 @@ class Elemwise(OpenMPOp):
         return decl, checks, alloc, loop
 
     def c_code(self, node, nodename, inames, onames, sub):
-        if any(i.dtype == 'float16' for i in node.inputs or
-               o.dtype == 'float16' for o in node.inputs or
-               # This is for Composite
-               getattr(self.scalar_op, 'inner_float16', False)):
+        if (any(i.dtype == 'float16' for i in node.inputs) or
+                any(o.dtype == 'float16' for o in node.outputs) or
+                # This is for Composite
+                getattr(self.scalar_op, 'inner_float16', False)):
             # Disable C code for float16 vars
             super(Elemwise, self).c_code(node, nodename, inames, onames, sub)
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
@@ -1192,7 +1192,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [11]  # the version corresponding to the c code in this Op
+        version = [12]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
