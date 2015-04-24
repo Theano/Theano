@@ -237,11 +237,6 @@ class DownsampleFactorMax(Op):
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
-    def __str__(self):
-        return '%s{%s, %s, %s, %s, %s}' % (
-            self.__class__.__name__,
-            self.ds, self.st, self.ignore_border, self.padding, self.mode)
-
     def make_node(self, x):
         if x.type.ndim != 4:
             raise TypeError()
@@ -487,11 +482,6 @@ class DownsampleFactorMaxGrad(Op):
                 "DownsampleFactorMax mode parameter only support 'max',"
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
-
-    def __str__(self):
-        return '%s{%s, %s, %s, %s, %s}' % (
-            self.__class__.__name__,
-            self.ds, self.st, self.ignore_border, self.padding, self.mode)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -764,10 +754,6 @@ class DownsampleFactorMaxGradGrad(Op):
         if st is None:
             st = ds
         self.st = tuple(st)
-
-    def __str__(self):
-        return '%s{%s,%s,%s}' % (self.__class__.__name__,
-                                 self.ds, self.st, self.ignore_border)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
