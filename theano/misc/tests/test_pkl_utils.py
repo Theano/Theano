@@ -7,7 +7,7 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.var import CudaNdarraySharedVariable
 from theano.misc.pkl_utils import dump, load
 
-if not cuda_ndarray.cuda_available:
+if not cuda_ndarray.cuda_enabled:
     raise SkipTest('Optional package cuda disabled')
 
 
