@@ -427,7 +427,8 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
 
             if len(idx) == 0:
                 pass
-            elif y.ndim == x.ndim:
+            # if len(y) == 1, we need to broadcast it.
+            elif y.ndim == x.ndim and len(y) != 1:
                 assert len(y) == len(idx)
 
                 k = self.getInplElemwiseAdditionKernel(x[0], y[0])
