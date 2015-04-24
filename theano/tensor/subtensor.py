@@ -1923,12 +1923,15 @@ class AdvancedIncSubtensor1(Op):
         if y.ndim == x.ndim:
             if len(y) == 1:
                 # Allow broadcasting of y[0]
+                y_0 = y[0]
                 for i in idx:
-                    x[i] += y[0]
+                    x[i] += y_0
             else:
                 assert len(y) == len(idx)
-                for (j, i) in enumerate(idx):
+                j = 0
+                for i in idx:
                     x[i] += y[j]
+                    j += 1
         else:
             for i in idx:
                 x[i] += y
