@@ -63,9 +63,10 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
     :type padding: tuple of two ints
-    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad',
-        the operation executed on each window. The max always exclude the
-        padding in the computation of the max. For average, you have the choise.
+    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad'.
+        Operation executed on each window.  `max` always excludes the padding
+        in the computation. `average` gives you the choice to include or
+        exclude it.
     :type mode: string
     """
     if input.ndim < 2:
