@@ -32,7 +32,8 @@ class TestConv2d(unittest.TestCase):
         inputs = shared(inputs_val)
         filters = shared(filters_val)
         c_ref = conv_ref.conv2d(inputs, filters,
-                                border_mode="valid", subsample=subsample)
+                                border_mode="valid",
+                                subsample=subsample)
 
         c = conv.conv2d(inputs, filters,
                         border_mode="valid", subsample=subsample)
@@ -43,6 +44,7 @@ class TestConv2d(unittest.TestCase):
 
         res_ref = f_ref()
         res = f()
+        print res_ref.shape, res.shape
         utt.assert_allclose(res_ref, res)
         if verify_grad:
             utt.verify_grad(conv.Conv2d(border_mode="valid",
@@ -52,29 +54,35 @@ class TestConv2d(unittest.TestCase):
 
     def test_valid(self):
         mode = mode_with_gpu
-        if dnn_available():
-            self.run_conv(inputs_shape=(16, 1, 2, 2),
-                          filters_shape=(10, 1, 2, 2),
-                          verify_grad=False)
-            # self.run_conv(inputs_shape=(16, 1, 8, 8),
+       # if dnn_available():
+            # self.run_conv(inputs_shape=(16, 1, 2, 2),
             #               filters_shape=(10, 1, 2, 2),
-            #               subsample=(2, 2),
             #               verify_grad=False)
+            # # self.run_conv(inputs_shape=(16, 1, 8, 8),
+            # #               filters_shape=(10, 1, 2, 2),
+            # #               subsample=(2, 2),
+            # #               verify_grad=False)
             # self.run_conv(inputs_shape=(16, 1, 2, 2),
             #               filters_shape=(10, 1, 2, 2),
             #               verify_grad=True)
-            # self.run_conv(inputs_shape=(16, 1, 8, 8),
-            #               filters_shape=(10, 1, 2, 2),
-            #               subsample=(2, 2),
-            #               verify_grad=True)
+            # # self.run_conv(inputs_shape=(16, 1, 8, 8),
+            # #               filters_shape=(10, 1, 2, 2),
+            # #               subsample=(2, 2),
+            # #               verify_grad=True)
 
         mode = mode.excluding('cudnn')
         self.run_conv(inputs_shape=(16, 1, 2, 2),
                       filters_shape=(10, 1, 2, 2),
                       verify_grad=False, mode=mode)
+        self.run_conv(inputs_shape=(16, 1, 2, 2),
+                      filters_shape=(10, 1, 2, 2),
+                      subsample=(1, 1),
+                      verify_grad=True,mode=mode)
+
+
         # self.run_conv(inputs_shape=(16, 1, 8, 8),
-        #               filters_shape=(10, 1, 2, 2),
-        #               subsample=(2, 2),
+        #               filters_shape=(10, 1, 4, 4),
+        #                subsample=(2, 2),
         #               verify_grad=False,mode=mode)
         # self.run_conv(inputs_shape=(16, 1, 2, 2),
         #               filters_shape=(10, 1, 2, 2),

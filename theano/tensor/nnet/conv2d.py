@@ -110,7 +110,7 @@ def conv2d(img,
         filters = filters[:, :, ::-1, ::-1]
     ### FIXME input shape/kernel shape
     conv_op = Conv2d(imshp=input_shape, kshp=filter_shape, bsize=batch_size,
-                     border_mode="valid", subsample=subsample)
+                     border_mode=border_mode, subsample=subsample)
     return conv_op(img, filters)
 
 
@@ -354,15 +354,15 @@ def replace_conv_with_cudnn(convop, inputs):
                         direction_hint='forward')
         return rval
     if (isinstance(convop, Conv2d_gradWeights)):
-        rval = dnn_conv(inp1, inp2,
-                        border_mode=node.op.border_mode,
-                        subsample=node.op.subsample,
+        rval = dnn_conv(inp1.dimshuffle(1, 0, 2, 3), inp2,
+                        border_mode=convop.border_mode,
+                        subsample=convop.subsample,
                         direction_hint='bprop weights')
         return rval
     if (isinstance(convop, Conv2d_gradInputs)):
         rval = dnn_conv(inp1, inp2,
-                        border_mode=node.op.border_mode,
-                        subsample=node.op.subsample,
+                        border_mode=convop.border_mode,
+                        subsample=convop.subsample,
                         direction_hint='bprop inputs')
         return rval
 
@@ -428,7 +428,7 @@ def replace_convgradinputs_withcorrmm(convop, inputs):
     kern, topgrad, shape = inputs
     rval =  GpuCorrMM_gradInputs(border_mode=convop.border_mode,
     subsample=convop.subsample)(
-    gpu_contiguous(kern), gpu_contiguous(topgrad))
+        gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return rval
 
 
