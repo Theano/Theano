@@ -61,7 +61,6 @@ def test_dnn_conv_merge():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
-    out_shp = [2, 3, 2, 3]
     img = T.ftensor4('img')
     kern = T.ftensor4('kern')
     out = T.ftensor4('out')
@@ -101,7 +100,6 @@ def test_dnn_conv_inplace():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
-    out_shp = [2, 3, 2, 3]
     img = T.ftensor4('img')
     kern = T.ftensor4('kern')
     out = T.ftensor4('out')
