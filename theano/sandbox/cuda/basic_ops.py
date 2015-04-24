@@ -2639,7 +2639,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if (self.set_instead_of_inc) or \
@@ -2654,7 +2654,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         inplace = int(self.inplace)
 
         return """
-        PyObject *x_obj, *y_obj, *row_x, *row_y;
+        PyObject *row_x, *row_y;
         PyObject *x_rowind_obj, *y_rowind_obj;
         dtype_%(ind)s *p_index;
         int num_indices, j;
@@ -2675,9 +2675,6 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             Py_XINCREF(%(out)s);
         }
 
-        x_obj = (PyObject*)CudaNdarray_View(%(out)s);
-        y_obj = (PyObject*)CudaNdarray_View(%(y)s);
-
         for (j = 0;j < num_indices; j++) {
 
              p_index = (dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
@@ -2690,23 +2687,18 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                  // Dec Ref what ever we have increfed or allocated so far
                  // We deallocate objects exactly in the reverse order they were allocated.
                  Py_XDECREF(x_rowind_obj);
-                 Py_XDECREF(y_obj);
-                 Py_XDECREF(x_obj);
                  %(fail)s;
              }
 
              y_rowind_obj = PyInt_FromLong(j);
-
-             row_x = CudaNdarray_Subscript(x_obj, x_rowind_obj);
-             row_y = CudaNdarray_Subscript(y_obj, y_rowind_obj);
+             row_x = CudaNdarray_Subscript((PyObject*)%(out)s, x_rowind_obj);
+             row_y = CudaNdarray_Subscript(py_%(y)s, y_rowind_obj);
 
              if ((row_x == NULL) || (row_y == NULL)) {
                   Py_XDECREF(row_y);
                   Py_XDECREF(row_x);
                   Py_XDECREF(y_rowind_obj);
                   Py_XDECREF(x_rowind_obj);
-                  Py_XDECREF(y_obj);
-                  Py_XDECREF(x_obj);
                   %(fail)s;
              }
 
@@ -2716,8 +2708,6 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                  Py_XDECREF(row_x);
                  Py_XDECREF(y_rowind_obj);
                  Py_XDECREF(x_rowind_obj);
-                 Py_XDECREF(y_obj);
-                 Py_XDECREF(x_obj);
                  %(fail)s;
              }
 
@@ -2727,8 +2717,6 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
              Py_XDECREF(x_rowind_obj);
         }
 
-        Py_XDECREF(y_obj);
-        Py_XDECREF(x_obj);
 
         if (!%(out)s) {
             %(fail)s
