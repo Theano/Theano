@@ -655,16 +655,6 @@ class PureOp(object):
         """
         return True
 
-    def do_merge(self, node):
-        """This allow to disable the merge of ops in the graph.
-
-        This is very rarely a good idea to disable it. Do not use if
-        you do not understand this small comment. You probably do not
-        need it.
-
-        """
-        return True
-
 
 class Op(utils.object2, PureOp, CLinkerOp):
     """Convenience class to bundle `PureOp` and `CLinkerOp`"""

@@ -509,8 +509,6 @@ class MergeFeature(object):
         """Check if a node can be merged, and queue that replacement."""
         if node in self.nodes_seen:
             return
-        if not node.op.do_merge(node):
-            return
 
         # These asserts ensure that the fgraph has set the clients field
         # properly.
