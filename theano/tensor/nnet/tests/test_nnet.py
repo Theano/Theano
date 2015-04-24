@@ -1374,6 +1374,10 @@ class Test_softmax_opt:
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing
     # etc.
 
+def test_softmax():
+    from theano.tensor.nnet import softmax
+    
+    
 
 def test_stabilize_log_softmax():
     mode = theano.compile.mode.get_default_mode()

@@ -567,11 +567,14 @@ class Softmax(gof.Op):
     def c_code_cache_version():
         return (3,)
 
-softmax = Softmax()
+softmax_op = Softmax()
+
+def softmax_graph(c):
+    return tensor.exp(c) / tensor.exp(c).sum(axis=1, keepdims=True)
 
 
 @opt.register_specialize('fast_compile_gpu')
-@gof.local_optimizer([softmax])
+@gof.local_optimizer([softmax_op])
 def local_softmax_with_bias(node):
     """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
     """
