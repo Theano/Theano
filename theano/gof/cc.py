@@ -1441,6 +1441,7 @@ class CLinker(link.Linker):
         loaded module.
 
         """
+
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.get_dynamic_module()
@@ -1478,7 +1479,7 @@ class CLinker(link.Linker):
             try:
                 module = c_compiler.compile_str(
                     module_name=mod.code_hash,
-                    src_code=src_code,
+                    src_code=mod.code(),
                     location=location,
                     include_dirs=self.header_dirs(),
                     lib_dirs=self.lib_dirs(),
@@ -1496,7 +1497,7 @@ class CLinker(link.Linker):
                     mod_exec.add_include(header)
                     mod_exec.add_include(filename_h)
                     mod_exec.add_support_code(main)
-                    
+
                     # Put the command line in the header code so that
                     # other people know how to recompile the shared lib
                     mod_exec.add_header_code(
@@ -1512,7 +1513,7 @@ class CLinker(link.Linker):
 
                     # Make the executable link to the shared lib.
                     preargs.append(os.path.join(location, mod.code_hash + "." +
-                                   cmodule.get_lib_extension()))
+                                                cmodule.get_lib_extension()))
 
                     # Put the command line in the header code so that
                     # other people know how to recompile the executable
@@ -1557,10 +1558,11 @@ class CLinker(link.Linker):
                         manifest = os.path.join(location, "py_dll.manifest")
                         exec_f = os.path.join(location, "exec.exe")
                         call_subprocess_Popen('"' + mt + '"' +
-                            " -inputresource:" + py_dll + ";#2 -out:" + manifest)
+                                            " -inputresource:" + py_dll + ";#2 -out:" + manifest)
                         call_subprocess_Popen('"' + mt + '"' +
                             " -manifest " + manifest +
                             " -outputresource:" + exec_f)
+
             except Exception, e:
                 e.args += (str(self.fgraph),)
                 raise
