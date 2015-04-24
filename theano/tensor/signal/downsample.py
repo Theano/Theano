@@ -102,9 +102,8 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
 
 class DownsampleFactorMax(Op):
     """For N-dimensional tensors, consider that the last two
-    dimensions span images.  This Op downsamples these images by a
-    factor ds, by taking the max over non- overlapping rectangular
-    regions.
+    dimensions span images.  This Op downsamples these images by
+    taking the max or average over different patch.
 
     """
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
@@ -188,7 +187,9 @@ class DownsampleFactorMax(Op):
 
     def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
                  mode='max'):
-        """:param ds: downsample factor over rows and column.
+        """ Take the max or average or different input patches.
+
+        :param ds: downsample factor over rows and column.
                    ds indicates the pool region size.
         :type ds: list or tuple of two ints
 
@@ -282,7 +283,7 @@ class DownsampleFactorMax(Op):
         func = numpy.max
         if self.mode != 'max':
             func = numpy.average
-        # max pooling
+
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
