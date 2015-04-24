@@ -1056,8 +1056,20 @@ class ModuleCache(object):
             return module
 
         with compilelock.lock_ctx(keep_lock=keep_lock):
-            # Maybe somebody else compiled it for us while we
-            # where waiting for the lock. Try to load it again
+            # 1) Maybe somebody else compiled it for us while we
+            #    where waiting for the lock. Try to load it again.
+            # 2) If other repo that import Theano have Theano ops defined,
+            #    we need to refresh the cache here. Otherwise, there are import
+            #    order problems.
+            #    When device=gpu, we compile during Theano
+            #    import. This triggers the loading of the cache. But
+            #    unpickling the cache asks that the external Ops are
+            #    completly loaded, which isn't always the case!
+            #    If a module isn't completly loaded and its unpickling
+            #    fails, it means it is safe for this function
+            #    compilation to skip them, but not for future
+            #    compilations. So reloading the cache here
+            #    compilation fixes this problem. (we could do that only once)
             self.refresh(cleanup=False)
 
             module = self._get_from_key(key)
