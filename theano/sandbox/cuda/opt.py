@@ -5,6 +5,7 @@ import copy
 import sys
 import time
 import warnings
+import pdb
 
 import numpy
 
@@ -446,7 +447,7 @@ def local_gpu_dot_to_dot22(node):
     return False
 
 
-@local_optimizer([gpu_from_host, host_from_gpu])
+@local_optimizer([None])
 def local_assert_no_cpu_op(node):
     if not isinstance(node.op, GpuOp) and all([var.owner and isinstance(var.owner.op,
         HostFromGpu) for var in node.inputs]) and all([var.owner and
@@ -457,10 +458,10 @@ def local_assert_no_cpu_op(node):
             elif config.assert_no_cpu_op == "raise":
                 raise RuntimeError("The op %s is on CPU." % node)
             elif config.assert_no_cpu_op == "pdb":
-                import ipdb; ipdb.set_trace()
+                pdb.set_trace()
     return None
 
-if config.assert_no_cpu_op != "ignore" and config.assert_no_cpu_op:
+if config.assert_no_cpu_op != "ignore":
     register_opt()(local_assert_no_cpu_op)
 
 
