@@ -47,8 +47,9 @@ class TestConv2d(unittest.TestCase):
         print res_ref.shape, res.shape
         utt.assert_allclose(res_ref, res)
         if verify_grad:
-            utt.verify_grad(conv.Conv2d(border_mode="valid",
-                                        subsample=subsample), [inputs_val, filters_val])
+            utt.verify_grad(conv.AbstractConv2d(border_mode="valid",
+                                                subsample=subsample),
+                            [inputs_val, filters_val])
 
 
 

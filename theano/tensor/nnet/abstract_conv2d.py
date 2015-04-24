@@ -103,8 +103,10 @@ def conv2d(img,
     if (filter_flip):
         filters = filters[:, :, ::-1, ::-1]
     ### FIXME input shape/kernel shape
-    conv_op = Conv2d(imshp=input_shape, kshp=filter_shape, bsize=batch_size,
-                     border_mode=border_mode, subsample=subsample)
+    conv_op = AbstractConv2d(imshp=input_shape, kshp=filter_shape,
+                             bsize=batch_size,
+                             border_mode=border_mode,
+                             subsample=subsample)
     return conv_op(img, filters)
 
 
@@ -195,7 +197,7 @@ class AbstractConv2d(BaseAbstractConv2d):
                        kern.broadcastable[0],
                        False, False]
         output = img.type.__class__(dtype=img.type.dtype,
-                                    broadcastable=broadcastable)
+                                    broadcastable=broadcastable)()
         return Apply(self, [img, kern], [output])
 
     def perform(self, node, inp, out_):
@@ -420,8 +422,8 @@ def local_conv2d_cudnn(node):
         inp1, inp2 = node.inputs
         shape = None
 
-    if not isinstance(inp1, CudaNdarrayType) or \
-            isinstance(inp2, CudaNdarrayType):
+    if not isinstance(inp1.type, CudaNdarrayType) or \
+            not isinstance(inp2.type, CudaNdarrayType):
         return None
     if not dnn_available():
         return None
@@ -430,28 +432,30 @@ def local_conv2d_cudnn(node):
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='forward')
-        return rval
+        return [rval]
     if (isinstance(node.op, AbstractConv2d_gradWeights)):
         rval = dnn_conv(inp1.dimshuffle(1, 0, 2, 3), inp2,
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='bprop weights')
-        return rval
+        return [rval]
     if (isinstance(node.op, AbstractConv2d_gradInputs)):
         rval = dnn_conv(inp1, inp2,
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='bprop inputs')
-        return rval
+        return [rval]
 register_specialize_device(local_conv2d_cudnn)
 
 
 @local_optimizer([AbstractConv2d])
-def local_conv2d_corrmm(convop, inputs):
+def local_conv2d_corrmm(node):
 
     img, kern = node.inputs
-    if not isinstance(img, CudaNdarrayType) or \
-            isinstance(kern, CudaNdarrayType):
+    if not isinstance(img.type, CudaNdarrayType) or \
+            not isinstance(kern.type, CudaNdarrayType):
+        print 'here', img.type, kern.type
+        print isinstance(img, CudaNdarrayType), isinstance(kern, CudaNdarrayType)
         return None
 
     if node.op.border_mode in ['full', 'valid']:
@@ -500,33 +504,33 @@ def local_conv2d_corrmm(convop, inputs):
             # call GpuCorrMM_gradInputs
             rval = GpuCorrMM_gradInputs('valid', subsample)(
                     gpu_contiguous(kern), gpu_contiguous(img))
-        return rval
+        return [rval]
 register_specialize_device(local_conv2d_corrmm)
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_corrmm(node):
 
     img, topgrad, shape = node.inputs
-    if not isinstance(img, CudaNdarrayType) or \
-            isinstance(topgrad, CudaNdarrayType):
+    if not isinstance(img.type, CudaNdarrayType) or \
+            not isinstance(topgrad.type, CudaNdarrayType):
         return None
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
     subsample=node.op.subsample)(
     gpu_contiguous(img), gpu_contiguous(topgrad), shape)
-    return rval
+    return [rval]
 register_specialize_device(local_conv2d_gradweight_corrmm)
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_corrmm(node):
 
     kern, topgrad, shape = node.inputs
-    if not isinstance(img, CudaNdarrayType) or \
-            isinstance(topgrad, CudaNdarrayType):
+    if not isinstance(img.type, CudaNdarrayType) or \
+            not isinstance(topgrad.type, CudaNdarrayType):
         return None
     rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
     subsample=node.op.subsample)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
-    return rval
+    return [rval]
 register_specialize_device(local_conv2d_gradinputs_corrmm)
 
 
