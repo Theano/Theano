@@ -36,4 +36,3 @@ def test_dump_load_mrg():
         rng = load(f)
 
     assert type(rng) == MRG_RandomStreams
-

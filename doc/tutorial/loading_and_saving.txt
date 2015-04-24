@@ -118,9 +118,18 @@ Robust Serialization
 ====================
 
 This type of serialization internally uses pickling but extracts values of all
-shared variables and saves it as numpy arrays. So it may be very hard to
-deserialize objects on a different version of Theano. It is useful when you
-would like to resume an experiment on a different kind of hardware.
+arrays (`CudaNdarray`, `ndarray`) and saves it as numpy arrays. So it may be
+very hard to deserialize objects on a different version of Theano.
+But tt is useful when you would like to resume an experiment on a different
+kind of hardware.
+
+Another use case of this type of serialization is to use parameters for another
+model after pretraining, fixing bugs or minor changes in it. You can still
+load the parameters manually with `numpy`:
+
+.. code-block:: python
+
+    numpy.load('model.zip')
 
 .. autofunction:: theano.misc.pkl_utils.dump
 
