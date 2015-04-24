@@ -177,17 +177,16 @@ def test_pooling():
                         for node in fg.maker.fgraph.toposort()])
             g_out = fg(data)
 
-            if True:
-                # Compare again the CPU result
-                out = max_pool_2d(x, (ws, ws),
-                                  padding=pad,
-                                  ignore_border=True, mode=mode)
-                fc = theano.function([x], theano.grad(out.sum(), x),
-                                     mode=mode_without_gpu)
-                assert any([isinstance(node.op, DownsampleFactorMaxGrad)
-                            for node in fc.maker.fgraph.toposort()])
-                c_out = fc(data)
-                assert numpy.allclose(c_out, g_out)
+            # Compare again the CPU result
+            out = max_pool_2d(x, (ws, ws),
+                              padding=pad,
+                              ignore_border=True, mode=mode)
+            fc = theano.function([x], theano.grad(out.sum(), x),
+                                 mode=mode_without_gpu)
+            assert any([isinstance(node.op, DownsampleFactorMaxGrad)
+                        for node in fc.maker.fgraph.toposort()])
+            c_out = fc(data)
+            assert numpy.allclose(c_out, g_out)
 
 
 def test_pooling_opt():
