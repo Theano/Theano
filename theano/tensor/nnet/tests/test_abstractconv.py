@@ -7,7 +7,7 @@ from theano.tests import unittest_tools as utt
 
 from nose.plugins.skip import SkipTest
 import theano.tensor.nnet.conv as conv_ref
-import theano.tensor.nnet.conv2d as conv
+import theano.tensor.nnet.abstract_conv2d as conv
 from theano.sandbox.cuda import float32_shared_constructor as shared
 
 if theano.config.mode == 'FAST_COMPILE':
