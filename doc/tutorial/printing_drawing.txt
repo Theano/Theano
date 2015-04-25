@@ -74,7 +74,7 @@ The following output depicts the pre- and post- compilation graphs.
     if any([x.op.__class__.__name__ in ['Gemv', 'CGemv'] for x in
             train.maker.fgraph.toposort()]):
         print 'Used the cpu'
-    elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
+    elif any([x.op.__class__.__name__ == 'GpuGemv' for x in
              train.maker.fgraph.toposort()]):
         print 'Used the gpu'
     else:
