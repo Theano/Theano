@@ -92,17 +92,23 @@ def test_local_gpu_contiguous_gpu_contiguous():
 
 
 def test_local_assert_no_cpu_op():
+    #opt.assert_no_cpu_op = "raise"
     numpy.random.seed(1)
-    m = np.random.uniform(-1, 1, (10, 10)).astype("float32")
+    m = numpy.random.uniform(-1, 1, (10, 10)).astype("float32")
     ms = theano.shared(m, name="m_shared")
     z = ms**2 + 3
-    mode_local_assert = mode_with_gpu.including("local_assert_no_cpu_op")
-    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
 
-    f = theano.function([], z, mode=mode_local_assert)
-    topo = f.maker.fgraph.toposort()
-    a_op = [n for n in topo if not isinstance(n.op, cuda.GpuElemwise)]
-    assert len(a_op) == 3
+    def perform_assert_no_cpu_test(out, flag="ignore"):
+
+        mode_local_assert = mode_with_gpu.including("local_assert_no_cpu_op")
+        mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
+        #If the flag is raise
+        try:
+            mode_local_assert = \
+                    mode_local_assert.including("assert_no_cpu_op='%s'" % flag)
+            f = theano.function([], out, mode=mode_local_assert)
+        except Exception as expt:
+            #If the flag is ignore
 
 
 def test_int_pow():

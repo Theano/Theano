@@ -447,7 +447,7 @@ def local_gpu_dot_to_dot22(node):
     return False
 
 
-@local_optimizer([None])
+@local_optimizer([theano.gof.Op])
 def local_assert_no_cpu_op(node):
     if not isinstance(node.op, GpuOp) and all([var.owner and isinstance(var.owner.op,
         HostFromGpu) for var in node.inputs]) and all([var.owner and
@@ -461,8 +461,10 @@ def local_assert_no_cpu_op(node):
                 pdb.set_trace()
     return None
 
-if config.assert_no_cpu_op != "ignore":
-    register_opt()(local_assert_no_cpu_op)
+#Register the local_assert_no_cpu_op:
+assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op, name='assert_no_cpu_op')
+# 48.7 is after specialize device
+theano.compile.optdb.register('assert_no_cpu_op', assert_no_cpu_op, 48.7)
 
 
 @register_opt()
