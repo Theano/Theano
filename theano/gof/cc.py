@@ -1748,7 +1748,7 @@ class CLinker(link.Linker):
             PyObject* %(name)s_value = PyArray_Newshape(
                 (PyArrayObject*) %(name)s_data,
                 &%(name)s_newshape,
-                PyArray_CORDER);
+                NPY_CORDER);
             PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
             %(name)s_value = NULL;
             """ % locals()
