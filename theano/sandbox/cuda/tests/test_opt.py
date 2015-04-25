@@ -96,7 +96,7 @@ def test_local_assert_no_cpu_op():
     m = np.random.uniform(-1, 1, (10, 10)).astype("float32")
     ms = theano.shared(m, name="m_shared")
     z = ms**2 + 3
-    mode_local_assert = mode.including("local_assert_no_cpu_op")
+    mode_local_assert = mode_with_gpu.including("local_assert_no_cpu_op")
     mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
 
     f = theano.function([], z, mode=mode_local_assert)
