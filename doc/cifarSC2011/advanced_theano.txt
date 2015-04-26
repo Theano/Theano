@@ -304,6 +304,8 @@ Consider the following logistic regression model:
 >>> train = theano.function(inputs=[x,y], outputs=[prediction, xent], updates=[[w, w-0.01*gw], [b, b-0.01*gb]], name = "train")
 >>> predict = theano.function(inputs=[x], outputs=prediction, name = "predict")
 
+We will now make use of Theano's printing features to compare the unoptimized
+graph (``prediction``) to the optimized graph (``predict``).
 
 - Pretty Printing
 
@@ -313,6 +315,8 @@ TensorConstant{0.5})'
 
 
 - Debug Print
+
+The graph before optimization:
 
 >>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
     Elemwise{gt,no_inplace} [@A] ''
@@ -333,6 +337,8 @@ TensorConstant{0.5})'
     |DimShuffle{x} [@O] ''
       |TensorConstant{0.5} [@P]
 
+The graph after optimization:
+
 >>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
     Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
      |CGemv{inplace} [@B] ''   3
@@ -352,17 +358,23 @@ TensorConstant{0.5})'
 - Picture Printing of Graphs
 ``pydotprint`` requires graphviz and pydot.
 
+The graph before optimization:
+
 >>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
 The output file is available at pics/logreg_pydotprint_prediction.png
 
 .. image:: ./pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
+The graph after optimization:
+
 >>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
 The output file is available at pics/logreg_pydotprint_predict.png
 
 .. image:: ./pics/logreg_pydotprint_predict.png
    :width: 800 px
+
+The optimized training graph:
 
 >>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
 The output file is available at pics/logreg_pydotprint_train.png

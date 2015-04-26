@@ -159,12 +159,14 @@ as we apply it. Consider the following example of optimization:
 >>> f = theano.function([a], b)        # compile function
 >>> print f([0, 1, 2])                 # prints `array([0,2,1026])`
 [    0.     2.  1026.]
+>>> theano.printing.pydotprint(b, outfile="./pics/symbolic_graph_unopt.png", var_with_name_simple=True)
+The output file is available at ./pics/symbolic_graph_unopt.png
 >>> theano.printing.pydotprint(f, outfile="./pics/symbolic_graph_opt.png", var_with_name_simple=True)
 The output file is available at ./pics/symbolic_graph_opt.png
 
 
-.. |g1| image:: ../hpcs2011_tutorial/pics/f_unoptimized.png
-    :width: 300 px
+.. |g1| image:: ./pics/symbolic_graph_unopt.png
+    :width: 500 px
 
 .. |g2| image:: ./pics/symbolic_graph_opt.png
     :width: 500 px
