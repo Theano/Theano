@@ -18,10 +18,10 @@ def test_dump_load():
     x = CudaNdarraySharedVariable('x', CudaNdarrayType((1, 1), name='x'),
                                   [[1]], False)
 
-    with open('test', 'w') as f:
+    with open('test', 'wb') as f:
         dump(x, f)
 
-    with open('test', 'r') as f:
+    with open('test', 'rb') as f:
         x = load(f)
 
     assert x.name == 'x'
@@ -34,10 +34,10 @@ def test_dump_load_mrg():
 
     rng = MRG_RandomStreams(use_cuda=True)
 
-    with open('test', 'w') as f:
+    with open('test', 'wb') as f:
         dump(rng, f)
 
-    with open('test', 'r') as f:
+    with open('test', 'rb') as f:
         rng = load(f)
 
     assert type(rng) == MRG_RandomStreams

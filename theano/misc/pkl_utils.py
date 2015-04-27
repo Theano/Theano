@@ -136,7 +136,7 @@ class PersistentNdarrayID(object):
 
     def _resolve_name(self, obj):
         """Determine the name the object should be saved under."""
-        name = 'array_{}'.format(self.count)
+        name = 'array_{0}'.format(self.count)
         self.count += 1
         return name
 
@@ -147,7 +147,7 @@ class PersistentNdarrayID(object):
                     numpy.lib.format.write_array(f, obj)
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
-                self.seen[id(obj)] = 'ndarray.{}'.format(name)
+                self.seen[id(obj)] = 'ndarray.{0}'.format(name)
             return self.seen[id(obj)]
 
 
@@ -164,7 +164,7 @@ class PersistentCudaNdarrayID(PersistentNdarrayID):
                     numpy.lib.format.write_array(f, numpy.asarray(obj))
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
-                self.seen[id(obj)] = 'cuda_ndarray.{}'.format(name)
+                self.seen[id(obj)] = 'cuda_ndarray.{0}'.format(name)
             return self.seen[id(obj)]
         super(PersistentCudaNdarrayID, self).__call__(obj)
 
@@ -206,8 +206,8 @@ class PersistentSharedVariableID(PersistentCudaNdarrayID):
             if count:
                 if not self.allow_duplicates:
                     raise ValueError("multiple shared variables with the name "
-                                     "`{}` found".format(name))
-                name = '{}_{}'.format(name, count + 1)
+                                     "`{0}` found".format(name))
+                name = '{0}_{1}'.format(name, count + 1)
             self.name_counter[name] += 1
             return name
         return super(PersistentSharedVariableID, self)._resolve_name(obj)
@@ -219,7 +219,7 @@ class PersistentSharedVariableID(PersistentCudaNdarrayID):
                     ValueError("can't pickle shared variable with name `pkl`")
                 self.ndarray_names[id(obj.container.storage[0])] = obj.name
             elif not self.allow_unnamed:
-                raise ValueError("unnamed shared variable, {}".format(obj))
+                raise ValueError("unnamed shared variable, {0}".format(obj))
         return super(PersistentSharedVariableID, self).__call__(obj)
 
 
@@ -296,7 +296,7 @@ def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
     array(2)
 
     """
-    with closing(zipfile.ZipFile(file_handler, 'w', zipfile.ZIP_DEFLATED,
+    with closing(zipfile.ZipFile(file_handler, 'wb', zipfile.ZIP_DEFLATED,
                                  allowZip64=True)) as zip_file:
         def func(f):
             p = pickle.Pickler(f, protocol=protocol)
@@ -317,7 +317,7 @@ def load(f, persistent_load=PersistentNdarrayLoad):
     :type persistent_load: callable, optional
 
     """
-    with closing(zipfile.ZipFile(f, 'r')) as zip_file:
+    with closing(zipfile.ZipFile(f, 'rb')) as zip_file:
         p = pickle.Unpickler(StringIO(zip_file.open('pkl').read()))
         p.persistent_load = persistent_load(zip_file)
         return p.load()
