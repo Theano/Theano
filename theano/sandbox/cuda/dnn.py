@@ -721,7 +721,8 @@ class GpuDnnPoolDesc(GpuOp):
 
     :param ws: windows size
     :param stride: (dx, dy)
-    :param mode: 'max' or 'average'
+    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad'
+        The old deprecated name 'average' correspond to 'average_inc_pad'
     :param pad: (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
@@ -744,7 +745,9 @@ class GpuDnnPoolDesc(GpuOp):
         return False
 
     def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
-        assert mode in ('max', 'average')
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
         assert len(ws) == 2
         self.ws = ws
@@ -772,8 +775,12 @@ class GpuDnnPoolDesc(GpuOp):
 
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
-        elif self.mode == "average":
+        elif self.mode == "average_inc_pad":
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            if version() == -1:
+                raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
 
@@ -1194,7 +1201,8 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     :param img: images to do the pooling over
     :param ws: subsampling window size
     :param stride: subsampling stride (default: (1, 1))
-    :param mode: one of 'max', 'average' (default: 'max')
+    :param mode: one of 'max', 'average_inc_pad' or 'average_exc_pad
+        (default: 'max')
     :param pad: (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
@@ -1625,7 +1633,7 @@ if True:
 
     @register_opt('cudnn')
     @local_optimizer([DownsampleFactorMax])
-    def local_pool_dnn_stride(node):
+    def local_pool_dnn_alternative(node):
         if not dnn_available():
             return
         if isinstance(node.op, DownsampleFactorMax):
@@ -1635,9 +1643,10 @@ if True:
             ds = node.op.ds
             stride = node.op.st
             pad = node.op.padding
+            mode = node.op.mode
             if (img.owner and isinstance(img.owner.op, HostFromGpu)):
                 ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                               ds, stride=stride, pad=pad)
+                               ds, stride=stride, pad=pad, mode=mode)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -1667,12 +1676,13 @@ if True:
             ds = node.op.ds
             st = node.op.st
             pad = node.op.padding
+            mode = node.op.mode
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode="max", pad=pad)()
+                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
                 if not node.op.ignore_border:
                     return
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
