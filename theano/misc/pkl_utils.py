@@ -341,3 +341,5 @@ def zipadd(func, zip_file, name):
         func(temp_file)
         temp_file.close()
         zip_file.write(temp_file.name, arcname=name)
+    if os.path.isfile(temp_file.name):
+        os.remove(temp_file.name)
