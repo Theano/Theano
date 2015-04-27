@@ -12,6 +12,7 @@ from theano.sandbox.neighbours import images2neibs
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
+from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -47,6 +48,99 @@ def test_dnn_conv_desc_merge():
 
     # This will be the case if they are merged, which would be bad.
     assert d1 != d2
+
+
+def test_dnn_conv_merge():
+    """This test that we merge correctly multiple dnn_conv.
+
+    This can is more difficult due to GpuEmptyAlloc that aren't
+    merged.
+
+    """
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img_shp = [2, 5, 6, 8]
+    kern_shp = [3, 5, 5, 6]
+    img = T.ftensor4('img')
+    kern = T.ftensor4('kern')
+    out = T.ftensor4('out')
+    desc = dnn.GpuDnnConvDesc(
+        border_mode='valid')(img.shape, kern.shape)
+
+    # Test forward op
+    o1 = dnn.dnn_conv(img, kern)
+    o2 = dnn.dnn_conv(img, kern)
+    f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
+    d1, d2 = f(numpy.random.rand(*img_shp).astype('float32'),
+               numpy.random.rand(*kern_shp).astype('float32'))
+    topo = f.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]) == 1
+
+    # Test grad w op
+    o1 = dnn.GpuDnnConvGradW()(img, kern, out, desc)
+    o2 = dnn.GpuDnnConvGradW()(img, kern, out, desc)
+    f = theano.function([img, kern, out], [o1, o2], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConvGradW)]) == 1
+
+    # Test grad i op
+    o1 = dnn.GpuDnnConvGradI()(img, kern, out, desc)
+    o2 = dnn.GpuDnnConvGradI()(img, kern, out, desc)
+    f = theano.function([img, kern, out], [o1, o2], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConvGradI)]) == 1
+
+
+def test_dnn_conv_inplace():
+    """This test that we have inplace work correctly even when
+    GpuAllocEmpty get merged together.
+
+    """
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img_shp = [2, 5, 6, 8]
+    kern_shp = [3, 5, 5, 6]
+    img = T.ftensor4('img')
+    kern = T.ftensor4('kern')
+    out = T.ftensor4('out')
+    desc1 = dnn.GpuDnnConvDesc(border_mode='valid', conv_mode='conv')(
+        img.shape, kern.shape)
+    desc2 = dnn.GpuDnnConvDesc(
+        border_mode='valid', conv_mode='cross')(img.shape, kern.shape)
+
+    # Test forward op
+    o1 = dnn.dnn_conv(img, kern, conv_mode='conv')
+    o2 = dnn.dnn_conv(img, kern, conv_mode='cross')
+    f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
+    d1, d2 = f(numpy.random.rand(*img_shp).astype('float32'),
+               numpy.random.rand(*kern_shp).astype('float32'))
+    topo = f.maker.fgraph.toposort()
+    convs = [n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]
+    assert len(convs) == 2
+    assert all([node.op.inplace for node in convs])
+    assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
+
+    # Test grad w op
+    out = gpu_alloc_empty(*kern.shape)
+    o1 = dnn.GpuDnnConvGradW()(img, kern, out, desc1)
+    o2 = dnn.GpuDnnConvGradW()(img, kern, out, desc2)
+    f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    convs = [n for n in topo if isinstance(n.op, dnn.GpuDnnConvGradW)]
+    assert len(convs) == 2
+    assert all([node.op.inplace for node in convs])
+    assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
+
+    # Test grad i op
+    out = gpu_alloc_empty(*img.shape)
+    o1 = dnn.GpuDnnConvGradI()(img, kern, out, desc1)
+    o2 = dnn.GpuDnnConvGradI()(img, kern, out, desc2)
+    f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    convs = [n for n in topo if isinstance(n.op, dnn.GpuDnnConvGradI)]
+    assert len(convs) == 2
+    assert all([node.op.inplace for node in convs])
+    assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
 
 
 def pool_2d_i2n(input, ds=(2, 2), strides=None,
@@ -338,7 +432,6 @@ class TestDnnInferShapes(utt.InferShapeTester):
             numpy.random.rand(2, 1, 5, 6),
             dtype='float32'
         )
-        out_vals = numpy.zeros((3, 3, 1, 1), dtype='float32')
 
         for params in product(
             ['valid', 'full'],
@@ -500,7 +593,7 @@ def test_dnn_conv_border_mode():
     dnn.dnn_conv(img, kern, border_mode='valid')
 
 
-def test_dnn_conv_merge():
+def test_dnn_conv_alpha_output_merge():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img = T.ftensor4()
