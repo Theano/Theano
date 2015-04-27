@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes, choose, Choose
+        swapaxes, choose, Choose, NoneConst,
         )
 
 from theano.tests import unittest_tools as utt
@@ -2722,6 +2722,7 @@ class T_max_and_argmax(unittest.TestCase):
         n = as_tensor_variable(data)
         for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
                                  ([0, 1], None), ([1, 0], None),
+                                 (NoneConst.clone(), None),
                                  (constant(0), 0)]:
             v, i = eval_outputs(max_and_argmax(n, axis))
             assert i.dtype == 'int64'

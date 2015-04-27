@@ -1238,7 +1238,7 @@ class MaxAndArgmax(Op):
                     axis = range(x.type.ndim)
                 assert axis == range(x.type.ndim), (
                     "MaxAndArgmax does not support multiple"
-                    " axes. the max fct supports it.")
+                    " axes. the max fct supports it. Got %s" % axis)
                 axis = None
             else:
                 axis = axis[0]
@@ -1248,11 +1248,15 @@ class MaxAndArgmax(Op):
         elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
             axis = int(axis)
         elif isinstance(axis, Variable):
-            if not isinstance(axis, TensorConstant):
-                raise TypeError("MaxAndArgmax needs a constant axis")
-            assert (axis.dtype.startswith("int")
-                    or axis.dtype.startswith("uint"))
-            axis = int(axis.data)
+            if NoneConst.equals(axis):
+                axis = None
+            elif not isinstance(axis, TensorConstant):
+                raise TypeError(
+                    "MaxAndArgmax needs a constant axis. Got %s" % axis)
+            else:
+                assert (axis.dtype.startswith("int")
+                        or axis.dtype.startswith("uint"))
+                axis = int(axis.data)
         # we make the axis all positive to make the infer_shape work
         # with negative axis
         if x.type.ndim > 0 and axis is not None:
