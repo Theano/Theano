@@ -254,7 +254,9 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                        img.broadcastable[0],
                        False, False]
         output = img.type.__class__(dtype=img.type.dtype,
-                                    broadcastable=broadcastable)
+                                    broadcastable=broadcastable)()
+        output.owner = None
+        #print output.type.owner
         return Apply(self, [img, topgrad] + height_width, [output])
 
     def perform(self, node, inp, out_):
@@ -313,11 +315,11 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                          kern.type.broadcastable[1],
                          False, False]
         output = kern.type.__class__(dtype=kern.type.dtype,
-                                     broadcastable=broadcastable)
+                                     broadcastable=broadcastable)()
         return Apply(self, [kern, topgrad] + height_width, [output])
 
 
-    def perform(self, node, nodename, inp, out_, sub):
+    def perform(self, node, nodename, inp, out_):
         raise NotImplementedError('AbstractConv2d_gradWeight theano optimization failed')
 
     def grad(self, inp, grads):
@@ -510,7 +512,11 @@ register_specialize_device(local_conv2d_corrmm)
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_corrmm(node):
 
-    img, topgrad, shape = node.inputs
+    if len(node.inputs) == 3:
+        img, topgrad, shape = node.inputs
+    else:
+        img, topgrad = node.inputs
+        shape = None
     if not isinstance(img.type, CudaNdarrayType) or \
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
@@ -522,9 +528,12 @@ register_specialize_device(local_conv2d_gradweight_corrmm)
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_corrmm(node):
-
-    kern, topgrad, shape = node.inputs
-    if not isinstance(img.type, CudaNdarrayType) or \
+    if len(node.inputs) == 3:
+        kern, topgrad, shape = node.inputs
+    else:
+        kern, topgrad = node.inputs
+        shape = None
+    if not isinstance(kern.type, CudaNdarrayType) or \
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
     rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
