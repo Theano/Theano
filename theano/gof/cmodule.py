@@ -2096,13 +2096,14 @@ class GCC_compiler(Compiler):
             lib_dirs.append(python_lib)
 
         cpp_filename = os.path.join(location, code_filename)
+
         if shared:
             assert out_filename is None
             out_filename = os.path.join(location, '%s.%s' %
                                         (module_name, get_lib_extension()))
 
             _logger.debug('Generating shared lib %s', out_filename)
-            cmd = ['g++', get_gcc_shared_library_arg(), '-g']
+            cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
         else:
             assert not py_module
             if out_filename is None:
@@ -2110,7 +2111,7 @@ class GCC_compiler(Compiler):
             else:
                 out_filename = os.path.join(location, out_filename)
             _logger.debug('Generating exec %s', out_filename)
-            cmd = ['g++', '-g']
+            cmd = [theano.config.cxx, '-g']
 
         if config.cmodule.remove_gxx_opt:
             cmd.extend(p for p in preargs if not p.startswith('-O'))

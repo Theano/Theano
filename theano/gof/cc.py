@@ -269,7 +269,7 @@ def struct_gen(args, struct_builders, blocks, sub):
     # 1-element lists and __ERROR is a 3-elements list.
 
     struct_code = """
-    namespace {
+
     struct %(name)s {
         PyObject* __ERROR;
 
@@ -301,7 +301,6 @@ def struct_gen(args, struct_builders, blocks, sub):
             %(behavior)s
             %(do_return)s
         }
-    }
     """ % sub
 
     return struct_code, run_code
