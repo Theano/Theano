@@ -46,12 +46,12 @@ def test_dump_load_mrg():
 def test_dump_zip_names():
     foo_1 = theano.shared(0, name='foo')
     foo_2 = theano.shared(1, name='foo')
-    with open('model.zip', 'w') as f:
+    with open('model.zip', 'wb') as f:
         dump((foo_1, foo_2, numpy.array(2)), f)
     keys = numpy.load('model.zip').keys()
     assert keys == ['foo', 'foo_2', 'array_0', 'pkl']
     foo = numpy.load('model.zip')['foo']
     assert foo == numpy.array(0)
-    with open('model.zip') as f:
+    with open('model.zip', 'rb') as f:
         foo_1, foo_2, array = load(f)
     assert array == numpy.array(2)

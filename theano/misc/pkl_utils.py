@@ -5,6 +5,7 @@ These pickled graphs can be used, for instance, as cases for
 unit tests or regression tests.
 """
 import numpy
+import os
 import pickle
 import sys
 import tempfile
@@ -13,7 +14,7 @@ import warnings
 from collections import defaultdict
 from contextlib import closing
 from pickle import HIGHEST_PROTOCOL
-from theano.compat.six import StringIO
+from theano.compat.six import BytesIO
 try:
     from pickle import DEFAULT_PROTOCOL
 except ImportError:
@@ -296,7 +297,7 @@ def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
     array(2)
 
     """
-    with closing(zipfile.ZipFile(file_handler, 'wb', zipfile.ZIP_DEFLATED,
+    with closing(zipfile.ZipFile(file_handler, 'w', zipfile.ZIP_DEFLATED,
                                  allowZip64=True)) as zip_file:
         def func(f):
             p = pickle.Pickler(f, protocol=protocol)
@@ -317,8 +318,8 @@ def load(f, persistent_load=PersistentNdarrayLoad):
     :type persistent_load: callable, optional
 
     """
-    with closing(zipfile.ZipFile(f, 'rb')) as zip_file:
-        p = pickle.Unpickler(StringIO(zip_file.open('pkl').read()))
+    with closing(zipfile.ZipFile(f, 'r')) as zip_file:
+        p = pickle.Unpickler(BytesIO(zip_file.open('pkl').read()))
         p.persistent_load = persistent_load(zip_file)
         return p.load()
 
