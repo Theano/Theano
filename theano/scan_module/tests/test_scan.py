@@ -1372,7 +1372,7 @@ class T_Scan(unittest.TestCase):
         if not cuda.cuda_available:
             raise SkipTest('Optional package cuda disabled')
 
-        rs = theano.sandbox.rng_mrg.MRG_RandomStreams()
+        rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
         output, _ = theano.scan(lambda : rs.uniform((3,)), n_steps=3)
         cPickle.loads(cPickle.dumps(output))
 
