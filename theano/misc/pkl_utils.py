@@ -159,7 +159,6 @@ class PersistentCudaNdarrayID(PersistentNdarrayID):
     def __call__(self, obj):
         if (cuda_ndarray is not None and
                 type(obj) is cuda_ndarray.cuda_ndarray.CudaNdarray):
-            print 'cuda'
             if id(obj) not in self.seen:
                 def write_array(f):
                     numpy.lib.format.write_array(f, numpy.asarray(obj))
