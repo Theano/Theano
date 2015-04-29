@@ -10,9 +10,7 @@ except ImportError:
 from theano import tensor, scalar, gof
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB,
-                        SequenceDB, ProxyDB,
-                        Optimizer, toolbox,
-                        InconsistencyError, EquilibriumOptimizer)
+                        SequenceDB, Optimizer, toolbox)
 
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
@@ -28,10 +26,8 @@ from .conv import GpuConv
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
                    GpuSoftmaxWithBias, GpuSoftmax)
-from .elemwise import (GpuElemwise, _is_scalar,
-                       GpuDimShuffle, GpuCAReduceCuda,
+from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY)
-from . import fp16_help
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
@@ -135,7 +131,7 @@ class InputToGpuOptimizer(Optimizer):
                 new_input = host_from_gpu(gpu_from_host(input))
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
-            except TypeError as e:
+            except TypeError:
                 # This could fail if the inputs are not TensorTypes
                 pass
 
@@ -200,8 +196,8 @@ def local_gpualloc_memset_0(node):
     if isinstance(node.op, GpuAlloc) and not node.op.memset_0:
         inp = node.inputs[0]
         if (isinstance(inp, GpuArrayConstant) and
-            inp.data.size == 1 and
-            (numpy.asarray(inp.data) == 0).all()):
+                inp.data.size == 1 and
+                (numpy.asarray(inp.data) == 0).all()):
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             return [new_out]
 
@@ -345,7 +341,7 @@ def local_gpua_join(node):
 def local_gpuajoin_1(node):
     # join of a single element
     if (isinstance(node.op, GpuJoin) and
-        len(node.inputs) == 2):
+            len(node.inputs) == 2):
         return [node.inputs[1]]
 
 
@@ -362,13 +358,13 @@ def local_gpua_subtensor(node):
     if (x.owner and isinstance(x.owner.op, HostFromGpu)):
         gpu_x = x.owner.inputs[0]
         if (gpu_x.owner and
-            isinstance(gpu_x.owner.op, GpuFromHost) and
-            # And it is a shared var or an input of the graph.
-            not gpu_x.owner.inputs[0].owner):
+                isinstance(gpu_x.owner.op, GpuFromHost) and
+                # And it is a shared var or an input of the graph.
+                not gpu_x.owner.inputs[0].owner):
             if len(x.clients) == 1:
                 if any([n == 'output' or any([isinstance(v.type, GpuArrayType)
                                               for v in n.inputs + n.outputs])
-                        for n, _  in node.outputs[0].clients]):
+                        for n, _ in node.outputs[0].clients]):
                     return
                 else:
                     return [host_from_gpu(gpu_from_host(node.outputs[0]))]
@@ -393,7 +389,6 @@ def local_gpua_advanced_incsubtensor(node):
         return None
 
     x, y = node.inputs[0:2]
-    coords = node.inputs[2:]
     set_instead_of_inc = node.op.set_instead_of_inc
     active_device_no = theano.sandbox.cuda.active_device_number()
     device_properties = theano.sandbox.cuda.device_properties
@@ -431,7 +426,7 @@ def local_gpua_careduce(node):
         # We need to have the make node called, otherwise the mask can
         # be None
         if (op is GpuCAReduceCPY or
-            gvar.owner.op.supports_c_code([gpu_from_host(x)])):
+                gvar.owner.op.supports_c_code([gpu_from_host(x)])):
             return greduce
         else:
             # Try to make a simpler pattern based on reshaping
@@ -575,7 +570,7 @@ def local_gpu_conv(node):
                       version=op.version,
                       verbose=op.verbose,
                       imshp=op.imshp,
-        )
+                      )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
@@ -635,15 +630,14 @@ def local_gpu_conv(node):
 def local_gpu_elemwise_careduce(node):
     """ Merge some GpuCAReduceCuda and GPUElemwise"""
     if (isinstance(node.op, GpuCAReduceCuda) and
-        node.op.pre_scalar_op is None and
-        node.inputs[0].owner and
-        isinstance(node.inputs[0].owner.op, GpuElemwise) and
-        # The Op support all scalar with 1 inputs.  We don't
-        # automatically add more case, as some like trigonometic
-        # operation with some reduction pattern will probably result
-        # to slow down.
-        isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)
-        ):
+            node.op.pre_scalar_op is None and
+            node.inputs[0].owner and
+            isinstance(node.inputs[0].owner.op, GpuElemwise) and
+            # The Op support all scalar with 1 inputs.  We don't
+            # automatically add more case, as some like trigonometic
+            # operation with some reduction pattern will probably result
+            # to slow down.
+            isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
         return [GpuCAReduceCuda(scalar_op=op.scalar_op,
