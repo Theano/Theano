@@ -50,10 +50,8 @@ class IntegerDivisionError(Exception):
 
 
 def upcast(dtype, *dtypes):
-    # Should we try to keep float32 instead of float64? This is used so that
-    # for instance mixing int64 with float32 yields float32 instead of float64.
-    # Note that we store this boolean as a one-element list so that it can be
-    # modified within `make_array`.
+    # This tries to keep data in floatX or lower precision, unless we
+    # explicitely request a higher precision datatype.
     keep_float32 = [(config.cast_policy == 'numpy+floatX' and
                      config.floatX == 'float32')]
     keep_float16 = [(config.cast_policy == 'numpy+floatX' and
