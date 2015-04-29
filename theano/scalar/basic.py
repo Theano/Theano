@@ -3308,8 +3308,8 @@ class Composite(ScalarOp):
                         raise ValueError(
                             "All orphans in the fgraph to Composite must"
                             " be Constant instances.")
-            elif any(i.dtype == 'float16' for i in var.owner.inputs or
-                     o.dtype == 'float16' for o in var.owner.outputs):
+            elif (any(i.dtype == 'float16' for i in var.owner.inputs) or
+                      any(o.dtype == 'float16' for o in var.owner.outputs):
                 # flag for elemwise ops to check.
                 self.inner_float16 = True
 
