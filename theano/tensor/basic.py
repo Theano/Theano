@@ -2523,7 +2523,7 @@ class Alloc(gof.Op):
             new_order = list(x.broadcastable)
             idx = 0
             for i in range(x.ndim):
-                if not new_order[i]:
+                if i not in axis_broadcasted:
                     new_order[i] = idx
                     idx += 1
                 else:
