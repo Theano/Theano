@@ -20,17 +20,16 @@ Currently, information regarding shape is used in two ways in Theano:
 
   Example:
 
-  .. code-block:: python
-
-     import theano
-     x = theano.tensor.matrix('x')
-     f = theano.function([x], (x ** 2).shape)
-     theano.printing.debugprint(f)
-     #MakeVector [@43860304] ''   2
-     # |Shape_i{0} [@43424912] ''   1
-     # | |x [@43423568]
-     # |Shape_i{1} [@43797968] ''   0
-     # | |x [@43423568]
+>>> import theano
+>>> x = theano.tensor.matrix('x')
+>>> f = theano.function([x], (x ** 2).shape)
+>>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
+MakeVector [@A] ''   2
+ |Shape_i{0} [@B] ''   1
+ | |x [@C]
+ |Shape_i{1} [@D] ''   0
+   |x [@C]
+    
 
 The output of this compiled function does not contain any multiplication
 or power. Theano has removed them to compute directly the shape of the
@@ -42,48 +41,37 @@ Shape Inference Problem
 Theano propagates information about shape in the graph. Sometimes this
 can lead to errors. Consider this example:
 
-.. code-block:: python
+>>> import numpy
+>>> import theano
+>>> x = theano.tensor.matrix('x')
+>>> y = theano.tensor.matrix('y')
+>>> z = theano.tensor.join(0, x, y)
+>>> xv = numpy.random.rand(5, 4)
+>>> yv = numpy.random.rand(3, 3)
 
-   import numpy
-   import theano
-   x = theano.tensor.matrix('x')
-   y = theano.tensor.matrix('y')
-   z = theano.tensor.join(0, x, y)
-   xv = numpy.random.rand(5, 4)
-   yv = numpy.random.rand(3, 3)
+>>> f = theano.function([x,y], z.shape)
+>>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
+MakeVector [@A] ''   4
+ |Elemwise{Add}[(0, 0)] [@B] ''   3
+ | |Shape_i{0} [@C] ''   1
+ | | |x [@D]
+ | |Shape_i{0} [@E] ''   2
+ |   |y [@F]
+ |Shape_i{1} [@G] ''   0
+   |x [@D]
 
-   f = theano.function([x,y], z.shape)
-   theano.printing.debugprint(f)
-   #MakeVector [@23910032] ''   4
-   # |Elemwise{Add{output_types_preference=transfer_type{0}}}[(0, 0)] [@24055120] ''   3
-   # | |Shape_i{0} [@23154000] ''   1
-   # | | |x [@23151760]
-   # | |Shape_i{0} [@23593040] ''   2
-   # | | |y [@23151888]
-   # |Shape_i{1} [@23531152] ''   0
-   # | |x [@23151760]
+print f(xv,yv)# DOES NOT RAISE AN ERROR AS SHOULD BE.
+[8, 4]
 
-   #MakeVector [@56338064] ''   4
-   # |Elemwise{Add{output_types_preference=transfer_type{0}}}[(0, 0)] [@56483152] ''   3
-   # | |Shape_i{0} [@55586128] ''   1
-   # | | |<TensorType(float64, matrix)> [@55583888]
-   # | |Shape_i{0} [@56021072] ''   2
-   # | | |<TensorType(float64, matrix)> [@55584016]
-   # |Shape_i{1} [@55959184] ''   0
-   # | |<TensorType(float64, matrix)> [@55583888]
+>>> f = theano.function([x,y], z)# Do not take the shape.
+>>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
+Join [@A] ''   0
+ |TensorConstant{0} [@B]
+ |x [@C]
+ |y [@D]
 
-   print f(xv,yv)# DOES NOT RAISE AN ERROR AS SHOULD BE.
-   #[8,4]
-
-   f = theano.function([x,y], z)# Do not take the shape.
-   theano.printing.debugprint(f)
-   #Join [@44540496] ''   0
-   # |0 [@44540432]
-   # |x [@44540240]
-   # |y [@44540304]
-
-   f(xv,yv)
-   # Raises a dimensions mismatch error.
+>>> f(xv,yv) # doctest: +SKIP
+>>> # Raises a dimensions mismatch error.
 
 As you can see, when asking only for the shape of some computation (``join`` in the
 example), an inferred shape is computed directly, without executing
@@ -125,14 +113,14 @@ upgrade.  Here is the current state of what can be done:
   graph. This allows to perform some optimizations. In the following example,
   this makes it possible to precompute the Theano function to a constant.
 
-.. code-block:: python
 
-   import theano
-   x = theano.tensor.matrix()
-   x_specify_shape = theano.tensor.specify_shape(x, (2, 2))
-   f = theano.function([x], (x_specify_shape ** 2).shape)
-   theano.printing.debugprint(f)
-   # [2 2] [@72791376]
+>>> import theano
+>>> x = theano.tensor.matrix()
+>>> x_specify_shape = theano.tensor.specify_shape(x, (2, 2))
+>>> f = theano.function([x], (x_specify_shape ** 2).shape)
+>>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
+DeepCopyOp [@A] ''   0
+ |TensorConstant{(2,) of 2} [@B]
 
 Future Plans
 ============
