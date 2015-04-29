@@ -25,15 +25,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     """
     nin = 3
     nout = 3
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
+    _f16_ok = True
 
     def make_node(self, x, b, y_idx):
         # N.B. won't work when we don't cast y_idx to float anymore
@@ -282,21 +275,12 @@ gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1Ho
 class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
+
+    Gradient wrt x of the CrossentropySoftmax1Hot Op
     """
     nin = 3
     nout = 1
-    """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
-    def __init__(self, **kwargs):
-        Op.__init__(self, **kwargs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, dnll, sm, y_idx):
         dnll = as_gpuarray_variable(dnll)

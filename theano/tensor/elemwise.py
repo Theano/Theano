@@ -95,6 +95,7 @@ class DimShuffle(Op):
     transpose function.
     Adding, subtracting dimensions can be done with reshape.
     """
+    _f16_ok = True
 
     check_input = False
 

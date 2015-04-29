@@ -187,11 +187,8 @@ class GpuKernelBase(object):
 
 
 class HostFromGpu(Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
+    _f16_ok = True
 
     def __str__(self):
         return 'HostFromGpu(gpuarray)'
@@ -270,11 +267,8 @@ host_from_gpu = HostFromGpu()
 
 
 class GpuFromHost(Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
+    _f16_ok = True
 
     def __str__(self):
         return 'GpuFromHost(gpuarray)'
@@ -574,17 +568,14 @@ cuda_from_gpu = CudaFromGpu()
 
 
 class GpuAlloc(HideC, Alloc):
+    __props__ = ('memset_0',)
+    _f16_ok = True
+
     def __init__(self, memset_0=False):
         """memset_0 is only an optimized version. True, it mean the
         value is always 0, so the c code call memset as it is faster.
         """
         self.memset_0 = memset_0
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.memset_0 == other.memset_0
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.memset_0)
 
     def __str__(self):
         # Hide the memset parameter when not used to prevent confusion.
@@ -729,24 +720,16 @@ class GpuContiguous(Op):
     Always return a c contiguous output. Copy the input only if it is
     not already c contiguous.
     """
+    __props__ = ()
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    _f16_ok = True
 
     def grad(self, inputs, dout):
-
         x, = inputs
         dout, = dout
         dout = as_gpuarray_variable(dout)
 
         return [dout]
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, input):
         input = as_gpuarray_variable(input)
@@ -795,6 +778,8 @@ class GpuReshape(HideC, tensor.Reshape):
     """
     Implement Reshape on the gpu.
     """
+    _f16_ok = True
+
     # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
         x = as_gpuarray_variable(x)
@@ -832,6 +817,8 @@ class GpuReshape(HideC, tensor.Reshape):
 
 
 class GpuJoin(HideC, Join):
+    _f16_ok = True
+
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
@@ -890,6 +877,7 @@ class GpuSplit(HideC, Split):
 
 class GpuEye(GpuKernelBase, Op):
     __props__ = ('dtype',)
+    _f16_ok = True
 
     def __init__(self, dtype=None):
         if dtype is None:

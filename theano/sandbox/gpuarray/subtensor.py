@@ -21,6 +21,8 @@ from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
+    _fp16_ok = True
+
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
