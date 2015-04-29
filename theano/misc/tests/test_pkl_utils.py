@@ -29,10 +29,7 @@ def test_dump_load():
 
 
 def test_dump_load_mrg():
-    if not cuda_ndarray.cuda_enabled:
-        raise SkipTest('Optional package cuda disabled')
-
-    rng = MRG_RandomStreams(use_cuda=True)
+    rng = MRG_RandomStreams(use_cuda=cuda_ndarray.cuda_enabled)
 
     with open('test', 'wb') as f:
         dump(rng, f)
