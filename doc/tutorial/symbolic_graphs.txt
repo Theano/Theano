@@ -64,10 +64,9 @@ The graph can be traversed starting from outputs (the result of some
 computation) down to its inputs using the owner field.
 Take for example the following code:
 
-.. code-block:: python
-
-    x = T.dmatrix('x')
-    y = x * 2.
+>>> import theano
+>>> x = theano.tensor.dmatrix('x')
+>>> y = x * 2.
 
 If you enter ``type(y.owner)`` you get ``<class 'theano.gof.graph.Apply'>``, 
 which is the apply node that connects the op and the inputs to get this
@@ -85,20 +84,20 @@ multiplication is done between the inputs:
 >>> y.owner.inputs[0]
 x
 >>> y.owner.inputs[1]
-InplaceDimShuffle{x,x}.0
+DimShuffle{x,x}.0
 
 Note that the second input is not 2 as we would have expected. This is 
 because 2 was first :term:`broadcasted <broadcasting>` to a matrix of 
 same shape as *x*. This is done by using the op ``DimShuffle`` :
 
 >>> type(y.owner.inputs[1])
-<class 'theano.tensor.basic.TensorVariable'>
+<class 'theano.tensor.var.TensorVariable'>
 >>> type(y.owner.inputs[1].owner)
 <class 'theano.gof.graph.Apply'>
->>> y.owner.inputs[1].owner.op
-<class 'theano.tensor.elemwise.DimShuffle object at 0x14675f0'>
+>>> y.owner.inputs[1].owner.op # doctest: +SKIP
+<theano.tensor.elemwise.DimShuffle object at 0x106fcaf10>
 >>> y.owner.inputs[1].owner.inputs
-[2.0]
+[TensorConstant{2.0}]
 
 
 Starting from this graph structure it is easier to understand how 
@@ -159,10 +158,25 @@ as we apply it. Consider the following example of optimization:
 >>> b = a + a ** 10                    # build symbolic expression
 >>> f = theano.function([a], b)        # compile function
 >>> print f([0, 1, 2])                 # prints `array([0,2,1026])`
+[    0.     2.  1026.]
+>>> theano.printing.pydotprint(b, outfile="./pics/symbolic_graph_unopt.png", var_with_name_simple=True)
+The output file is available at ./pics/symbolic_graph_unopt.png
+>>> theano.printing.pydotprint(f, outfile="./pics/symbolic_graph_opt.png", var_with_name_simple=True)
+The output file is available at ./pics/symbolic_graph_opt.png
 
+
+.. |g1| image:: ./pics/symbolic_graph_unopt.png
+    :width: 500 px
+
+.. |g2| image:: ./pics/symbolic_graph_opt.png
+    :width: 500 px
+
+We used :func:`theano.printing.pydotprint` to visualize the optimized graph
+(right), which is much more compact than the unoptimized graph (left).
 
 ======================================================  =====================================================
         Unoptimized graph                                    Optimized graph
 ======================================================  =====================================================
-.. image:: ../hpcs2011_tutorial/pics/f_unoptimized.png   .. image:: ../hpcs2011_tutorial/pics/f_optimized.png
+|g1|                                                    |g2|
 ======================================================  =====================================================
+
