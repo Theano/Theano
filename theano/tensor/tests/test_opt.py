@@ -1558,9 +1558,7 @@ def test_log_add():
         f([10000], [10000])  # causes overflow if handled incorrectly
         assert numpy.allclose(f([10000], [10000]), 20000)
     except AssertionError:
-        raise SkipTest("Not yet implemented")
-        # log(add(exp)) is not stabilized when adding 
-        # more than 2 elements, see #623
+        raise SkipTest("log(add(exp)) is not stabilized when adding more than 2 elements, see #623")
 
     # TODO: test that the optimization works in the presence of broadcasting.
 
@@ -4026,9 +4024,8 @@ def test_constant_get_stabilized():
         assert f() == 800, f()
 
     except (AssertionError, theano.compile.debugmode.InvalidValueError):
-        raise SkipTest("Not yet implemented")
-        # Theano optimizes constant before stabilization.
-        # This breaks stabilization optimization in some cases. See #504.
+        raise SkipTest('Theano optimizes constant before stabilization.'
+            'This breaks stabilization optimization in some cases. See #504.')
 
 
 class T_local_switch_sink(unittest.TestCase):
@@ -4285,8 +4282,8 @@ class T_local_erfc(unittest.TestCase):
             0].op.scalar_op.fgraph.apply_nodes) == 22, len(f.maker.fgraph.toposort()[0].fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes)
         # TODO: fix this problem
         if theano.config.floatX == "float32" and theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
-            raise SkipTest("Not yet implemented")
-            # The python code upcast somewhere internally some value of float32 to python float for part of its computation. That make that the c and python code don't generate the same value. You can ignore this error.
+            raise SkipTest('The python code upcast somewhere internally some value of float32 to python float for part of its computation.'
+                'That make that the c and python code dont generate the same value. You can ignore this error.')
         assert all(numpy.isfinite(f(val)))
 
     def test_local_grad_log_erfc_neg(self):

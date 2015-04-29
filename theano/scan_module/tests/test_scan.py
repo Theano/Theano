@@ -24,8 +24,6 @@ import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3, OrderedDict
 
-from numpy.testing.noseclasses import KnownFailureTest
-
 
 '''
   Questions and notes about scan that should be answered :
@@ -3273,9 +3271,7 @@ class T_Scan(unittest.TestCase):
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
-        raise SkipTest("Not yet implemented")
-        # This tests depends on an optimization for scan
-        # that has not been implemented yet.
+        raise SkipTest("This tests depends on an optimization for scan that has not been implemented yet.")
         W1 = tensor.matrix()
         W2 = tensor.matrix()
         h0 = tensor.vector()
@@ -3502,9 +3498,7 @@ class T_Scan(unittest.TestCase):
         assert out == 24
 
     def test_infershape_seq_shorter_nsteps(self):
-        raise SkipTest("Not yet implemented")
-        # This is a generic problem with infershape
-        # that has to be discussed and figured out
+        raise SkipTest("This is a generic problem with infershape that has to be discussed and figured out")
         x = tensor.vector('x')
         [o1, o2], _ = theano.scan(lambda x, y: (x + 1, y + x),
                          sequences=x,

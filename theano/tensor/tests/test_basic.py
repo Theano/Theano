@@ -16,7 +16,6 @@ from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
-from numpy.testing.noseclasses import KnownFailureTest
 from distutils.version import LooseVersion
 
 import theano
@@ -6118,12 +6117,10 @@ class test_arithmetic_cast(unittest.TestCase):
                                     theano_dtype == 'complex128' and
                                     numpy_dtype == 'complex64'):
                                     # In numpy 1.6.x adding a complex128 with
-                                    # a float32 may result in a complex64. This
-                                    # may be a bug (investigation is currently
-                                    # in progress), so in the meantime we just
-                                    # mark this test as a known failure.
-                                    raise SkipTest("Not yet implemented")
-                                    # Known issue with numpy >= 1.6.x see #761'
+                                    # a float32 may result in a complex64. As
+                                    # of 1.9.2. this is still the case so it is
+                                    # probably by design
+                                    raise SkipTest("Known issue with numpy >= 1.6.x see #761")
                                 # In any other situation: something wrong is
                                 # going on!
                                 assert False

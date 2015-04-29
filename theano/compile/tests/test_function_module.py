@@ -17,7 +17,6 @@ from theano import tensor as T
 import theano
 
 import numpy as N
-from numpy.testing.noseclasses import KnownFailureTest
 
 PatternOptimizer = lambda p1, p2, ign=True: gof.OpKeyOptimizer(gof.PatternSub(p1, p2), ignore_newtrees=ign)
 
