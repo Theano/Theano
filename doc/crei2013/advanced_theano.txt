@@ -53,7 +53,7 @@ Conditions
 IfElse Op spend less time (about an half) than Switch since it computes only
 one variable instead of both.
 
->>> python ifelse_switch.py
+>>> python ifelse_switch.py # doctest: +SKIP
 time spent evaluating both values 0.230000 sec
 time spent evaluating one value 0.120000 sec
 
@@ -108,66 +108,121 @@ Exercise 5
 - Is there something we can do to speed up the GPU version?
 
 
+
 Printing/Drawing Theano graphs
 ------------------------------
 
-- Pretty Printing
+Consider the following logistic regression model:
 
-``theano.printing.pprint(variable)``
+>>> import numpy
+>>> import theano
+>>> import theano.tensor as T
+>>> rng = numpy.random
+>>> # Training data
+>>> N = 400
+>>> feats = 784
+>>> D = (rng.randn(N, feats).astype(theano.config.floatX), rng.randint(size=N,low=0, high=2).astype(theano.config.floatX))
+>>> training_steps = 10000
+>>> # Declare Theano symbolic variables
+>>> x = T.matrix("x")
+>>> y = T.vector("y")
+>>> w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
+>>> b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+>>> x.tag.test_value = D[0]
+>>> y.tag.test_value = D[1]
+>>> # Construct Theano expression graph
+>>> p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
+>>> prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
+>>> # Compute gradients
+>>> xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy
+>>> cost = xent.mean() + 0.01*(w**2).sum() # The cost to optimize
+>>> gw,gb = T.grad(cost, [w,b])
+>>> # Training and prediction function
+>>> train = theano.function(inputs=[x,y], outputs=[prediction, xent], updates=[[w, w-0.01*gw], [b, b-0.01*gb]], name = "train")
+>>> predict = theano.function(inputs=[x], outputs=prediction, name = "predict")
 
->>> theano.printing.pprint(prediction)
-gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),TensorConstant{0.5})
+We will now make use of Theano's printing features to compare the unoptimized
+graph (``prediction``) to the optimized graph (``predict``).
+
+Pretty Printing
+~~~~~~~~~~~~~~~
+
+>>> theano.printing.pprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),
+TensorConstant{0.5})'
 
 
-- Debug Print
+Debug Print
+~~~~~~~~~~~
 
-``theano.printing.debugprint({fct, variable, list of variables})``
+The graph before optimization:
 
->>> theano.printing.debugprint(prediction)
-Elemwise{gt,no_inplace} [@181772236] ''
- |Elemwise{true_div,no_inplace} [@181746668] ''
- | |InplaceDimShuffle{x} [@181746412] ''
- | | |TensorConstant{1} [@181745836]
- | |Elemwise{add,no_inplace} [@181745644] ''
- | | |InplaceDimShuffle{x} [@181745420] ''
- | | | |TensorConstant{1} [@181744844]
- | | |Elemwise{exp,no_inplace} [@181744652] ''
- | | | |Elemwise{sub,no_inplace} [@181744012] ''
- | | | | |Elemwise{neg,no_inplace} [@181730764] ''
- | | | | | |dot [@181729676] ''
- | | | | | | |x [@181563948]
- | | | | | | |w [@181729964]
- | | | | |InplaceDimShuffle{x} [@181743788] ''
- | | | | | |b [@181730156]
- |InplaceDimShuffle{x} [@181771788] ''
- | |TensorConstant{0.5} [@181771148]
->>> theano.printing.debugprint(predict)
-Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
- |dot [@183018796] ''   1
- | |x [@183000780]
- | |w [@183000812]
- |InplaceDimShuffle{x} [@183133580] ''   0
- | |b [@183000876]
- |TensorConstant{[ 0.5]} [@183084108]
+>>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+    Elemwise{gt,no_inplace} [@A] ''
+    |Elemwise{true_div,no_inplace} [@B] ''
+    | |DimShuffle{x} [@C] ''
+    | | |TensorConstant{1} [@D]
+    | |Elemwise{add,no_inplace} [@E] ''
+    |   |DimShuffle{x} [@F] ''
+    |   | |TensorConstant{1} [@D]
+    |   |Elemwise{exp,no_inplace} [@G] ''
+    |     |Elemwise{sub,no_inplace} [@H] ''
+    |       |Elemwise{neg,no_inplace} [@I] ''
+    |       | |dot [@J] ''
+    |       |   |x [@K]
+    |       |   |w [@L]
+    |       |DimShuffle{x} [@M] ''
+    |         |b [@N]
+    |DimShuffle{x} [@O] ''
+      |TensorConstant{0.5} [@P]
 
-- Picture Printing of Graphs
+The graph after optimization:
 
->>> theano.printing.pydotprint_variables(prediction)
+>>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
+    Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
+     |CGemv{inplace} [@B] ''   3
+     | |Alloc [@C] ''   2
+     | | |TensorConstant{0.0} [@D]
+     | | |Shape_i{0} [@E] ''   1
+     | |   |x [@F]
+     | |TensorConstant{1.0} [@G]
+     | |x [@F]
+     | |w [@H]
+     | |TensorConstant{0.0} [@D]
+     |InplaceDimShuffle{x} [@I] ''   0
+     | |b [@J]
+     |TensorConstant{(1,) of 0.5} [@K]
 
-.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_prediction.png
+
+Picture Printing of Graphs
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``pydotprint`` requires graphviz and pydot.
+
+The graph before optimization:
+
+>>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
+The output file is available at pics/logreg_pydotprint_prediction.png
+
+.. image:: ./pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
-All pydotprint* requires graphviz and pydot
+The graph after optimization:
 
->>> theano.printing.pydotprint(predict)
+>>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
+The output file is available at pics/logreg_pydotprint_predict.png
 
-.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_predic.png
+.. image:: ./pics/logreg_pydotprint_predict.png
    :width: 800 px
 
->>> theano.printing.pydotprint(train) # This is a small train example!
+The optimized training graph:
 
-.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_train.png
+>>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
+The output file is available at pics/logreg_pydotprint_train.png
+
+.. image:: ./pics/logreg_pydotprint_train.png
    :width: 1500 px
+
 
 
 Debugging

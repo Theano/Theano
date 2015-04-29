@@ -307,14 +307,17 @@ Consider the following logistic regression model:
 We will now make use of Theano's printing features to compare the unoptimized
 graph (``prediction``) to the optimized graph (``predict``).
 
-- Pretty Printing
+
+Pretty Printing
+~~~~~~~~~~~~~~~
 
 >>> theano.printing.pprint(prediction) # doctest: +NORMALIZE_WHITESPACE
 'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),
 TensorConstant{0.5})'
 
 
-- Debug Print
+Debug Print
+~~~~~~~~~~~
 
 The graph before optimization:
 
@@ -355,7 +358,8 @@ The graph after optimization:
      |TensorConstant{(1,) of 0.5} [@K]
 
 
-- Picture Printing of Graphs
+Picture Printing of Graphs
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 ``pydotprint`` requires graphviz and pydot.
 
 The graph before optimization:

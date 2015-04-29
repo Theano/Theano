@@ -5,14 +5,13 @@
 Printing/Drawing Theano graphs
 ==============================
 
-.. TODO: repair the defective links in the next paragraph
 
-Theano provides two functions (:func:`theano.pp` and
-:func:`theano.printing.debugprint`) to print a graph to the terminal before or after
-compilation.  These two functions print expression graphs in different ways:
-:func:`pp` is more compact and math-like, :func:`debugprint` is more verbose.
-Theano also provides :func:`pydotprint` that creates a *png* image of the function.
-You can read about them in :ref:`libdoc_printing`.
+Theano provides the functions :func:`theano.printing.pprint` and
+:func:`theano.printing.debugprint` to print a graph to the terminal before or
+after compilation. :func:`pprint` is more compact and math-like,
+:func:`debugprint` is more verbose. Theano also provides :func:`pydotprint`
+that creates an image of the function. You can read about them in
+:ref:`libdoc_printing`.
 
 .. note::
 
@@ -24,151 +23,109 @@ You can read about them in :ref:`libdoc_printing`.
     real job execution, as this will make the graph slower and use more
     memory.
 
-Consider again the logistic regression but notice the additional printing instuctions. 
-The following output depicts the pre- and post- compilation graphs.
+Consider again the logistic regression example:
 
-.. code-block:: python
-    
-    import theano
-    import theano.tensor as T
-
-    import numpy
-
-    import os
-
-    rng = numpy.random
-
-    N = 400
-    feats = 784
-    D = (rng.randn(N, feats).astype(theano.config.floatX),
-    rng.randint(size=N,low=0, high=2).astype(theano.config.floatX))
-    training_steps = 10000
-
-    # Declare Theano symbolic variables
-    x = T.matrix("x")
-    y = T.vector("y")
-    w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
-    b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
-    x.tag.test_value = D[0]
-    y.tag.test_value = D[1]
-    #print "Initial model:"
-    #print w.get_value(), b.get_value()
-
-
-    # Construct Theano expression graph
-    p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b)) # Probability of having a one
-    prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
-    xent = -y * T.log(p_1) - (1 - y) * T.log(1 - p_1) # Cross-entropy
-    cost = xent.mean() + 0.01 * (w ** 2).sum() # The cost to optimize
-    gw,gb = T.grad(cost, [w, b])
-
-    # Compile expressions to functions
-    train = theano.function(
-                inputs=[x, y],
-                outputs=[prediction, xent],
-                updates=[(w, w - 0.01 * gw), (b, b - 0.01 * gb)],
-                name="train")
-    predict = theano.function(inputs=[x], outputs=prediction,
-                name="predict")
-
-    if any([x.op.__class__.__name__ in ['Gemv', 'CGemv'] for x in
-            train.maker.fgraph.toposort()]):
-        print 'Used the cpu'
-    elif any([x.op.__class__.__name__ == 'GpuGemm' for x in
-             train.maker.fgraph.toposort()]):
-        print 'Used the gpu'
-    else:
-        print 'ERROR, not able to tell if theano used the cpu or the gpu'
-        print train.maker.fgraph.toposort()
-
-
-    for i in range(training_steps):
-        pred, err = train(D[0], D[1])
-    #print "Final model:"
-    #print w.get_value(), b.get_value()
-
-    print "target values for D"
-    print D[1]
-
-    print "prediction on D"
-    print predict(D[0])
-
-
-    # Print the picture graphs
-    # after compilation
-    if not os.path.exists('pics'):
-        os.mkdir('pics')
-    theano.printing.pydotprint(predict,
-                               outfile="pics/logreg_pydotprint_predic.png",
-                               var_with_name_simple=True)
-    # before compilation
-    theano.printing.pydotprint_variables(prediction,
-                               outfile="pics/logreg_pydotprint_prediction.png",
-                               var_with_name_simple=True)
-    theano.printing.pydotprint(train,
-                               outfile="pics/logreg_pydotprint_train.png",
-                               var_with_name_simple=True)
+>>> import numpy
+>>> import theano
+>>> import theano.tensor as T
+>>> rng = numpy.random
+>>> # Training data
+>>> N = 400
+>>> feats = 784
+>>> D = (rng.randn(N, feats).astype(theano.config.floatX), rng.randint(size=N,low=0, high=2).astype(theano.config.floatX))
+>>> training_steps = 10000
+>>> # Declare Theano symbolic variables
+>>> x = T.matrix("x")
+>>> y = T.vector("y")
+>>> w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
+>>> b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+>>> x.tag.test_value = D[0]
+>>> y.tag.test_value = D[1]
+>>> # Construct Theano expression graph
+>>> p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
+>>> prediction = p_1 > 0.5 # The prediction that is done: 0 or 1
+>>> # Compute gradients
+>>> xent = -y*T.log(p_1) - (1-y)*T.log(1-p_1) # Cross-entropy
+>>> cost = xent.mean() + 0.01*(w**2).sum() # The cost to optimize
+>>> gw,gb = T.grad(cost, [w,b])
+>>> # Training and prediction function
+>>> train = theano.function(inputs=[x,y], outputs=[prediction, xent], updates=[[w, w-0.01*gw], [b, b-0.01*gb]], name = "train")
+>>> predict = theano.function(inputs=[x], outputs=prediction, name = "predict")
 
 
 Pretty Printing
 ===============
 
-``theano.printing.pprint(variable)``
-
->>> theano.printing.pprint(prediction)  # (pre-compilation)
-gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),TensorConstant{0.5})
-
-
-Debug Printing
-==============
-
-``theano.printing.debugprint({fct, variable, list of variables})``
-
->>> theano.printing.debugprint(prediction)  # (pre-compilation)
-Elemwise{gt,no_inplace} [@181772236] ''
- |Elemwise{true_div,no_inplace} [@181746668] ''
- | |InplaceDimShuffle{x} [@181746412] ''
- | | |TensorConstant{1} [@181745836]
- | |Elemwise{add,no_inplace} [@181745644] ''
- | | |InplaceDimShuffle{x} [@181745420] ''
- | | | |TensorConstant{1} [@181744844]
- | | |Elemwise{exp,no_inplace} [@181744652] ''
- | | | |Elemwise{sub,no_inplace} [@181744012] ''
- | | | | |Elemwise{neg,no_inplace} [@181730764] ''
- | | | | | |dot [@181729676] ''
- | | | | | | |x [@181563948]
- | | | | | | |w [@181729964]
- | | | | |InplaceDimShuffle{x} [@181743788] ''
- | | | | | |b [@181730156]
- |InplaceDimShuffle{x} [@181771788] ''
- | |TensorConstant{0.5} [@181771148]
->>> theano.printing.debugprint(predict)  # (post-compilation)
-Elemwise{Composite{neg,{sub,{{scalar_sigmoid,GT},neg}}}} [@183160204] ''   2
- |dot [@183018796] ''   1
- | |x [@183000780]
- | |w [@183000812]
- |InplaceDimShuffle{x} [@183133580] ''   0
- | |b [@183000876]
- |TensorConstant{[ 0.5]} [@183084108]
+>>> theano.printing.pprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),
+TensorConstant{0.5})'
 
 
-Picture Printing
-================
+Debug Print
+===========
 
->>> theano.printing.pydotprint_variables(prediction)  # (pre-compilation)
+The pre-compilation graph:
 
-.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_prediction.png
+>>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+    Elemwise{gt,no_inplace} [@A] ''
+    |Elemwise{true_div,no_inplace} [@B] ''
+    | |DimShuffle{x} [@C] ''
+    | | |TensorConstant{1} [@D]
+    | |Elemwise{add,no_inplace} [@E] ''
+    |   |DimShuffle{x} [@F] ''
+    |   | |TensorConstant{1} [@D]
+    |   |Elemwise{exp,no_inplace} [@G] ''
+    |     |Elemwise{sub,no_inplace} [@H] ''
+    |       |Elemwise{neg,no_inplace} [@I] ''
+    |       | |dot [@J] ''
+    |       |   |x [@K]
+    |       |   |w [@L]
+    |       |DimShuffle{x} [@M] ''
+    |         |b [@N]
+    |DimShuffle{x} [@O] ''
+      |TensorConstant{0.5} [@P]
+
+The post-compilation graph:
+
+>>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
+    Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
+     |CGemv{inplace} [@B] ''   3
+     | |Alloc [@C] ''   2
+     | | |TensorConstant{0.0} [@D]
+     | | |Shape_i{0} [@E] ''   1
+     | |   |x [@F]
+     | |TensorConstant{1.0} [@G]
+     | |x [@F]
+     | |w [@H]
+     | |TensorConstant{0.0} [@D]
+     |InplaceDimShuffle{x} [@I] ''   0
+     | |b [@J]
+     |TensorConstant{(1,) of 0.5} [@K]
+
+
+Picture Printing of Graphs
+==========================
+
+The pre-compilation graph:
+
+>>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
+The output file is available at pics/logreg_pydotprint_prediction.png
+
+.. image:: ./pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
-Notice that ``pydotprint()`` requires *Graphviz* and Python's ``pydot``.
+The post-compilation graph:
 
->>> theano.printing.pydotprint(predict)  # (post-compilation)
+>>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
+The output file is available at pics/logreg_pydotprint_predict.png
 
-.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_predic.png
+.. image:: ./pics/logreg_pydotprint_predict.png
    :width: 800 px
 
->>> theano.printing.pydotprint(train) # This is a small train example!
+The optimized training graph:
 
-.. image:: ../hpcs2011_tutorial/pics/logreg_pydotprint_train.png
+>>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
+The output file is available at pics/logreg_pydotprint_train.png
+
+.. image:: ./pics/logreg_pydotprint_train.png
    :width: 1500 px
-
