@@ -212,6 +212,21 @@ There are less methods to define for an Op than for a Type:
        Op *must* have a `context_type` property with the Type to use
        for the context variable.
 
+    .. attribute:: _f16_ok
+
+       (optional) If this attribute is absent or evaluates to `False`,
+       C code will be disabled for the op if any of its inputs or
+       outputs contains float16 data. This is added as a check to make
+       sure we don't compute wrong results since there is no hardware
+       float16 type so special care must be taken to make sure
+       operations are done correctly.
+
+       If you don't intend to deal with float16 data you can leave
+       this undefined.
+
+       This attribute is internal and may go away at any point during
+       developpment if a better solution is found.
+
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides
 failure code that you *must* use if you want to raise an exception,
