@@ -459,14 +459,16 @@ class QRFull(Op):
         x = as_tensor_variable(x)
         assert x.ndim == 2, "The input of qr function should be a matrix."
         q = theano.tensor.matrix(dtype=x.dtype)
-        r = theano.tensor.matrix(dtype=x.dtype)
+        if self.mode != 'raw':
+            r = theano.tensor.matrix(dtype=x.dtype)
+        else:
+            r = theano.tensor.vector(dtype=x.dtype)
+
         return Apply(self, [x], [q, r])
 
     def perform(self, node, (x,), (q, r)):
         assert x.ndim == 2, "The input of qr function should be a matrix."
-
-        q[0], r[0] = self._numop(x,
-                                 self.mode)
+        q[0], r[0] = self._numop(x, self.mode)
 
 
 class QRIncomplete(Op):

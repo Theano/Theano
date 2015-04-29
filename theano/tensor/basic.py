@@ -5123,6 +5123,12 @@ def all(x, axis=None, keepdims=False):
     return out
 
 
+# Some NumPy version like 1.9.2 return a view for numpy.diagonal
+x = numpy.zeros((4, 4))
+numpy_diagonal_return_view = numpy.may_share_memory(numpy.diagonal(x), x)
+del x
+
+
 class Diagonal(Op):
     """Return specified diagonals.
 
@@ -5132,6 +5138,8 @@ class Diagonal(Op):
     """
 
     def __init__(self, offset=0, axis1=0, axis2=1):
+        if numpy_diagonal_return_view:
+            self.view_map = {0: [0]}
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
