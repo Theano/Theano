@@ -6,14 +6,12 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
+
 import theano
-
-
 from theano import function
 from theano.gof import vm
 from theano.gof import OpWiseCLinker
 from theano.compile import Mode
-
 from theano import tensor
 from theano.ifelse import ifelse
 from theano.tensor.var import TensorConstant
@@ -375,6 +373,7 @@ def test_reallocation():
         assert check_storage(storage_map)[0]
         assert len(set([id(v) for v in
                         storage_map.values()])) < len(storage_map)
+
 
 
 def test_shape_reallocation():
