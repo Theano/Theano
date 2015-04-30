@@ -102,13 +102,23 @@ def test_local_assert_no_cpu_op():
 
         mode_local_assert = mode_with_gpu.including("local_assert_no_cpu_op")
         mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
+        old = config.assert_no_cpu_op
         #If the flag is raise
         try:
-            mode_local_assert = \
-                    mode_local_assert.including("assert_no_cpu_op='%s'" % flag)
-            f = theano.function([], out, mode=mode_local_assert)
-        except Exception as expt:
+            config.assert_no_cpu_op = 'raise'
+            assert_raises(AssertionError,
+                          theano.function([], out,
+                          mode=mode_local_assert))
+        finally:
             #If the flag is ignore
+            config.assert_no_cpu_op = old
+
+        try:
+            config.assert_no_cpu_op = 'ignore'
+            fn = theano.function([], out, mode=mode_local_assert))
+        finally:
+            #If the flag is ignore
+            config.assert_no_cpu_op = old
 
 
 def test_int_pow():

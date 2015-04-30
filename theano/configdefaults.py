@@ -131,7 +131,7 @@ AddConfigVar(
 AddConfigVar(
     'assert_no_cpu_op',
     "Raise an error/warning if there is a CPU op in the computational graph.",
-    EnumStr('ignore', 'warn', 'raise', 'pdb', allow_override=False),
+    EnumStr('ignore', 'warn', 'raise', 'pdb', allow_override=True),
     in_c_key=False)
 
 

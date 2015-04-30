@@ -447,7 +447,7 @@ def local_gpu_dot_to_dot22(node):
     return False
 
 
-@local_optimizer([theano.gof.Op])
+@local_optimizer(None)
 def local_assert_no_cpu_op(node):
     if not isinstance(node.op, GpuOp) and all([var.owner and isinstance(var.owner.op,
         HostFromGpu) for var in node.inputs]) and all([var.owner and
