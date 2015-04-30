@@ -281,6 +281,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     nin = 3
     nout = 1
     __props__ = ()
+    _f16_ok = True
 
     def make_node(self, dnll, sm, y_idx):
         dnll = as_gpuarray_variable(dnll)
@@ -289,8 +290,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
-        # return ()
-        return (8,)
+        return (9,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -415,6 +415,10 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         dtype_sm = node.inputs[1].dtype
         dtype_y_idx = node.inputs[2].dtype
         dtype_dx = node.outputs[0].dtype
+        work_dnll = work_dtype(dtype_dnll)
+        load_dnll = load_w(dtype_dnll)
+        load_sm = load_w(dtype_sm)
+        write_dx = write_w(dtype_dx)
         return """
         __global__ void kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s(
            int N, int K,
@@ -425,7 +429,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         {
             for (int i = blockIdx.x; i < N; i += gridDim.x)
             {
-                npy_%(dtype_dnll)s dnll_i = dnll[i * dnll_s0];
+                npy_%(work_dnll)s dnll_i = %(load_dnll)s(dnll[i * dnll_s0]);
                 npy_%(dtype_y_idx)s y_i = y_idx[i * y_idx_s0];
 
                 for (int j = threadIdx.x; j < K; j += blockDim.x)
@@ -433,16 +437,15 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                     if (y_i == j)
                     {
                         dx[i * dx_s0 + j * dx_s1] =
-                            dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
+                            %(write_dx)s(dnll_i *
+                              (%(load_sm)s(sm[i * sm_s0 + j * sm_s1]) - 1.0));
                     }
                     else
                     {
                         dx[i * dx_s0 + j * dx_s1] =
-                            dnll_i * sm[i * sm_s0 + j * sm_s1];
+                            %(write_dx)s(dnll_i *
+                              %(load_sm)s(sm[i * sm_s0 + j * sm_s1]));
                     }
-                    //dx[i * dx_s0 + j * dx_s1] =
-                    //    dnll_i * sm[i * sm_s0 + j * sm_s1];
-                    //dx[i*dx_s0+j*dx_s1] = 0;
                 }
             }
         }
