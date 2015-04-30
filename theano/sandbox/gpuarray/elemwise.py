@@ -464,7 +464,7 @@ class GpuElemwise(HideC, Elemwise):
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (2, ver)
+            return (3, ver)
         else:
             return ver
 
