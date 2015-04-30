@@ -5,6 +5,7 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
+import theano
 
 from theano import function
 from theano.gof import vm
@@ -13,7 +14,7 @@ from theano.compile import Mode
 
 from theano import tensor
 from theano.ifelse import ifelse
-import theano
+from theano.tensor.var import TensorConstant
 
 
 class TestCallbacks(unittest.TestCase):
@@ -183,8 +184,10 @@ def test_allow_gc_cvm():
 
     f([1])
     n = list(f.maker.fgraph.apply_nodes)[0].outputs[0]
-    assert f.fn.storage_map[n][0] is None
-    assert f.fn.allow_gc is True
+    if f.fn.allow_gc is True:
+        assert f.fn.storage_map[n][0] is None
+    elif f.fn.allow_gc is False:
+        assert f.fn.storage_map[n][0] is not None
 
     f.fn.allow_gc = False
     assert f.fn.allow_gc is False
@@ -371,3 +374,48 @@ def test_reallocation():
         assert check_storage(storage_map)[0]
         assert len(set([id(v) for v in
                         storage_map.values()])) < len(storage_map)
+
+
+def test_shape_reallocation():
+        a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
+        z = 3*a + b
+        x = c + 4*d
+        y = z + x
+
+        m = theano.compile.get_mode(theano.Mode(linker='vm_nogc'))
+        m_1 = m.excluding('fusion', 'inplace')
+        m_2 = m_1.excluding('ShapeOpt')
+
+        m_dict = {m_1: True, m_2: False}
+
+        for m in m_dict.keys():
+            f = theano.function([a, b, c, d], y, name="test_reduce_memory",
+                                mode=m)
+
+            output = f([1, 2], [3, 5], [9, 8], [4, 3])
+            assert output.any()
+            storage_map = f.fn.storage_map
+
+            def check_storage(storage_map):
+                for i in storage_map.keys():
+                    if not isinstance(i, TensorConstant):
+                        keys_copy = storage_map.keys()[:]
+                        keys_copy.remove(i)
+                        for o in keys_copy:
+                            if isinstance(
+                                storage_map[i][0] == storage_map[o][0],
+                                    numpy.ndarray):
+                                compare = (
+                                    storage_map[i][0] == storage_map[o][0]
+                                ).all()
+                            else:
+                                compare = (
+                                    storage_map[i][0] == storage_map[o][0])
+                            if storage_map[i][0] is not None and compare:
+                                return [True, storage_map[o][0]]
+                return [False, None]
+
+            assert check_storage(storage_map)[0] == m_dict[m]
+            if check_storage(storage_map)[0] is True:
+                id_list = [id(v) for v in storage_map.values()]
+                assert len(set(id_list)) < len(storage_map)

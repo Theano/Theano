@@ -103,6 +103,11 @@ gpu_optimizer.register('local_remove_all_assert',
                        theano.tensor.opt.local_remove_all_assert,
                        'unsafe')
 
+# Register local_remove_all_assert as a global opt
+gpu_optimizer.register('local_remove_all_assert',
+                       theano.tensor.opt.local_remove_all_assert,
+                       'unsafe')
+
 
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.

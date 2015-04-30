@@ -3201,6 +3201,43 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
 
         utt.assert_allclose(r1, r2)
 
+    def setUp(self):
+        # The optimization requires the shape feature so we need to compile in
+        # FAST_RUN mode.
+        mode = theano.config.mode
+        if mode == 'FAST_COMPILE':
+            mode = 'FAST_RUN'
+        self.mode = compile.mode.get_mode(mode)
+
+    def test_advanced_inc_subtensor(self):
+        if tensor.inplace_increment is None:
+            raise SkipTest('NumPy version >= 1.8 not available')
+
+        x = tensor.vector('x')
+        y = tensor.scalar('y')
+        i = tensor.matrix('i', dtype='int64')
+        z = tensor.advanced_inc_subtensor(x, T.alloc(y, *i.shape), i)
+        mode1 = self.mode.excluding(self.opt_name)
+        mode2 = self.mode.including(self.opt_name)
+        f1 = theano.function([x, i, y], z, mode=mode1)
+        f2 = theano.function([x, i, y], z, mode=mode2)
+
+        # the alloc op should still be there
+        assert (len([n for n in f1.maker.fgraph.toposort()
+                     if isinstance(n.op, tensor.Alloc)]) == 1)
+        # the alloc op should have been removed
+        assert (len([n for n in f2.maker.fgraph.toposort()
+                     if isinstance(n.op, tensor.Alloc)]) == 0)
+
+        x_value = numpy.random.randn(5).astype(config.floatX)
+        y_value = numpy.random.randn()
+        i_value = numpy.random.randint(0, 3, size=(2, 3))
+
+        r1 = f1(x_value, i_value, y_value)
+        r2 = f2(x_value, i_value, y_value)
+
+        utt.assert_allclose(r1, r2)
+
     def test_advanced_inc_subtensor1(self):
         if tensor.inplace_increment is None:
             raise SkipTest('NumPy version >= 1.8 not available')

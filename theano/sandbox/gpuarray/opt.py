@@ -65,6 +65,7 @@ gpu_optimizer.register('local_remove_all_assert',
                        'unsafe')
 
 
+
 def safe_to_gpu(x):
     if isinstance(x.type, tensor.TensorType):
         return gpu_from_host(x)
