@@ -1,0 +1,16 @@
+
+.. _libdoc_misc:
+
+================================================
+:mod:`misc.pkl_utils` - Tools for serialization.
+================================================
+
+.. autofunction:: theano.misc.pkl_utils.dump
+
+.. autofunction:: theano.misc.pkl_utils.load
+
+.. seealso::
+
+    :ref:`tutorial_loadsave`
+
+

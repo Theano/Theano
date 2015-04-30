@@ -20,6 +20,7 @@ Types and Ops that you can use to build and compile expression graphs.
    sparse/sandbox
    scalar/index
    gof/index
+   misc/pkl_utils
    scan
    sandbox/index
    typed_list
