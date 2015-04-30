@@ -481,14 +481,14 @@ class GpuSoftmax (Op):
 
     def c_code_cache_version(self):
         return (12,) + inline_softmax.code_version
-        
+
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
-        
+
     def c_init_code(self):
         return ['setup_ext_cuda();']
 
@@ -524,7 +524,7 @@ class GpuSoftmax (Op):
                                 pygpu_default_context(), Py_None);
             if (!%(z)s) {
                 %(fail)s
-            } 
+            }
         }
         {
             int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
@@ -672,20 +672,20 @@ class GpuSoftmaxWithBias (Op):
 
     def infer_shape(self, node, shape):
         return  [shape[0]]
-        
+
     def c_code_cache_version(self):
         return (11,) + inline_softmax.code_version
-        
+
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
-        
+
     def c_init_code(self):
         return ['setup_ext_cuda();']
-        
+
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
@@ -735,7 +735,7 @@ class GpuSoftmaxWithBias (Op):
                                 pygpu_default_context(), Py_None);
             if (!%(z)s) {
                 %(fail)s
-            } 
+            }
         }
         {
             int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)(32*1024));
