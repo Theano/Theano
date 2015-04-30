@@ -5,6 +5,7 @@ import unittest
 import numpy
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 
 import theano
 from theano.compile.pfunc import pfunc
@@ -92,33 +93,30 @@ def test_local_gpu_contiguous_gpu_contiguous():
 
 
 def test_local_assert_no_cpu_op():
-    #opt.assert_no_cpu_op = "raise"
     numpy.random.seed(1)
     m = numpy.random.uniform(-1, 1, (10, 10)).astype("float32")
-    ms = theano.shared(m, name="m_shared")
-    z = ms**2 + 3
+    ms = cuda.shared_constructor(m, name="m_shared")
+    out = theano.tensor.tanh(ms**2 + 3)
 
-    def perform_assert_no_cpu_test(out, flag="ignore"):
+    mode_local_assert = mode_with_gpu.including("local_assert_no_cpu_op")
+    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
 
-        mode_local_assert = mode_with_gpu.including("local_assert_no_cpu_op")
-        mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
-        old = config.assert_no_cpu_op
-        #If the flag is raise
-        try:
-            config.assert_no_cpu_op = 'raise'
-            assert_raises(AssertionError,
-                          theano.function([], out,
-                          mode=mode_local_assert))
-        finally:
-            #If the flag is ignore
-            config.assert_no_cpu_op = old
+    old = config.assert_no_cpu_op
 
-        try:
-            config.assert_no_cpu_op = 'ignore'
-            fn = theano.function([], out, mode=mode_local_assert))
-        finally:
-            #If the flag is ignore
-            config.assert_no_cpu_op = old
+    # If the flag is raise
+    try:
+        config.assert_no_cpu_op = 'raise'
+        assert_raises(AssertionError, theano.function([], out,
+                      mode=mode_local_assert))
+    finally:
+        config.assert_no_cpu_op = old
+
+    # If the flag is ignore
+    try:
+        config.assert_no_cpu_op = 'ignore'
+        theano.function([], out, mode=mode_local_assert)
+    finally:
+        config.assert_no_cpu_op = old
 
 
 def test_int_pow():
