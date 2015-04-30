@@ -3058,13 +3058,9 @@ class GpuJoin(tensor.Join, GpuOp):
 	    axis_int = axis
 
         if (axis_int < 0):
-            # Find tensor with smallest number of dimensions
-            min_dim = -1
-            for cnda in tensors:
-	        if min_dim < 0 or min_dim > cnda.ndim:
-	            min_dim = cnda.ndim
-
-	    axis = axis + min_dim
+            # Since all tensors must have the same number of dimensions,
+            # we simply add the number of dimensions for the first tensor
+	    axis = axis + as_tensor_variable_args[0].ndim
 
         output_maker = \
                 lambda bcast: CudaNdarrayType(broadcastable=bcast)()
