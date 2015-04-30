@@ -3404,6 +3404,11 @@ class Join(Op):
 
         """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
+
+        # Fix the axis if it is negative, since it crashes with fast_run
+        if axis < 0:
+            axis += axis_and_tensors[1].ndim
+
         if not tensors:
             raise ValueError('Cannot join an empty list of tensors')
         as_tensor_variable_args = [as_tensor_variable(x) for x in tensors]
