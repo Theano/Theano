@@ -127,7 +127,7 @@ class TestOp:
         try:
             MyOp(Generic()(), MyType(1)())  # MyOp requires MyType instances
             raise Exception("Expected an exception")
-        except Exception, e:
+        except Exception as e:
             if str(e) != "Error 1":
                 raise
 

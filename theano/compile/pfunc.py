@@ -199,7 +199,7 @@ def rebuild_collect_shared(outputs,
         # filter_variable ensure smooth conversion of cpu/gpu Types
         try:
             update_val = store_into.type.filter_variable(update_val)
-        except TypeError, e:
+        except TypeError as e:
             err_msg = ('An update must have the same type as the'
                        ' original shared variable (shared_var=%s,'
                        ' shared_var.type=%s,'

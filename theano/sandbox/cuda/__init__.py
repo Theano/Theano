@@ -178,7 +178,7 @@ if compile_cuda_ndarray and cuda_available:
                             libs=[config.cublas.lib],
                             preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
-            except Exception, e:
+            except Exception as e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
                 set_cuda_disabled()
     finally:
@@ -211,7 +211,7 @@ if cuda_available:
         else:
             try:
                 os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
-            except OSError, e:
+            except OSError as e:
                 # This may happen for instance when running multiple
                 # concurrent jobs, if two of them try to create the
                 # symlink simultaneously.
@@ -228,7 +228,7 @@ if cuda_available:
         cuda_initialization_error_message = ""
 # actively closing our gpu session presents segfault-on-exit on some systems
         atexit.register(gpu_shutdown)
-    except EnvironmentError, e:
+    except EnvironmentError as e:
         cuda_available = False
         cuda_initialization_error_message = " ".join(e.args)
 else:

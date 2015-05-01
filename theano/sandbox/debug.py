@@ -67,7 +67,7 @@ class DebugLinker(gof.WrapLinker):
             for r in node.outputs:
                 try:
                     r.type.filter(r.value, strict=True)
-                except TypeError, e:
+                except TypeError as e:
                     exc_type, exc_value, exc_trace = sys.exc_info()
                     exc = DebugException(e, "The output %s was filled with data with the wrong type using linker " \
                                          ("%s. This happened at step %i of the program." % (r, linker, i)) + \
@@ -134,7 +134,7 @@ class DebugLinker(gof.WrapLinker):
             self.store_value(i, node, *thunks)
             for f in self.debug_post:
                 f(i, node, *thunks)
-        except Exception, e:
+        except Exception as e:
             exc_type, exc_value, exc_trace = sys.exc_info()
             if isinstance(e, DebugException):
                 raise

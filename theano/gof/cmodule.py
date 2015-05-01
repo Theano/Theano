@@ -1091,7 +1091,7 @@ class ModuleCache(object):
                 assert name not in self.module_from_name
                 self.module_from_name[name] = module
                 nocleanup = True
-            except OSError, e:
+            except OSError as e:
                 _logger.error(e)
                 if e.errno == 31:
                     _logger.error('There are %i files in %s',
@@ -1387,7 +1387,7 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
                 log_msg += ' (%s)' % msg
             _logger.log(level, '%s: %s', log_msg, parent)
             shutil.rmtree(parent)
-    except Exception, e:
+    except Exception as e:
         # If parent still exists, mark it for deletion by a future refresh()
         _logger.debug('In _rmtree, encountered exception: %s(%s)',
                       type(e), e)
@@ -1395,7 +1395,7 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             try:
                 _logger.info('placing "delete.me" in %s', parent)
                 open(os.path.join(parent, 'delete.me'), 'w').close()
-            except Exception, ee:
+            except Exception as ee:
                 _logger.warning("Failed to remove or mark cache directory %s "
                                 "for removal %s", parent, ee)
 
@@ -1606,7 +1606,7 @@ class Compiler(object):
                         os.remove(exe_path)
                     if os.path.exists(exe_path + ".exe"):
                         os.remove(exe_path + ".exe")
-        except OSError, e:
+        except OSError as e:
             if err is None:
                 err = str(e)
             else:

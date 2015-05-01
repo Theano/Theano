@@ -186,7 +186,7 @@ def filter_compiledir(path):
     else:
         try:
             os.makedirs(path, 0770)  # read-write-execute for user and group
-        except OSError, e:
+        except OSError as e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
             if e.errno != errno.EEXIST:
@@ -309,7 +309,7 @@ def cleanup():
                                 if keydata.key_pkl != filename:
                                     keydata.key_pkl = filename
                                 keydata.remove_key(key)
-                            except IOError, e:
+                            except IOError as e:
                                 _logger.error(
                                     "Could not remove file '%s'. To complete "
                                     "the clean-up, please remove manually "

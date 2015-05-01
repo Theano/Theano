@@ -2061,7 +2061,7 @@ class Test_getitem(unittest.TestCase):
 
         try:
             verify_grad_sparse(op_with_fixed_index, x_val)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             assert "Scipy version is to old" in str(e)
 
     def test_GetItem2Lists(self):

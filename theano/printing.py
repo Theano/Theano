@@ -1079,7 +1079,7 @@ def pydotprint_variables(vars,
             plot_apply(nd.owner, depth)
     try:
         g.write(outfile, prog='dot', format=format)
-    except pd.InvocationException, e:
+    except pd.InvocationException as e:
         # Some version of pydot are bugged/don't work correctly with
         # empty label. Provide a better user error message.
         if pd.__version__ == "1.0.28" and "label=]" in e.message:

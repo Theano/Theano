@@ -180,7 +180,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         if rval:
             rval = numpy.allclose(cpuval, gpuval, rtol=rtol)
             assert numpy.all(numpy.isfinite(gpuval))
-    except NotImplementedError, e:
+    except NotImplementedError as e:
         print >> sys.stdout, '_params_allgood Failed allclose', e
         rval = False
 
@@ -258,7 +258,7 @@ def exec_conv(version, shapes, verbose, random, mode,
                         print_=print_,
                         rtol=rtol,
                         ones=ones)
-            except Exception, e:
+            except Exception as e:
                 print ver, id, (ishape, kshape, subshape, istride, kstride)
                 print e
                 pass

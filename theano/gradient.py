@@ -1677,7 +1677,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             # get new random projection for next test
             if test_num < n_tests - 1:
                 t_r.set_value(random_projection(), borrow=True)
-        except Exception, e:
+        except Exception as e:
             e.args += ("\nThe error happened with the following inputs:", pt,
                        "\nThe value of eps is:", eps,
                        "\nThe out_type is:", out_type)

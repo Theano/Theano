@@ -220,7 +220,7 @@ class TensorType(Type):
     def value_validity_msg(self, a):
         try:
             self.filter(a, strict=True)
-        except Exception, e:
+        except Exception as e:
             return str(e)
         return "value is valid"
 

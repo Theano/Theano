@@ -24,7 +24,7 @@ PatternOptimizer = lambda p1, p2, ign=True: gof.OpKeyOptimizer(gof.PatternSub(p1
 def checkfor(testcase, fn, E):
     try:
         fn()
-    except Exception, e:
+    except Exception as e:
         if isinstance(e, E):
             # we got the exception we wanted
             return
@@ -430,7 +430,7 @@ class T_picklefunction(unittest.TestCase):
 
         try:
             g = copy.deepcopy(f)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
             else:
@@ -477,7 +477,7 @@ class T_picklefunction(unittest.TestCase):
             hc = copy.deepcopy(h, memo=memo)
             memo.update({id(h): hc})
             fc = copy.deepcopy(f, memo=memo)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
             else:
@@ -498,7 +498,7 @@ class T_picklefunction(unittest.TestCase):
             # should work (even though one should not use it).
             g = cPickle.loads(cPickle.dumps(f, protocol=0))
             g = cPickle.loads(cPickle.dumps(f, protocol=-1))
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
             else:
@@ -542,7 +542,7 @@ class T_picklefunction(unittest.TestCase):
                 g = cPickle.loads(str_f)
                 # print g.maker.mode
                 # print compile.mode.default_mode
-            except NotImplementedError, e:
+            except NotImplementedError as e:
                 if e[0].startswith('DebugMode is not pickl'):
                     g = 'ok'
         finally:
@@ -595,7 +595,7 @@ class T_picklefunction(unittest.TestCase):
         try:
             saved_format = cPickle.dumps(list_of_things, protocol=-1)
             new_list_of_things = cPickle.loads(saved_format)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
             else:
@@ -661,7 +661,7 @@ class T_picklefunction(unittest.TestCase):
         p.persistent_id = pers_save
         try:
             p.dump(f)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             if exc_message(e).startswith('DebugMode is not picklable'):
                 return
             else:
@@ -680,7 +680,7 @@ class T_picklefunction(unittest.TestCase):
 
         try:
             blah2 = copy.deepcopy(blah)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
             else:

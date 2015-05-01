@@ -1052,14 +1052,14 @@ class ShapeFeature(object):
         except ShapeError:
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for
                                                        r in node.inputs])
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             raise NotImplementedError(
                     'Code called by infer_shape failed raising a '
                     'NotImplementedError. Raising NotImplementedError to '
                     'indicate that a shape cannot be computed is no longer '
                     'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
-        except Exception, e:
+        except Exception as e:
             msg = ('Failed to infer_shape from Op %s.\nInput shapes: '
                    '%s\nException encountered during infer_shape: '
                    '%s\nException message: %s\nTraceback: %s') % (

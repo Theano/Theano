@@ -299,7 +299,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                 # We got the lock, hoorray!
                 return
 
-        except Exception, e:
+        except Exception as e:
             # If something wrong happened, we try again.
             _logger.warning("Something wrong happened: %s %s", type(e), e)
             nb_error += 1

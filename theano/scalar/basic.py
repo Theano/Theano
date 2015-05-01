@@ -175,7 +175,7 @@ class Scalar(Type):
                 raise TypeError('Value cannot accurately be converted to dtype'
                                 ' (%s) and allow_downcast is not True' %
                                 self.dtype)
-        except Exception, e:
+        except Exception as e:
             raise TypeError("Could not convert %s (value=%s) to %s" % (
                 type(data), data, self.dtype), e)
 

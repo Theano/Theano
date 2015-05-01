@@ -77,7 +77,7 @@ class Test_pfunc(unittest.TestCase):
         try:
             pfunc([w], theano.tensor.sum(w * w))
             assert False
-        except TypeError, e:
+        except TypeError as e:
             msg = 'Cannot use a shared variable (w) as explicit input'
             if str(e).find(msg) < 0:
                 raise

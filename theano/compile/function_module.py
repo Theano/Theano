@@ -514,7 +514,7 @@ class Function(object):
                         s.storage[0] = s.type.filter(arg, strict=s.strict,
                                 allow_downcast=s.allow_downcast)
 
-                    except Exception, e:
+                    except Exception as e:
                         function_name = "theano function"
                         if self.name:
                             function_name += ' with name "' + self.name + '" '
@@ -926,7 +926,7 @@ class FunctionMaker(object):
                 # hack end
                 f.close()
                 print 'graph_db loaded and it is not empty'
-            except EOFError, e:
+            except EOFError as e:
                 # the file has nothing in it
                 print e
                 print 'graph_db loaded and it is empty'

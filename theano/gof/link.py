@@ -384,7 +384,7 @@ class Container(object):
             else:
                 self.storage[0] = self.type.filter(value, **kwargs)
 
-        except Exception, e:
+        except Exception as e:
             e.args = e.args + (('Container name "%s"' % self.name),)
             raise
     data = property(__get__, __set__)
