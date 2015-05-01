@@ -3455,8 +3455,7 @@ class Join(Op):
                 # be broadcastable for the output.
                 for x in as_tensor_variable_args:
                     for current_axis, bflag in enumerate(x.type.broadcastable):
-                        # Not sure if this Op supports/supported/will support
-                        # negative indices, but just to be sure...
+                        # This Op supports negative axes, so only consider modulo
                         if current_axis == axis % ndim:
                             continue
                         if bflag:

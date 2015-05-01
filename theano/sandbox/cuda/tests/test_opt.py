@@ -285,6 +285,55 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     assert numpy.allclose(numpy.asarray(f()), concat)
 
 
+def test_opt_gpujoin_joinvectors_negativeaxes():
+    """ 
+    Test that negative axis concatenation works as expected.
+    """
+
+    # Test case for one-dimensional vectors
+    rng = numpy.random.RandomState(22)
+    x1 = rng.rand(5)
+    x2 = rng.rand(10)
+    t1 = shared(numpy.asarray(x1, theano.config.floatX))
+    t2 = shared(numpy.asarray(x2, theano.config.floatX))
+
+    t = T.concatenate([t1, t2], axis=-1)
+    f = theano.function(inputs=[], outputs=t)
+
+    assert(numpy.allclose(f(), numpy.concatenate([x1, x2], axis=-1)))
+
+    # Test case for two-dimensional vectors
+    x1 = rng.rand(5, 10)
+    x2 = rng.rand(10, 10)
+    t1 = shared(numpy.asarray(x1, theano.config.floatX))
+    t2 = shared(numpy.asarray(x2, theano.config.floatX))
+
+    t = T.concatenate([t1, t2], axis=-2)
+    f = theano.function(inputs=[], outputs=t)
+
+    assert(numpy.allclose(f(), numpy.concatenate([x1, x2], axis=-2))) 
+
+    # Now check that a value error is raised when vectors don't match
+    # along the negative concatenation axis 
+    try:
+        t = T.concatenate([t1, t2], axis=-1)
+        f = theano.function(inputs=[], outputs=t)
+        f()
+        assert(False)
+    except ValueError:
+        assert(True)
+
+    # Finally check that a value error is raised when negative
+    # axis is larger in absolute value than smallest number of dims
+    try:
+        t = T.concatenate([t1, t2], axis=-3)
+        f = theano.function(inputs=[], outputs=t)
+        f()
+        assert(False)
+    except ValueError:
+        assert(True)
+
+
 def test_local_gpu_subtensor():
     # Test shared forced on CPU.
     t = tensor._shared(numpy.zeros(20, "float32"))
@@ -647,4 +696,5 @@ if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()
     test_opt_gpujoin_joinvectors_elemwise_then_minusone()
+    test_opt_gpujoin_joinvectors_negativeaxes()
 
