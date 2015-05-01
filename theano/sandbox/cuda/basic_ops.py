@@ -3051,13 +3051,13 @@ class GpuJoin(tensor.Join, GpuOp):
 
             except tensor.basic.NotScalarConstantError:
                 pass
-	else:
-	    axis_int = axis
+        else:
+            axis_int = axis
 
         if (axis_int < 0):
             # Since all tensors must have the same number of dimensions,
             # we simply add the number of dimensions for the first tensor
-	    axis = axis + as_tensor_variable_args[0].ndim
+            axis = axis + as_tensor_variable_args[0].ndim
 
         output_maker = \
                 lambda bcast: CudaNdarrayType(broadcastable=bcast)()
