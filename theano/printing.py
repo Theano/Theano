@@ -56,7 +56,7 @@ def debugprint(obj, depth=-1, print_type=False,
                          we don't print anything below it.
     :type done: None or dict
     :param done: A dict where we store the ids of printed node.
-        Useful to have multiple call to debugprint share the ids for the same node.
+        Useful to have multiple call to debugprint share the same ids.
 
     :returns: string if `file` == 'str', else file arg
 
