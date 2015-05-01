@@ -1253,6 +1253,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
     # nb_reduce<=warpSize
     def _k_reduce_buf_multiple(self, z_pos, node, name, nb_reduce):
         reduce_fct = self._assign_reduce(node, name, 'myresult', 'buf[i]', {}, False)
+        write_out = write_w(node.outputs[0].dtype)
+
         return """
         __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = myresult;
@@ -1266,7 +1268,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             {
                 %(reduce_fct)s;
             }
-            %(z_pos)s = myresult;
+            %(z_pos)s = %(write_out)s(myresult);
         }
         """ % locals()
 
