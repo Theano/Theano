@@ -279,21 +279,19 @@ class SoftmaxGrad(gof.Op):
     nin = 2
     nout = 1
 
-    def __init__(self, **kwargs):
-        gof.Op.__init__(self, **kwargs)
+    __props__ = ()
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return tensor.hashtype(self)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def make_node(self, dy, sm, **kwargs):
+    def make_node(self, dy, sm):
         dy = tensor.as_tensor_variable(dy)
         sm = tensor.as_tensor_variable(sm)
+        if dy.type.ndim not in (1, 2) \
+                or dy.type.dtype not in tensor.float_dtypes:
+            raise ValueError('dy must be 1-d or 2-d tensor of floats. Got ',
+                             dy.type)
+        if dy.ndim == 1:
+            dy = tensor.shape_padleft(dy, n_ones=1)
+        if sm.ndim == 1:
+            sm = tensor.shape_padleft(sm, n_ones=1)
         return Apply(self, [dy, sm], [sm.type.make_variable()])
 
     def perform(self, node, input_storage, output_storage):
@@ -394,24 +392,14 @@ class Softmax(gof.Op):
 
     nin = 1
     nout = 1
-
-    def __init__(self, **kwargs):
-        gof.Op.__init__(self, **kwargs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
         if x.type.ndim not in (1, 2) \
                 or x.type.dtype not in tensor.float_dtypes:
-            raise ValueError('x must be 1-d or 2-d tensor of floats. Got ', x.type)
+            raise ValueError('x must be 1-d or 2-d tensor of floats. Got ',
+                             x.type)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
         return Apply(self, [x], [x.type()])

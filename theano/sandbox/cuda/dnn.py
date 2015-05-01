@@ -1729,6 +1729,8 @@ if True:
             for n in node.inputs:
                 if isinstance(n.owner.op, HostFromGpu):
                     n = n.owner.inputs[0]
+                if n.ndim != 2:
+                    return
                 ins.append(n.dimshuffle(0, 1, 'x', 'x'))
 
             out = GpuDnnSoftmaxGrad(
