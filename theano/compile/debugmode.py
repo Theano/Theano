@@ -290,9 +290,13 @@ class BadOptimization(DebugModeError):
             print >> ssio, "  Mean Abs Diff: ", numpy.mean(numpy.absolute(nv -
                                                                           ov))
             print >> ssio, "  Median Abs Diff: ", numpy.median(numpy.absolute(
-                    nv - ov))
+                nv - ov))
             print >> ssio, "  Std Abs Diff: ", numpy.std(numpy.absolute(
-                    nv - ov))
+                nv - ov))
+            arg_max_val = numpy.argmax(numpy.absolute(nv - ov))
+            values_at_max = (nv.flatten()[arg_max_val],
+                             ov.flatten()[arg_max_val])
+            print >> ssio, "  Value at Max Diff: ", values_at_max
 
             # N.B. the maximum(..., 1e-8) protects against div by 0 when
             #      nv == ov == 0
@@ -304,6 +308,10 @@ class BadOptimization(DebugModeError):
             print >> ssio, "  Mean Rel Diff: ", numpy.mean(reldiff)
             print >> ssio, "  Median Rel Diff: ", numpy.median(reldiff)
             print >> ssio, "  Std Rel Diff: ", numpy.std(reldiff)
+            arg_max_val = numpy.argmax(reldiff)
+            values_at_max = (nv.flatten()[arg_max_val],
+                             ov.flatten()[arg_max_val])
+            print >> ssio, "  Value at Max Diff: ", values_at_max
             # only if all succeeds to we add anything to sio
             print >> sio, ssio.getvalue()
         except Exception:
@@ -1559,10 +1567,13 @@ class _VariableEquivalenceTracker(object):
         if append_reason:
             # N.B. compute the debugprint now, because future
             # optimizations will change the graph
+            done = dict()
             self.reasons[new_r].append((reason,
                 r,
-                debugprint(r, prefix='  ', depth=6, file=StringIO()).getvalue(),
-                debugprint(new_r, prefix='  ',  depth=6, file=StringIO()).getvalue()))
+                debugprint(r, prefix='  ', depth=6,
+                           file=StringIO(), done=done).getvalue(),
+                debugprint(new_r, prefix='  ',  depth=6,
+                           file=StringIO(), done=done).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
         if r in self.equiv:
