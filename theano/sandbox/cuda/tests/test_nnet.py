@@ -447,10 +447,10 @@ class test_SoftMax(unittest.TestCase):
                     if isinstance(
                         i.op,
                         theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
-                    )]) == 0)
+                    )]) == 1)
         assert(len([i
                     for i in sorted_f
                     if isinstance(
                         i.op,
                         theano.tensor.nnet.SoftmaxGrad
-                    )]) == 1)
+                    )]) == 0)
