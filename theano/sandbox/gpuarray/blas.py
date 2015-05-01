@@ -239,6 +239,7 @@ class GpuDot22(BlasOp, Dot22):
         dims[0] = PyGpuArray_DIMS(%(A)s)[0];
         dims[1] = PyGpuArray_DIMS(%(B)s)[1];
 
+        Py_XDECREF(%(out)s);
         %(out)s = pygpu_empty(2, dims,
                             %(typecode)s,
                             GA_C_ORDER,
@@ -262,7 +263,7 @@ class GpuDot22(BlasOp, Dot22):
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_headers(self):
         ret = super(GpuDot22, self).c_headers()
