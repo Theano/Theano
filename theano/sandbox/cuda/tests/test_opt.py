@@ -96,9 +96,10 @@ def test_local_assert_no_cpu_op():
     numpy.random.seed(1)
     m = numpy.random.uniform(-1, 1, (10, 10)).astype("float32")
     ms = cuda.shared_constructor(m, name="m_shared")
-    out = theano.tensor.tanh(ms**2 + 3)
+    out = theano.tensor.tanh(ms**2 + ms).dot(ms.T)
 
     mode_local_assert = mode_with_gpu.including("assert_no_cpu_op")
+    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_0")
     mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
 
     old = config.assert_no_cpu_op
@@ -106,15 +107,14 @@ def test_local_assert_no_cpu_op():
     # If the flag is raise
     try:
         config.assert_no_cpu_op = 'raise'
-        assert_raises(RuntimeError, theano.function([], out,
-                      mode=mode_local_assert))
+        assert_raises(RuntimeError, theano.function,
+                        [], out, mode=mode_local_assert)
     finally:
         config.assert_no_cpu_op = old
 
     # If the flag is ignore
     try:
         config.assert_no_cpu_op = 'ignore'
-
         theano.function([], out, mode=mode_local_assert)
     finally:
         config.assert_no_cpu_op = old
