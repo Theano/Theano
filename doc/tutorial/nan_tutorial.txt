@@ -6,7 +6,7 @@ Dealing with NaNs
 =================
 
 Having a model yielding NaNs or Infs is quite common if some of the tiny
-components in your model are not set correctly. NaNs are hard to deal with
+components in your model are not set properly. NaNs are hard to deal with
 because sometimes it is caused by a bug or error in the code, sometimes it's
 because of the numerical stability of your actual computing systerm, and even,
 sometimes it relates to your algorithm. Here we try to outline common, basic
