@@ -870,7 +870,8 @@ def scan(fn,
                         tensor.unbroadcast(
                             tensor.shape_padleft(input.variable), 0),
                         actual_n_steps))
-                sit_sot_inner_outputs.append(input.update)
+                tensor_update = tensor.as_tensor_variable(input.update)
+                sit_sot_inner_outputs.append(tensor_update)
                 # Not that pos is not a negative index. The sign of pos is used
                 # as a flag to indicate if this output should be part of the
                 # update rules or part of the standard outputs of scan.
