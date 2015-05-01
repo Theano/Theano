@@ -660,7 +660,7 @@ try:
             # skip VM.__init__
 except ImportError:
     pass
-except (OSError, theano.gof.cmodule.MissingGXX), e:
+except (OSError, theano.gof.cmodule.MissingGXX) as e:
     # OSError happens when g++ is not installed.  In that case, we
     # already changed the default linker to something else then CVM.
     # Currently this is the py linker.

@@ -413,7 +413,7 @@ def use(device,
                         " crash when we try to use features"
                         " that your GPU does not support.")
 
-        except (EnvironmentError, ValueError, RuntimeError), e:
+        except (EnvironmentError, ValueError, RuntimeError) as e:
             _logger.error(("ERROR: Not using GPU."
                            " Initialisation of device %s failed:\n%s"),
                           str(device), e)
@@ -448,7 +448,7 @@ def use(device,
             # in case the device if just gpu,
             # we check that the driver init it correctly.
             cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5, 5))
-        except (Exception, NameError), e:
+        except (Exception, NameError) as e:
             # NameError when no gpu present as cuda_ndarray is not loaded.
             e.args += ("ERROR: GPU forced but failed. ",)
             raise

@@ -289,7 +289,7 @@ def inplace_elemwise_optimizer_op(OP):
                             fgraph.validate()
                             chk = fgraph.checkpoint()
                             nb_change_no_validate = 0
-                    except (ValueError, TypeError, InconsistencyError), e:
+                    except (ValueError, TypeError, InconsistencyError) as e:
                         if check_each_change != 1 and not raised_warning:
                             print >> sys.stderr, (
                                     "Some inplace optimization was not "
@@ -3309,7 +3309,7 @@ if 0:
             def tmp(thing):
                 try:
                     return T.get_scalar_constant_value(thing)
-                except (TypeError, ValueError), e:
+                except (TypeError, ValueError) as e:
                     print e, thing.owner.inputs[0]
                     return None
             print 'LOCAL SUM EMPTY', [tmp(s) for s in y_shape]
