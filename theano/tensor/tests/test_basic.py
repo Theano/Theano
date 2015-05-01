@@ -46,7 +46,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes, choose, Choose, NoneConst,
+        swapaxes, choose, Choose, NoneConst, AllocEmpty
         )
 
 from theano.tests import unittest_tools as utt
@@ -7535,6 +7535,25 @@ class T_Choose(utt.InferShapeTester):
                                 [A, B, C],
                                 # Op that should be removed from the graph.
                                 self.op_class)
+
+def test_allocempty():
+    # Test that we allocated correctly
+    f = theano.function([], AllocEmpty("float32")(2, 3)) # change
+    assert len(f.maker.fgraph.apply_nodes) == 1
+    out = f()
+    assert out.shape == (2, 3)
+    assert out.dtype == 'float32'
+
+    # Test that we do not merge them.
+    f = theano.function([], [AllocEmpty("float32")(2, 3),
+                             AllocEmpty("float32")(2, 3)])
+    out = f()
+    assert out[0].shape == (2, 3)
+    assert out[0].dtype == 'float32'
+    assert out[1].shape == (2, 3)
+    assert out[1].dtype == 'float32'
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, AllocEmpty)]) == 2
 
 """
 

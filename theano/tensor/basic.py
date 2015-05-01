@@ -17,7 +17,7 @@ from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant,
                                _tensor_py_operators)
-from theano.tensor.type import TensorType
+from theano.tensor.type import TensorType, values_eq_approx_always_true
 from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
 from theano.compat import partial
@@ -5478,28 +5478,27 @@ class AllocEmpty(gof.Op):
     # specify the type of the data
     def __init__(self, dtype):
         assert isinstance(dtype, str)
-        self.dtype = 'NPY_' + dtype.upper()
+        self.dtype = dtype.lower()
 
-    @staticmethod
-    def validate_shape(shape):
-        sh = [tensor.as_tensor_variable(s) for s in shape]
+    def validate_shape(self, shape):
+        sh = [as_tensor_variable(s) for s in shape]
         bcast = []
         for s in sh:
             if s.type.dtype[:3] not in ('int', 'uin'):
                 raise TypeError('Shape arguments must be integers', s)
             # if s is constant 1, then we're broadcastable in that dim
             try:
-                const_shp = tensor.get_scalar_constant_value(s)
-            except tensor.NotScalarConstantError:
+                const_shp = get_scalar_constant_value(s)
+            except NotScalarConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
-        otype = tensor.TensorType(dtype=self.dtype, broadcastable=bcast)
+        otype = TensorType(dtype=self.dtype, broadcastable=bcast)
         output = otype()
         return sh, output
 
     def make_node(self, *shape):
         shape, output = self.validate_shape(shape)
-        output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        output.tag.values_eq_approx = values_eq_approx_always_true
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):
@@ -5513,15 +5512,17 @@ class AllocEmpty(gof.Op):
         return False
 
     def c_code(self, node, name, inputs, out_, sub):
-        dtype = self.dtype
+        dtype = "NPY_"+self.dtype.upper()
         out, = out_
         fail = sub['fail']
         shps = inputs
         nd = len(shps)
         str = "int dims[%(nd)s];\n" % locals()
+        
         for idx, sh in enumerate(shps):
             str += "dims[%(idx)s] =" \
                     "PyInt_AsLong((PyObject*)%(sh)s);\n" % locals()
+        
         # Validate that the output storage exists
         str += "if(%(out)s==NULL\n" % locals()
         for idx, sh in enumerate(shps):
@@ -5533,7 +5534,7 @@ class AllocEmpty(gof.Op):
             output variable */
             Py_XDECREF(%(out)s);
             %(out)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s,
-                                                    PyArray_DIMS(dims),
+                                                    dims,
                                                     %(dtype)s,
                                                     0);
             if (!%(out)s)
