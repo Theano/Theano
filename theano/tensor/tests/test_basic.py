@@ -7544,7 +7544,7 @@ def test_allocempty():
     
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
-    
+
 """
 
 if __name__ == '__main__':
