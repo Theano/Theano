@@ -1727,6 +1727,22 @@ def local_gpu_join(node):
         # print "OPT: we've got a Join instance"
 
         axis_and_tensors = node.inputs
+        
+        
+        # We can only optimize this op if axis is given as integer or tensor scalar constant,
+        # otherwise the optimization breaks down.
+        opt_can_be_optimized = False
+        if isinstance(axis_and_tensors[0], int):
+            can_be_optimized = True
+        else:
+            try:
+                # Note : `get_scalar_constant_value` returns a ndarray not
+                # an int
+                axis_int = int(tensor.get_scalar_constant_value(axis_and_tensors[0]))
+                can_be_optimized = True
+
+            except:
+	        pass
 
         # print "OPT: axis_and_tensors=", axis_and_tensors
 
@@ -1735,7 +1751,7 @@ def local_gpu_join(node):
         # print "OPT: matches =", matches
 
         # if all input tensors are host_from_gpu'ified
-        if all(matches):
+        if all(matches) and opt_can_be_optimized:
             # the extra gpu_from_host introduced here will
             # be removed by further optimizations
             new_tensors = [gpu_from_host(t) for t in axis_and_tensors[1:]]
@@ -1749,7 +1765,6 @@ def local_gpu_join(node):
 
 # This is a copy of the same opt in tensor to make the tests happy,
 # but I'm not convinced it is actually needed.
-
 
 @register_opt()
 @local_optimizer([GpuJoin])
