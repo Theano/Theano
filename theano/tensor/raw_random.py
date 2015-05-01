@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Define random number Type (`RandomStateType`) and Op (`RandomFunction`)."""
 __docformat__ = "restructuredtext en"
 import sys
@@ -191,7 +192,7 @@ class RandomFunction(gof.Op):
         assert shape.type.ndim == 1
         assert (shape.type.dtype == 'int64') or (shape.type.dtype == 'int32')
         if not isinstance(r.type, RandomStateType):
-            print >> sys.stderr, 'WARNING: RandomState instances should be in RandomStateType'
+            print('WARNING: RandomState instances should be in RandomStateType', file=sys.stderr)
             if 0:
                 raise TypeError('r must be RandomStateType instance', r)
         # the following doesn't work because we want to ignore the
@@ -502,7 +503,7 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
     """
     if prob is not None:
         p = prob
-        print >> sys.stderr, "DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy."
+        print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy.", file=sys.stderr)
     n = tensor.as_tensor_variable(n)
     p = tensor.as_tensor_variable(p)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, p)
@@ -889,7 +890,7 @@ class RandomStreamsBase(object):
         """
         if prob is not None:
             p = prob
-            print >> sys.stderr, "DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy."
+            print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy.", file=sys.stderr)
         return self.gen(binomial, size, n, p, ndim=ndim, dtype=dtype)
 
     def uniform(self, size=None, low=0.0, high=1.0, ndim=None, dtype=None):

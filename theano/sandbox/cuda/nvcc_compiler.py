@@ -1,3 +1,4 @@
+from __future__ import print_function
 import distutils
 import logging
 import os
@@ -400,8 +401,8 @@ class NVCC_compiler(Compiler):
 
         if p.returncode:
             for i, l in enumerate(src_code.split('\n')):
-                print >> sys.stderr,  i + 1, l
-            print >> sys.stderr, '==============================='
+                print(i + 1, l, file=sys.stderr)
+            print('===============================', file=sys.stderr)
             # filter the output from the compiler
             for l in nvcc_stderr.split('\n'):
                 if not l:
@@ -415,17 +416,17 @@ class NVCC_compiler(Compiler):
                         continue
                 except Exception:
                     pass
-                print >> sys.stderr, l
-            print nvcc_stdout
-            print cmd
+                print(l, file=sys.stderr)
+            print(nvcc_stdout)
+            print(cmd)
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
         elif config.cmodule.compilation_warning and nvcc_stdout:
-            print nvcc_stdout
+            print(nvcc_stdout)
 
         if nvcc_stdout:
             # this doesn't happen to my knowledge
-            print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
+            print("DEBUG: nvcc STDOUT", nvcc_stdout, file=sys.stderr)
 
         if py_module:
             # touch the __init__ file

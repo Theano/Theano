@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import shutil
 from tempfile import mkdtemp
@@ -249,10 +250,10 @@ class TestScan(unittest.TestCase):
                     all_nodes = my_f.maker.fgraph.toposort()
                     assert len([x for x in all_nodes
                                 if isinstance(x.op, ScanOp)]) == 0
-                print >>sys.stderr, '   n_steps', n_steps
-                print >>sys.stderr, '   go_backwards', go_backwards
+                print('   n_steps', n_steps, file=sys.stderr)
+                print('   go_backwards', go_backwards, file=sys.stderr)
 
-                print >>sys.stderr, '       Scenario 1. Correct shape'
+                print('       Scenario 1. Correct shape', file=sys.stderr)
                 if n_steps is not None:
                     _n_steps = n_steps
                 else:
@@ -308,7 +309,7 @@ class TestScan(unittest.TestCase):
                         #import ipdb; ipdb.set_trace()
                         raise
                 # Scenario 2 : Loose fit (sequences longer then required)
-                print >>sys.stderr, '       Scenario 2. Loose shapes'
+                print('       Scenario 2. Loose shapes', file=sys.stderr)
                 input_values = []
                 for pos, info in enumerate(inputs_info):
                     taps = [x['tap'] for x in info]
@@ -354,7 +355,7 @@ class TestScan(unittest.TestCase):
                 for th_out, num_out in zip(shared_vars, numpy_shared):
                     assert numpy.allclose(th_out.get_value(), num_out)
                 # Scenario 3 : Less data then required
-                print >>sys.stderr, '       Scenario 2. Wrong shapes'
+                print('       Scenario 2. Wrong shapes', file=sys.stderr)
                 input_values = []
                 for pos, info in enumerate(inputs_info):
                     taps = [x['tap'] for x in info]
@@ -450,14 +451,14 @@ class TestScan(unittest.TestCase):
                     pos_inp = rng.randint(len(all_inputs_info))
                     pos_st = rng.randint(len(all_states_info))
                     pos_param = rng.randint(len(all_parameters_info))
-                    print >>sys.stderr
-                    print >>sys.stderr, 'Test nb', test_nb
-                    print >>sys.stderr, ' inputs', all_inputs_info[pos_inp]
-                    print >>sys.stderr, ' states', all_states_info[pos_st]
-                    print >>sys.stderr, ' parameters', \
-                            all_parameters_info[pos_param]
-                    print >>sys.stderr, ' n_outputs', n_outputs
-                    print >>sys.stderr, ' n_shared_updates', n_shared_updates
+                    print(file=sys.stderr)
+                    print('Test nb', test_nb, file=sys.stderr)
+                    print(' inputs', all_inputs_info[pos_inp], file=sys.stderr)
+                    print(' states', all_states_info[pos_st], file=sys.stderr)
+                    print(' parameters', \
+                            all_parameters_info[pos_param], file=sys.stderr)
+                    print(' n_outputs', n_outputs, file=sys.stderr)
+                    print(' n_shared_updates', n_shared_updates, file=sys.stderr)
                     test_nb += 1
                     self.new_run(inputs_info=all_inputs_info[pos_inp],
                              states_info=all_states_info[pos_st],

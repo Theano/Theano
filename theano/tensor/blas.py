@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Ops and optimizations for using BLAS calls
 
 BLAS = Basic Linear Algebra Subroutines
@@ -180,7 +181,7 @@ def default_blas_ldflags():
         theano.function([x], theano.tensor.blas._dot22(x,x),
                         profile=False)
     except Exception as e:
-        print e
+        print(e)
         yield ""
 
 
@@ -1609,23 +1610,23 @@ class GemmOptimizer(Optimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        print >> stream, blanc, "GemmOptimizer"
-        print >> stream, blanc, " nb_iter", prof[1]
-        print >> stream, blanc, " nb_replacement", prof[2]
-        print >> stream, blanc, " nb_replacement_didn_t_remove", prof[3]
-        print >> stream, blanc, " nb_inconsistency_make", prof[4]
-        print >> stream, blanc, " nb_inconsistency_replace", prof[5]
-        print >> stream, blanc, " time_canonicalize", prof[6]
-        print >> stream, blanc, " time_factor_can", prof[7]
-        print >> stream, blanc, " time_factor_list", prof[8]
-        print >> stream, blanc, " time_toposort", prof[9]
-        print >> stream, blanc, " validate_time", prof[10]
-        print >> stream, blanc, " callback_time", prof[11]
+        print(blanc, "GemmOptimizer", file=stream)
+        print(blanc, " nb_iter", prof[1], file=stream)
+        print(blanc, " nb_replacement", prof[2], file=stream)
+        print(blanc, " nb_replacement_didn_t_remove", prof[3], file=stream)
+        print(blanc, " nb_inconsistency_make", prof[4], file=stream)
+        print(blanc, " nb_inconsistency_replace", prof[5], file=stream)
+        print(blanc, " time_canonicalize", prof[6], file=stream)
+        print(blanc, " time_factor_can", prof[7], file=stream)
+        print(blanc, " time_factor_list", prof[8], file=stream)
+        print(blanc, " time_toposort", prof[9], file=stream)
+        print(blanc, " validate_time", prof[10], file=stream)
+        print(blanc, " callback_time", prof[11], file=stream)
         if prof[11] > 1:
-            print >> stream, blanc, " callbacks_time"
+            print(blanc, " callbacks_time", file=stream)
             for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print i
+                    print(i)
 
 
 class Dot22(GemmRelated):

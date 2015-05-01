@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 This file is based on hpu.nns.driver_kouh of Oct 22 2009.
 
@@ -310,7 +311,7 @@ if 0:
 
         assert cost.type.ndim == 0
 
-        print layer.params
+        print(layer.params)
 
         gparams = theano.tensor.grad(cost, layer.params)
         updates = [(p, p - s_lr*gp) for p, gp in zip(layer.params, gparams)]

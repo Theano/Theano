@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 import numpy
@@ -149,9 +150,9 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
             return variable
 
     def print_summary(self, stream=sys.stdout):
-        print >> stream, "%s (id %i)" % (self.__class__.__name__, id(self))
-        print >> stream, "  names", self._names
-        print >> stream, "  db", self.__db__
+        print("%s (id %i)" % (self.__class__.__name__, id(self)), file=stream)
+        print("  names", self._names, file=stream)
+        print("  db", self.__db__, file=stream)
 
 
 class Query(object):
@@ -288,16 +289,16 @@ class SequenceDB(DB):
         return ret
 
     def print_summary(self, stream=sys.stdout):
-        print >> stream, self.__class__.__name__ + " (id %i)" % id(self)
+        print(self.__class__.__name__ + " (id %i)" % id(self), file=stream)
         positions = self.__position__.items()
 
         def c(a, b):
             return cmp(a[1], b[1])
         positions.sort(c)
 
-        print >> stream, "  position", positions
-        print >> stream, "  names", self._names
-        print >> stream, "  db", self.__db__
+        print("  position", positions, file=stream)
+        print("  names", self._names, file=stream)
+        print("  db", self.__db__, file=stream)
 
     def __str__(self):
         sio = StringIO()

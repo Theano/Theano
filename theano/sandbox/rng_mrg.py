@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Implementation of MRG31k3p random number generator for Theano
 
@@ -345,7 +346,7 @@ class mrg_uniform(mrg_uniform_base):
             int(numpy_version[0]) <= 1 and
             int(numpy_version[1]) < 3):
 
-            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
+            print("Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy")
             self.warned_numpy_version = True
 
         n_elements = 1

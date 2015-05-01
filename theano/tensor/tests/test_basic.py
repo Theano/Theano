@@ -1,3 +1,4 @@
+from __future__ import print_function
 import itertools
 import logging
 import operator
@@ -2554,7 +2555,7 @@ def _approx_eq(a, b, eps=1.0e-4):
     b = numpy.asarray(b)
     if a.shape != b.shape:
         if _approx_eq.debug:
-            print a.shape, b.shape
+            print(a.shape, b.shape)
         return False
     abs_rel_err = numeric_grad.abs_rel_err(a, b)
     # numpy.max don't like empty ndarray.
@@ -2562,7 +2563,7 @@ def _approx_eq(a, b, eps=1.0e-4):
         return True
     if numpy.max(abs_rel_err) >= eps:
         if _approx_eq.debug:
-            print a, b
+            print(a, b)
         return False
     return  True
 _approx_eq.debug = 0
@@ -4780,7 +4781,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
     def test_reshape_long_in_shape(self):
         v = dvector('v')
         r = v.reshape((v.shape[0], 1L))
-        print r.eval({v: numpy.arange(5.)})
+        print(r.eval({v: numpy.arange(5.)}))
         assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T,
                               numpy.arange(5.))
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 import theano
 
@@ -276,7 +277,7 @@ class Det(Op):
         try:
             z[0] = numpy.asarray(numpy.linalg.det(x), dtype=x.dtype)
         except Exception:
-            print 'Failed to compute determinant', x
+            print('Failed to compute determinant', x)
             raise
 
     def grad(self, inputs, g_outputs):

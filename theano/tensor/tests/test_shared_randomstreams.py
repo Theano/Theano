@@ -1,3 +1,4 @@
+from __future__ import print_function
 __docformat__ = "restructuredtext en"
 
 import sys
@@ -52,10 +53,10 @@ class T_SharedRandomStreams(unittest.TestCase):
         # print numpy_val0
 
         assert numpy.allclose(fn_val0, numpy_val0)
-        print fn_val0
-        print numpy_val0
-        print fn_val1
-        print numpy_val1
+        print(fn_val0)
+        print(numpy_val0)
+        print(fn_val1)
+        print(numpy_val1)
         assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_seed_fn(self):
@@ -275,9 +276,9 @@ class T_SharedRandomStreams(unittest.TestCase):
         in_mval = val_rng.uniform(-2, 2, size=(20, 5))
         fn_mval0 = f(in_mval)
         fn_mval1 = f(in_mval)
-        print in_mval[0]
-        print fn_mval0[0]
-        print fn_mval1[0]
+        print(in_mval[0])
+        print(fn_mval0[0])
+        print(fn_mval1[0])
         assert not numpy.all(in_mval == fn_mval0)
         assert not numpy.all(in_mval == fn_mval1)
         assert not numpy.all(fn_mval0 == fn_mval1)
@@ -305,9 +306,9 @@ class T_SharedRandomStreams(unittest.TestCase):
         numpy_vval = in_vval.copy()
         vrng = numpy.random.RandomState(int(rng_seed))
         vrng.shuffle(numpy_vval)
-        print in_vval
-        print fn_vval
-        print numpy_vval
+        print(in_vval)
+        print(fn_vval)
+        print(numpy_vval)
         assert numpy.all(numpy_vval == fn_vval)
 
         # Trying to shuffle a vector with function that should shuffle
@@ -513,15 +514,15 @@ class T_SharedRandomStreams(unittest.TestCase):
         # Arguments of size (3,)
         val0 = f(low_val, high_val)
         numpy_val0 = numpy_rng.uniform(low=low_val, high=high_val)
-        print 'THEANO', val0
-        print 'NUMPY', numpy_val0
+        print('THEANO', val0)
+        print('NUMPY', numpy_val0)
         assert numpy.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         val1 = f(low_val[:-1], high_val[:-1])
         numpy_val1 = numpy_rng.uniform(low=low_val[:-1], high=high_val[:-1])
-        print 'THEANO', val1
-        print 'NUMPY', numpy_val1
+        print('THEANO', val1)
+        print('NUMPY', numpy_val1)
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly

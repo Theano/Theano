@@ -1,3 +1,4 @@
+from __future__ import print_function
 import time
 
 from nose.plugins.skip import SkipTest
@@ -414,21 +415,21 @@ class TestConv2D(utt.InferShapeTester):
 
     def speed(self):
         n_calls = 20000
-        print "n_calls", n_calls
+        print("n_calls", n_calls)
         for border_mode in ['valid', 'full']:
-            print
-            print border_mode
+            print()
+            print(border_mode)
             for openmp in [False, True]:
-                print "OpenMP", openmp
+                print("OpenMP", openmp)
                 image_shapes = [(1, 5, 6, 6),
                                 (10, 5, 6, 6),
                                 #(10, 10, 16, 16),
                                 #(10, 10, 32, 32)
                 ]
-                print "image_shape", image_shapes
+                print("image_shape", image_shapes)
                 for image_shape in image_shapes:
                     filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
-                    print "filter_shapes", filter_shapes
+                    print("filter_shapes", filter_shapes)
                     for filter_shape in filter_shapes:
 
                         input = theano.shared(numpy.random.random(image_shape))
@@ -446,8 +447,8 @@ class TestConv2D(utt.InferShapeTester):
                         t1 = time.time()
                         theano_conv.fn(n_calls=n_calls)
                         t2 = time.time()
-                        print t2 - t1,
-                    print
+                        print(t2 - t1, end=' ')
+                    print()
 
     def test_fail(self):
         k = theano.shared(numpy.ones((1, 1, 3, 3), dtype='float32'))

@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Defines the base class for optimizations as well as a certain
 amount of useful generic optimization tools.
@@ -93,8 +94,8 @@ class Optimizer(object):
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
-        print >> stream, "%s%s %s id=%i" % (
-                (' ' * level), self.__class__.__name__, name, id(self))
+        print("%s%s %s id=%i" % (
+                (' ' * level), self.__class__.__name__, name, id(self)), file=stream)
 
     def print_profile(self, prof):
         if prof is not None:
@@ -114,10 +115,10 @@ class FromFunctionOptimizer(Optimizer):
             req(fgraph)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        print >> stream, "%s%s id=%i" % (
+        print("%s%s id=%i" % (
                 ' ' * level,
                 str(self.apply),
-                id(self))
+                id(self)), file=stream)
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
@@ -215,8 +216,8 @@ class SeqOptimizer(Optimizer, list):
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
-        print >> stream, "%s%s %s id=%i" % (
-                (' ' * level), self.__class__.__name__, name, id(self))
+        print("%s%s %s id=%i" % (
+                (' ' * level), self.__class__.__name__, name, id(self)), file=stream)
         # This way, -1 will do all depth
         if depth != 0:
             depth -= 1
@@ -229,20 +230,18 @@ class SeqOptimizer(Optimizer, list):
          nb_node_after, sub_profs, sub_validate_time) = prof
         blanc = ('    ' * level)
 
-        print >> stream, blanc, "SeqOptimizer",
+        print(blanc, "SeqOptimizer", end=' ', file=stream)
         if hasattr(opts, "name"):
-            print >> stream, blanc, opts.name,
+            print(blanc, opts.name, end=' ', file=stream)
         elif hasattr(opts, "__name__"):
-            print >> stream, blanc, opts.__name__,
-        print >> stream, (" time %.3fs for %d/%d nodes"
+            print(blanc, opts.__name__, end=' ', file=stream)
+        print((" time %.3fs for %d/%d nodes"
                           " before/after optimization" % (
-                              sum(prof), nb_node_before, nb_node_after))
-        print >> stream, \
-                blanc, "  %.3fs for fgraph.validate()" % (validate_time)
-        print >> stream, \
-                blanc, "  %.3fs for callback" % (callback_time)
+                              sum(prof), nb_node_before, nb_node_after)), file=stream)
+        print(blanc, "  %.3fs for fgraph.validate()" % (validate_time), file=stream)
+        print(blanc, "  %.3fs for callback" % (callback_time), file=stream)
         if level == 0:
-            print >> stream, blanc, "  time      - (name, class, index) - validate time"
+            print(blanc, "  time      - (name, class, index) - validate time", file=stream)
         ll = []
         for opt in opts:
             if hasattr(opt, "__name__"):
@@ -267,15 +266,15 @@ class SeqOptimizer(Optimizer, list):
             if sub_validate_time:
                 i = opt[-1]
                 val_time = sub_validate_time[i + 1] - sub_validate_time[i]
-                print >> stream, blanc, '  %.6fs - %s - %.3fs' % (
-                    t, opt, val_time)
+                print(blanc, '  %.6fs - %s - %.3fs' % (
+                    t, opt, val_time), file=stream)
             else:
-                print >> stream, blanc, '  %.6fs - %s' % (t, opt)
+                print(blanc, '  %.6fs - %s' % (t, opt), file=stream)
 
             if sub_profs[opt[-1]]:
                 opts[opt[-1]].print_profile(stream, sub_profs[opt[-1]],
                                             level=level + 1)
-        print >> stream
+        print(file=stream)
 
     @staticmethod
     def merge_profile(prof1, prof2):
@@ -650,18 +649,18 @@ class MergeOptimizer(Optimizer):
          callback_time, callbacks_time, nb_merged, nb_constant) = prof
 
         blanc = ('    ' * level)
-        print >> stream, blanc, "MergeOptimizer"
-        print >> stream, blanc, "  nb_fail", nb_fail
-        print >> stream, blanc, "  replace_time", replace_time
-        print >> stream, blanc, "  validate_time", validate_time
-        print >> stream, blanc, "  callback_time", callback_time
+        print(blanc, "MergeOptimizer", file=stream)
+        print(blanc, "  nb_fail", nb_fail, file=stream)
+        print(blanc, "  replace_time", replace_time, file=stream)
+        print(blanc, "  validate_time", validate_time, file=stream)
+        print(blanc, "  callback_time", callback_time, file=stream)
         if callback_time > 1:
-            print >> stream, blanc, "  callbacks_time"
+            print(blanc, "  callbacks_time", file=stream)
             for i in sorted(callbacks_time.iteritems(), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print i
-        print >> stream, blanc, "  nb_merged", nb_merged
-        print >> stream, blanc, "  nb_constant", nb_constant
+                    print(i)
+        print(blanc, "  nb_merged", nb_merged, file=stream)
+        print(blanc, "  nb_constant", nb_constant, file=stream)
 
 
 merge_optimizer = MergeOptimizer()
@@ -811,8 +810,8 @@ class LocalOptimizer(object):
         pass
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        print >> stream, "%s%s id=%i" % (
-                (' ' * level), self.__class__.__name__, id(self))
+        print("%s%s id=%i" % (
+                (' ' * level), self.__class__.__name__, id(self)), file=stream)
 
 
 theano.configparser.AddConfigVar('metaopt.verbose',
@@ -861,15 +860,15 @@ class LocalMetaOptimizer(LocalOptimizer):
         # ensure we have data for all input variables that need it
         if missing:
             if self.verbose:
-                print ("%s cannot meta-optimize %s, "
+                print(("%s cannot meta-optimize %s, "
                        "%d of %d input shapes unknown" %
-                       (self.__class__.__name__, node, len(missing), node.nin))
+                       (self.__class__.__name__, node, len(missing), node.nin)))
             return
         # now we can apply the different optimizations in turn,
         # compile the resulting subgraphs and time their execution
         if self.verbose:
-            print ("%s meta-optimizing %s (%d choices):" %
-                   (self.__class__.__name__, node, len(self.optimizers)))
+            print(("%s meta-optimizing %s (%d choices):" %
+                   (self.__class__.__name__, node, len(self.optimizers))))
         timings = []
         for opt in self.optimizers:
             outputs = opt.transform(node)
@@ -879,20 +878,20 @@ class LocalMetaOptimizer(LocalOptimizer):
                     timing = min(self.time_call(fn) for _ in range(3))
                 except Exception as e:
                     if self.verbose:
-                        print "* %s: exception" % opt, e
+                        print("* %s: exception" % opt, e)
                     continue
                 else:
                     if self.verbose:
-                        print "* %s: %.5g sec" % (opt, timing)
+                        print("* %s: %.5g sec" % (opt, timing))
                     timings.append((timing, outputs, opt))
             else:
                 if self.verbose:
-                    print "* %s: not applicable" % opt
+                    print("* %s: not applicable" % opt)
         # finally, we choose the fastest one
         if timings:
             timings.sort()
             if self.verbose:
-                print "= %s" % timings[0][2]
+                print("= %s" % timings[0][2])
             return timings[0][1]
         return
 
@@ -927,10 +926,10 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
                        '<FromFunctionLocalOptimizer instance>')
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        print >> stream, "%s%s id=%i" % (
+        print("%s%s id=%i" % (
                 ' ' * level,
                 str(self.transform),
-                id(self))
+                id(self)), file=stream)
 
 
 def local_optimizer(tracks, inplace=False):
@@ -986,8 +985,8 @@ class LocalOptGroup(LocalOptimizer):
                 return repl
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        print >> stream, "%s%s id=%i" % (
-                (' ' * level), self.__class__.__name__, id(self))
+        print("%s%s id=%i" % (
+                (' ' * level), self.__class__.__name__, id(self)), file=stream)
         if depth != 0:
             depth -= 1
             for lopt in self.opts:
@@ -1080,11 +1079,11 @@ class OpRemove(LocalOptimizer):
         return "%s(x) -> x" % (self.op)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        print >> stream, "%s%s(%s) id=%i" % (
+        print("%s%s(%s) id=%i" % (
                 ' ' * level,
                 self.__class__.__name__,
                 str(self.op),
-                id(self))
+                id(self)), file=stream)
 
 
 class PatternSub(LocalOptimizer):
@@ -1320,13 +1319,13 @@ class PatternSub(LocalOptimizer):
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, '__name__', getattr(self, 'name', None))
-        print >> stream, "%s%s %s(%s, %s) id=%i" % (
+        print("%s%s %s(%s, %s) id=%i" % (
                 ' ' * level,
                 self.__class__.__name__,
                 name,
                 str(self.in_pattern),
                 str(self.out_pattern),
-                id(self))
+                id(self)), file=stream)
 
 
 ##################
@@ -1538,8 +1537,8 @@ class NavigatorOptimizer(Optimizer):
             self.local_opt.add_requirements(fgraph)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        print >> stream, "%s%s (%i)" % (
-                (' ' * level), self.__class__.__name__, id(self))
+        print("%s%s (%i)" % (
+                (' ' * level), self.__class__.__name__, id(self)), file=stream)
         if depth != 0:
             self.local_opt.print_summary(stream, level=(level + 2),
                                          depth=(depth - 1))
@@ -1604,12 +1603,12 @@ class TopoOptimizer(NavigatorOptimizer):
          io_t, loop_t, callback_time) = prof
 
         blanc = ('    ' * level)
-        print >> stream, blanc, "TopoOptimizer"
-        print >> stream, blanc, "  nb_node (start, end, changed)", (
-            nb_nodes_start, nb_nodes_end, nb)
-        print >> stream, blanc, "  init io_toposort", io_t
-        print >> stream, blanc, "  loop time", loop_t
-        print >> stream, blanc, "  callback_time", callback_time
+        print(blanc, "TopoOptimizer", file=stream)
+        print(blanc, "  nb_node (start, end, changed)", (
+            nb_nodes_start, nb_nodes_end, nb), file=stream)
+        print(blanc, "  init io_toposort", io_t, file=stream)
+        print(blanc, "  loop time", loop_t, file=stream)
+        print(blanc, "  callback_time", callback_time, file=stream)
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -1863,8 +1862,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
-        print >> stream, "%s%s %s id=%i" % (
-                (' ' * level), self.__class__.__name__, name, id(self))
+        print("%s%s %s id=%i" % (
+                (' ' * level), self.__class__.__name__, name, id(self)), file=stream)
         if depth != 0:
             for lopt in self.get_local_optimizers():
                 lopt.print_summary(stream, level=(level + 2),
@@ -1878,19 +1877,19 @@ class EquilibriumOptimizer(NavigatorOptimizer):
          node_created) = prof
 
         blanc = ('    ' * level)
-        print >> stream, blanc, "EquilibriumOptimizer",
-        print >> stream, blanc, getattr(opt, "name",
-                                        getattr(opt, "__name__", ""))
-        print >> stream, blanc, "  time %.3fs for %d passes" % (
-                sum(loop_timing), len(loop_timing))
-        print >> stream, blanc, "  nb nodes (start, end,  max) %d %d %d" % (
-                start_nb_nodes, end_nb_nodes, max_nb_nodes)
-        print >> stream, blanc, "  time io_toposort %.3fs" % sum(
-            io_toposort_timing)
+        print(blanc, "EquilibriumOptimizer", end=' ', file=stream)
+        print(blanc, getattr(opt, "name",
+                                        getattr(opt, "__name__", "")), file=stream)
+        print(blanc, "  time %.3fs for %d passes" % (
+                sum(loop_timing), len(loop_timing)), file=stream)
+        print(blanc, "  nb nodes (start, end,  max) %d %d %d" % (
+                start_nb_nodes, end_nb_nodes, max_nb_nodes), file=stream)
+        print(blanc, "  time io_toposort %.3fs" % sum(
+            io_toposort_timing), file=stream)
         s = sum([time_opts[o] for o in opt.get_local_optimizers()])
-        print >> stream, blanc, "  time in local optimizers %.3fs" % s
+        print(blanc, "  time in local optimizers %.3fs" % s, file=stream)
         s = sum([time_opts[o] for o in opt.global_optimizers])
-        print >> stream, blanc, "  time in global optimizers %.3fs" % s
+        print(blanc, "  time in global optimizers %.3fs" % s, file=stream)
         for i in range(len(loop_timing)):
             lopt = ""
             if loop_process_count[i]:
@@ -1900,13 +1899,13 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                  in d[:5]])
                 if len(d) > 5:
                     lopt += " ..."
-            print >> stream, blanc, ('  %2d - %.3fs %d (%.3fs in global opts, '
+            print(blanc, ('  %2d - %.3fs %d (%.3fs in global opts, '
                                      '%.3fs io_toposort) - %d nodes - %s' % (
                                          i, loop_timing[i],
                                          sum(loop_process_count[i].values()),
                                          global_opt_timing[i],
                                          io_toposort_timing[i], nb_nodes[i],
-                                         lopt))
+                                         lopt)), file=stream)
 
         count_opt = []
         not_used = []
@@ -1926,20 +1925,20 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 not_used_time += time_opts[opt]
 
         if count_opt:
-            print >> stream, blanc, \
-                    '  times - times applied - nb node created - name:'
+            print(blanc, \
+                    '  times - times applied - nb node created - name:', file=stream)
             count_opt.sort()
             for (t, count, n_created, opt) in count_opt[::-1]:
-                print >> stream, blanc, '  %.3fs - %d - %d - %s' % (
-                    t, count, n_created, opt)
-            print >> stream, blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
-                not_used_time, len(not_used))
+                print(blanc, '  %.3fs - %d - %d - %s' % (
+                    t, count, n_created, opt), file=stream)
+            print(blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
+                not_used_time, len(not_used)), file=stream)
             not_used.sort()
             for (t, opt) in not_used[::-1]:
                 if t > 0:
                     # Skip opt that have 0 times, they probably wasn't even tried.
-                    print >> stream, blanc + "  ", '  %.3fs - %s' % (t, opt)
-            print >> stream
+                    print(blanc + "  ", '  %.3fs - %s' % (t, opt), file=stream)
+            print(file=stream)
 
     @staticmethod
     def merge_profile(prof1, prof2):

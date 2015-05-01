@@ -1,3 +1,4 @@
+from __future__ import print_function
 """ test code snippet in the Theano tutorials.
 """
 
@@ -745,8 +746,8 @@ class T_examples(unittest.TestCase):
                           name="w")
         b = theano.shared(numpy.asarray(0., dtype=config.floatX),
                           name="b")
-        print "Initial model:"
-        print w.get_value(), b.get_value()
+        print("Initial model:")
+        print(w.get_value(), b.get_value())
 
         # Construct Theano expression graph
         p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
@@ -768,10 +769,10 @@ class T_examples(unittest.TestCase):
         for i in range(training_steps):
             pred, err = train(D[0], D[1])
 
-        print "Final model:"
-        print w.get_value(), b.get_value()
-        print "target values for D:", D[1]
-        print "prediction on D:", predict(D[0])
+        print("Final model:")
+        print(w.get_value(), b.get_value())
+        print("target values for D:", D[1])
+        print("prediction on D:", predict(D[0]))
 
         # A user reported that this happened on the mailig list.
         assert not numpy.isnan(b.get_value()).any()
@@ -923,12 +924,12 @@ class T_using_gpu(unittest.TestCase):
         for i in xrange(iters):
             r = f()
         t1 = time.time()
-        print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-        print 'Result is', r
+        print('Looping %d times took' % iters, t1 - t0, 'seconds')
+        print('Result is', r)
         if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
-            print 'Used the cpu'
+            print('Used the cpu')
         else:
-            print 'Used the gpu'
+            print('Used the gpu')
         if theano.config.device.find('gpu') > -1:
             assert not numpy.any( [isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
         else:
@@ -953,13 +954,13 @@ class T_using_gpu(unittest.TestCase):
             for i in xrange(iters):
                 r = f()
             t1 = time.time()
-            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-            print 'Result is', r
-            print 'Numpy result is', numpy.asarray(r)
+            print('Looping %d times took' % iters, t1 - t0, 'seconds')
+            print('Result is', r)
+            print('Numpy result is', numpy.asarray(r))
             if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
-                print 'Used the cpu'
+                print('Used the cpu')
             else:
-                print 'Used the gpu'
+                print('Used the gpu')
 
             assert not numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()])
 
@@ -985,14 +986,14 @@ class T_using_gpu(unittest.TestCase):
             for i in xrange(iters):
                 r = f()
             t1 = time.time()
-            print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-            print 'Result is', r
-            print 'Numpy result is', numpy.asarray(r)
+            print('Looping %d times took' % iters, t1 - t0, 'seconds')
+            print('Result is', r)
+            print('Numpy result is', numpy.asarray(r))
             if numpy.any([isinstance(x.op, T.Elemwise)
                           for x in f.maker.fgraph.toposort()]):
-                print 'Used the cpu'
+                print('Used the cpu')
             else:
-                print 'Used the gpu'
+                print('Used the gpu')
 
             assert not numpy.any([isinstance(x.op, T.Elemwise)
                                   for x in f.maker.fgraph.toposort()])
@@ -1247,10 +1248,10 @@ class T_scan(unittest.TestCase):
         b = numpy.ones((2), dtype=theano.config.floatX)
         b[1] = 2
 
-        print "Scan results:", compute_elementwise(x, w, b)[0]
+        print("Scan results:", compute_elementwise(x, w, b)[0])
 
         # comparison with numpy
-        print "Numpy results:", numpy.tanh(x.dot(w) + b)
+        print("Numpy results:", numpy.tanh(x.dot(w) + b))
 
     def test_sequence(self):
         # define tensor variables
@@ -1281,7 +1282,7 @@ class T_scan(unittest.TestCase):
         p[0, :] = 3
         v = numpy.ones((2, 2), dtype=theano.config.floatX)
 
-        print "Scan results", compute_seq(x, w, y, u, p, v)[0]
+        print("Scan results", compute_seq(x, w, y, u, p, v)[0])
 
         # comparison with numpy
         x_res = numpy.zeros((5, 2), dtype=theano.config.floatX)
@@ -1290,7 +1291,7 @@ class T_scan(unittest.TestCase):
             x_res[i] = numpy.tanh(x_res[i-1].dot(w) +
                                   y[i].dot(u) + p[4-i].dot(v))
 
-        print "Numpy results:", x_res
+        print("Numpy results:", x_res)
 
     def test_norm(self):
         # define tensor variable
@@ -1305,12 +1306,12 @@ class T_scan(unittest.TestCase):
 
         # test value
         x = numpy.diag(numpy.arange(1, 6, dtype=theano.config.floatX), 1)
-        print "Scan results:", compute_norm_lines(x)[0], \
-                            compute_norm_cols(x)[0]
+        print("Scan results:", compute_norm_lines(x)[0], \
+                            compute_norm_cols(x)[0])
 
         # comparison with numpy
-        print "Numpy results:", numpy.sqrt((x**2).sum(1)), \
-                            numpy.sqrt((x**2).sum(0))
+        print("Numpy results:", numpy.sqrt((x**2).sum(1)), \
+                            numpy.sqrt((x**2).sum(0)))
 
     def test_trace(self):
         # define tensor variable
@@ -1328,10 +1329,10 @@ class T_scan(unittest.TestCase):
         # test value
         x = numpy.eye(5, dtype=theano.config.floatX)
         x[0] = numpy.arange(5, dtype=theano.config.floatX)
-        print "Scan results:", compute_trace(x)[0]
+        print("Scan results:", compute_trace(x)[0])
 
         # comparison with numpy
-        print "Numpy results:", numpy.diagonal(x).sum()
+        print("Numpy results:", numpy.diagonal(x).sum())
 
     def test_taps(self):
         # define tensor variables
@@ -1361,7 +1362,7 @@ class T_scan(unittest.TestCase):
         n = 10
         b = numpy.ones((2), dtype=theano.config.floatX)
 
-        print "Scan results:", compute_seq2(x, u, v, w, b, n)
+        print("Scan results:", compute_seq2(x, u, v, w, b, n))
 
         # comparison with numpy
         x_res = numpy.zeros((10, 2), dtype=theano.config.floatX)
@@ -1374,7 +1375,7 @@ class T_scan(unittest.TestCase):
             x_res[i] = (x_res[i-2].dot(u) + x_res[i-1].dot(v) +
                         numpy.tanh(x_res[i-1].dot(w) + b))
 
-        print "Numpy results:", x_res
+        print("Numpy results:", x_res)
 
     def test_jacobian(self):
         # define tensor variables
@@ -1390,10 +1391,10 @@ class T_scan(unittest.TestCase):
         x = numpy.eye(5)[0]
         w = numpy.eye(5, 3)
         w[2] = numpy.ones((3))
-        print "Scan results:", compute_jac_t(w, x)[0]
+        print("Scan results:", compute_jac_t(w, x)[0])
 
         # compare with numpy
-        print "Numpy results:", ((1 - numpy.tanh(x.dot(w))**2)*w).T
+        print("Numpy results:", ((1 - numpy.tanh(x.dot(w))**2)*w).T)
 
     def test_accumulator(self):
         # define shared variables
@@ -1404,9 +1405,9 @@ class T_scan(unittest.TestCase):
         accumulator = theano.function([n_sym], [], updates=updates,
                                       allow_input_downcast=True)
 
-        print "Before 5 steps:", k.get_value()
+        print("Before 5 steps:", k.get_value())
         accumulator(5)
-        print "After 5 steps:", k.get_value()
+        print("After 5 steps:", k.get_value())
 
     def test_random(self):
         # define tensor variables
@@ -1428,7 +1429,7 @@ class T_scan(unittest.TestCase):
         w = numpy.ones((2, 2))
         b = numpy.ones((2))
 
-        print compute_with_bnoise(x, w, b)
+        print(compute_with_bnoise(x, w, b))
 
 
 class T_typedlist(unittest.TestCase):

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 
 import theano.tensor as T
@@ -42,7 +43,7 @@ class GpuConvTransp3D(GpuOp):
 
     def perform_(self, node, inputs, output_storage):
         W, b, d, H, RShape = inputs
-        print "\t\t\t\tGpuConvTransp3D python code still uses old format"
+        print("\t\t\t\tGpuConvTransp3D python code still uses old format")
         output_storage[0][0] = computeR(W, b, d, H, RShape)
 
     def c_code_cache_version(self):
@@ -382,7 +383,7 @@ def computeR(W, b, d, H, Rshape=None):
 
         if Rshape is not None and Rshape[0] != -1:
             if Rshape[0] < videoHeight:
-                print (Rshape[0], videoHeight)
+                print((Rshape[0], videoHeight))
                 assert False
             assert Rshape[1] >= videoWidth
             assert Rshape[2] >= videoDur

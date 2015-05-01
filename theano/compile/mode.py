@@ -1,3 +1,4 @@
+from __future__ import print_function
 """WRITEME
 """
 import logging
@@ -181,7 +182,7 @@ class PrintCurrentFunctionGraph(gof.Optimizer):
 
     def apply(self, fgraph):
         import theano.printing
-        print "PrintCurrentFunctionGraph:", self.header
+        print("PrintCurrentFunctionGraph:", self.header)
         theano.printing.debugprint(fgraph.outputs)
 
 

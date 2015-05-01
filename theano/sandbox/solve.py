@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy, scipy.linalg
 from theano import gof, tensor, scalar
 import unittest
@@ -38,7 +39,7 @@ class Solve(gof.Op):
         output, = out
         ret = scipy.linalg.solve(A, b)
         if ret.dtype != node.outputs[0].dtype:
-            print >> sys.stderr, "WARNING: Solve.perform() required cast."
+            print("WARNING: Solve.perform() required cast.", file=sys.stderr)
             ret = theano._asarray(ret, dtype=node.outputs[0].dtype)
         output[0] = ret
 

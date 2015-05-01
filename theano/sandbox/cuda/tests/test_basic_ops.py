@@ -1,3 +1,4 @@
+from __future__ import print_function
 import time
 import unittest
 
@@ -190,17 +191,17 @@ def test_careduce():
 
             if f_caused_value_error != f2_caused_value_error:
                 if f_caused_value_error:
-                    print 'f caused this value error:'
-                    print exc
+                    print('f caused this value error:')
+                    print(exc)
                 else:
-                    print 'f did not raise a value error, but should have'
+                    print('f did not raise a value error, but should have')
                 if f2_caused_value_error:
-                    print 'f2 caused this value error:'
-                    print exc2
+                    print('f2 caused this value error:')
+                    print(exc2)
                 else:
-                    print 'f should not have raised a value error'
-                print 'shape was: ', shape
-                print 'pattern was: ', pattern
+                    print('f should not have raised a value error')
+                print('shape was: ', shape)
+                print('pattern was: ', pattern)
                 assert False
 
             try:
@@ -1318,7 +1319,7 @@ def speed_adv_sub1():
         f = theano.function([vec], var[vec], mode=mode_with_gpu)
         for i in range(100):
             f(idx)
-        print "ProfileMode with batch size", batch_size
+        print("ProfileMode with batch size", batch_size)
         mode_with_gpu.print_summary()
 
 

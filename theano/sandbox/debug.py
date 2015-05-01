@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 from theano import gof
 import sys
@@ -149,11 +150,11 @@ class DebugLinker(gof.WrapLinker):
 
 
 def print_info(i, node, *thunks):
-    print "step %i, node %s" % (i, node)
+    print("step %i, node %s" % (i, node))
 
 
 def print_from(i, node, *thunks):
-    print "parents:", ", ".join(str(input.step) for input in node.inputs)
+    print("parents:", ", ".join(str(input.step) for input in node.inputs))
 
 
 def print_input_shapes(i, node, *thunks):
@@ -163,15 +164,15 @@ def print_input_shapes(i, node, *thunks):
             shapes.append(str(input.value.shape))
         else:
             shapes.append('N/A')
-    print "input shapes:", ", ".join(shapes)
+    print("input shapes:", ", ".join(shapes))
 
 
 def print_input_types(i, node, *thunks):
-    print "input types:", ", ".join(str(type(input.value)) for input in node.inputs)
+    print("input types:", ", ".join(str(type(input.value)) for input in node.inputs))
 
 
 def print_sep(i, node, *thunks):
-    print "==================================="
+    print("===================================")
 
 import numpy
 

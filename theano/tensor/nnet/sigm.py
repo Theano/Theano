@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Ops and optimizations: sigmoid, softplus
 
 These functions implement special cases of exp and log to improve numerical stability.
@@ -148,9 +149,9 @@ for i in xrange(750):
                              'doc', 'library', 'tensor', 'nnet',
                              'sigmoid_prec.png')
         plt.savefig(fname)
-        print "New picture saved at", fname
-        print val_ultra.max()
-        print val_ultra.min()
+        print("New picture saved at", fname)
+        print(val_ultra.max())
+        print(val_ultra.min())
 
 
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
@@ -752,13 +753,13 @@ def perform_sigm_times_exp(tree, exp_x=None, exp_minus_x=None, sigm_x=None,
     if full_tree is None:
         full_tree = tree
     if False:  # Debug code.
-        print '<perform_sigm_times_exp>'
-        print '  full_tree   = %s' % full_tree
-        print '  tree        = %s' % tree
-        print '  exp_x       = %s' % exp_x
-        print '  exp_minus_x = %s' % exp_minus_x
-        print '  sigm_x      = %s' % sigm_x
-        print '  sigm_minus_x= %s' % sigm_minus_x
+        print('<perform_sigm_times_exp>')
+        print('  full_tree   = %s' % full_tree)
+        print('  tree        = %s' % tree)
+        print('  exp_x       = %s' % exp_x)
+        print('  exp_minus_x = %s' % exp_minus_x)
+        print('  sigm_x      = %s' % sigm_x)
+        print('  sigm_minus_x= %s' % sigm_minus_x)
     neg, inputs = tree
     if isinstance(inputs, list):
         # Recurse through inputs of the multiplication.
@@ -904,8 +905,8 @@ if 0:
     @opt.register_stabilize
     @gof.local_optimizer([tensor.mul])
     def local_sigm_gest(node):
-        print "CANONICALIZE"
-        print sigm_canonicalize(node)
+        print("CANONICALIZE")
+        print(sigm_canonicalize(node))
 
     def sigm_canonicalize(node):
         add = tensor.add

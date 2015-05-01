@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Note: this code was initially copied from the 'pyutools' package by its
 # original author, and re-licensed under Theano's license.
 
@@ -86,8 +87,8 @@ def detect_nan(i, node, fn):
     for output in fn.outputs:
         if (not isinstance(numpy.random.RandomState, output[0]) and
             numpy.isnan(output[0]).any()):
-            print '*** NaN detected ***'
+            print('*** NaN detected ***')
             theano.printing.debugprint(node)
-            print 'Inputs : %s' % [input[0] for input in fn.inputs]
-            print 'Outputs: %s' % [output[0] for output in fn.outputs]
+            print('Inputs : %s' % [input[0] for input in fn.inputs])
+            print('Outputs: %s' % [output[0] for output in fn.outputs])
             break

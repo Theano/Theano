@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Driver of graph construction, optimization, and linking.
 
 """
@@ -705,7 +706,7 @@ class Function(object):
             for key in self.fn.storage_map.keys():
                 if not isinstance(key, theano.gof.Constant):
                     self.fn.storage_map[key][0] = None
-            
+
             for node in self.nodes_with_inner_function:
                 ops_with_inner_function[node.op].free()
 
@@ -888,7 +889,7 @@ class FunctionMaker(object):
             return SymbolicOutput(output)
         else:
             raise TypeError("Unknown output type: %s (%s)", type(output), output)
-        
+
     def optimize_graph_with_cache(self, optimizer, inputs, outputs):
         # This function is not finished
         from theano.gof.compilelock import get_lock, release_lock
@@ -907,11 +908,11 @@ class FunctionMaker(object):
         # Could be refactored in different functions.
         def load_graph_db():
             if os.path.isfile(graph_db_file):
-                print 'graph_db already exists'
+                print('graph_db already exists')
             else:
                 # create graph_db
                 f = open(graph_db_file, 'wb')
-                print 'create new graph_db in %s' % graph_db_file
+                print('create new graph_db in %s' % graph_db_file)
                 # file needs to be open and closed for every pickle
                 f.close()
             # load the graph_db dictionary
@@ -922,18 +923,18 @@ class FunctionMaker(object):
                 tmp = theano.config.unpickle_function
                 theano.config.unpickle_function = False
                 graph_db = cPickle.load(f)
-                
+
                 # hack end
                 f.close()
-                print 'graph_db loaded and it is not empty'
+                print('graph_db loaded and it is not empty')
             except EOFError as e:
                 # the file has nothing in it
-                print e
-                print 'graph_db loaded and it is empty'
+                print(e)
+                print('graph_db loaded and it is empty')
                 graph_db = {}
             finally:
                 theano.config.unpickle_function = tmp
-                
+
             return graph_db
 
         def find_same_graph_in_db(graph_db):
@@ -952,29 +953,29 @@ class FunctionMaker(object):
                 if len(inputs_new) != len(inputs_old):
                     # If the inputs are of different size,
                     # two graphs are for sure different
-                    print 'need to optimize, because input size is different'
+                    print('need to optimize, because input size is different')
                     continue
                 elif len(outputs_new) != len(outputs_old):
                     # If the inputs are of different size,
                     # two graphs are for sure different
-                    print 'need to optimize, because output size is different'
+                    print('need to optimize, because output size is different')
                     continue
                 elif not all(input_new.type == input_old.type for
                              input_new, input_old in zip(inputs_new, inputs_old)):
-                    print 'need to optimize, because inputs are of different types'
+                    print('need to optimize, because inputs are of different types')
                     continue
                 elif not all(output_new.type == output_old.type for
                              output_new, output_old in zip(outputs_new, outputs_old)):
-                    print 'need to optimize, because outputs are of different types'
+                    print('need to optimize, because outputs are of different types')
                     continue
                 elif not size_old == size_new:
-                    print 'need to optimize, because numbers of nodes in graph are different'
+                    print('need to optimize, because numbers of nodes in graph are different')
                     continue
                 else:
                     flags = []
                     for output_new, output_old, i in zip(
                             outputs_new, outputs_old, range(len(outputs_new))):
-                        print 'loop through outputs node for both graphs'
+                        print('loop through outputs node for both graphs')
                         graph_old.variables = set(gof.graph.variables(
                             graph_old.inputs, graph_old.outputs))
 
@@ -1024,20 +1025,20 @@ class FunctionMaker(object):
                     is_same = all(flags)
                     if is_same:
                         # found the match
-                        print 'found a match, no need to optimize'
+                        print('found a match, no need to optimize')
                         found_graph_in_db = graph_optimized
                         break
             return found_graph_in_db
-                   
+
         graph_db = load_graph_db()
-        print 'loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db))
+        print('loaded graph_db from %s, size=%d' % (graph_db_file, len(graph_db)))
         found_graph = find_same_graph_in_db(graph_db)
         if found_graph:
             self.fgraph = found_graph
             optimizer_profile = None
         else:
             # this is a brand new graph, optimize it, save it to graph_db
-            print 'graph not found in graph_db, optimizing the graph'
+            print('graph not found in graph_db, optimizing the graph')
             self.fgraph.variables = set(gof.graph.variables(
                 self.fgraph.inputs, self.fgraph.outputs))
             # check_integrity parameters was added to ignore
@@ -1050,10 +1051,10 @@ class FunctionMaker(object):
             f = open(graph_db_file, 'wb')
             cPickle.dump(graph_db, f, -1)
             f.close()
-            print 'new graph saved into graph_db'
+            print('new graph saved into graph_db')
         release_lock()
         return optimizer_profile
-                
+
     def __init__(self, inputs, outputs,
             mode=None, accept_inplace=False, function_builder=Function,
             profile=None, on_unused_input=None, fgraph=None,
@@ -1136,7 +1137,7 @@ class FunctionMaker(object):
             need_opt = False
             _, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
             pass
-        
+
         self.fgraph = fgraph
 
         # Fetch the optimizer and linker
@@ -1157,7 +1158,7 @@ class FunctionMaker(object):
                         optimizer, inputs, outputs)
                 else:
                     optimizer_profile = optimizer(fgraph)
-                    
+
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
                 if profile:
@@ -1171,7 +1172,7 @@ class FunctionMaker(object):
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
                 theano.config.traceback.limit = limit_orig
-        
+
         # initialize the linker
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionMaker should be a Linker with an accept method " \

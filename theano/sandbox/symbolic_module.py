@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy, inspect
 import theano
 import theano.tensor as T
@@ -191,7 +192,7 @@ def compile(smod, initial_values=None):
                     def setter(s, v):
                         inputs[thing].value.storage[0] = v
                     p = property(getter, setter)
-                    print p
+                    print(p)
                     reflected[thing] = p
                 else:
                     reflected[thing] = None  # TODO: how to reflect derived resuls?
@@ -277,7 +278,7 @@ def NNet(x=None, y=None, n_hid_layers=2):
         rval = classif.params()
         for l in layers:
             rval.extend(l.params())
-        print [id(r) for r in rval]
+        print([id(r) for r in rval])
         return rval
 
     if 0:
@@ -290,12 +291,12 @@ def NNet(x=None, y=None, n_hid_layers=2):
     return locals()
 nnet = compile(NNet)
 
-print nnet
-print nnet.params()
-print nnet.params.__dict__['finder'][NNet.layers[0].w]
+print(nnet)
+print(nnet.params())
+print(nnet.params.__dict__['finder'][NNet.layers[0].w])
 nnet.params[NNet.layers[0].w] = [[6]]
-print nnet.params()
-print nnet.params()
+print(nnet.params())
+print(nnet.params())
 
 if 0:
     def deco(f):
@@ -303,8 +304,8 @@ if 0:
             def __call__(self, *args, **kwargs):
                 # return another SymbolicModule built like self
                 def dummy(*dargs, **dkwargs):
-                    print 'args', args, dargs
-                    print 'kwargs', kwargs, dkwargs
+                    print('args', args, dargs)
+                    print('kwargs', kwargs, dkwargs)
                     return f(*args, **kwargs)
                 return deco(dummy)
 
@@ -349,7 +350,7 @@ if 0:
             ):
         hid = T.tanh(T.dot(x, w) + b)
         if top_part:
-            print 'top_part', top_part, 'kwargs', kwargs
+            print('top_part', top_part, 'kwargs', kwargs)
             top = top_part(x=hid, **kwargs)  # SymbolicModule
             def params(): return top.params() + [w, b]
         else:
@@ -357,12 +358,12 @@ if 0:
         return just_symbolic(locals())
 
     if 0:
-        print 'logistic_regression', logistic_regression
-        print 'tanh_layer', tanh_layer
-        print 'nnet1', nnet1
+        print('logistic_regression', logistic_regression)
+        print('tanh_layer', tanh_layer)
+        print('nnet1', nnet1)
     nnet1 = tanh_layer(logistic_regression)
     nnet2 = tanh_layer(nnet1)
-    print 'nnet2', nnet2
+    print('nnet2', nnet2)
 
 if 0:
     class SymbolicModule(object):

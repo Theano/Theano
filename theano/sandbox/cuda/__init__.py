@@ -1,3 +1,4 @@
+from __future__ import print_function
 import atexit
 import errno
 import logging
@@ -401,8 +402,8 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
-                print >> sys.stderr, "Using gpu device %d: %s" % (
-                        active_device_number(), active_device_name())
+                print("Using gpu device %d: %s" % (
+                        active_device_number(), active_device_name()), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.

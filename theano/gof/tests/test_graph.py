@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pickle
 import unittest
 import numpy
@@ -48,7 +49,7 @@ class MyOp(Op):
         inputs = map(as_variable, inputs)
         for input in inputs:
             if not isinstance(input.type, MyType):
-                print input, input.type, type(input), type(input.type)
+                print(input, input.type, type(input), type(input.type))
                 raise Exception("Error 1")
         outputs = [MyVariable(sum([input.type.thingy for input in inputs]))]
         return Apply(self, inputs, outputs)

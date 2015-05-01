@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import os
 import logging
@@ -233,7 +234,7 @@ class GpuGemm(GpuOp):
         fail = sub['fail']
         sio = StringIO()
 
-        print >> sio, """
+        print("""
 
         #define REAL float
         float %(name)s_a = (PyArray_TYPE(%(a)s) == NPY_FLOAT)
@@ -295,7 +296,7 @@ class GpuGemm(GpuOp):
         {
             %(fail)s;
         }
-        """
+        """, file=sio)
 
         return sio.getvalue() % locals()
 gpu_gemm_no_inplace = GpuGemm(inplace=False)
@@ -350,7 +351,7 @@ class GpuGemv(GpuOp):
         fail = sub['fail']
         sio = StringIO()
 
-        print >> sio, """
+        print("""
         float %(name)s_alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
         float %(name)s_beta = ((dtype_%(b)s*)(PyArray_DATA(%(b)s)))[0];
 
@@ -393,7 +394,7 @@ class GpuGemv(GpuOp):
         {
             %(fail)s;
         }
-        """
+        """, file=sio)
         return sio.getvalue() % locals()
 gpu_gemv_no_inplace = GpuGemv(inplace=False)
 gpu_gemv_inplace = GpuGemv(inplace=True)
@@ -447,7 +448,7 @@ class GpuGer(GpuOp):
         fail = sub['fail']
         sio = StringIO()
 
-        print >> sio, """
+        print("""
         float %(name)s_alpha = ((dtype_%(a)s*)(PyArray_DATA(%(a)s)))[0];
 
         if (%(inplace)s
@@ -498,7 +499,7 @@ class GpuGer(GpuOp):
         {
             %(fail)s;
         }
-        """
+        """, file=sio)
         return sio.getvalue() % locals()
 gpu_ger_no_inplace = GpuGer(inplace=False)
 gpu_ger_inplace = GpuGer(inplace=True)

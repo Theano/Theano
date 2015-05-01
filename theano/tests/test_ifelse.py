@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
  Tests fof the lazy conditiona
 """
@@ -425,4 +426,4 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
 
 
 if __name__ == '__main__':
-    print ' Use nosetests to run these tests '
+    print(' Use nosetests to run these tests ')

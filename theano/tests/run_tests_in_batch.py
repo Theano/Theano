@@ -54,6 +54,7 @@ nosetests.
 """
 
 
+from __future__ import print_function
 import cPickle
 import datetime
 import os
@@ -131,10 +132,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         os.remove('.noseids')
 
     # Collect test IDs.
-    print """\
+    print("""\
 ####################
 # COLLECTING TESTS #
-####################"""
+####################""")
     stdout.flush()
     stderr.flush()
     dummy_in = open(os.devnull)
@@ -165,10 +166,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     # Standard batch testing is called for
     if not time_profile:
         failed = set()
-        print """\
+        print("""\
 ###################################
 # RUNNING TESTS IN BATCHES OF %s #
-###################################""" % batch_size
+###################################""" % batch_size)
         # When `display_batch_output` is False, we suppress all output because
         # we want the user to focus only on the failed tests, which are re-run
         # (with output) below.
@@ -199,16 +200,16 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             with open(noseids_file, 'rb') as f:
                 failed = failed.union(cPickle.load(f)['failed'])
 
-            print '%s%% done in %.3fs (failed: %s)' % (
-                (test_range[-1] * 100) // n_tests, t1 - t0, len(failed))
+            print('%s%% done in %.3fs (failed: %s)' % (
+                (test_range[-1] * 100) // n_tests, t1 - t0, len(failed)))
         # Sort for cosmetic purpose only.
         failed = sorted(failed)
         if failed:
             # Re-run only failed tests
-            print """\
+            print("""\
 ################################
 # RE-RUNNING FAILED TESTS ONLY #
-################################"""
+################################""")
             stdout.flush()
             stderr.flush()
             subprocess.call(
@@ -222,17 +223,17 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             stderr.flush()
             return 0
         else:
-            print """\
+            print("""\
 ####################
 # ALL TESTS PASSED #
-####################"""
+####################""")
 
     # Time-profiling is called for
     else:
-        print """\
+        print("""\
 ########################################
 # RUNNING TESTS IN TIME-PROFILING MODE #
-########################################"""
+########################################""")
 
         # finds first word of list l containing string s
         def getIndexOfFirst(l, s):
@@ -335,7 +336,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                 f_nosort.write(s_nosort)
                 f_nosort.flush()
 
-            print '%s%% time-profiled' % ((test_id * 100) // n_tests)
+            print('%s%% time-profiled' % ((test_id * 100) // n_tests))
         f_rawlog.close()
 
         # sorting tests according to running-time

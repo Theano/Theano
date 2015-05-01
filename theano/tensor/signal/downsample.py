@@ -1,3 +1,4 @@
+from __future__ import print_function
 """ Ops for downsampling images.
 
 Planned:
@@ -15,7 +16,7 @@ from theano import gof, Op, tensor, Variable, Apply
 
 def max_pool2D(*args, **kwargs):
     import sys
-    print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
+    print("DEPRECATION: max_pool2D renamed to max_pool_2d", file=sys.stderr)
     return max_pool_2d(*args, **kwargs)
 
 

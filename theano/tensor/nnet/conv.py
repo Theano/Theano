@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Contains an Op for convolving input images with a set of filters. This was
 developed especially for Convolutional Neural Networks.
@@ -129,7 +130,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         try:
             assert image_shape[1] == filter_shape[1]
         except Exception:
-            print 'image ', image_shape, ' filters ', filter_shape
+            print('image ', image_shape, ' filters ', filter_shape)
             raise
 
     if filter_shape is not None:

@@ -1,3 +1,4 @@
+from __future__ import print_function
 from copy import copy
 from unittest import TestCase
 
@@ -431,7 +432,7 @@ class T_real_matrix(TestCase):
 
 
 def fail(msg):
-    print 'FAIL', msg
+    print('FAIL', msg)
     assert False
 
 
@@ -493,7 +494,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
                           max_abs_err)
     except Failure:
         for node in f.maker.fgraph.toposort():
-            print 'GRAPH', node
+            print('GRAPH', node)
         raise
 
 
@@ -568,7 +569,7 @@ def test_gemm_opt_double_gemm():
                 max_abs_err)
     except Failure:
         for node in f.maker.fgraph.toposort():
-            print 'GRAPH', node
+            print('GRAPH', node)
         raise
 
 
@@ -805,7 +806,7 @@ def test_inplace0():
     f = inplace_func([Z, b, R, S],
             [Z * (Z + b * T.dot(R, S).T)], mode='FAST_RUN')
     if (gemm_inplace in [n.op for n in f.maker.fgraph.apply_nodes]):
-        print pp(f.maker.fgraph.outputs[0])
+        print(pp(f.maker.fgraph.outputs[0]))
         raise Failure('gemm_inplace in graph')
     assert gemm_no_inplace in [n.op for n in f.maker.fgraph.apply_nodes]
 

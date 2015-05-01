@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Driver for gradient calculations."""
 import __builtin__
 from itertools import izip
@@ -2011,7 +2012,7 @@ def grad_clip(x, lower_bound, upper_bound):
 
         f = theano.function([x], outputs = [z, z2])
 
-        print f(2.0)  # output (1.0, 4.0)
+        print(f(2.0))  # output (1.0, 4.0)
 
     :note: We register an opt in tensor/opt.py that remove the GradClip.
        So it have 0 cost in the forward and only do work in the grad.

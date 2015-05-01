@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 If you have two expressions
 containing unification variables, these expressions can be "unified"
@@ -489,14 +490,14 @@ if __name__ == "__main__":
     U = unify_walk(pattern1, pattern2, Unification())
 
     if U:
-        print U[va]
-        print U[vx]
-        print U[vy]
-        print U[vz]
-        print unify_merge(pattern1, pattern2, U)
+        print(U[va])
+        print(U[vx])
+        print(U[vy])
+        print(U[vz])
+        print(unify_merge(pattern1, pattern2, U))
     else:
-        print "no match"
+        print("no match")
 
     U = unify_walk((1, 2), (va, va), Unification())
-    print U[va]
+    print(U[va])
 

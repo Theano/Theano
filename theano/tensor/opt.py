@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Tensor optimizations addressing the ops in basic.py
 """
@@ -291,10 +292,10 @@ def inplace_elemwise_optimizer_op(OP):
                             nb_change_no_validate = 0
                     except (ValueError, TypeError, InconsistencyError) as e:
                         if check_each_change != 1 and not raised_warning:
-                            print >> sys.stderr, (
+                            print((
                                     "Some inplace optimization was not "
-                                    "performed due to unexpected error:")
-                            print >> sys.stderr, e
+                                    "performed due to unexpected error:"), file=sys.stderr)
+                            print(e, file=sys.stderr)
                             raised_warning = True
                         fgraph.revert(chk)
                         continue
@@ -308,8 +309,8 @@ def inplace_elemwise_optimizer_op(OP):
                 fgraph.validate()
             except Exception:
                 if not raised_warning:
-                    print >> sys.stderr, ("Some inplace optimization was not "
-                                          "performed due to unexpected error")
+                    print(("Some inplace optimization was not "
+                                          "performed due to unexpected error"), file=sys.stderr)
                 fgraph.revert(chk)
     return inplace_elemwise_optimizer
 
@@ -3310,9 +3311,9 @@ if 0:
                 try:
                     return T.get_scalar_constant_value(thing)
                 except (TypeError, ValueError) as e:
-                    print e, thing.owner.inputs[0]
+                    print(e, thing.owner.inputs[0])
                     return None
-            print 'LOCAL SUM EMPTY', [tmp(s) for s in y_shape]
+            print('LOCAL SUM EMPTY', [tmp(s) for s in y_shape])
 
 ##################
 # Middleman cuts #
@@ -5759,18 +5760,18 @@ class FusionOptimizer(Optimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        print >> stream, blanc, "FusionOptimizer"
-        print >> stream, blanc, " nb_iter", prof[1]
-        print >> stream, blanc, " nb_replacement", prof[2]
-        print >> stream, blanc, " nb_inconsistency_replace", prof[3]
-        print >> stream, blanc, " validate_time", prof[4]
-        print >> stream, blanc, " callback_time", prof[5]
+        print(blanc, "FusionOptimizer", file=stream)
+        print(blanc, " nb_iter", prof[1], file=stream)
+        print(blanc, " nb_replacement", prof[2], file=stream)
+        print(blanc, " nb_inconsistency_replace", prof[3], file=stream)
+        print(blanc, " validate_time", prof[4], file=stream)
+        print(blanc, " callback_time", prof[5], file=stream)
         if prof[5] > 1:
-            print >> stream, blanc, " callbacks_time"
+            print(blanc, " callbacks_time", file=stream)
             for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print i
-        print >> stream, blanc, " time_toposort", prof[7]
+                    print(i)
+        print(blanc, " time_toposort", prof[7], file=stream)
 
 
 def local_add_mul_fusion(node):

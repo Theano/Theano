@@ -1,3 +1,4 @@
+from __future__ import print_function
 from copy import deepcopy
 
 import numpy
@@ -159,9 +160,9 @@ def more_complex_test():
         except NotImplementedOp.E:
             pass
     else:
-        print f(1, 0, numpy.array(10, dtype=x1.dtype), 0)
+        print(f(1, 0, numpy.array(10, dtype=x1.dtype), 0))
         assert f(1, 0, numpy.array(10, dtype=x1.dtype), 0) == 20.5
-    print '... passed'
+    print('... passed')
 
 if __name__ == '__main__':
     more_complex_test()

@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Generate and compile C modules for Python,
 """
 import atexit
@@ -92,7 +93,7 @@ def debug_counter(name, every=1):
     setattr(debug_counter, name, getattr(debug_counter, name, 0) + 1)
     n = getattr(debug_counter, name)
     if n % every == 0:
-        print >>sys.stderr, "debug_counter [%s]: %s" % (name, n)
+        print("debug_counter [%s]: %s" % (name, n), file=sys.stderr)
 
 
 class ExtFunction(object):
@@ -153,15 +154,15 @@ class DynamicModule(object):
         self.init_blocks = []
 
     def print_methoddef(self, stream):
-        print >> stream, "static PyMethodDef MyMethods[] = {"
+        print("static PyMethodDef MyMethods[] = {", file=stream)
         for f in self.functions:
-            print >> stream, f.method_decl(), ','
-        print >> stream, "\t{NULL, NULL, 0, NULL}"
-        print >> stream, "};"
+            print(f.method_decl(), ',', file=stream)
+        print("\t{NULL, NULL, 0, NULL}", file=stream)
+        print("};", file=stream)
 
     def print_init(self, stream):
         if PY3:
-            print >> stream, """\
+            print("""\
 static struct PyModuleDef moduledef = {{
       PyModuleDef_HEAD_INIT,
       "{name}",
@@ -169,21 +170,21 @@ static struct PyModuleDef moduledef = {{
       -1,
       MyMethods,
 }};
-""".format(name=self.hash_placeholder)
-            print >> stream, ("PyMODINIT_FUNC PyInit_%s(void) {" %
-                              self.hash_placeholder)
+""".format(name=self.hash_placeholder), file=stream)
+            print(("PyMODINIT_FUNC PyInit_%s(void) {" %
+                              self.hash_placeholder), file=stream)
             for block in self.init_blocks:
-                print >> stream, '  ', block
-            print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
-            print >> stream, "    return m;"
+                print('  ', block, file=stream)
+            print("    PyObject *m = PyModule_Create(&moduledef);", file=stream)
+            print("    return m;", file=stream)
         else:
-            print >> stream, ("PyMODINIT_FUNC init%s(void){" %
-                              self.hash_placeholder)
+            print(("PyMODINIT_FUNC init%s(void){" %
+                              self.hash_placeholder), file=stream)
             for block in self.init_blocks:
-                print >> stream, '  ', block
-            print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
-                                    % self.hash_placeholder)
-        print >> stream, "}"
+                print('  ', block, file=stream)
+            print('  ', ('(void) Py_InitModule("%s", MyMethods);'
+                                    % self.hash_placeholder), file=stream)
+        print("}", file=stream)
 
     def add_include(self, str):
         assert not self.finalized
@@ -208,25 +209,25 @@ static struct PyModuleDef moduledef = {{
             if not inc:
                 continue
             if inc[0] == '<' or inc[0] == '"':
-                print >> sio, "#include", inc
+                print("#include", inc, file=sio)
             else:
-                print >> sio, '#include "%s"' % inc
+                print('#include "%s"' % inc, file=sio)
 
-        print >> sio, "//////////////////////"
-        print >> sio, "////  Support Code"
-        print >> sio, "//////////////////////"
+        print("//////////////////////", file=sio)
+        print("////  Support Code", file=sio)
+        print("//////////////////////", file=sio)
         for sc in self.support_code:
-            print >> sio, sc
+            print(sc, file=sio)
 
-        print >> sio, "//////////////////////"
-        print >> sio, "////  Functions"
-        print >> sio, "//////////////////////"
+        print("//////////////////////", file=sio)
+        print("////  Functions", file=sio)
+        print("//////////////////////", file=sio)
         for f in self.functions:
-            print >> sio, f.code_block
+            print(f.code_block, file=sio)
 
-        print >> sio, "//////////////////////"
-        print >> sio, "////  Module init"
-        print >> sio, "//////////////////////"
+        print("//////////////////////", file=sio)
+        print("////  Module init", file=sio)
+        print("//////////////////////", file=sio)
         self.print_methoddef(sio)
         self.print_init(sio)
 
@@ -242,7 +243,7 @@ static struct PyModuleDef moduledef = {{
     def list_code(self, ofile=sys.stdout):
         """Print out the code with line numbers to `ofile` """
         for i, line in enumerate(self.code().split('\n')):
-            print >> ofile, ('%4i' % (i + 1)), line
+            print(('%4i' % (i + 1)), line, file=ofile)
         ofile.flush()
 
     # TODO: add_type
@@ -1482,10 +1483,10 @@ def std_lib_dirs_and_libs():
 
             for f, lib in [('libpython27.a', 'libpython 1.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
-                    print ("Your Python version is from Canopy. " +
+                    print(("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
-                           )
+                           ))
             libdirs = [
                 # Used in older Canopy
                 os.path.join(sys.prefix, 'libs'),
@@ -1496,10 +1497,10 @@ def std_lib_dirs_and_libs():
                             'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
                 if not any([os.path.exists(os.path.join(libdir, f))
                             for libdir in libdirs]):
-                    print ("Your Python version is from Canopy. " +
+                    print(("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
-                           )
+                           ))
             python_lib_dirs.insert(0, libdir)
         std_lib_dirs_and_libs.data = [libname], python_lib_dirs
 
@@ -2011,10 +2012,10 @@ class GCC_compiler(Compiler):
 
         def print_command_line_error():
             # Print command line when a problem occurred.
-            print >> sys.stderr, (
+            print((
                     "Problem occurred during compilation with the "
-                    "command line below:")
-            print >> sys.stderr, ' '.join(cmd)
+                    "command line below:"), file=sys.stderr)
+            print(' '.join(cmd), file=sys.stderr)
 
         try:
             p_out = output_subprocess_Popen(cmd)
@@ -2027,14 +2028,14 @@ class GCC_compiler(Compiler):
         status = p_out[2]
 
         if status:
-            print '==============================='
+            print('===============================')
             for i, l in enumerate(src_code.split('\n')):
                 # gcc put its messages to stderr, so we add ours now
-                print >> sys.stderr, '%05i\t%s' % (i + 1, l)
-            print '==============================='
+                print('%05i\t%s' % (i + 1, l), file=sys.stderr)
+            print('===============================')
             print_command_line_error()
             # Print errors just below the command line.
-            print compile_stderr
+            print(compile_stderr)
             # We replace '\n' by '. ' in the error message because when Python
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
@@ -2042,7 +2043,7 @@ class GCC_compiler(Compiler):
                             (status, compile_stderr.replace('\n', '. ')))
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
-            print compile_stderr
+            print(compile_stderr)
 
         if py_module:
             # touch the __init__ file

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import theano
 from theano.tensor import basic as T
 import numpy as N
@@ -568,7 +569,7 @@ def computeH(V, W, b, d):
     assert len(W.shape) == 5
     assert len(V.shape) == 5
     if len(b.shape) != 1:
-        print b.shape
+        print(b.shape)
         assert False
     assert len(d) == 3
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 """Classes for handling sparse matrices.
 
 To read about different sparse formats, see
@@ -923,9 +924,9 @@ class DenseFromSparse(gof.op.Op):
         (x,) = inputs
         (out,) = outputs
         if _is_dense(x):
-            print >> sys.stderr, (
+            print((
                 "WARNING: You just called DenseFromSparse on a dense matrix."
-            )
+            ), file=sys.stderr)
             out[0] = x
         else:
             out[0] = x.toarray()
@@ -2328,9 +2329,9 @@ class MulSD(gof.op.Op):
                         z_data[j_idx] *= y[i, j]
                 out[0] = z
             else:
-                print >> sys.stderr, (
+                print((
                     "WARNING: crappy implementation of MulSD"
-                ), x.format
+                ), x.format, file=sys.stderr)
                 out[0] = type(x)(x.toarray() * y)
 
     def grad(self, inputs, gout):

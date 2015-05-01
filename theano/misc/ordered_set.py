@@ -1,3 +1,4 @@
+from __future__ import print_function
 from collections import MutableSet
 from theano.compat import OrderedDict
 import types
@@ -186,7 +187,7 @@ class OrderedSet(MutableSet):
 # end of http://code.activestate.com/recipes/576696/ }}}
 
 if __name__ == '__main__':
-    print list(OrderedSet('abracadaba'))
-    print list(OrderedSet('simsalabim'))
-    print OrderedSet('boom') == OrderedSet('moob')
-    print OrderedSet('boom') == 'moob'
+    print(list(OrderedSet('abracadaba')))
+    print(list(OrderedSet('simsalabim')))
+    print(OrderedSet('boom') == OrderedSet('moob'))
+    print(OrderedSet('boom') == 'moob')

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import shutil
 import sys
@@ -1778,19 +1779,19 @@ class T_Scan(unittest.TestCase):
             vparams = [v_u1, v_u2, v_x0, v_y0, vW_in1]
             params = [u1, u2, x0, y0, W_in1]
             gparams = theano.tensor.grad(cost, params)
-            print >> sys.stderr, "."
+            print(".", file=sys.stderr)
             cost_fn = theano.function([u1, u2, x0, y0, W_in1],
                                       cost,
                                       updates=updates,
                                       no_default_updates=True,
                                       allow_input_downcast=True)
-            print >> sys.stderr, "."
+            print(".", file=sys.stderr)
             grad_fn = theano.function([u1, u2, x0, y0, W_in1],
                                       gparams,
                                       updates=updates,
                                       no_default_updates=True,
                                       allow_input_downcast=True)
-            print >> sys.stderr, "."
+            print(".", file=sys.stderr)
         finally:
             theano.config.compute_test_value = old1
             theano.config.compute_test_value_opt = old2
@@ -4242,7 +4243,7 @@ class T_Scan(unittest.TestCase):
 
         cost = result_outer[-1]
         H = theano.gradient.hessian(cost, W)
-        print >> sys.stderr, "."
+        print(".", file=sys.stderr)
         f = theano.function([W, n_steps], H)
         f(numpy.ones((8,), dtype='float32'), 1)
 
@@ -4327,7 +4328,7 @@ def test_speed():
     for i in xrange(1, 1000):
         r[i] += r[i - 1]
     t1 = time.time()
-    print 'python', t1 - t0
+    print('python', t1 - t0)
 
     r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
     t0 = time.time()
@@ -4348,7 +4349,7 @@ def test_speed():
             except StopIteration:
                 break
     t1 = time.time()
-    print 'python with builtin iterator', t1 - t0
+    print('python with builtin iterator', t1 - t0)
 
     if 1:
         r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
@@ -4363,7 +4364,7 @@ def test_speed():
         t2 = time.time()
         f(r)
         t3 = time.time()
-        print 'theano (scan, cvm)', t3 - t2
+        print('theano (scan, cvm)', t3 - t2)
 
     if 1:
         r = numpy.arange(10000).astype(theano.config.floatX).reshape(-1, 10)
@@ -4385,7 +4386,7 @@ def test_speed():
             f_fn()
         f()  # 999 to update the profiling timers
         t3 = time.time()
-        print 'theano (updates, cvm)', t3 - t2
+        print('theano (updates, cvm)', t3 - t2)
         # print shared_r.get_value()
 
 
@@ -4419,7 +4420,7 @@ def test_speed_rnn():
     for i in xrange(1, L):
         r[i] = numpy.tanh(numpy.dot(r[i - 1], w))
     t1 = time.time()
-    print 'python', t1 - t0
+    print('python', t1 - t0)
 
     if 1:
         r = numpy.arange(L * N).astype(theano.config.floatX).reshape(L, N)
@@ -4435,7 +4436,7 @@ def test_speed_rnn():
         t2 = time.time()
         f(r)
         t3 = time.time()
-        print 'theano (scan, cvm)', t3 - t2
+        print('theano (scan, cvm)', t3 - t2)
 
     if 1:
         r = numpy.arange(L * N).astype(theano.config.floatX).reshape(L, N)
@@ -4461,7 +4462,7 @@ def test_speed_rnn():
         f_fn(n_calls=L - 2)
         f()  # 999 to update the profiling timers
         t3 = time.time()
-        print 'theano (updates, cvm)', t3 - t2
+        print('theano (updates, cvm)', t3 - t2)
         # print shared_r.get_value()
 
 
@@ -4498,7 +4499,7 @@ def test_speed_batchrnn():
     for i in xrange(1, L):
         r[i] = numpy.tanh(numpy.dot(r[i - 1], w))
     t1 = time.time()
-    print 'python', t1 - t0
+    print('python', t1 - t0)
 
     if 1:
         r = numpy.arange(B * L * N).astype(
@@ -4526,12 +4527,12 @@ def test_speed_batchrnn():
         f_fn(n_calls=L - 2)
         f()  # 999 to update the profiling timers
         t3 = time.time()
-        print 'theano (updates, cvm)', t3 - t2
+        print('theano (updates, cvm)', t3 - t2)
 
 
 if __name__ == '__main__':
     #'''
-    print ' Use nosetests to run these tests '
+    print(' Use nosetests to run these tests ')
     '''
     scan_tst = T_Scan()
     #''

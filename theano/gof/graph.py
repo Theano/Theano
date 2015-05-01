@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Node classes (`Apply`, `Variable`) and expression graph algorithms.
 
@@ -782,9 +783,9 @@ def general_toposort(r_out, deps, debug_print=False,
 
     if len(rlist) != len(reachable):
         if debug_print:
-            print ''
-            print reachable
-            print rlist
+            print('')
+            print(reachable)
+            print(rlist)
         raise ValueError('graph contains cycles')
 
     return rlist

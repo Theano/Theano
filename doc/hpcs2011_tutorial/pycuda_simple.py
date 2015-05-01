@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pycuda.autoinit
 import pycuda.driver as drv
 import numpy
@@ -22,4 +23,4 @@ multiply_them(
         block=(400,1,1), grid=(1,1))
 
 assert numpy.allclose(dest, a*b)
-print dest
+print(dest)

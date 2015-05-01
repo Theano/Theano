@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 
 import numpy
@@ -167,11 +168,11 @@ def cuda_shared_constructor(value, name=None, strict=False,
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
-    print "trying to return?"
+    print("trying to return?")
     try:
         rval = CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
     except Exception as e:
-        print "ERROR", e
+        print("ERROR", e)
         raise
     return rval
 
@@ -211,7 +212,7 @@ def float32_shared_constructor(value, name=None, strict=False,
     try:
         rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
     except Exception as e:
-        print "ERROR", e
+        print("ERROR", e)
         raise
 
     rval.get_value_return_ndarray = get_value_return_ndarray

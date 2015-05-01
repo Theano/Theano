@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import unittest
 
@@ -358,6 +359,6 @@ def test_c_fail_error():
     try:
         res = fn(1.5, 3.0)
     except RuntimeError:
-        print 'Yay, TEST PASSED'
+        print('Yay, TEST PASSED')
         return  # test passed
     assert 0  # test failed

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 from copy import copy
 from itertools import izip
@@ -364,16 +365,16 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
                 + close_bracket)
 
         if 0:
-            print 'C_CODE'
-            print ''
-            print self
-            print "IN BROAD", self.input_broadcastable
-            print "NEW ORDER", self.new_order
-            print "SHUFFLE", self.shuffle
-            print "AUGMENT", self.augment
-            print '------------'
-            print ''
-            print full_code
+            print('C_CODE')
+            print('')
+            print(self)
+            print("IN BROAD", self.input_broadcastable)
+            print("NEW ORDER", self.new_order)
+            print("SHUFFLE", self.shuffle)
+            print("AUGMENT", self.augment)
+            print('------------')
+            print('')
+            print(full_code)
 
             if 0:
                 sys.exit()

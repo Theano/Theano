@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 """
 fg.py: fg stands for FunctionGraph
@@ -215,11 +216,11 @@ class FunctionGraph(utils.object2):
         Updates the list of clients of r with new_clients.
         """
         if set(r.clients).intersection(set(new_clients)):
-            print >> sys.stderr, 'ERROR: clients intersect!'
-            print >> sys.stderr, '  RCLIENTS of', r, [(n, i, type(n), id(n))
-                                                      for n, i in r.clients]
-            print >> sys.stderr, '  NCLIENTS of', r, [(n, i, type(n), id(n))
-                                                      for n, i in new_clients]
+            print('ERROR: clients intersect!', file=sys.stderr)
+            print('  RCLIENTS of', r, [(n, i, type(n), id(n))
+                                                      for n, i in r.clients], file=sys.stderr)
+            print('  NCLIENTS of', r, [(n, i, type(n), id(n))
+                                                      for n, i in new_clients], file=sys.stderr)
         assert not set(r.clients).intersection(set(new_clients))
         r.clients += new_clients
 
@@ -234,9 +235,9 @@ class FunctionGraph(utils.object2):
         for entry in clients_to_remove:
             r.clients.remove(entry)
             if entry in r.clients:
-                print >> sys.stderr, 'ERROR: DUPLICATE CLIENT ENTRY...'
-                print >> sys.stderr, '  ENTRY', repr(entry), type(entry[0])
-                print >> sys.stderr, '  CLIENTS', repr(r.clients)
+                print('ERROR: DUPLICATE CLIENT ENTRY...', file=sys.stderr)
+                print('  ENTRY', repr(entry), type(entry[0]), file=sys.stderr)
+                print('  CLIENTS', repr(r.clients), file=sys.stderr)
             assert entry not in r.clients  # an op,i pair should be unique
         if not r.clients:
             if prune:
@@ -459,7 +460,7 @@ class FunctionGraph(utils.object2):
         if verbose is None:
             verbose = config.optimizer_verbose
         if verbose:
-            print reason, r, new_r
+            print(reason, r, new_r)
         if r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong "
                             "to this FunctionGraph" % r, str(reason))

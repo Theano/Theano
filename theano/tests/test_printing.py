@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Tests of printing functionality
 """
@@ -147,8 +148,8 @@ def test_min_informative_str():
   E. E"""
 
     if mis != reference:
-        print '--' + mis + '--'
-        print '--' + reference + '--'
+        print('--' + mis + '--')
+        print('--' + reference + '--')
 
     assert mis == reference
 
@@ -182,8 +183,8 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference
 
@@ -202,8 +203,8 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference
 
@@ -220,8 +221,8 @@ def test_debugprint():
 """
 
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference
 
@@ -239,7 +240,7 @@ def test_debugprint():
    |E 
 """
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference

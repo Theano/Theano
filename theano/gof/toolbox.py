@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import time
 
@@ -216,7 +217,7 @@ class ReplaceValidate(History, Validator):
     pickle_rm_attr = ["replace_validate", "replace_all_validate",
                       "replace_all_validate_remove"] + \
                       History.pickle_rm_attr + Validator.pickle_rm_attr
-        
+
     def on_attach(self, fgraph):
         for attr in ('replace_validate', 'replace_all_validate',
                      'replace_all_validate_remove'):
@@ -258,8 +259,8 @@ class ReplaceValidate(History, Validator):
                 if ('The type of the replacement must be the same' not in
                     str(e) and 'does not belong to this FunctionGraph' not in str(e)):
                     out = sys.stderr
-                    print >> out, "<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>",
-                    print >> out, type(e), e, reason
+                    print("<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>", end=' ', file=out)
+                    print(type(e), e, reason, file=out)
                 # this might fail if the error is in a listener:
                 # (fgraph.replace kinda needs better internal error handling)
                 fgraph.revert(chk)
@@ -270,7 +271,7 @@ class ReplaceValidate(History, Validator):
             fgraph.revert(chk)
             raise
         if verbose:
-            print reason, r, new_r
+            print(reason, r, new_r)
         return chk
 
     def replace_all_validate_remove(self, fgraph, replacements,
@@ -285,14 +286,14 @@ class ReplaceValidate(History, Validator):
                 fgraph.revert(chk)
                 if warn:
                     out = sys.stderr
-                    print >> out, (
+                    print((
                         "WARNING: An optimization wanted to replace a Variable"
                         " in the graph, but the replacement for it doesn't"
                         " remove it. We disabled the optimization."
                         " Your function runs correctly, but it would be"
                         " appreciated if you submit this problem to the"
-                        " mailing list theano-users so that we can fix it.")
-                    print >> out, reason, replacements
+                        " mailing list theano-users so that we can fix it."), file=out)
+                    print(reason, replacements, file=out)
                 raise ReplacementDidntRemovedError()
 
     def __getstate__(self):
@@ -332,11 +333,11 @@ class NodeFinder(Bookkeeper):
         except TypeError:  # node.op is unhashable
             return
         except Exception as e:
-            print >> sys.stderr, 'OFFENDING node', type(node), type(node.op)
+            print('OFFENDING node', type(node), type(node.op), file=sys.stderr)
             try:
-                print >> sys.stderr, 'OFFENDING node hash', hash(node.op)
+                print('OFFENDING node hash', hash(node.op), file=sys.stderr)
             except Exception:
-                print >> sys.stderr, 'OFFENDING node not hashable'
+                print('OFFENDING node not hashable', file=sys.stderr)
             raise e
 
     def on_prune(self, fgraph, node, reason):
@@ -365,24 +366,24 @@ class PrintListener(Feature):
 
     def on_attach(self, fgraph):
         if self.active:
-            print "-- attaching to: ", fgraph
+            print("-- attaching to: ", fgraph)
 
     def on_detach(self, fgraph):
         if self.active:
-            print "-- detaching from: ", fgraph
+            print("-- detaching from: ", fgraph)
 
     def on_import(self, fgraph, node, reason):
         if self.active:
-            print "-- importing: %s, reason: %s" % (node, reason)
+            print("-- importing: %s, reason: %s" % (node, reason))
 
     def on_prune(self, fgraph, node, reason):
         if self.active:
-            print "-- pruning: %s, reason: %s" % (node, reason)
+            print("-- pruning: %s, reason: %s" % (node, reason))
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         if self.active:
-            print "-- changing (%s.inputs[%s]) from %s to %s" % (
-                node, i, r, new_r)
+            print("-- changing (%s.inputs[%s]) from %s to %s" % (
+                node, i, r, new_r))
 
 
 class PreserveNames(Feature):

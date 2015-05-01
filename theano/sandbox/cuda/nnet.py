@@ -1,3 +1,4 @@
+from __future__ import print_function
 from theano import Op, Apply
 from theano.compat.six import StringIO
 
@@ -98,7 +99,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
         classname = self.__class__.__name__
         fail = sub['fail']
         sio = StringIO()
-        print >> sio, """
+        print("""
         if (CudaNdarray_NDIM(%(y_idx)s) != 1)
         {
             PyErr_SetString(PyExc_ValueError, "y_idx not 1d tensor");
@@ -210,7 +211,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
                 %(fail)s;
             }
         }
-        """ % locals()
+        """ % locals(), file=sio)
         return sio.getvalue()
 
     def c_code_cache_version(self):

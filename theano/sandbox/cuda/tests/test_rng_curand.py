@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import theano
 from theano.tensor import constant
@@ -177,8 +178,8 @@ def compare_speed():
 
     for f in mrg_u, crn_u, mrg_n, crn_n:
         # don't time the first call, it has some startup cost
-        print 'DEBUGPRINT'
-        print '----------'
+        print('DEBUGPRINT')
+        print('----------')
         theano.printing.debugprint(f)
 
     for i in range(100):

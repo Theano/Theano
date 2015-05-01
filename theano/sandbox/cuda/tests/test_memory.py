@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import gc
 
@@ -70,42 +71,42 @@ def test_memory():
     # more_alloc1 if after the first compilation, more_alloc2 after the second.
     for dtype, more_alloc1, more_alloc2 in [("float32", 1, 4),
                                             ("float64", 0, 0)]:
-        print dtype
+        print(dtype)
         test_params = np.asarray(np.random.randn(np.prod(shapes)), dtype)
 
         some_vector = tensor.vector('some_vector', dtype=dtype)
         some_matrix = some_vector.reshape(shapes)
 
         mem1 = freemem()
-        print "Before shared variable", mem1
+        print("Before shared variable", mem1)
         variables = cuda.shared_constructor(np.ones((shapes[1],),
                                                     dtype='float32'))
         derp = tensor.sum(tensor.dot(some_matrix[:shapes[0]], variables))
-        print "Shared took ", np.prod(variables.get_value(
+        print("Shared took ", np.prod(variables.get_value(
                 borrow=True,
-                return_internal_type=True).shape) * 4 / 1024, "kB"
+                return_internal_type=True).shape) * 4 / 1024, "kB")
 
         mem2 = freemem()
-        print "Before compilation", mem2
+        print("Before compilation", mem2)
         mem2_1 = freemem(extra_alloc=more_alloc1)
         mem2_2 = freemem(extra_alloc=more_alloc2)
         obj = theano.function([some_vector], derp, mode=mode_with_gpu)
         mem3 = freemem()
-        print "After function compilation 1", mem3
+        print("After function compilation 1", mem3)
         assert mem2_1 == mem3, (mem2_1, mem3)
 
         grad_derp = tensor.grad(derp, some_vector)
         grad = theano.function([some_vector], grad_derp, mode=mode_with_gpu)
         mem4 = freemem()
-        print "After function compilation 2", mem4
+        print("After function compilation 2", mem4)
         assert mem2_2 == mem4, (mem2_2, mem4)
 
         for i in range(3):
             obj(test_params)
-            print "After function evaluation 1", freemem()
+            print("After function evaluation 1", freemem())
             assert mem2_2 == freemem(), (mem2_2, freemem())
             grad(test_params)
-            print "After function evaluation 2", freemem()
+            print("After function evaluation 2", freemem())
             assert mem2_2 == freemem(), (mem2_2, freemem())
 
         del obj
@@ -113,11 +114,11 @@ def test_memory():
         #assert mem2 == freemem(), (mem2, freemem())
 
         del grad
-        print "After deleting function 2", freemem()
+        print("After deleting function 2", freemem())
         assert mem2 == freemem(), (mem2, freemem())
 
         del derp, variables, grad_derp
-        print "After deleting shared variable and ref to it", freemem()
+        print("After deleting shared variable and ref to it", freemem())
         assert mem1 == freemem(), (mem1, freemem())
 
 
@@ -137,7 +138,7 @@ def test_memory_lazy():
     # more_alloc1 if after the first compilation, more_alloc2 after the second.
     for dtype, more_alloc1 in [("float32", 2),
                                ("float64", 0)]:
-        print dtype
+        print(dtype)
         test_params = np.asarray(np.random.randn(np.prod(shapes)), dtype)
 
         some_vector = tensor.vector('some_vector', dtype=dtype)
@@ -145,39 +146,39 @@ def test_memory_lazy():
         branch_select = tensor.iscalar()
 
         mem1 = freemem()
-        print "Before shared variable", mem1
+        print("Before shared variable", mem1)
         variables = cuda.shared_constructor(np.ones((shapes[1],),
                                                     dtype='float32'))
         derp = tensor.sum(tensor.dot(some_matrix[:shapes[0]], variables))
         derp = ifelse.IfElse(1)(branch_select,
                                 derp, some_matrix[:shapes[0]].sum())
         derp += 1
-        print "Shared took ", np.prod(variables.get_value(
+        print("Shared took ", np.prod(variables.get_value(
                 borrow=True,
-                return_internal_type=True).shape) * 4 / 1024, "kB"
+                return_internal_type=True).shape) * 4 / 1024, "kB")
 
         mem2 = freemem()
-        print "Before compilation", mem2
+        print("Before compilation", mem2)
         mem2_1 = freemem(extra_alloc=more_alloc1)
         obj = theano.function([some_vector, branch_select], derp,
                               mode=mode_with_gpu)
         #theano.printing.debugprint(obj, print_type=True)
         mem3 = freemem()
-        print "After function compilation 1", mem3
+        print("After function compilation 1", mem3)
         assert mem2_1 == mem3, (mem2_1, mem3)
 
         for i in range(3):
             obj(test_params, 1)
-            print "After function evaluation branch true", freemem()
+            print("After function evaluation branch true", freemem())
             assert mem2_1 == freemem(), (mem2_1, freemem())
             obj(test_params, 0)
-            print "After function evaluation branch false", freemem()
+            print("After function evaluation branch false", freemem())
             assert mem2_1 == freemem(), (mem2_1, freemem())
 
         del obj
-        print "After deleting function 1", freemem()
+        print("After deleting function 1", freemem())
         assert mem2 == freemem(), (mem2, freemem())
 
         del derp, variables
-        print "After deleting shared variable and ref to it", freemem()
+        print("After deleting shared variable and ref to it", freemem())
         assert mem1 == freemem(), (mem1, freemem())

@@ -1,3 +1,4 @@
+from __future__ import print_function
 """WRITEME"""
 from copy import copy, deepcopy
 from sys import getsizeof
@@ -23,7 +24,7 @@ def log_thunk_trace(value, f=sys.stderr):
     # in future, consider accepting `write` as arg rather than file
     # to support writing to a logger
     def write(msg):
-        print >> f, "log_thunk_trace: %s" % msg.strip()
+        print("log_thunk_trace: %s" % msg.strip(), file=f)
 
     if hasattr(value, '__thunk_trace__'):
         trace2 = value.__thunk_trace__

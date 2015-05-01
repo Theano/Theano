@@ -1,3 +1,4 @@
+from __future__ import print_function
 # For flag of bool type, we consider the strings 'False', 'false' and '0'
 # as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
@@ -129,10 +130,10 @@ _config_var_list = []
 
 def _config_print(thing, buf):
     for cv in _config_var_list:
-        print >> buf, cv
-        print >> buf, "    Doc: ", cv.doc
-        print >> buf, "    Value: ", cv.__get__()
-        print >> buf, ""
+        print(cv, file=buf)
+        print("    Doc: ", cv.doc, file=buf)
+        print("    Value: ", cv.__get__(), file=buf)
+        print("", file=buf)
 
 
 def get_config_md5():

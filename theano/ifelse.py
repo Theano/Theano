@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 IfElse introduces lazy evaluation in Theano (coupled with the CVM/VM
 linkers). It resembles the if clause of any programming language, that
@@ -576,7 +577,7 @@ class CondMerge(gof.Optimizer):
                     as_view=False,
                     gpu=False,
                     name=mn_name + '&' + pl_name)
-                print 'here'
+                print('here')
                 new_outs = new_ifelse(*new_ins, **dict(return_list=True))
                 new_outs = [clone(x) for x in new_outs]
                 old_outs = []

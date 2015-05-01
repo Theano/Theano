@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 This file is an example of view the memory allocated by pycuda in a GpuArray
 in a CudaNdarray to be able to use it in Theano.
@@ -78,12 +79,12 @@ __global__ void multiply_them(float *dest, float *a, float *b)
 def test_pycuda_memory_to_theano():
     # Test that we can use the GpuArray memory space in pycuda in a CudaNdarray
     y = pycuda.gpuarray.zeros((3, 4, 5), 'float32')
-    print sys.getrefcount(y)
+    print(sys.getrefcount(y))
     # This increase the ref count with never pycuda. Do pycuda also
     # cache ndarray?
     # print y.get()
-    print "gpuarray ref count before creating a CudaNdarray",
-    print sys.getrefcount(y)
+    print("gpuarray ref count before creating a CudaNdarray", end=' ')
+    print(sys.getrefcount(y))
     assert sys.getrefcount(y) == 2
     rand = numpy.random.randn(*y.shape).astype(numpy.float32)
     cuda_rand = cuda_ndarray.CudaNdarray(rand)
@@ -92,13 +93,13 @@ def test_pycuda_memory_to_theano():
     for i in y.shape[::-1][:-1]:
         strides.append(strides[-1] * i)
     strides = tuple(strides[::-1])
-    print 'strides', strides
+    print('strides', strides)
     assert cuda_rand._strides == strides, (cuda_rand._strides, strides)
 
     # in pycuda trunk, y.ptr also works, which is a little cleaner
     y_ptr = int(y.gpudata)
     z = cuda_ndarray.from_gpu_pointer(y_ptr, y.shape, strides, y)
-    print "gpuarray ref count after creating a CudaNdarray", sys.getrefcount(y)
+    print("gpuarray ref count after creating a CudaNdarray", sys.getrefcount(y))
     assert sys.getrefcount(y) == 3
     assert (numpy.asarray(z) == 0).all()
     assert z.base is y
@@ -124,6 +125,6 @@ def test_pycuda_memory_to_theano():
 
     # Check that the ref count to the gpuarray is right.
     del z
-    print "gpuarray ref count after deleting the CudaNdarray",
-    print sys.getrefcount(y)
+    print("gpuarray ref count after deleting the CudaNdarray", end=' ')
+    print(sys.getrefcount(y))
     assert sys.getrefcount(y) == 2

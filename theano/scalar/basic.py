@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 WARNING
@@ -228,7 +229,7 @@ class Scalar(Type):
                           'int64', 'uint8', 'uint16', 'uint32', 'uint64',
                           'complex64', 'complex128', 'float', 'double',
                           'int', 'uint']:
-                print dtype, np.zeros(1, dtype=dtype).dtype.num
+                print(dtype, np.zeros(1, dtype=dtype).dtype.num)
             """
             return {  # dtype: (py_type, c_type, cls_name)
                     'float32': (numpy.float32, 'npy_float32', 'Float32'),
