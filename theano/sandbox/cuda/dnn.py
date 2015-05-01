@@ -1718,11 +1718,11 @@ if True:
     @register_opt('cudnn')
     @local_optimizer([SoftmaxGrad])
     def local_softmax_dnn_grad(node):
-        if (
-            isinstance(node.op, SoftmaxGrad)
-            and (isinstance(node.inputs[0].owner.op, HostFromGpu)
-                 or isinstance(node.inputs[1].owner.op, HostFromGpu))
-        ):
+        if (isinstance(node.op, SoftmaxGrad) and
+            ((node.inputs[0].owner and
+              isinstance(node.inputs[0].owner.op, HostFromGpu))
+             or (node.inputs[1].owner and
+                 isinstance(node.inputs[1].owner.op, HostFromGpu)))):
             if not dnn_available():
                 return
             ins = []
