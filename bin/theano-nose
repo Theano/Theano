@@ -1,5 +1,5 @@
-from __future__ import print_function
 #!/usr/bin/env python
+from __future__ import print_function
 
 __authors__ = "Olivier Delalleau, Pascal Lamblin, Eric Larsen"
 __contact__ = "delallea@iro"
