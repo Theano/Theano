@@ -1492,7 +1492,7 @@ class Neg(gof.op.Op):
 
     def grad(self, inputs, gout):
         (x,) = inputs
-        (gz,) = outputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_sparse_variable(gz)
         return -gz,
 
@@ -1550,7 +1550,7 @@ class ColScaleCSC(gof.op.Op):
 
     def grad(self, inputs, gout):
         (x, s) = inputs
-        (gz,) = outputs
+        (gz,) = gout
         return [col_scale(gz, s), sp_sum(x * gz, axis=0)]
 
     def infer_shape(self, node, ins_shapes):
@@ -1607,7 +1607,7 @@ class RowScaleCSC(gof.op.Op):
 
     def grad(self, inputs, gout):
         (x, s) = inputs
-        (gz,) = outputs
+        (gz,) = gout
         return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
 
     def infer_shape(self, node, ins_shapes):
