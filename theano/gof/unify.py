@@ -10,7 +10,7 @@ if there exists an assignment to all unification variables such that
 from __future__ import print_function
 from copy import copy
 
-from theano.compat import partial
+from functools import partial
 from theano.gof.utils import *
 
 

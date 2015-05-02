@@ -25,7 +25,6 @@ from theano.compat.six import StringIO
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
-from theano.compat import combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
@@ -1928,7 +1927,7 @@ COMPLEX_DTYPES = ALL_DTYPES[-2:]
 
 
 def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
-    for dtype1, dtype2 in combinations(dtypes, 2):
+    for dtype1, dtype2 in itertools.combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
         obj1 = rand_of_dtype(shape1, dtype1)
@@ -1938,7 +1937,7 @@ def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
 
 
 def multi_dtype_cast_checks(shape, dtypes=ALL_DTYPES, nameprefix=''):
-    for dtype1, dtype2 in combinations(dtypes, 2):
+    for dtype1, dtype2 in itertools.combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
         obj1 = rand_of_dtype(shape, dtype1)

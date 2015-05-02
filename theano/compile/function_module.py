@@ -12,7 +12,8 @@ import numpy
 
 import theano
 from theano import gof
-from theano.compat import partial
+from functools import partial
+from theano.compat.six import string_types
 from theano.compat.six.moves import xrange
 import theano.compile.mode
 from theano.compile.io import (

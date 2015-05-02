@@ -55,11 +55,6 @@ else:
         return e[0]
 
     cmp = cmp
-    from functools import partial
-    from collections import defaultdict, deque
-
-    from itertools import combinations, product
-    from sys import maxsize
 
     # Older Python 2.x compatibility
     from theano.compat.python2x import DictMixin, OrderedDict
@@ -70,9 +65,8 @@ else:
     def decode_iter(x):
         return x
 
-__all__ += ['cmp', 'operator_div', 'partial', 'defaultdict', 'deque',
-            'combinations', 'product', 'maxsize', 'DictMixin',
-            'OrderedDict', 'decode', 'decode_iter']
+__all__ += ['cmp', 'operator_div', 'DictMixin', 'OrderedDict', 'decode',
+            'decode_iter']
 
 
 class DefaultOrderedDict(OrderedDict):

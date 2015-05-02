@@ -4,6 +4,7 @@ A VM is not actually different from a Linker, we just decided
 VM was a better name at some point.
 """
 from . import link
+from collections import defaultdict
 import logging
 import os
 import sys
@@ -15,7 +16,6 @@ from theano.configparser import (config, AddConfigVar,
 
 import theano.gof.cmodule
 
-from theano.compat import defaultdict
 from theano.compat.six.moves import xrange
 
 logger = logging.getLogger(__name__)

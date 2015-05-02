@@ -1,3 +1,4 @@
+from itertools import product
 import time
 import unittest
 
@@ -16,7 +17,6 @@ from theano import tensor
 from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
-from theano.compat import product
 from theano.tensor.basic import _allclose
 
 if not enable_sparse:
