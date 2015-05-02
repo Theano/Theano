@@ -16,6 +16,7 @@ import numpy
 
 import theano
 from theano import config
+from theano.compat.six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
 from theano.compat import deque

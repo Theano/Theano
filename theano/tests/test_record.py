@@ -1,5 +1,6 @@
 from theano.tests.record import *
 from theano import function
+from theano.compat.six.moves import xrange
 from theano.tensor import iscalar
 import cStringIO
 

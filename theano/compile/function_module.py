@@ -13,6 +13,7 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import partial
+from theano.compat.six.moves import xrange
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)

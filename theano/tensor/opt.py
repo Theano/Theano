@@ -21,6 +21,7 @@ import numpy as N  # guys... please don't do this in the library :(
 
 import theano
 from theano import gof
+from theano.compat.six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
 from theano.compat import maxsize

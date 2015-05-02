@@ -5,6 +5,7 @@ import numpy
 
 import theano
 import theano.gof.op as op
+from theano.compat.six.moves import xrange
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
 import theano.tensor as T
