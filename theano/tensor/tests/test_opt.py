@@ -1345,10 +1345,9 @@ class test_fusion(unittest.TestCase):
                     nd = objgraph.typestats()
                     print('key, old val, new val, diff')
                     for key in set(d.keys() + nd.keys()):
-                        if d.has_key(key) and nd.has_key(key) and nd[key] != d[key]:
+                        if key in d and key in nd and nd[key] != d[key]:
                             print(key, d.get(key), nd.get(key), end=' ')
-                            if d.has_key(
-                                key) and nd.has_key(key):
+                            if key in d and key in nd:
                                     print(nd[key] - d[key])
                             else:
                                 print(None)

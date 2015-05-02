@@ -333,7 +333,7 @@ def unify_walk(d1, d2, U):
     Tries to unify values of corresponding keys.
     """
     for (k1, v1) in d1.items():
-        if d2.has_key(k1):
+        if k1 in d2:
             U = unify_walk(v1, d2[k1], U)
             if U is False:
                 return False
@@ -411,12 +411,12 @@ def unify_merge(l1, l2, U):
 def unify_merge(d1, d2, U):
     d = d1.__class__()
     for k1, v1 in d1.items():
-        if d2.has_key(k1):
+        if k1 in d2:
             d[k1] = unify_merge(v1, d2[k1], U)
         else:
             d[k1] = unify_merge(v1, v1, U)
     for k2, v2 in d2.items():
-        if not d1.has_key(k2):
+        if k2 not in d1:
             d[k2] = unify_merge(v2, v2, U)
     return d
 
