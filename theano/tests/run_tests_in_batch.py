@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 __authors__ = "Olivier Delalleau, Eric Larsen"
 __contact__ = "delallea@iro"
@@ -54,7 +55,6 @@ nosetests.
 """
 
 
-from __future__ import print_function
 import cPickle
 import datetime
 import os
