@@ -7,6 +7,7 @@ import numpy as np
 
 import theano
 import theano.tensor as T
+from theano.compat.six.moves import xrange
 
 parser = OptionParser(usage='%prog <options>\n Compute time for'
                       ' fast and slow elemwise operations')

@@ -5,6 +5,7 @@ import numpy
 
 import theano
 from theano import tensor as tt
+from theano.compat.six.moves import xrange
 from theano.ifelse import ifelse
 
 a, b = tt.scalars('a', 'b')

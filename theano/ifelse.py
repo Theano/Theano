@@ -22,6 +22,7 @@ from theano.tensor import TensorType
 from theano import gof
 from theano.gof import PureOp, Apply
 
+from theano.compat.six.moves import xrange
 from theano.compile import optdb
 from theano.tensor import opt
 from theano.scan_module.scan_utils import find_up

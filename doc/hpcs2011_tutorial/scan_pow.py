@@ -1,6 +1,7 @@
 from __future__ import print_function
 import theano
 import theano.tensor as T
+from theano.compat.six.moves import xrange
 
 k = T.iscalar("k"); A = T.vector("A")
 

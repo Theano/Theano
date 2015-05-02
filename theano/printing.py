@@ -25,7 +25,7 @@ except ImportError:
 import theano
 from theano import gof
 from theano import config
-from theano.compat.six import StringIO
+from theano.compat.six.moves import StringIO, reduce
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode

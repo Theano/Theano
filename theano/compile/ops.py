@@ -9,6 +9,7 @@ import warnings
 
 import theano
 from theano import gof
+from theano.compat.six.moves import xrange
 
 
 import numpy

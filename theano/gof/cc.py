@@ -12,7 +12,7 @@ from itertools import izip
 import numpy
 
 from theano.compat import PY3
-from theano.compat.six import StringIO
+from theano.compat.six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 
 import theano

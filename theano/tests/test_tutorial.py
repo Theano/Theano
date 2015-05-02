@@ -15,6 +15,7 @@ import theano
 import theano.tensor as T
 from theano import function, compat
 
+from theano.compat.six.moves import xrange
 from theano import config
 from theano.tests import unittest_tools as utt
 from theano.sandbox.rng_mrg import MRG_RandomStreams

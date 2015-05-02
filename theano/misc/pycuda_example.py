@@ -23,6 +23,7 @@ TheanoElementwiseKernel.
 import numpy
 
 import theano
+from theano.compat.six.moves import xrange
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
