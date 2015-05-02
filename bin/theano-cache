@@ -13,25 +13,25 @@ _logger = logging.getLogger('theano.bin.theano-cache')
 
 def print_help(exit_status):
     if exit_status:
-        print 'command "%s" not recognized' % (' '.join(sys.argv))
-    print 'Type "theano-cache" to print the cache location'
-    print 'Type "theano-cache help" to print this help'
-    print 'Type "theano-cache clear" to erase the cache'
-    print 'Type "theano-cache list" to print the cache content'
-    print 'Type "theano-cache unlock" to unlock the cache directory'
-    print 'Type "theano-cache cleanup" to delete keys in the old format/code version'
-    print 'Type "theano-cache purge" to force deletion of the cache directory'
-    print ('Type "theano-cache basecompiledir" '
-            'to print the parent of the cache directory')
-    print ('Type "theano-cache basecompiledir list" '
-            'to print the content of the base compile dir')
-    print ('Type "theano-cache basecompiledir purge" '
-            'to remove everything in the base compile dir, '
-            'that is, erase ALL cache directories')
+        print('command "%s" not recognized' % (' '.join(sys.argv)))
+    print('Type "theano-cache" to print the cache location')
+    print('Type "theano-cache help" to print this help')
+    print('Type "theano-cache clear" to erase the cache')
+    print('Type "theano-cache list" to print the cache content')
+    print('Type "theano-cache unlock" to unlock the cache directory')
+    print('Type "theano-cache cleanup" to delete keys in the old format/code version')
+    print('Type "theano-cache purge" to force deletion of the cache directory')
+    print('Type "theano-cache basecompiledir" ')
+           'to print the parent of the cache directory')
+    print('Type "theano-cache basecompiledir list" '
+           'to print the content of the base compile dir')
+    print('Type "theano-cache basecompiledir purge" '
+           'to remove everything in the base compile dir, '
+           'that is, erase ALL cache directories')
     sys.exit(exit_status)
 
 if len(sys.argv) == 1:
-    print config.compiledir
+    print(config.compiledir)
 elif len(sys.argv) == 2:
     if sys.argv[1] == 'help':
         print_help(exit_status=0)
@@ -64,12 +64,12 @@ elif len(sys.argv) == 2:
         cache.clear_old()
     elif sys.argv[1] == 'unlock':
         theano.gof.compilelock.force_unlock()
-        print 'Lock successfully removed!'
+        print('Lock successfully removed!')
     elif sys.argv[1] == 'purge':
         theano.gof.compiledir.compiledir_purge()
     elif sys.argv[1] == 'basecompiledir':
         # Simply print the base_compiledir
-        print theano.config.base_compiledir
+        print(theano.config.base_compiledir)
     else:
         print_help(exit_status=1)
 elif len(sys.argv) == 3 and sys.argv[1] == 'basecompiledir':

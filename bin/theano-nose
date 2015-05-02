@@ -195,7 +195,7 @@ def help():
         The other options will be passed to nosetests, see ``nosetests -h``.
         """
 
-    print textwrap.dedent(help_msg)
+    print(textwrap.dedent(help_msg))
 
 
 class DisabDocString(Plugin):
