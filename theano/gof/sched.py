@@ -36,7 +36,7 @@ def memodict(f):
 
 def make_depends():
     @memodict
-    def depends((a, b)):
+    def depends(a, b):
         """ Returns True if a depends on b """
         return (any(bout in a.inputs for bout in b.outputs)
                 or any(depends((ainp.owner, b)) for ainp in a.inputs
@@ -56,9 +56,9 @@ def make_dependence_cmp():
         Returns negative number if b depends on a
         Returns 0 otherwise
         """
-        if depends((a, b)):
+        if depends(a, b):
             return 1
-        if depends((b, a)):
+        if depends(b, a):
             return -1
         return 0
 

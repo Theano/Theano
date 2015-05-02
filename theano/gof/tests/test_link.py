@@ -184,7 +184,7 @@ def test_sort_schedule_fn():
     nodes = f.maker.linker.make_all()[-1]
     depends = make_depends()
     for a, b in zip(nodes[:-1], nodes[1:]):
-        if not depends((b, a)):
+        if not depends(b, a):
             assert str(a) < str(b)
 
 
