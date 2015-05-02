@@ -4980,7 +4980,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
 
     def test_reshape_long_in_shape(self):
         v = dvector('v')
-        r = v.reshape((v.shape[0], 1L))
+        r = v.reshape((v.shape[0], 1))
         print(r.eval({v: numpy.arange(5.)}))
         assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T,
                               numpy.arange(5.))
@@ -6022,7 +6022,7 @@ def _test_autocast_numpy():
     def ok(z):
         assert tensor.constant(z).dtype == numpy.asarray(z).dtype
     for x in ([2 ** i for i in xrange(63)] +
-              [0, 0L, 1L, 2L ** 63 - 1] +
+              [0, 0, 1, 2 ** 63 - 1] +
               [0., 1., 1.1, 1.5]):
         n_x = numpy.asarray(x)
         # Make sure the data type is the same as the one found by numpy.
@@ -6055,7 +6055,7 @@ def _test_autocast_numpy_floatX():
             # into int64, as that is the maximal integer type that Theano
             # supports, and that is the maximal type in Python indexing.
             for x in ([2 ** i - 1 for i in xrange(64)] +
-                      [0, 0L, 1L, 2L ** 63 - 1] +
+                      [0, 0, 1, 2 ** 63 - 1] +
                       [0., 1., 1.1, 1.5]):
                 ok(x, floatX)
                 ok(-x, floatX)
@@ -6215,7 +6215,7 @@ class test_arithmetic_cast(unittest.TestCase):
 class T_long_tensor(unittest.TestCase):
     def test_fit_int64(self):
         for exp in xrange(64):
-            val = 2L ** exp - 1
+            val = 2 ** exp - 1
             scalar_ct = constant(val)
             assert scalar_ct.dtype.startswith('int')
             assert scalar_ct.value == val
@@ -6229,7 +6229,7 @@ class T_long_tensor(unittest.TestCase):
             assert numpy.all(matrix_ct.value == val)
 
     def test_too_big(self):
-        val = 2L ** 63
+        val = 2 ** 63
         # NumPy 1.7 this will raise an exception
         # NumPy 1.7.1 this will work
         try:
@@ -6256,7 +6256,7 @@ class T_long_tensor(unittest.TestCase):
         except TypeError:
             pass
 
-        val = 2L ** 64
+        val = 2 ** 64
         # This fail for all NumPy version.
         self.assertRaises(Exception, constant, val)
         self.assertRaises(Exception, constant, [val, val])
