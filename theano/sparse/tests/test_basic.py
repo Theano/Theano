@@ -186,11 +186,15 @@ class T_verify_grad_sparse(unittest.TestCase):
             x = as_sparse_variable(x)
             return gof.Apply(self, [x], [x.type()])
 
-        def perform(self, node, (x, ), (out, )):
+        def perform(self, node, inputs, outputs):
+            (x,) = inputs
+            (out,) = outputs
             assert _is_sparse(x)
             out[0] = -x
 
-        def grad(self, (x,), (gz,)):
+        def grad(self, inputs, gout):
+            (x,) = inputs
+            (gz,) = gout
             assert _is_sparse_variable(x) and _is_sparse_variable(gz)
             if self.structured:
                 return sp_ones_like(x) * dense_from_sparse(gz),

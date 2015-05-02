@@ -1421,7 +1421,9 @@ class TimesN(theano.scalar.basic.UnaryScalarOp):
         float %(nodename)s_timesn(float x) { return x * %(n)s; }
         """ % locals()
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = %(name)s_timesn(%(x)s);" % locals()
 
 

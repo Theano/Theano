@@ -80,7 +80,9 @@ class GetItem(Op):
         else:
             raise TypeError('Expected scalar or slice as index.')
 
-    def perform(self, node, (x, index), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, index) = inputs
+        (out,) = outputs
         if not isinstance(index, slice):
             index = int(index)
         out[0] = x[index]
@@ -137,7 +139,9 @@ class Append(Op):
         assert x.ttype == toAppend.type, (x.ttype, toAppend.type)
         return Apply(self, [x, toAppend], [x.type()])
 
-    def perform(self, node, (x, toAppend), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, toAppend) = inputs
+        (out,) = outputs
         if not self.inplace:
             out[0] = list(x)
         else:
@@ -209,7 +213,9 @@ class Extend(Op):
         assert x.type == toAppend.type
         return Apply(self, [x, toAppend], [x.type()])
 
-    def perform(self, node, (x, toAppend), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, toAppend) = inputs
+        (out,) = outputs
         if not self.inplace:
             out[0] = list(x)
         else:
@@ -292,7 +298,9 @@ class Insert(Op):
             assert isinstance(index, T.TensorVariable) and index.ndim == 0
         return Apply(self, [x, index, toInsert], [x.type()])
 
-    def perform(self, node, (x, index, toInsert), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, index, toInsert) = inputs
+        (out,) = outputs
         if not self.inplace:
             out[0] = list(x)
         else:
@@ -360,8 +368,9 @@ class Remove(Op):
         assert x.ttype == toRemove.type
         return Apply(self, [x, toRemove], [x.type()])
 
-    def perform(self, node, (x, toRemove), (out, )):
-
+    def perform(self, node, inputs, outputs):
+        (x, toRemove) = inputs
+        (out,) = outputs
         if not self.inplace:
             out[0] = list(x)
         else:
@@ -413,8 +422,8 @@ class Reverse(Op):
         assert isinstance(x.type, TypedListType)
         return Apply(self, [x], [x.type()])
 
-    def perform(self, node, inp, (out, )):
-
+    def perform(self, node, inp, outputs):
+        (out,) = outputs
         if not self.inplace:
             out[0] = list(inp[0])
         else:
@@ -470,12 +479,14 @@ class Index(Op):
         assert x.ttype == elem.type
         return Apply(self, [x, elem], [T.scalar()])
 
-    def perform(self, node, (x, elem), (out, )):
+    def perform(self, node, inputs, outputs):
         """
         inelegant workaround for ValueError: The truth value of an
         array with more than one element is ambiguous. Use a.any() or a.all()
         being thrown when trying to remove a matrix from a matrices list
         """
+        (x, elem) = inputs
+        (out,) = outputs
         for y in range(len(x)):
             if node.inputs[0].ttype.values_eq(x[y], elem):
                 out[0] = numpy.asarray(y, dtype=theano.config.floatX)
@@ -500,12 +511,14 @@ class Count(Op):
         assert x.ttype == elem.type
         return Apply(self, [x, elem], [T.scalar()])
 
-    def perform(self, node, (x, elem), (out, )):
+    def perform(self, node, inputs, outputs):
         """
         inelegant workaround for ValueError: The truth value of an
         array with more than one element is ambiguous. Use a.any() or a.all()
         being thrown when trying to remove a matrix from a matrices list
         """
+        (x, elem) = inputs
+        (out,) = outputs
         out[0] = 0
         for y in range(len(x)):
             if node.inputs[0].ttype.values_eq(x[y], elem):
@@ -543,7 +556,8 @@ class Length(Op):
         assert isinstance(x.type, TypedListType)
         return Apply(self, [x], [T.scalar(dtype='int64')])
 
-    def perform(self, node, x, (out, )):
+    def perform(self, node, x, outputs):
+        (out,) = outputs
         out[0] = numpy.asarray(len(x[0]), 'int64')
 
     def __str__(self):
@@ -593,7 +607,8 @@ class MakeList(Op):
 
         return Apply(self, a2, [tl])
 
-    def perform(self, node, inputs, (out, )):
+    def perform(self, node, inputs, outputs):
+        (out,) = outputs
         out[0] = list(inputs)
 
 make_list = MakeList()

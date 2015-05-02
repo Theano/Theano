@@ -105,7 +105,9 @@ class AddSD_ccode(gof.op.Op):
                          [data, indices, indptr, y],
                          [out])
 
-    def c_code(self, node, name, (_data, _indices, _indptr, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (_data, _indices, _indptr, y) = inputs
+        (z,) = outputs
         inplace = int(self.inplace)
         format = {'csc': 0, 'csr': 1}[self.format]
         out_typenum = node.outputs[0].type.dtype_specs()[2]
@@ -236,7 +238,9 @@ class StructuredDotCSC(gof.Op):
                 [tensor.tensor(dtype_out, (False, b.type.broadcastable[1]))])
         return r
 
-    def perform(self, node, (a_val, a_ind, a_ptr, a_nrows, b), (out,)):
+    def perform(self, node, inputs, outputs):
+        (a_val, a_ind, a_ptr, a_nrows, b) = inputs
+        (out,) = outputs
         a = scipy.sparse.csc_matrix((a_val, a_ind, a_ptr),
                 (a_nrows, b.shape[0]),
                 copy=False)
@@ -244,7 +248,7 @@ class StructuredDotCSC(gof.Op):
         out[0] = theano._asarray(a * b, dtype=node.outputs[0].type.dtype)
         assert _is_dense(out[0])  # scipy 0.7 automatically converts to dense
 
-    def c_code(self, node, name, (a_val, a_ind, a_ptr, a_nrows, b), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         # C-implementation of the dot product of the sparse matrix A and matrix
         # B.
         # @param a_val: non-zero values of the sparse matrix
@@ -257,6 +261,8 @@ class StructuredDotCSC(gof.Op):
         # @param z: return value
         # @param sub: TODO, not too sure, something to do with weave probably
 
+        (a_val, a_ind, a_ptr, a_nrows, b) = inputs
+        (z,) = outputs
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a_val')
         if node.inputs[4].type.dtype in ('complex64', 'complex128'):
@@ -426,7 +432,9 @@ class StructuredDotCSR(gof.Op):
                                                 b.type.broadcastable[1]))])
         return r
 
-    def perform(self, node, (a_val, a_ind, a_ptr, b), (out,)):
+    def perform(self, node, inputs, outputs):
+        (a_val, a_ind, a_ptr, b) = inputs
+        (out,) = outputs
         a = scipy.sparse.csr_matrix((a_val, a_ind, a_ptr),
                 (len(a_ptr) - 1, b.shape[0]),
                 copy=True)  # use view_map before setting this to False
@@ -435,7 +443,7 @@ class StructuredDotCSR(gof.Op):
         # scipy 0.7 automatically converts to dense, but not .6 sometimes
         assert _is_dense(out[0])
 
-    def c_code(self, node, name, (a_val, a_ind, a_ptr, b), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         """
         C-implementation of the dot product of the sparse matrix A and matrix
         B.
@@ -449,7 +457,8 @@ class StructuredDotCSR(gof.Op):
         @param z: return value
         @param sub: TODO, not too sure, something to do with weave probably
         """
-        # retrieve dtype number
+        (a_val, a_ind, a_ptr, b) = inputs
+        (z,) = outputs
         typenum_z = tensor.TensorType(self.dtype_out, []).dtype_specs()[2]
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a_val')
@@ -890,9 +899,11 @@ class CSMGradC(gof.Op):
         return gof.Apply(self, [a_val, a_ind, a_ptr, a_dim,
              b_val, b_ind, b_ptr, b_dim], [b_val.type()])
 
-    def c_code(self, node, name, (a_val, a_ind, a_ptr, a_dim,
-                        b_val, b_ind, b_ptr, b_dim), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         # retrieve dtype number
+        (a_val, a_ind, a_ptr, a_dim,
+         b_val, b_ind, b_ptr, b_dim) = inputs
+        (z,) = outputs
         typenum_z = node.outputs[0].type.dtype_specs()[2]
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a_val')
@@ -1047,9 +1058,10 @@ class MulSDCSC(gof.Op):
     # def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplementedError()
 
-    def c_code(self, node, name, (_data, _indices, _indptr, _b,),
-               (_zout, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
 
+        (_data, _indices, _indptr, _b,) = inputs
+        (_zout,) = outputs
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
@@ -1163,9 +1175,10 @@ class MulSDCSR(gof.Op):
     # def perform(self, node, (a_data, a_indices, a_indptr, b), (out,)):
     #    return NotImplemented()
 
-    def c_code(self, node, name, (_data, _indices, _indptr, _b,),
-               (_zout, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
 
+        (_data, _indices, _indptr, _b,) = inputs
+        (_zout,) = outputs
         if node.inputs[0].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for a')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):

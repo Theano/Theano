@@ -71,7 +71,9 @@ class Poisson(gof.op.Op):
         x = as_sparse_variable(x)
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         assert x.format in ["csr", "csc"]
         out[0] = x.copy()
@@ -130,7 +132,9 @@ class Binomial(gof.op.Op):
                          [SparseType(dtype=self.dtype,
                                      format=self.format).make_variable()])
 
-    def perform(self, node, (n, p, shape, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (n, p, shape) = inputs
+        (out,) = outputs
         binomial = numpy.random.binomial(n, p, size=shape)
         csx_matrix = getattr(scipy.sparse, self.format + '_matrix')
         out[0] = csx_matrix(binomial, dtype=self.dtype)
@@ -138,7 +142,9 @@ class Binomial(gof.op.Op):
     def connection_pattern(self, node):
         return [[True], [True], [False]]
 
-    def grad(self, (n, p, shape, ), (gz,)):
+    def grad(self, inputs, gout):
+        (n, p, shape) = inputs
+        (gz,) = gout
         comment_n = "No gradient exists for the number of samples in class\
                      Binomial of theano/sparse/sandbox/sp2.py"
         comment_p = "No gradient exists for the prob of success in class\
@@ -196,7 +202,9 @@ class Multinomial(gof.op.Op):
 
         return gof.Apply(self, [n, p], [p.type()])
 
-    def perform(self, node, (n, p), (out, )):
+    def perform(self, node, inputs, outputs):
+        (n, p) = inputs
+        (out,) = outputs
         assert _is_sparse(p)
 
         if p.format != 'csr':

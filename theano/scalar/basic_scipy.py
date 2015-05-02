@@ -171,7 +171,9 @@ class Gamma(UnaryScalarOp):
         else:
             super(Gamma, self).impl(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -182,7 +184,9 @@ class Gamma(UnaryScalarOp):
 
         return gz * gamma(x) * psi(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in float_types:
             return """%(z)s = tgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
