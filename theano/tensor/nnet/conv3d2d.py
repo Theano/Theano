@@ -254,7 +254,16 @@ def conv3d(signals, filters,
     # now sum out along the Tf to get the output
     # but we have to sum on a diagonal through the Tf and Ts submatrix.
     if border_mode[0] == 'valid':
-        out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
+        if filters_shape[1]!=1:
+          out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
+        else: # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
+          out_5d = out_tmp.reshape((
+            _signals_shape_5d[0],
+            _signals_shape_5d[1],
+            _filters_shape_5d[0],
+            _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
+            _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
+            ))
     elif border_mode[0] in ('full', 'same'):
         raise NotImplementedError('sequence border mode', border_mode[0])
     else:
