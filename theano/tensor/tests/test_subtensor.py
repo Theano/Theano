@@ -303,7 +303,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_long(self):
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
-        t = n[1L:4L:2L, 1L]
+        t = n[1:4:2, 1]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
@@ -313,7 +313,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # Currently, we cast Python longs to int64 when used for indexing.
         # This test checks that using a long that does not fit raises an error.
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
-        self.assertRaises(Exception, lambda: n[:(2L ** 63)])
+        self.assertRaises(Exception, lambda: n[:(2 ** 63)])
 
     def test_list_slice(self):
         x = theano.tensor.arange(100).reshape((5, 5, 4))
