@@ -2,6 +2,7 @@ from __future__ import print_function
 import copy, inspect
 import theano
 import theano.tensor as T
+import collections
 
 #import klass
 
@@ -36,7 +37,7 @@ class InitGraph(type):
             # print '  adding class attribute', key
             if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
-            if callable(val):
+            if isinstance(val, collections.Callable):
                 setattr(cls, key, staticmethod(val))
             else:
                 setattr(cls, key, val)
@@ -317,7 +318,7 @@ if 0:
                 except Exception:
                     kres = klass.KlassVariable(val)
                 setattr(SymMod, key, kres)
-            elif callable(val) and getattr(val, '__is_symbolic'):
+            elif isinstance(val, collections.Callable) and getattr(val, '__is_symbolic'):
                 setattr(SymMod, key, val)
 
         return SymMod()

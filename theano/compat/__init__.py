@@ -5,6 +5,7 @@
 from theano.compat.six import PY3, b, BytesIO, next
 from theano.compat.six.moves import configparser
 from theano.compat.six.moves import reload_module as reload
+import collections
 
 __all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
 
@@ -77,7 +78,7 @@ __all__ += ['cmp', 'operator_div', 'partial', 'defaultdict', 'deque',
 class DefaultOrderedDict(OrderedDict):
     def __init__(self, default_factory=None, *a, **kw):
         if (default_factory is not None and
-                not callable(default_factory)):
+                not isinstance(default_factory, collections.Callable)):
             raise TypeError('first argument must be callable')
         OrderedDict.__init__(self, *a, **kw)
         self.default_factory = default_factory

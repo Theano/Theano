@@ -14,6 +14,7 @@ from theano.compat.six import StringIO
 
 import theano
 from theano.compat import configparser as ConfigParser
+import collections
 
 _logger = logging.getLogger('theano.configparser')
 
@@ -265,7 +266,7 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         configparam.in_c_key = in_c_key
         # Trigger a read of the value from config files and env vars
         # This allow to filter wrong value from the user.
-        if not callable(configparam.default):
+        if not isinstance(configparam.default, collections.Callable):
             configparam.__get__()
         else:
             # We do not want to evaluate now the default value
@@ -309,7 +310,7 @@ class ConfigParam(object):
                     for v in self.default():
                         val_str = v
                         self.__set__(None, val_str)
-                elif callable(self.default):
+                elif isinstance(self.default, collections.Callable):
                     val_str = self.default()
                 else:
                     val_str = self.default
@@ -365,7 +366,7 @@ class TypedParam(ConfigParam):
 
         def filter(val):
             cast_val = mytype(val)
-            if callable(is_valid):
+            if isinstance(is_valid, collections.Callable):
                 if is_valid(cast_val):
                     return cast_val
                 else:

@@ -33,6 +33,7 @@ from theano.gradient import DisconnectedType
 from theano.gradient import grad_undefined
 
 from theano.printing import pprint
+import collections
 
 builtin_complex = complex
 builtin_int = int
@@ -837,7 +838,7 @@ class ScalarOp(Op):
     def __init__(self, output_types_preference=None, name=None):
         self.name = name
         if output_types_preference is not None:
-            if not callable(output_types_preference):
+            if not isinstance(output_types_preference, collections.Callable):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
                     (self.__class__, output_types_preference))

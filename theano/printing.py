@@ -12,6 +12,7 @@ import warnings
 import hashlib
 
 import numpy as np
+import collections
 
 try:
     import pydot as pd
@@ -189,7 +190,7 @@ N.B.:
 def _print_fn(op, xin):
     for attr in op.attrs:
         temp = getattr(xin, attr)
-        if callable(temp):
+        if isinstance(temp, collections.Callable):
             pmsg = temp()
         else:
             pmsg = temp
