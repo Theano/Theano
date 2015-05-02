@@ -53,8 +53,8 @@ from theano import tensor
 from theano.scalar.sharedvar import shared as scalar_shared
 from theano.compile.pfunc import rebuild_collect_shared
 
-import scan_op
-import scan_utils
+from . import scan_op
+from . import scan_utils
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')

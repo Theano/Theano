@@ -13,7 +13,7 @@ from theano.compile.mode import (Mode, register_mode,
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
 
-from profiling import ProfileStats
+from .profiling import ProfileStats
 
 run_cthunk = None  # Will be imported only when needed.
 import_time = time.time()

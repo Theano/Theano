@@ -17,7 +17,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano.tests  import unittest_tools as utt
 from numpy.testing.noseclasses import KnownFailureTest
 
-from test_utils import *
+from .test_utils import *
 import theano.sandbox.scan_module as scan_module
 from theano.sandbox.scan_module.scan_op import ScanOp
 

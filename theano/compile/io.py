@@ -1,7 +1,7 @@
 """Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out` """
 
 from theano import gof
-from sharedvalue import SharedVariable
+from .sharedvalue import SharedVariable
 
 import logging
 _logger = logging.getLogger("theano.compile.io")

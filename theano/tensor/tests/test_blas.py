@@ -20,7 +20,7 @@ from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 gemm_inplace, gemm_no_inplace,
                                 InconsistencyError, Ger, ger, ger_destructive)
 from theano.tests import unittest_tools
-from test_basic import (as_tensor_variable, inplace_func,
+from .test_basic import (as_tensor_variable, inplace_func,
                         compile, inplace)
 import theano.tensor.blas_scipy
 

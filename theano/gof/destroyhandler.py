@@ -3,12 +3,12 @@ Classes and functions for validating graphs that contain view
 and inplace operations.
 """
 import theano
-import toolbox
-import graph
+from . import toolbox
+from . import graph
 from theano.compat import deque, OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
-from fg import InconsistencyError
+from .fg import InconsistencyError
 
 
 class ProtocolError(Exception):

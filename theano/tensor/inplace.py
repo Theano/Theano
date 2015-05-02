@@ -1,5 +1,5 @@
 from theano import scalar as scal
-import elemwise
+from . import elemwise
 from theano import printing
 from theano.printing import pprint
 
