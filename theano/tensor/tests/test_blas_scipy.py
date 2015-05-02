@@ -4,7 +4,7 @@ import theano
 import theano.tensor as tensor
 from theano.tensor.blas_scipy import ScipyGer
 
-from test_blas import TestCase, gemm_no_inplace, TestBlasStrides
+from .test_blas import TestCase, gemm_no_inplace, TestBlasStrides
 from theano.tests.unittest_tools import TestOptimizationMixin
 
 

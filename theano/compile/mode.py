@@ -359,13 +359,13 @@ def get_mode(orig_string):
     if string in ['Mode', 'ProfileMode', 'DebugMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
-            from debugmode import DebugMode
+            from .debugmode import DebugMode
             # DebugMode use its own linker.
             ret = DebugMode(optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'
-            from profilemode import ProfileMode  # noqa
-            from profilemode import prof_mode_instance_to_print
+            from .profilemode import ProfileMode  # noqa
+            from .profilemode import prof_mode_instance_to_print
             ret = eval(string +
                        '(linker=config.linker, optimizer=config.optimizer)')
     elif string in predefined_modes:

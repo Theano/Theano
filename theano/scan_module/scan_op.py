@@ -796,7 +796,7 @@ class Scan(PureOp):
                 cython_destroy_map = [0 for x in xrange(len(node.outputs))]
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
-            import scan_perform_ext
+            from . import scan_perform_ext
             p = lambda node, args, outs:\
                     scan_perform_ext.perform(
                         self.n_shared_outs,

@@ -31,7 +31,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.opt import gpu_seqopt
 from theano.tensor.utils import hash_from_dict
 
-import pycuda_init
+from . import pycuda_init
 if not pycuda_init.pycuda_available:
     raise Exception("No pycuda available. You can't load pycuda_example.py")
 
