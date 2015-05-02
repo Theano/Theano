@@ -367,7 +367,6 @@ else:
         from UserDict import DictMixin
     except ImportError:
         from collections import MutableMapping as DictMixin
-    from collections import OrderedDict, Callable, Counter
-    Callable = Callable
+    from collections import OrderedDict, Counter
 
 __all__ = ['DictMixin', 'OrderedDict', 'Counter']

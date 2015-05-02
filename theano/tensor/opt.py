@@ -24,7 +24,6 @@ from theano import gof
 from theano.compat.six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.compat import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -2082,7 +2081,7 @@ def local_useless_subtensor(node):
             length_pos = shape_of[node.inputs[0]][pos]
 
             if isinstance(idx.stop, (int, numpy.integer)):
-                length_pos_data = maxsize
+                length_pos_data = sys.maxsize
                 try:
                     length_pos_data = get_scalar_constant_value(length_pos)
                 except NotScalarConstantError:

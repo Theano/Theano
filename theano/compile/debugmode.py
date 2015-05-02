@@ -9,14 +9,14 @@ import copy
 import sys
 import copy_reg
 import gc
-from itertools import izip
 import logging
+from itertools import izip, product as itertools_product
 
 import numpy
 
 import theano
 from theano import gof
-from theano.compat import get_unbound_function, product as itertools_product
+from theano.compat import get_unbound_function
 from theano.compat.six.moves import StringIO, xrange
 from theano.gof import (FunctionGraph, graph, utils, link,
                         ops_with_inner_function)

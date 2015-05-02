@@ -1,5 +1,6 @@
 from __future__ import print_function
 from copy import copy
+from itertools import product as itertools_product
 from unittest import TestCase
 
 import numpy
@@ -12,7 +13,7 @@ from nose.plugins.attrib import attr
 import theano
 import theano.tensor as T
 from theano import tensor, Param, shared, config
-from theano.compat import exc_message, product as itertools_product
+from theano.compat import exc_message
 from theano.printing import pp
 from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 _is_real_matrix, _gemm_canonicalize,

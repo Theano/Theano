@@ -20,7 +20,7 @@ import copy
 import os
 import sys
 import time
-from theano.compat import defaultdict
+from collections import defaultdict
 
 import numpy
 

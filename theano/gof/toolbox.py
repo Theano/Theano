@@ -1,10 +1,11 @@
 from __future__ import print_function
+from functools import partial
 import sys
 import time
 
 import theano
 from theano import config
-from theano.compat import partial, OrderedDict
+from theano.compat import OrderedDict
 from theano.gof import graph
 
 

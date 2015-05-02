@@ -59,13 +59,14 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
 import copy
+from sys import maxsize
 import numpy
 
 import theano
 from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
-from theano.compat import maxsize, OrderedDict
+from theano.compat import OrderedDict
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb

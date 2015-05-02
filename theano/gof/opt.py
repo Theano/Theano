@@ -4,6 +4,7 @@ amount of useful generic optimization tools.
 """
 from __future__ import print_function
 
+from collections import deque
 import copy
 import logging
 import pdb
@@ -19,7 +20,6 @@ from theano import config
 from theano.compat.six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
-from theano.compat import deque
 
 from . import destroyhandler as dh
 

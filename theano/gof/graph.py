@@ -9,7 +9,7 @@ from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
-
+from collections import deque
 from copy import copy
 from itertools import count
 
@@ -17,7 +17,6 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.compat import deque
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
