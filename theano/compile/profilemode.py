@@ -7,7 +7,7 @@ import warnings
 
 import theano
 from theano.gof.link import WrapLinker
-from theano.compat.six import string_types
+from theano.compat.six import string_types, iteritems
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
@@ -667,7 +667,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
             printed_tip = True
 
         # tip 4
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a[1]
             if (isinstance(node.op, T.Dot) and
                     all([len(i.type.broadcastable) == 2
@@ -680,7 +680,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
                 printed_tip = True
 
         # tip 5
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a[1]
             if isinstance(node.op, RandomFunction):
                 printed_tip = True

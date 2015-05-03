@@ -1,5 +1,6 @@
 from __future__ import print_function
 import sys, time
+from theano.compat.six import iteritems
 from theano.compile.pfunc import pfunc
 from theano import tensor
 
@@ -10,7 +11,7 @@ import theano.sandbox.cuda as tcn
 
 def compare_fns(fns, input, reps=10):
     times = {}
-    for implname, impl in fns.iteritems():
+    for implname, impl in iteritems(fns):
         try:
             print('TOPOSORT', implname)
             for i, n in enumerate(impl.maker.fgraph.toposort()):
@@ -26,7 +27,7 @@ def compare_fns(fns, input, reps=10):
 
 
 def showtimes(times):
-    for impl, dt in times.iteritems():
+    for impl, dt in iteritems(times):
         print(impl, dt)
 
 

@@ -140,6 +140,7 @@ except ImportError:
     pass
 
 from theano.configparser import config, AddConfigVar, StrParam
+from theano.compat.six import iteritems
 from theano.compat.six.moves import reduce
 from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
@@ -1598,7 +1599,7 @@ class GemmOptimizer(Optimizer):
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
             callbacks_time = {}
-            for k, v in fgraph.execute_callbacks_times.iteritems():
+            for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
                     callbacks_time[k] = v - callbacks_before[k]
                 else:
@@ -1631,7 +1632,7 @@ class GemmOptimizer(Optimizer):
         print(blanc, " callback_time", prof[11], file=stream)
         if prof[11] > 1:
             print(blanc, " callbacks_time", file=stream)
-            for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
+            for i in sorted(iteritems(prof[12]), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
 

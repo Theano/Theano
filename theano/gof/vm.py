@@ -16,6 +16,7 @@ from theano.configparser import (config, AddConfigVar,
 
 import theano.gof.cmodule
 
+from theano.compat.six import iteritems
 from theano.compat.six.moves import xrange
 
 logger = logging.getLogger(__name__)
@@ -436,7 +437,7 @@ class Stack(VM):
         last_apply_stack_len = -1
 
         # This record all function inputs/shared varibles and constants
-        for var, data in self.storage_map.iteritems():
+        for var, data in iteritems(self.storage_map):
             if data[0] is None:
                 continue
             if hasattr(var.type, 'get_shape_info'):

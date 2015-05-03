@@ -13,7 +13,7 @@ import hashlib
 
 import numpy as np
 import collections
-from theano.compat.six import string_types, integer_types
+from theano.compat.six import string_types, integer_types, iteritems
 
 try:
     import pydot as pd
@@ -468,7 +468,7 @@ class PPrinter:
             strings = []
         pprinter = self.clone_assign(lambda pstate, r: r.name is not None and
                                      r is not current, LeafPrinter())
-        inv_updates = dict((b, a) for (a, b) in updates.iteritems())
+        inv_updates = dict((b, a) for (a, b) in iteritems(updates))
         i = 1
         for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
                                           list(outputs) +

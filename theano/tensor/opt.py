@@ -21,7 +21,7 @@ import numpy as N  # guys... please don't do this in the library :(
 
 import theano
 from theano import gof
-from theano.compat.six import integer_types
+from theano.compat.six import integer_types, iteritems
 from theano.compat.six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
@@ -5773,7 +5773,7 @@ class FusionOptimizer(Optimizer):
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
             callbacks_time = {}
-            for k, v in fgraph.execute_callbacks_times.iteritems():
+            for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
                     callbacks_time[k] = v - callbacks_before[k]
                 else:
@@ -5798,7 +5798,7 @@ class FusionOptimizer(Optimizer):
         print(blanc, " callback_time", prof[5], file=stream)
         if prof[5] > 1:
             print(blanc, " callbacks_time", file=stream)
-            for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
+            for i in sorted(iteritems(prof[6]), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
         print(blanc, " time_toposort", prof[7], file=stream)

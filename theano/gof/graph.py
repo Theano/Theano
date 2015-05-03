@@ -16,7 +16,7 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.compat.six import string_types, integer_types
+from theano.compat.six import string_types, integer_types, iteritems
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
@@ -936,7 +936,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
             # Return True iff `x` is in computation graph of variable `vark`.
             return x in all_vars[k - 1]
 
-        for to_replace, replace_by in givens.iteritems():
+        for to_replace, replace_by in iteritems(givens):
             # Map a substitution variable to the computational graphs it
             # belongs to.
             inside = dict((v, [in_var(v, k) for k in (1, 2)])

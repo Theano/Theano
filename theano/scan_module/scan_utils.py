@@ -21,7 +21,7 @@ from itertools import izip
 import numpy
 
 import theano
-from theano.compat.six import string_types
+from theano.compat.six import string_types, iteritems
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof, compat
 from theano import tensor, scalar
@@ -170,7 +170,7 @@ def traverse(out, x, x_copy, d, visited=None):
 def hash_listsDictsTuples(x):
     hash_value = 0
     if isinstance(x, dict):
-        for k, v in x.iteritems():
+        for k, v in iteritems(x):
             hash_value ^= hash_listsDictsTuples(k)
             hash_value ^= hash_listsDictsTuples(v)
     elif isinstance(x, (list, tuple)):
@@ -302,7 +302,7 @@ def get_updates_and_outputs(ls):
         if isinstance(x, list) or isinstance(x, tuple):
             iter_on = x
         elif isinstance(x, dict):
-            iter_on = x.iteritems()
+            iter_on = iteritems(x)
         if iter_on is not None:
             return all(_filter(y) for y in iter_on)
         else:
