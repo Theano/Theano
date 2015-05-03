@@ -306,7 +306,7 @@ FALL_THROUGH = Keyword("FALL_THROUGH")
 
 def comm_guard(type1, type2):
     def wrap(f):
-        old_f = f.func_globals[f.__name__]
+        old_f = f.__globals__[f.__name__]
 
         def new_f(arg1, arg2, *rest):
             if ((type1 is ANY_TYPE or isinstance(arg1, type1)) and
@@ -345,7 +345,7 @@ def comm_guard(type1, type2):
 
 def type_guard(type1):
     def wrap(f):
-        old_f = f.func_globals[f.__name__]
+        old_f = f.__globals__[f.__name__]
 
         def new_f(arg1, *rest):
             if (type1 is ANY_TYPE or isinstance(arg1, type1)):
