@@ -35,7 +35,7 @@ def Op_to_RoutineDoc(op, routine_doc, module_name=None):
 
         # Set the routine's line number.
         if hasattr(func, 'func_code'):
-            routine_doc.lineno = func.func_code.co_firstlineno
+            routine_doc.lineno = func.__code__.co_firstlineno
     else:
         # [XX] I should probably use UNKNOWN here??
         # dvarrazzo: if '...' is to be changed, also check that

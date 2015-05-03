@@ -1752,9 +1752,8 @@ class _Linker(gof.link.LocalLinker):
             # Pure ops don't really have a perform ( or their perform just
             # raises an not implemented exception), so in those cases we
             # consider that we don't have a python implementation
-            if ((self.maker.mode.check_py_code or thunks_c[-1] is None) and
-                    (node.op.perform.func_code !=
-                     gof.op.PureOp.perform.func_code)):
+            if (self.maker.mode.check_py_code or thunks_c[-1] is None) and \
+               node.op.perform.__code__ != gof.op.PureOp.perform.__code__:
                 thunk = node.op.make_py_thunk(node, storage_map, compute_map,
                                               no_recycling)
                 thunks_py.append(thunk)
