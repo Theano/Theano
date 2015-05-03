@@ -357,7 +357,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             x_ = autocast_int(x)
         elif rtype is TensorConstant and isinstance(x, float):
             x_ = autocast_float(x)
-        elif rtype is TensorConstant and isinstance(x, long):
+        elif rtype is TensorConstant and isinstance(x, integer_types):
             # We need to address the case where a long number is used in a
             # Theano graph, because on Windows 64, all shapes are expressed
             # with longs.
@@ -3870,8 +3870,8 @@ def stack(*tensors):
     # See ticket #660
     if numpy.all(
         [  # in case there is direct int in tensors.
-            isinstance(t, (numpy.number, float, int, python_complex,
-                           long)) or
+            isinstance(t, (numpy.number, float, integer_types,
+                           python_complex)) or
             (isinstance(t, Variable) and
              isinstance(t.type, TensorType) and
              t.ndim == 0)
@@ -4436,7 +4436,7 @@ def tile(x, reps, ndim=None):
         iter(reps)
     except TypeError:
         raise ValueError("reps must be iterable")
-    if not numpy.all([isinstance(r, (int, long)) or
+    if not numpy.all([isinstance(r, integer_types) or
         (isinstance(r, TensorVariable) and
             r.dtype in ["int8", "int16", "int32", "int64"]) for r in reps]):
         raise ValueError("elements of reps must be scalars of integer dtype")

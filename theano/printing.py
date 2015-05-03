@@ -13,7 +13,7 @@ import hashlib
 
 import numpy as np
 import collections
-from theano.compat.six import string_types
+from theano.compat.six import string_types, integer_types
 
 try:
     import pydot as pd
@@ -112,7 +112,7 @@ def debugprint(obj, depth=-1, print_type=False,
             results_to_print.extend(obj.outputs)
             profile_list.extend([None for item in obj.outputs])
             order = obj.toposort()
-        elif isinstance(obj, (int, long, float, np.ndarray)):
+        elif isinstance(obj, (integer_types, float, np.ndarray)):
             print(obj)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)

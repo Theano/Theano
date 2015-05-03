@@ -67,6 +67,7 @@ from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
 from theano.compat import OrderedDict
+from theano.compat.six import integer_types
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
@@ -1163,15 +1164,15 @@ class ScanSaveMem(gof.Optimizer):
                         if isinstance(stop, tensor.Variable):
                             global_nsteps['sym'] += [stop]
                         # not if it is maxsize
-                        elif (type(stop) in (int, long) and
+                        elif (type(stop) in integer_types and
                               stop == maxsize):
                             global_nsteps = None
                         # yes if it is a int k, 0 < k < maxsize
-                        elif (type(stop) in (int, long) and
+                        elif (type(stop) in integer_types and
                               global_nsteps['real'] < stop):
                             global_nsteps['real'] = stop
                         # yes if it is a int k, 0 < k < maxsize
-                        elif (type(stop) in (int, long) and stop > 0):
+                        elif (type(stop) in integer_types and stop > 0):
                             pass
                         # not otherwise
                         else:

@@ -10,6 +10,7 @@ _logger = logging.getLogger("theano.tensor.subtensor")
 import numpy
 
 import theano
+from theano.compat.six import integer_types
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
@@ -59,7 +60,7 @@ def make_constant(args):
                 return slice(conv(a.start),
                              conv(a.stop),
                              conv(a.step))
-            elif isinstance(a, (int, long, numpy.integer)):
+            elif isinstance(a, (integer_types, numpy.integer)):
                 return scal.ScalarConstant(scal.int64, a)
             else:
                 return a
@@ -376,7 +377,7 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-        elif isinstance(entry, (int, long, numpy.integer)):
+        elif isinstance(entry, (integer_types, numpy.integer)):
             # Disallow the use of python scalars in idx_list
             raise TypeError("Python scalar in idx_list."
                             "Please report this error to theano-dev.")
