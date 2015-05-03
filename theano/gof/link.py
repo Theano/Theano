@@ -159,7 +159,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     if tr:
         sio = StringIO()
         traceback.print_list(tr, sio)
-        traceback.print_list(tr.decode('ascii'), sio)
         tr = sio.getvalue()
         detailed_err_msg += "\nBacktrace when the node is created:\n"
         detailed_err_msg += str(tr)
