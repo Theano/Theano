@@ -19,14 +19,14 @@ def flip(kern, kshp):
         it = reversed(kern)
         for i in range(kshp[0]):
             for j in range(kshp[1]):
-                flip[i, j] = it.next()
+                flip[i, j] = next(it)
     elif len(kern.shape) == 3:
         kern = kern.reshape(kern.shape[0], -1)
         for k in range(kern.shape[0]):
             it = reversed(kern[k, :])
             for i in range(kshp[0]):
                 for j in range(kshp[1]):
-                    flip[k, i, j] = it.next()
+                    flip[k, i, j] = next(it)
     elif len(kern.shape) == 4:
         kern = kern.reshape(kern.shape[0], kern.shape[1], -1)
         for k in range(kern.shape[0]):
@@ -34,7 +34,7 @@ def flip(kern, kshp):
                 it = reversed(kern[k, m, :])
                 for i in range(kshp[0]):
                     for j in range(kshp[1]):
-                        flip[k, m, i, j] = it.next()
+                        flip[k, m, i, j] = next(it)
     else:
         raise NotImplementedError()
     
