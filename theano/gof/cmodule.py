@@ -25,7 +25,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, decode, decode_iter
-from theano.compat.six import b, BytesIO, StringIO
+from theano.compat.six import b, BytesIO, StringIO, string_types
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -396,7 +396,7 @@ def get_module_hash(src_code, key):
             # This should be the C++ compilation command line parameters or the
             # libraries to link against.
             to_hash += list(key_element)
-        elif isinstance(key_element, basestring):
+        elif isinstance(key_element, string_types):
             if key_element.startswith('md5:'):
                 # This is the md5 hash of the config options. We can stop
                 # here.
@@ -429,7 +429,7 @@ def get_safe_part(key):
     # Find the md5 hash part.
     c_link_key = key[1]
     for key_element in c_link_key[1:]:
-        if (isinstance(key_element, basestring)
+        if (isinstance(key_element, string_types)
                 and key_element.startswith('md5:')):
             md5 = key_element[4:]
             break

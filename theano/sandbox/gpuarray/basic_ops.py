@@ -12,6 +12,7 @@ from theano.tensor.basic import Alloc, Join, Split
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
+from theano.compat.six import string_types
 
 try:
     import pygpu
@@ -65,7 +66,7 @@ class Kernel(object):
     @staticmethod
     def get_flags(*types):
         def get_dtype(t):
-            if isinstance(t, (str, unicode)):
+            if isinstance(t, string_types):
                 return numpy.dtype(t)
             elif isinstance(t, Type):
                 return t.dtype

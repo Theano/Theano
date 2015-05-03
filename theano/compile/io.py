@@ -3,6 +3,8 @@
 from theano import gof
 from .sharedvalue import SharedVariable
 
+from theano.compat.six import string_types
+
 import logging
 _logger = logging.getLogger("theano.compile.io")
 
@@ -71,7 +73,7 @@ class SymbolicInput(object):
         else:
             self.name = name
 
-        if self.name is not None and not isinstance(self.name, basestring):
+        if self.name is not None and not isinstance(self.name, string_types):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
         if (mutable is not None):
@@ -106,7 +108,7 @@ class SymbolicInputKit(object):
     """
 
     def __init__(self, name):
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_types):
             raise TypeError('naem must be a string (got: %s)' % name)
         self.name = name
         self.sinputs = []

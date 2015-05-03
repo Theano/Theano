@@ -13,10 +13,10 @@ from collections import deque
 from copy import copy
 from itertools import count
 
-
 import theano
 import warnings
 from theano.gof import utils
+from theano.compat.six import string_types
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
@@ -340,7 +340,7 @@ class Variable(Node):
         if index is not None and not isinstance(index, int):
             raise TypeError("index must be an int", index)
         self.index = index
-        if name is not None and not isinstance(name, basestring):
+        if name is not None and not isinstance(name, string_types):
             raise TypeError("name must be a string", name)
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))

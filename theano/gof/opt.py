@@ -17,6 +17,7 @@ import numpy
 
 import theano
 from theano import config
+from theano.compat.six import string_types
 from theano.compat.six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
@@ -1255,7 +1256,7 @@ class PatternSub(LocalOptimizer):
                                              allow_multiple_clients))
                 else:
                     return retry_with_equiv()
-            elif isinstance(pattern, basestring):
+            elif isinstance(pattern, string_types):
                 v = unify.Var(pattern)
                 if u[v] is not v and u[v] is not expr:
                     return retry_with_equiv()
@@ -1286,7 +1287,7 @@ class PatternSub(LocalOptimizer):
                 if isinstance(pattern, (list, tuple)):
                     args = [build(p, u) for p in pattern[1:]]
                     return pattern[0](*args)
-                elif isinstance(pattern, basestring):
+                elif isinstance(pattern, string_types):
                     return u[unify.Var(pattern)]
                 elif isinstance(pattern, (int, float)):
                     return pattern

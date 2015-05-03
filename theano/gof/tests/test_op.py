@@ -5,6 +5,7 @@ import numpy
 
 import theano
 import theano.gof.op as op
+from theano.compat.six import string_types
 from theano.compat.six.moves import xrange
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
@@ -39,7 +40,7 @@ class MyType(Type):
     def filter(self, x, strict=False, allow_downcast=None):
         # Dummy filter: we want this type to represent strings that
         # start with `self.thingy`.
-        if not isinstance(x, basestring):
+        if not isinstance(x, string_types):
             raise TypeError("Invalid type")
         if not x.startswith(self.thingy):
             raise ValueError("Invalid value")

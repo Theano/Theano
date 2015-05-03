@@ -21,6 +21,7 @@ from itertools import izip
 import numpy
 
 import theano
+from theano.compat.six import string_types
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof, compat
 from theano import tensor, scalar
@@ -367,7 +368,7 @@ def isNaN_or_Inf_or_None(x):
     try:
         isNaN = numpy.isnan(x)
         isInf = numpy.isinf(x)
-        isStr = isinstance(x, basestring)
+        isStr = isinstance(x, string_types)
     except Exception:
         isNaN = False
         isInf = False
@@ -380,7 +381,7 @@ def isNaN_or_Inf_or_None(x):
         except Exception:
             isNaN = False
             isInf = False
-    if isinstance(x, gof.Constant) and isinstance(x.data, basestring):
+    if isinstance(x, gof.Constant) and isinstance(x.data, string_types):
         isStr = True
     else:
         isStr = False

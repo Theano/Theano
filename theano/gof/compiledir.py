@@ -14,6 +14,7 @@ import textwrap
 import numpy
 
 import theano
+from theano.compat.six import string_types
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import output_subprocess_Popen
@@ -289,7 +290,7 @@ def cleanup():
                                 # force the removing of key
                                 have_npy_abi_version = False
                                 break
-                            elif isinstance(obj, basestring):
+                            elif isinstance(obj, string_types):
                                 if obj.startswith('NPY_ABI_VERSION=0x'):
                                     have_npy_abi_version = True
                                 elif obj.startswith('c_compiler_str='):

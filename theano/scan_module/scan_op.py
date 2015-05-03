@@ -72,6 +72,7 @@ from theano.compat import OrderedDict
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType
+from theano.compat.six import string_types
 from theano.compile.profiling import ScanProfileStats
 
 from theano.scan_module import scan_utils
@@ -737,9 +738,9 @@ class Scan(PureOp):
         wrapped_outputs += self.outputs[slices:]
         profile = None
         if (theano.config.profile or
-            (isinstance(self.profile, (basestring, bool, int))
+            (isinstance(self.profile, (string_types, bool, int))
                                       and self.profile)):
-            if isinstance(self.profile, basestring):
+            if isinstance(self.profile, string_types):
                 profile = ScanProfileStats(name=self.profile)
             else:
                 profile = ScanProfileStats(name=self.name)
