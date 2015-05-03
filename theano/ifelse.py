@@ -556,7 +556,7 @@ class CondMerge(gof.Optimizer):
 
     def apply(self, fgraph):
         nodelist = list(fgraph.toposort())
-        cond_nodes = filter(lambda s: isinstance(s.op, IfElse), nodelist)
+        cond_nodes = [s for s in nodelist if isinstance(s.op, IfElse)]
         if len(cond_nodes) < 2:
             return False
         merging_node = cond_nodes[0]

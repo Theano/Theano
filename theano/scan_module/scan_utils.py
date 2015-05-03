@@ -290,7 +290,7 @@ def get_updates_and_outputs(ls):
         else:
             return [x]
 
-    def filter(x):
+    def _filter(x):
         """
         Ensure `x` is made only of allowed data types.
 
@@ -304,12 +304,12 @@ def get_updates_and_outputs(ls):
         elif isinstance(x, dict):
             iter_on = x.iteritems()
         if iter_on is not None:
-            return all(filter(y) for y in iter_on)
+            return all(_filter(y) for y in iter_on)
         else:
             return (isinstance(x, theano.Variable) or
                     isinstance(x, theano.scan_module.until))
 
-    if not filter(ls):
+    if not _filter(ls):
         raise ValueError(
                 'The return value of your scan lambda expression may only be '
                 'made of lists, tuples, or dictionaries containing Theano '

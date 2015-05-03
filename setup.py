@@ -59,7 +59,7 @@ LONG_DESCRIPTION    = (codecs.open("DESCRIPTION.txt",encoding='utf-8').read() + 
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
 LICENSE             = 'BSD'
-CLASSIFIERS         = filter(None, CLASSIFIERS.split('\n'))
+CLASSIFIERS         = [_f for _f in CLASSIFIERS.split('\n') if _f]
 AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]

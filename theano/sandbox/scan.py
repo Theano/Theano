@@ -464,8 +464,7 @@ def scan(fn,
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant)),
         gof.graph.inputs(fake_outputs))
-    extra_inputs = filter(lambda x: x not in args + fake_nonseqs,
-                                    all_inputs)
+    extra_inputs = [x for x in all_inputs if x not in args + fake_nonseqs]
     non_seqs += extra_inputs
     # Note we do not use all_inputs directly since the order of variables
     # in args is quite important

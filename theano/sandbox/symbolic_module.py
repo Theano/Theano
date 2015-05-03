@@ -27,7 +27,7 @@ class InitGraph(type):
                 return isinstance(v, theano.Variable) and not k.startswith('_')
             r = {}
             for key, val in dct.items():
-                if filter(key, val):
+                if list(filter(key, val)):
                     r[key] = val
             return r
         build_graph_rval = cls.build_graph()
