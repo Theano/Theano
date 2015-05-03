@@ -1,13 +1,12 @@
 from __future__ import print_function
 import copy
 from itertools import izip
-from StringIO import StringIO
-
 import numpy
 
 import theano
 from theano import Apply, scalar, config
 from theano import scalar as scal
+from theano.compat.six.moves import StringIO
 from theano.gof.utils import MethodNotDefined
 from theano.scalar import Scalar
 from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)

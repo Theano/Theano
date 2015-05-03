@@ -2,7 +2,7 @@ from __future__ import print_function
 from copy import copy, deepcopy
 from functools import wraps
 import logging
-from StringIO import StringIO
+from io import StringIO
 import sys
 import unittest
 

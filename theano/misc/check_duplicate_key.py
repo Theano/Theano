@@ -1,5 +1,5 @@
 from __future__ import print_function
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import os, sys
 
 import theano
@@ -48,7 +48,7 @@ for dir in dirs:
 if DISPLAY_DUPLICATE_KEYS:
     for k, v in keys.iteritems():
         if v > 1:
-            print("Duplicate key (%i copies): %s" % (v, cPickle.loads(k)))
+            print("Duplicate key (%i copies): %s" % (v, pickle.loads(k)))
 
 nbs_keys = {}  # nb seen -> now many key
 for val in keys.values():
@@ -70,7 +70,7 @@ if DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE:
     m = max(nbs_mod.keys())
     print("The keys associated to the mod.{cpp,cu} with the most number of copy:")
     for kk in nbs_mod_to_key[m]:
-        kk = cPickle.loads(kk)
+        kk = pickle.loads(kk)
         print(kk)
 
 print("key.pkl histograph")

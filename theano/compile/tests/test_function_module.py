@@ -1,5 +1,5 @@
 import copy
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import numpy
 import unittest
 
@@ -406,7 +406,7 @@ class T_function(unittest.TestCase):
         func = function([x], x+1)
         func.fn.allow_gc = False
         func([1])
-        
+
         check_list = []
         for key, val in func.fn.storage_map.iteritems():
             if not isinstance(key, theano.gof.Constant):
@@ -496,8 +496,8 @@ class T_picklefunction(unittest.TestCase):
         try:
             # Note that here we also test protocol 0 on purpose, since it
             # should work (even though one should not use it).
-            g = cPickle.loads(cPickle.dumps(f, protocol=0))
-            g = cPickle.loads(cPickle.dumps(f, protocol=-1))
+            g = pickle.loads(pickle.dumps(f, protocol=0))
+            g = pickle.loads(pickle.dumps(f, protocol=-1))
         except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
@@ -535,11 +535,11 @@ class T_picklefunction(unittest.TestCase):
         old_default_link = config.linker
         try:
             try:
-                str_f = cPickle.dumps(f, protocol=-1)
+                str_f = pickle.dumps(f, protocol=-1)
                 config.mode = 'Mode'
                 config.linker = 'py'
                 config.optimizer = 'None'
-                g = cPickle.loads(str_f)
+                g = pickle.loads(str_f)
                 # print g.maker.mode
                 # print compile.mode.default_mode
             except NotImplementedError as e:
@@ -593,8 +593,8 @@ class T_picklefunction(unittest.TestCase):
 
         # try to pickle the entire things
         try:
-            saved_format = cPickle.dumps(list_of_things, protocol=-1)
-            new_list_of_things = cPickle.loads(saved_format)
+            saved_format = pickle.dumps(list_of_things, protocol=-1)
+            new_list_of_things = pickle.loads(saved_format)
         except NotImplementedError as e:
             if e[0].startswith('DebugMode is not picklable'):
                 return
@@ -657,7 +657,7 @@ class T_picklefunction(unittest.TestCase):
 
         from theano.compat import BytesIO
         fp = BytesIO()
-        p = cPickle.Pickler(fp, 2)
+        p = pickle.Pickler(fp, 2)
         p.persistent_id = pers_save
         try:
             p.dump(f)
@@ -668,7 +668,7 @@ class T_picklefunction(unittest.TestCase):
                 raise
         fp2 = BytesIO(fp.getvalue())
         fp.close()
-        p = cPickle.Unpickler(fp2)
+        p = pickle.Unpickler(fp2)
         p.persistent_load = pers_load
         f2 = p.load()
         fp2.close()

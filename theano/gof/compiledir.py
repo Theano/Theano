@@ -1,5 +1,5 @@
 from __future__ import print_function
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import errno
 import logging
 import os
@@ -280,7 +280,7 @@ def cleanup():
                 file = open(filename, 'rb')
                 # print file
                 try:
-                    keydata = cPickle.load(file)
+                    keydata = pickle.load(file)
                     for key in list(keydata.keys):
                         have_npy_abi_version = False
                         have_c_compiler = False
@@ -352,7 +352,7 @@ def print_compiledir_content():
             try:
                 filename = os.path.join(compiledir, dir, "key.pkl")
                 file = open(filename, 'rb')
-                keydata = cPickle.load(file)
+                keydata = pickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
                 if len(ops) == 0:

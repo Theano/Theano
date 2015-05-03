@@ -55,7 +55,7 @@ nosetests.
 """
 
 
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import datetime
 import os
 import subprocess
@@ -155,7 +155,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     noseids_file = '.noseids'
 
     with open(noseids_file, 'rb') as f:
-        data = cPickle.load(f)
+        data = pickle.load(f)
 
     ids = data['ids']
     n_tests = len(ids)
@@ -198,7 +198,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             # seems like it is not systematically erased though, and we want
             # to avoid duplicates.
             with open(noseids_file, 'rb') as f:
-                failed = failed.union(cPickle.load(f)['failed'])
+                failed = failed.union(pickle.load(f)['failed'])
 
             print('%s%% done in %.3fs (failed: %s)' % (
                 (test_range[-1] * 100) // n_tests, t1 - t0, len(failed)))

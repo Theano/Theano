@@ -1,10 +1,10 @@
 from __future__ import print_function
 import copy
-import StringIO
 import numpy
 
 import theano
 from theano import tensor, gof, Op
+from theano.compat.six.moves import StringIO
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
 
@@ -91,7 +91,7 @@ class GpuSubtensor(HideC, Subtensor):
         if (!%(out)s) { %(fail)s }
 """ % dict(out=outputs[0], inp=inp, fail=sub['fail'])
 
-        sio = StringIO.StringIO()
+        sio = StringIO()
         print("""
         ssize_t starts[%(sz)s];
         ssize_t stops[%(sz)s];

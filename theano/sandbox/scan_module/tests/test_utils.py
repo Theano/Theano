@@ -1,4 +1,4 @@
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import numpy
 import unittest
 

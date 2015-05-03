@@ -7,7 +7,7 @@ import time
 import unittest
 import copy
 
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -248,12 +248,12 @@ class T_Scan(unittest.TestCase):
 
             f_out = open('tmp_scan_test_pickle.pkl', 'wb')
             try:
-                cPickle.dump(_my_f, f_out, protocol=-1)
+                pickle.dump(_my_f, f_out, protocol=-1)
             finally:
                 f_out.close()
             f_in = open('tmp_scan_test_pickle.pkl', 'rb')
             try:
-                my_f = cPickle.load(f_in)
+                my_f = pickle.load(f_in)
             finally:
                 f_in.close()
         finally:

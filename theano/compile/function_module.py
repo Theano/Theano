@@ -3,8 +3,8 @@
 from __future__ import print_function
 
 import copy
-import copy_reg
-import cPickle
+import theano.compat.six.moves.copyreg as copyreg
+import theano.compat.six.moves.cPickle as pickle
 import itertools
 import time
 import warnings
@@ -776,7 +776,7 @@ def _constructor_Function(maker, input_storage, inputs_data):
             (container.data == x)
     return f
 
-copy_reg.pickle(Function, _pickle_Function)
+copyreg.pickle(Function, _pickle_Function)
 
 
 ###
@@ -957,7 +957,7 @@ class FunctionMaker(object):
                 # finish. Should be changed in definitive version.
                 tmp = theano.config.unpickle_function
                 theano.config.unpickle_function = False
-                graph_db = cPickle.load(f)
+                graph_db = pickle.load(f)
 
                 # hack end
                 f.close()
@@ -1090,7 +1090,7 @@ class FunctionMaker(object):
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt: self.fgraph})
             f = open(graph_db_file, 'wb')
-            cPickle.dump(graph_db, f, -1)
+            pickle.dump(graph_db, f, -1)
             f.close()
             print('new graph saved into graph_db')
         release_lock()
@@ -1428,7 +1428,7 @@ def _constructor_FunctionMaker(kwargs):
     else:
         return None
 
-copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
+copyreg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 __checkers = []
 

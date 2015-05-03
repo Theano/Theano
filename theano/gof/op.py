@@ -17,7 +17,6 @@ import logging
 import numpy
 import os
 import re
-import StringIO
 import sys
 import traceback
 import warnings
@@ -26,6 +25,7 @@ import theano
 from theano import config
 
 import theano.gof.cc
+from theano.compat.six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
@@ -459,7 +459,7 @@ class PureOp(object):
                     " have the requested type.\n")
                 tr = getattr(v.tag, 'trace', None)
                 if tr:
-                    sio = StringIO.StringIO()
+                    sio = StringIO()
                     traceback.print_list(tr, sio)
                     tr = sio.getvalue()
                     detailed_err_msg += (

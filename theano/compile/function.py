@@ -1,6 +1,8 @@
 """Define the `function` function
 """
-import cPickle
+__docformat__ = "restructuredtext en"
+
+import theano.compat.six.moves.cPickle as pickle
 import logging
 
 import traceback as tb
@@ -49,7 +51,7 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              allow_input_downcast=allow_input_downcast, profile=profile,
              on_unused_input=on_unused_input)
     with open(filename, 'wb') as f:
-        cPickle.dump(d, f, -1)
+        pickle.dump(d, f, -1)
 
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,

@@ -2,12 +2,12 @@
 from __future__ import print_function
 from copy import copy, deepcopy
 from sys import getsizeof
-import StringIO
 import sys
 import traceback
 import numpy
 
 import theano
+from theano.compat.six.moves import StringIO
 from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type
@@ -157,8 +157,9 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     # Print node backtrace
     tr = getattr(node.outputs[0].tag, 'trace', None)
     if tr:
-        sio = StringIO.StringIO()
+        sio = StringIO()
         traceback.print_list(tr, sio)
+        traceback.print_list(tr.decode('ascii'), sio)
         tr = sio.getvalue()
         detailed_err_msg += "\nBacktrace when the node is created:\n"
         detailed_err_msg += str(tr)
@@ -172,7 +173,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     if theano.config.exception_verbosity == 'high':
 
-        f = StringIO.StringIO()
+        f = StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n"
