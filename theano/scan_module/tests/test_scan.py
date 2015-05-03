@@ -4661,8 +4661,8 @@ def test_speed():
     else:
         while True:
             try:
-                tmp = r_i.next()
-                tmp += r_ii.next()
+                tmp = next(r_i)
+                tmp += next(r_ii)
             except StopIteration:
                 break
     t1 = time.time()
