@@ -16,7 +16,7 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.compat.six import string_types
+from theano.compat.six import string_types, integer_types
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
@@ -147,7 +147,7 @@ class Apply(Node):
             else:
                 raise AttributeError(
                     "%s.default_output should be an output index." % self.op)
-        elif not isinstance(do, (int, long)):
+        elif not isinstance(do, integer_types):
             raise AttributeError("%s.default_output should be an int or long" %
                                  self.op)
         elif do < 0 or do >= len(self.outputs):

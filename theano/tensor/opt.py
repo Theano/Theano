@@ -21,6 +21,7 @@ import numpy as N  # guys... please don't do this in the library :(
 
 import theano
 from theano import gof
+from theano.compat.six import integer_types
 from theano.compat.six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
@@ -840,7 +841,7 @@ class ShapeFeature(object):
             # don't make the optimizer merge a zillion ones together
             # by always returning the same object to represent 1
             return self.lscalar_one
-        if (type(s_i) in (int, long) or
+        if (type(s_i) in integer_types or
             isinstance(s_i, numpy.integer) or
             (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
             # this shape is a constant
