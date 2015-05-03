@@ -62,7 +62,7 @@ if 0:
             nodes = [node]
             while candidates:
                 for node in nodes:
-                    candidates = filter(node, depth)
+                    candidates = list(filter(node, depth))
                 depth += 1
                 _nodes = nodes
                 nodes = reduce(list.__iadd__,

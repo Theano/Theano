@@ -432,4 +432,4 @@ def remove(predicate, coll):
     >>> remove(even, [1, 2, 3, 4])
     [1, 3]
     """
-    return filter(lambda x: not predicate(x), coll)
+    return [x for x in coll if not predicate(x)]
