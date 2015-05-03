@@ -47,13 +47,13 @@ python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
-complex_dtypes = map(str, scal.complex_types)
-continuous_dtypes = map(str, scal.continuous_types)
-float_dtypes = map(str, scal.float_types)
-discrete_dtypes = map(str, scal.discrete_types)
-all_dtypes = map(str, scal.all_types)
-int_dtypes = map(str, scal.int_types)
-uint_dtypes = map(str, scal.uint_types)
+complex_dtypes = list(map(str, scal.complex_types))
+continuous_dtypes = list(map(str, scal.continuous_types))
+float_dtypes = list(map(str, scal.float_types))
+discrete_dtypes = list(map(str, scal.discrete_types))
+all_dtypes = list(map(str, scal.all_types))
+int_dtypes = list(map(str, scal.int_types))
+uint_dtypes = list(map(str, scal.uint_types))
 
 
 class ShapeError(Exception):
@@ -3877,7 +3877,7 @@ def stack(*tensors):
              t.ndim == 0)
             for t in tensors]):
         # in case there is direct int
-        tensors = map(as_tensor_variable, tensors)
+        tensors = list(map(as_tensor_variable, tensors))
         dtype = scal.upcast(*[i.dtype for i in tensors])
         return theano.tensor.opt.MakeVector(dtype)(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
@@ -4838,7 +4838,7 @@ class Dot(Op):
     # graph.  See Dot22 in tensor.blas for details.
 
     def make_node(self, *inputs):
-        inputs = map(as_tensor_variable, inputs)
+        inputs = list(map(as_tensor_variable, inputs))
 
         if len(inputs) != 2:
             raise TypeError(
@@ -5424,7 +5424,7 @@ def stacklists(arg):
     (2, 2, 4, 4)
     """
     if isinstance(arg, (tuple, list)):
-        return stack(*map(stacklists, arg))
+        return stack(*list(map(stacklists, arg)))
     else:
         return arg
 

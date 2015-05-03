@@ -889,8 +889,8 @@ class GpuJoin(HideC, Join):
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
-        return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
-                                                  tensors),
+        return Apply(self, [node.inputs[0]] + list(map(as_gpuarray_variable,
+                                                  tensors)),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
                                    dtype=node.outputs[0].dtype)()])
 

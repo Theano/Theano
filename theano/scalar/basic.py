@@ -1904,7 +1904,7 @@ class Clip(ScalarOp):
                 return v.zeros_like().astype(config.floatX)
             return v
 
-        return map(handle_int, [gx, gmn, gmx])
+        return list(map(handle_int, [gx, gmn, gmx]))
 
 # Don't allow complex even if numpy do
 # As there is no mathematical reason for this function on complex

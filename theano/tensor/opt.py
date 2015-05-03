@@ -583,7 +583,7 @@ class MakeVector(T.Op):
         return hash(type(self)) ^ hash(self.dtype)
 
     def make_node(self, *inputs):
-        inputs = map(T.as_tensor_variable, inputs)
+        inputs = list(map(T.as_tensor_variable, inputs))
         if not all(a.type == inputs[0].type for a in inputs) or (
             len(inputs) > 0 and inputs[0].dtype != self.dtype):
             dtype = theano.scalar.upcast(self.dtype,
@@ -1414,7 +1414,7 @@ def local_subtensor_make_vector(node):
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
-            values = map(int, list(idx.value))
+            values = list(map(int, list(idx.value)))
             return [make_vector(*[x.owner.inputs[v] for v in values])]
         else:
             raise TypeError('case not expected')
@@ -4808,8 +4808,8 @@ def attempt_distribution(factor, num, denum, out_type):
     pos, neg = local_add_canonizer.get_num_denum(factor)
     if len(pos) == 1 and not neg:
         return False, factor, num, denum
-    pos_pairs = map(local_mul_canonizer.get_num_denum, pos)
-    neg_pairs = map(local_mul_canonizer.get_num_denum, neg)
+    pos_pairs = list(map(local_mul_canonizer.get_num_denum, pos))
+    neg_pairs = list(map(local_mul_canonizer.get_num_denum, neg))
     change = False
     for n in list(num):
         success, pos_pairs, neg_pairs = distribute_greedy(pos_pairs,

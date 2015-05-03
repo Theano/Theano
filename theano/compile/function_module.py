@@ -165,7 +165,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
         fgraph.attach_feature(feature())
-    return fgraph, map(SymbolicOutput, updates)
+    return fgraph, list(map(SymbolicOutput, updates))
 
 
 std_fgraph.features = [gof.toolbox.PreserveNames]
@@ -1502,10 +1502,10 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     t1 = time.time()
     mode = theano.compile.mode.get_mode(mode)
 
-    inputs = map(convert_function_input, inputs)
+    inputs = list(map(convert_function_input, inputs))
     if outputs is not None:
         if isinstance(outputs, (list, tuple)):
-            outputs = map(FunctionMaker.wrap_out, outputs)
+            outputs = list(map(FunctionMaker.wrap_out, outputs))
         else:
             outputs = FunctionMaker.wrap_out(outputs)
 

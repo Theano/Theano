@@ -614,7 +614,7 @@ def parse_mul_tree(root):
             return [not neg, sub_tree]
     else:
         # Recurse into inputs.
-        return [False, map(parse_mul_tree, mul_info)]
+        return [False, list(map(parse_mul_tree, mul_info))]
 
 
 def replace_leaf(arg, leaves, new_leaves, op, neg):
@@ -708,7 +708,7 @@ def compute_mul(tree):
             'call `simplify_mul` on the tree first?')
     elif isinstance(inputs, list):
         # Recurse through inputs.
-        rval = tensor.mul(*map(compute_mul, inputs))
+        rval = tensor.mul(*list(map(compute_mul, inputs)))
     else:
         rval = inputs
     if neg:

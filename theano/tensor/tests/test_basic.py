@@ -6118,10 +6118,10 @@ class test_arithmetic_cast(unittest.TestCase):
                                           ('i_scalar', 'i_scalar'),
                                           ):
 
-                                theano_args = map(eval,
-                                        ['theano_%s' % c for c in combo])
-                                numpy_args = map(eval,
-                                        ['numpy_%s' % c for c in combo])
+                                theano_args = list(map(eval,
+                                        ['theano_%s' % c for c in combo]))
+                                numpy_args = list(map(eval,
+                                        ['numpy_%s' % c for c in combo]))
                                 try:
                                     theano_dtype = op(
                                         theano_args[0](a_type),
@@ -6136,8 +6136,17 @@ class test_arithmetic_cast(unittest.TestCase):
                                             config.int_division == 'raise')
                                     # This is the expected behavior.
                                     continue
-                                numpy_dtype = op(numpy_args[0](a_type),
-                                                 numpy_args[1](b_type)).dtype
+                                # For numpy we have a problem:
+                                #   http://projects.scipy.org/numpy/ticket/1827
+                                # As a result we only consider the highest data
+                                # type that numpy may return.
+                                numpy_dtypes = [
+                                        op(numpy_args[0](a_type),
+                                           numpy_args[1](b_type)).dtype,
+                                        op(numpy_args[1](b_type),
+                                           numpy_args[0](a_type)).dtype]
+                                numpy_dtype = theano.scalar.upcast(
+                                        *list(map(str, numpy_dtypes)))
                                 if numpy_dtype == theano_dtype:
                                     # Same data type found, all is good!
                                     continue
